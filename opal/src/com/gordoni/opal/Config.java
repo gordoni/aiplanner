@@ -16,9 +16,9 @@ import java.util.TreeMap;
  */
 public class Config
 {
-        public String version = "java-1.2.13";
+        public String version = "java-1.2.14";
 
-	public String prefix = "opal"; // Prefix to use for data files.
+	public String prefix = "opal"; // Prefix to use for result files.
 
         public boolean trace = false; // Be chatty.
         public int tasks_generate = 100; // Break generation into this many concurrent tasks.

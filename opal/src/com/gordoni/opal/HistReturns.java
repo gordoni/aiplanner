@@ -12,6 +12,8 @@ import java.util.Map;
 
 public class HistReturns
 {
+        private String data = "data"; // Prefix to use for data files.
+
 	public int initial_year;
 
 	// Real monthly S&P Composite, GS10, and inflation data from Shiller:
@@ -212,7 +214,7 @@ public class HistReturns
 
         private int load_returns(String filename, int initial, List<Double> l, boolean price_level) throws IOException
 	{
-		BufferedReader in = new BufferedReader(new FileReader(new File(filename)));
+		BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
 		String line = in.readLine();
 		double prev_price = Double.NaN;
 		for (int year = initial; (line = in.readLine()) != null; year++)
@@ -241,7 +243,7 @@ public class HistReturns
 
 	private int load_ff(String filename) throws IOException
 	{
-		BufferedReader in = new BufferedReader(new FileReader(new File(filename)));
+		BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
 		Integer init_year = null;
 		String line;
 		for (line = in.readLine(); !line.trim().equals("Average Value Weighted Returns -- Annual"); line = in.readLine())
@@ -302,7 +304,7 @@ public class HistReturns
 	        int time_periods = 1;
 		        // Able to load non-annual returns, but we keep it simple and load annual returns.
 
-		BufferedReader in = new BufferedReader(new FileReader(new File(prefix + ".csv")));
+		BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + prefix + ".csv")));
 		String line = in.readLine();
 		Integer init_year = null;
 		double old_rate = Double.NaN;
@@ -344,7 +346,7 @@ public class HistReturns
         // http://www.ssa.gov/oact/STATS/table4c6.html
         private void load_ssa_period(String filename) throws IOException
 	{
-		BufferedReader in = new BufferedReader(new FileReader(new File(filename)));
+		BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
 		String line = in.readLine();
 		for (int l = 0; (line = in.readLine()) != null; l++)
 		{
@@ -366,7 +368,7 @@ public class HistReturns
 	{
 	        for (int birth_year = 1900; birth_year <= 2100; birth_year += 10)
 		{
-		        BufferedReader in = new BufferedReader(new FileReader(new File("as120/LifeTables_Tbl_7_" + birth_year + ".html")));
+		        BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + "as120/LifeTables_Tbl_7_" + birth_year + ".html")));
 			List<Double> death_list_m = new ArrayList<Double>();
 			List<Double> death_list_f = new ArrayList<Double>();
 			String line;
@@ -408,7 +410,7 @@ public class HistReturns
 
         private void load_soa_iam2000(List<Double> death_m, List<Double> death_f, String filename) throws IOException
         {
-		BufferedReader in = new BufferedReader(new FileReader(new File(filename)));
+		BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
 		String line = in.readLine();
 		double prev_m = 0;
 		double prev_f = 0;
@@ -437,7 +439,7 @@ public class HistReturns
 
     private List<Double> load_soa_iam2012(String filename, boolean q1000) throws IOException
         {
-		BufferedReader in = new BufferedReader(new FileReader(new File(filename)));
+		BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
 	        Map<Integer, Double> death_map = new HashMap<Integer, Double>();
 		String line = in.readLine();
 		while ((line = in.readLine()) != null)
@@ -482,7 +484,7 @@ public class HistReturns
 		}
 		for (int age = min_age; age <= max_age; age++)
 		{
-		        BufferedReader in = new BufferedReader(new FileReader(new File("immediateannuities.com/" + quote + "/" + age + ".html")));
+		        BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + "immediateannuities.com/" + quote + "/" + age + ".html")));
 			String line;
 			while (!(line = in.readLine()).contains("<li><span>Male " + age + "</span></li>"))
 			{
@@ -521,7 +523,7 @@ public class HistReturns
         // http://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/Corp-Yield-Bond-Curve-Papers.aspx
         private void load_hqm(String filename) throws IOException
         {
-		BufferedReader in = new BufferedReader(new FileReader(new File(filename)));
+		BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
 		String line = in.readLine();
 		line = in.readLine();
 		line = in.readLine();
@@ -556,7 +558,7 @@ public class HistReturns
         // http://www.irs.gov/pub/irs-pdf/p939.pdf - Table V-ORDINARY LIFE ANNUITIES - ONE LIFE—EXPECTED RETURN MULTIPLES
         private void load_annuity_multiples(String filename) throws IOException
         {
-		BufferedReader in = new BufferedReader(new FileReader(new File(filename)));
+		BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
 		String line = in.readLine();
 		List<Double> multiples = new ArrayList<Double>();
 		int next = 0;
@@ -579,12 +581,12 @@ public class HistReturns
 		// Set up returns and initial_year based on data_source.
 		if (Config.data_source.equals("sbbi"))
 		{
-			load_sbbi_data(new BufferedReader(new FileReader(new File(sbbi_file))));
+			load_sbbi_data(new BufferedReader(new FileReader(new File(data + "/" + sbbi_file))));
 			initial_year = sbbi_initial;
 		}
 		else
 		{
-			load_shiller_data(new BufferedReader(new FileReader(new File(shiller_file))));
+			load_shiller_data(new BufferedReader(new FileReader(new File(data + "/" + shiller_file))));
 			initial_year = shiller_initial;
 		}
 
@@ -607,7 +609,7 @@ public class HistReturns
 		soa_iam2012_basic_death_f = load_soa_iam2012("soa-iam2012-basic-female.csv", true);
 		soa_projection_g2_m = load_soa_iam2012("soa-projection-g2-male.csv", false);
 		soa_projection_g2_f = load_soa_iam2012("soa-projection-g2-female.csv", false);
-                File dir = new File("immediateannuities.com");
+                File dir = new File(data + "/" + "immediateannuities.com");
 		for (File file : dir.listFiles())
 		        if (file.isDirectory())
 			        load_immediateannuities(file.getName());

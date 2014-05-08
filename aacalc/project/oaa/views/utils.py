@@ -71,11 +71,11 @@ default_params = {
     'class_risk_free' : False,
     'ret_risk_free_pct': Decimal('1.0'),
     'generate_start_year': 1927,
-    'generate_end_year': 2012,
+    'generate_end_year': 2013,
     'validate_start_year': 1927,
-    'validate_end_year': 2012,
-    'ret_equity_pct': Decimal('4.0'),
-    'ret_bonds_pct': Decimal('0.4'),
+    'validate_end_year': 2013,
+    'ret_equity_pct': Decimal('5.0'),
+    'ret_bonds_pct': Decimal('2.0'),
     'expense_pct': Decimal('0.5'),
     'neg_validate_all_adjust_pct': Decimal('0.0'),
     'validate_equity_vol_adjust_pct': Decimal(100),
@@ -89,7 +89,8 @@ default_params = {
     #'utility_slope_zero': Decimal(100),
     #'utility_donate': False,
     #'utility_donate_above': Decimal(50000),
-    'utility_dead_pct': Decimal(10),
+    #'utility_dead_pct': Decimal(10),
+    'utility_dead_limit_pct': Decimal(10),
     #'donate_inherit_discount_rate_pct': Decimal(15),
     'advanced_well_being': False,
     'consume_discount_rate_pct': Decimal(2.0),
@@ -316,8 +317,8 @@ def display_result(request, dirname, scenario_id, s):
             aa.append(a)
         data['aa_name'] = '/'.join(asset_class_names(s))
         data['aa'] = '/'.join(str(int(a * 100 + 0.5)) for a in aa)
-        failure_chance, failure_length = compile(r'^(\S+)% chance of failure; (\S+) years average failure length$', MULTILINE).search(log).groups()
-        metric_withdrawal = compile(r'^Metric consume:.* = (-?\d+.\d+).*$', MULTILINE).search(log).group(1)
+        failure_chance, failure_length = compile(r'^(\S+)% chance of failure; (\S+) years weighted failure length$', MULTILINE).search(log).groups()
+        metric_withdrawal = compile(r'^Metric consume: *(-?\d+.\d+).*$', MULTILINE).search(log).group(1)
         data['failure_chance'] = '%.1f%%' % float(failure_chance)
         data['failure_length'] = '%.1f' % float(failure_length)
         data['metric_withdrawal'] = int(float(metric_withdrawal))

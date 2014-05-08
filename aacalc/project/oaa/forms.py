@@ -177,6 +177,9 @@ class ScenarioBaseForm(forms.Form):
     class_ff_sl = forms.BooleanField(required=False)
     class_ff_sm = forms.BooleanField(required=False)
     class_ff_sh = forms.BooleanField(required=False)
+    class_baa = forms.BooleanField(required=False)
+    class_aaa = forms.BooleanField(required=False)
+    class_t10yr = forms.BooleanField(required=False)
     class_t1yr = forms.BooleanField(required=False)
     class_t1mo = forms.BooleanField(required=False)
     class_reits = forms.BooleanField(required=False)
@@ -208,7 +211,7 @@ class ScenarioBaseForm(forms.Form):
     utility_inherit_years = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0)
-    utility_dead_pct = forms.DecimalField(
+    utility_dead_limit_pct = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'percent_input'}),
         min_value=0,
         max_value=100)

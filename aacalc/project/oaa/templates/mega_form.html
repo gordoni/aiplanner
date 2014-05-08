@@ -303,11 +303,10 @@ too highly results in stocks being recommended even for small
 portfolios.
 </font>
 <br />
-Money left in a bequest is {{ se_form.utility_dead_pct }}% as
-important as money consumed while I am alive.
-{{ se_form.utility_dead_pct.errors }}
+Fraction of unsatisfied well being capable of being satisfied by being able to leave a bequest: {{ se_form.utility_dead_limit_pct }}%
+{{ se_form.utility_dead_limit_pct.errors }}
 <br />
-Share bequest between {{ se_form.utility_inherit_years }} people over one year, or equivalently this many years by one person.
+Goal is to share bequest between {{ se_form.utility_inherit_years }} people over one year, or equivalently this many years by one person.
 {{ se_form.utility_inherit_years.errors }}
 <br />
 <font size="-1">
@@ -346,86 +345,104 @@ transitions may appear.</span>
 <br />
 {{ se_form.class_stocks }} Stocks
 <font size="-1">
-(US stocks; 1872-2012 available)
+(US stocks; 1872-2013 available)
 </font>
 {{ se_form.class_stocks.errors }}
 <br />
 {{ se_form.class_bonds }} Bonds
 <font size="-1">
-(US 10 year T-notes; 1872-2012 available)
+(US investment grade; 1872-2013 available)
 </font>
 {{ se_form.class_bonds.errors }}
 <span class="advanced">
 <br />
 {{ se_form.class_eafe }} International
 <font size="-1">
-(developed large cap international unhedged; 1970-2012 available)
+(developed large cap international unhedged; 1970-2013 available)
 </font>
 {{ se_form.class_eafe.errors }}
 <br />
-{{ se_form.class_ff_bl }} Big Growth
+{{ se_form.class_ff_bl }} Large Growth
 <font size="-1">
-(US big market cap / low book to market; 1927-2012 available)
+(US large market cap / low book to market; 1927-2013 available)
 </font>
 {{ se_form.class_ff_bl.errors }}
 <br />
-{{ se_form.class_ff_bm }} Big Neutral
+{{ se_form.class_ff_bm }} Large Neutral
 <font size="-1">
-(US big market cap / medium book to market; 1927-2012 available)
+(US large market cap / medium book to market; 1927-2013 available)
 </font>
 {{ se_form.class_ff_bm.errors }}
 <br />
-{{ se_form.class_ff_bh }} Big Value
+{{ se_form.class_ff_bh }} Large Value
 <font size="-1">
-(US big market cap / high book to market; 1927-2012 available)
+(US large market cap / high book to market; 1927-2013 available)
 </font>
 {{ se_form.class_ff_bh.errors }}
 <br />
 {{ se_form.class_ff_sl }} Small Growth
 <font size="-1">
-(US small market cap / low book to market; 1927-2012 available)
+(US small market cap / low book to market; 1927-2013 available)
 </font>
 {{ se_form.class_ff_sl.errors }}
 <br />
 {{ se_form.class_ff_sm }} Small Neutral
 <font size="-1">
-(US small market cap / medium book to market; 1927-2012 available)
+(US small market cap / medium book to market; 1927-2013 available)
 </font>
 {{ se_form.class_ff_sm.errors }}
 <br />
 {{ se_form.class_ff_sh }} Small Value
 <font size="-1">
-(US small market cap / high book to market; 1927-2012 available)
+(US small market cap / high book to market; 1927-2013 available)
 </font>
 {{ se_form.class_ff_sh.errors }}
 <br />
 {{ se_form.class_t1mo }} T-bill 1mo
 <font size="-1">
-(US 1 month T-bills; 1927-2012 available)
+(US 1 month T-bills; 1927-2013 available)
 </font>
 {{ se_form.class_t1mo.errors }}
 <br />
 {{ se_form.class_t1yr }} T-bill 1yr
 <font size="-1">
-(US 1 year T-bills; 1954-2012 available)
+(US 1 year T-bills; 1954-2013 available)
 </font>
 {{ se_form.class_t1yr.errors }}
 <br />
+{{ se_form.class_t10yr }} T-bill 10yr
+<font size="-1">
+(US 10 year T-notes; 1872-2013 available)
+</font>
+{{ se_form.class_t10yr.errors }}
+<br />
+{{ se_form.class_aaa }} AAA corporate bonds
+<font size="-1">
+(US long term; 1920-2013 available)
+</font>
+{{ se_form.class_aaa.errors }}
+<br />
+{{ se_form.class_baa }} BAA corporate bonds
+<font size="-1">
+(US long term; 1920-2013 available)
+</font>
+{{ se_form.class_baa.errors }}
+<br />
 {{ se_form.class_reits }} Real estate
 <font size="-1">
-(US REITs; 1972-2012 available)
+(US REITs; 1972-2013 available)
 </font>
 {{ se_form.class_reits.errors }}
 <br />
 {{ se_form.class_gold }} Gold
 <font size="-1">
-(not recommended; until the 1970's in the US it was illegal to invest in gold making its performance difficult to project; 1834-2011 available)
+(NOT RECOMMENDED; until the 1970's in the US it was illegal to invest in gold making its performance difficult to project; 1872-2013 available)
 </font>
 {{ se_form.class_gold.errors }}
 <br />
 {{ se_form.class_risk_free }} Risk free asset returning {{ se_form.ret_risk_free_pct }}%
 <font size="-1">
-(zero volatility after inflation; most closely approximates inflation indexed bonds; 1834-2012 available)
+(zero volatility after inflation; most closely approximates inflation indexed bonds; 1872-2013 available)
 </font>
 {{ se_form.class_risk_free.errors }}
 {{ se_form.ret_risk_free_pct.errors }}
@@ -461,9 +478,9 @@ Management fees: {{ se_form.expense_pct }}%
 <font size="-1">
 We use the historical returns record including its variance for both analysis and simulation.  However,
 we allow the historical record to be adjusted to better match
-projections for the future.  Historically, for the period 1927-2012,
-the US stock market and US 10 year Treasury notes returned geometric
-mean real returns of 6.5% and 2.1% per annum respectively. Current bond returns
+projections for the future.  Historically, for the period 1927-2013,
+the US stock market and US investment grade bonds returned geometric
+mean real returns of 6.8% and 2.7% per annum respectively. Current bond returns
 are however substantially lower than this, and going
 forward <a href="http://www.advisorperspectives.com/newsletters12/Jeremy_Siegel_Rob_Arnott_and_Other_Experts_Forecast_Equity_Returns.php">many
 experts also predict</a> lower stock market returns.
@@ -642,7 +659,7 @@ An email address if entered will be used to send you an annual asset allocation 
 <br />
 <div style="text-align:center;">
 {% if se_form %}
-<input class="button" type="submit" value="Submit (takes 20-40 seconds to process)" />
+<input class="button" type="submit" value="Submit (takes 60-90 seconds to process)" />
 {% else %}
 <input class="button" type="submit" value="Create" />
 {% endif %}
