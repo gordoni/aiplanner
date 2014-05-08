@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Account{% endblock %}
+
+{% block content %}
+<h1>Account</h1>
+<a class="nav_like" href="{% url account_edit_password %}">Change password</a>
+<br />
+<br />
+<form method="post">
+{% csrf_token %}
+{{ form.non_field_errors }}
+Email address: {{ form.email }}
+{{ form.email.errors }}
+<br />
+Permit annual rebalancing reminder email (not yet implemented): {{ form.msg_marketing }}
+{{ form.msg_marketing.errors }}
+<br />
+<input class="button" type="submit" value="Update" />
+</form>
+{% endblock %}

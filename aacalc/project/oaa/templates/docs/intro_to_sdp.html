@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}An Introduction to Stochastic Dynamic Programming{% endblock %}
+
+{% block content %}
+
+<div class="doc">
+
+<h1>An Introduction to Stochastic Dynamic Programming</h1>
+
+<p>
+Mean-Variance Optimization (MVO) is well known to the financial community. MVO yields the optimal asset allocation for a given level of risk for a single time period assuming returns are normally distributed. The results of MVO are not however applicable to multiple time periods. MVO also requires the user specify the amount of risk to be taken, which can be difficult to pin down. MVO is sometimes criticized for a lack of sensitivity analysis. If two asset classes are very similar then small perturbations in them can drastically alter the output of MVO. This criticism however does not apply to two very distinct asset classes such as stocks and bonds.
+</p>
+
+<p>
+Stochastic Dynamic Programming (SDP) is also a known quantity, but far less so. This lack of recognition is surprising given that for small numbers of asset classes SDP can do everything MVO can do, can also handle the multiple time period case, non-normal return distributions, and automatically determines the optimal risk level for meeting retirement or other higher level goals. For large number of asset classes SDP can be used to generalize the results of MVO over multiple time periods, or over a lifetime. SDP is a general purpose mathematical technique. The rest of this note describes how SDP can be used to compute multi-period asset allocations.
+</p>
+
+<p>
+At first, computing a multi-period asset allocation might seem computationally intractable. Suppose we have 101 different asset allocation possibilities that together represent the MVO efficient frontier. Assume rebalancing is performed annually. Then, over a period of 70 years, there are 101<sup>70</sup> different asset allocation combinations to be evaluated. And this is to say nothing of the different portfolio sizes, which, as it turns out, warrant different asset allocations. The key to breaking this intractability is the realization that if asset allocations for time t+1 are known, then computing the asset allocation for time t is as simple as trying all of the asset allocation choices for time t, followed by making use of the already known asset allocation decisions for time t+1.
+</p>
+ 
+<p>
+SDP computes asset allocations in reverse time order by starting at the final year, and then working back to the initial year. For the final year, and for each given portfolio size, computing the asset allocation is simple. SDP tries each asset allocation possibility, performs a set of single time step simulations corresponding to the annual return historical record or the projected returns distribution, computes the portfolio success probability, and decides on the best asset allocation for maximizing success. Then SDP moves back to the prior year. Again for each given portfolio size, and for each asset allocation possibility, SDP performs a set of single time step simulations, but this time SDP uses the resulting portfolio sizes from these single time step simulations to look up the portfolio success probabilities associated with future times. SDP then combines these success probabilities and picks the best asset allocation. In this way SDP builds up the asset allocation and success probability working backward for every age and every portfolio size.
+</p>
+
+<p>
+It is computationally intractable to pre-compute the asset allocations and success probabilities associated with all portfolio sizes. Instead we bucketize portfolio size, computing the results just once for all portfolio sizes lying within a given bucket.
+</p>
+
+<p>
+To make our description more concrete suppose that we know the asset allocations and success probabilities for all bucketized portfolio sizes for age 50, and we are currently computing the asset allocation and success probability for age 49, portfolio size $100,000. For each asset allocation possibility, such as 35/65 stocks/bonds, we perform a set of single time set simulations based on the historical record. For instance in one year the (stock, bond) returns might have been (+22%, -3%) and in another (-15%, -8%) giving overall returns for the asset allocation being considered of 5.75% and -10.45%. If we are currently saving $5,000 per year towards retirement, this results in final portfolio sizes for age 49 of $110,750 and $94,550 respectively. Using these portfolio sizes we retrieve the bucketized success probabilities for age 50 of, say, 99.3% and 98.4%. We combine these two success probabilities along with the success probabilities of all the other returns values in the historical record. This gives us the success probability for 35/65. We repeat for all the other asset allocation choices, and pick the best asset allocation. We then repeat for all the other portfolio sizes other than $100,000, and finally we move back to computing the asset allocations and success probabilities for age 48.
+</p>
+
+<p>
+When combining success values using SDP you have the flexibility of using an arbitrary function of the current age and portfolio size added to the probability weighted sum of that same function for the immediately succeeding portfolio size possibilities.
+<p>
+
+<ul>
+
+<li>
+Setting that arbitrary function to 1 in the year insolvency first occurs (portfolio size is positive but less than withdrawal amount) and 0 otherwise will optimize for probability of success/failure.
+</li>
+
+<li>
+Setting that arbitrary function to 1 whenever portfolio size is zero/negative will optimize for magnitude of failure (where magnitude of failure means the number of years spent insolvent).
+</li>
+
+<li>
+Weighting that arbitrary function by the actuarial probability of being alive at that age will optimize for that function over an actuarial variable number of years rather than a fixed, say, 30 year period.
+</li>
+
+<li>
+Setting that arbitrary function proportional to the unconditional probability of dying multiplied by the portfolio size plus any of the earlier examples will include placing a value on leaving an inheritance in the optimization.
+</li>
+
+</ul>
+
+<p>
+SDP slows down when analyzing more than 3-4 asset classes as a combinatorial explosion of different asset allocation possibilities need to be evaluated at each age and portfolio size. Fortunatley, SDP can be combined with MVO by using the output points on the efficient frontier of MVO as the input asset allocation possibilities to be considered by SDP. This best of both worlds approach gives the speed of MVO and the multi-period benefits of SDP.
+</p>
+
+<p>
+The resulting asset allocation can be mathematically proven to be the optimal asset allocation when rebalancing is performed annually and assuming market returns have a similar probability distribution to the past and are both normally distributed and independent over time. Let's dig in to these assumptions.
+</p>
+
+<ul>
+
+<li>
+Market returns have a similar probability distribution to the past. The past is all we have to go on to make future predictions. It is far from perfect though. Because of this it makes sense to allow the return on equities and bonds to be adjusted to match people's perceptions of the future. In particular the return on equities which has historically been around 6.5% real per year geometric mean, is suspected by some to be closer to 5% going forward. Strictly speaking, SDP permits the returns distribution to vary as a function of time, but this is of little use because how it will vary is unknown.
+</li>
+
+<li>
+Market returns are normally distributed. This is a requirement of MVO, not SDP. Experiments where SDP is performed on the full range of asset allocation choices without using MVO to whittle down the field show SDP utilizes almost identical asset allocation choices to those on the MVO efficient frontier and that the normally distributed returns assumption has little impact on the resulting portfolio performance.
+</li>
+
+<li>
+Market returns are independent over time. For equities this is a good first approximation, but it ignores phenomena known as volatility predictability, momentum, and reversion to the mean. For cash, the assumption is manifestly false, but the variance of real returns on cash is small.
+</li>
+
+</ul>
+
+<p>
+So, while the asset allocation produced using SDP with MVO is good, it isn't perfect.
+</p>
+
+</div>
+
+{% endblock %}

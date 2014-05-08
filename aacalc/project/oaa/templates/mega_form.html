@@ -1,0 +1,652 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if ac_form %}
+Create Account
+{% else %}
+{% if sc_form %}
+{% if not data.mode %}
+Create Scenario
+{% endif %}
+{% if data.mode == 'aa' %}
+Asset Allocation Calculator
+{% endif %}
+{% if data.mode == 'number' %}
+Retirement Number Calculator
+{% endif %}
+{% else %}
+{% if data.readonly %}
+Edit Scenario
+{% else %}
+{{ data.name }} - Edit
+{% endif %}
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block head %}
+<meta name="description" content="AACalc is a scientifically advanced online asset allocation calculator." /><!-- Keep content to less than 155 characters according to Wikipedia. -->
+<script type="text/javascript" src="/static/js/jquery-1.10.2.min.js"></script>
+<script type="text/javascript">
+$(document).ready(function() {
+    // Handle page reloads, button state may be remembered by browser but show/hide are not.
+    $('.advanced_button:checked').closest('.simple_advanced').find('.advanced,.simple').toggle();
+    $('.advanced_button').click(function() {
+        $(this).closest('.simple_advanced').find('.advanced,.simple').toggle(400);
+    });
+});
+</script>
+{% endblock %}
+
+{% block content %}
+{% if ac_form %}
+<h1>Create Account</h1>
+{% else %}
+{% if sc_form %}
+{% if not data.mode %}
+<h1>Create Scenario</h1>
+{% endif %}
+{% if data.mode == 'aa' %}
+<h1>Asset Allocation Calculator</h1>
+<img style="float: right;" width=400 height=200 src="/static/example-stocks.png">
+We will compute the asset allocation for you to use given your
+financial position.
+<br />
+<br />
+Potentially save $120,000 or more compared to other common asset allocation schemes<a title="Savings of $190,000, $130,000, or $120,000 in today's dollars with an equivalent level of expected well being when compared to age in bonds, age minus 10 in bonds, or a simplified target date scheme for a newly retired couple, both age 65, with a $1,500,000 taxable portfolio, a 20% dividend and capital gain tax rate taxed using HIFO, expenses of $40,000 per year, a stock/bond portfolio, not planning on leaving an inheritance, and the default market expectations and risk tolerance. Savings amounts are rounded down.">. <img src="/static/images/Information-icon.png" alt="[?]"></a>
+<br />
+<br />
+<div align="center">
+<a class="nav_like" href="{% url sample %}">Sample Results</a>
+</div>
+<div style="clear: both;">
+</div>
+<br />
+{% endif %}
+{% if data.mode == 'number' %}
+<h1>Retirement Number Calculator</h1>
+We will compute the financial position you need to reach by
+retirement.
+<br />
+<br />
+{% endif %}
+{% else %}
+{% if data.readonly %}
+<h1>Edit Scenario</h1>
+{% else %}
+<h1>{{ data.name }}</h1>
+{% endif %}
+{% endif %}
+{% endif %}
+
+{% if se_form and not sc_form %}
+{% if data.id and not data.readonly %}
+<form action="{% url scenario_delete data.id %}" method="post">
+{% csrf_token %}
+<input class="button" type="submit" value="Delete this scenario" />
+</form>
+{% endif %}
+{% endif %}
+
+<form  method="post">
+{% csrf_token %}
+
+{% if errors_present %}
+<p class="errorlist">
+Please correct the errors in red below:
+</p>
+{{ se_form.non_field_errors }}
+{% endif %}
+
+{% if sn_form %}
+{{ sn_form.non_field_errors }}
+Scenario name: {{ sn_form.name }}
+<font size="-1">E.g. "John Smith", or "The Smith Family".</font>
+{{ sn_form.name.errors }}
+<br />
+{% endif %}
+<h2>Life expectancy</h2>
+Sex: {{ se_form.sex }}
+Age or date of birth (mm/dd/yyyy): {{ se_form.dob }}
+{{ se_form.dob.errors }}
+<br />
+Spouse/partner: {{ se_form.sex2 }}
+Age or date of birth: {{ se_form.dob2 }}
+{{ se_form.dob2.errors }}
+<br />
+<font size="-1">
+The full range of life expectancy possibilities will be analyzed based
+on U.S. cohort actuarial longevity data for the specified age and
+gender.
+</font>
+
+{% if se_form %}
+<h2>Financial position</h2>
+<div class="simple_advanced">
+<div class="advanced_controller">
+{{ se_form.advanced_position }} Advanced
+{{ se_form.advanced_position.errors }}
+<br />
+<br />
+</div>
+Except where indicated all amounts, calculations, and results are in real dollar terms after
+adjusting for inflation.
+<br />
+<br />
+<div class="advanced">
+Average effective nominal tax rates on dividends: {{ se_form.tax_rate_div_default_pct }}% Capital gains: {{ se_form.tax_rate_cg_pct }}%
+{{ se_form.tax_rate_cg_pct.errors }}
+{{ se_form.tax_rate_div_default_pct.errors }}
+<br />
+Cost basis method: {{ se_form.cost_basis_method }}
+<br />
+<font size="-1">
+The average effective tax rate is the average across the entire
+investment portfolio excluding defined benefit payouts, and it should
+be reduced to reflect the real world tax advantaged status of any
+IRAs/401(k)s.
+<br />
+Accounting for the effects of taxation is imperfect. A very crude
+estimate of the impact of taxes is made in order to produce the
+recommended asset allocation.  The cost basis method specified is only
+used during the subsequent simulation of the recommended asset
+allocation.
+</font>
+<br />
+<br />
+</div>
+Expected annual Social Security: {{ se_form.defined_benefit_social_security }}
+{{ se_form.defined_benefit_social_security.errors }}
+<br />
+Expected annual employment pensions payout: {{ se_form.defined_benefit_pensions }}
+{{ se_form.defined_benefit_pensions.errors }}
+<div class="advanced">
+Expected annual fixed annuities payout: {{ se_form.defined_benefit_fixed_annuities }}
+{{ se_form.defined_benefit_fixed_annuities.errors }}
+</div>
+<div>
+<font size="-1">
+Payments assumed to start at retirement. COLA (cost of living adjustment) assumed. No taxes get taken out.
+</font>
+</div>
+{% if data.mode == 'number' %}
+{{ se_form.retirement_number }}
+{% else %}
+<br />
+{% if not data.mode %}
+Compute my number: {{ se_form.retirement_number }}
+{{ se_form.retirement_number.errors }}
+<br />
+<font size="-1">
+If selected, the financial position you need to reach by retirement will be
+computed and the rest of this section can be skipped.
+</font>
+<br />
+<br />
+{% endif %}
+<div class="advanced">
+Pre-tax Traditional IRAs/401(k)s size: {{ se_form.p_traditional_iras }}
+{{ se_form.p_traditional_iras.errors }}
+<br />
+Post-tax Roth IRAs/401(k)s size: {{ se_form.p_roth_iras }}
+{{ se_form.p_roth_iras.errors }}
+<br />
+<font size="-1">
+IRAs/401(k)s are handled very imperfectly. Their compounding tax advantaged
+status is not realized, and Traditional IRAs/401(k)s undergo an effective
+immediate reduction in size to account for tax payments due on
+withdrawal.
+</font>
+<br />
+</div>
+<span class="advanced">Taxable retirement</span><span class="simple">Retirement</span> savings size: {{ se_form.p }}
+{{ se_form.p.errors }}
+<br />
+<br />
+Pre-retirement annual contribution amount (irrelevant if retired):
+{{ se_form.contribution }}
+{{ se_form.contribution.errors }}
+Growth rate: {{ se_form.contribution_growth_pct }}%
+{{ se_form.contribution_growth_pct.errors }}
+<br />
+<font size="-1">
+Contribution are assumed to occur to taxable. Increase contribution amount slightly if to IRAs/401(k)s.
+A growth rate of 7% represents a doubling of real
+contributions every 10 years.  Remember to take into account life
+events such as promotions, paying off a mortgage, or children leaving
+home in estimating the contribution growth rate.
+</font>
+{% endif %}
+</div>
+<h2>Financial goals</h2>
+<div class="simple_advanced">
+<div class="advanced_controller">
+{{ se_form.advanced_goals }} Advanced
+{{ se_form.advanced_goals.errors }}
+<br />
+<br />
+</div>
+Year of retirement: {{ se_form.retirement_year }}
+{{ se_form.retirement_year.errors }}
+<br />
+Desired annual retirement consumption amount: {{ se_form.withdrawal }}
+{{ se_form.withdrawal.errors }}
+<br />
+Minimal annual retirement consumption amount: {{ se_form.floor }}
+{{ se_form.floor.errors }}
+<br />
+<font size="-1">
+The annual consumption amounts should be in today's dollars and include
+defined benefits. The desired amount will be used as a yardstick for
+measuring well being, as well as to determine the
+annual portfolio withdrawal in the absence of variable withdrawals.
+The minimal amount will be used for reporting when failure occurs.
+</font>
+<br />
+<br />
+Risk tolerance: {{ se_form.risk_tolerance }}%
+{{ se_form.risk_tolerance.errors }}
+<br />
+<font size="-1">
+How much you can tolerate a loss psychologically.
+This value is the maximum standard deviation in expected annual returns to allow.
+A value of 10% will limit you to bond heavy portfolios.
+A value of 20% will allow almost unlimited exposure to the broad stock market when it is warranted.
+A value of 30% will allow almost unlimited exposure to any of the asset classes considered here.
+</font>
+<br />
+<br />
+Utilize a variable withdrawal rate strategy: {{ se_form.vw }}
+{{ se_form.vw.errors }}
+<br />
+<font size="-1">
+Rather than consuming a fixed annual retirement amount it is
+possible to consume more if your portfolio is large relative to your
+projected needs and less if it is small. The decision of how much to
+consume is made so as to maximize expected well being.
+</font>
+<br />
+<div class="advanced">
+<br />
+{% comment %}
+Variable withdrawal donation/gifting (beta - not recommended): {{ se_form.utility_donate }}
+<br />
+Donate/gift when recommended consumption above: {{ se_form.utility_donate_above }}
+{{ se_form.utility_donate.errors }}
+{{ se_form.utility_donate_above.errors }}
+<br />
+<font size="-1">
+When utilizing a variable withdrawal rate strategy it is possible to
+obtain recommendations of how much money you should donate/gift. No
+special tax consequences are associated with such donations/gifts;
+they are simply treated as normal withdrawals.
+<br />
+This code is beta for two reasons. First it currently only recommends
+making donations once you are retired. Second it leaves ugly stripes
+for the asset allocation where donations should occur.  These stripes
+are in some sense accurate; they reflect the asset allocation you
+should use after you have donated; but they are highly off-putting.
+</font>
+<br />
+<br />
+{% endcomment %}
+Leaving a bequest matters: {{ se_form.inherit }}
+{{ se_form.inherit.errors }}
+<br />
+<font size="-1">
+Leaving a bequest has a significant impact on asset allocation
+for large portfolios with fixed withdrawal rates. Without any
+plans to leave an bequest mainly bonds are recommended for large
+portfolios. Once a bequest enters the
+picture, stocks become a better choice. Valuing leaving a bequest
+too highly results in stocks being recommended even for small
+portfolios.
+</font>
+<br />
+Money left in a bequest is {{ se_form.utility_dead_pct }}% as
+important as money consumed while I am alive.
+{{ se_form.utility_dead_pct.errors }}
+<br />
+Share bequest between {{ se_form.utility_inherit_years }} people over one year, or equivalently this many years by one person.
+{{ se_form.utility_inherit_years.errors }}
+<br />
+<font size="-1">
+A bequest is valued using the same utility function used for consumption,
+but modified according to the above parameters, and assuming each inheritor
+would otherwise have been consuming the desired annual consumption amount.
+</font>
+</div>
+</div>
+<h2>Market parameters</h2>
+<div class="simple_advanced">
+<div class="advanced_controller">
+{{ se_form.advanced_market }} Advanced
+{{ se_form.advanced_market.errors }}
+<br />
+<br />
+</div>
+There is no advantage to taking diversifiable risk.
+We therefore assume the behavior of your investments corresponds to that of the
+relevant asset classes. This can be achieved using index based funds from
+a provider such as <a href="http://www.vanguard.com/">Vanguard</a>.
+<br />
+<br />
+Asset classes to consider:
+<br />
+<font size="-1">
+Stocks and bonds are sufficient for most purposes. <span class="advanced">Care must be taken
+when interpreting the results for other asset classes because mean
+variance optimization is very sensitive to small differences between
+similar asset classes. Additionally, for more than two asset classes
+with non-normal return distributions be aware that the results of mean
+variance optimization are ever so slightly non-optimal even when the
+returns are independent over time. As a result abrupt asset allocation
+transitions may appear.</span>
+</font>
+<br />
+{{ se_form.class_stocks }} Stocks
+<font size="-1">
+(US stocks; 1872-2012 available)
+</font>
+{{ se_form.class_stocks.errors }}
+<br />
+{{ se_form.class_bonds }} Bonds
+<font size="-1">
+(US 10 year T-notes; 1872-2012 available)
+</font>
+{{ se_form.class_bonds.errors }}
+<span class="advanced">
+<br />
+{{ se_form.class_eafe }} International
+<font size="-1">
+(developed large cap international unhedged; 1970-2012 available)
+</font>
+{{ se_form.class_eafe.errors }}
+<br />
+{{ se_form.class_ff_bl }} Big Growth
+<font size="-1">
+(US big market cap / low book to market; 1927-2012 available)
+</font>
+{{ se_form.class_ff_bl.errors }}
+<br />
+{{ se_form.class_ff_bm }} Big Neutral
+<font size="-1">
+(US big market cap / medium book to market; 1927-2012 available)
+</font>
+{{ se_form.class_ff_bm.errors }}
+<br />
+{{ se_form.class_ff_bh }} Big Value
+<font size="-1">
+(US big market cap / high book to market; 1927-2012 available)
+</font>
+{{ se_form.class_ff_bh.errors }}
+<br />
+{{ se_form.class_ff_sl }} Small Growth
+<font size="-1">
+(US small market cap / low book to market; 1927-2012 available)
+</font>
+{{ se_form.class_ff_sl.errors }}
+<br />
+{{ se_form.class_ff_sm }} Small Neutral
+<font size="-1">
+(US small market cap / medium book to market; 1927-2012 available)
+</font>
+{{ se_form.class_ff_sm.errors }}
+<br />
+{{ se_form.class_ff_sh }} Small Value
+<font size="-1">
+(US small market cap / high book to market; 1927-2012 available)
+</font>
+{{ se_form.class_ff_sh.errors }}
+<br />
+{{ se_form.class_t1mo }} T-bill 1mo
+<font size="-1">
+(US 1 month T-bills; 1927-2012 available)
+</font>
+{{ se_form.class_t1mo.errors }}
+<br />
+{{ se_form.class_t1yr }} T-bill 1yr
+<font size="-1">
+(US 1 year T-bills; 1954-2012 available)
+</font>
+{{ se_form.class_t1yr.errors }}
+<br />
+{{ se_form.class_reits }} Real estate
+<font size="-1">
+(US REITs; 1972-2012 available)
+</font>
+{{ se_form.class_reits.errors }}
+<br />
+{{ se_form.class_gold }} Gold
+<font size="-1">
+(not recommended; until the 1970's in the US it was illegal to invest in gold making its performance difficult to project; 1834-2011 available)
+</font>
+{{ se_form.class_gold.errors }}
+<br />
+{{ se_form.class_risk_free }} Risk free asset returning {{ se_form.ret_risk_free_pct }}%
+<font size="-1">
+(zero volatility after inflation; most closely approximates inflation indexed bonds; 1834-2012 available)
+</font>
+{{ se_form.class_risk_free.errors }}
+{{ se_form.ret_risk_free_pct.errors }}
+</span>
+<br />
+<div class="advanced">
+Historical period to analyze: {{ se_form.generate_start_year }} - {{ se_form.generate_end_year }}
+<font size="-1">
+Market data must be available.
+</font>
+{{ se_form.generate_start_year.errors }}
+{{ se_form.generate_end_year.errors }}
+<br />
+Historical period to simulate: {{ se_form.validate_start_year }} - {{ se_form.validate_end_year }}
+<font size="-1">
+Market data must be available.
+</font>
+{{ se_form.validate_start_year.errors }}
+{{ se_form.validate_end_year.errors }}
+<br />
+<font size="-1">
+After analyzing the historical data and producing a recommended asset allocation, a simulation is performed to see how well the recommended asset allocation performs.
+</font>
+</div>
+<br />
+Returns for stocks: {{ se_form.ret_equity_pct }}%
+{{ se_form.ret_equity_pct.errors }}
+Bonds: {{ se_form.ret_bonds_pct }}%
+{{ se_form.ret_bonds_pct.errors }}
+Management fees: {{ se_form.expense_pct }}%
+{{ se_form.expense_pct.errors }}
+<br />
+<font size="-1">
+We use the historical returns record including its variance for both analysis and simulation.  However,
+we allow the historical record to be adjusted to better match
+projections for the future.  Historically, for the period 1927-2012,
+the US stock market and US 10 year Treasury notes returned geometric
+mean real returns of 6.5% and 2.1% per annum respectively. Current bond returns
+are however substantially lower than this, and going
+forward <a href="http://www.advisorperspectives.com/newsletters12/Jeremy_Siegel_Rob_Arnott_and_Other_Experts_Forecast_Equity_Returns.php">many
+experts also predict</a> lower stock market returns.
+Any adjustment made to stocks will result in a matching
+adjustments to the other equity classes.
+To make things realistic investment management fees should also be
+subtracted which typically range from 0.1% to 1.0% per annum.
+</font>
+<br />
+<div class="advanced">
+<br />
+Additional simulation only downward market adjustment: {{ se_form.neg_validate_all_adjust_pct }}%
+Equity volatility level: {{ se_form.validate_equity_vol_adjust_pct }}%
+{{ se_form.validate_all_adjust.errors }}
+{{ se_form.validate_equity_vol_adjust_pct.errors }}
+<br />
+<font size="-1">
+After generating the recommended asset allocation, and during subsequent performance simulation, the performance of all asset classes can be downwardly adjusted, and the volatility of equity asset classes can be increased. This adjustment is made to the chosen return levels above.
+</font>
+</div>
+<br />
+Performing a sensitivity analysis of any results is highly recommended.
+<br />
+<font size="-1">
+Ideally distinct time periods could be analyzed and simulated, but a paucity of data means adjustments to the data may be all that is available.
+</font>
+</div>
+<h2>Well being</h2>
+<div class="simple_advanced">
+<div class="advanced_controller">
+{{ se_form.advanced_well_being }} Advanced
+{{ se_form.advanced_well_being.errors }}
+<br />
+</div>
+<div class="advanced">
+<br />
+Annual discount rate for consumption and bequest: {{ se_form.consume_discount_rate_pct }}%
+{{ se_form.consume_discount_rate_pct.errors }}
+<br />
+<font size="-1">
+It is better to consume sooner rather than later for a variety of reasons,
+and this parameter records how much better.
+</font>
+</div>
+<br />
+Zero consumption level: {{ se_form.public_assistance }}
+{{ se_form.public_assistance.errors }}
+<br />
+<font size="-1">
+The zero consumption level is the lowest consumption level you can
+imagine; with all your investments gone and no Social Security or
+other defined benefit income; you are surviving only on public
+assistance and imputed help from friends and family. The concept of
+zero consumption is important because without it a power utility
+function will assign a utility of negative infinity to a consumption
+of zero.
+</font>
+<div class="advanced">
+Phase out of zero consumption level with income:
+{{ se_form.public_assistance_phaseout_rate_pct }}%
+{{ se_form.public_assistance_phaseout_rate_pct.errors }}
+<br />
+<font size="-1">
+A phase out of 40% would mean for each dollar of income you receive
+while on public assistance your public assistance benefits would be cut by 40%.
+0% would imply public assistance is guaranteed, and would then behave much like Social Security or other defined benefits.
+</font>
+<br />
+<br />
+<font size="-1">
+Pick one of the following choices. Well being is valued using a utility function.
+The question here determines the degree of risk aversion which
+determines the shape of the utility function.
+</font>
+<br />
+<br />
+<table>
+<tr>
+<td>
+{% comment %} Django 1.4 supports accessing individual elements, which would do away with a lot of the messyness here. {% endcomment %}
+<input type="radio" name="utility_method" value="ce"
+{% if se_form.utility_method.value == 'ce' %}
+checked="checked"
+{% endif %}
+/>
+</td>
+<td>
+CRRA power utility function. Indifference between receiving a fixed {{ se_form.utility_ce }}
+times the desired consumption amount or a 50/50 chance of receiving either the desired
+consumption amount or twice the desired consumption amount.
+{{ se_form.utility_ce.errors }}
+</td>
+</tr>
+<tr>
+<td>
+<input type="radio" name="utility_method" value="slope"
+{% if se_form.utility_method.value == 'slope' %}
+checked="checked"
+{% endif %}
+/>
+</td>
+<td>
+CRRA power utility function.
+An additional dollar at the desired consumption
+amount would be {{ se_form.utility_slope_double_withdrawal }} times as valuable as
+an additional dollar when receiving twice the consumption amount.
+{{ se_form.utility_slope_double_withdrawal.errors }}
+</td>
+</tr>
+<tr>
+<td>
+<input type="radio" name="utility_method" value="eta"
+{% if se_form.utility_method.value == 'eta' %}
+checked="checked"
+{% endif %}
+/>
+</td>
+<td>
+CRRA power utility function. Coefficient of relative risk aversion &eta;:
+{{ se_form.utility_eta }}
+{{ se_form.utility_utility_eta.errors }}
+</td>
+</tr>
+<tr>
+<td>
+<input type="radio" name="utility_method" value="alpha"
+{% if se_form.utility_method.value == 'alpha' %}
+checked="checked"
+{% endif %}
+/>
+</td>
+<td>
+CARA exponential utility function. Coefficient of absolute risk aversion &alpha;
+multiplied by desired consumption amount:
+{{ se_form.utility_alpha }}
+{{ se_form.utility_utility_alpha.errors }}
+</td>
+</tr>
+</table>
+</div>
+</div>
+{% endif %}
+
+{% if ac_form %}
+{% if se_form %}
+<h2>Create an account</h2>
+{% endif %}
+Signing up isn't necessary for individual users of AACalc.  By signing
+up financial advisors and sophisticated users can gain access to
+advanced AACalc features:
+<ul>
+<li> a separate scenario for each client </li>
+<li> higher resolution initial reported asset allocations </li>
+</ul>
+Signing up is currently free of charge.
+Simply create an account.
+<br />
+<br />
+{{ ac_form.non_field_errors }}
+<table class="account_table">
+<tr> <td> Username: </td> <td> {{ ac_form.username }} </td> </tr>
+<tr> <td colspan="2"> {{ ac_form.username.errors }} </td> </tr>
+<tr> <td> Password: </td> <td> {{ ac_form.password }} </td> </tr>
+<tr> <td colspan="2"> {{ ac_form.password.errors }} </td> </tr>
+<tr> <td> Re-enter password: </td> <td> {{ ac_form.password2 }} </td> </tr>
+<tr> <td colspan="2"> {{ ac_form.password2.errors }} </td> </tr>
+<tr> <td> Email address: </td> <td> {{ ac_form.email }} </td> </tr>
+<tr> <td colspan="2"> {{ ac_form.email.errors }} </td> </tr>
+</table>
+<font size="-1">
+An email address if entered will be used to send you an annual asset allocation rebalancing reminder email, in the event you forget your password, and other operational purposes as specified in the <a href="{% url privacy_policy %}">Privacy Policy</a>.
+</font>
+{% endif %}
+
+<br />
+<br />
+<div style="text-align:center;">
+{% if se_form %}
+<input class="button" type="submit" value="Submit (takes 20-40 seconds to process)" />
+{% else %}
+<input class="button" type="submit" value="Create" />
+{% endif %}
+</div>
+</form>
+
+{% endblock %}

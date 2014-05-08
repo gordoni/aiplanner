@@ -1,0 +1,200 @@
+/* Web designer styling. */
+
+body{
+	margin:0;
+	padding:0;
+        text-align: justify;
+	font-family:"Open Sans", "sans-serif";
+	font-size: 14px;
+	color: black;
+	}
+.container{
+        /*width: 980px;*/
+	}
+.navigation{
+	display:table;
+	width: 100%;
+	margin-top: 1.5em;
+	}
+.navigation ul{
+	display:table-row-group;
+	}
+.navigation ul li{
+	display:table-cell;
+	width: 0;
+	text-align:center;
+	list-style:none;
+	border: none;
+	}
+.navigation ul li a, .footer a, a.nav_like{
+	font-size: 14px;
+	font-weight:bold;
+	text-decoration:none;
+	color: #000080;
+	}
+.flasharea{
+	width: 100%;
+	height: 200px;
+	margin-top: 1.5em;
+	margin-bottom: 2.5em;
+	list-style:none;
+	background:url(images/flashbg.jpg);
+	}
+.flasharea ul{
+	list-style:none;
+	}
+.slideshow-position {
+        display: inline;
+        width: 300px;
+	/*margin: 0 auto;*/
+}
+.slideshow-heading{
+        margin: auto 0 auto 330px;
+	padding-top: 70px;
+	font-size:28px;
+	font-weight:bold;
+	color: #000080;
+	}
+.cycle-slideshow{
+        float: left;
+	margin: 0;
+	padding:0;
+	}
+.main-area{
+	width: 98%;
+	margin-left: auto;
+	margin-right: auto;
+	margin-bottom: 1em;
+	font-size: 18px;
+	/*color:#384853;*/
+	}
+.home {
+        width: 80%;
+	margin-left: auto;
+	margin-right: auto;
+        }
+.main-area h1{
+	font-size:28px;
+	font-weight:normal;
+	color: #000080;
+	}
+.main-area p{
+	/*font-size:18px;*/
+	line-height:1.4em;
+	margin:0 auto 20px auto;
+	}
+.button{
+        display: inline-block;
+	margin: 8px 0px;
+        font-size: 28px;
+	line-height: 1.4em;
+        /*background: none repeat scroll 0% 0% transparent;*/
+	background: black;
+	padding: 0em 1em;
+	border: none;
+	border-radius: 5px 5px 5px 5px;
+	box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.6);
+	transition: background 0.4s ease 0s;
+	-webkit-transition: background 0.4s ease: 0s;
+	color: white;
+	cursor: pointer !important;
+        }
+.button:hover{
+        background: #606060;
+        }
+.footer{
+        text-align: center;
+	}
+.readonly{
+        color: #a0a0a0;
+}
+
+/* JQuery styling. */
+
+.advanced_controller {
+        font-size: 12px;
+}
+
+.advanced {
+        display: none;
+}
+
+.simple {
+}
+
+/* Django styling. */
+
+.errorlist {
+    font-size: smaller;
+    color: red;
+}
+
+.username_input {
+    width: 10em;
+}
+
+.email_input {
+    width: 20em;
+}
+
+.scenario_name_input {
+    width: 30em;
+}
+
+.dob_input {
+    width: 10em;
+    text-align: right;
+}
+
+.p_input {
+    width: 7em;
+    text-align: right;
+}
+
+.year_input {
+    width: 4em;
+    text-align: right;
+}
+
+.percent_input {
+    width: 2em;
+    text-align: right;
+}
+
+.small_numeric_input {
+    width: 4em;
+    text-align: right;
+}
+
+.account_table {
+    border-spacing: 0;
+}
+
+.warning {
+    border-style: solid;
+    border-color: red;
+}
+
+.doc {
+    font-size: 14px;
+}
+
+.doc .bubble {
+    background-color: #f2f2f2;
+    width: auto;
+    margin-left: 25px;
+    margin-right: 25px;
+    display: block;
+    padding: 0.5em 0.5em 0.5em 1em;
+}
+
+.doc table {
+    margin: 1em auto;
+    border-collapse: collapse;
+}
+
+.doc td {
+    border: 1px solid black;
+    padding: 5px;
+    text-align: center;
+}

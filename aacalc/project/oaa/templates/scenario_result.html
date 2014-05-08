@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Results{% endblock %}
+
+{% block content %}
+{% if data.retirement_number %}
+<h1>Retirement Number Results</h1>
+{% else %}
+<h1>Asset Allocation Results</h1>
+{% endif %}
+{% if not temp_user %}
+{{ data.name }}
+<br />
+<br />
+{% endif %}
+{% if scenario_id %}
+<a href="{% url scenario_edit scenario_id %}">Edit scenario</a>
+<br />
+<br />
+{% endif %}
+{% if not data.retirement_number %}
+{% if data.risk == 'high' %}
+<p class="warning">
+Caution: You may wish to edit the scenario to increase your retirement
+age or reduce the annual retirement consumption amounts in order to
+boost the odds of success.
+</p>
+{% else %}
+{% if data.risk == 'medium' %}
+<p>
+Carefully study the risk of failure reported below.  If it
+exceeds what you are comfortable with you may wish to edit the
+scenario to increase your retirement age or reduce the annual
+retirement consumption amounts.
+</p>
+{% else %}
+<p>
+You appear to have low odds of failure. You may wish to
+experiment with editing the scenario to reduce your retirement age or
+increase the annual retirement consumption amounts.
+</p>
+{% endif %}
+{% endif %}
+{% else %}
+<p>
+</p>
+{% endif %}
+{% if schemes %}
+Comparison: <a title="Monte Carlo simulation. AACalc savings is the additional amount you would have to invest today when using the named asset allocation scheme to achieve the same well being as AACalc. It includes any well being derived from leaving an inheritance. The target date fund is for the consensus target date fund as tracked by the S&amp;P Target Date indexes and reported by iShares as of June 30, 2012 but with all equities treated as stocks, and all fixed income treated as bonds. All schemes are modified to adhere to the specified risk tolerance. 20,000 random returns sequences are analyzed for each scheme and proposed savings value. Each sequence is compared against the full range of longevity possibilities. Savings amounts are rounded down."><img src="/static/images/Information-icon.png" alt="[?]"></a>
+<div style="margin-left: 5em;">
+<table cellpadding=0 cellspacing=0>
+<tr> <td> </td> <td> AACalc savings </td> </tr>
+{% for scheme in schemes %}
+<tr> <td> {{ scheme.name }} </td> <td align="right"> {{ scheme.cost }} </td> </tr>
+{% endfor %}
+</table>
+</div>
+<br />
+{% endif %}
+{% if data.retirement_number %}
+Retirement number: {{ data.number }} <a title="Somewhat arbitrarily chosen as the smallest examined portfolio with a probability of failure below 5%. In order for this number to be valid you need to follow the asset allocation recommendations contained herein. These recommendations are made assuming market returns are independent over time. For equities this is a good first approximation, but it ignores phenomena known as volatility predictability, momentum, and reversion to the mean. For cash, the assumption is manifestly false, but the variance of real returns on cash is small. In addition mean-variance optimization assumes returns are normally distributed, however experiments show this assumption has little practical consequence."><img src="/static/images/Information-icon.png" alt="[?]"></a>
+<br />
+<br />
+Simulated risk: <a title="Monte Carlo simulation. The lifetime certainty equivalence amount is the guaranteed annual amount to be received until death that would have the same well being as expected from following the recommendations here. It excludes any well being derived from leaving an inheritance. Technical details. The simulated results are computed by concatenating 20 year blocks of returns drawn from the wrapping adjusted historical record. This largely captures the effects of volatility predictability and momentum, and partially captures the effects of reversion to the mean. 20,000 random returns sequences are analyzed, each against the full range of longevity possibilities."><img src="/static/images/Information-icon.png" alt="[?]"></a>
+<div style="margin-left: 5em;">
+Chance of failure (any consumption of {{ data.floor }} or less): {{ data.failure_chance }}
+<br />
+If failure occurs: {{ data.failure_length }} years average failure duration
+<br />
+<font size="-1">
+Lifetime certainty equivalence amount:
+{{ data.metric_withdrawal }}
+(this is not the amount you can safely withdraw)
+</font>
+</div>
+<br />
+Chance of failure (any consumption of {{ data.floor }} or less):
+<br />
+<img src="{{ dirurl }}/opal-rn-probability.png">
+<br />
+<br />
+Average failure duration if failure occurs:
+<br />
+<img src="{{ dirurl }}/opal-rn-length.png">
+<br />
+<br />
+Lifetime certainty equivalence amount:
+<br />
+<img src="{{ dirurl }}/opal-rn-inverse-utility.png">
+<br />
+<br />
+{% else %}
+{% if data.vw and data.retire %}
+Suggested initial annual consumption amount: {{ data.consume }}
+<br />
+{% endif %}
+Suggested initial asset allocation
+{{ data.aa_name }}: {{ data.aa }} {% comment %}{% if imprecise %} (<a href="{% url account_create_run scenario_id %}">click</a> for higher precision){% endif %}{% endcomment %}<a title="Computed using stochastic dynamic programming on mean-variance optimization efficient frontier. The suggested initial consumption amount and asset allocation are is computed assuming market returns are independent over time. For equities this is a good first approximation, but it ignores phenomena known as volatility predictability, momentum, and reversion to the mean. For cash, the assumption is manifestly false, but the variance of real returns on cash is small. In addition mean-variance optimization assumes returns are normally distributed. Experiments where stochastic dynamic programming is performed without mean-variance optimization show this assumption has little impact on the resulting portfolio performance. Asset allocations rounded to nearest {{ data.precision }}%."><img src="/static/images/Information-icon.png" alt="[?]"></a>
+<br />
+<img src="{{ dirurl }}/opal-initial_aa.png">
+<br />
+Simulated risk: <a title="Monte Carlo simulation. The lifetime certainty equivalence amount is the guaranteed annual amount to be received until death that would have the same well being as expected from following the recommendations here. It excludes any well being derived from leaving an inheritance. Technical details. The simulated results are computed by concatenating 20 year blocks of returns drawn from the wrapping adjusted historical record. This largely captures the effects of volatility predictability and momentum, and partially captures the effects of reversion to the mean. 100,000 random returns sequences are analyzed, each against the full range of longevity possibilities. For older individuals this number may for practical purposes exceed the size of the sample space."><img src="/static/images/Information-icon.png" alt="[?]"></a>
+<div style="margin-left: 5em;">
+Chance of failure (any consumption of {{ data.floor }} or less): {{ data.failure_chance }}
+<br />
+If failure occurs: {{ data.failure_length }} years average failure duration
+<br />
+<font size="-1">
+Lifetime certainty equivalence amount: {{ data.metric_withdrawal }} (this is not the amount you can safely withdraw)
+</font>
+</div>
+{% endif %}
+<br />
+<p class="warning">
+Caution: Don't blindly rely on these results. It is highly recommended
+that you edit the scenario to perform a "sensitivity analysis" to see
+what might happen if expected market returns are diminished or equity
+volatility increases in the future.
+</p>
+{% if data.vw %}
+Consumption map:
+<br />
+<font size="-1">
+To obtain the above performance it is necessary to annually withdraw
+from the investment portfolio to yield income which, along with defined
+benefits income, matches that specified by the consumption map.
+<br />
+The consumption map is technically referred to as a heat map.
+To read it you locate the year on the x axis, the portfolio size for
+that year on the y axis, and then use the color of the point where they
+intersect to determine the recommended annual consumption for that year
+and portfolio size in accordance
+with the annual consumption color scale on the right hand side.
+</font>
+<br />
+<img src="{{ dirurl }}/opal-consume.png">
+<br />
+<br />
+{% endif %}
+Asset allocation maps:
+<br />
+<font size="-1">
+To obtain the above performance it is necessary to annually rebalance
+in accordance with the asset allocation maps.
+<br />
+These asset allocation maps are technically referred to as heat maps.
+To read them you locate the year on the x axis, the portfolio size for
+that year on the y axis, and then use the color of the point where they
+intersect to determine the recommended asset allocation for that year
+and portfolio size in accordance
+with the asset allocation color scale on the right hand side.
+</font>
+{% for aa in aa_symbol_names %}
+<br />
+<font size="-1">
+{{ aa.name|capfirst }}:
+</font>
+<br />
+<img src="{{ dirurl }}/opal-{{ aa.symbol }}.png">
+{% endfor %}
+<br />
+<br />
+Well being map:
+<br />
+<font size="-1">
+The well being map shows the prospects for the future. A utility value of 0 denotes assets sufficient to meet requirements. <a title="Computed using stochastic dynamic programming. Assumes market returns are independent over time."><img src="/static/images/Information-icon.png" alt="[?]"></a>
+</font>
+<br />
+<img src="{{ dirurl }}/opal-success-raw.png">
+{% if not data.retirement_number %}
+<br />
+<br />
+Example paths:
+<br />
+<font size="-1">
+Consumption paths. Each line represents the possible evolution of consumption using the
+recommended asset allocation map and withdrawals. Prior to retirement consumption
+equivalent to the annual retirement consumption amount is assumed. Don't worry about
+paths that are depleted to the far right of this graph. The
+portfolio is unlikely to need to support withdrawals then.
+</font>
+<br />
+<img src="{{ dirurl }}/opal-paths-consume.png">
+<br />
+<font size="-1">
+Investment portfolio paths:
+</font>
+<br />
+<img src="{{ dirurl }}/opal-paths-p.png">
+{% endif %}
+<br />
+<br />
+Efficient frontier:
+<br />
+<font size="-1">
+This shows the efficient frontier along
+which the recommended asset allocation choices lie.
+Risk is measured as the standard deviation in returns.
+</font>
+<br />
+<img src="{{ dirurl }}/opal-mvo-ef-1.png">
+<br />
+<font size="-1">
+The composition of the asset allocation choices used to compute the optimum portfolio.
+</font>
+<br />
+<img src="{{ dirurl }}/opal-mvo-ef-2.png">
+<br />
+<br />
+Utility function:
+<br />
+<font size="-1">
+This records how consumption in the case of variable withdrawal rates and insolvency was valued.
+</font>
+<br />
+<img src="{{ dirurl }}/opal-utility-consume.png">
+<br />
+<font size="-1">
+This records how any bequest was valued.
+</font>
+<br />
+<img src="{{ dirurl }}/opal-utility-inherit.png">
+<br />
+<font size="-1">
+This records how an additional dollar of consumption was valued.
+</font>
+<br />
+<img src="{{ dirurl }}/opal-utility-slope-consume.png">
+<br />
+<font size="-1">
+This records how an additional dollar of bequest was valued.
+</font>
+<br />
+<img src="{{ dirurl }}/opal-utility-slope-inherit.png">
+{% if scenario_id %}
+<br />
+<br />
+<a href="{% url scenario_edit scenario_id %}">Edit scenario</a>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Quantifying Cost Basis Methods{% endblock %}
+
+{% block content %}
+
+<div class="doc">
+
+<h1>Quantifying Cost Basis Methods</h1>
+
+<p>
+I think it is widely agreed that highest-in first-out (HIFO) cost basis accounting gives better results that first-in first-out (FIFO), and average cost (avgcost) is somewhere in between, but I am not sure I have ever seen the difference quantified. This post attempts to do that.
+</p>
+
+<p>
+The tax regime: Simplistically assume a fixed 25% tax rate on dividends and a fixed 15% tax rate on capital gains. No distinction is made between qualified and non-qualified dividends. All savings are in taxable; no tax preference savings accounts such as IRAs. Dividends are taxed when paid. Capital gains are taxed on sale for HIFO, avgcost, and FIFO, and a capital loss carry forward is possible. For HIFO and FIFO tax lots are maintained for each purchase and rebalance. For avgcost pooled tax cost basis information is maintained.
+</p>
+
+<p>
+The scenario used is a 25 year old male just beginning to save for retirement at age 65, making withdrawals until death, and performing asset allocation using Stochastic Dynamic Programming (SDP) all as described more fully at the end of this posting.
+</p>
+
+<p>
+The results:
+</p>
+
+<pre class="bubble">Initial  Cost
+savings  basis     Outcome
+rate     method
+
+$3,000   HIFO     16.08% chance of failure; 9.1 years average failure length
+$3,000   avgcost  16.93% chance of failure; 9.0 years average failure length
+$3,000   FIFO     17.36% chance of failure; 9.0 years average failure length
+
+$4,000   HIFO      6.90% chance of failure; 7.5 years average failure length
+$4,000   avgcost   7.50% chance of failure; 7.4 years average failure length
+$4,000   FIFO      7.76% chance of failure; 7.4 years average failure length
+
+$5,000   HIFO      3.02% chance of failure; 6.2 years average failure length
+$5,000   avgcost   3.39% chance of failure; 6.2 years average failure length
+$5,000   FIFO      3.54% chance of failure; 6.2 years average failure length</pre>
+
+<p>
+As would be expected, the higher the savings rate the lower the chances of portfolio failure, and HIFO performs better than avgcost, which performs better than FIFO.
+</p>
+
+<p>
+Taking the middle example, and multiplying the two reported metrics, gives mean expected portfolio failure length of 189 days for HIFO, 203 days for avgcost, and 210 for FIFO.
+</p>
+
+<p>
+The mean expected difference between HIFO and FIFO is 21 days of solvency, which is worth taking, but isn't something to write home about.
+</p>
+
+<p>
+This advantage will be less significant for someone that has a large part of their wealth in IRAs or Social Security.
+</p>
+
+<p>
+These results also seem relevant to other asset allocation schemes. Taking for instance age minus 10 in bonds:
+</p>
+
+<pre class="bubble">Initial  Cost
+savings  basis     Outcome
+rate     method
+
+$4,000   HIFO     14.62% chance of failure; 7.2 years average failure length
+$4,000   avgcost  15.58% chance of failure; 7.3 years average failure length
+$4,000   FIFO     16.07% chance of failure; 7.3 years average failure length</pre>
+
+<p>
+Here, the mean expected difference between HIFO and FIFO is 44 days of solvency. The difference in the impact of HIFO and FIFO for age minus 10 in bonds appears larger than SDP in proportion to the larger portfolio failure rate for age minus 10 in bonds.
+</p>
+
+<p>
+Scenario. A 25 year old male initially with $0, saving an initial savings amount, and growing the savings rate by 7% real per year, until age 65 at which point they retire and withdrawal a fixed real $50,000 per year. Longevity is as specified by the U.S. Social Security Cohort Life Tables for a person of the given initial age in 2013. No value is placed on any inheritance that is left. All calculations are adjusted for inflation.
+</p>
+
+<p>
+Asset allocation scheme. Rebalancing is performed annually. SDP is used to produce the asset allocation scheme. The optimization function was to maximize a power utility function on consumption. Because variable withdrawal rates weren't used the power utility function effectively collapses into a binary value resulting in the utility function representing the amount of time spent alive and solvent. Thus a portfolio failure length of 10 years is considered twice as bad as a portfolio failure length of 5 years. Returns data for 1872-1926 were used to generate the asset allocation map. Since SDP can't handle cost basis, "immediate" taxation of any gains or losses was used when producing the asset allocation map.
+</p>
+
+<p>
+Asset classes and returns: U.S. stocks and 10 year Treasuries as supplied by Shiller (Irrational Exuberance, 2005 updated) but adjusted so the real return on stocks is 5.0% and bonds 2.1% before expenses. Management expenses are 0.5%.
+</p>
+
+<p>
+Evaluation: 100,000 returns sequences were generated using bootstrapping by concatenating together blocks of length 20 years chosen at random from the period 1927-2012.
+</p>
+
+<p>
+Platform: <a href="{% url home %}">AACalc.com</a> was used to generate the SDP asset allocation maps and simulate the scenarios. A specially modified version was used to generate the results for age minus 10 in bonds.
+</p>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Asset Allocation Calculator - AACalc{% endblock %}
+
+{% block head %}
+<meta name="description" content="AACalc is a scientifically advanced online asset allocation calculator." /><!-- Keep content to less than 155 characters according to Wikipedia. -->
+<script type="text/javascript" src="/static/js/jquery-1.10.2.min.js"></script>
+<!--script type="text/javascript" src="/static/js/qjerycycle.js"></script-->
+<script type="text/javascript" src="/static/js/jquery.cycle2.min.js"></script>
+<!--script type="text/javascript">
+$(document).ready(function(){
+    $('.slideshow').cycle({                            
+        fx: 'fade',
+     });
+});
+</script-->
+{% endblock %}
+
+{% block flasharea %}
+<div class="flasharea">
+<div class="slideshow-position">
+<div class="cycle-slideshow">
+<img src="/static/images/iStock_000019076339XSmall.jpg"  width="300" height="200" /></li>
+<img src="/static/images/shutterstock_128132966.jpg" width="300" height="200" /></li>
+<img src="/static/images/shutterstock_64009777.jpg" width="300" height="200" /></li>
+<img src="/static/images/shutterstock_69970861.jpg" width="300" height="200" /></li>
+<img src="/static/images/shutterstock_784815.jpg" width="300" height="200" /></li>
+<img src="/static/images/shutterstock_89753638.jpg" width="300" height="200" /></li>
+<!-- <li><img src="/static/images/iStock_000011387638XSmall.jpg" width="300" height="200" /></li> -->
+<!-- <li><img src="/static/images/iStock_000014415482_Medium.jpg" width="300" height="200"  /></li> -->
+</div>
+<div class="slideshow-heading">
+AACalc
+<br>
+Asset Allocation Calculator
+</div>
+</div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="home">
+
+<p>
+<h1>Scientific Approach &rArr; Savings</h1>
+</p>
+
+<p>
+Scientifically advanced techniques (stochastic dynamic programming and mean-variance optimization).
+</p>
+
+<p>
+Asset allocation appropriate to both age and portfolio size.
+</p>
+
+<p>
+AACalc performs some serious computation for what is a very serious
+matter.
+</p>
+
+<div style="text-align:center;">
+
+<p>
+<a href="{% url start_aa %}"><span class="button">Compute My Asset Allocation</span></a>
+</p>
+
+<p>
+<a href="{% url start_number %}"><span class="button">Compute My Number</span></a>
+</p>
+
+</div>
+
+<p>
+<img style="float: left;" width=400 height=200 src="/static/example-stocks.png">
+</p>
+
+<p>
+The main algorithm we use can be mathematically proven to produce the
+optimal asset allocation when rebalancing is performed annually and
+assuming market returns have the same probability distribution as the
+past and are both normally distributed and independent over time.
+</p>
+
+<!--
+<p>
+Life expectancy is not simulated as a fixed life span; instead
+actuarial longevity data is built directly into the calculator.
+</p>
+-->
+
+<div style="clear: both;">
+</div>
+
+<p class="footer">
+<a href="{% url privacy_policy %}">Privacy Policy</a>
+</p>
+
+</div>
+
+{% endblock %}

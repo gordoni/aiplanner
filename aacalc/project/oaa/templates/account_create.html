@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up{% endblock %}
+
+{% block content %}
+
+<h1>Sign Up</h1>
+
+{% if scenario_id %}
+<p>
+You need to create an account in order to continue using AACalc.
+</p>
+{% endif %}
+
+<p>
+Signing up isn't necessary for individual users of AACalc.  By signing
+up financial advisors can gain access to advanced AACalc features:
+
+<ul>
+<li> a separate scenario for each client </li>
+<li> higher resolution initial asset allocations </li>
+</ul>
+
+</p>
+
+<br />
+
+<div style="text-align:center;">
+
+<p>
+Signing up is currently free of charge.
+</p>
+
+<p>
+<a href="{% if scenario_id %}{% url account_create_2_run scenario_id %}{% else %}{% url account_create_2 %}{% endif %}"><span class="button">Sign Me Up Now</span></a>
+</p>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<title>{% block title %}AACalc{% endblock %}</title>
+<link href="/static/oaa.css" type="text/css" rel="stylesheet" />
+{% block head %}{% endblock %}
+{% if not DEBUG %}
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-39854658-1', 'aacalc.com');
+  ga('send', 'pageview');
+</script>
+{% endif %}
+</head>
+
+<body>
+<div class="container">
+{% if not suppress_navigation %}
+<div class="navigation">
+<ul>
+<li> <a href="{% url home %}">Home</a> </li>
+<li> <a href="{% url about %}">About</a> </li>
+{% if user.is_authenticated and not user.account.temp_user %}
+<li> <a href="{% url scenarios %}">Scenarios</a> </li>
+<li> <a href="{% url account_edit %}">Account</a> </li>
+<li> <a href="{% url logout %}">Logout</a> </li>
+{% endif %}
+</ul>
+</div>
+{% endif %}
+{% block flasharea %}{% endblock %}
+<div class="main-area">
+{% block content %}{% endblock %}
+</div>
+</div>
+</body>
+
+</html>

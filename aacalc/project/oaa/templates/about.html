@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}About{% endblock %}
+
+{% block content %}
+
+<h1>About</h1>
+
+<p>
+Research notes:
+</p>
+<ul>
+<li> <a href="{% url docs "intro_to_sdp" %}">An Introduction to Stochastic Dynamic Programming</a> </li>
+<li> Variable withdrawals - recommended
+<ul>
+<li> <a href="{% url docs "variable_withdrawals" %}">Variable Withdrawals</a> - variable withdrawals offer improved well being over fixed withdrawals </li>
+<li> <a href="{% url docs "variable_withdrawal_showdown" %}">Variable Withdrawal Showdown</a> - a fixed asset allocation with withdrawals of portfolio size / remaining life expectancy performs nearly as well as SDP </li>
+<li> <a href="{% url docs "variable_withdrawals_stock_heavy" %}">Variable Withdrawal Portfolios Should Be Stock Heavy</a> </li>
+<li> <a href="{% url docs "variable_withdrawal_utility_function_sensitivity" %}">Variable Withdrawal Utility Function Sensitivity</a> - CARA utility increases bonds slightly compared to CRRA </li>
+<li> <a href="{% url docs "variable_withdrawal_inherit" %}">Variable Withdrawals When Leaving a Bequest</a> - valuing a bequest causes a tilt to stocks </li>
+<li> <a href="{% url docs "ef_non_normal" %}">An Efficient Frontier for Non-normal Returns?</a>
+</ul>
+<li> Fixed withdrawals - not recommended
+<ul>
+<li> <a href="{% url docs "asset_allocation_showdown" %}">Asset Allocation Showdown</a> - SDP outperforms other common asset allocation schemes </li>
+<li> <a href="{% url docs "portfolio_size" %}">Portfolio Size and Asset Allocation</a> - portfolio size matters to asset allocation </li>
+<li> <a href="{% url docs "when_to_rebalance" %}">When to Rebalance</a> - rebalance annually with a rebalance band half width of 15% </li>
+<li> <a href="{% url docs "cost_basis_methods" %}">Quantifying Cost Basis Methods</a> - HIFO is only slightly better than avgcost which is only slightly better than FIFO </li>
+<li> <a href="{% url docs "cost_of_safety" %}">The Cost of Safety</a> - retirement portfolio safety comes at a heavy cost </li>
+</ul>
+</ul>
+
+<p>
+AACalc was developed by <a href="http://www.gordoni.com">Gordon
+Irlam</a>. Anyone is welcome to use it.
+
+<p>
+I may be contacted as follows:
+</p>
+
+<div style="margin-left: 10em;">
+
+<p>
+<a href="mailto:gordoni@gordoni.com">gordoni@gordoni.com</a>
+</p>
+
+<p>
+23 Coronado Ave
+<br />
+Los Altos, CA 94022
+<br />
+United States
+</p>
+
+</div>
+
+{% endblock %}

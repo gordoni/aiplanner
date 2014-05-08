@@ -1,0 +1,28 @@
+#!/usr/bin/python
+
+# Delete old results directories.
+
+from os import listdir, stat, statvfs
+from time import time
+from shutil import rmtree
+
+keep_free = 0.25  # Keep this much disk space free.
+keep_time = 3600  # Keep directories around for this long regardless.
+result_dirs = ('/home/ubuntu/oaa.data/run', '/home/ubuntu/oaa.data/static/results')
+
+dirs = []
+for result_dir in result_dirs:
+  dirs.extend(result_dir + '/' + d for d in listdir(result_dir))
+dirs.sort(key=lambda d: stat(d).st_mtime)
+
+for d in dirs:
+
+  s = statvfs('/')
+  free = float(s.f_bavail) / s.f_blocks
+  if free >= keep_free:
+    break
+
+  if stat(d).st_mtime > time() - keep_time:
+    break
+
+  rmtree(d)

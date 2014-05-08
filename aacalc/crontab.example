@@ -1,0 +1,6 @@
+MAILTO=gordoni@gordoni.com
+
+# m h  dom mon dow   command
+
+0 * * * * /home/ubuntu/oaa/aacalc/cron.hourly
+0 0 * * * /home/ubuntu/oaa/aacalc/cron.daily

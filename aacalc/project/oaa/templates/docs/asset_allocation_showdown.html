@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Asset Allocation Showdown{% endblock %}
+
+{% block content %}
+
+<div class="doc">
+
+<h1>Asset Allocation Showdown</h1>
+
+<p>
+A historical simulation based comparison of a number of different U.S. stocks/bonds asset allocation schemes.
+</p>
+
+<p>
+Portfolio failure is defined as not having sufficient assets to provide for one of the annual retirement withdrawals. The failure length is the average number of years until death when portfolio failure has occurred. 100,000 returns sequences were evaluated for each scenario and asset allocation scheme. The details regarding the asset allocation schemes and scenarios are contained at the end of this posting.
+</p>
+
+<p>
+Here are the results for a male age 25 saving $2,500 growing by 7% real per year:
+</p>
+
+<pre class="bubble">Age in bonds:                   18.35% chance of failure; 8.0 years average failure length
+Age minus 10 in bonds:          12.89% chance of failure; 7.9 years average failure length
+Simplified Target Date:         11.24% chance of failure; 7.9 years average failure length
+Stochastic Dynamic Programming:  5.07% chance of failure; 7.0 years average failure length</pre>
+Here are the results for a retired male age 65 with a $1m portfolio:
+
+<pre class="bubble">Age in bonds:                   12.76% chance of failure; 5.5 years average failure length
+Age minus 10 in bonds:          10.19% chance of failure; 5.4 years average failure length
+Simplified Target Date:         10.42% chance of failure; 5.5 years average failure length
+Stochastic Dynamic Programming:  5.39% chance of failure; 4.9 years average failure length</pre>
+
+<p>
+Age in bonds performs poorly. Age minus 10 in bonds and Simplified Target Date scheme are roughly comparable. Stochastic Dynamic Programming (SDP) performs significantly better than any of the other schemes considered for the scenarios considered. <a href="{% url docs "intro_to_sdp" %}">SDP is explained here</a>.
+</p>
+
+<h2>SDP and risk</h2>
+
+<p>
+Is the performance of SDP a risk tolerance story? Could the improvement SDP offers simply be the result of allowing greater risk. The Simplified Target Date asset allocation scheme initially pegs stock holdings at 90.3% and slowly declines from there. By imposing a risk tolerance limit of 14.7% for SDP (maximum permitted standard deviation on the efficient frontier) we can achieve a maximum 90.3% stock holding limit for SDP. For the 25 year old male this results in:
+</p>
+
+<pre class="bubble">SDP (90.3% stock limit):         5.76% chance of failure; 7.1 years average failure length</pre>
+
+<p>
+This is slightly worse than SDP with no limit. So while a small part of the improvement of SDP is a risk tolerance story, the majority isn't.
+</p>
+
+<h2>Sensitivity analysis</h2>
+
+<p>
+So far we have only tested the asset allocation schemes under one set of market conditions. We have been using the market returns during 1927-2012. How might the different schemes have performed if the market had behaved differently?
+</p>
+
+<p>
+Suppose instead of 6.5% geometric mean real return stocks had returned 3.0%, or that volatility, as measured by the standard deviation of stock returns, had been 50% higher than it was.
+</p>
+
+<p>
+Age 25, stocks return 3% real:
+</p>
+
+<pre class="bubble">Age in bonds:                   38.87% chance of failure; 9.4 years average failure length
+Age minus 10 in bonds:          36.82% chance of failure; 9.3 years average failure length
+Simplified Target Date:         36.18% chance of failure; 9.4 years average failure length
+Stochastic Dynamic Programming: 28.62% chance of failure; 9.5 years average failure length</pre>
+
+<p>
+Age 65, stocks return 3% real:
+</p>
+
+<pre class="bubble">Age in bonds:                   18.70% chance of failure; 5.8 years average failure length
+Age minus 10 in bonds:          17.64% chance of failure; 5.9 years average failure length
+Simplified Target Date:         17.78% chance of failure; 5.9 years average failure length
+Stochastic Dynamic Programming: 14.13% chance of failure; 5.7 years average failure length</pre>
+
+<p>
+Age 25, stocks volatility +50%:
+</p>
+
+<pre class="bubble">Age in bonds:                   14.08% chance of failure; 8.6 years average failure length
+Age minus 10 in bonds:          11.01% chance of failure; 8.8 years average failure length
+Simplified Target Date:         10.46% chance of failure; 8.9 years average failure length
+Stochastic Dynamic Programming:  4.74% chance of failure; 9.4 years average failure length</pre>
+
+<p>
+Age 25, stocks volatility +50%:
+</p>
+
+<pre class="bubble">Age in bonds:                   12.28% chance of failure; 5.9 years average failure length
+Age minus 10 in bonds:          10.78% chance of failure; 6.0 years average failure length
+Simplified Target Date:         10.98% chance of failure; 6.1 years average failure length
+Stochastic Dynamic Programming:  5.84% chance of failure; 6.1 years average failure length</pre>
+
+<p>
+Under these market conditions age in bonds, age minus 10 in bonds, and Simplified Target Date all perform roughly similarly, and SDP outperforms in every case.
+</p>
+
+<p>
+(Note: The relationship between volatility and performance appears complex, with increased volatility having little impact on failure probability, but especially in the case of SDP causing the average failure length to increase. In addition the function used to map the historical returns onto the simulated returns preserves the geometric mean and adjusts the standard deviation, but has a side effect of increasing the arithmetic mean. It isn't necessary though to get hung up on what is the best volatility increasing transformation to be used. The primary take away should be here is a different set of returns sequences; how do the different asset allocation schemes compare against it.)
+</p>
+
+<h2>Conclusion</h2>
+
+<p>
+The asset allocation produced by SDP appears to be very good, buy it isn't the best possible. SDP does not capture volatility predictability, momentum, or reversion to the mean phenomena. SDP allows the distribution of returns to vary over time, but we do not attempt this.
+</p>
+
+<h2>Details</h2>
+
+<p>
+Scenarios. We consider a male initially saving $2,500 at age 25, growing by 7% real per year, until age 65 at which point they retire and withdrawal a fixed real $50,000 per year. We also consider a male age 65 with a $1m portfolio withdrawing a fixed real $50,000 per year. Longevity is as specified by the U.S. Social Security Cohort Life Tables for a person of the given initial age in 2013. Stock and bond market data for 1872-2012 are as supplied by Shiller (Irrational Exuberance, 2005 updated) without any adjustments being made. To evaluate each asset allocation scheme we generate 100,000 synthetic returns sequences using bootstrapping by concatenating together blocks of length 20 years chosen at random from the period 1927-2012. Rebalancing is performed annually. All calculations are adjusted for inflation. Taxes are not considered.
+</p>
+
+<p>
+Asset allocation schemes. Asset allocation schemes are for U.S. stocks and 10 year Treasuries. The Simplified Target Date fund is for the consensus target date fund as tracked by the S&amp;P Target Date indexes and reported by iShares as of June 30, 2012 but with all equities treated as U.S. stocks, and all fixed income treated as 10 year Treasuries. As such they are intended to be indicative of typical glide path rules, not an assessment of the precise performance of any one target date fund. SDP asset allocation was generated by first performing mean-variance optimization; not that is should make a difference except when imposing a risk tolerance limit. The SDP optimization goal was to minimize the time weighted odds of portfolio failure, not the pure odds of portfolio failure alone. Thus a portfolio failure length of 10 years is considered twice as bad as a portfolio failure length of 5 years. No value is assigned to leaving an inheritance. For SDP we use the period 1872-1926 as input data to generate an asset allocation map.
+</p>
+
+<p>
+Platform: An internal command line version of <a href="{% url home %}">AACalc.com</a> was used to generate the SDP asset allocation map and simulate each of the asset allocation schemes.
+</p>
+
+</div>
+
+{% endblock %}

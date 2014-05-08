@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Scenarios{% endblock %}
+
+{% block content %}
+<h1>Scenarios</h1>
+{% if not scenarios %}
+Create a scenario to get started.
+<br />
+{% endif %}
+{% for scenario in scenarios %}
+<a href="{% url scenario_edit  scenario.id %}">{{ scenario.name|escape }}</a>
+<br />
+{% endfor %}
+<br />
+<div style="text-align:center;">
+<a href="{% url scenario_create %}"><span class="button">Create new scenario</span></a>
+</div>
+{% endblock %}

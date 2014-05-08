@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Portfolio Size and Asset Allocation{% endblock %}
+
+{% block content %}
+
+<div class="doc">
+
+<h1>Portfolio Size and Asset Allocation</h1>
+
+<p>
+I have been experimenting with an asset allocation technique called Stochastic Dynamic Programming (SDP); a technique which promises significant benefits compared to traditional asset allocation approaches.
+</p>
+
+<p>
+One of the most interesting things about the results produced using SDP is the importance of portfolio size in asset allocation decisions.
+</p>
+
+<p>
+A typical asset allocation map produced by SDP is shown below.
+</p>
+
+<div style="text-align: center;">
+<img src="/static/docs/portfolio_size-stocks.png"/>
+</div>
+
+<p>
+The year is displayed on the horizontal axis. Portfolio size is displayed on the vertical axis. And the recommended asset allocation is displayed color coded on the graph, as shown by the scale on the right. In each year you use your then current portfolio size to look up the recommended asset allocation.
+</p>
+
+<p>
+The graph is for a 25 year old in 2013, retiring at age 65 in 2053, and withdrawing an inflation adjusted $50k/year in retirement. But don't read too much into this particular graph, the graph for every individual will be different depending on their expected future rate of saving, and rate of withdrawal in retirement.
+</p>
+
+<p>
+As can be seen for asset allocation using SDP portfolio size is at least as important to asset allocation decisions as age. On the other hand an age based glide path, or a rule such as age in bonds, assumes all that matters is age. And asset allocation using Mean-Variance Optimization says what matters to asset allocation is the degree of risk to be taken, but doesn't provide a way of determining how portfolio size or age affect the level of risk to be chosen.
+</p>
+
+<p>
+It isn't absolute portfolio size that seems to matters, but the portfolio size relative to the annual retirement withdrawal amount and age; that is, the prospects for success.
+</p>
+
+<p>
+SDP suggests a relatively small portfolio should favor stocks. A medium sized portfolio should be balanced. And a relatively large portfolio should favor bonds if the owner is indifferent to leaving an inheritance, or stocks if the owner cares about leaving an inheritance.
+</p>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}Variable Withdrawal Showdown{% endblock %}
+
+{% block content %}
+
+<div class="doc">
+
+<h1>Variable Withdrawal Showdown</h1>
+
+<p>
+Stochastic Dynamic Programming (SDP) is a general purpose mathematical technique that can be applied to asset allocation to compute the optimal asset allocation as a function of the current age and current portfolio size. Correlations between asset classes are allowed but the one requirement of SDP is that asset class returns come from a known distribution that is independent over time.
+</p>
+
+<p>
+SDP asset allocation can be extended to compute the optimal time varying withdrawal amount by treating the withdrawal amount analogous to an asset class, and for each location trying each different withdrawal possibility, evaluating it, and picking the best one.
+</p>
+
+<p>
+We compare 5 asset allocation strategies x 6 variable withdrawal amount strategies against the optimal results computed using SDP for various retirement portfolios.
+</p>
+
+<h2>Scenarios</h2>
+
+<p>
+In <a href="http://mpra.ub.uni-muenchen.de/39169/1/MPRA_paper_39169.pdf">Choosing a retirement income strategy: a new evaluation framework</a> Pfau suggests evaluating asset allocation using 3 scenarios from different cells of the RIAA client segmentation matrix:
+</p>
+
+<table>
+<tr> <td>                             </td> <td> portfolio size </td> <td> desired spending </td> <td> minimal needs </td> <td> Social Security </td> </tr>
+<tr> <td> mass market - underfunded   </td> <td>       $100,000 </td> <td>        [$35,000] </td> <td>     [$30,000] </td> <td>         $20,000 </td> </tr>
+<tr> <td> affluent - constrained      </td> <td>       $500,000 </td> <td>         $50,000  </td> <td>     [$35,000] </td> <td>         $20,000 </td> </tr>
+<tr> <td> high net worth - overfunded </td> <td>     $1,000,000 </td> <td>        [$65,000] </td> <td>     [$50,000] </td> <td>         $35,000 </td> </tr>
+</table>
+
+<p>
+We make use of these example scenarios as expanded on more fully at the end of this note. Bracketed values were not relevant to the analysis here.
+</p>
+
+<h2>Evaluation</h2>
+
+<p>
+When evaluating how well a particular scheme performs we use the concept of a lifetime Certainty Equivalent (CE) amount. The lifetime CE is the constant consumption amount to be experienced until death which has the same expected utility as the consumption sequence actually experienced. Unfortunately we are unable to use the Withdrawal Efficiency Ratio (WER) promulgated by Blanchett et al. in <a href="http://corporate.morningstar.com/ib/documents/MethodologyDocuments/OptimalWithdrawlStrategyRetirementIncomePortfolios.pdf">Optimal Withdrawal Strategy for Retirement Income Portfolios</a> because it assumes a single sequence of returns. When returns vary depending on the asset allocation decisions made the formula for computing the WER breaks down.
+</p>
+
+<p>
+Use of a lifetime CE raises the question of what is the appropriate utility function to use. We use a power utility function with a coefficient of relative risk aversion of &eta;. Which then begs the question of what is an appropriate value for &eta;. Unlike Blanchett, et al. who use a &eta; of 5, we believe a reasonable value for &eta; is 3. An individual is neutral to consuming one year at 50% consumption in exchange for 2<sup>&eta;-1</sup> years at 200% consumption. And thus by extension, neutral to consuming one year at 25% consumption in exchange for 4<sup>&eta;-1</sup> years at 400% consumption. Plugging in an &eta; of 3 gives one year at 50% in exchange for 4 years at 200%, and one year at 25% in exchange for 16 years at 400%.  An &eta; of 3 represents our baseline case; 2 represents risk tolerant; and 4 risk averse.
+</p>
+
+<p>
+We compute the lifetime CE using returns that are independent over time. This means SDP should produce the best possible results. In reality there are phenomena known as volatility predictability, momentum, and reversion to the mean that means in the real world it might be possible to do better than SDP. We will return to this issue later.
+</p>
+
+<h2>Schemes</h2>
+
+<p>
+We consider the following asset allocation schemes:
+</p>
+
+<table>
+<tr> <td> fixed                 </td> <td> a fixed percentage of stocks/bonds </td> </tr>
+<tr> <td> age in bonds          </td> <td> age divided by 100 in bonds </td> </tr>
+<tr> <td> age minus 10 in bonds </td> <td> age minus 10 divided by 100 in bonds </td> </tr>
+<tr> <td> target date           </td> <td> the consensus target date fund as tracked by the S&P Target Date indexes and reported by iShares as of June 30, 2012 but with all equities treated as U.S. stocks, and all fixed income treated as 10 year Treasuries </td> </tr>
+<tr> <td> SDP                   </td> <td> SDP with goal maximize lifetime CE </td> </tr>
+</table>
+
+<p>
+We consider the following withdrawal schemes:
+</p>
+
+<table>
+<tr> <td> amount     </td> <td> a fixed amount each year; described here in terms of the initial investment portfolio withdrawal rate </td> </tr>
+<tr> <td> percentage </td> <td> a fixed percentage of the current portfolio size </td> </tr>
+<tr> <td> 1/life     </td> <td> portfolio size / remaining life expectancy; this is the formula the IRS uses to compute Required Minimum Distributions, although in the scenarios considered here life expectancy is for the longest surviving member of the couple </td> </tr>
+<tr> <td> hybrid     </td> <td> the larger of amount or 1/life </td> </tr>
+<tr> <td> SDP        </td> <td> SDP with goal maximize lifetime CE </td> </tr>
+</table>
+
+<h2>Results</h2>
+
+<p>
+The results of the different asset allocation schemes paired with the different withdrawal schemes for the affluent - constrained scenario are shown in the table below.
+</p>
+
+<table>
+<tr> <td rowspan=2 colspan=2> lifetime CE <br /> best location </td> <td colspan=6> withdrawal scheme </td> </tr>
+<tr> <td> amount <br /> 6.0% </td> <td> amount <br /> best </td> <td> percentage <br /> best </td> <td> 1/life </td> <td> hybrid <br /> 6.0% </td> <td> SDP </td> </tr>
+<tr> <td rowspan=5> asset allocation scheme </td> <td> fixed </td> <td> $34,198 <br /> 80/20 </td> <td> $36,828 <br /> 50/50 4.2% </td> <td> $38,401 <br /> 100/0 6.9% </td> <td> $40,733 <br /> 90/10 </td> <td> $34,463 <br /> 90/10 </td> <td> $40,924 <br /> 90/10 </td> </tr>
+<tr> <td> age in bonds </td> <td> $31,993 <br /> &nbsp; </td> <td> $36,145 <br /> 4.0% </td> <td> $35,340 <br /> 6.8% </td> <td> $37,929 <br /> &nbsp; </td> <td> $31,974 <br /> &nbsp; </td> <td> $38,039 <br /> &nbsp; </td> </tr>
+<tr> <td> age minus 10 in bonds </td> <td> $32,681 <br /> &nbsp; </td> <td> $36,503 <br /> 4.0% </td> <td> $36,044 <br /> 6.7% </td> <td> $38,681 <br /> &nbsp; </td> <td> $32,653 <br /> &nbsp; </td> <td> $38,800 <br /> &nbsp; </td> </tr>
+<tr> <td> target date </td> <td> $32,591 <br /> &nbsp; </td> <td> $36,495 <br /> 4.0% </td> <td> $36,051 <br /> 6.7% </td> <td> $38,689 <br /> &nbsp; </td> <td> $32,563 <br /> &nbsp; </td> <td> $38,803 <br /> &nbsp; </td> </tr>
+<tr> <td> SDP </td> <td> $34,879 <br /> &nbsp; </td> <td> $37,369 <br /> 4.4% </td> <td> $38,480 <br /> 6.9% </td> <td> $40,833 <br /> &nbsp; </td> <td> $34,884 <br /> &nbsp; </td> <td> $41,064 <br /> &nbsp; </td> </tr>
+</table>
+
+<p>
+Note that the SDP results are the maximum values for each row and column. This is as we would expect, since the SDP algorithm produces the optimal value.
+</p>
+
+<p>
+Of the asset allocation schemes age in bonds, age minus 10 in bonds, and target date all perform poorly. Fixed performs almost as well as SDP. Looking at the best asset allocation for fixed suggests that for this scenario the optimal asset allocation is typically stock heavy, and age in bonds, age minus 10 in bonds, and target date have too many bonds to compete. The exception being for amount best, which is balanced, and here the three alternative schemes perform quite a bit better. This might explain the discrepancy between the retirement asset allocation recommendations of practioners, who tend to favor bonds, and theorists, who tend to recommend stocks. The practioner studies tend to assume a fixed withdrawal amount, while the theorists allow the withdrawal amount to vary, so providing a relief valve to stock volatility, that is instead provided by bonds in practioner studies.
+</p>
+
+<p>
+Of all the withdrawal schemes, the two fixed 6.0% withdrawal rate schemes perform worst. This is understandable, the 6% withdrawal rate was determined by the client somewhat independently of the portfolio. Percentage performs quite well, but the star is 1/life, which comes close to SDP.
+</p>
+
+<p>
+Also note variable withdrawals work well. The 1/life and SDP schemes perform significantly better than the best fixed withdrawal amount scheme. For the fixed and SDP asset allocation schemes the advantage of variable withdrawals over the best fixed amount is roughly a 10% improvement to the lifetime CE.
+</p>
+
+<p>
+In this scenario fixed / 1/life achieves 99% of the lifetime CE of SDP/SDP, and thus, provided the fixed asset allocation can be determined, is a serious contender to use in advising clients. Computing the best fixed asset allocation to the nearest 1% instead of the nearest 10% does not improve upon this result.
+</p>
+
+<h2>Sensitivity analysis</h2>
+
+<p>
+Fixed / 1/life is 90/10 stocks/bonds for this scenario. This might seem high, until it is realized the Social Security acts as a bond substitute, providing a stable source of income. If Social Security is reduced, then the bond portion rises.
+</p>
+
+<table>
+<tr> <td> Social Security </td> <td> fixed / 1/life       </td> <td> SDP/SDP </td> </tr>
+<tr> <td>           20000 <br /> &nbsp; </td> <td> $40,733 <br /> 90/10 </td> <td> $41,064 <br /> &nbsp; </td> </tr>
+<tr> <td>           10000 <br /> &nbsp; </td> <td> $28,711 <br /> 80/20 </td> <td> $29,278 <br /> &nbsp; </td> </tr>
+<tr> <td>            1000 <br /> &nbsp; </td> <td> $12,131 <br /> 60/40 </td> <td> $17,110 <br /> &nbsp; </td> </tr>
+</table>
+
+<p>
+For this reason great care must be taken in interpreting the results of studies that do not include non-portfolio income sources such as Social Security, defined benefit pensions, and annuities.
+</p>
+
+<p>
+Increasing the degree of risk aversion will also increase bonds:
+</p>
+
+<table>
+<tr> <td> &eta; </td> <td> fixed / 1/life       </td> <td>  SDP/SDP </td> </tr>
+<tr> <td>     3 <br /> &nbsp; </td> <td> $40,733 <br /> 90/10 </td> <td> $41,064 <br /> &nbsp; </td> </tr>
+<tr> <td>     4 <br /> &nbsp; </td> <td> $38,997 <br /> 80/20 </td> <td> $39,528 <br /> &nbsp; </td> </tr>
+<tr> <td>    10 <br /> &nbsp; </td> <td> $31,672 <br /> 60/40 </td> <td> $34,950 <br /> &nbsp; </td> </tr>
+</table>
+
+<p>
+Reducing the return on equities from 3.1% geometric mean will as expected boost bonds:
+</p>
+
+<table>
+<tr> <td> stocks geomean </td> <td> fixed / 1/life       </td> <td> SDP/SDP </td> </tr>
+<tr> <td>           3.1% <br /> &nbsp; </td> <td> $40,733 <br /> 90/10 </td> <td> $41,064 <br /> &nbsp; </td> </tr>
+<tr> <td>           2.1% <br /> &nbsp; </td> <td> $38,971 <br /> 80/20 </td> <td> $39,252 <br /> &nbsp; </td> </tr>
+<tr> <td>           1.1% <br /> &nbsp; </td> <td> $37,566 <br /> 60/40 </td> <td> $37,780 <br /> &nbsp; </td> </tr>
+</table>
+
+<p>
+Simultaneously altering the stock and bond returns has a smaller, but definite effect:
+</p>
+
+<table>
+<tr> <td> stock geomean return </td> <td> bond geomean return </td> <td> fixed / 1/life       </td> <td>  SDP/SDP </td> </tr>
+<tr> <td> 3.1% <br /> &nbsp; </td> <td> 0.1% <br /> &nbsp; </td> <td> $40,733 <br /> 90/10 </td> <td> $41,064 <br /> &nbsp; </td> </tr>
+<tr> <td> 4.1% <br /> &nbsp; </td> <td> 1.1% <br /> &nbsp; </td> <td> $42,983 <br /> 90/10 </td> <td> $43,389 <br /> &nbsp; </td> </tr>
+<tr> <td> 5.1% <br /> &nbsp; </td> <td> 2.1% <br /> &nbsp; </td> <td> $45,491 <br /> 80/20 </td> <td> $45,965 <br /> &nbsp; </td> </tr>
+</table>
+
+<h2>Scenarios evaluation</h2>
+
+<p>
+Since the fixed asset allocation performed so well, as did the withdrawal scheme 1/life, we will evaluate them for the other scenarios here. We will also look at the best amount withdrawal scheme for each scenario so we can compare asset allocations.
+</p>
+
+<table>
+<tr> <td>                             </td> <td> fixed / amount best       </td> <td> fixed / 1/life       </td> <td> SDP/SDP </td> </tr>
+<tr> <td> mass market - underfunded   </td> <td> $24,250 <br /> 80/20 6.0% </td> <td> $25,121 <br /> 100/0 </td> <td> $25,183 <br /> &nbsp; </td> </tr>
+<tr> <td> affluent - constrained      </td> <td> $36,828 <br /> 50/50 4.2% </td> <td> $40,733 <br /> 90/10 </td> <td> $41,064 <br /> &nbsp; </td> </tr>
+<tr> <td> high net worth - overfunded </td> <td> $67,924 <br /> 50/50 4.0% </td> <td> $75,654 <br /> 90/10 </td> <td> $76,382 <br /> &nbsp; </td> </tr>
+</table>
+
+<p>
+In each case fixed / 1/life performs very close to the optimum, and in each case the portfolio is very stock heavy.
+</p>
+
+<p>
+Turning now to fixed / amount best for the three scenarios, in two of the three cases the portfolio is much more balanced. A fixed withdrawal portfolio is balanced, while variable withdrawals appear to substitute for bonds in some sense, allowing the portfolio to be more volatile in exchange for increased potential rewards. In the third case, mass market - underfunded case, betting everything on stocks might simply represent the best of the losing bets.
+</p>
+
+<h2>Consumption volatility</h2>
+
+<p>
+It is reasonable to wonder how much consumption might vary in the variable consumption scenarios. Sample consumption paths for SDP/SDP and the baseline scenario are shown below. It is likely that death will occur before the later part of the paths is reached so more emphasis should be placed on performance at earlier ages.
+</p>
+
+<div style="text-align: center;">
+<img src="/static/docs/variable_withdrawal_showdown-sdp-sdp-paths-consume.png"/>
+</div>
+
+<p>
+Social Security imposes a $20,000 consumption floor. As might be expected the further from the floor you are the more volatile things are, and the closer to the floor the less volatile.
+</p>
+
+<p>
+The best fixed / 1/life scheme is shown below. Care was taken to use the same asset class return sequences as previously. This graph tells a similar story to SDP/SDP, except that it is more pronounced on the high side and for ages 95-100 where a distinct depletion trend is more readily apparent. Comparing this to the optimum paths computed using SDP suggests 1/age might be a little bit too aggressive.
+</p>
+
+<div style="text-align: center;">
+<img src="/static/docs/variable_withdrawal_showdown-fixed-0.9-life-paths-consume.png"/>
+</div>
+
+<p>
+These paths should be compared with the best fixed/amount scheme, which offers absolute consumption stability until it suddenly fails as shown below. Variable withdrawals are more volatile, but they let you down more gently.
+</p>
+
+<div style="text-align: center;">
+<img src="/static/docs/variable_withdrawal_showdown-fixed-0.5-amount-41000-paths-consume.png"/>
+</div>
+
+<h2>Optimal asset allocation in Merton's portfolio problem</h2>
+
+<p>This good performance of a fixed asset allocation is consistent with <a href="http://en.wikipedia.org/wiki/Merton%27s_portfolio_problem">Merton's portfolio problem</a>, which predicts a constant asset allocation for a risky and a risk free asset and a fixed time period. According to Samuelson and Merton the proportion of the risky asset should be equal to the difference in the arithmetic returns of the two asset classes divided by the standard deviation of the risky assets returns times the coefficient of relative risk aversion. Or 4.5% / (19%<sup>2</sup> x 3) = 42%. But for the affluent scenario we have $20,000 in Social Security which can be considered as equivalent to bonds worth $20,000 x remaining life expectancy, since bond returns are close to zero. Or $20,000 x 24.1 = $480k. 42% of the total effective portfolio value is 42% x ($500k + $480k) = $410k. And so the percentage of stocks as a fraction of the investment portfolio is $410k / $500k = 82%. When we factor in the fact that bonds are not risk free, but have a variance of 8.4%, a 90/10 asset allocation seems entirely appropriate. Expressing this as a rough rule of thumb:
+</p>
+
+<p>
+recommended investment portfolio stock fraction = (portfolio size + social security x remaining life expectancy) x asset class arithmetic returns difference / (portfolio size x stocks standard deviation x &eta;) + adjustment to account for bond variability
+</p>
+
+<p>
+This allows us to compute the following table (in which reported returns are after management expenses):
+</p>
+
+<table>
+<tr> <td> portfolio size </td> <td> Social Security </td> <td> stocks geometric / arithmetic mean </td> <td> bonds geometric / arithmetic mean </td> <td> stocks standard deviation </td> <td> &eta; </td> <td> recommended investment portfolio stock fraction (adjustment=0) </td> <td> observed fixed best asset allocation </td> </tr>
+<tr> <td>   $500,000 </td> <td> $20,000 </td> <td> 3.00% / 4.83% </td> <td> 0.00% / 0.34% </td> <td> 19.06% </td> <td>  3 </td> <td>  81% </td> <td> 90/10 </td> </tr>
+<tr> <td>   $100,000 </td> <td> $20,000 </td> <td> 3.00% / 4.83% </td> <td> 0.00% / 0.34% </td> <td> 19.06% </td> <td>  3 </td> <td> 240% </td> <td> 100/0 </td> </tr>
+<tr> <td> $1,000,000 </td> <td> $35,000 </td> <td> 3.00% / 4.83% </td> <td> 0.00% / 0.34% </td> <td> 19.06% </td> <td>  3 </td> <td>  76% </td> <td> 90/10 </td> </tr>
+<tr> <td>   $500,000 </td> <td> $10,000 </td> <td> 3.00% / 4.83% </td> <td> 0.00% / 0.34% </td> <td> 19.06% </td> <td>  3 </td> <td>  61% </td> <td> 80/20 </td> </tr>
+<tr> <td>   $500,000 </td> <td>  $1,000 </td> <td> 3.00% / 4.83% </td> <td> 0.00% / 0.34% </td> <td> 19.06% </td> <td>  3 </td> <td>  43% </td> <td> 60/40 </td> </tr>
+<tr> <td>   $500,000 </td> <td> $20,000 </td> <td> 3.00% / 4.83% </td> <td> 0.00% / 0.34% </td> <td> 19.06% </td> <td>  4 </td> <td>  61% </td> <td> 80/20 </td> </tr>
+<tr> <td>   $500,000 </td> <td> $20,000 </td> <td> 3.00% / 4.83% </td> <td> 0.00% / 0.34% </td> <td> 19.06% </td> <td> 10 </td> <td>  24% </td> <td> 60/40 </td> </tr>
+<tr> <td>   $500,000 </td> <td> $20,000 </td> <td> 2.00% / 3.82% </td> <td> 0.00% / 0.34% </td> <td> 18.87% </td> <td>  3 </td> <td>  64% </td> <td> 80/20 </td> </tr>
+<tr> <td>   $500,000 </td> <td> $20,000 </td> <td> 1.00% / 2.80% </td> <td> 0.00% / 0.34% </td> <td> 18.69% </td> <td>  3 </td> <td>  46% </td> <td> 60/40 </td> </tr>
+<tr> <td>   $500,000 </td> <td> $20,000 </td> <td> 4.00% / 5.85% </td> <td> 1.00% / 1.34% </td> <td> 19.24% </td> <td>  3 </td> <td>  80% </td> <td> 90/10 </td> </tr>
+<tr> <td>   $500,000 </td> <td> $20,000 </td> <td> 5.00% / 6.87% </td> <td> 2.00% / 2.34% </td> <td> 19.43% </td> <td>  3 </td> <td>  79% </td> <td> 80/20 </td> </tr>
+</table>
+
+<p>
+This suggests the adjustment should be about 15%, and the formula can then explain all of the observed results except stock and bond returns of 5% and 2%, and the extreme scenario of &eta; = 10.
+</p>
+
+<h2>Optimal withdrawal on Milevsky and Huang's Planet Vulcan</h2>
+
+<p>
+The good performance of the 1/life withdrawal strategy is consistent with Milevsky and Huang's <a href="http://www.ifid.ca/pdf_workingpapers/Spending_Retirement_Vulcan_14MAR2010.pdf">Spending Retirement on Planet Vulcan: The Impact of Longevity Risk Aversion on Optimal Withdrawal Rates</a> who consider the utility maximizing consumption sequence for a single asset with a fixed rate of return and a stochastic life span. For a rate of return of 0%, an &eta; of 1, and no time discounting of future consumption, they find an optimal consumption equal to portfolio size / remaining life expectancy. For an &eta; other than 1, the optimal consumption consumption is portfolio size / modified life expectancy. For a rate of return other than 0%, the formula is more complex.
+</p>
+
+<p>
+The asset allocations we considered when we looked at Merton's portfolio problem that we were unable to explain are precisely those which we would expect to be most likely to require the more complex consumption formulas on Planet Vulcan. Perhaps if we used those consumption formulas the best fixed asset allocations would be more in line with what we had expected.
+</p>
+
+<h2>Non-independent returns</h2>
+
+<p>
+We mentioned previously that for non-independent returns SDP need not produce the best asset allocation / withdrawal strategy. If either momentum or reversion to the mean are present, it seems reasonable to assume a slight bias of the computed strategy away from/towards stocks might improve the results. The results are shown below for bootstrap return sequences with a block size of 20 years and wrapping:
+</p>
+
+<table>
+<tr> <td> stock bias </td> <td> SDP/SDP </td> </tr>
+<tr> <td>      -2.0% </td> <td> $41,574 </td> </tr>
+<tr> <td>      -1.0% </td> <td> $41,585 </td> </tr>
+<tr> <td>      -0.5% </td> <td> $41,590 </td> </tr>
+<tr> <td>       0.0% </td> <td> $41,589 </td> </tr>
+<tr> <td>       0.5% </td> <td> $41,585 </td> </tr>
+<tr> <td>       1.0% </td> <td> $41,578 </td> </tr>
+<tr> <td>       2.0% </td> <td> $41,562 </td> </tr>
+</table>
+
+<p>
+As can be seen both the size of the bias, and the positive effects are negligible. This suggests, but by no means proves, that the results produced using SDP are very close to optimal for real world, non-independent returns. This does nothing to help though with the requirement that future returns be from a known distribution.
+</p>
+
+<h2>Reflections</h2>
+
+<p>
+This study followed Pfau in using geometric real returns on stocks of 3.1%, and bonds 0.1% in order to produce results that might be comparable. On reflection 5.0% stocks, and 2.1% bonds might have been a better choice. With the gap between stocks and bonds fixed based on historical data, the rationalization for low bond returns was the then prevailing rate on TIPS bonds. This rate though is a result of the Fed's unprecedented temporary bond buy back program. Because the gap is fixed, re-running everything is unlikely to change anything substantive other than the actual lifetime CE dollar values.
+</p>
+
+<h2>Conclusion</h2>
+
+<p>
+The retirement asset allocation and withdrawal scheme of fixed / 1/life with a high stock allocation offers close to optimum performance over a range of likely scenarios. A 90/10 asset allocation is suggested. A lower allocation to stocks makes sense if the expected risk premium of stocks over bonds is less than 3% geometric mean, Social Security and other defined benefits will be make up less than half the total income (income from investments should estimated by dividing portfolio size by remaining life expectancy), or you are highly risk averse.
+</p>
+
+<h2>Scenario</h2>
+
+<p>
+A retired male/female couple, both age 65. Longevity is as specified by the U.S. Social Security Cohort Life Tables for a person of the given initial age in 2013. No value is placed on any inheritance that is left. No additions to the portfolio are permitted, and withdrawals are made using the current asset allocation. Taxes were ignored. No transaction costs were assumed for rebalancing, sales, or purchases. All amounts are adjusted for inflation. No time discounting of the future is performed.
+</p>
+
+<p>
+Asset allocation schemes: Rebalancing is performed annually. Returns data for 1927-2012 were used by SDP to generate the schemes. A zero consumption level of $0 was used, with 0% phase out with increasing income.
+</p>
+
+<p>
+Withdrawal schemes: Withdrawal are performed annually at the start of the year. 1/life has a maximum withdrawal percentage of 50%.
+</p>
+
+<p>
+Asset classes and returns: U.S. stocks and 10 year Treasuries as supplied by Shiller (Irrational Exuberance, 2005 updated) but adjusted so the real return on stocks is 3.1% and bonds 0.1% before expenses. Management expenses are 0.1%.
+</p>
+
+<p>
+Evaluation: For each retirement number value 100,000 returns sequences were generated by selecting returns at random from the period 1927-2012. In evaluating each sequence we compute the full range of longevity possibilities.
+</p>
+
+<p>
+Platform: An internal command line version of <a href="{% url home %}">AACalc.com</a> was used to generate and validate the strategies.
+</p>
+
+<h2>Acknowledgements</h2>
+
+Joe Tomlinson provided many helpful comments.
+
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Please Wait{% endblock %}
+
+{% block head %}
+<meta http-equiv="refresh" content="0;URL='{% url scenario_run scenario_id %}'" />
+{% endblock %}
+
+{% block content %}
+
+<h1>Please Wait</h1>
+
+<p>
+Do not refresh this page.
+</p>
+
+<p>
+We are working on your request and we will provide your results as
+soon as possible.
+</p>
+
+<p>
+Requests typically take 60-90 seconds to process.
+</p>
+
+{% endblock %}

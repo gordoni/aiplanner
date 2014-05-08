@@ -1,0 +1,14 @@
+#!/usr/bin/python
+
+from os import environ
+from sys import path
+
+project = '/home/ubuntu/oaa/project'
+if project not in path:
+    path.append(project)
+
+environ['DJANGO_SETTINGS_MODULE'] = 'settings'
+
+from project.oaa.views.utils import run_gen_sample
+
+run_gen_sample();
