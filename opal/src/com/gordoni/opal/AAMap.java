@@ -376,13 +376,13 @@ class AAMap
 						{
 						        // Full investment portfolio amount subject to contrib choice.
 						        // Not so for pre-retirement, only amount beyond RCR.
-						        spend_annual = p + income;
+						        spend_annual = p_prev_exc_neg + income;
 						}
 						else
 						{
 						        if (!retired)
 							{
-							        spend_retirement = config.vw_strategy.equals("amount") ? config.withdrawal : income + config.vw_percentage * p;
+							        spend_retirement = config.vw_strategy.equals("amount") ? config.withdrawal : income + config.vw_percentage * p_prev_exc_neg;
 								retired = true;
 							}
 						        spend_annual = spend_retirement;
