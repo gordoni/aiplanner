@@ -1,0 +1,11 @@
+#!/bin/sh
+
+mkdir -p bin
+javac -d bin src/com/gordoni/opal/*.java || exit 1
+jar cfe opal.jar com.gordoni.opal.OPAL -C bin . || exit 1
+
+mkdir -p ~/oaa.data/server
+sudo service opal stop
+tar cf - opal.jar real_yield_curve.R mvo.R plot plot.R data | (cd ~/oaa.data/server; tar xf -)
+sudo service opal start
+sudo service apache2 reload

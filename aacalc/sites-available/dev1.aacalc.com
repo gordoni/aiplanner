@@ -5,7 +5,7 @@ ServerName dev1.aacalc.com
 
 	ServerName dev1.aacalc.com
 
-	WSGIScriptAlias / /home/ubuntu/oaa/django.wsgi
+	WSGIScriptAlias / /home/ubuntu/oaa/aacalc/django.wsgi
 
         Alias /static/ /home/ubuntu/oaa.data/static/
 

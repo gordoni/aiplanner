@@ -12,7 +12,7 @@ NameVirtualHost *:443
         SSLCertificateKeyFile   /home/ubuntu/oaa.data/www.aacalc.com.key
         SSLCertificateChainFile /home/ubuntu/oaa.data/gd_bundle.crt
 
-	WSGIScriptAlias / /home/ubuntu/oaa/django.wsgi
+	WSGIScriptAlias / /home/ubuntu/oaa/aacalc/django.wsgi
 
         Alias /static/ /home/ubuntu/oaa.data/static/
 
