@@ -550,38 +550,56 @@ public class BaseScenario
 	    // dump_aa_linear_slice(map, returns, new double[]{0, 10000}, "10000");
         }
 
-        private double get_path_value(PathElement elem, String what)
+        private double get_path_value(List<PathElement> path, int i, String what, boolean change)
         {
-		if (what.equals("p"))
-			return elem.p;
-		else if (what.equals("consume"))
-			return elem.consume_annual;
-		else if (what.equals("inherit"))
-			return elem.p;
+	        if (change)
+		{
+		        if (i > 0)
+			{
+			        double prev_value = get_path_value(path, i - 1, what, false);
+				double curr_value = get_path_value(path, i, what, false);
+				if (prev_value == 0 && curr_value == 0)
+				        return 0;
+				else
+			                return curr_value / prev_value - 1;
+			}
+			else
+			        return 0;
+		}
 		else
-			assert(false);
-		return Double.NaN;
+		{
+		        PathElement elem = path.get(i);
+			if (what.equals("p"))
+				return elem.p;
+			else if (what.equals("consume"))
+				return elem.consume_annual;
+			else if (what.equals("inherit"))
+				return elem.p;
+			else
+				assert(false);
+			return Double.NaN;
+		}
 	}
 
-	private double[] distribution_bucketize(List<List<PathElement>> paths, String what, double max)
+        private double[] distribution_bucketize(List<List<PathElement>> paths, String what, boolean change, double min, double max)
 	{
 		double[] counts = new double[config.distribution_steps + 1];
 		for (int pi = 0; pi < config.max_distrib_paths; pi++)
 		{
 		        List<PathElement> path = paths.get(pi);
 			int period = 0;
-			for (PathElement elem : path)
+			for (int i = 0; i < path.size(); i++)
 			{
 			        if (period >= vital_stats.dying.length)
 				        continue; // Ignore terminal element.
-				double value = get_path_value(elem, what);
+				double value = get_path_value(path, i, what, change);
 				double weight;
 				if (what.equals("inherit"))
 				        weight = vital_stats.dying[period];
 				else
 				        weight = (vital_stats.alive[period] + vital_stats.alive[period + 1]) / 2;
-				int bucket = (int) (value / max * config.distribution_steps);
-				if (bucket < counts.length)
+				int bucket = (int) ((value - min) / (max - min) * config.distribution_steps);
+				if (0 <= bucket && bucket < counts.length)
 				        counts[bucket] += weight;
 				period++;
 			}
@@ -590,16 +608,28 @@ public class BaseScenario
 		return counts;
 	}
 
-        private void dump_distribution(List<List<PathElement>> paths, String what) throws IOException
+        private void dump_distribution(List<List<PathElement>> paths, String what, boolean change) throws IOException
         {
-		double max = 0;
+		double min = Double.POSITIVE_INFINITY;
+		double max = Double.NEGATIVE_INFINITY;
 		for (int pi = 0; pi < config.max_distrib_paths; pi++)
 		{
 		        List<PathElement> path = paths.get(pi);
-			for (PathElement elem : path)
-				if (get_path_value(elem, what) > max)
-					max = get_path_value(elem, what);
+			for (int i = 0; i < path.size(); i++)
+			{
+			        double value = get_path_value(path, i, what, change);
+			        if (value < min)
+				        min = value;
+			        if (value > max)
+				        max = value;
+			}
 		}
+		// Guard buckets that are zero so plots look nice.
+		double bucket_size = (max - min) / config.distribution_steps;
+		min -= bucket_size;
+		max += bucket_size;
+		if (!change)
+		        min = 0;
 
 		double[] counts;
 
@@ -607,37 +637,55 @@ public class BaseScenario
 		int bucket;
 		while (true)
 		{
-			counts = distribution_bucketize(paths, what, max);
-			if (max == 0)
+		        counts = distribution_bucketize(paths, what, change, min, max);
+			if (min == max)
 			        break;
 			double max_count = 0;
 			for (bucket = 0; bucket < counts.length; bucket++)
 				if (counts[bucket] > max_count)
 					max_count = counts[bucket];
+			for (bucket = 0; bucket < counts.length; bucket++)
+				if (counts[bucket] >= config.distribution_significant * max_count)
+					break;
+			bucket_size = (max - min) / config.distribution_steps;
+			boolean rescale = false;
+			double old_min = min;
+			if (change && bucket > 1)
+			{
+			        rescale = true;
+			        min = old_min + (bucket - 1) * bucket_size;
+			}
 			for (bucket = counts.length - 1; bucket > 0; bucket--)
 				if (counts[bucket] >= config.distribution_significant * max_count)
 					break;
-			if (bucket >= counts.length - 2)
+			if (bucket < counts.length - 3)
+			{
+			        rescale = true;
+				max = old_min + (bucket + 2) * bucket_size;
+			}
+			if (!rescale)
 			        break;
-			max = (bucket + 1) * max / config.distribution_steps;
 		}
 
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-distrib-" + what.toString().toLowerCase() + ".csv"));
+		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-distrib-" + (change ? "change-" : "") + what + ".csv"));
 		for (bucket = 0; bucket < counts.length; bucket++)
-		        out.println(((bucket + 0.5) * max / config.distribution_steps) + "," + counts[bucket]);
+		        out.println((min + (bucket + 0.5) * (max - min) / config.distribution_steps) + "," + counts[bucket]);
 		out.close();
         }
 
         private void dump_distributions(List<List<PathElement>> paths) throws IOException
         {
-	        dump_distribution(paths, "p");
-	        dump_distribution(paths, "consume");
-	        dump_distribution(paths, "inherit");
+	        dump_distribution(paths, "p", false);
+	        dump_distribution(paths, "consume", false);
+	        dump_distribution(paths, "inherit", false);
+
+	        dump_distribution(paths, "p", true);
+	        dump_distribution(paths, "consume", true);
 	}
 
-        private void dump_pct_path(List<List<PathElement>> paths, String what, double pct) throws IOException
+        private void dump_pct_path(List<List<PathElement>> paths, String what, boolean change) throws IOException
         {
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-" + what + "-" + pct + ".csv"));
+	        PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-pct-" + (change ? "change-" : "") + what + ".csv"));
 
 	        int pathlen = paths.get(0).size();
 		double age_period = config.start_age * config.generate_time_periods;
@@ -647,11 +695,14 @@ public class BaseScenario
 		        for (int j = 0; j < config.max_pct_paths; j++)
 			{
 			        List<PathElement> path = paths.get(j);
-			        vals[j] = get_path_value(path.get(i), what);
+			        vals[j] = get_path_value(path, i, what, change);
 			}
 			Arrays.sort(vals);
-			double val = vals[(int) (pct * vals.length)];
-			out.println(f2f.format(age_period / config.generate_time_periods) + "," + f2f.format(val));
+			double pctl = 0.05 / 2;
+			double low = vals[(int) (pctl * vals.length)];
+			double median = vals[(int) (0.5 * vals.length)];
+			double high = vals[(int) ((1 - pctl) * vals.length)];
+			out.println(f2f.format(age_period / config.generate_time_periods) + "," + f2f.format(median) + "," + f2f.format(low) + "," + f2f.format(high));
 			age_period++;
 		}
 		out.close();
@@ -659,9 +710,11 @@ public class BaseScenario
 
         private void dump_pct_paths(List<List<PathElement>> paths) throws IOException
         {
-	        dump_pct_path(paths, "consume", 0.1);
-	        dump_pct_path(paths, "consume", 0.5);
-	        dump_pct_path(paths, "consume", 0.9);
+	    dump_pct_path(paths, "p", false);
+	    dump_pct_path(paths, "consume", false);
+
+	    dump_pct_path(paths, "p", true);
+	    dump_pct_path(paths, "consume", true);
 	}
 
 	// Dump the paths taken.

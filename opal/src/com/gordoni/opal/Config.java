@@ -194,13 +194,13 @@ public class Config
 
 	public double[] goal_range = { 0.9, 0.99, 0.999, 0.9999, 1 }; // Used when dumping data to produce percentile success graphs.
 
-        public int distribution_steps = 50; // Number of bucket steps for probability distribution outputs.
+        public int distribution_steps = 20; // Number of bucket steps for probability distribution outputs.
         public double distribution_significant = 0.02; // Lowest relative probability density to map.
 
         // All max_path values must be equal to or below num_sequences_validate.
         public int max_jpmorgan_paths = 100000; // Maximum number of paths to use for the jpmorgan metric.
-	public int max_distrib_paths = 1000; // Maximum number of paths to use for the probability distribution output files.
-	public int max_pct_paths = 1000; // Maximum number of paths to use for the percentile output files.
+	public int max_distrib_paths = 10000; // Maximum number of paths to use for the probability distribution output files.
+	public int max_pct_paths = 10000; // Maximum number of paths to use for the percentile output files.
 	public int max_delta_paths = 100; // Maximum number of paths to use for the delta paths output files.
 	public int max_display_paths = 10; // Maximum number of paths to use for the paths output file.
 
