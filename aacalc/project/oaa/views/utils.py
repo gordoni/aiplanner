@@ -490,10 +490,13 @@ set output "opal-utility-slope-inherit.png"
 plot "opal-utility-inherit.csv" using 1:3 with lines notitle
 
 unset format
+''')
 
+    if s['vw'] and not s['retirement_number']:
+        f.write('''
 set xrange [0:*]
 set format x "%.1s%c"
-set ylabel "probabiity density"
+set ylabel "probability density"
 set yrange [0:*]
 unset ytics
 
@@ -511,7 +514,9 @@ plot "opal-distrib-change-consume.csv" using ($1*100):2:(0.1) smooth acsplines w
   # Splines needed because results are very noisy due to use of limited historical data.
 
 set ytics
+''')
 
+    f.write('''
 set xlabel "year"
 set xrange [''' + str(now_year) + ':' + str(now_year + years) + ''']
 set format x "%.0f"
@@ -592,7 +597,10 @@ set yrange [0:*]
 set format y "%.1s%c"
 set output "opal-paths-consume.png"
 plot "opal-paths.csv" using (''' + str(now_year - age) + ''' + $1):3 with lines notitle
+''')
 
+        if s['vw']:
+            f.write('''
 set output "opal-pct-consume.png"
 plot "opal-pct-consume.csv" using (''' + str(now_year - age) + ''' + $1):2:3:4 with errorlines notitle
 ''')
@@ -631,13 +639,13 @@ def run_opal(dirname, s):
         raise OPALServerOverloadedError('OPAL server is overloaded.')
     except HTTPException:
         raise OPALServerError('OPAL server HTTP error.')
+    body = response.read()
     if response.status != 200:
-        raise OPALServerError('OPAL server - ' + response.reason)
+        raise OPALServerError('OPAL server - ' + response.reason + '\n' + body)
     msg_str = \
         'MIME-Version: 1.0\r\n' + \
         'Content-Type: ' + response.getheader('Content-Type') + '\r\n' + \
-        '\r\n' + \
-        response.read()
+        '\r\n' + body
     msg = message_from_string(msg_str)
     for part in msg.walk():
         if part.get_content_maintype() == 'multipart':
