@@ -173,6 +173,7 @@ public class OPALServer implements Runnable
 				pout.print(
 					"HTTP/1.1 500 " + e + "\r\n" +
 					"Connection: close\r\n\r\n");
+				e.printStackTrace(pout);
 			}
 			finally
 			{
