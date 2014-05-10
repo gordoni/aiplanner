@@ -65,7 +65,7 @@ Simulated risk: <a title="Monte Carlo simulation. The lifetime certainty equival
 <div style="margin-left: 5em;">
 Chance of failure (any consumption of {{ data.floor }} or less): {{ data.failure_chance }}
 <br />
-If failure occurs: {{ data.failure_length }} years average failure duration
+If failure occurs: {{ data.failure_length }} years weighted failure duration
 <br />
 <font size="-1">
 Lifetime certainty equivalence amount:
@@ -79,7 +79,7 @@ Chance of failure (any consumption of {{ data.floor }} or less):
 <img src="{{ dirurl }}/opal-rn-probability.png">
 <br />
 <br />
-Average failure duration if failure occurs:
+Weighted failure duration if failure occurs:
 <br />
 <img src="{{ dirurl }}/opal-rn-length.png">
 <br />
@@ -103,7 +103,7 @@ Simulated risk: <a title="Monte Carlo simulation. The lifetime certainty equival
 <div style="margin-left: 5em;">
 Chance of failure (any consumption of {{ data.floor }} or less): {{ data.failure_chance }}
 <br />
-If failure occurs: {{ data.failure_length }} years average failure duration
+If failure occurs: {{ data.failure_length }} years weighted failure duration
 <br />
 <font size="-1">
 Lifetime certainty equivalence amount: {{ data.metric_withdrawal }} (this is not the amount you can safely withdraw)
@@ -118,6 +118,40 @@ what might happen if expected market returns are diminished or equity
 volatility increases in the future.
 </p>
 {% if data.vw %}
+{% if not data.retirement_number %}
+Consumption:
+<br />
+<font size="-1">
+Each year there is an estimated 95 percent change recommended
+consumption will lie within the indicated region:
+</font>
+<br />
+<img src="{{ dirurl }}/opal-pct-consume.png">
+<br />
+<font size="-1">
+Expected distribution of consumption:
+</font>
+<br />
+<img src="{{ dirurl }}/opal-distrib-consume.png">
+<br />
+<font size="-1">
+Annual change in consumption:
+</font>
+<br />
+<img src="{{ dirurl }}/opal-distrib-change-consume.png">
+<br />
+<br />
+{% endif %}
+Investment portfolio:
+<br />
+<font size="-1">
+Each year there is an estimated 95 percent change the
+investment portfolio size will lie within the indicated region:
+</font>
+<br />
+<img src="{{ dirurl }}/opal-pct-p.png">
+<br />
+<br />
 Consumption map:
 <br />
 <font size="-1">
@@ -183,7 +217,7 @@ portfolio is unlikely to need to support withdrawals then.
 <img src="{{ dirurl }}/opal-paths-consume.png">
 <br />
 <font size="-1">
-Investment portfolio paths:
+Investment portfolio size paths:
 </font>
 <br />
 <img src="{{ dirurl }}/opal-paths-p.png">

@@ -491,8 +491,30 @@ plot "opal-utility-inherit.csv" using 1:3 with lines notitle
 
 unset format
 
+set xrange [0:*]
+set format x "%.1s%c"
+set ylabel "probabiity density"
+set yrange [0:*]
+unset ytics
+
+set xlabel "annual consumption ($)"
+set output "opal-distrib-consume.png"
+plot "opal-distrib-consume.csv" using 1:2:(0.1) smooth acsplines with lines notitle
+  # Spline makes look nicer due to limited number of buckets used.
+
+set xrange [*:*]
+set format x "%.0f%%"
+
+set xlabel "change in annual consumption"
+set output "opal-distrib-change-consume.png"
+plot "opal-distrib-change-consume.csv" using ($1*100):2:(0.1) smooth acsplines with lines notitle
+  # Splines needed because results are very noisy due to use of limited historical data.
+
+set ytics
+
 set xlabel "year"
 set xrange [''' + str(now_year) + ':' + str(now_year + years) + ''']
+set format x "%.0f"
 
 set ylabel "portfolio size ($)"
 set format y "%.1s%c"
@@ -561,13 +583,18 @@ plot "opal-number.csv" using 1:4 with lines notitle
         f.write('''
 set output "opal-paths-p.png"
 plot "opal-paths.csv" using (''' + str(now_year - age) + ''' + $1):2 with lines notitle
-''')
-        f.write('''
+
+set output "opal-pct-p.png"
+plot "opal-pct-p.csv" using (''' + str(now_year - age) + ''' + $1):2:3:4 with errorlines notitle
+
 set ylabel "consumption ($)"
 set yrange [0:*]
 set format y "%.1s%c"
 set output "opal-paths-consume.png"
 plot "opal-paths.csv" using (''' + str(now_year - age) + ''' + $1):3 with lines notitle
+
+set output "opal-pct-consume.png"
+plot "opal-pct-consume.csv" using (''' + str(now_year - age) + ''' + $1):2:3:4 with errorlines notitle
 ''')
 
     f.close()
