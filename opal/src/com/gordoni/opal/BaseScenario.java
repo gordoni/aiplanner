@@ -631,6 +631,8 @@ public class BaseScenario
 		double bucket_size = (max - min) / config.distribution_steps;
 		min -= bucket_size;
 		max += bucket_size;
+		if (bucket_size == 0)
+		        max += 1; // Prevent multiple buckets at same location.
 		if (!change)
 		        min = 0;
 
@@ -641,8 +643,16 @@ public class BaseScenario
 		while (true)
 		{
 		        counts = distribution_bucketize(paths, retire_period, what, change, min, max);
-			if (min == max)
-			        break;
+			if (change)
+			{
+			        if (max - min < 1e-3)
+				        break;
+			}
+			else
+			{
+			        if (max - min < 1e-3 * config.withdrawal)
+				        break;
+			}
 			double max_count = 0;
 			for (bucket = 0; bucket < counts.length; bucket++)
 				if (counts[bucket] > max_count)
