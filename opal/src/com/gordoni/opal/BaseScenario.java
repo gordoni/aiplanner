@@ -636,23 +636,13 @@ public class BaseScenario
 		if (!change)
 		        min = 0;
 
-		double[] counts;
+		double[] counts = null;
 
 		// Some distributions have very long right tails. Zoom in so we can see the important part.
 		int bucket;
-		while (true)
+		for (int i = 0; i < 10; i++)
 		{
 		        counts = distribution_bucketize(paths, retire_period, what, change, min, max);
-			if (change)
-			{
-			        if (max - min < 1e-3)
-				        break;
-			}
-			else
-			{
-			        if (max - min < 1e-3 * config.withdrawal)
-				        break;
-			}
 			double max_count = 0;
 			for (bucket = 0; bucket < counts.length; bucket++)
 				if (counts[bucket] > max_count)
