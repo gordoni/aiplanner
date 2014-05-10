@@ -581,14 +581,14 @@ public class BaseScenario
 		}
 	}
 
-        private double[] distribution_bucketize(List<List<PathElement>> paths, String what, boolean change, double min, double max)
+        private double[] distribution_bucketize(List<List<PathElement>> paths, int start, String what, boolean change, double min, double max)
 	{
 		double[] counts = new double[config.distribution_steps + 1];
 		for (int pi = 0; pi < config.max_distrib_paths; pi++)
 		{
 		        List<PathElement> path = paths.get(pi);
 			int period = 0;
-			for (int i = 0; i < path.size(); i++)
+			for (int i = start; i < path.size(); i++)
 			{
 			        if (period >= vital_stats.dying.length)
 				        continue; // Ignore terminal element.
@@ -608,14 +608,17 @@ public class BaseScenario
 		return counts;
 	}
 
-        private void dump_distribution(List<List<PathElement>> paths, String what, boolean change) throws IOException
+        private void dump_distribution(List<List<PathElement>> paths, String what, boolean change, boolean retire_only) throws IOException
         {
 		double min = Double.POSITIVE_INFINITY;
 		double max = Double.NEGATIVE_INFINITY;
+		int retire_period = (int) Math.round((config.retirement_age - config.start_age) * config.validate_time_periods);
+		if (retire_period < 0)
+		        retire_period = 0;
 		for (int pi = 0; pi < config.max_distrib_paths; pi++)
 		{
 		        List<PathElement> path = paths.get(pi);
-			for (int i = 0; i < path.size(); i++)
+			for (int i = retire_period; i < path.size(); i++)
 			{
 			        double value = get_path_value(path, i, what, change);
 			        if (value < min)
@@ -637,7 +640,7 @@ public class BaseScenario
 		int bucket;
 		while (true)
 		{
-		        counts = distribution_bucketize(paths, what, change, min, max);
+		        counts = distribution_bucketize(paths, retire_period, what, change, min, max);
 			if (min == max)
 			        break;
 			double max_count = 0;
@@ -675,12 +678,12 @@ public class BaseScenario
 
         private void dump_distributions(List<List<PathElement>> paths) throws IOException
         {
-	        dump_distribution(paths, "p", false);
-	        dump_distribution(paths, "consume", false);
-	        dump_distribution(paths, "inherit", false);
+	        dump_distribution(paths, "p", false, false);
+		dump_distribution(paths, "consume", false, true);
+	        dump_distribution(paths, "inherit", false, false);
 
-	        dump_distribution(paths, "p", true);
-	        dump_distribution(paths, "consume", true);
+	        dump_distribution(paths, "p", true, false);
+	        dump_distribution(paths, "consume", true, true);
 	}
 
         private void dump_pct_path(List<List<PathElement>> paths, String what, boolean change) throws IOException
