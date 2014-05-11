@@ -259,7 +259,8 @@ class OPALServerOverloadedError(OPALServerError):
     pass
 
 def write_scenario(dirname, s):
-    gnuplot_max_portfolio = min(max(100 * float(s['withdrawal']), start_tp(s)), 1000 * float(s['withdrawal']))
+    gnuplot_max_portfolio = min(max(50 * float(s['withdrawal']), 2 * start_tp(s)), 1000 * float(s['withdrawal']))
+    guaranteed_max_portfolio = 1000 * float(s['withdrawal'])
     retirement_age = dob_to_age(s['dob']) + max(0, s['retirement_year'] - datetime.utcnow().timetuple().tm_year)
     # Caution: Config.java maintains values from previous runs, so all modified values must be updated each time.
     s_only = {
@@ -270,15 +271,14 @@ def write_scenario(dirname, s):
         'scaling_factor': scaling_factor,
         'search' : 'hill',
         'aa_steps': aa_steps,
-        'pf_guaranteed': 1000 * float(s['withdrawal']),
+        'pf_guaranteed': guaranteed_max_portfolio,
           # Compute map using portfolio size up to 1000 times withdrawal.
-        'pf_validate': 1000 * float(s['withdrawal']),
+        'pf_validate': guaranteed_max_portfolio,
           # Now that we skip dump_load we compute metrics on the same map (we used to cut off at 60 times withdrawal).
         'pf_retirement_number': 200 * max(float(s['floor']), float(s['withdrawal'])),
             # Worst case seen ages 70/50, risk tolerance 5%, ret_equity=ret_bonds=0, floor=20k, withdrawal=25k.
         'pf_gnuplot': gnuplot_max_portfolio,
           # And we record the map 100-1000 times withdrawal.
-        'pf_fail': -1 * float(s['withdrawal']),
         'asset_classes': asset_class_symbols(s),
         'asset_class_names': asset_class_names(s),
         'ef': 'mvo',
@@ -346,8 +346,7 @@ def write_gnuplot(dirname, s):
         age += years_to_retire
         youngest += years_to_retire
     years = max(0, 100 - youngest)
-    gnuplot_portfolio = min(max(40 * float(s['withdrawal']), start_tp(s)), 1000 * float(s['withdrawal']))
-    gnuplot_max_portfolio = min(max(100 * float(s['withdrawal']), start_tp(s)), 1000 * float(s['withdrawal']))
+    gnuplot_max_portfolio = min(max(50 * float(s['withdrawal']), 2 * start_tp(s)), 1000 * float(s['withdrawal']))
 
     f = open(dirname + '/plot.gnuplot', mode='w')
 
@@ -417,7 +416,7 @@ set format x "%.0f"
 
 set ylabel "portfolio size ($)"
 set format y "%.1s%c"
-set yrange [0:''' + str(gnuplot_portfolio) + ''']
+set yrange [0:''' + str(gnuplot_max_portfolio) + ''']
 
 set cblabel "utility"
 set cbrange [''' + str(- 20 * s['withdrawal']) + ''':0]
@@ -437,7 +436,7 @@ set palette defined (0.0 "red", 25.0 "light-red", 50.0 "orange", 75.0 "light-gre
 set output "opal-consume.png"
 plot "opal-linear.csv" using (''' + str(now_year - age) + ''' + $1):2:7 with image notitle
 
-set yrange [0:''' + str(gnuplot_portfolio) + ''']
+set yrange [0:''' + str(gnuplot_max_portfolio) + ''']
 ''')
 
     symbols = asset_class_symbols(s)
