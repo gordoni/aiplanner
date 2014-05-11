@@ -175,15 +175,26 @@ public class Returns implements Cloneable
 			ff_sh_returns = adjust_returns(ff_sh_returns, equity_adjust * adjust_sh * adjust_management_expense * adjust_all, adjust_equity_vol);
 		}
 
-		List<Double> reit_returns = null;
-		if (config.asset_classes.contains("reits"))
+		List<Double> reits_equity_returns = null;
+		if (config.asset_classes.contains("equity_reits"))
 	        {
 		        assert(time_periods == 1);
 		        int offset = (int) Math.round((start_year - hist.reit_initial) * time_periods);
 			assert(offset >= 0);
-			assert(offset + count <= hist.reit.size());
-			reit_returns = hist.reit.subList(offset, offset + count);
-			reit_returns = adjust_returns(reit_returns, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+			assert(offset + count <= hist.reits_equity.size());
+			reits_equity_returns = hist.reits_equity.subList(offset, offset + count);
+			reits_equity_returns = adjust_returns(reits_equity_returns, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+		}
+
+		List<Double> reits_mortgage_returns = null;
+		if (config.asset_classes.contains("mortgage_reits"))
+	        {
+		        assert(time_periods == 1);
+		        int offset = (int) Math.round((start_year - hist.reit_initial) * time_periods);
+			assert(offset >= 0);
+			assert(offset + count <= hist.reits_mortgage.size());
+			reits_mortgage_returns = hist.reits_mortgage.subList(offset, offset + count);
+			reits_mortgage_returns = adjust_returns(reits_mortgage_returns, fixed_income_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
 		}
 
 		List<Double> gs1_returns = null;
@@ -341,10 +352,15 @@ public class Returns implements Cloneable
 				rets = ff_sh_returns;
 				divf = config.dividend_fract_equity;
 			}
-			else if ("reits".equals(asset_class))
+			else if ("equity_reits".equals(asset_class))
 			{
-				rets = reit_returns;
+				rets = reits_equity_returns;
 				divf = config.dividend_fract_equity;
+			}
+			else if ("mortgage_reits".equals(asset_class))
+			{
+				rets = reits_mortgage_returns;
+				divf = config.dividend_fract_fixed_income;
 			}
 			else if ("gs1".equals(asset_class))
 			{

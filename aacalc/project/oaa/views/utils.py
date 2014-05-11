@@ -64,6 +64,8 @@ default_params = {
     'class_ff_sl': False,
     'class_ff_sm': False,
     'class_ff_sh': False,
+    'class_reits_e': False,
+    'class_reits_m': False,
     'class_t1mo': False,
     'class_t1yr': False,
     'class_t10yr': False,
