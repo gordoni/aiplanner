@@ -3,7 +3,7 @@
 from os import environ
 from sys import path
 
-project = '/home/ubuntu/oaa/project'
+project = '/home/ubuntu/oaa/aacalc/project'
 if project not in path:
     path.append(project)
 

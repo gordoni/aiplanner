@@ -1,26 +1,14 @@
 {% extends "base.html" %}
 
 {% block title %}
-{% if ac_form %}
-Create Account
-{% else %}
-{% if sc_form %}
-{% if not data.mode %}
-Create Scenario
-{% endif %}
-{% if data.mode == 'aa' %}
+{% if mode == 'aa' %}
 Asset Allocation Calculator
 {% endif %}
-{% if data.mode == 'number' %}
+{% if mode == 'number' %}
 Retirement Number Calculator
 {% endif %}
-{% else %}
-{% if data.readonly %}
+{% if mode == 'edit' %}
 Edit Scenario
-{% else %}
-{{ data.name }} - Edit
-{% endif %}
-{% endif %}
 {% endif %}
 {% endblock %}
 
@@ -39,21 +27,14 @@ $(document).ready(function() {
 {% endblock %}
 
 {% block content %}
-{% if ac_form %}
-<h1>Create Account</h1>
-{% else %}
-{% if sc_form %}
-{% if not data.mode %}
-<h1>Create Scenario</h1>
-{% endif %}
-{% if data.mode == 'aa' %}
+{% if mode == 'aa' %}
 <h1>Asset Allocation Calculator</h1>
 <img style="float: right;" width=400 height=200 src="/static/example-stocks.png">
 We will compute the asset allocation for you to use given your
 financial position.
 <br />
 <br />
-Potentially save $120,000 or more compared to other common asset allocation schemes<a title="Savings of $190,000, $130,000, or $120,000 in today's dollars with an equivalent level of expected well being when compared to age in bonds, age minus 10 in bonds, or a simplified target date scheme for a newly retired couple, both age 65, with a $1,500,000 taxable portfolio, a 20% dividend and capital gain tax rate taxed using HIFO, expenses of $40,000 per year, a stock/bond portfolio, not planning on leaving an inheritance, and the default market expectations and risk tolerance. Savings amounts are rounded down.">. <img src="/static/images/Information-icon.png" alt="[?]"></a>
+Potentially save $170,000 or more compared to other common asset allocation schemes<a title="Savings of $170,000, $110,000, or $100,000 in today's dollars with an equivalent level of expected well being when compared to age in bonds, age minus 10 in bonds, or a simplified target date scheme for a newly retired couple, both age 65, with a $1,500,000 taxable portfolio, a 20% dividend and capital gain tax rate taxed using HIFO, expenses of $40,000 per year, a stock/bond portfolio, not planning on leaving an inheritance, and the default market expectations and risk tolerance. Savings amounts are rounded down.">. <img src="/static/images/Information-icon.png" alt="[?]"></a>
 <br />
 <br />
 <div align="center">
@@ -63,29 +44,15 @@ Potentially save $120,000 or more compared to other common asset allocation sche
 </div>
 <br />
 {% endif %}
-{% if data.mode == 'number' %}
+{% if mode == 'number' %}
 <h1>Retirement Number Calculator</h1>
 We will compute the financial position you need to reach by
 retirement.
 <br />
 <br />
 {% endif %}
-{% else %}
-{% if data.readonly %}
+{% if mode == 'edit' %}
 <h1>Edit Scenario</h1>
-{% else %}
-<h1>{{ data.name }}</h1>
-{% endif %}
-{% endif %}
-{% endif %}
-
-{% if se_form and not sc_form %}
-{% if data.id and not data.readonly %}
-<form action="{% url scenario_delete data.id %}" method="post">
-{% csrf_token %}
-<input class="button" type="submit" value="Delete this scenario" />
-</form>
-{% endif %}
 {% endif %}
 
 <form  method="post">
@@ -98,13 +65,6 @@ Please correct the errors in red below:
 {{ se_form.non_field_errors }}
 {% endif %}
 
-{% if sn_form %}
-{{ sn_form.non_field_errors }}
-Scenario name: {{ sn_form.name }}
-<font size="-1">E.g. "John Smith", or "The Smith Family".</font>
-{{ sn_form.name.errors }}
-<br />
-{% endif %}
 <h2>Life expectancy</h2>
 Sex: {{ se_form.sex }}
 Age or date of birth (mm/dd/yyyy): {{ se_form.dob }}
@@ -169,11 +129,11 @@ Expected annual fixed annuities payout: {{ se_form.defined_benefit_fixed_annuiti
 Payments assumed to start at retirement. COLA (cost of living adjustment) assumed. No taxes get taken out.
 </font>
 </div>
-{% if data.mode == 'number' %}
+{% if mode == 'number' %}
 {{ se_form.retirement_number }}
 {% else %}
 <br />
-{% if not data.mode %}
+{% if mode == 'edit' %}
 Compute my number: {{ se_form.retirement_number }}
 {{ se_form.retirement_number.errors }}
 <br />
@@ -628,37 +588,6 @@ multiplied by desired consumption amount:
 </table>
 </div>
 </div>
-{% endif %}
-
-{% if ac_form %}
-{% if se_form %}
-<h2>Create an account</h2>
-{% endif %}
-Signing up isn't necessary for individual users of AACalc.  By signing
-up financial advisors and sophisticated users can gain access to
-advanced AACalc features:
-<ul>
-<li> a separate scenario for each client </li>
-<li> higher resolution initial reported asset allocations </li>
-</ul>
-Signing up is currently free of charge.
-Simply create an account.
-<br />
-<br />
-{{ ac_form.non_field_errors }}
-<table class="account_table">
-<tr> <td> Username: </td> <td> {{ ac_form.username }} </td> </tr>
-<tr> <td colspan="2"> {{ ac_form.username.errors }} </td> </tr>
-<tr> <td> Password: </td> <td> {{ ac_form.password }} </td> </tr>
-<tr> <td colspan="2"> {{ ac_form.password.errors }} </td> </tr>
-<tr> <td> Re-enter password: </td> <td> {{ ac_form.password2 }} </td> </tr>
-<tr> <td colspan="2"> {{ ac_form.password2.errors }} </td> </tr>
-<tr> <td> Email address: </td> <td> {{ ac_form.email }} </td> </tr>
-<tr> <td colspan="2"> {{ ac_form.email.errors }} </td> </tr>
-</table>
-<font size="-1">
-An email address if entered will be used to send you an annual asset allocation rebalancing reminder email, in the event you forget your password, and other operational purposes as specified in the <a href="{% url privacy_policy %}">Privacy Policy</a>.
-</font>
 {% endif %}
 
 <br />

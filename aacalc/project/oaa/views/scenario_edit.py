@@ -1,68 +1,81 @@
 from datetime import datetime
 from decimal import Decimal
-from django.contrib.auth.decorators import login_required
+from django.forms.forms import NON_FIELD_ERRORS
 from django.shortcuts import render
-from json import loads
 from time import strptime
 
-from oaa.forms import ScenarioEditForm
-from oaa.models import Scenario
-from oaa.views.utils import decrypt, default_params, dob_to_age, do_scenario_edit
+from oaa.forms import ScenarioAaForm, ScenarioNumberForm, ScenarioEditForm
+from oaa.views.utils import default_params, dob_to_age
 
-def dob_to_birth_year(dob_str_or_age):
-    if isinstance(dob_str_or_age, int):
-        now = datetime.utcnow().timetuple()
-        return now.tm_year - dob_str_or_age
+def init_se_form(mode, s):
+    if mode == 'aa':
+        return ScenarioAaForm(s)
+    elif mode == 'number':
+        return ScenarioNumberForm(s)
     else:
-        return strptime(dob_str_or_age, '%Y-%m-%d').tm_year
+        return ScenarioEditForm(s)
 
-@login_required
-def scenario_edit(request, scenario_id):
+def do_scenario_edit(request, form):
+    scenario_dict = request.session.get('scenario', {})
+    data = {}
+    for field, value in default_params.items():
+        if field in form.cleaned_data:
+            val = form.cleaned_data[field]
+            if isinstance(val, Decimal):
+                val = str(val)  # JSON can't handle Decimals.
+            data[field] = val
+        elif field in scenario_dict:
+            data[field] = scenario_dict[field]
+        else:
+            if isinstance(value, Decimal):
+                value = str(value)
+            data[field] = value
+    request.session['scenario'] = data
+    return data
 
-    user = request.user
-    account = user.account
-    try:
-        scenario = Scenario.objects.get(id=int(scenario_id), account=account)
-    except Scenario.DoesNotExist:
-        return render(request, 'notice.html', { 'msg': 'Scenario does not exist.' })
-    scenario_dict = decrypt(scenario.data)
+def scenario_edit(request, mode):
+
+    cookies_ok = True
 
     if request.method == 'POST':
-        se_form = ScenarioEditForm(account.temp_user, request.POST)
-        if se_form.is_valid():
-            do_scenario_edit(request, se_form, int(scenario_id))
+        cookies_ok = request.session.test_cookie_worked()
+        se_form = init_se_form(mode, request.POST)
+        if se_form.is_valid() and cookies_ok:
+            request.session.delete_test_cookie()
+            do_scenario_edit(request, se_form)
             return render(request, 'scenario_wait.html', {
                 'suppress_navigation': True,
-                'scenario_id': scenario_id,
             })
+        if not cookies_ok:
+            if not NON_FIELD_ERRORS in se_form.errors:
+                se_form.errors[NON_FIELD_ERRORS] = []
+            se_form.errors[NON_FIELD_ERRORS].append("Cookies need to be enabled to use this site.")
         errors_present = True
     else:
 
         errors_present = False
 
+        if mode == 'edit':
+            scenario_dict = request.session.get('scenario', {})
+        else:
+            scenario_dict = {}
+
         defaults = dict(default_params)
-        #birth_year = dob_to_birth_year(scenario_dict['dob'])
-        #if scenario_dict['dob2'] != None:
-        #    birth_year2 = dob_to_birth_year(scenario_dict['dob2'])
-        #    birth_year = (birth_year + birth_year2) / 2
-        #defaults['retirement_year'] = birth_year + 65
         defaults['retirement_year'] = datetime.utcnow().timetuple().tm_year
+        if mode != 'edit':
+            defaults['retirement_number'] = 'on'
 
         for field, default in defaults.items():
             if field not in scenario_dict:
                 scenario_dict[field] = default
             if isinstance(default, Decimal):
                 scenario_dict[field] = Decimal(scenario_dict[field])
-        se_form = ScenarioEditForm(account.temp_user, scenario_dict)
+        se_form = init_se_form(mode, scenario_dict)
 
-    data = dict(scenario_dict)
-    data['id'] = scenario_id
-    data['age'] = str(dob_to_age(scenario_dict['dob']))
-    data['age2'] = str(dob_to_age(scenario_dict['dob2']))
-    data['readonly'] = account.temp_user
-
+    request.session.set_test_cookie()
     return render(request, 'mega_form.html', {
+        'mode': mode,
         'errors_present': errors_present,
-        'data': data,
+        'cookies_ok': cookies_ok,
         'se_form': se_form,
     })

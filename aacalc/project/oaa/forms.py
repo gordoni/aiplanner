@@ -113,14 +113,6 @@ class DobOrAgeField(forms.CharField):
                 return None
         raise ValidationError('Invalid age or date of birth.')
 
-class ScenarioNameForm(forms.Form):
-    name = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'scenario_name_input', 'autofocus': 'autofocus'}),
-        min_length=1, max_length=1000)
-
-class ScenarioCreateForm(forms.Form):
-    pass
-
 class ScenarioBaseForm(forms.Form):
     sex = forms.ChoiceField(
         choices = (('male', 'male'), ('female', 'female')))
@@ -246,19 +238,6 @@ class ScenarioBaseForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=100) # 1000 fails.
-
-    #_readonly = False;
-    #
-    #readonly_fields = ('vw', 'vw_withdrawal_low', 'vw_withdrawal_high',
-    #        'class_eafe', 'class_ff_bl', 'class_ff_bm', 'class_ff_bh', 'class_ff_sl', 'class_ff_sm', 'class_ff_sh',
-    #        'class_t1yr', 'class_t1mo', 'class_reits', 'class_gold')
-
-    def __init__(self, readonly, *args, **kwargs):
-        super(ScenarioBaseForm, self).__init__(*args, **kwargs)
-        #self._readonly = readonly
-        #if readonly:
-        #    for field in self.readonly_fields:
-        #        self.fields[field].widget.attrs['readonly'] = True
 
     def coppa(sel, dob):
         if dob == None:

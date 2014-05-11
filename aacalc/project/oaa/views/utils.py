@@ -1,5 +1,3 @@
-from base64 import b64decode, b64encode
-from Crypto.Cipher import AES
 from datetime import datetime
 from decimal import Decimal
 from django.contrib.auth import authenticate, login, models
@@ -15,19 +13,19 @@ from json import dumps, loads
 from os import chmod, environ, umask
 from random import randint
 from re import compile, MULTILINE
-import socket
+import socket # error
+from socket import gethostname
 from stat import S_IRWXU
 from subprocess import call, Popen
 from tempfile import mkdtemp
 from time import strptime
 
-from oaa.models import Account, Scenario
 from oaa.utils import asset_class_names, asset_class_symbols
 from settings import SECRET_KEY, STATIC_ROOT, STATIC_URL
 
 # Deleted names can only be judicially re-used, since inactive users might still hold an old parameter of that name. This means types can never be changed.
 default_params = {
-    'name': None,
+    #'name': None,
     'sex': None,
     'dob': None,
     'sex2': None,
@@ -125,18 +123,6 @@ else:
     aa_steps = 1000
     spend_steps = 100000
 
-def encrypt(value):
-    cipher = AES.new(SECRET_KEY[:32], AES.MODE_CBC)
-    value = dumps(value)
-    value += ' ' * (16 - len(value) % 16)
-        # AES can only encrypt data that is a multiple of 16 bytes.  We can space pad it without corruption since we json.loads() to restore.
-    return b64encode(cipher.encrypt(value))
-
-def decrypt(data):
-    cipher = AES.new(SECRET_KEY[:32], AES.MODE_CBC)
-    value = cipher.decrypt(b64decode(data))
-    return loads(value)
-
 def dob_to_age(dob_str_or_age):
     if dob_str_or_age == None:
         return None
@@ -149,108 +135,15 @@ def dob_to_age(dob_str_or_age):
           age -= 1
     return age
 
-def create_account_account(user, temp_user):
-    account = Account(user=user, temp_user=temp_user, run_count=0, privacy_policy=1, license_agreement=0, msg_marketing=True)
-    account.save()
-
-def try_account_create(request, form):
-    username = form.cleaned_data['username']
-    password = form.cleaned_data['password']
-    email = form.cleaned_data['email']
-    #if request.user.is_authenticated() and request.user.account.temp_user:
-    #    user = request.user
-    #    user.username = username
-    #    user.set_password(password)
-    #    user.email = email
-    #    try:
-    #        user.save()
-    #    except IntegrityError:
-    #        form._errors['username'] = form.error_class(['Username is taken.'])
-    #    else:
-    #        account = user.account
-    #        account.temp_user = 0
-    #        account.save()
-    #        return True
-    #else:
-    if True:
-        try:
-            user = models.User.objects.create_user(username=username, password=password, email=email)
-        except IntegrityError:
-            form._errors['username'] = form.error_class(['Username is taken.'])
-        else:
-            user.save()
-            create_account_account(user, False)
-            user = authenticate(username=username, password=password)
-            login(request, user)
-            return True
-    return False
-
-def temp_account_create(request):
-    while True:
-        username = 'temp' + str(randint(0, 999999999))
-        try:
-            user = models.User.objects.create_user(username=username, password=None, email='')
-        except IntegrityError:
-            continue
-        break
-    user.save()
-    create_account_account(user, True)
-    user.backend = 'django.contrib.auth.backends.ModelBackend'  # Need to specify because not calling authenticate to set backend.
-    login(request, user)
-
-def do_scenario_create(request, name, form):
-    user = request.user
-    account = user.account
-    scenario_dict = {'name': name}
-    data = encrypt(scenario_dict)
-    scenario = Scenario(account=account, data=data)
-    scenario.save()
-    return scenario.id
-
-def do_scenario_edit(request, form, scenario_id):
-    user = request.user
-    account = user.account
-    scenario = Scenario.objects.get(id=scenario_id, account=account)
-    scenario_dict = decrypt(scenario.data)
-    data = {}
-    for field, value in default_params.items():
-        if field in form.cleaned_data:
-            val = form.cleaned_data[field]
-            if isinstance(val, Decimal):
-                val = str(val)  # JSON can't handle Decimals.
-            data[field] = val
-        elif field in scenario_dict:
-            data[field] = scenario_dict[field]
-        else:
-            if isinstance(value, Decimal):
-                value = str(value)
-            data[field] = value
-    scenario.data = encrypt(data)
-    scenario.save()
-    return data
-
-def run_http(request, scenario_id, scenario_dict):
-    account = request.user.account
-    #cookie_run_count = request.COOKIES.get('rc', '0')
-    #try:
-    #    cookie_run_count = int(cookie_run_count)
-    #except ValueError:
-    #    cookie_run_count = 0
-    ## account based run count doesn't stick around if temp account has been expired.
-    ## cookie based run count can be forged.
-    #if (cookie_run_count >= 1 or account.run_count >= 1) and account.temp_user:
-    #    return HttpResponseRedirect(reverse('account_create_run', args=(scenario_id,)))
-    response = run_response(request, scenario_id, scenario_dict)
-    account.run_count += 1
-    account.save()
-    #response.set_cookie('rc', account.run_count, 6 * 30 * 86400)
+def run_http(request, scenario_dict):
+    response = run_response(request, scenario_dict)
     return response
 
-def run_response(request, scenario_id, scenario_dict):
+def run_response(request, scenario_dict):
     umask(0077)
     dirname = mkdtemp(prefix='', dir=STATIC_ROOT + 'results')
     run_opal(dirname, scenario_dict)
-    return display_result(request, dirname, scenario_id, scenario_dict)
+    return display_result(request, dirname, False, scenario_dict)
 
 def sample_scenario_dict():
     s = dict(default_params)
@@ -267,7 +160,7 @@ def run_gen_sample():
     run_opal(STATIC_ROOT + 'sample', sample_scenario_dict())
 
 def display_sample(request):
-    return display_result(request, STATIC_ROOT + 'sample', None, sample_scenario_dict())
+    return display_result(request, STATIC_ROOT + 'sample', True, sample_scenario_dict())
 
 scheme_name = {
     'age_in_bonds': 'Age in bonds',
@@ -278,7 +171,7 @@ scheme_name = {
 def start_tp(s):
     return (1 - float(s['tax_rate_div_default_pct']) / 100) * float(s['p_traditional_iras']) + float(s['p_roth_iras']) + float(s['p'])
 
-def display_result(request, dirname, scenario_id, s):
+def display_result(request, dirname, sample, s):
     data = dict(s)
     schemes = []
     if s['retirement_number']:
@@ -311,7 +204,7 @@ def display_result(request, dirname, scenario_id, s):
         aa_str = compile(r'^Asset allocation: \[(.*)\]$', MULTILINE).search(log).group(1)
         aa_raw = tuple(float(a) for a in aa_str.split(', '))
         # Round aa, so that results aren't reported with more precision than is warranted.
-        precise = scenario_id != None and request.user.is_authenticated() and not request.user.account.temp_user
+        precise = False
         steps = aa_steps if precise else 20
         data['precision'] = 100 / steps
         aa = []
@@ -341,8 +234,7 @@ def display_result(request, dirname, scenario_id, s):
             data['risk'] = 'low'
     f.close()
     return render(request, 'scenario_result.html', {
-        'temp_user': scenario_id != None and request.user.is_authenticated() and request.user.account.temp_user,
-        'scenario_id': scenario_id,
+        'sample': sample,
         'data': data,
         'aa_symbol_names': tuple({'symbol': symbol, 'name': name} for (symbol, name) in zip(asset_class_symbols(s), asset_class_names(s))),
         'schemes': schemes,
@@ -628,8 +520,11 @@ def run_opal(dirname, s):
         f.close()
         body += '\r\n'
     body += '--' + boundary +  '--\r\n'
-    current_site = Site.objects.get_current()
-    load_balancer = current_site.domain.replace('.', '-lb.', 1)
+    current_site = gethostname()
+    if '.' in current_site:
+        load_balancer = current_site.domain.replace('.', '-lb.', 1)
+    else:
+        load_balancer = current_site + '-lb'
     try:
         conn = HTTPConnection(load_balancer, 8000)
         conn.request('POST', dirname, body, headers)
@@ -660,14 +555,3 @@ def run_opal(dirname, s):
 
 class OPALPlottingError(Exception):
     pass
-
-# def gen_images(dirname, s):
-#
-#     env = environ.copy()
-#     env['OPAL_USER_HOME'] = dirname
-#     serverdir = STATIC_ROOT.replace('/static', '/server')
-#     Popen([serverdir + '/plot.R'], env=env).communicate()
-#
-#     status = call([dirname + '/plot.gnuplot'])
-#     if status != 0:
-#         raise OPALPlottingError('Non-zero status from plot.')

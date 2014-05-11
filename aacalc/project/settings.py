@@ -130,7 +130,17 @@ LOGGING = {
 
 DEFAULT_FROM_EMAIL = 'noreply@aacalc.com'
 
-SESSION_COOKIE_AGE = 6 * 3600
+CACHE_BACKEND = 'memcached://127.0.0.1:11211/'
+
+# Django 1.3+:
+#CACHES = {
+#    'default': {
+#        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+#        'LOCATION': '127.0.0.1:11211',
+#    }
+#}
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 
 from django.conf import global_settings
 TEMPLATE_CONTEXT_PROCESSORS = global_settings.TEMPLATE_CONTEXT_PROCESSORS + (
