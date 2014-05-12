@@ -103,7 +103,7 @@ public class ScenarioSet
 		scenario.report_returns();
 
 		if (do_compare)
-		        compare_scenario.run_mvo("compare");
+		        compare_scenario.run_mvo("compare"); // Helps determine max_stocks based on risk tolerance.
 		scenario.run_mvo("scenario");
 
 		executor = Executors.newFixedThreadPool(config.workers);
