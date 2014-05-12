@@ -30,6 +30,7 @@ public class Config
         public String validate = null; // Load asset allocation from validate prefix rather than generating it.
 	public boolean skip_retirement_number = true; // Speed up by not generating retirement number values.
 	public boolean skip_success_lines = true; // Speed up by not generating success lines.
+	public boolean skip_compare = true; // Speed up by not performing comparison.
 	public boolean skip_target = true; // Speed up by not performing goal targeting.
 	public boolean skip_validate = false; // Speed up by not performing any validation.
         public boolean skip_validate_all = true; // Speed up by performing validation at a specific age rather than at every age.
@@ -123,7 +124,7 @@ public class Config
                 // "sdp" for sdp.
                 // "percentage" for constant percentage.
                 // "life" for 1 / life_expectancy.
-        public double vw_percentage = 0.05; // Withdrawal percentage to use for strategies retirement_amount and percentage.
+        public double vw_percentage = 0.04; // Withdrawal percentage to use for strategies retirement_amount and percentage.
         public double vw_life_max = 1.0; // Maximum percentage to withdraw for percentage.
 
         public boolean spend_fract_all = false; // Whether to allow consumption/contribution choice for all years or only in retirement.
@@ -338,9 +339,9 @@ public class Config
 	public boolean target_wrap = true;
         public int num_sequences_target = 100000; // Number of paths for a targeting attempt.
 
-	public List<String> compare_aa = new ArrayList<String>();
+        public List<String> compare_aa = new ArrayList<String>(Arrays.asList("age_in_bonds", "age_minus_10_in_bonds", "target_date"));
                 // Asset allocation schemes to use in comparing. "file" for validate=datafile, "fixed", "age_in_bonds", "age_minus_10_in_bonds", or "target_date".
-	public List<String> compare_vw = new ArrayList<String>();
+        public List<String> compare_vw = new ArrayList<String>(Arrays.asList("amount_retirement"));
                 // Variable withdrawal schemes to use in comparing.
 
         public boolean generate_interpolate = true; // Whether to interpolate lookups during generation.

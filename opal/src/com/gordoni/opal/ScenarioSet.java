@@ -88,7 +88,7 @@ public class ScenarioSet
 		config.dumpParams();
 		System.out.println();
 
-		boolean do_compare = (config.compare_aa.size() > 0) && (config.compare_vw.size() > 0);
+		boolean do_compare = !config.skip_compare && (config.compare_aa.size() > 0) && (config.compare_vw.size() > 0);
 
 		Scenario compare_scenario = null;
 		if (do_compare)
