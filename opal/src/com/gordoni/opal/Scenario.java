@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintWriter;
 import java.lang.ProcessBuilder;
 import java.text.DecimalFormat;
@@ -15,28 +14,26 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-public class BaseScenario
+public class Scenario
 {
+        public ScenarioSet ss;
         public Config config;
 	public Scale[] scale;
         public Utility utility_consume;
         public Utility utility_consume_time;
         public Utility utility_inherit;
 	public List<double[]> aa_ef;
-	public ExecutorService executor;
         protected HistReturns hist;
-        public VitalStats vital_stats;
-        public VitalStats vital_stats_annuity;
-        public AnnuityStats annuity_stats;
+        public List<String> asset_classes;
+        public String vw_strategy;
 
         public double[] start_p;
         public Integer tp_index;
         public Integer ria_index;
         public Integer nia_index;
 
+        public int normal_assets;
         public int ria_aa_index;
         public int nia_aa_index;
         public int spend_fract_index;
@@ -44,9 +41,22 @@ public class BaseScenario
         public int cpi_index;
         public int ef_index;
 
-        public boolean do_tax;
         public double[] dividend_yield;
         public List<double[]> at_returns;
+
+	public int generate_bottom_bucket;	// Generate data all the way down to the floor.
+	public int generate_top_bucket;	// Generate data all the way up to the ceiling.
+	public int validate_bottom_bucket;	// Report data all the way down to the validate floor.
+	public int validate_top_bucket;	// Report data all the way up to the validate ceiling.
+
+        public MetricsEnum success_mode_enum;
+
+        public boolean do_tax;
+        private boolean do_generate;
+        private boolean do_target;
+        private Returns returns_generate = null;
+        private Returns returns_target = null;
+        private Returns returns_validate = null;
 
 	private static DecimalFormat f8 = new DecimalFormat("0.000E00");
 	private static DecimalFormat f1f = new DecimalFormat("0.0");
@@ -87,11 +97,11 @@ public class BaseScenario
 
 	public double[] guaranteed_safe_aa()
 	{
-	        double[] safe = new double[config.asset_classes.size()]; // Create new object since at least AAMapGenerate mutates the result.
+	        double[] safe = new double[asset_classes.size()]; // Create new object since at least AAMapGenerate mutates the result.
 		for (int i = 0; i < safe.length; i++)
 		{
 		        if (config.ef.equals("none"))
-			        if (config.asset_classes.get(i).equals(config.safe_aa))
+			        if (asset_classes.get(i).equals(config.safe_aa))
 				        safe[i] = 1.0;
 				else
 				        safe[i] = 0.0;
@@ -103,16 +113,16 @@ public class BaseScenario
 
 	public double[] guaranteed_fail_aa()
 	{
-	        double[] fail = new double[config.asset_classes.size()]; // Create new object since at least AAMapGenerate mutates the result.
+	        double[] fail = new double[asset_classes.size()]; // Create new object since at least AAMapGenerate mutates the result.
 		for (int i = 0; i < fail.length; i++)
 		{
 		        if (i == spend_fract_index)
 			        fail[i] = 1;
 		        else if (config.ef.equals("none"))
 		        {
-				if (config.asset_classes.get(i).equals(config.fail_aa))
+				if (asset_classes.get(i).equals(config.fail_aa))
 					fail[i] = 1.0 + config.max_borrow;
-				else if (config.asset_classes.get(i).equals(config.borrow_aa))
+				else if (asset_classes.get(i).equals(config.borrow_aa))
 					fail[i] = - config.max_borrow;
 				else
 					fail[i] = 0.0;
@@ -128,54 +138,54 @@ public class BaseScenario
 		double[] new_aa = aa.clone();
 		double delta = inc;
 		double alloc = new_aa[a];
-		double min = (config.asset_classes.get(a).equals(config.borrow_aa) ? - config.max_borrow : 0.0);
-		double max = (config.asset_classes.get(a).equals(config.borrow_only_aa) ? 0.0 : 1.0 + config.max_borrow);
+		double min = (asset_classes.get(a).equals(config.borrow_aa) ? - config.max_borrow : 0.0);
+		double max = (asset_classes.get(a).equals(config.borrow_only_aa) ? 0.0 : 1.0 + config.max_borrow);
 		delta = Math.min(delta, max - alloc);
 		delta = Math.max(delta, min - alloc);
-		for (int i = 0; i < config.normal_assets; i++)
+		for (int i = 0; i < normal_assets; i++)
 		        if (i == a)
 			        new_aa[i] += delta;
 		        else
 			        // Scale back proportionally.
 			        if (1 - alloc < 1e-12)
-				        new_aa[i] = - delta / (config.normal_assets - 1);
+				        new_aa[i] = - delta / (normal_assets - 1);
 			        else
 				        new_aa[i] *= 1 - delta / (1 - alloc);
 		if (config.min_safe_le != 0)
 		{
 		        // Not entirely satisfying to fully or partially decrement asset class when it was requested that it be incremented,
 		        // but this is the simplest approach and it shouldn't affect the underlying asset allocation machinery.
-		        int a_safe = config.asset_classes.indexOf(config.safe_aa);
+		        int a_safe = asset_classes.indexOf(config.safe_aa);
 			double alloc_safe = new_aa[a_safe];
-			double min_safe = config.min_safe_le * (vital_stats.raw_sum_avg_alive[period] / vital_stats.raw_alive[period]) / p[tp_index];
+			double min_safe = config.min_safe_le * (ss.vital_stats.raw_sum_avg_alive[period] / ss.vital_stats.raw_alive[period]) / p[tp_index];
 			min_safe = Math.min(1, min_safe);
 			double delta_safe = Math.max(0, min_safe - alloc_safe);
-			for (int i = 0; i < config.normal_assets; i++)
+			for (int i = 0; i < normal_assets; i++)
 			        if (i == a_safe)
 				        new_aa[i] += delta_safe;
 				else
 				        if (1 - alloc_safe < 1e-12)
-					        new_aa[i] = - delta_safe / (config.normal_assets - 1);
+					        new_aa[i] = - delta_safe / (normal_assets - 1);
 					else
 					        new_aa[i] *= 1 - delta_safe / (1 - alloc_safe);
 		}
 		// Keep summed to one as exactly as possible.
 		double sum = 0;
-		for (int i = 0; i < config.normal_assets; i++)
+		for (int i = 0; i < normal_assets; i++)
 		{
 		        assert(new_aa[i] > -1e12);
 		        if (new_aa[i] <= 0)
 			        new_aa[i] = 0;
 			sum += new_aa[i];
 		}
-		for (int i = 0; i < config.normal_assets; i++)
+		for (int i = 0; i < normal_assets; i++)
 			new_aa[i] /= sum;
 		return new_aa;
         }
 
-	private void dump_mvo_params() throws IOException
+	private void dump_mvo_params(String s) throws IOException
 	{
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-mvo-params.csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-" + s + "-mvo-params.csv"));
 		out.println("ef_steps,risk_tolerance");
 		out.println(config.aa_steps + "," + config.risk_tolerance);
 		out.close();
@@ -183,23 +193,23 @@ public class BaseScenario
 
 	private void asset_class_header(PrintWriter out)
 	{
-		for (int a = 0; a < config.normal_assets; a++)
+		for (int a = 0; a < normal_assets; a++)
 	        {
 		        if (a > 0)
 			        out.print(",");
-			out.print(config.asset_class_names == null ? config.asset_classes.get(a) : config.asset_class_names.get(a));
+			out.print(config.asset_class_names == null ? asset_classes.get(a) : config.asset_class_names.get(a));
 		}
 		out.println();
 	}
 
-        private void dump_mvo_returns(List<double[]> returns) throws IOException
+        private void dump_mvo_returns(List<double[]> returns, String s) throws IOException
         {
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-mvo-returns.csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-" + s + "-mvo-returns.csv"));
 		asset_class_header(out);
 		for (int i = 0; i < returns.size(); i++)
 		{
 		        double rets[] = returns.get(i);
-		        for (int a = 0; a < config.normal_assets; a++)
+		        for (int a = 0; a < normal_assets; a++)
 			{
 		                if (a > 0)
 			                out.print(",");
@@ -210,39 +220,39 @@ public class BaseScenario
 		out.close();
         }
 
-	private void dump_mvo_bounds() throws IOException
+	private void dump_mvo_bounds(String s) throws IOException
 	{
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-mvo-bounds.csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-" + s + "-mvo-bounds.csv"));
 		asset_class_header(out);
-		for (int a = 0; a < config.normal_assets; a++)
+		for (int a = 0; a < normal_assets; a++)
 		{
 		        if (a > 0)
 		                out.print(",");
-		        out.print(config.asset_classes.get(a).equals(config.borrow_aa) ? - config.max_borrow : 0);
+		        out.print(asset_classes.get(a).equals(config.borrow_aa) ? - config.max_borrow : 0);
 		}
 		out.println();
-		for (int a = 0; a < config.normal_assets; a++)
+		for (int a = 0; a < normal_assets; a++)
 		{
 		        if (a > 0)
 		                out.print(",");
-		        out.print(config.asset_classes.get(a).equals(config.borrow_only_aa) ? 0 : config.max_borrow + 1);
+		        out.print(asset_classes.get(a).equals(config.borrow_only_aa) ? 0 : config.max_borrow + 1);
 		}
 		out.println();
 		out.close();
 	}
 
-	private void load_mvo_ef() throws IOException
+	private void load_mvo_ef(String s) throws IOException
 	{
 	        aa_ef = new ArrayList<double[]>();
 
-		BufferedReader in = new BufferedReader(new FileReader(new File(config.cwd + "/" + config.prefix + "-mvo-ef.csv")));
+		BufferedReader in = new BufferedReader(new FileReader(new File(ss.cwd + "/" + config.prefix + "-" + s + "-mvo-ef.csv")));
 		String line = in.readLine();
 		int index = 0;
 		while ((line = in.readLine()) != null)
 		{
   			String[] fields = line.split(",", -1);
-			double aa[] = new double[config.asset_classes.size()];
-			for (int i = 0; i < config.normal_assets; i++)
+			double aa[] = new double[asset_classes.size()];
+			for (int i = 0; i < normal_assets; i++)
 			{
 			        double alloc = Double.parseDouble(fields[2 + i]);
 				if (alloc <= 0)
@@ -264,174 +274,20 @@ public class BaseScenario
 		in.close();
 	}
 
-        public void subprocess(String cmd) throws IOException, InterruptedException
-        {
-	        String cwd = System.getProperty("user.dir");
-		ProcessBuilder pb = new ProcessBuilder(cwd + "/" + cmd);
-		Map<String, String> env = pb.environment();
-		env.put("OPAL_FILE_PREFIX", config.cwd + "/" + config.prefix);
-		pb.redirectErrorStream(true);
-		Process p = pb.start();
-
-		InputStream stdout = p.getInputStream();
-		byte buf[] = new byte[8192];
-		while (stdout.read(buf) != -1)
-		{
-		}
-		p.waitFor();
-	}
-
-	private void mvo(List<double[]> returns) throws IOException, InterruptedException
+        private void mvo(List<double[]> returns, String s) throws IOException, InterruptedException
 	{
-		dump_mvo_params();
-	        dump_mvo_returns(returns);
-		dump_mvo_bounds();
+		dump_mvo_params(s);
+	        dump_mvo_returns(returns, s);
+		dump_mvo_bounds(s);
 
-		subprocess("mvo.R");
+		ss.subprocess("mvo.R", config.prefix + "-" + s);
 
-		load_mvo_ef();
+		load_mvo_ef(s);
         }
-
-        public RiskReward rw_aa(List<double[]> returns, double[] aa, String ef)
-        {
-	        double[] ret = new double[returns.size()];
-		int i = 0;
-	        for (double[] rets : returns)
-		{
-		        double r = 0;
-			for (int j = 0; j < config.normal_assets; j++)
-			        r += aa[j] * (1 + rets[j]);
-			if (ef.equals("utility"))
-			{
-			        // The efficient frontier for utility is defined naturally enough in utility space rather than return space.
-			        // In reality it depends on the map location which determines the time until likely portfolio depletion.
-			        //
-			        // We punt and assume a scaling of the portfolio by r will result in a similar sized change to lifetime utility.
-			        // This means we may not include in the efficient frontier highly volatile results needed for low portfolio sizes
-			        // because the utility for a drop is bigger than the utility for a rise.
-			        //
-			        // Doesn't work (don't get high volatilities):
-			        ret[i] = utility_consume.utility(config.defined_benefit + r * (config.withdrawal - config.defined_benefit));
-			}
-			else if (ef.equals("log"))
-			{
-			        // Want to reward high returns less than punish low returns.
-			        //
-			        // Appears to mostly work (ef asset allocations don't match ef="none", except sometimes):
-				ret[i] = Math.log(r);
-			}
-			else if (ef.equals("linear"))
-			{
-			        // Appears to give same answer as MVO.
-			        //
-			        // Doesn't work for non-normally distributed returns (ef asset allocations don't match ef="none"):
-			        ret[i] = r - 1;
-			}
-			else
-			        assert(false);
-			i++;
-		}
-		double mean = Utils.mean(ret);
-		double std_dev = Utils.standard_deviation(ret);
-		return new RiskReward(aa, mean, std_dev);
-	}
-
-        private void brute_force_ef_dim(List<RiskReward> ef, List<double[]> returns, double[] aa, int a)
-        {
-	        if (a >= config.normal_assets - 1)
-		{
-		        RiskReward rw = rw_aa(returns, aa, config.ef);
-			if (rw.std_dev <= config.risk_tolerance)
-			{
-			        // Add risk_reward to efficient frontier if it is on the upper boundary.
-				int i = Collections.binarySearch(ef, rw, RiskReward.MeanComparator);
-				if (i < 0)
-				{
-				        int ip = - i - 1;
-					if ((ip == ef.size()) || (rw.std_dev < ef.get(ip).std_dev))
-					{
-						ef.add(ip, rw);
-						for (int inferior = ip - 1; ((inferior >= 0) && rw.std_dev <= ef.get(inferior).std_dev); inferior--)
-							ef.remove(inferior);
-					}
-				}
-			}
-		        return;
-		}
-		int i = 0;
-		double[] old_aa = null;
-		while (true)
-		{
-		        double[] new_aa = inc_dec_aa_raw(aa, a, (double) i / config.aa_steps, null, 0);
-			if (Arrays.equals(new_aa, old_aa))
-			        break;
-			brute_force_ef_dim(ef, returns, new_aa, a + 1);
-			i++;
-			old_aa = new_aa;
-		}
-	}
-
-        // Handle non-normal returns correctly.
-        private void brute_force_ef(List<double[]> returns)
-        {
-	        List<RiskReward> ef = new ArrayList<RiskReward>();
- 	        double[] aa = new double[config.normal_assets];
-	        aa[config.normal_assets - 1] = 1;
-		brute_force_ef_dim(ef, returns, aa, 0);
-
-		// Remove points from the efficient frontier that lie in a concave region.
-		for (int i = 0; i < ef.size(); i++)
-		{
-		        while (true)
-			{
-				double prev_slope;
-				if (i == 0)
-					prev_slope = Double.POSITIVE_INFINITY;
-				else
-					prev_slope = (ef.get(i).mean - ef.get(i - 1).mean) / (ef.get(i).std_dev - ef.get(i - 1).std_dev);
-				double slope;
-				if (i == ef.size() - 1)
-				        slope = Double.NEGATIVE_INFINITY;
-				else
-				        slope = (ef.get(i + 1).mean - ef.get(i).mean) / (ef.get(i + 1).std_dev - ef.get(i).std_dev);
-				if (slope < prev_slope)
-					break;
-				ef.remove(i);
-				i--;
-			}
-		}
-
-		// Interpolate reulting points.
-	        aa_ef = new ArrayList<double[]>();
-		for (int i = 0; i <= config.aa_steps; i++)
-		{
-			if (i == 0)
-			        aa = ef.get(0).aa;
-			else if (i == config.aa_steps)
-			        aa = ef.get(ef.size() - 1).aa;
-			else
-			{
-			        double target_mean = ef.get(0).mean + (ef.get(ef.size() - 1).mean - ef.get(0).mean) * i / config.aa_steps;
-			        RiskReward target = new RiskReward(null, target_mean, -1);
-			        int k = Collections.binarySearch(ef, target, RiskReward.MeanComparator);
-				assert(k < 0);
-				int ip = - k - 1;
-				double fract = (target_mean - ef.get(ip - 1).mean) / (ef.get(ip).mean - ef.get(ip - 1).mean);
-				assert(fract >= 0 && fract <= 1);
-				aa = new double[config.normal_assets];
-				for (int j = 0; j < config.normal_assets; j++)
-				        aa[j] = ef.get(ip - 1).aa[j] * (1 - fract) + ef.get(ip).aa[j] * fract;
-			}
-		        double[] mvo_aa = new double[config.asset_classes.size()];
-			System.arraycopy(aa, 0, mvo_aa, 0, aa.length);
-			mvo_aa[ef_index] = i;
-			aa_ef.add(mvo_aa);
-		}
-	}
 
         public void dump_utility(Utility utility, String name) throws IOException
 	{
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-utility-" + name + ".csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-utility-" + name + ".csv"));
 		for (double c = 0; c <= utility.range; c += utility.range / 1000)
 		{
 		    //out.print(f6f.format(c) + "," + utility.utility(c) + "," + utility.slope(c) + "\n");
@@ -450,13 +306,13 @@ public class BaseScenario
 		if (aa == null)
 		{
 		        StringBuilder sb = new StringBuilder();
-			for (int i = 0; i < config.normal_assets - 1; i++)
+			for (int i = 0; i < normal_assets - 1; i++)
 				sb.append(",");
 			return sb.toString();
 		}
 
 		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < config.normal_assets; i++)
+		for (int i = 0; i < normal_assets; i++)
 	        {
 			if (i > 0)
 				sb.append(",");
@@ -472,11 +328,11 @@ public class BaseScenario
 	// // the initial age.
 	// public void dump_rps_initial(AAMap map, Metrics[][] success_lines, String metric) throws IOException
 	// {
-	// 	PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-rps_initial-" + metric + ".csv"));
+	// 	PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-rps_initial-" + metric + ".csv"));
 	// 	MapElement[] map_period = map.map[0];
-	// 	for (int bucket = config.validate_bottom_bucket; bucket < config.validate_top_bucket + 1; bucket++)
+	// 	for (int bucket = scenario.validate_bottom_bucket; bucket < scenario.validate_top_bucket + 1; bucket++)
 	// 	{
-	// 		MapElement fpb = map_period[bucket - config.validate_bottom_bucket];
+	// 		MapElement fpb = map_period[bucket - scenario.validate_bottom_bucket];
 	// 		double p = scale.bucket_to_pf(bucket);
 	// 		if (!(0.0 <= p && p <= config.pf_validate))
 	// 			continue;
@@ -495,7 +351,7 @@ public class BaseScenario
         private double expected_return(double[] aa, Returns returns)
 	{
 	        double r = 0.0;
-		for (int i = 0; i < config.normal_assets; i++)
+		for (int i = 0; i < normal_assets; i++)
 		        r += aa[i] * returns.am[i];
 		return r;
 	}
@@ -504,7 +360,7 @@ public class BaseScenario
 	{
 	        double v = 0.0;
 		for (int i = 0; i < aa.length - (config.ef.equals("none") ? 0 : 1); i++)
-		        for (int j = 0; j < config.normal_assets; j++)
+		        for (int j = 0; j < normal_assets; j++)
 		                v +=  aa[i] * aa[j] * returns.sd[i] * returns.sd[j] * returns.corr[i][j];
 		return Math.sqrt(v);
 	}
@@ -512,7 +368,7 @@ public class BaseScenario
 	// Gnuplot doesn't support heatmaps with an exponential scale, so we have to fixed-grid the data.
         private void dump_aa_linear_slice(AAMap map, Returns returns, double[] slice, String slice_suffix) throws IOException
 	{
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-linear" + slice_suffix + ".csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-linear" + slice_suffix + ".csv"));
 
 		for (int i = 0; i < map.map.length; i++)
 		{
@@ -590,14 +446,14 @@ public class BaseScenario
 			int period = 0;
 			for (int i = start; i < path.size(); i++)
 			{
-			        if (period >= vital_stats.dying.length)
+			        if (period >= ss.vital_stats.dying.length)
 				        continue; // Ignore terminal element.
 				double value = get_path_value(path, i, what, change);
 				double weight;
 				if (what.equals("inherit"))
-				        weight = vital_stats.dying[period];
+				        weight = ss.vital_stats.dying[period];
 				else
-				        weight = (vital_stats.alive[period] + vital_stats.alive[period + 1]) / 2;
+				        weight = (ss.vital_stats.alive[period] + ss.vital_stats.alive[period + 1]) / 2;
 				int bucket = (int) ((value - min) / (max - min) * config.distribution_steps);
 				if (0 <= bucket && bucket < counts.length)
 				        counts[bucket] += weight;
@@ -670,7 +526,7 @@ public class BaseScenario
 			        break;
 		}
 
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-distrib-" + (change ? "change-" : "") + what + ".csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-distrib-" + (change ? "change-" : "") + what + ".csv"));
 		for (bucket = 0; bucket < counts.length; bucket++)
 		        out.println((min + (bucket + 0.5) * (max - min) / config.distribution_steps) + "," + counts[bucket]);
 		out.close();
@@ -688,7 +544,7 @@ public class BaseScenario
 
         private void dump_pct_path(List<List<PathElement>> paths, String what, boolean change) throws IOException
         {
-	        PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-pct-" + (change ? "change-" : "") + what + ".csv"));
+	        PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-pct-" + (change ? "change-" : "") + what + ".csv"));
 
 	        int pathlen = paths.get(0).size();
 		double age_period = config.start_age * config.generate_time_periods;
@@ -723,7 +579,7 @@ public class BaseScenario
 	// Dump the paths taken.
 	private void dump_paths(List<List<PathElement>> paths) throws IOException
 	{
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-paths.csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-paths.csv"));
 
 		double initial_period = config.start_age * config.generate_time_periods;
 		for (int pi = 0; pi < config.max_display_paths; pi++)
@@ -758,12 +614,12 @@ public class BaseScenario
 	// Dump the changes in the paths.
 	private void dump_delta_paths(List<List<PathElement>> paths, int delta_years) throws IOException
 	{
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-delta_paths-" + delta_years + ".csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-delta_paths-" + delta_years + ".csv"));
 		List<List<List<Double>>> deltas = new ArrayList<List<List<Double>>>();
 		for (int pi = 0; pi < config.max_delta_paths; pi++)
 		{
 		        List<PathElement> path = paths.get(pi);
-			for (int index = 0; index < config.max_years * config.generate_time_periods; index++)
+			for (int index = 0; index < ss.max_years * config.generate_time_periods; index++)
 			{
 				if (index >= path.size())
 					break;
@@ -794,13 +650,13 @@ public class BaseScenario
 					if (old_aa == null)
 					    old_aa = guaranteed_safe_aa();
 					List<Double> delta = new ArrayList<Double>();
-					for (int i = 0; i < config.normal_assets; i++)
+					for (int i = 0; i < normal_assets; i++)
 						delta.add(aa[i] - old_aa[i]);
 					deltas.get(index).add(delta);
 				}
 			}
 		}
-		for (int index = 0; index < config.max_years * config.generate_time_periods; index++)
+		for (int index = 0; index < ss.max_years * config.generate_time_periods; index++)
 		{
 			double[] sd = null;
 			if (index < deltas.size() && deltas.get(index).size() > 1)
@@ -821,7 +677,7 @@ public class BaseScenario
 
 	private void dump_cw() throws IOException
 	{
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-cw.csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-cw.csv"));
 		if (config.cw_schedule != null)
 		        for (int y = 0; y < config.cw_schedule.length; y++)
 			{
@@ -833,14 +689,14 @@ public class BaseScenario
         // Only useful if invariant over portfolio size.
         private void dump_average(AAMap map) throws IOException
         {
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-average.csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-average.csv"));
 
 		for (int period = 0; period < map.map.length; period++)
 		{
 		        double age = config.start_age + period / config.generate_time_periods;
 		        double ria = 0;
 		        double nia = 0;
-			double[] aa = new double[config.normal_assets];
+			double[] aa = new double[normal_assets];
 			for (int step = 1; step <= config.gnuplot_steps; step++)
 			        // step = 0 results in division by zero.
 			{
@@ -869,23 +725,23 @@ public class BaseScenario
 
         private void dump_annuity_price() throws IOException
         {
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-annuity_price.csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-annuity_price.csv"));
 
-		for (int i = 0; i < annuity_stats.actual_real_annuity_price.length; i++)
+		for (int i = 0; i < ss.annuity_stats.actual_real_annuity_price.length; i++)
 		{
 		        double age = config.start_age + i / config.generate_time_periods;
-			out.println(f2f.format(age) + "," + f3f.format(annuity_stats.actual_real_annuity_price[i]) + "," + f3f.format(annuity_stats.period_real_annuity_price[i]) + "," + f3f.format(annuity_stats.synthetic_real_annuity_price[i]) + "," + f3f.format(annuity_stats.actual_nominal_annuity_price[i]) + "," + f3f.format(annuity_stats.period_nominal_annuity_price[i]) + "," + f3f.format(annuity_stats.synthetic_nominal_annuity_price[i]));
+			out.println(f2f.format(age) + "," + f3f.format(ss.annuity_stats.actual_real_annuity_price[i]) + "," + f3f.format(ss.annuity_stats.period_real_annuity_price[i]) + "," + f3f.format(ss.annuity_stats.synthetic_real_annuity_price[i]) + "," + f3f.format(ss.annuity_stats.actual_nominal_annuity_price[i]) + "," + f3f.format(ss.annuity_stats.period_nominal_annuity_price[i]) + "," + f3f.format(ss.annuity_stats.synthetic_nominal_annuity_price[i]));
 		}
 		out.close();
         }
 
         private void dump_annuity_yield_curve() throws IOException
         {
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-yield_curve.csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-yield_curve.csv"));
 
 	        for (int i = 0; i <= 30; i++)
 		{
-		        out.println(i + "," + (config.annuity_real_yield_curve == null ? config.annuity_real_rate : annuity_stats.rcmt_get(i)) + "," + (config.annuity_nominal_yield_curve == null ? config.annuity_nominal_rate : annuity_stats.hqm_get(i)));
+		        out.println(i + "," + (config.annuity_real_yield_curve == null ? config.annuity_real_rate : ss.annuity_stats.rcmt_get(i)) + "," + (config.annuity_nominal_yield_curve == null ? config.annuity_nominal_rate : ss.annuity_stats.hqm_get(i)));
 		}
 
 		out.close();
@@ -924,14 +780,14 @@ public class BaseScenario
 	private void dump_retirement_number(Metrics[] retirement_number) throws IOException
 	{
 		// Success probability percentile lines versus age and wr
-		PrintWriter out = new PrintWriter(new FileWriter(new File(config.cwd + "/" + config.prefix + "-number.csv")));
+		PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-number.csv")));
 		for (int i = retirement_number.length - 1; i >= 0; i--)
 		{
 		        double pf = i * config.pf_retirement_number / config.retirement_number_steps;
 		        double failure_chance = retirement_number[i].fail_chance();
-		        double failure_length = retirement_number[i].fail_length() * vital_stats.le.get(config.retirement_age);
+		        double failure_length = retirement_number[i].fail_length() * ss.vital_stats.le.get(config.retirement_age);
 			double invutil = 0.0;
-			invutil = utility_consume.inverse_utility(retirement_number[i].get(MetricsEnum.CONSUME) / vital_stats.metric_divisor(MetricsEnum.CONSUME, config.validate_age));
+			invutil = utility_consume.inverse_utility(retirement_number[i].get(MetricsEnum.CONSUME) / ss.vital_stats.metric_divisor(MetricsEnum.CONSUME, config.validate_age));
 			out.print(pf + "," + failure_chance + "," + failure_length + "," + invutil + "\n");
 		}
 		out.close();
@@ -939,9 +795,9 @@ public class BaseScenario
 
         private void dump_initial_aa(double[] aa) throws IOException
         {
-		PrintWriter out = new PrintWriter(new FileWriter(new File(config.cwd + "/" + config.prefix + "-initial_aa.csv")));
+		PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-initial_aa.csv")));
 		out.println("asset class,allocation");
-		List<String> names = (config.asset_class_names == null ? config.asset_classes : config.asset_class_names);
+		List<String> names = (config.asset_class_names == null ? asset_classes : config.asset_class_names);
 		for (int i = 0; i < aa.length; i++)
 		        out.println(names.get(i) + "," + aa[i]);
 		out.close();
@@ -951,8 +807,8 @@ public class BaseScenario
 	// private void dump_success_lines(Metrics[][] success_lines, double[] goal_range, MetricsEnum metric) throws IOException
 	// {
 	// 	// Success probability percentile lines versus age and wr
-	// 	PrintWriter out = new PrintWriter(new FileWriter(new File(config.cwd + "/" + config.prefix + "-success-" + metric.toString().toLowerCase() + ".csv")));
-	// 	for (int period = 0; period < config.max_years * config.generate_time_periods; period++)
+	// 	PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-success-" + metric.toString().toLowerCase() + ".csv")));
+	// 	for (int period = 0; period < ss.max_years * config.generate_time_periods; period++)
 	// 	{
 	// 		List<Double> prob_range = new ArrayList<Double>();
 	// 		for (int i = goal_range.length - 1; i >= 0; i--)
@@ -1002,65 +858,30 @@ public class BaseScenario
 	// 	out.close();
 	// }
 
-        public double max_stocks()
-        {
-	        assert(config.normal_assets == 2);
-	        assert(config.asset_classes.contains("stocks"));
-	        assert(config.asset_classes.contains("bonds"));
-
-		double max_stocks = 1.0;
-		if (!config.ef.equals("none"))
-		{
-		        max_stocks = 0.0;
-			for (double[] aa : aa_ef)
-			        max_stocks = Math.max(max_stocks, aa[config.asset_classes.indexOf("stocks")]);
-		}
-
-		return max_stocks;
-        }
-
-	protected void run_main() throws ExecutionException, IOException, InterruptedException
+	public void run_mvo(String s) throws IOException, InterruptedException
 	{
-		executor = Executors.newFixedThreadPool(config.workers);
-
-		try
+		if ((do_generate || do_target) && !config.ef.equals("none"))
 		{
-		        do_run_main();
+			long start = System.currentTimeMillis();
+			mvo(at_returns, s);
+			double elapsed = (System.currentTimeMillis() - start) / 1000.0;
+			System.out.println("Efficient frontier done: " + f1f.format(elapsed) + " seconds");
+			System.out.println();
 		}
-		catch (Exception | AssertionError e)
-		{
-		        executor.shutdownNow();
-			throw e;
-		}
-
-		executor.shutdown();
 	}
 
-	public void do_run_main() throws ExecutionException, IOException, InterruptedException
-	{
-		boolean do_target = !config.skip_target && config.target_mode != null;
-		boolean do_generate = (config.validate == null) || (do_target && (config.target_sdp_baseline || config.target_mode.equals("rps")));
-
-		Returns returns_generate = null;
-		if (do_generate || do_target  || do_tax)
-		    returns_generate = new Returns(hist, config, config.generate_seed, config.time_varying, config.generate_start_year, config.generate_end_year, config.num_sequences_generate, config.generate_time_periods, config.generate_ret_equity, config.generate_ret_bonds, config.ret_risk_free, config.generate_ret_inflation, config.management_expense, config.generate_shuffle, config.ret_reshuffle, config.generate_draw, config.ret_random_block_size, config.ret_pair, config.ret_wrap, config.generate_all_adjust, config.generate_equity_vol_adjust);
-
-		Returns returns_target = null;
-		if (do_target)
-		    returns_target = new Returns(hist, config, config.target_seed, false, config.target_start_year, config.target_end_year, config.num_sequences_target, config.target_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.target_shuffle, config.ret_reshuffle, config.target_draw, config.ret_random_block_size, config.ret_pair, config.target_wrap, config.validate_all_adjust, config.validate_equity_vol_adjust);
-
-		Returns returns_validate = new Returns(hist, config, config.validate_seed, false, config.validate_start_year, config.validate_end_year, config.num_sequences_validate, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.validate_shuffle, config.ret_reshuffle, config.validate_draw, config.ret_random_block_size, config.ret_pair, config.ret_wrap, config.validate_all_adjust, config.validate_equity_vol_adjust);
-
-		if (returns_generate != null)
+        public void report_returns()
+        {
+ 		if (returns_generate != null)
 		{
 			System.out.println("Returns:");
 			List<double[]> returns = Utils.zipDoubleArray(returns_generate.original_data);
-			for (int index = 0; index < config.normal_assets; index++)
+			for (int index = 0; index < normal_assets; index++)
 			{
 				double gm = Utils.plus_1_geomean(returns.get(index)) - 1;
 				double am = Utils.mean(returns.get(index));
 				double sd = Utils.standard_deviation(returns.get(index));
-				System.out.println("  " + config.asset_classes.get(index) + " " + f2f.format(gm * 100) + "% +/- " + f2f.format(sd * 100) + "% (arithmetic " + f2f.format(am * 100) + "%)");
+				System.out.println("  " + asset_classes.get(index) + " " + f2f.format(gm * 100) + "% +/- " + f2f.format(sd * 100) + "% (arithmetic " + f2f.format(am * 100) + "%)");
 				// System.out.println(am);
 			}
 			// System.out.println(Arrays.deepToString(Utils.covariance_returns(returns)));
@@ -1069,61 +890,56 @@ public class BaseScenario
 
 			System.out.println("Generated returns:");
 			List<double[]> ac_returns = Utils.zipDoubleArray(returns_generate.data);
-			double[] dividend_fract = (config.dividend_fract == null ? returns_generate.dividend_fract : config.dividend_fract);
-			dividend_yield = new double[config.normal_assets];
-			for (int index = 0; index < config.normal_assets; index++)
+ 			for (int index = 0; index < normal_assets; index++)
 			{
 				double gm = Utils.weighted_plus_1_geo(ac_returns.get(index), returns_generate.returns_unshuffled_probability) - 1;
 				double am = Utils.weighted_sum(ac_returns.get(index), returns_generate.returns_unshuffled_probability);
 				double sd = Utils.weighted_standard_deviation(ac_returns.get(index), returns_generate.returns_unshuffled_probability);
-				System.out.println("  " + config.asset_classes.get(index) + " " + f2f.format(gm * 100) + "% +/- " + f2f.format(sd * 100) + "% (arithmetic " + f2f.format(am * 100) + "%)");
-				if (index < config.normal_assets)
-				        dividend_yield[index] = dividend_fract[index] * gm / (1 + gm);
+				System.out.println("  " + asset_classes.get(index) + " " + f2f.format(gm * 100) + "% +/- " + f2f.format(sd * 100) + "% (arithmetic " + f2f.format(am * 100) + "%)");
 			}
 			System.out.println();
 			// System.out.println(Arrays.deepToString(Utils.covariance_returns(ac_returns)));
 			// System.out.println(Arrays.deepToString(Utils.correlation_returns(ac_returns)));
 
- 			at_returns = returns_generate.data;
 			if (do_tax)
 			{
 			        System.out.println("After tax generated returns:");
-				at_returns = Utils.zipDoubleArray(at_returns);
-				Tax tax = new TaxImmediate(this, config.tax_immediate_adjust);
-				for (int index = 0; index < config.normal_assets; index++)
+ 				List<double[]> at_rets = Utils.zipDoubleArray(at_returns);
+				for (int index = 0; index < normal_assets; index++)
 				{
-				        double[] at_return = at_returns.get(index);
-				        double[] aa = new double[config.normal_assets];
-					aa[index] = 1;
-					tax.initial(1, aa);
-					for (int i = 0; i < at_return.length; i++)
-					{
-					        at_return[i] -= tax.total_pending(1 + at_return[i], 1, aa, returns_generate.data.get(i));
-						        // This like most tax calculations is imperfect.
-					}
+				        double[] at_return = at_rets.get(index);
 					double gm = Utils.weighted_plus_1_geo(at_return, returns_generate.returns_unshuffled_probability) - 1;
 					double am = Utils.weighted_sum(at_return, returns_generate.returns_unshuffled_probability);
 					double sd = Utils.weighted_standard_deviation(at_return, returns_generate.returns_unshuffled_probability);
-					System.out.println("  " + config.asset_classes.get(index) + " " + f2f.format(gm * 100) + "% +/- " + f2f.format(sd * 100) + "% (arithmetic " + f2f.format(am * 100) + "%)");
+					System.out.println("  " + asset_classes.get(index) + " " + f2f.format(gm * 100) + "% +/- " + f2f.format(sd * 100) + "% (arithmetic " + f2f.format(am * 100) + "%)");
 				}
 				// System.out.println(Arrays.deepToString(Utils.covariance_returns(at_returns)));
-				at_returns = Utils.zipDoubleArray(at_returns);
-				System.out.println();
-			}
-
-			if ((do_generate || do_target) && !config.ef.equals("none"))
-			{
-			        long start = System.currentTimeMillis();
-				if (config.ef.equals("mvo"))
-				        mvo(at_returns);
-				else
-				        brute_force_ef(at_returns);
-				double elapsed = (System.currentTimeMillis() - start) / 1000.0;
-				System.out.println("Efficient frontier done: " + f1f.format(elapsed) + " seconds");
 				System.out.println();
 			}
                 }
 
+	}
+
+        public void run_compare() throws ExecutionException, IOException
+        {
+		long start = System.currentTimeMillis();
+		for (String aa : config.compare_aa)
+		{
+			for (String vw : config.compare_vw)
+			{
+			        vw_strategy = vw;
+			        AAMap map_compare = AAMap.factory(this, aa, null);
+				PathMetricsResult pm = map_compare.path_metrics(config.validate_age, start_p, config.num_sequences_validate, config.validate_seed, returns_validate);
+				System.out.printf("Compare %s/%s: %f\n", aa, vw, pm.mean(success_mode_enum));
+			}
+		}
+		double elapsed = (System.currentTimeMillis() - start) / 1000.0;
+		System.out.println("Compare done: " + f1f.format(elapsed) + " seconds");
+		System.out.println();
+        }
+
+	public void run_main() throws ExecutionException, IOException, InterruptedException
+	{
 		AAMap map_validate = null;
 		AAMap map_loaded = null;
 		AAMap map_precise = null;
@@ -1136,14 +952,14 @@ public class BaseScenario
 			map_precise = AAMap.factory(this, config.aa_strategy, returns_generate);
 			MapElement fpb = map_precise.lookup_interpolate(start_p, (int) Math.round((config.validate_age - config.start_age) * config.generate_time_periods));
 			String metric_str;
-			double metric_sm = fpb.metric_sm / vital_stats.metric_divisor(config.success_mode_enum, config.start_age);
-			if (!Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(config.success_mode_enum))
+			double metric_sm = fpb.metric_sm / ss.vital_stats.metric_divisor(success_mode_enum, config.start_age);
+			if (!Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(success_mode_enum))
 			{
 			        if (config.utility_epstein_zin)
 				        metric_sm = utility_consume.inverse_utility(metric_sm);
-			        else if (Arrays.asList(MetricsEnum.CONSUME, MetricsEnum.COMBINED).contains(config.success_mode_enum))
+			        else if (Arrays.asList(MetricsEnum.CONSUME, MetricsEnum.COMBINED).contains(success_mode_enum))
 				        metric_sm = utility_consume_time.inverse_utility(metric_sm);
-			        else if (config.success_mode_enum == MetricsEnum.INHERIT)
+			        else if (success_mode_enum == MetricsEnum.INHERIT)
 			                metric_sm = utility_inherit.inverse_utility(metric_sm);
 			        metric_str = Double.toString(metric_sm);
 			}
@@ -1151,7 +967,7 @@ public class BaseScenario
 			{
 			        metric_str = f2f.format(metric_sm * 100) + "%";
 			}
-			double[] aa = new double[config.normal_assets];
+			double[] aa = new double[normal_assets];
 			for (int a = 0; a < aa.length; a++)
 			{
 			        aa[a] = fpb.aa[a];
@@ -1214,8 +1030,8 @@ public class BaseScenario
 		if (do_target)
 		{
 			long start = System.currentTimeMillis();
-			vital_stats.compute_stats(config.target_time_periods, config.target_life_table);
-			annuity_stats.compute_stats(config.target_time_periods, config.annuity_table);
+			ss.vital_stats.compute_stats(ss, config.target_time_periods, config.target_life_table);
+			ss.annuity_stats.compute_stats(ss, config.target_time_periods, config.annuity_table);
 			for (String scheme : config.target_schemes)
 			{
 			        AAMap map_compare = AAMap.factory(this, scheme, null);
@@ -1234,7 +1050,7 @@ public class BaseScenario
 				double target_rcr = Double.NaN;
 				if (config.target_mode.equals("rps"))
 				{
-				        TargetResult t = target_map.rps_target(config.validate_age, means.get(config.success_mode_enum), returns_target, config.target_sdp_baseline);
+				        TargetResult t = target_map.rps_target(config.validate_age, means.get(success_mode_enum), returns_target, config.target_sdp_baseline);
 					//map_loaded = t.map;
 				        target_result = t.target_result;
 					target_tp = t.target;
@@ -1242,7 +1058,7 @@ public class BaseScenario
 				}
 				else
 				{
-				        TargetResult t = target_map.rcr_target(config.validate_age, means.get(config.success_mode_enum), config.target_sdp_baseline, returns_generate, returns_target, config.target_sdp_baseline);
+				        TargetResult t = target_map.rcr_target(config.validate_age, means.get(success_mode_enum), config.target_sdp_baseline, returns_generate, returns_target, config.target_sdp_baseline);
 					//if (!config.target_sdp_baseline)
 					//	map_loaded = t.map;
 				        target_result = t.target_result;
@@ -1250,7 +1066,7 @@ public class BaseScenario
 					location_str = "RCR " + f4f.format(target_rcr);
 				}
 				String target_str;
-				if (!Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(config.success_mode_enum))
+				if (!Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(success_mode_enum))
 					target_str = f8.format(target_result);
 				else
 					target_str = f2f.format(target_result * 100) + "%";
@@ -1279,34 +1095,18 @@ public class BaseScenario
 			System.out.println();
 		}
 
-		if (config.compare_schemes.size() > 0)
-		{
-			long start = System.currentTimeMillis();
-			for (String scheme : config.compare_schemes)
-			{
-			        AAMap map_compare = AAMap.factory(this, scheme, null);
-				PathMetricsResult pm = map_compare.path_metrics(config.validate_age, start_p, config.num_sequences_validate, config.validate_seed, returns_validate);
-				System.out.printf("Compare %s:\n", scheme);
-				pm.print();
-				System.out.println();
-			}
-			double elapsed = (System.currentTimeMillis() - start) / 1000.0;
-			System.out.println("Compare done: " + f1f.format(elapsed) + " seconds");
-			System.out.println();
-		}
-
 		if (!config.skip_validate)
 		{
 			long start = System.currentTimeMillis();
-			vital_stats.compute_stats(config.validate_time_periods, config.validate_life_table);
-			annuity_stats.compute_stats(config.validate_time_periods, config.annuity_table);
+			ss.vital_stats.compute_stats(ss, config.validate_time_periods, config.validate_life_table);
+			ss.annuity_stats.compute_stats(ss, config.validate_time_periods, config.annuity_table);
 			if (!config.skip_validate_all)
 			{
-			        PrintWriter out = new PrintWriter(new FileWriter(new File(config.cwd + "/" + config.prefix + "-ce.csv")));
-			        for (int age = config.start_age; age < config.start_age + config.max_years; age++)
+			        PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-ce.csv")));
+			        for (int age = config.start_age; age < config.start_age + ss.max_years; age++)
 				{
 				        PathMetricsResult pm = map_loaded.path_metrics(age, start_p, config.num_sequences_validate, config.validate_seed, returns_validate);
-					double ce = utility_consume.inverse_utility(pm.means.get(MetricsEnum.CONSUME) / vital_stats.metric_divisor(MetricsEnum.CONSUME, age));
+					double ce = utility_consume.inverse_utility(pm.means.get(MetricsEnum.CONSUME) / ss.vital_stats.metric_divisor(MetricsEnum.CONSUME, age));
 					out.println(age + "," + f7f.format(ce));
 
 				}
@@ -1348,4 +1148,172 @@ public class BaseScenario
 			}
 		}
 	}
+
+        public Scenario(ScenarioSet ss, Config config, HistReturns hist, List<String> asset_classes, Double start_ria, Double start_nia) throws IOException, InterruptedException
+	{
+	        this.ss = ss;
+	        this.config = config;
+	        this.hist = hist;
+		this.asset_classes = asset_classes;
+ 
+                // Internal parameters.
+
+		int p_size = 0;
+		tp_index = (config.start_tp == null ? null : p_size);
+		if (tp_index != null)
+		        p_size++;
+		ria_index = (start_ria == null ? null : p_size);
+		if (ria_index != null)
+		        p_size++;
+		nia_index = (start_nia == null ? null : p_size);
+		if (nia_index != null)
+		        p_size++;
+		start_p = new double[p_size];
+		if (tp_index != null)
+		        start_p[tp_index] = config.start_tp;
+		if (ria_index != null)
+		        start_p[ria_index] = start_ria;
+		if (nia_index != null)
+		        start_p[nia_index] = start_nia;
+
+		// Set up the scales.
+		scale = new Scale[start_p.length];
+		if (tp_index != null)
+		        scale[tp_index] = Scale.scaleFactory(config.zero_bucket_size, config.scaling_factor);
+		if (ria_index != null)
+		        scale[ria_index] = Scale.scaleFactory(config.annuity_zero_bucket_size, config.annuity_scaling_factor);
+		if (nia_index != null)
+		        scale[nia_index] = Scale.scaleFactory(config.annuity_zero_bucket_size, config.annuity_scaling_factor);
+
+		// Calculated parameters.
+
+		generate_bottom_bucket = this.scale[tp_index].pf_to_bucket(config.pf_guaranteed);
+		generate_top_bucket = this.scale[tp_index].pf_to_bucket(config.pf_fail);
+		validate_bottom_bucket = this.scale[tp_index].pf_to_bucket(config.pf_validate);
+		validate_top_bucket = this.scale[tp_index].pf_to_bucket(0.0);
+		success_mode_enum = Metrics.to_enum(config.success_mode);
+
+		vw_strategy = config.vw_strategy;
+
+		if (config.cw_schedule != null && ss.max_years > config.cw_schedule.length)
+		        ss.max_years = config.cw_schedule.length;
+
+		// Sanity checks.
+		assert(config.validate_age < config.start_age + ss.max_years);
+		if (config.ef.equals("none"))
+		{
+			assert(asset_classes.contains(config.safe_aa));
+			assert(asset_classes.contains(config.fail_aa));
+		}
+		else
+		{
+		        assert(!config.search.equals("memory"));
+		}
+		assert(config.max_borrow == 0.0 || !config.borrow_aa.equals(config.fail_aa));
+		assert(config.validate_time_periods >= config.rebalance_time_periods);
+		assert(!config.utility_epstein_zin || (success_mode_enum == MetricsEnum.COMBINED)); // Other success modes not Epstein-Zinized.
+
+		// More internal parameters.
+
+		do_tax = config.tax_rate_cg != 0 || config.tax_rate_div != null || config.tax_rate_div_default != 0 || config.tax_rate_annuity != 0;
+		do_target = !config.skip_target && config.target_mode != null;
+		do_generate = (config.validate == null) || (do_target && (config.target_sdp_baseline || config.target_mode.equals("rps")));
+
+		normal_assets = asset_classes.size();
+		ria_aa_index = -1;
+		if (ria_index != null)
+		{
+		        assert(config.sex2 == null); // Calculated annuity purchase prices are for a couple which doesn't work if one party is dead.
+		        ria_aa_index = asset_classes.size();
+			asset_classes.add("[ria]");
+		}
+		nia_aa_index = -1;
+		if (nia_index != null)
+		{
+		        assert(config.sex2 == null);
+		        nia_aa_index = asset_classes.size();
+			asset_classes.add("[nia]");
+		}
+		spend_fract_index = asset_classes.size();
+		asset_classes.add("[spend_fract]");
+		all_alloc = asset_classes.size();
+		cpi_index = -1;
+		if (do_tax || nia_index != null)
+		{
+		        cpi_index = asset_classes.size();
+		        asset_classes.add("[cpi]");
+		}
+		ef_index = -1;
+		if (!config.ef.equals("none"))
+		{
+		        ef_index = asset_classes.size();
+		        asset_classes.add("[ef_index]");
+		}
+
+		// Set up utility functions.
+
+		Double eta = (config.utility_epstein_zin ? (Double) config.utility_gamma : config.utility_eta);
+		Utility utility_consume_risk = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_alpha, 0, config.withdrawal, config.utility_ce, config.utility_ce_ratio, 2 * config.withdrawal, 1 / config.utility_slope_double_withdrawal, config.withdrawal, 1, config.public_assistance, config.public_assistance_phaseout_rate, config.withdrawal * 2);
+		eta = (config.utility_epstein_zin ? (Double) (1 / config.utility_psi) : config.utility_eta);
+		utility_consume_time = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_alpha, 0, config.withdrawal, config.utility_ce, config.utility_ce_ratio, 2 * config.withdrawal, 1 / config.utility_slope_double_withdrawal, config.withdrawal, 1, config.public_assistance, config.public_assistance_phaseout_rate, config.withdrawal * 2);
+		double bequest_consume = (config.utility_bequest_consume == null ? config.withdrawal : config.utility_bequest_consume);
+		// Model: Bequest to 1 person for utility_inherit_years or utility_inherit_years people for 1 year who are currently consuming bequest_consume
+		// and share the same utility function as you.
+		double scale = config.utility_inherit_years;
+		if (config.utility_join)
+		{
+		        Utility utility_gift = new UtilityScale(config, utility_consume_risk, 0, 1 / config.utility_inherit_years, scale * config.utility_live, - bequest_consume);
+		        utility_consume = new UtilityJoin(config, utility_consume_risk, utility_gift);
+		        utility_gift = new UtilityScale(config, utility_consume_time, 0, 1 / config.utility_inherit_years, scale * config.utility_live, - bequest_consume);
+		        utility_consume_time = new UtilityJoin(config, utility_consume_time, utility_gift);
+		}
+		else
+		        utility_consume = utility_consume_risk;
+		utility_inherit = new UtilityScale(config, utility_consume_time, 0, 1 / config.utility_inherit_years, scale * config.utility_dead_limit, - bequest_consume);
+		utility_inherit.range = config.withdrawal * 100;
+
+		// Set up returns.
+
+		returns_generate = null;
+		if (do_generate || do_target  || do_tax)
+		    returns_generate = new Returns(this, hist, config, config.generate_seed, config.time_varying, config.generate_start_year, config.generate_end_year, config.num_sequences_generate, config.generate_time_periods, config.generate_ret_equity, config.generate_ret_bonds, config.ret_risk_free, config.generate_ret_inflation, config.management_expense, config.generate_shuffle, config.ret_reshuffle, config.generate_draw, config.ret_random_block_size, config.ret_pair, config.ret_wrap, config.generate_all_adjust, config.generate_equity_vol_adjust);
+
+		returns_target = null;
+		if (do_target)
+		    returns_target = new Returns(this, hist, config, config.target_seed, false, config.target_start_year, config.target_end_year, config.num_sequences_target, config.target_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.target_shuffle, config.ret_reshuffle, config.target_draw, config.ret_random_block_size, config.ret_pair, config.target_wrap, config.validate_all_adjust, config.validate_equity_vol_adjust);
+
+		returns_validate = new Returns(this, hist, config, config.validate_seed, false, config.validate_start_year, config.validate_end_year, config.num_sequences_validate, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.validate_shuffle, config.ret_reshuffle, config.validate_draw, config.ret_random_block_size, config.ret_pair, config.ret_wrap, config.validate_all_adjust, config.validate_equity_vol_adjust);
+
+ 		if (returns_generate != null)
+		{
+    			dividend_yield = new double[normal_assets];
+			double[] dividend_fract = (config.dividend_fract == null ? returns_generate.dividend_fract : config.dividend_fract);
+			List<double[]> ac_returns = Utils.zipDoubleArray(returns_generate.data);
+ 			for (int index = 0; index < normal_assets; index++)
+			{
+				double gm = Utils.weighted_plus_1_geo(ac_returns.get(index), returns_generate.returns_unshuffled_probability) - 1;
+			        dividend_yield[index] = dividend_fract[index] * gm / (1 + gm);
+			}
+
+ 			at_returns = returns_generate.data;
+			if (do_tax)
+			{
+ 				at_returns = Utils.zipDoubleArray(at_returns);
+				Tax tax = new TaxImmediate(this, config.tax_immediate_adjust);
+				for (int index = 0; index < normal_assets; index++)
+				{
+				        double[] at_return = at_returns.get(index);
+				        double[] aa = new double[normal_assets];
+					aa[index] = 1;
+					tax.initial(1, aa);
+					for (int i = 0; i < at_return.length; i++)
+					{
+					        at_return[i] -= tax.total_pending(1 + at_return[i], 1, aa, returns_generate.data.get(i));
+						        // This like most tax calculations is imperfect.
+					}
+				}
+				at_returns = Utils.zipDoubleArray(at_returns);
+			}
+		}
+        }
 }

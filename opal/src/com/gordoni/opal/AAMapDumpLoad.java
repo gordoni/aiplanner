@@ -18,15 +18,15 @@ class AAMapDumpLoad extends AAMap
 
 	public void dump_aa(AAMap map) throws IOException
 	{
-		for (int a = 0; a < config.normal_assets - 1; a++)
+		for (int a = 0; a < scenario.normal_assets - 1; a++)
 		{
-			dump_map(map, config.asset_classes.get(a));
+			dump_map(map, scenario.asset_classes.get(a));
 		}
 	}
 
 	public void dump_map(AAMap map, String map_name) throws IOException
 	{
-		PrintWriter out = new PrintWriter(new FileWriter(new File(config.cwd + '/' + config.prefix + "-" + map_name + ".csv")));
+		PrintWriter out = new PrintWriter(new FileWriter(new File(scenario.ss.cwd + '/' + config.prefix + "-" + map_name + ".csv")));
 	        for (int i = 1; i < scenario.start_p.length; i++)
 		        out.write(",");
 		for (int i = 0; i < map.map.length; i++)
@@ -38,7 +38,7 @@ class AAMapDumpLoad extends AAMap
 			int[] index = new int[fb.length];
 			for (int i = 0; i < fb.length; i++)
 			        index[i] = (int) Math.round(fb[i]);
-			if (index[scenario.tp_index] < config.validate_bottom_bucket || index[scenario.tp_index] > config.validate_top_bucket)
+			if (index[scenario.tp_index] < scenario.validate_bottom_bucket || index[scenario.tp_index] > scenario.validate_top_bucket)
 			        continue;
 			for (int i = 0; i < me_index.rps.length; i++)
 			{
@@ -46,8 +46,8 @@ class AAMapDumpLoad extends AAMap
 				        out.write(",");
 			        out.write(f2f.format(me_index.rps[i]));
 			}
-			int aa_index = config.asset_classes.indexOf(map_name);
-			int borrow_index = config.asset_classes.indexOf(config.borrow_aa);
+			int aa_index = scenario.asset_classes.indexOf(map_name);
+			int borrow_index = scenario.asset_classes.indexOf(config.borrow_aa);
 			for (MapPeriod map_period : map.map)
 			{
 				MapElement me = map_period.get(index);
@@ -70,7 +70,7 @@ class AAMapDumpLoad extends AAMap
 
 					double s = 0.0;
 					double a = 0.0;
-					for (int j = 0; j < config.normal_assets; j++)
+					for (int j = 0; j < scenario.normal_assets; j++)
 					{
 						s += aa[j];
 						assert(-config.max_borrow - 1e-6 <= aa[j] && aa[j] <= 1.0 + config.max_borrow + 1e-6);
@@ -88,7 +88,7 @@ class AAMapDumpLoad extends AAMap
 						allocation = Math.max(allocation, min);
 						remainder += aa[j] - allocation;
 					}
-					if (aa_index == config.normal_assets - 1)
+					if (aa_index == scenario.normal_assets - 1)
 						assert(-1e-6 < remainder && remainder < 1e-6);
 
 					value = f9f.format(allocation);
@@ -159,17 +159,17 @@ class AAMapDumpLoad extends AAMap
         }
 
 	@SuppressWarnings("unchecked")
-	public AAMapDumpLoad(BaseScenario scenario, String aa_file_prefix) throws IOException
+	public AAMapDumpLoad(Scenario scenario, String aa_file_prefix) throws IOException
 	{
 	        super(scenario);
 
-	        map = new MapPeriod[(int) (config.max_years * config.generate_time_periods)];
+	        map = new MapPeriod[(int) (scenario.ss.max_years * config.generate_time_periods)];
 
-		for (int aa_index = 0; aa_index < config.normal_assets - 1; aa_index++)
+		for (int aa_index = 0; aa_index < scenario.normal_assets - 1; aa_index++)
 		{
-			String aa_name = config.asset_classes.get(aa_index);
+			String aa_name = scenario.asset_classes.get(aa_index);
 			if (aa_file_prefix == null)
-				aa_file_prefix = config.cwd + '/' + config.prefix;
+				aa_file_prefix = scenario.ss.cwd + '/' + config.prefix;
 
 			BufferedReader in = new BufferedReader(new FileReader(new File(aa_file_prefix + "-" + aa_name + ".csv")));
 			String line = null;
@@ -247,7 +247,7 @@ class AAMapDumpLoad extends AAMap
 
 		for (int pi = 0; pi < map.length; pi++)
 		{
-			if (config.normal_assets == 1)
+			if (scenario.normal_assets == 1)
 			{
 			        assert(false);
 				// Want:
@@ -263,14 +263,14 @@ class AAMapDumpLoad extends AAMap
 				double[] aa = me.aa;
 				if (aa != null)
 				{
-				        double[] new_aa = new double[config.asset_classes.size()];
+				        double[] new_aa = new double[scenario.asset_classes.size()];
 				        for (int a = 0; a < aa.length; a++)
 					{
 					        new_aa[a] = aa[a];
 					}
 				        new_aa[aa.length] = 1.0 - Utils.sum(aa);
 					me.aa = new_aa;
-					assert (new_aa.length == config.asset_classes.size());
+					assert (new_aa.length == scenario.asset_classes.size());
 					double s = 0.0;
 					double a = 0.0;
 					for (int i = 0; i <= aa.length; i++)
@@ -285,7 +285,7 @@ class AAMapDumpLoad extends AAMap
  			}
 		}
 
-		if (!config.vw_strategy.equals("amount"))
+		if (!scenario.vw_strategy.equals("amount"))
 		        load_extra(map, aa_file_prefix, "spend_fract");
 		if (scenario.ria_index != null)
 		    load_extra(map, aa_file_prefix, "ria");
@@ -293,7 +293,7 @@ class AAMapDumpLoad extends AAMap
 		    load_extra(map, aa_file_prefix, "nia");
 	}
 
-        public AAMapDumpLoad(BaseScenario scenario, AAMap map_precise) throws IOException
+        public AAMapDumpLoad(Scenario scenario, AAMap map_precise) throws IOException
 	{
 		// Dump out and re-read asset allocation so that we are reporting stats after any loss of precision resulting from the limited
 		// precision of the aa file.  Emperically, the results are found to vary by around 0.01% as a result of this.
@@ -302,7 +302,7 @@ class AAMapDumpLoad extends AAMap
 
 		if (config.skip_dump_load)
 		{
-	        	map = new MapPeriod[(int) (config.max_years * config.generate_time_periods)];
+	        	map = new MapPeriod[(int) (scenario.ss.max_years * config.generate_time_periods)];
 
 			for (int pi = 0; pi < map.length; pi++)
 			{
@@ -313,7 +313,7 @@ class AAMapDumpLoad extends AAMap
 				{
 				        int[] v_index = itr.nextIndex();
 				        int[] g_index = v_index.clone();
-				        g_index[scenario.tp_index] += config.validate_bottom_bucket - config.generate_bottom_bucket;
+				        g_index[scenario.tp_index] += scenario.validate_bottom_bucket - scenario.generate_bottom_bucket;
 				        mp.set(v_index, map_precise.map[pi].get(g_index));
 					itr.next();
 				}
@@ -328,7 +328,7 @@ class AAMapDumpLoad extends AAMap
 		//         for (int bi = 0; bi < map_precise.map[pi].length[scenario.tp_index]; bi++)
 		// 	{
 		// 	        int[] bucket_index = new int[scenario.start_p.length];
-		// 		bucket_index[scenario.tp_index] = bi + config.generate_bottom_bucket;
+		// 		bucket_index[scenario.tp_index] = bi + scenario.generate_bottom_bucket;
 		// 		MapElement me = map_precise.map[pi].get(bucket_index);
 		// 	        RiskReward rw = scenario.rw_aa(scenario.at_returns, me.aa, "linear");
 		// 		me.mean = rw.mean;
@@ -337,7 +337,7 @@ class AAMapDumpLoad extends AAMap
 		// }
 		// dump_map(map_precise, "risk");
 		// dump_map(map_precise, "return");
-		if (!config.vw_strategy.equals("amount"))
+		if (!scenario.vw_strategy.equals("amount"))
 		        dump_map(map_precise, "spend_fract");
 		if (scenario.ria_index != null)
 		        dump_map(map_precise, "ria");
@@ -349,10 +349,10 @@ class AAMapDumpLoad extends AAMap
 		// // Also used by opal-success-raw.png.
 		// for (int pi = 0; pi < map.length; pi++)
 		// {
-		// 	for (int bucket = config.validate_bottom_bucket; bucket < config.validate_top_bucket + 1; bucket++)
+		// 	for (int bucket = scenario.validate_bottom_bucket; bucket < scenario.validate_top_bucket + 1; bucket++)
 		// 	{
 		// 	        int[] bucket_index = new int[scenario.start_p.length];
-		// 		bucket_index[scenario.tp_index] = bucket - config.validate_bottom_bucket;
+		// 		bucket_index[scenario.tp_index] = bucket - scenario.validate_bottom_bucket;
 		// 		map[pi].get(bucket_index).results = map_precise.map[pi].get(bucket_index).results;
 		// 	}
 		// }
@@ -378,13 +378,13 @@ class AAMapDumpLoad extends AAMap
 	// 	int bucket_range1;
 	// 	if (partial_mode)
 	// 	{
-	// 		bucket_range0 = config.generate_bottom_bucket;
-	// 		bucket_range1 = config.generate_top_bucket + 1;
+	// 		bucket_range0 = scenario.generate_bottom_bucket;
+	// 		bucket_range1 = scenario.generate_top_bucket + 1;
 	// 	}
 	// 	else
 	// 	{
-	// 		bucket_range0 = config.validate_bottom_bucket;
-	// 		bucket_range1 = config.validate_top_bucket + 1;
+	// 		bucket_range0 = scenario.validate_bottom_bucket;
+	// 		bucket_range1 = scenario.validate_top_bucket + 1;
 	// 	}
 
 	// 	double period_radius = (partial_mode ? config.age_radius_generate : config.age_radius_dump) * config.generate_time_periods;
@@ -409,7 +409,7 @@ class AAMapDumpLoad extends AAMap
 	// 	}
 	// 	for (int smooth_bucket = bucket_range0; smooth_bucket < bucket_range1; smooth_bucket++)
 	// 	{
-	// 	    double[] aa_smooth = new double[config.normal_assets];
+	// 	    double[] aa_smooth = new double[scenario.normal_assets];
 	// 		double contrib_smooth = 0.0;
 	// 		double weights = 0.0;
 	// 		for (int a = lower_period; a < upper_period + 1; a++)

@@ -14,8 +14,8 @@ class TaxAvgCost extends Tax
 	        if (p < 0)
 		        p = 0;
 		cpi = 1;
-		basis = new double[config.normal_assets];
-		value = new double[config.normal_assets];
+		basis = new double[scenario.normal_assets];
+		value = new double[scenario.normal_assets];
 		for (int i = 0; i < basis.length; i++)
 		{
 		        basis[i] = aa[i] * p;
@@ -107,7 +107,7 @@ class TaxAvgCost extends Tax
 	         return try_tax(p, p_preinvest, aa, returns, true);
         }
 
-        public TaxAvgCost(BaseScenario scenario)
+        public TaxAvgCost(Scenario scenario)
         {
 	        super(scenario);
         }

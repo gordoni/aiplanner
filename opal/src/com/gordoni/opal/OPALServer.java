@@ -122,8 +122,7 @@ public class OPALServer implements Runnable
 				        System.setOut(pstream);
 					Map<String, Object> params = new HashMap<String, Object>();
 					Config config = new Config();
-					BaseScenario scenario = new DefaultScenario(config, hist, dirname, params, null);
-					scenario.run_main();
+					new ScenarioSet(config, hist, dirname, params, null);
 				}
 				pstream.close();
 				String[] cmd = new String[] {"./plot", dirname};

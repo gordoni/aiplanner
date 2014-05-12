@@ -5,7 +5,7 @@ import java.util.List;
 
 abstract class Tax
 {
-        protected BaseScenario scenario;
+        protected Scenario scenario;
         protected Config config;
 
         protected boolean cg_carry_allowed = true;
@@ -47,7 +47,7 @@ abstract class Tax
 		return tax;
 	}
 
-        public static Tax taxFactory(BaseScenario scenario, String method)
+        public static Tax taxFactory(Scenario scenario, String method)
         {
 		if (method.equals("immediate"))
 		        return new TaxImmediate(scenario, 1);
@@ -62,11 +62,11 @@ abstract class Tax
 		return null;
          }
 
-        public Tax(BaseScenario scenario)
+        public Tax(Scenario scenario)
         {
 	        this.scenario = scenario;
 		this.config = scenario.config;
 
-		assert(config.tax_rate_div == null || config.tax_rate_div.length == config.normal_assets);
+		assert(config.tax_rate_div == null || config.tax_rate_div.length == scenario.normal_assets);
 	}
 }

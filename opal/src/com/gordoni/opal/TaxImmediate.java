@@ -17,7 +17,7 @@ class TaxImmediate extends Tax
 		        p_preinvest = 0;
 	        double cpi_delta = 1 + returns[scenario.cpi_index];
 		double income = 0;
-	        for (int i = 0; i < config.normal_assets; i++)
+	        for (int i = 0; i < scenario.normal_assets; i++)
 		{
 		        double ret = 1 + returns[i];
 			double invest_start = prev_aa[i] * p_preinvest;
@@ -41,7 +41,7 @@ class TaxImmediate extends Tax
 	        return try_tax(p, p_preinvest, aa, returns, true);
         }
 
-        public TaxImmediate(BaseScenario scenario, double tax_immediate_adjust)
+        public TaxImmediate(Scenario scenario, double tax_immediate_adjust)
         {
 	        super(scenario);
 		this.cg_carry_allowed = false;

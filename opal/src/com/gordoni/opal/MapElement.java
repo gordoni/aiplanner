@@ -50,7 +50,7 @@ public class MapElement implements Cloneable
 		return res;
         }
 
-        public double ria_purchase(BaseScenario scenario)
+        public double ria_purchase(Scenario scenario)
         {
 	        double consume = spend;
 		double ria_purchase = 0;
@@ -61,7 +61,7 @@ public class MapElement implements Cloneable
 		return ria_purchase;
         }
 
-        public double nia_purchase(BaseScenario scenario)
+        public double nia_purchase(Scenario scenario)
         {
 	        double consume = spend;
 	        consume -= ria_purchase(scenario);

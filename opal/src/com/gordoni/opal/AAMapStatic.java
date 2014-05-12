@@ -2,15 +2,15 @@ package com.gordoni.opal;
 
 public class AAMapStatic extends AAMap
 {
-        public AAMapStatic(BaseScenario scenario, String aa_strategy)
+        public AAMapStatic(Scenario scenario, String aa_strategy)
 	{
 	        super(scenario);
 
 		assert(scenario.start_p.length == 1 && scenario.tp_index != null);
 
-	        int top_bucket = config.validate_top_bucket;
-	        int bottom_bucket = config.validate_bottom_bucket;
-	        map = new MapPeriod[(int) (config.max_years * config.generate_time_periods)];
+	        int top_bucket = scenario.validate_top_bucket;
+	        int bottom_bucket = scenario.validate_bottom_bucket;
+	        map = new MapPeriod[(int) (scenario.ss.max_years * config.generate_time_periods)];
 
 		for (int pi = 0; pi < map.length; pi++)
 	        {

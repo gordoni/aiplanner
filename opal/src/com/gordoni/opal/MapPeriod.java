@@ -106,7 +106,7 @@ class MapPeriod implements Iterable<MapElement>
 		return it;
 	}
 
-        public MapPeriod(BaseScenario scenario, boolean generate)
+        public MapPeriod(Scenario scenario, boolean generate)
         {
 	        Config config = scenario.config;
 
@@ -114,8 +114,8 @@ class MapPeriod implements Iterable<MapElement>
 	        length = new int[scenario.start_p.length];
 		if (scenario.tp_index != null)
 		{
-			bottom[scenario.tp_index] = (generate ? config.generate_bottom_bucket : config.validate_bottom_bucket);
-		        length[scenario.tp_index] = (generate ? config.generate_top_bucket : config.validate_top_bucket) - bottom[scenario.tp_index] + 1;
+			bottom[scenario.tp_index] = (generate ? scenario.generate_bottom_bucket : scenario.validate_bottom_bucket);
+		        length[scenario.tp_index] = (generate ? scenario.generate_top_bucket : scenario.validate_top_bucket) - bottom[scenario.tp_index] + 1;
 		}
 		if (scenario.ria_index != null)
 		{

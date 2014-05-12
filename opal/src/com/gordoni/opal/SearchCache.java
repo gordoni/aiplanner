@@ -44,7 +44,7 @@ public class SearchCache
 		        cache_list.clear();
         }
 
-        public SearchCache(BaseScenario scenario)
+        public SearchCache(Scenario scenario)
         {
 	        config = scenario.config;
 

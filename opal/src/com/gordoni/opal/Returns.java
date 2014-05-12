@@ -34,7 +34,7 @@ public class Returns implements Cloneable
 
 	public double[] dividend_fract;
 
-    private List<Double> adjust_returns(List<Double> l, double ret_adjust, double vol_adjust)
+        private List<Double> adjust_returns(List<Double> l, double ret_adjust, double vol_adjust)
         {
 	        double[] a = Utils.DoubleTodouble(l);
 	        double plus_1_geomean = Utils.plus_1_geomean(a);
@@ -76,7 +76,7 @@ public class Returns implements Cloneable
 		return res;
 	}
 
-        public Returns(HistReturns hist, Config config, int ret_seed, boolean cache_returns, int start_year, Integer end_year, Integer num_sequences, double time_periods, Double ret_equity, Double ret_bonds, double ret_risk_free, Double ret_inflation, double management_expense, String ret_shuffle, boolean reshuffle, String draw, int random_block_size, boolean pair, boolean wrap, double all_adjust, double equity_vol_adjust)
+        public Returns(Scenario scenario, HistReturns hist, Config config, int ret_seed, boolean cache_returns, int start_year, Integer end_year, Integer num_sequences, double time_periods, Double ret_equity, Double ret_bonds, double ret_risk_free, Double ret_inflation, double management_expense, String ret_shuffle, boolean reshuffle, String draw, int random_block_size, boolean pair, boolean wrap, double all_adjust, double equity_vol_adjust)
 	{
 	        this.config = config;
 
@@ -112,7 +112,7 @@ public class Returns implements Cloneable
 		        equity_adjust = Math.pow(1.0 + config.ret_equity_adjust, 1.0 / time_periods);
 		}
 		List<Double> equity_returns = null;
-		if (config.asset_classes.contains("stocks"))
+		if (scenario.asset_classes.contains("stocks"))
 		        equity_returns = adjust_returns(stock_returns, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
 
 		List<Double> bond_returns = reduce_returns(hist.bond.subList(start, start + month_count), (int) Math.round(12 / time_periods));
@@ -129,16 +129,16 @@ public class Returns implements Cloneable
 		        fixed_income_adjust = Math.pow(1.0 + config.ret_bonds_adjust, 1.0 / time_periods);
 		}
 		List<Double> fixed_income_returns = null;
-		if (config.asset_classes.contains("bonds"))
+		if (scenario.asset_classes.contains("bonds"))
 		{
 		        fixed_income_returns = adjust_returns(bond_returns, fixed_income_adjust * gs10_to_bonds_adjust * adjust_management_expense * adjust_all, config.ret_gs10_to_bonds_vol_adjust);
 		}
 		List<Double> gs10_returns = null;
-		if (config.asset_classes.contains("gs10"))
+		if (scenario.asset_classes.contains("gs10"))
 		        gs10_returns = adjust_returns(bond_returns, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
 
 		List<Double> eafe_returns = null;
-		if (config.asset_classes.contains("eafe"))
+		if (scenario.asset_classes.contains("eafe"))
 	        {
 		        assert(time_periods == 1);
 		        int offset = (int) Math.round((start_year - hist.eafe_initial) * time_periods);
@@ -154,7 +154,7 @@ public class Returns implements Cloneable
 		List<Double> ff_sl_returns = null;
 		List<Double> ff_sm_returns = null;
 		List<Double> ff_sh_returns = null;
-		if (config.asset_classes.contains("bl") || config.asset_classes.contains("bm") || config.asset_classes.contains("bh") || config.asset_classes.contains("sl") || config.asset_classes.contains("sm") || config.asset_classes.contains("sh"))
+		if (scenario.asset_classes.contains("bl") || scenario.asset_classes.contains("bm") || scenario.asset_classes.contains("bh") || scenario.asset_classes.contains("sl") || scenario.asset_classes.contains("sm") || scenario.asset_classes.contains("sh"))
 		{
 		        assert(time_periods == 1);
 		        int offset = (int) Math.round((start_year - hist.ff_initial) * time_periods);
@@ -176,7 +176,7 @@ public class Returns implements Cloneable
 		}
 
 		List<Double> reits_equity_returns = null;
-		if (config.asset_classes.contains("equity_reits"))
+		if (scenario.asset_classes.contains("equity_reits"))
 	        {
 		        assert(time_periods == 1);
 		        int offset = (int) Math.round((start_year - hist.reit_initial) * time_periods);
@@ -187,7 +187,7 @@ public class Returns implements Cloneable
 		}
 
 		List<Double> reits_mortgage_returns = null;
-		if (config.asset_classes.contains("mortgage_reits"))
+		if (scenario.asset_classes.contains("mortgage_reits"))
 	        {
 		        assert(time_periods == 1);
 		        int offset = (int) Math.round((start_year - hist.reit_initial) * time_periods);
@@ -198,7 +198,7 @@ public class Returns implements Cloneable
 		}
 
 		List<Double> gs1_returns = null;
-		if (config.asset_classes.contains("gs1"))
+		if (scenario.asset_classes.contains("gs1"))
 	        {
 		        assert(time_periods == 1);
 		        int offset = (int) Math.round((start_year - hist.gs1_initial) * time_periods);
@@ -209,7 +209,7 @@ public class Returns implements Cloneable
 		}
 
 		List<Double> aaa_returns = null;
-		if (config.asset_classes.contains("aaa"))
+		if (scenario.asset_classes.contains("aaa"))
 	        {
 		        assert(time_periods == 1);
 		        int offset = (int) Math.round((start_year - hist.aaa_initial) * time_periods);
@@ -220,7 +220,7 @@ public class Returns implements Cloneable
 		}
 
 		List<Double> baa_returns = null;
-		if (config.asset_classes.contains("baa"))
+		if (scenario.asset_classes.contains("baa"))
 	        {
 		        assert(time_periods == 1);
 		        int offset = (int) Math.round((start_year - hist.baa_initial) * time_periods);
@@ -231,7 +231,7 @@ public class Returns implements Cloneable
 		}
 
 		List<Double> t1_returns = null;
-		if (config.asset_classes.contains("cash"))
+		if (scenario.asset_classes.contains("cash"))
 	        {
 		        assert(time_periods == 1);
 		        int offset = (int) Math.round((start_year - hist.t1_initial) * time_periods);
@@ -242,7 +242,7 @@ public class Returns implements Cloneable
 		}
 
 		List<Double> gold_returns = null;
-		if (config.asset_classes.contains("gold"))
+		if (scenario.asset_classes.contains("gold"))
 	        {
 		        assert(time_periods == 1);
 		        int offset = (int) Math.round((start_year - hist.gold_initial) * time_periods);
@@ -253,7 +253,7 @@ public class Returns implements Cloneable
 		}
 
 		List<Double> margin_returns = null;
-		if (config.asset_classes.contains("margin"))
+		if (scenario.asset_classes.contains("margin"))
 		{
 		        assert(time_periods == 1);
 		        int offset = (int) Math.round((start_year - hist.t1_initial) * time_periods);
@@ -294,10 +294,10 @@ public class Returns implements Cloneable
 		}
 
 		List<double[]> returns = new ArrayList<double[]>();
-		dividend_fract = new double[config.asset_classes.size()];
-		for (int a = 0; a < config.asset_classes.size(); a++)
+		dividend_fract = new double[scenario.asset_classes.size()];
+		for (int a = 0; a < scenario.asset_classes.size(); a++)
 		{
-		        String asset_class = config.asset_classes.get(a);
+		        String asset_class = scenario.asset_classes.get(a);
 
 		        List<Double> rets = null;
 			double divf = Double.NaN;
@@ -436,7 +436,7 @@ public class Returns implements Cloneable
 		}
 		else if (cache_returns && ret_shuffle.equals("all") && !reshuffle)
 		{
-			int total_periods = (int) (config.max_years * time_periods);
+			int total_periods = (int) (scenario.ss.max_years * time_periods);
 			for (int i = 0; i < num_sequences; i++)
 				returns_cache.add(shuffle_returns(total_periods));
 		}

@@ -21,7 +21,7 @@ public class AnnuityStats
         public double[] real_annuity_price = new double[0];
         public double[] nominal_annuity_price = new double[0];
 
-        private BaseScenario scenario;
+        private ScenarioSet ss;
         private Config config;
         private HistReturns hist;
         private VitalStats vital_stats;
@@ -31,7 +31,7 @@ public class AnnuityStats
 
 	private void dump_rcmt_params() throws IOException
 	{
-		PrintWriter out = new PrintWriter(new File(config.cwd + "/" + config.prefix + "-rcmt-params.csv"));
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-rcmt-params.csv"));
 		out.println("date");
 		out.println(config.annuity_real_yield_curve);
 		out.close();
@@ -43,7 +43,7 @@ public class AnnuityStats
 	{
 	        real_yield_curve = new HashMap<Double, Double>();
 
-		BufferedReader in = new BufferedReader(new FileReader(new File(config.cwd + "/" + config.prefix + "-rcmt.csv")));
+		BufferedReader in = new BufferedReader(new FileReader(new File(ss.cwd + "/" + config.prefix + "-rcmt.csv")));
 		String line = in.readLine();
 		while ((line = in.readLine()) != null)
 		{
@@ -60,7 +60,7 @@ public class AnnuityStats
         {
 	        dump_rcmt_params();
 
-		scenario.subprocess("real_yield_curve.R");
+		ss.subprocess("real_yield_curve.R", config.prefix);
 
 		load_rcmt();
 	}
@@ -193,9 +193,9 @@ public class AnnuityStats
 		}
 	}
 
-        public AnnuityStats(BaseScenario scenario, Config config, HistReturns hist, VitalStats vital_stats) throws IOException, InterruptedException
+        public AnnuityStats(ScenarioSet ss, Config config, HistReturns hist, VitalStats vital_stats) throws IOException, InterruptedException
         {
-	        this.scenario = scenario;
+	        this.ss = ss;
 	        this.config = config;
 		this.hist = hist;
 		this.vital_stats = vital_stats;
@@ -204,14 +204,14 @@ public class AnnuityStats
 		        rcmt();
 	}
 
-        public void compute_stats(double time_periods, String table)
+        public void compute_stats(ScenarioSet ss, double time_periods, String table)
         {
 	        if (config.sex2 != null)
 		        return;
 
 		this.time_periods = time_periods;
 
-		boolean regenerated = vital_stats.compute_stats(time_periods, table);
+		boolean regenerated = vital_stats.compute_stats(ss, time_periods, table);
 
 		if (regenerated)
 		{

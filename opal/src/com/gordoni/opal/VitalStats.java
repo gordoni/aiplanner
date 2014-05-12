@@ -21,6 +21,7 @@ public class VitalStats
 	public double[] sum_avg_alive;
         public double[] consume_divisor_period;
 
+        private ScenarioSet ss;
         private Config config;
         private HistReturns hist;
 
@@ -371,7 +372,7 @@ public class VitalStats
 		if (config.utility_epstein_zin && (metric == MetricsEnum.COMBINED))
 		    return 1; // Only combined metric is Epstein-Zinized, and it doesn't need any divisor adjustment. Used in reporting generated metric.
 
-		int total_periods = (int) (config.max_years * time_periods);
+		int total_periods = (int) (ss.max_years * time_periods);
 	        double d = 0;
 		for (int y = period; y < total_periods; y++)
 		    d += metric_weight(metric, y);
@@ -380,7 +381,7 @@ public class VitalStats
 
         private void pre_compute_consume_divisor_period()
         {
-		consume_divisor_period = new double[(int) (config.max_years * time_periods)];
+		consume_divisor_period = new double[(int) (ss.max_years * time_periods)];
 		for (int period = 0; period < consume_divisor_period.length; period++)
 		        // Looping is inefficient, could build up values reverse incrementally, but probably doesn't matter.
 		        consume_divisor_period[period] = metric_divisor_period(MetricsEnum.CONSUME, period);
@@ -399,11 +400,12 @@ public class VitalStats
 		this.hist = hist;
         }
 
-        public boolean compute_stats(double time_periods, String table)
+        public boolean compute_stats(ScenarioSet ss, double time_periods, String table)
         {
 	        if (time_periods == this.time_periods && table.equals(this.table))
 		        return false;
 
+		this.ss = ss;
 	        this.time_periods = time_periods;
 		this.table = table;
 
@@ -414,24 +416,24 @@ public class VitalStats
 
 	        pre_compute_life_expectancy();
 
-		int max_years = death.length - config.start_age;
-		this.raw_alive = new double[(int) Math.round(max_years * time_periods) + 1];
-		this.raw_dying = new double[(int) Math.round(max_years * time_periods)];
-		this.raw_sum_avg_alive = new double[(int) Math.round(max_years * time_periods)];
-		this.alive = new double[(int) Math.round(max_years * time_periods) + 1];
-		this.dying = new double[(int) Math.round(max_years * time_periods)];
-		this.sum_avg_alive = new double[(int) Math.round(max_years * time_periods)];
+		int vs_years = death.length - config.start_age;
+		this.raw_alive = new double[(int) Math.round(vs_years * time_periods) + 1];
+		this.raw_dying = new double[(int) Math.round(vs_years * time_periods)];
+		this.raw_sum_avg_alive = new double[(int) Math.round(vs_years * time_periods)];
+		this.alive = new double[(int) Math.round(vs_years * time_periods) + 1];
+		this.dying = new double[(int) Math.round(vs_years * time_periods)];
+		this.sum_avg_alive = new double[(int) Math.round(vs_years * time_periods)];
  		pre_compute_alive_dying(death, raw_alive, raw_dying, raw_sum_avg_alive, alive, dying, sum_avg_alive, time_periods, config.consume_discount_rate);
 
-		if (config.max_years == -1)
+		if (ss.max_years == -1)
 		{
 		        int actual_years = (config.years == null) ? death.length : config.years;
-			config.max_years = Math.min(actual_years, death.length - config.start_age);
-			config.max_years -= config.max_years % lcm((int) Math.round(1.0 / config.generate_time_periods), (int) Math.round(1.0 / config.validate_time_periods));
+			ss.max_years = Math.min(actual_years, death.length - config.start_age);
+			ss.max_years -= ss.max_years % lcm((int) Math.round(1.0 / config.generate_time_periods), (int) Math.round(1.0 / config.validate_time_periods));
 		}
 		else
 		{
-		        config.max_years = Math.min(config.max_years, (int) (dying.length / config.target_time_periods));
+		        ss.max_years = Math.min(ss.max_years, (int) (dying.length / config.target_time_periods));
 			        // Buglet : when validating should really use max_years prior to targeting in min expression.
 		}
 

@@ -42,10 +42,10 @@ public class AAMapGenerate extends AAMap
 
         public double search_difference(SimulateResult a, SimulateResult b)
 	{
-	        double val_a = a.metrics.get(config.success_mode_enum);
-		double val_b = b.metrics.get(config.success_mode_enum);
+	        double val_a = a.metrics.get(scenario.success_mode_enum);
+		double val_b = b.metrics.get(scenario.success_mode_enum);
 		double diff = (val_a == val_b) ? 0 : val_a - val_b; // Yield zero rather than NaN if both infinite.
-		if (config.success_mode_enum == MetricsEnum.COST)
+		if (scenario.success_mode_enum == MetricsEnum.COST)
 		        return - diff;
 		else
                         return diff;
@@ -87,7 +87,7 @@ public class AAMapGenerate extends AAMap
 		}
 
 		if (me.simulate != null)
-		        me.simulate.add(new SearchResult(aa, results.metrics.get(config.success_mode_enum), note));
+		        me.simulate.add(new SearchResult(aa, results.metrics.get(scenario.success_mode_enum), note));
 
 		return results;
         }
@@ -563,11 +563,11 @@ public class AAMapGenerate extends AAMap
 		{
 		        double step_size = 1;
 		        boolean improve = search_hill_climb(me, dimensions, step, step_size, aa, period, returns);
-			if (dimensions.contains(scenario.spend_fract_index) && Double.isInfinite(me.results.metrics.get(config.success_mode_enum)))
+			if (dimensions.contains(scenario.spend_fract_index) && Double.isInfinite(me.results.metrics.get(scenario.success_mode_enum)))
 			{
 			        // Unable to search if everywhere is infinity. Try searching again somewhere safe.
 			        double safe_aa[] = scenario.guaranteed_safe_aa();
-			        safe_aa[scenario.spend_fract_index] = 1 - step[config.asset_classes.size()];
+			        safe_aa[scenario.spend_fract_index] = 1 - step[scenario.asset_classes.size()];
 			                // contrib_high isn't safe because it may correspond to conume_annual=0,
 				        // which if defined_benefit=public_assistance=0 yields -Inf.
 			        improve = search_hill_climb(me, dimensions, step, step_size, safe_aa, period, returns) || improve;
@@ -598,15 +598,15 @@ public class AAMapGenerate extends AAMap
         {
 		boolean search_aa = config.aa_strategy.equals("sdp");
 		boolean retire = period >= (config.retirement_age - config.start_age) * returns.time_periods;
-		boolean search_spend_fract = config.vw_strategy.equals("sdp") && (retire || config.spend_fract_all);
+		boolean search_spend_fract = scenario.vw_strategy.equals("sdp") && (retire || config.spend_fract_all);
 
 		List<Integer> dimensions = new ArrayList<Integer>();
-		double[] step = new double[config.asset_classes.size() + 1];
+		double[] step = new double[scenario.asset_classes.size() + 1];
 		if (!search_aa)
 		        ;
 		else if (config.ef.equals("none"))
 		{
-		        int search_aa_dimensions = config.normal_assets;
+		        int search_aa_dimensions = scenario.normal_assets;
 			if (search_aa_dimensions <= 1)
 			        search_aa_dimensions = 0;
 			else if (search_aa_dimensions == 2)
@@ -652,7 +652,7 @@ public class AAMapGenerate extends AAMap
 			return false;
 		}
 		else
-		        assert(!config.vw_strategy.equals("retirement_amount")); // retirement_amount is a run time strategy that does not lend itself to SDP.
+		        assert(!scenario.vw_strategy.equals("retirement_amount")); // retirement_amount is a run time strategy that does not lend itself to SDP.
 
 		boolean improve = false;
 		if ((scenario.ria_index != null || scenario.nia_index != null) && !config.annuity_partial && aa == null)
@@ -732,15 +732,15 @@ public class AAMapGenerate extends AAMap
 	// Generate asset allocation.
         Object next_check_lock = new Object();
         int next_check; // Can't declare locally as modified by thread.
-        public AAMapGenerate(final BaseScenario scenario, final Returns returns) throws ExecutionException
+        public AAMapGenerate(final Scenario scenario, final Returns returns) throws ExecutionException
 	{
 	        super(scenario);
-	        map = new MapPeriod[(int) (config.max_years * returns.time_periods)];
+	        map = new MapPeriod[(int) (scenario.ss.max_years * returns.time_periods)];
 
 		List<Callable<Integer>> tasks = new ArrayList<Callable<Integer>>();
 
 		final int period_0 = 0;
-		final int period_1 = (int) (config.max_years * returns.time_periods);
+		final int period_1 = (int) (scenario.ss.max_years * returns.time_periods);
 		for (int period = period_1 - 1; period >= period_0; period--)
 		{
 		        if (config.trace)
@@ -842,14 +842,14 @@ public class AAMapGenerate extends AAMap
 			        if (config.stock_bias != 0)
 				{
 				        assert(config.min_safe_le == 0);
-				        me.aa = inc_dec_aa(me.aa, config.asset_classes.indexOf("stocks"), config.stock_bias, me.rps, 0);
+				        me.aa = inc_dec_aa(me.aa, scenario.asset_classes.indexOf("stocks"), config.stock_bias, me.rps, 0);
 				}
 
 				if (me.aa[scenario.spend_fract_index] == 1)
 				{
 				        // Make map look nice when values to use are indeterminite.
 				        double[] gf = scenario.guaranteed_fail_aa();
-					for (int i = 0; i < config.normal_assets; i++)
+					for (int i = 0; i < scenario.normal_assets; i++)
 					        me.aa[i] = gf[i];
 					if (!config.ef.equals("none"))
 					        me.aa[scenario.ef_index] = gf[scenario.ef_index];
@@ -858,7 +858,7 @@ public class AAMapGenerate extends AAMap
 			        me.cache = null;
 				me.spend = me.results.spend;
 				me.consume = me.results.consume;
-				me.metric_sm = me.results.metrics.get(config.success_mode_enum);
+				me.metric_sm = me.results.metrics.get(scenario.success_mode_enum);
 			}
 
 			if ((config.skip_dump_log || config.conserve_ram) && period + 1 < map.length)
@@ -894,15 +894,15 @@ public class AAMapGenerate extends AAMap
 		        inc_pct = income / (p[scenario.tp_index] + income);
 	        double pct = config.vw_percentage;
 		int period = (int) Math.round((age - config.start_age) * config.generate_time_periods);
-		double le = scenario.vital_stats.raw_sum_avg_alive[period] / scenario.vital_stats.raw_alive[period];
-		le /= scenario.vital_stats.time_periods;
+		double le = scenario.ss.vital_stats.raw_sum_avg_alive[period] / scenario.ss.vital_stats.raw_alive[period];
+		le /= scenario.ss.vital_stats.time_periods;
 		double life_pct = Math.min(1 / le, config.vw_life_max);
 
-		if (config.vw_strategy.equals("amount") || config.vw_strategy.equals("retirement_amount"))
+		if (scenario.vw_strategy.equals("amount") || scenario.vw_strategy.equals("retirement_amount"))
 		        return 0;
-		else if (config.vw_strategy.equals("percentage"))
+		else if (scenario.vw_strategy.equals("percentage"))
 		        return Math.min(pct + inc_pct, 1);
-		else if (config.vw_strategy.equals("life"))
+		else if (scenario.vw_strategy.equals("life"))
 		        return Math.min(life_pct + inc_pct, 1);
 		else
 		        assert(false);

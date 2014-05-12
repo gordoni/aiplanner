@@ -11,7 +11,7 @@ import java.util.concurrent.Future;
 
 class AAMap
 {
-        protected BaseScenario scenario;
+        protected Scenario scenario;
         protected Config config;
 
         public MapPeriod[] map;
@@ -154,7 +154,7 @@ class AAMap
 		}
 		if (!fast_path || generate)
 		{
-			if (config.success_mode_enum == MetricsEnum.TW || config.success_mode_enum == MetricsEnum.NTW)
+			if (scenario.success_mode_enum == MetricsEnum.TW || scenario.success_mode_enum == MetricsEnum.NTW)
 			{
 				if (metric > 1)
 					// Over extrapolated.
@@ -188,10 +188,10 @@ class AAMap
 			        if (alloc > 1)
 			                alloc = 1;
 				aa[a] = alloc;
-				if (a < config.normal_assets)
+				if (a < scenario.normal_assets)
 				        sum += alloc;
 			}
-			for (int a = 0; a < config.normal_assets; a++)
+			for (int a = 0; a < scenario.normal_assets; a++)
 			      aa[a] /= sum;
 			assert(spend >= 0);
 			assert(consume >= 0);
@@ -207,10 +207,10 @@ class AAMap
         protected SimulateResult simulate(double[] initial_aa, double[] bucket_p, int period, Integer num_sequences, int num_paths_record, boolean generate, Returns returns)
 	{
 		boolean cost_basis_method_immediate = config.cost_basis_method.equals("immediate");
-		boolean variable_withdrawals = !config.vw_strategy.equals("amount") && !config.vw_strategy.equals("retirement_amount");
-		VitalStats vital_stats = scenario.vital_stats;
-		AnnuityStats annuity_stats = scenario.annuity_stats;
-		int total_periods = (int) (config.max_years * returns.time_periods);
+		boolean variable_withdrawals = !scenario.vw_strategy.equals("amount") && !scenario.vw_strategy.equals("retirement_amount");
+		VitalStats vital_stats = scenario.ss.vital_stats;
+		AnnuityStats annuity_stats = scenario.ss.annuity_stats;
+		int total_periods = (int) (scenario.ss.max_years * returns.time_periods);
 		int max_periods = total_periods - period;
 
 		int step_periods;
@@ -382,7 +382,7 @@ class AAMap
 						{
 						        if (!retired)
 							{
-							        spend_retirement = config.vw_strategy.equals("amount") ? config.withdrawal : income + config.vw_percentage * p_prev_exc_neg;
+							        spend_retirement = scenario.vw_strategy.equals("amount") ? config.withdrawal : income + config.vw_percentage * p_prev_exc_neg;
 								retired = true;
 							}
 						        spend_annual = spend_retirement;
@@ -461,7 +461,7 @@ class AAMap
 				{
 					// Invest.
 					double tot_return = 0.0;
-					for (int i = 0; i < config.normal_assets; i++)
+					for (int i = 0; i < scenario.normal_assets; i++)
 						tot_return += aa[i] * (1 + returns_array[index][i]);
 					p *= tot_return;
 				}
@@ -548,18 +548,18 @@ class AAMap
 						{
 						        double[] new_aa = aa.clone(); // Tangency not well defined.
 							double new_aa_sum = 0.0;
-							for (int a = 0; a < config.normal_assets; a++)
+							for (int a = 0; a < scenario.normal_assets; a++)
 							{
 							        double alloc = aa[a] * (1 + returns_array[index][a]);
 							        new_aa[a] = alloc;
 								new_aa_sum += alloc;
 							}
-						        for (int a = 0; a < config.normal_assets; a++)
+						        for (int a = 0; a < scenario.normal_assets; a++)
 							        new_aa[a] /= new_aa_sum;
 							aa = new_aa;
 							if (rebalance_period)
 							{
-							        for (int a = 0; a < config.normal_assets; a++)
+							        for (int a = 0; a < scenario.normal_assets; a++)
 								{
 									if (Math.abs(aa[a] - me.aa[a]) >= config.rebalance_band_hw)
 									{
@@ -594,7 +594,7 @@ class AAMap
 				// Record solvency.
 				// Consumption might have been reduced to prevent p falling below 0.  Interpolate based on where it would have fallen.
 				double solvent;
-				if (config.success_mode_enum == MetricsEnum.TW || config.success_mode_enum == MetricsEnum.NTW)
+				if (scenario.success_mode_enum == MetricsEnum.TW || scenario.success_mode_enum == MetricsEnum.NTW)
 				{
 				        assert(config.floor == 0);
 					// Get artifacts if not smooth. AA plot contains horizontal lines at low RPS in retirement.
@@ -695,7 +695,7 @@ class AAMap
 					        // not the actual bequest.
 				}
 				tax_goal_path += consume_alive_discount * tax_amount * returns.time_periods;
-				if (config.success_mode_enum == MetricsEnum.COST)
+				if (scenario.success_mode_enum == MetricsEnum.COST)
 				{
 				        // Expensive.
 					cost_path += amount_annual / returns.time_periods * Math.pow(1.0 + config.ret_borrow, - (period + y) / returns.time_periods);
@@ -741,7 +741,7 @@ class AAMap
 				else
 				{
 				        // Get and set are slow; access fields directly.
-					metrics.metrics[config.success_mode_enum.ordinal()] += me.metric_sm * returns_probability;
+					metrics.metrics[scenario.success_mode_enum.ordinal()] += me.metric_sm * returns_probability;
 					// Other metric values invalid.
 				}
 			}
@@ -771,7 +771,7 @@ class AAMap
 			cost += metrics.get(MetricsEnum.COST);
 		}
 
-		if (config.vw_strategy.equals("retirement_amount") && generate)
+		if (scenario.vw_strategy.equals("retirement_amount") && generate)
 		{
 		        // This is a run time strategy. The withdrawal amount will vary depending on the run not the map, and so generated metrics are invalid.
 		        consume_goal = 0;
@@ -868,7 +868,7 @@ class AAMap
 	// 	List<Callable<Integer>> tasks = new ArrayList<Callable<Integer>>();
 
 	// 	final int period_0 = 0;
-	// 	final int period_1 = (int) (config.max_years * returns.time_periods);
+	// 	final int period_1 = (int) (scenario.ss.max_years * returns.time_periods);
 	// 	final int bucket_0 = 0;
 	// 	final int bucket_1 = (int) Math.floor(config.pf_validate / config.success_lines_scale_size);
 
@@ -914,7 +914,7 @@ class AAMap
 		        first_age = config.retirement_age;
 	        int first_period = (int) Math.round((first_age - config.validate_age) * returns.time_periods);
 		double u = 0;
-	        for (int period = first_period; period < (int) ((config.max_years - (config.validate_age - config.start_age)) * returns.time_periods); period++)
+	        for (int period = first_period; period < (int) ((scenario.ss.max_years - (config.validate_age - config.start_age)) * returns.time_periods); period++)
 		{
 		        double u2 = 0;
 			int num_paths = config.max_jpmorgan_paths / num_batches;
@@ -933,10 +933,10 @@ class AAMap
 				u2 += scenario.utility_consume.utility(scenario.utility_consume_time.inverse_utility(u_combined));
 			}
 			u2 /= num_paths;
-			double weight = scenario.vital_stats.metric_weight(MetricsEnum.CONSUME, period_offset + period);
+			double weight = scenario.ss.vital_stats.metric_weight(MetricsEnum.CONSUME, period_offset + period);
 			u += weight * scenario.utility_consume_time.utility(scenario.utility_consume.inverse_utility(u2));
 		}
-		u /= scenario.vital_stats.metric_divisor(MetricsEnum.CONSUME, first_age);
+		u /= scenario.ss.vital_stats.metric_divisor(MetricsEnum.CONSUME, first_age);
 
 		return u;
 	}
@@ -1030,7 +1030,7 @@ class AAMap
 			double p_mid[] = scenario.start_p.clone();
 			p_mid[scenario.tp_index] = mid;
 			PathMetricsResult r = path_metrics(age, p_mid, config.num_sequences_target, 0, returns_target);
-			target_mean = r.means.get(config.success_mode_enum);
+			target_mean = r.means.get(scenario.success_mode_enum);
 			if (target_mean == target && first_time)
 			{
 			        // Trying to target 100% success.
@@ -1076,7 +1076,7 @@ class AAMap
 			        map_loaded = new AAMapDumpLoad(scenario, map_precise);
 			}
 			PathMetricsResult r = map_loaded.path_metrics(age, scenario.start_p, config.num_sequences_target, 0, returns_target);
-			target_mean = r.means.get(config.success_mode_enum);
+			target_mean = r.means.get(scenario.success_mode_enum);
 			if (target_mean == target && first_time)
 			{
 			        high = Double.NaN;
@@ -1104,7 +1104,7 @@ class AAMap
 	{
 		try
 		{
-			List<Future<Integer>> future_tasks = scenario.executor.invokeAll(tasks); // Will block until all tasks are finished
+			List<Future<Integer>> future_tasks = scenario.ss.executor.invokeAll(tasks); // Will block until all tasks are finished
 			// If a task dies due to an assertion error, it can't be caught within the task, so we probe for it here.
 			for (Future<Integer> f : future_tasks)
 			        //try
@@ -1132,6 +1132,23 @@ class AAMap
 			        System.out.println(me);
 		}
 	}
+
+        private double max_stocks()
+        {
+	        assert(scenario.normal_assets == 2);
+	        assert(scenario.asset_classes.contains("stocks"));
+	        assert(scenario.asset_classes.contains("bonds"));
+
+		double max_stocks = 1.0;
+		if (!config.ef.equals("none"))
+		{
+		        max_stocks = 0.0;
+			for (double[] aa : scenario.aa_ef)
+			        max_stocks = Math.max(max_stocks, aa[scenario.asset_classes.indexOf("stocks")]);
+		}
+
+		return max_stocks;
+        }
 
         private double[] target_date_stocks = new double[] { 0.316, 0.422, 0.519, 0.609, 0.684, 0.754, 0.803, 0.844, 0.877, 0.903 };
                 // S&P Target Date indexes as reported by iShares prospectus of 2012-12-01 for holdings as of 2012-06-30.
@@ -1173,17 +1190,17 @@ class AAMap
 		        int period = (int) Math.round((age - config.start_age) * config.generate_time_periods);
 			int retire_period = (int) Math.round((Math.max(age, config.retirement_age) - config.start_age) * config.generate_time_periods);
 			double future_income = 0;
-		        for (int pp = period; pp < scenario.vital_stats.dying.length; pp++)
+		        for (int pp = period; pp < scenario.ss.vital_stats.dying.length; pp++)
 			{
 			        double income = 0;
-				double avg_alive = (scenario.vital_stats.raw_alive[pp] + scenario.vital_stats.raw_alive[pp + 1]) / 2;
+				double avg_alive = (scenario.ss.vital_stats.raw_alive[pp] + scenario.ss.vital_stats.raw_alive[pp + 1]) / 2;
 			        if (pp < Math.round((config.retirement_age - config.start_age) * config.generate_time_periods))
 				{
 				        if (config.savings_bond)
 					{
 						if (pp == period)
 					                continue;
-						avg_alive /= scenario.vital_stats.raw_alive[period];
+						avg_alive /= scenario.ss.vital_stats.raw_alive[period];
 					        income = config.rcr * Math.pow(config.accumulation_ramp, pp / config.generate_time_periods);
 					}
 				}
@@ -1193,14 +1210,14 @@ class AAMap
 					{
 						if (config.vbond_discounted)
 						{
-						        avg_alive /= scenario.vital_stats.raw_alive[period];
+						        avg_alive /= scenario.ss.vital_stats.raw_alive[period];
 						        if (pp == period)
 							        continue;
 					        }
 						else
 						        // If not discounting include pp=period and approximate chance of being alive at retirement_age as 1
 						        // so that rule of thumb can lookup le from a table.
-						        avg_alive /= scenario.vital_stats.raw_alive[retire_period];
+						        avg_alive /= scenario.ss.vital_stats.raw_alive[retire_period];
 					        income = config.defined_benefit;
 					}
 				}
@@ -1220,17 +1237,17 @@ class AAMap
 			        bonds = 0;
 		}
 
-		double max_stocks = scenario.max_stocks();
+		double max_stocks = max_stocks();
 		bonds = Math.max(1 - max_stocks, bonds);
 
-		double[] aa = new double[scenario.all_alloc];
-		aa[config.asset_classes.indexOf("stocks")] = 1 - bonds;
-		aa[config.asset_classes.indexOf("bonds")] = bonds;
+		double[] aa = new double[scenario.asset_classes.size()];
+		aa[scenario.asset_classes.indexOf("stocks")] = 1 - bonds;
+		aa[scenario.asset_classes.indexOf("bonds")] = bonds;
 
 		return aa;
 	}
 
-        public static AAMap factory(BaseScenario scenario, String aa_strategy, Returns returns) throws IOException, ExecutionException
+        public static AAMap factory(Scenario scenario, String aa_strategy, Returns returns) throws IOException, ExecutionException
         {
 	        Config config = scenario.config;
 
@@ -1243,7 +1260,7 @@ class AAMap
 		        return new AAMapStatic(scenario, aa_strategy);
 	}
 
-        public AAMap(BaseScenario scenario)
+        public AAMap(Scenario scenario)
         {
 	        this.scenario = scenario;
 	        this.config = scenario.config;

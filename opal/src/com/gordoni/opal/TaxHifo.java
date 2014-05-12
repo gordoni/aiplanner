@@ -20,13 +20,13 @@ class TaxHifo extends Tax
         {
 	        if (p < 0)
 		        p = 0;
-	        total_shares = new double[config.normal_assets];
-	        curr_prices = new double[config.normal_assets];
-	        shares = new double[config.normal_assets][2 * (int) (config.max_years * config.generate_time_periods) + 1];
-	        prices = new double[config.normal_assets][2 * (int) (config.max_years * config.generate_time_periods) + 1];
-		nexts = new int[config.normal_assets];
+	        total_shares = new double[scenario.normal_assets];
+	        curr_prices = new double[scenario.normal_assets];
+	        shares = new double[scenario.normal_assets][2 * (int) (scenario.ss.max_years * config.generate_time_periods) + 1];
+	        prices = new double[scenario.normal_assets][2 * (int) (scenario.ss.max_years * config.generate_time_periods) + 1];
+		nexts = new int[scenario.normal_assets];
 		cpi = 1;
-		for (int a = 0; a < config.normal_assets; a++)
+		for (int a = 0; a < scenario.normal_assets; a++)
 		{
 		        total_shares[a] = aa[a] * p / config.withdrawal; // Normalize shares so we can recognize rounding errors independent of scale.
 			curr_prices[a] = config.withdrawal; // Although, at present we let rounding errors rest.
@@ -172,7 +172,7 @@ class TaxHifo extends Tax
                 return try_tax(p, p_preinvest, aa, returns, true);
         }
 
-        public TaxHifo(BaseScenario scenario, boolean fifo)
+        public TaxHifo(Scenario scenario, boolean fifo)
         {
 	        super(scenario);
 
@@ -182,9 +182,9 @@ class TaxHifo extends Tax
         public String toString()
         {
 	        StringBuilder sb = new StringBuilder("cpi: " + cpi + "\n");
-		for (int a = 0; a < config.normal_assets; a++)
+		for (int a = 0; a < scenario.normal_assets; a++)
 		{
-		        sb.append(config.asset_classes.get(a) + ": " + total_shares[a] + " @ " + curr_prices[a] + " (real)\n");
+		        sb.append(scenario.asset_classes.get(a) + ": " + total_shares[a] + " @ " + curr_prices[a] + " (real)\n");
 			for (int i = 0; i < nexts[a]; i++)
 			        sb.append("    " + shares[a][i] + " @ " + prices[a][i] + "\n");
 		}

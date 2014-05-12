@@ -56,8 +56,7 @@ public class OPAL
 	        else
 		{
 		        String cwd = System.getProperty("user.dir");
-			BaseScenario scenario = new DefaultScenario(config, hist, cwd, params, param_filename);
-			scenario.run_main();
+			new ScenarioSet(config, hist, cwd, params, param_filename);
 		}
 	}
 }

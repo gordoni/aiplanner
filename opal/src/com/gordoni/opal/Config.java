@@ -73,7 +73,7 @@ public class Config
 	       // Corresponding asset class names to use for MVO inputs and transition map.
 	public int aa_steps = 1000; // Use 4 steps to mirror 5 choice Trinity study.
         public String ef = "mvo";
-               // Efficient frontier calculation method. "mvo" or brute force calculated "utility", "log", or "linear" space, or "none" to search asset allocations.
+               // Efficient frontier calculation method. "mvo", or "none" to search asset allocations.
         public double risk_tolerance = 1e12; // Maximum permitted relative standard deviation in portfolio returns when performing MVO.
 
         public double annuity_steps = 10000; // Number of annuitization steps. Keep steps small since annuitization can't be undone.
@@ -338,8 +338,10 @@ public class Config
 	public boolean target_wrap = true;
         public int num_sequences_target = 100000; // Number of paths for a targeting attempt.
 
-	public List<String> compare_schemes = new ArrayList<String>();
+	public List<String> compare_aa = new ArrayList<String>();
                 // Asset allocation schemes to use in comparing. "file" for validate=datafile, "fixed", "age_in_bonds", "age_minus_10_in_bonds", or "target_date".
+	public List<String> compare_vw = new ArrayList<String>();
+                // Variable withdrawal schemes to use in comparing.
 
         public boolean generate_interpolate = true; // Whether to interpolate lookups during generation.
                // Normally produces better results, but can cause unexpected negative infinity utility for a power utility with no floor.
@@ -356,23 +358,6 @@ public class Config
 	public int path_metrics_bucket_size = 1000; // How many paths to evaluate at once.
 	        // Smaller allows better computation of the standard deviation of success probabilities, but takes more time.
 	public boolean validate_dump = false; // Whether to dump paths and aa-linear for validation runs.
-
-        public String cwd; // Current working directory.
-
-	// Generate data all the way down to the floor.
-	public int generate_bottom_bucket;
-	// Generate data all the way up to the ceiling.
-	public int generate_top_bucket;
-	// Report data all the way down to the validate floor.
-	public int validate_bottom_bucket;
-	// Report data all the way up to the validate ceiling.
-	public int validate_top_bucket;
-
-        public MetricsEnum success_mode_enum;
-
-	public int max_years = -1;
-
-        public int normal_assets;
 
         // Static values that can't be changed from run to run.
 	public static String data_source = "shiller"; // 'sbbi' or 'shiller'.
