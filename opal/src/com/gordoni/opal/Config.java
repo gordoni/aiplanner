@@ -341,7 +341,7 @@ public class Config
 
         public List<String> compare_aa = new ArrayList<String>(Arrays.asList("age_in_bonds", "age_minus_10_in_bonds", "target_date"));
                 // Asset allocation schemes to use in comparing. "file" for validate=datafile, "fixed", "age_in_bonds", "age_minus_10_in_bonds", or "target_date".
-        public List<String> compare_vw = new ArrayList<String>(Arrays.asList("amount_retirement"));
+        public List<String> compare_vw = new ArrayList<String>(Arrays.asList("retirement_amount"));
                 // Variable withdrawal schemes to use in comparing.
 
         public boolean generate_interpolate = true; // Whether to interpolate lookups during generation.

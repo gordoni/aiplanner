@@ -163,13 +163,16 @@ def display_sample(request):
     return display_result(request, STATIC_ROOT + 'sample', True, sample_scenario_dict())
 
 scheme_name = {
-    'age_in_bonds': 'Age in bonds',
-    'age_minus_10_in_bonds': 'Age minus 10 in bonds',
-    'target_date': 'Target date',
+    'age_in_bonds': 'Age in bonds / 4% rule',
+    'age_minus_10_in_bonds': 'Age minus 10 in bonds / 4% rule',
+    'target_date': 'Target date / 4% rule',
 }
 
 def start_tp(s):
     return (1 - float(s['tax_rate_div_default_pct']) / 100) * float(s['p_traditional_iras']) + float(s['p_roth_iras']) + float(s['p'])
+
+def db(s):
+    return float(s['defined_benefit_social_security']) + float(s['defined_benefit_pensions']) + float(s['defined_benefit_fixed_annuities'])
 
 def display_result(request, dirname, sample, s):
     data = dict(s)
@@ -220,12 +223,17 @@ def display_result(request, dirname, sample, s):
         data['failure_chance'] = '%.1f%%' % float(failure_chance)
         data['failure_length'] = '%.1f' % float(failure_length)
         data['metric_withdrawal'] = int(float(metric_withdrawal))
-        re = compile(r'^Target (\S+) .* found at (\S+) ')
+        re = compile(r'^Compare (\S+)/retirement_amount: (\S+)$')
         for line in log.splitlines():
             re_s = re.search(line)
             if re_s:
-                scheme, location = re_s.groups()
-                schemes.append({'name': scheme_name[scheme], 'cost': int(float(location) - start_tp(s)) / 1000 * 1000})
+                scheme, ce = re_s.groups()
+                if float(ce) > db(s):
+                    improvement = (float(metric_withdrawal) - db(s)) / (float(ce) - db(s)) - 1
+                    improvement = str(int(improvement * 100)) + '%'
+                else:
+                    improvement = '-'
+                schemes.append({'name': scheme_name[scheme], 'ce': ce, 'improvement': improvement})
         if float(failure_chance) >= 10:
             data['risk'] = 'high'
         elif float(failure_chance) >= 1:
@@ -265,7 +273,8 @@ def write_scenario(dirname, s):
     # Caution: Config.java maintains values from previous runs, so all modified values must be updated each time.
     s_only = {
         'skip_retirement_number': not s['retirement_number'],
-        'skip_target': s['retirement_number'] or s['vw'] or asset_class_symbols(s) != ('stocks', 'bonds'),
+        'skip_compare': s['retirement_number'],
+        'vw_percentage': 0.04,
         'skip_validate': s['retirement_number'],
         'zero_bucket_size': zero_bucket_size * float(s['withdrawal']),
         'scaling_factor': scaling_factor,
@@ -297,7 +306,7 @@ def write_scenario(dirname, s):
         'start_age2': dob_to_age(s['dob2']),
         'retirement_age': retirement_age,
         'start_tp': start_tp(s),
-        'defined_benefit': float(s['defined_benefit_social_security']) + float(s['defined_benefit_pensions']) + float(s['defined_benefit_fixed_annuities']),
+        'defined_benefit': db(s),
         'rcr': s['contribution'],
         'accumulation_ramp': 1 + float(s['contribution_growth_pct']) / 100,
         'tax_rate_cg': float(s['tax_rate_cg_pct']) / 100,

@@ -41,12 +41,12 @@ increase the annual retirement consumption amounts.
 </p>
 {% endif %}
 {% if schemes %}
-Comparison: <a title="Monte Carlo simulation. AACalc savings is the additional amount you would have to invest today when using the named asset allocation scheme to achieve the same well being as AACalc. It includes any well being derived from leaving an inheritance. The target date fund is for the consensus target date fund as tracked by the S&amp;P Target Date indexes and reported by iShares as of June 30, 2012 but with all equities treated as stocks, and all fixed income treated as bonds. All schemes are modified to adhere to the specified risk tolerance. 20,000 random returns sequences are analyzed for each scheme and proposed savings value. Each sequence is compared against the full range of longevity possibilities. Savings amounts are rounded down."><img src="/static/images/Information-icon.png" alt="[?]"></a>
+Comparison: <a title="Monte Carlo simulation. AACalc improvement is the additional expected well being you would receive when using AACalc compared to the named asset allocation scheme and the 4% portfolio withdrawal rule. It excludes the well being from defined benefits. It includes any well being derived from leaving an inheritance. The target date fund is for the consensus target date fund as tracked by the S&amp;P Target Date indexes and reported by iShares as of June 30, 2012 but with all equities treated as stocks, and all fixed income treated as bonds. All schemes are modified to adhere to the specified risk tolerance. 100,000 random returns sequences are analyzed for each scheme and proposed savings value. Each sequence is compared against the full range of longevity possibilities. Improvement amounts are rounded down."><img src="/static/images/Information-icon.png" alt="[?]"></a>
 <div style="margin-left: 5em;">
 <table cellpadding=0 cellspacing=0>
-<tr> <td> </td> <td> AACalc savings </td> </tr>
+<tr> <td> </td> <td> AACalc improvement </td> </tr>
 {% for scheme in schemes %}
-<tr> <td> {{ scheme.name }} </td> <td align="right"> {{ scheme.cost }} </td> </tr>
+<tr> <td> {{ scheme.name }} </td> <td align="right"> {{ scheme.improvement }} </td> </tr>
 {% endfor %}
 </table>
 </div>
@@ -229,13 +229,13 @@ which the recommended asset allocation choices lie.
 Risk is measured as the standard deviation in returns.
 </font>
 <br />
-<img src="{{ dirurl }}/opal-mvo-ef-1.png">
+<img src="{{ dirurl }}/opal-scenario-mvo-ef-1.png">
 <br />
 <font size="-1">
 The composition of the asset allocation choices used to compute the optimum portfolio.
 </font>
 <br />
-<img src="{{ dirurl }}/opal-mvo-ef-2.png">
+<img src="{{ dirurl }}/opal-scenario-mvo-ef-2.png">
 <br />
 <br />
 Utility function:
