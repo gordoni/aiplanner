@@ -316,6 +316,7 @@ def write_scenario(dirname, s):
         'floor': s['floor'],
         'vw_strategy': 'sdp' if s['vw'] else 'amount',
         'spend_steps': spend_steps,
+        'utility_retire': True,
         'utility_inherit_years': s['utility_inherit_years'],
         #'utility_slope_zero': s['utility_slope_zero'],
         'utility_dead_limit': float(s['utility_dead_limit_pct']) / 100 if s['inherit'] else 0,

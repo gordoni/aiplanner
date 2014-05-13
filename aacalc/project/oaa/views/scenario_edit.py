@@ -16,7 +16,6 @@ def init_se_form(mode, s):
         return ScenarioEditForm(s)
 
 def do_scenario_edit(request, form):
-    scenario_dict = request.session.get('scenario', {})
     data = {}
     for field, value in default_params.items():
         if field in form.cleaned_data:
@@ -24,13 +23,12 @@ def do_scenario_edit(request, form):
             if isinstance(val, Decimal):
                 val = str(val)  # JSON can't handle Decimals.
             data[field] = val
-        elif field in scenario_dict:
-            data[field] = scenario_dict[field]
         else:
             if isinstance(value, Decimal):
                 value = str(value)
             data[field] = value
     request.session['scenario'] = data
+    request.session.set_expiry(365 * 86400)
     return data
 
 def scenario_edit(request, mode):
@@ -41,15 +39,12 @@ def scenario_edit(request, mode):
         cookies_ok = request.session.test_cookie_worked()
         se_form = init_se_form(mode, request.POST)
         if se_form.is_valid() and cookies_ok:
-            request.session.delete_test_cookie()
             do_scenario_edit(request, se_form)
             return render(request, 'scenario_wait.html', {
                 'suppress_navigation': True,
             })
         if not cookies_ok:
-            if not NON_FIELD_ERRORS in se_form.errors:
-                se_form.errors[NON_FIELD_ERRORS] = []
-            se_form.errors[NON_FIELD_ERRORS].append("Cookies need to be enabled to use this site.")
+            se_form.errors[NON_FIELD_ERRORS] = se_form.error_class(["Cookies need to be enabled to use this site."])
         errors_present = True
     else:
 

@@ -104,7 +104,7 @@ class DobOrAgeField(forms.CharField):
         except ValueError:
             pass
         else:
-            if 0 <= age <= 200:
+            if 0 <= age < 100:
                 return age
         if v == '':
             if self.required:
@@ -320,8 +320,45 @@ class ScenarioAaForm(ScenarioBaseForm):
     contribution_growth_pct = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'percent_input'}))
 
+def check_retirement_year(cleaned_data):
+    dob = cleaned_data.get('dob')
+    dob2 = cleaned_data.get('dob2')
+    retirement_year = cleaned_data.get('retirement_year')
+    now_year = datetime.utcnow().timetuple().tm_year
+    if isinstance(dob, int):
+        retirement_age = dob + retirement_year - now_year
+    else:
+        retirement_age = retirement_year - dob.tm_year
+    if retirement_age >= 100:
+        raise ValidationError('Too old for retirement year.')
+    if dob2 == None:
+        pass
+    else:
+        if isinstance(dob2, int):
+            retirement_age = dob2 + retirement_year - now_year
+        else:
+            retirement_age = retirement_year - dob2.tm_year
+        if retirement_age >= 100:
+            raise ValidationError('Spouse/partner too old for retirement year.')
+
 class ScenarioNumberForm(ScenarioBaseForm):
+
+    def clean(self):
+        cleaned_data = super(ScenarioNumberForm, self).clean()
+        if self._errors:
+            return cleaned_data
+        check_retirement_year(cleaned_data)
+        return cleaned_data
+
     retirement_number = forms.BooleanField(widget=forms.HiddenInput())
 
 class ScenarioEditForm(ScenarioAaForm):
+
+    def clean(self):
+        cleaned_data = super(ScenarioEditForm, self).clean()
+        if self._errors:
+            return cleaned_data
+        check_retirement_year(cleaned_data)
+        return cleaned_data
+
     retirement_number = forms.BooleanField(required=False)

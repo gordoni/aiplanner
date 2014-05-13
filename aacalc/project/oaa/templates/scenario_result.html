@@ -41,7 +41,7 @@ increase the annual retirement consumption amounts.
 </p>
 {% endif %}
 {% if schemes %}
-Comparison: <a title="Monte Carlo simulation. AACalc improvement is the additional expected well being you would receive when using AACalc compared to the named asset allocation scheme and the 4% portfolio withdrawal rule. It excludes the well being from defined benefits. It includes any well being derived from leaving an inheritance. The target date fund is for the consensus target date fund as tracked by the S&amp;P Target Date indexes and reported by iShares as of June 30, 2012 but with all equities treated as stocks, and all fixed income treated as bonds. All schemes are modified to adhere to the specified risk tolerance. 100,000 random returns sequences are analyzed for each scheme and proposed savings value. Each sequence is compared against the full range of longevity possibilities. Improvement amounts are rounded down."><img src="/static/images/Information-icon.png" alt="[?]"></a>
+Comparison: <a title="Monte Carlo simulation. AACalc improvement is the additional expected well being you would receive in retirement when using AACalc and the selected portfolio compared to the named asset allocation scheme using stocks and bonds only and the 4% portfolio withdrawal rule. It excludes the well being from defined benefits. It includes any well being derived from leaving an inheritance. The target date fund is for the consensus target date fund as tracked by the S&amp;P Target Date indexes and reported by iShares as of June 30, 2012 but with all equities treated as stocks, and all fixed income treated as bonds. All schemes are modified to adhere to the specified risk tolerance. 100,000 random returns sequences are analyzed for each scheme and proposed savings value. Each sequence is compared against the full range of longevity possibilities. Improvement amounts are rounded down."><img src="/static/images/Information-icon.png" alt="[?]"></a>
 <div style="margin-left: 5em;">
 <table cellpadding=0 cellspacing=0>
 <tr> <td> </td> <td> AACalc improvement </td> </tr>
@@ -56,14 +56,14 @@ Comparison: <a title="Monte Carlo simulation. AACalc improvement is the addition
 Retirement number: {{ data.number }} <a title="Somewhat arbitrarily chosen as the smallest examined portfolio with a probability of failure below 5%. In order for this number to be valid you need to follow the asset allocation recommendations contained herein. These recommendations are made assuming market returns are independent over time. For equities this is a good first approximation, but it ignores phenomena known as volatility predictability, momentum, and reversion to the mean. For cash, the assumption is manifestly false, but the variance of real returns on cash is small. In addition mean-variance optimization assumes returns are normally distributed, however experiments show this assumption has little practical consequence."><img src="/static/images/Information-icon.png" alt="[?]"></a>
 <br />
 <br />
-Simulated risk: <a title="Monte Carlo simulation. The lifetime certainty equivalence amount is the guaranteed annual amount to be received until death that would have the same well being as expected from following the recommendations here. It excludes any well being derived from leaving an inheritance. Technical details. The simulated results are computed by concatenating 20 year blocks of returns drawn from the wrapping adjusted historical record. This largely captures the effects of volatility predictability and momentum, and partially captures the effects of reversion to the mean. 20,000 random returns sequences are analyzed, each against the full range of longevity possibilities."><img src="/static/images/Information-icon.png" alt="[?]"></a>
+Simulated risk: <a title="Monte Carlo simulation. The retirement certainty equivalence amount is the guaranteed annual amount to be received from retirement until death that would have the same well being as expected from following the recommendations here. It excludes any well being derived from leaving an inheritance. Technical details. The simulated results are computed by concatenating 20 year blocks of returns drawn from the wrapping adjusted historical record. This largely captures the effects of volatility predictability and momentum, and partially captures the effects of reversion to the mean. 20,000 random returns sequences are analyzed, each against the full range of longevity possibilities."><img src="/static/images/Information-icon.png" alt="[?]"></a>
 <div style="margin-left: 5em;">
 Chance of failure (any consumption of {{ data.floor }} or less): {{ data.failure_chance }}
 <br />
 If failure occurs: {{ data.failure_length }} years weighted failure duration
 <br />
 <font size="-1">
-Lifetime certainty equivalence amount:
+Retirement certainty equivalence amount:
 {{ data.metric_withdrawal }}
 (this is not the amount you can safely withdraw)
 </font>
@@ -79,7 +79,7 @@ Weighted failure duration if failure occurs:
 <img src="{{ dirurl }}/opal-rn-length.png">
 <br />
 <br />
-Lifetime certainty equivalence amount:
+Retirement certainty equivalence amount:
 <br />
 <img src="{{ dirurl }}/opal-rn-inverse-utility.png">
 <br />
@@ -94,14 +94,14 @@ Suggested initial asset allocation
 <br />
 <img src="{{ dirurl }}/opal-initial_aa.png">
 <br />
-Simulated risk: <a title="Monte Carlo simulation. The lifetime certainty equivalence amount is the guaranteed annual amount to be received until death that would have the same well being as expected from following the recommendations here. It excludes any well being derived from leaving an inheritance. Technical details. The simulated results are computed by concatenating 20 year blocks of returns drawn from the wrapping adjusted historical record. This largely captures the effects of volatility predictability and momentum, and partially captures the effects of reversion to the mean. 100,000 random returns sequences are analyzed, each against the full range of longevity possibilities. For older individuals this number may for practical purposes exceed the size of the sample space."><img src="/static/images/Information-icon.png" alt="[?]"></a>
+Simulated risk: <a title="Monte Carlo simulation. The retirement certainty equivalence amount is the guaranteed annual amount to be received until death that would have the same well being as expected from following the recommendations here. It excludes any well being derived from leaving an inheritance. Technical details. The simulated results are computed by concatenating 20 year blocks of returns drawn from the wrapping adjusted historical record. This largely captures the effects of volatility predictability and momentum, and partially captures the effects of reversion to the mean. 100,000 random returns sequences are analyzed, each against the full range of longevity possibilities. For older individuals this number may for practical purposes exceed the size of the sample space."><img src="/static/images/Information-icon.png" alt="[?]"></a>
 <div style="margin-left: 5em;">
 Chance of failure (any consumption of {{ data.floor }} or less): {{ data.failure_chance }}
 <br />
 If failure occurs: {{ data.failure_length }} years weighted failure duration
 <br />
 <font size="-1">
-Lifetime certainty equivalence amount: {{ data.metric_withdrawal }} (this is not the amount you can safely withdraw)
+Retirement certainty equivalence amount: {{ data.metric_withdrawal }} (this is not the amount you can safely withdraw)
 </font>
 </div>
 {% endif %}

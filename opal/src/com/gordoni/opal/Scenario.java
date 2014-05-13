@@ -444,10 +444,8 @@ public class Scenario
 		{
 		        List<PathElement> path = paths.get(pi);
 			int period = 0;
-			for (int i = start; i < path.size(); i++)
+			for (int i = start; i < path.size() - 1; i++)
 			{
-			        if (period >= ss.vital_stats.dying.length)
-				        continue; // Ignore terminal element.
 				double value = get_path_value(path, i, what, change);
 				double weight;
 				if (what.equals("inherit"))
@@ -471,12 +469,15 @@ public class Scenario
 		int retire_period = (int) Math.round((config.retirement_age - config.start_age) * config.validate_time_periods);
 		if (retire_period < 0)
 		        retire_period = 0;
+		int start = retire_only ? retire_period : 0;
 		for (int pi = 0; pi < config.max_distrib_paths; pi++)
 		{
 		        List<PathElement> path = paths.get(pi);
-			for (int i = retire_period; i < path.size(); i++)
+			for (int i = start; i < path.size() - 1; i++)
 			{
 			        double value = get_path_value(path, i, what, change);
+				if (Double.isInfinite(value))
+				        continue; // consume zero then non-zero.
 			        if (value < min)
 				        min = value;
 			        if (value > max)
@@ -498,7 +499,7 @@ public class Scenario
 		int bucket;
 		for (int i = 0; i < 10; i++)
 		{
-		        counts = distribution_bucketize(paths, retire_period, what, change, min, max);
+		        counts = distribution_bucketize(paths, start, what, change, min, max);
 			double max_count = 0;
 			for (bucket = 0; bucket < counts.length; bucket++)
 				if (counts[bucket] > max_count)
@@ -546,7 +547,7 @@ public class Scenario
         {
 	        PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-pct-" + (change ? "change-" : "") + what + ".csv"));
 
-	        int pathlen = paths.get(0).size();
+	        int pathlen = paths.get(0).size() - 1;
 		double age_period = config.start_age * config.generate_time_periods;
 		for (int i = 0; i < pathlen; i++)
 		{
