@@ -58,8 +58,7 @@ public class Metrics implements Cloneable
 
         public double fail_length()
         {
-		double failure_length = 0.0;
-		if (get(MetricsEnum.NTW) == 1.0)
+		if (1.0 - get(MetricsEnum.NTW) < 1e-9)
 		        return 0.0;
 		else
 			return (1.0 - get(MetricsEnum.TW)) / (1.0 - get(MetricsEnum.NTW));
