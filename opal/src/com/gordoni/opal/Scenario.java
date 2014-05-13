@@ -437,9 +437,8 @@ public class Scenario
 		}
 	}
 
-        private double[] distribution_bucketize(List<List<PathElement>> paths, int start, String what, boolean change, double min, double max)
+    private double[] distribution_bucketize(List<List<PathElement>> paths, int start, String what, boolean change, double min, double max, Double count_submin, Double count_supmax, double[] counts)
 	{
-		double[] counts = new double[config.distribution_steps + 1];
 		for (int pi = 0; pi < config.max_distrib_paths; pi++)
 		{
 		        List<PathElement> path = paths.get(pi);
@@ -453,8 +452,12 @@ public class Scenario
 				else
 				        weight = (ss.vital_stats.alive[period] + ss.vital_stats.alive[period + 1]) / 2;
 				int bucket = (int) ((value - min) / (max - min) * config.distribution_steps);
-				if (0 <= bucket && bucket < counts.length)
+				if (bucket < 0)
+				        count_submin += weight;
+				else if (0 <= bucket && bucket < counts.length)
 				        counts[bucket] += weight;
+				else
+				        count_supmax += weight;
 				period++;
 			}
 	       }
@@ -493,13 +496,18 @@ public class Scenario
 		if (!change)
 		        min = 0;
 
+		Double count_submin = 0.0;
+		Double count_supmax = 0.0;
 		double[] counts = null;
 
 		// Some distributions have very long right tails. Zoom in so we can see the important part.
 		int bucket;
 		for (int i = 0; i < 10; i++)
 		{
-		        counts = distribution_bucketize(paths, start, what, change, min, max);
+		        count_submin = 0.0;
+		        count_supmax = 0.0;
+		        counts = new double[config.distribution_steps + 1];
+		        distribution_bucketize(paths, start, what, change, min, max, count_submin, count_supmax, counts);
 			double max_count = 0;
 			for (bucket = 0; bucket < counts.length; bucket++)
 				if (counts[bucket] > max_count)
@@ -528,8 +536,14 @@ public class Scenario
 		}
 
 		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-distrib-" + (change ? "change-" : "") + what + ".csv"));
+
+		double counts_sum = count_submin + Utils.sum(counts) + count_supmax;
+		double cdf = count_submin;
 		for (bucket = 0; bucket < counts.length; bucket++)
-		        out.println((min + (bucket + 0.5) * (max - min) / config.distribution_steps) + "," + counts[bucket]);
+		{
+		        cdf += counts[bucket];
+		        out.println((min + (bucket + 0.5) * (max - min) / config.distribution_steps) + "," + counts[bucket] + "," + cdf / counts_sum);
+		}
 		out.close();
         }
 
