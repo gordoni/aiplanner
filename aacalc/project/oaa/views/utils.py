@@ -417,6 +417,14 @@ plot "opal-distrib-change-consume.csv" using ($1*100):2:(0.1) smooth acsplines w
   # Splines needed because results are very noisy due to use of limited historical data.
 
 set ytics
+
+set ylabel "cummulative probability"
+set yrange[0:100]
+set format y "%.0f%%"
+
+set xlabel "change in annual consumption"
+set output "opal-distrib-change-consume-cdf.png"
+plot "opal-distrib-change-consume.csv" using ($1*100):($3*100) with lines notitle
 ''')
 
     f.write('''
