@@ -422,6 +422,16 @@ set ylabel "cummulative probability"
 set yrange[0:100]
 set format y "%.0f%%"
 
+set xrange [0:*]
+set format x "%.1s%c"
+
+set xlabel "annual consumption ($)"
+set output "opal-distrib-consume-cdf.png"
+plot "opal-distrib-consume.csv" using 1:($3*100) with lines notitle
+
+set xrange [*:*]
+set format x "%.0f%%"
+
 set xlabel "change in annual consumption"
 set output "opal-distrib-change-consume-cdf.png"
 plot "opal-distrib-change-consume.csv" using ($1*100):($3*100) with lines notitle
