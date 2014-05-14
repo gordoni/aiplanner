@@ -28,6 +28,8 @@ public class PathMetricsResult
 
         public double mean(MetricsEnum metric)
         {
+	        if (metric == MetricsEnum.JPMORGAN && config.skip_metric_jpmorgan)
+		        return 0;
 	        double div = scenario.ss.vital_stats.metric_divisor(metric, config.validate_age);
 		if (div == 0)
 		{
@@ -48,6 +50,8 @@ public class PathMetricsResult
 
         public double std_dev(MetricsEnum metric)
         {
+	        if (metric == MetricsEnum.JPMORGAN && config.skip_metric_jpmorgan)
+		        return 0;
 	        double div = scenario.ss.vital_stats.metric_divisor(metric, config.validate_age);
 		if (div == 0)
 		{

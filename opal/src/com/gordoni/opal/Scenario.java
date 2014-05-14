@@ -290,7 +290,6 @@ public class Scenario
 		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-utility-" + name + ".csv"));
 		for (double c = 0; c <= utility.range; c += utility.range / 1000)
 		{
-		    //out.print(f6f.format(c) + "," + utility.utility(c) + "," + utility.slope(c) + "\n");
 		    out.print(f6f.format(c) + "," + utility.utility(c) + "," + utility.slope(c) + "," + utility.inverse_utility(utility.utility(c)) + "," + utility.inverse_slope(utility.slope(c)) + "\n"); // For debugging.
 		}
 		out.close();
@@ -765,7 +764,7 @@ public class Scenario
 	// Dump the data files.
 	private void dump(AAMap map, Metrics[] retirement_number, List<List<PathElement>> paths, Returns returns) throws IOException
 	{
-	        dump_utility(utility_consume, "consume");
+ 	        dump_utility(utility_consume, "consume");
 	        dump_utility(utility_consume_time, "consume_time");
 	        dump_utility(utility_inherit, "inherit");
 		//dump_cw();
@@ -1271,20 +1270,21 @@ public class Scenario
 		Utility utility_consume_risk = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_alpha, 0, config.withdrawal, config.utility_ce, config.utility_ce_ratio, 2 * config.withdrawal, 1 / config.utility_slope_double_withdrawal, config.withdrawal, 1, config.public_assistance, config.public_assistance_phaseout_rate, config.withdrawal * 2);
 		eta = (config.utility_epstein_zin ? (Double) (1 / config.utility_psi) : config.utility_eta);
 		utility_consume_time = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_alpha, 0, config.withdrawal, config.utility_ce, config.utility_ce_ratio, 2 * config.withdrawal, 1 / config.utility_slope_double_withdrawal, config.withdrawal, 1, config.public_assistance, config.public_assistance_phaseout_rate, config.withdrawal * 2);
-		double bequest_consume = (config.utility_bequest_consume == null ? config.withdrawal : config.utility_bequest_consume);
-		// Model: Bequest to 1 person for utility_inherit_years or utility_inherit_years people for 1 year who are currently consuming bequest_consume
-		// and share the same utility function as you.
-		double scale = config.utility_inherit_years;
+
 		if (config.utility_join)
 		{
-		        Utility utility_gift = new UtilityScale(config, utility_consume_risk, 0, 1 / config.utility_inherit_years, scale * config.utility_live, - bequest_consume);
-		        utility_consume = new UtilityJoin(config, utility_consume_risk, utility_gift);
-		        utility_gift = new UtilityScale(config, utility_consume_time, 0, 1 / config.utility_inherit_years, scale * config.utility_live, - bequest_consume);
-		        utility_consume_time = new UtilityJoin(config, utility_consume_time, utility_gift);
+		        Utility utility_consume_risk_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_point, config.utility_join_slope_ratio * utility_consume_risk.slope(config.utility_join_point), 0, 0, config.withdrawal * 2);
+		        utility_consume_risk = new UtilityJoin(config, utility_consume_risk, utility_consume_risk_2, config.utility_join_point);
+dump_utility(utility_consume_risk, "consume");
+		        Utility utility_consume_time_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_point, config.utility_join_slope_ratio * utility_consume_time.slope(config.utility_join_point), 0, 0, config.withdrawal * 2);
+		        utility_consume_time = new UtilityJoin(config, utility_consume_time, utility_consume_time_2, config.utility_join_point);
 		}
-		else
-		        utility_consume = utility_consume_risk;
-		utility_inherit = new UtilityScale(config, utility_consume_time, 0, 1 / config.utility_inherit_years, scale * config.utility_dead_limit, - bequest_consume);
+	        utility_consume = utility_consume_risk;
+
+		// Model: Bequest to 1 person for utility_inherit_years or utility_inherit_years people for 1 year who are currently consuming bequest_consume
+		// and share the same utility function as you sans utility_join.
+		double bequest_consume = (config.utility_bequest_consume == null ? config.withdrawal : config.utility_bequest_consume);
+		utility_inherit = new UtilityScale(config, utility_consume_time, 0, 1 / config.utility_inherit_years, config.utility_inherit_years * config.utility_dead_limit, - bequest_consume);
 		utility_inherit.range = config.withdrawal * 100;
 
 		// Set up returns.

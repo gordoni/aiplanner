@@ -685,7 +685,7 @@ class AAMap
 					// Instead we pro-rate the distance to the asymptote.
 					double inherit_proportion = (inherit_utility - scenario.utility_inherit.u_0) / (scenario.utility_inherit.u_inf - scenario.utility_inherit.u_0);
 					double combined_inherit_utility;
-					if (consume_path_utility == Double.NEGATIVE_INFINITY)
+					if (consume_path_utility == Double.NEGATIVE_INFINITY || scenario.utility_consume_time.u_inf == Double.POSITIVE_INFINITY)
 					        combined_inherit_utility = 0;
 					else
 					        combined_inherit_utility = inherit_proportion * (scenario.utility_consume_time.u_inf - consume_path_utility);
