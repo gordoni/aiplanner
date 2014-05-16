@@ -405,7 +405,7 @@ unset ytics
 
 set xlabel "annual consumption ($)"
 set output "opal-distrib-consume.png"
-plot "opal-distrib-consume.csv" using 1:2:(0.1) smooth acsplines with lines notitle
+plot "opal-distrib-consume.csv" using 1:2:(0.02) smooth acsplines with lines notitle
   # Spline makes look nicer due to limited number of buckets used.
 
 set xrange [*:*]
@@ -413,7 +413,7 @@ set format x "%.0f%%"
 
 set xlabel "change in annual consumption"
 set output "opal-distrib-change-consume.png"
-plot "opal-distrib-change-consume.csv" using ($1*100):2:(0.1) smooth acsplines with lines notitle
+plot "opal-distrib-change-consume.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
   # Splines needed because results are very noisy due to use of limited historical data.
 
 set ytics

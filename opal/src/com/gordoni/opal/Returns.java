@@ -8,6 +8,7 @@ import java.util.Random;
 
 public class Returns implements Cloneable
 {
+        private Scenario scenario;
         private Config config;
 
 	public List<double[]> data;
@@ -78,6 +79,7 @@ public class Returns implements Cloneable
 
         public Returns(Scenario scenario, HistReturns hist, Config config, int ret_seed, boolean cache_returns, int start_year, Integer end_year, Integer num_sequences, double time_periods, Double ret_equity, Double ret_bonds, double ret_risk_free, Double ret_inflation, double management_expense, String ret_shuffle, boolean reshuffle, String draw, int random_block_size, boolean pair, boolean wrap, double all_adjust, double equity_vol_adjust)
 	{
+	        this.scenario = scenario;
 	        this.config = config;
 
 	        this.ret_seed = ret_seed;
@@ -506,8 +508,8 @@ public class Returns implements Cloneable
 			}
 			else
 			{
-			        int ret0Len = returns.get(0).length;
-				int ret0NoEfIndex = ret0Len - (config.ef.equals("none") ? 0 : 1); // Prevent randomness change due to presence of ef index.
+			        int ret0Len = scenario.asset_classes.size();
+			        int ret0NoEfIndex = scenario.normal_assets; // Prevent randomness change due to presence of ef index.
 				int offset[] = new int[ret0NoEfIndex];
 				int index[] = new int[ret0NoEfIndex];
 				for (int i = 0; i < ret0NoEfIndex; i++)
@@ -565,10 +567,10 @@ public class Returns implements Cloneable
 				new_returns = shuffle_returns.toArray(new double[length][]);
 			}
 		}
-		else if (draw.equals("normal"))
+		else if (draw.equals("normal") || draw.equals("skew_normal"))
                 {
-		        int ret0Len = returns.get(0).length;
-			int ret0NoEfIndex = ret0Len - (config.ef.equals("none") ? 0 : 1); // Prevent randomness change due to presence of ef index.
+		        int ret0Len = scenario.asset_classes.size();
+			int ret0NoEfIndex = scenario.normal_assets; // Prevent randomness change due to presence of ef index.
 
 		        if (pair)
 			{
@@ -580,6 +582,10 @@ public class Returns implements Cloneable
 					for (int a = 0; a < ret0NoEfIndex; a++)
 					        aa[a] = random.nextGaussian();
 					new_returns[y] = Utils.vector_sum(am, Utils.vector_product(sd, Utils.matrix_vector_product(cholesky, aa)));
+					if (draw.equals("skew_normal"))
+					        for (int a = 0; a < ret0NoEfIndex; a++)
+						        if (new_returns[y][a] < 0)
+							        new_returns[y][a] = 1 / (1 - new_returns[y][a]) - 1;
 				}
 		        }
 		        else

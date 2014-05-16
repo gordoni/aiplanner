@@ -12,10 +12,12 @@ public class Metrics implements Cloneable
         {
 	}
 
-        public Metrics(double tw_goal, double ntw_goal, double consume_goal, double inherit_goal, double combined_goal, double tax_goal, double cost)
+        public Metrics(double tw_goal, double ntw_goal, double floor_goal, double upside_goal, double consume_goal, double inherit_goal, double combined_goal, double tax_goal, double cost)
         {
 		metrics[MetricsEnum.TW.ordinal()] = tw_goal;
 		metrics[MetricsEnum.NTW.ordinal()] = ntw_goal;
+		metrics[MetricsEnum.FLOOR.ordinal()] = floor_goal;
+		metrics[MetricsEnum.UPSIDE.ordinal()] = upside_goal;
 		metrics[MetricsEnum.CONSUME.ordinal()] = consume_goal;
 		metrics[MetricsEnum.INHERIT.ordinal()] = inherit_goal;
 		metrics[MetricsEnum.COMBINED.ordinal()] = combined_goal;

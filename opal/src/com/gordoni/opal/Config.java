@@ -151,8 +151,9 @@ public class Config
         public boolean negative_p = false; // Allow negative portfolio values versus utilized reduced consumption when p near zero.
         public double consume_discount_rate = 0.0; // Discount rate to apply to consumption.
                 // Should probably exceed maximum after tax asset class return, otherwise a winning strategy can be to invest everything in the maximum asset class.
+        public double upside_discount_rate = 0.0; // Discount rate to apply to consumption above utility_join_point.
         // No hyperbolic utility. Appers to just be power shifted and scaled, which we do anyway with public assistance.
-        public boolean utility_retire = false; /// Whether to compute non-tw/ntw metrics just for retirement, or across the entire lifecycle.
+        public boolean utility_retire = false; // Whether to compute non-tw/ntw metrics just for retirement, or across the entire lifecycle.
         public boolean utility_epstein_zin = false; // Whether to utilize separate risk and time consumption utility functions.
         public String utility_consume_fn = "power"; // Consumption utility function to use. "power", "exponential", or "linear".
         public boolean utility_join = false; // Whether to join a second power utility to consume utility function.
@@ -176,7 +177,7 @@ public class Config
                // But in this last case need to run at a much higher scale to avoid noise.
         public double public_assistance_phaseout_rate = 0.0; // Public assistance is reduced at this rate for each dollar of consumption
         public double utility_eta_2 = 3; // Consumption power utility second utility_join eta parameter.
-        public double utility_join_point = 100000; // Consumption utility_join join point.
+        public double utility_join_point = 1e12; // Floor plus upside separation point. Consumption utility_join join point.
         public double utility_join_slope_ratio = 1; // Consumption utility_join slope ratio at join point.
         public double utility_dead_limit = 0; // Maximum fraction of remaining utility capable of being satisfied by being able to leave a bequest.
         public double utility_inherit_years = 10; // Value inheritance using the utility function but treat it as being spread over this many individuals or years.
@@ -215,6 +216,7 @@ public class Config
 	public int start_age = 25; // Generate data from this age on.
         public Integer start_age2 = 25; // Initial age of second person in a couple.
 	public int validate_age = 25; // Validate and target for this age of first person.
+        public int utility_age = 25; // Age at which the utility function was specified (subsequent ages experience upside discounting).
         public double[] cw_schedule = null; // Contribute / withdraw schedule to use in place of formulaic schedule.  Array of numeric amounts for each time period.
 	public double rcr = 500; // Relative contribution rate. Initial rate of asset accumulation prior to retirement.
 	public double accumulation_ramp = 1.07; // Annual ramping factor by which to boost accumulation rate over time.
@@ -303,6 +305,7 @@ public class Config
                 // 'random' - Draw with replacement as ret_random_block_size length sequences.
                 // 'shuffle' - Draw without replacement.
                 // 'normal' - Draw from a normal distribution matching the return statistics.
+                // 'skew_normal' - Skew normal to prevent return values less than 0% which would be catastrophic. Resulting distribution no longer matches statistics.
 	public int ret_random_block_size = 20; // Size of blocks in years to use when drawing returns at random.
 	public boolean ret_pair = true; // When shuffling whether to keep stock and bond returns for a given year together or treat them independently.
 	public boolean ret_wrap = true; // Allow time periods to wrap.

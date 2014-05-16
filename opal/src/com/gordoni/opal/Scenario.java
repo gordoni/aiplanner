@@ -472,6 +472,7 @@ public class Scenario
 		if (retire_period < 0)
 		        retire_period = 0;
 		int start = retire_only ? retire_period : 0;
+		start++; // Strategically ignore the first sample. Its behavior is fixed causing it to spike the results.
 		for (int pi = 0; pi < config.max_distrib_paths; pi++)
 		{
 		        List<PathElement> path = paths.get(pi);
@@ -896,7 +897,21 @@ public class Scenario
 				double am = Utils.mean(returns.get(index));
 				double sd = Utils.standard_deviation(returns.get(index));
 				System.out.println("  " + asset_classes.get(index) + " " + f2f.format(gm * 100) + "% +/- " + f2f.format(sd * 100) + "% (arithmetic " + f2f.format(am * 100) + "%)");
+
 				// System.out.println(am);
+
+				// double minval = Double.POSITIVE_INFINITY;
+				// int minloc = -1;
+				// for (int i = 0; i < returns.get(index).length - 30; i++)
+				// {
+				//         double val = Utils.plus_1_geomean(Arrays.copyOfRange(returns.get(index), i, i + 30));
+				// 	if (val < minval)
+				// 	{
+				// 	        minval = val;
+				// 		minloc = i;
+				// 	}
+				// }
+				// System.err.println((config.generate_start_year + minloc) + " " + (minval - 1));
 			}
 			// System.out.println(Arrays.deepToString(Utils.covariance_returns(returns)));
 			// System.out.println(Arrays.deepToString(Utils.correlation_returns(returns)));
@@ -1225,6 +1240,10 @@ public class Scenario
 		}
 		assert(config.max_borrow == 0.0 || !config.borrow_aa.equals(config.fail_aa));
 		assert(config.validate_time_periods >= config.rebalance_time_periods);
+		assert(!config.utility_join || config.consume_discount_rate <= config.upside_discount_rate);
+                        // Ensures able to add upside utility to floor utility without exceeding u_inf.
+		assert(config.utility_age <= config.start_age);
+		        // Ditto.
 		assert(!config.utility_epstein_zin || (success_mode_enum == MetricsEnum.COMBINED)); // Other success modes not Epstein-Zinized.
 
 		// More internal parameters.

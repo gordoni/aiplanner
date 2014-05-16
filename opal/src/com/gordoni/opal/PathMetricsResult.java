@@ -30,6 +30,9 @@ public class PathMetricsResult
         {
 	        if (metric == MetricsEnum.JPMORGAN && config.skip_metric_jpmorgan)
 		        return 0;
+	        if (metric == MetricsEnum.COMBINED && config.utility_epstein_zin)
+		        // Epstein-Zin utility can't be estimated by simulating paths. Only the combined metric is Epstein-Zinized.
+		        return 0;
 	        double div = scenario.ss.vital_stats.metric_divisor(metric, config.validate_age);
 		if (div == 0)
 		{
@@ -39,7 +42,7 @@ public class PathMetricsResult
 		}
 		double mean = means.get(metric) / div;
 		Utility utility = null;
-		if (Arrays.asList(MetricsEnum.CONSUME, MetricsEnum.COMBINED, MetricsEnum.JPMORGAN).contains(metric))
+		if (Arrays.asList(MetricsEnum.FLOOR, MetricsEnum.UPSIDE, MetricsEnum.CONSUME, MetricsEnum.COMBINED, MetricsEnum.JPMORGAN).contains(metric))
 			utility = scenario.utility_consume_time;
 		else if (metric == MetricsEnum.INHERIT)
 			utility = scenario.utility_inherit;
@@ -62,7 +65,7 @@ public class PathMetricsResult
 		double mean = means.get(metric) / div;
 		double std_dev = standard_deviations.get(metric) / div;
 		Utility utility = null;
-		if (Arrays.asList(MetricsEnum.CONSUME, MetricsEnum.COMBINED, MetricsEnum.JPMORGAN).contains(metric))
+		if (Arrays.asList(MetricsEnum.FLOOR, MetricsEnum.UPSIDE, MetricsEnum.CONSUME, MetricsEnum.COMBINED, MetricsEnum.JPMORGAN).contains(metric))
 			utility = scenario.utility_consume_time;
 		else if (metric == MetricsEnum.INHERIT)
 			utility = scenario.utility_inherit;
@@ -79,6 +82,8 @@ public class PathMetricsResult
 			        continue;
 			double mean = mean(metric);
 			double std_dev = std_dev(metric);
+			if (metric == MetricsEnum.UPSIDE)
+			        mean -= config.utility_join_point;
 		        String flag = ((config.validate == null) && metric == scenario.success_mode_enum) ? " <= Goal" : "";
 			if (Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(metric))
 			        System.out.printf("Metric %-18s %s\n", metric.toString().toLowerCase() + ": ", f3f.format(mean * 100) + "% +/- " + f3f.format(std_dev * 100) + "%" + flag);
