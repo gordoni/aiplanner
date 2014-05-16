@@ -23,13 +23,12 @@ public class AAMapGenerate extends AAMap
 		if (pi + 1 < map.length && !config.search.equals("all"))
 		{
 		        MapElement older = map[pi + 1].get(bucket);
-			aa = older.aa.clone();
+			aa = older.aa;
 		}
 		else
 		{
 		        aa = scenario.guaranteed_fail_aa();
 	        }
-		aa = inc_dec_aa(aa, 0, 0, p, period); // Make sure valid if min_safe_le is in effect.
 
 	        List<SearchResult> simulate_results = null;
 		if (!config.skip_dump_log && !config.conserve_ram)
@@ -802,7 +801,11 @@ public class AAMapGenerate extends AAMap
 								{
 								        SearchBucket check = fcheck_list.get(elem);
 									MapElement me = mp.get(check.bucket);
-									boolean improve = search_hint(me, check.aa, fperiod, local_returns);
+									// Make sure aa is valid if min_safe_le is in effect.
+									double[] aa = check.aa;
+									if (aa != null)
+									        aa = inc_dec_aa(aa, 0, 0, me.rps, fperiod);
+									boolean improve = search_hint(me, aa, fperiod, local_returns);
 									// Get a 50% speedup due to early deletion of cache. Otherwise cache too big for CPU cache.
 									me.cache = null;
 									if (improve && config.search_neighbour)

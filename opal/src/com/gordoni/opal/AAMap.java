@@ -264,11 +264,14 @@ class AAMap
 		double initial_rcr = config.rcr * Math.pow(rcr_step, period);
 		double tw_goal = 0.0;
 		double ntw_goal = 0.0;
+		double floor_goal = 0.0;
+		double upside_goal = 0.0;
 		double consume_goal = 0.0;
 		double combined_goal = 0.0;
 		double inherit_goal = 0.0;
 		double tax_goal = 0.0;
 		double cost = 0.0;
+		double uct_u_ujp = scenario.utility_consume_time.utility(config.utility_join_point);
 		double consume_alive_discount = Double.NaN;
 		Metrics metrics = new Metrics();
 		List<List<PathElement>> paths = null;
@@ -283,8 +286,9 @@ class AAMap
 		        tax = Tax.taxFactory(scenario, config.cost_basis_method);
 		double spend_annual = Double.NaN; // Amount spent on consumption and purchasing annuities.
 		double consume_annual = Double.NaN;
-		double consume_annual_key = Double.NaN;  // Cache provides 30% speedup for generate.
-		double consume_annual_value = Double.NaN;
+		double consume_annual_key = Double.NaN;  // Cache provides 25% speedup for generate.
+		double floor_value = Double.NaN;
+		double upside_value = Double.NaN;
 		//double consume_utility = 0.0;
 		for (int s = 0; s < num_paths; s++)
 		{
@@ -308,6 +312,8 @@ class AAMap
 			double solvent_always = 1;
 			double tw_goal_path = 0.0;
 			double ntw_goal_path = 0.0;
+			double floor_goal_path = 0.0;
+			double upside_goal_path = 0.0;
 			double consume_goal_path = 0.0;
 			double combined_goal_path = 0.0;
 			double inherit_goal_path = 0.0;
@@ -623,46 +629,93 @@ class AAMap
 				}
 				if (solvent < 1)
 				        solvent_always = 0;
+				double floor_path_utility = 0.0;
+				double upside_path_utility = 0.0;
 				// Interpolate when we can to ensure a smooth transition rate in metrics (across periods? over aa/contrib search space?)
 				// as consume_annual falls below target_consume_annual.
 				// Without this we get horizontal lines for low RPS asset allocations with fixed withdrawals.
-				double consume_path_utility = 0.0;
-				double path_consume = consume_annual;
-				if (target_consume_annual != config.defined_benefit)
-				{
-				        double consume_solvent = (consume_annual - config.defined_benefit) / (target_consume_annual - config.defined_benefit);
+				double consume_solvent;
+				if (target_consume_annual == config.defined_benefit)
+				        consume_solvent = 1;
+				else
 				        // We somewhat arbitrarily set the zero consumption level to defined_benefit and interpolate based on the distance from that.
 					// This is better than using 0, and then computing utility(0) on a power utility function.
-					if (consume_solvent != 0.0)
+				        consume_solvent = (consume_annual - config.defined_benefit) / (target_consume_annual - config.defined_benefit);
+				if (consume_solvent != 0.0)
+				{
+					if (target_consume_annual != consume_annual_key)
 					{
-						 double utility;
-						if (target_consume_annual == consume_annual_key)
-							utility = consume_annual_value;
+						consume_annual_key = target_consume_annual;
+						double floor;
+						double upside;
+						if (config.utility_join)
+						{
+						        floor = Math.min(consume_annual_key, config.utility_join_point);
+							upside = consume_annual_key - floor;
+						}
 						else
 						{
-							consume_annual_key = target_consume_annual;
-							consume_annual_value = scenario.utility_consume_time.utility(consume_annual_key);
-							utility = consume_annual_value;
+						        floor = consume_annual_key;
+						        upside = 0;
 						}
-						consume_path_utility += consume_solvent * utility;
+						floor_value = scenario.utility_consume_time.utility(floor);
+						upside_value = scenario.utility_consume_time.utility(config.utility_join_point + upside);
 					}
-					if (consume_solvent != 1.0)
+					double floor_utility = floor_value;
+					double upside_utility = upside_value;
+					floor_path_utility += consume_solvent * floor_utility;
+					upside_path_utility += consume_solvent * upside_utility;
+				}
+				if (consume_solvent != 1.0)
+				{
+				        double floor;
+				        double upside;
+					if (config.utility_join)
 					{
-						consume_path_utility += (1.0 - consume_solvent) * scenario.utility_consume_time.utility(config.defined_benefit);
-						path_consume = scenario.utility_consume_time.inverse_utility(consume_path_utility);
-						        // So consume and jpmorgan metrics match when gamma = 1/psi.
+				                floor = Math.min(config.defined_benefit, config.utility_join_point);
+						upside = config.defined_benefit - floor;
 					}
+					else
+					{
+					        floor = config.defined_benefit;
+					        upside = 0;
+					}
+					double floor_utility = scenario.utility_consume_time.utility(floor);
+					double upside_utility = scenario.utility_consume_time.utility(config.utility_join_point + upside);
+					floor_path_utility += (1.0 - consume_solvent) * floor_utility;
+					upside_path_utility += (1.0 - consume_solvent) * upside_utility;
+				}
+				double consume_path_utility = floor_path_utility;
+				if (config.utility_join)
+				        consume_path_utility += upside_path_utility - uct_u_ujp;
+				double path_consume;
+				if (consume_solvent == 1.0)
+				        path_consume = consume_annual;
+				else
+				        path_consume = scenario.utility_consume_time.inverse_utility(consume_path_utility);
+					        // Ensure consume and jpmorgan metrics match when gamma = 1/psi.
+				boolean compute_utility = !config.utility_retire || retire;
+				double upside_alive_discount;
+				if (compute_utility)
+				{
+				        consume_alive_discount = avg_alive;
+				        upside_alive_discount = (vital_stats.upside_alive[period + y] + vital_stats.upside_alive[period + y + 1]) / 2;
 				}
 				else
-				        consume_path_utility = scenario.utility_consume_time.utility(consume_annual);
-				boolean compute_utility = !config.utility_retire || retire;
-				if (compute_utility)
-				        consume_alive_discount = avg_alive;
-				else
+				{
 				        consume_alive_discount = 0;
-				double consume_alive_utility = consume_alive_discount * consume_path_utility / returns.time_periods;
-				consume_goal_path += consume_alive_utility;
-				combined_goal_path += consume_alive_utility;
+                                        upside_alive_discount = 0;
+				}
+				double floor_goal_path_elem = consume_alive_discount * floor_path_utility / returns.time_periods;
+				double upside_goal_path_elem = upside_alive_discount * upside_path_utility / returns.time_periods;
+				double join_elem = upside_alive_discount * uct_u_ujp / returns.time_periods;
+				double consume_goal_path_elem = floor_goal_path_elem;
+				if (config.utility_join)
+				        consume_goal_path_elem += upside_goal_path_elem - join_elem;
+				floor_goal_path += floor_goal_path_elem;
+				upside_goal_path += upside_goal_path_elem;
+				consume_goal_path += consume_goal_path_elem;
+				combined_goal_path += consume_goal_path_elem;
 				if (config.utility_dead_limit != 0.0 && compute_utility)
 				{
 					// We ignore any taxes that may be pending at death.
@@ -685,7 +738,7 @@ class AAMap
 					// Instead we pro-rate the distance to the asymptote.
 					double inherit_proportion = (inherit_utility - scenario.utility_inherit.u_0) / (scenario.utility_inherit.u_inf - scenario.utility_inherit.u_0);
 					double combined_inherit_utility;
-					if (consume_path_utility == Double.NEGATIVE_INFINITY)
+					if (consume_path_utility == Double.NEGATIVE_INFINITY || scenario.utility_consume_time.u_inf == Double.POSITIVE_INFINITY)
 					        combined_inherit_utility = 0;
 					else
 					        combined_inherit_utility = inherit_proportion * (scenario.utility_consume_time.u_inf - consume_path_utility);
@@ -722,6 +775,8 @@ class AAMap
 			// Add individual path metrics to overall metrics.
 			tw_goal += tw_goal_path * returns_probability;
 			ntw_goal += ntw_goal_path * returns_probability;
+			floor_goal += floor_goal_path * returns_probability;
+			upside_goal += upside_goal_path * returns_probability;
 			consume_goal += consume_goal_path * returns_probability;
 			combined_goal += combined_goal_path * returns_probability;
 			inherit_goal += inherit_goal_path * returns_probability;
@@ -759,21 +814,27 @@ class AAMap
 		{
 		        tw_goal += metrics.get(MetricsEnum.TW) * vital_stats.sum_avg_alive[period + 1];
 			ntw_goal += metrics.get(MetricsEnum.NTW) * vital_stats.raw_alive[period + 1];
+			floor_goal += metrics.get(MetricsEnum.FLOOR) * vital_stats.bounded_sum_avg_alive[period + 1];
+			upside_goal += metrics.get(MetricsEnum.UPSIDE) * vital_stats.bounded_sum_avg_upside_alive[period + 1];
+			consume_goal += metrics.get(MetricsEnum.CONSUME) * vital_stats.bounded_sum_avg_alive[period + 1];
 			if (config.utility_epstein_zin)
 			{
-			        double divisor = vital_stats.consume_divisor_period[period];
+				double divisor = vital_stats.bounded_sum_avg_alive[period];
 				double future_utility_risk = metrics.get(MetricsEnum.COMBINED);
 			        double future_utility_time = scenario.utility_consume_time.utility(scenario.utility_consume.inverse_utility(future_utility_risk));
 				combined_goal = (combined_goal + (divisor - consume_alive_discount) * future_utility_time) / divisor;
 			}
 			else
-			        combined_goal += metrics.get(MetricsEnum.COMBINED);
+			        combined_goal += metrics.get(MetricsEnum.COMBINED) * vital_stats.bounded_sum_avg_alive[period + 1];
+			tax_goal += metrics.get(MetricsEnum.TAX) * vital_stats.bounded_sum_avg_alive[period + 1];
 			cost += metrics.get(MetricsEnum.COST);
 		}
 
 		if (scenario.vw_strategy.equals("retirement_amount") && generate)
 		{
 		        // This is a run time strategy. The withdrawal amount will vary depending on the run not the map, and so generated metrics are invalid.
+		        floor_goal = 0;
+		        upside_goal = 0;
 		        consume_goal = 0;
 		        inherit_goal = 0;
 		        combined_goal = 0;
@@ -786,10 +847,16 @@ class AAMap
 			else
 			        combined_goal = 0; // Epstein-Zin utility can't be estimated by simulating paths.
 		}
+		else
+		        combined_goal /= vital_stats.bounded_sum_avg_alive[period];
 
 		// For reporting and success map display purposes keep goals normalized across ages.
 		tw_goal /= vital_stats.sum_avg_alive[period];
 		ntw_goal /= vital_stats.raw_alive[period];
+		floor_goal /= vital_stats.bounded_sum_avg_alive[period];
+		upside_goal /= vital_stats.bounded_sum_avg_upside_alive[period];
+		consume_goal /= vital_stats.bounded_sum_avg_alive[period];
+		tax_goal /= vital_stats.bounded_sum_avg_alive[period];
 
 		if (1.0 < tw_goal && tw_goal <= 1.0 + 1e-6)
 			tw_goal = 1.0;
@@ -798,7 +865,7 @@ class AAMap
 		assert (0.0 <= tw_goal && tw_goal <= 1.0);
 		assert (0.0 <= ntw_goal && ntw_goal <= 1.0);
 
-		Metrics result_metrics = new Metrics(tw_goal, ntw_goal, consume_goal, inherit_goal, combined_goal, tax_goal, cost);
+		Metrics result_metrics = new Metrics(tw_goal, ntw_goal, floor_goal, upside_goal, consume_goal, inherit_goal, combined_goal, tax_goal, cost);
 
 		String metrics_str = null;  // Useful for debugging.
 		if (!config.skip_dump_log)
@@ -861,50 +928,6 @@ class AAMap
 		return metrics;
 	}
 
-	// // The returns contain autocorrelations and so the success metrics for those
-	// // need computing.
-	// public Metrics[][] simulate_success_lines(final Returns returns) throws ExecutionException
-	// {
-	// 	List<Callable<Integer>> tasks = new ArrayList<Callable<Integer>>();
-
-	// 	final int period_0 = 0;
-	// 	final int period_1 = (int) (scenario.ss.max_years * returns.time_periods);
-	// 	final int bucket_0 = 0;
-	// 	final int bucket_1 = (int) Math.floor(config.pf_validate / config.success_lines_scale_size);
-
-	// 	final Metrics[][] metrics = new Metrics[period_1 - period_0][bucket_1 - bucket_0 + 1];
-
-	// 	final int bucketsPerTask = ((int) Math.ceil((bucket_1 - bucket_0 + 1) / (double) config.tasks));
-	// 	for (int block_bucket_0 = bucket_0; block_bucket_0 < bucket_1 + 1; block_bucket_0 += bucketsPerTask)
-	// 	{
-	// 		final int b0 = block_bucket_0;
-	// 		tasks.add(new Callable<Integer>()
-	// 		{
-	// 			public Integer call()
-	// 			{
-	// 				Thread.currentThread().setPriority((Thread.MIN_PRIORITY + Thread.NORM_PRIORITY) / 2);
-	// 				Returns local_returns = returns.clone();
-	// 				for (int period = period_0; period < period_1; period++)
-	// 			        {
-	// 					int b1 = Math.min(bucket_1 + 1, b0 + bucketsPerTask);
-	// 					for (int bucket = b0; bucket < b1; bucket++)
-	// 					{
-	// 					        double pf = bucket * config.success_lines_scale_size;
-	// 						SimulateResult res = simulate_paths(period, config.num_sequences_success, 0, pf, local_returns);
-	// 						metrics[period][bucket] = res.metrics;
-	// 					}
-	// 				}
-	// 				return null;
-	// 			}
-	// 		});
-
-	// 	}
-
-	// 	invoke_all(tasks);
-
-	// 	return metrics;
-	// }
-
         public double jpmorgan_metric(int age, List<List<PathElement>> paths, int num_batches, Returns returns)
         {
 	        assert(config.max_jpmorgan_paths % num_batches == 0);
@@ -933,10 +956,12 @@ class AAMap
 				u2 += scenario.utility_consume.utility(scenario.utility_consume_time.inverse_utility(u_combined));
 			}
 			u2 /= num_paths;
-			double weight = scenario.ss.vital_stats.metric_weight(MetricsEnum.CONSUME, period_offset + period);
+			double weight = 0;
+			if (!config.utility_retire || period >= Math.round((config.retirement_age - config.start_age) * returns.time_periods))
+			        weight = (scenario.ss.vital_stats.alive[period_offset + period] + scenario.ss.vital_stats.alive[period_offset + period + 1]) / 2;
 			u += weight * scenario.utility_consume_time.utility(scenario.utility_consume.inverse_utility(u2));
 		}
-		u /= scenario.ss.vital_stats.metric_divisor(MetricsEnum.CONSUME, first_age);
+		u /= scenario.ss.vital_stats.bounded_sum_avg_alive[period_offset];
 
 		return u;
 	}

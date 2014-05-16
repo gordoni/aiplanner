@@ -19,7 +19,9 @@ public class VitalStats
 	public double[] alive;
 	public double[] dying;
 	public double[] sum_avg_alive;
-        public double[] consume_divisor_period;
+        public double[] bounded_sum_avg_alive;
+        public double[] upside_alive;
+        public double[] bounded_sum_avg_upside_alive;
 
         private ScenarioSet ss;
         private Config config;
@@ -284,24 +286,34 @@ public class VitalStats
 		}
 	}
 
-        public void pre_compute_alive_dying(Double[] death, double raw_alive_array[], double raw_dying_array[], double[] raw_sum_avg_alive_array, double[] alive_array, double[] dying_array, double[] sum_avg_alive_array, double time_periods, double r)
+        // Bounded_sum_avg_alive is like sum_avg_alive, but is constant until retirement_age and stops at max_years instead of death.length.
+        public void pre_compute_alive_dying(Double[] death, double[] alive_array, double[] dying_array, double[] sum_avg_alive_array, double[] bounded_sum_avg_alive, double time_periods, double r)
 	{
 		double alive = 1.0;
 		double dying = 0.0;
 		double prev_alive = 1.0;
 
-		int inherit_age = 0; // Initial discount is arbitrary, since we deal with ratios of values. We leave it in as a parameter so we can confirm this.
-		double discount = Math.pow(1 + r, - (config.start_age - inherit_age));
+		int upside_age = config.utility_age;
+		double discount = Math.pow(1 + r, - (config.start_age - upside_age));
+		        // Initial discount is no longer arbitrary, even though we deal with ratios of values, because upside_alive must match alive at upside_age.
 
-		raw_alive_array[0] = alive;
-		alive_array[0] = alive * discount;
+		if (alive_array != null)
+		        alive_array[0] = alive * discount;
 
-	        List<Double> raw_avg_alive = new ArrayList<Double>();
 	        List<Double> avg_alive = new ArrayList<Double>();
 
+		int len = 0;
+		if (alive_array != null)
+		        len = Math.max(len, alive_array.length - 1);
+		if (dying_array != null)
+		        len = Math.max(len, dying_array.length);
+		if (sum_avg_alive_array != null)
+		        len = Math.max(len, sum_avg_alive_array.length);
+		if (bounded_sum_avg_alive != null)
+		        len = Math.max(len, bounded_sum_avg_alive.length);
 		double death_period = 0.0;
 		int index = 0;
-		for (int y = 0; y < dying_array.length; y++)
+		for (int y = 0; y < len; y++)
 		{
 			if (time_periods <= 1.0)
 			{
@@ -318,11 +330,10 @@ public class VitalStats
 				dying = alive * death_period;
 				prev_alive = alive * discount;
 				alive -= dying;
-				raw_dying_array[index] = dying;
-				raw_alive_array[index + 1] = alive;
-				raw_avg_alive.add((raw_alive_array[index] + raw_alive_array[index + 1]) / 2.0);
-				alive_array[index + 1] = alive * discount;
-				dying_array[index] =  dying * discount * Math.pow(1 + r, - 0.5 / time_periods);
+				if (alive_array != null)
+				        alive_array[index + 1] = alive * discount;
+				if (dying_array != null)
+				        dying_array[index] =  dying * discount * Math.pow(1 + r, - 0.5 / time_periods);
 				avg_alive.add((alive_array[index] + alive_array[index + 1]) / 2.0);
 				discount *= Math.pow(1 + r, - 1.0 / time_periods);
 				index++;
@@ -332,66 +343,36 @@ public class VitalStats
 
 		for (int i = 0; i < avg_alive.size(); i++)
 		{
-			double sum_raw_aa = 0;
 			double sum_aa = 0;
+			double bounded_sum_aa = 0;
 			for (int j = i; j < avg_alive.size(); j++)
 			{
-				sum_raw_aa += raw_avg_alive.get(j);
 				sum_aa += avg_alive.get(j);
+			        double divisor = 0;
+				if (bounded_sum_avg_alive != null && j < bounded_sum_avg_alive.length)
+				        if (!config.utility_retire || j >= Math.round((config.retirement_age - config.start_age) * time_periods))
+					        bounded_sum_aa += avg_alive.get(j);
 			}
-			raw_sum_avg_alive_array[i] = sum_raw_aa;
-			sum_avg_alive_array[i] = sum_aa;
+			if (sum_avg_alive_array != null)
+			        sum_avg_alive_array[i] = sum_aa;
+			if (bounded_sum_avg_alive != null && i < bounded_sum_avg_alive.length)
+			        bounded_sum_avg_alive[i] = bounded_sum_aa;
 		}
 	}
 
-
-	public double metric_weight(MetricsEnum metric, int period)
+       public double metric_divisor(MetricsEnum metric, int age)
         {
-	        if (config.utility_retire && period / time_periods < config.retirement_age - config.start_age)
-		        return 0;
-		if (Arrays.asList(MetricsEnum.CONSUME, MetricsEnum.COMBINED, MetricsEnum.TAX).contains(metric))
-		{
-		        return (alive[period] + alive[period + 1]) / 2;
-		}
-		else if (metric == MetricsEnum.INHERIT)
-		{
-			return dying[period];
-		}
-		else
-		{
-		        assert(false);
-			return 0;
-	        }
-	}
+		int period = (int) ((age - config.start_age) * time_periods);
 
-        private double metric_divisor_period(MetricsEnum metric, int period)
-        {
-	        if (!Arrays.asList(MetricsEnum.CONSUME, MetricsEnum.INHERIT, MetricsEnum.COMBINED, MetricsEnum.TAX).contains(metric))
+	        if (metric != MetricsEnum.INHERIT)
 		        return 1;
-
-		if (config.utility_epstein_zin && (metric == MetricsEnum.COMBINED))
-		    return 1; // Only combined metric is Epstein-Zinized, and it doesn't need any divisor adjustment. Used in reporting generated metric.
 
 		int total_periods = (int) (ss.max_years * time_periods);
 	        double d = 0;
 		for (int y = period; y < total_periods; y++)
-		    d += metric_weight(metric, y);
+		        if (!config.utility_retire || period >= Math.round((config.retirement_age - config.start_age) * time_periods))
+			        d += dying[y];
 		return d;
-	}
-
-        private void pre_compute_consume_divisor_period()
-        {
-		consume_divisor_period = new double[(int) (ss.max_years * time_periods)];
-		for (int period = 0; period < consume_divisor_period.length; period++)
-		        // Looping is inefficient, could build up values reverse incrementally, but probably doesn't matter.
-		        consume_divisor_period[period] = metric_divisor_period(MetricsEnum.CONSUME, period);
-        }
-
-        public double metric_divisor(MetricsEnum metric, int age)
-        {
-		int period = (int) ((age - config.start_age) * time_periods);
-
-		return metric_divisor_period(metric, period);
 	}
 
         public VitalStats(Config config, HistReturns hist)
@@ -417,17 +398,22 @@ public class VitalStats
 	        pre_compute_life_expectancy();
 
 		int vs_years = death.length - config.start_age;
+		int actual_years = (config.years == null) ? death.length : config.years;
 		this.raw_alive = new double[(int) Math.round(vs_years * time_periods) + 1];
 		this.raw_dying = new double[(int) Math.round(vs_years * time_periods)];
 		this.raw_sum_avg_alive = new double[(int) Math.round(vs_years * time_periods)];
+ 		pre_compute_alive_dying(death, raw_alive, raw_dying, raw_sum_avg_alive, null, time_periods, 0);
 		this.alive = new double[(int) Math.round(vs_years * time_periods) + 1];
 		this.dying = new double[(int) Math.round(vs_years * time_periods)];
 		this.sum_avg_alive = new double[(int) Math.round(vs_years * time_periods)];
- 		pre_compute_alive_dying(death, raw_alive, raw_dying, raw_sum_avg_alive, alive, dying, sum_avg_alive, time_periods, config.consume_discount_rate);
+		this.bounded_sum_avg_alive = new double[Math.min(actual_years, (int) Math.round(vs_years * time_periods))];
+ 		pre_compute_alive_dying(death, alive, dying, sum_avg_alive, bounded_sum_avg_alive, time_periods, config.consume_discount_rate);
+		this.upside_alive = new double[(int) Math.round(vs_years * time_periods) + 1];
+		this.bounded_sum_avg_upside_alive = new double[Math.min(actual_years, (int) Math.round(vs_years * time_periods))];
+ 		pre_compute_alive_dying(death, upside_alive, null, null, bounded_sum_avg_upside_alive, time_periods, config.upside_discount_rate);
 
 		if (ss.max_years == -1)
 		{
-		        int actual_years = (config.years == null) ? death.length : config.years;
 			ss.max_years = Math.min(actual_years, death.length - config.start_age);
 			ss.max_years -= ss.max_years % lcm((int) Math.round(1.0 / config.generate_time_periods), (int) Math.round(1.0 / config.validate_time_periods));
 		}
@@ -436,8 +422,6 @@ public class VitalStats
 		        ss.max_years = Math.min(ss.max_years, (int) (dying.length / config.target_time_periods));
 			        // Buglet : when validating should really use max_years prior to targeting in min expression.
 		}
-
-		pre_compute_consume_divisor_period();
 
 		return true;
 	}

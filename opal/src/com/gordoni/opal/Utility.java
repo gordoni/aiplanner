@@ -37,7 +37,7 @@ abstract class Utility
 		        return new UtilityLinear(c_zero, s2, range);
 		}
 		else if (utility_function.equals("power"))
-		        return new UtilityPower(config, eta, c_shift, c_zero, ce, ce_ratio, c1, s1, c2, s2, public_assistance, public_assistance_phaseout_rate, range);
+		        return new UtilityPower(config, eta, c_shift, c_zero, ce, ce_ratio, c1, s1, c2, s2, public_assistance, public_assistance_phaseout_rate, null, range);
 		else if (utility_function.equals("exponential"))
 		        return new UtilityExponential(config, alpha, c_shift, c_zero, c1, s1, c2, s2, public_assistance, public_assistance_phaseout_rate, range);
 		else

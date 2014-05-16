@@ -290,7 +290,6 @@ public class Scenario
 		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-utility-" + name + ".csv"));
 		for (double c = 0; c <= utility.range; c += utility.range / 1000)
 		{
-		    //out.print(f6f.format(c) + "," + utility.utility(c) + "," + utility.slope(c) + "\n");
 		    out.print(f6f.format(c) + "," + utility.utility(c) + "," + utility.slope(c) + "," + utility.inverse_utility(utility.utility(c)) + "," + utility.inverse_slope(utility.slope(c)) + "\n"); // For debugging.
 		}
 		out.close();
@@ -473,6 +472,7 @@ public class Scenario
 		if (retire_period < 0)
 		        retire_period = 0;
 		int start = retire_only ? retire_period : 0;
+		start++; // Strategically ignore the first sample. Its behavior is fixed causing it to spike the results.
 		for (int pi = 0; pi < config.max_distrib_paths; pi++)
 		{
 		        List<PathElement> path = paths.get(pi);
@@ -765,7 +765,7 @@ public class Scenario
 	// Dump the data files.
 	private void dump(AAMap map, Metrics[] retirement_number, List<List<PathElement>> paths, Returns returns) throws IOException
 	{
-	        dump_utility(utility_consume, "consume");
+ 	        dump_utility(utility_consume, "consume");
 	        dump_utility(utility_consume_time, "consume_time");
 	        dump_utility(utility_inherit, "inherit");
 		//dump_cw();
@@ -897,7 +897,21 @@ public class Scenario
 				double am = Utils.mean(returns.get(index));
 				double sd = Utils.standard_deviation(returns.get(index));
 				System.out.println("  " + asset_classes.get(index) + " " + f2f.format(gm * 100) + "% +/- " + f2f.format(sd * 100) + "% (arithmetic " + f2f.format(am * 100) + "%)");
+
 				// System.out.println(am);
+
+				// double minval = Double.POSITIVE_INFINITY;
+				// int minloc = -1;
+				// for (int i = 0; i < returns.get(index).length - 30; i++)
+				// {
+				//         double val = Utils.plus_1_geomean(Arrays.copyOfRange(returns.get(index), i, i + 30));
+				// 	if (val < minval)
+				// 	{
+				// 	        minval = val;
+				// 		minloc = i;
+				// 	}
+				// }
+				// System.err.println((config.generate_start_year + minloc) + " " + (minval - 1));
 			}
 			// System.out.println(Arrays.deepToString(Utils.covariance_returns(returns)));
 			// System.out.println(Arrays.deepToString(Utils.correlation_returns(returns)));
@@ -1226,6 +1240,10 @@ public class Scenario
 		}
 		assert(config.max_borrow == 0.0 || !config.borrow_aa.equals(config.fail_aa));
 		assert(config.validate_time_periods >= config.rebalance_time_periods);
+		assert(!config.utility_join || config.consume_discount_rate <= config.upside_discount_rate);
+                        // Ensures able to add upside utility to floor utility without exceeding u_inf.
+		assert(config.utility_age <= config.start_age);
+		        // Ditto.
 		assert(!config.utility_epstein_zin || (success_mode_enum == MetricsEnum.COMBINED)); // Other success modes not Epstein-Zinized.
 
 		// More internal parameters.
@@ -1271,20 +1289,21 @@ public class Scenario
 		Utility utility_consume_risk = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_alpha, 0, config.withdrawal, config.utility_ce, config.utility_ce_ratio, 2 * config.withdrawal, 1 / config.utility_slope_double_withdrawal, config.withdrawal, 1, config.public_assistance, config.public_assistance_phaseout_rate, config.withdrawal * 2);
 		eta = (config.utility_epstein_zin ? (Double) (1 / config.utility_psi) : config.utility_eta);
 		utility_consume_time = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_alpha, 0, config.withdrawal, config.utility_ce, config.utility_ce_ratio, 2 * config.withdrawal, 1 / config.utility_slope_double_withdrawal, config.withdrawal, 1, config.public_assistance, config.public_assistance_phaseout_rate, config.withdrawal * 2);
-		double bequest_consume = (config.utility_bequest_consume == null ? config.withdrawal : config.utility_bequest_consume);
-		// Model: Bequest to 1 person for utility_inherit_years or utility_inherit_years people for 1 year who are currently consuming bequest_consume
-		// and share the same utility function as you.
-		double scale = config.utility_inherit_years;
+
 		if (config.utility_join)
 		{
-		        Utility utility_gift = new UtilityScale(config, utility_consume_risk, 0, 1 / config.utility_inherit_years, scale * config.utility_live, - bequest_consume);
-		        utility_consume = new UtilityJoin(config, utility_consume_risk, utility_gift);
-		        utility_gift = new UtilityScale(config, utility_consume_time, 0, 1 / config.utility_inherit_years, scale * config.utility_live, - bequest_consume);
-		        utility_consume_time = new UtilityJoin(config, utility_consume_time, utility_gift);
+		        Utility utility_consume_risk_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_point, config.utility_join_slope_ratio * utility_consume_risk.slope(config.utility_join_point), 0, 0, config.withdrawal * 2);
+		        utility_consume_risk = new UtilityJoin(config, utility_consume_risk, utility_consume_risk_2, config.utility_join_point);
+dump_utility(utility_consume_risk, "consume");
+		        Utility utility_consume_time_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_point, config.utility_join_slope_ratio * utility_consume_time.slope(config.utility_join_point), 0, 0, config.withdrawal * 2);
+		        utility_consume_time = new UtilityJoin(config, utility_consume_time, utility_consume_time_2, config.utility_join_point);
 		}
-		else
-		        utility_consume = utility_consume_risk;
-		utility_inherit = new UtilityScale(config, utility_consume_time, 0, 1 / config.utility_inherit_years, scale * config.utility_dead_limit, - bequest_consume);
+	        utility_consume = utility_consume_risk;
+
+		// Model: Bequest to 1 person for utility_inherit_years or utility_inherit_years people for 1 year who are currently consuming bequest_consume
+		// and share the same utility function as you sans utility_join.
+		double bequest_consume = (config.utility_bequest_consume == null ? config.withdrawal : config.utility_bequest_consume);
+		utility_inherit = new UtilityScale(config, utility_consume_time, 0, 1 / config.utility_inherit_years, config.utility_inherit_years * config.utility_dead_limit, - bequest_consume);
 		utility_inherit.range = config.withdrawal * 100;
 
 		// Set up returns.

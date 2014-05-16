@@ -129,13 +129,8 @@ public class AnnuityStats
 			        double cohort_to_cohort = Math.pow(1 - rate, - i / time_periods);
 				period_death[j] = Math.min(cohort_to_cohort * period_death[j], 1);
 			}
-			double[] period_raw_alive = new double[vital_stats.alive.length];
-			double[] period_raw_dying = new double[vital_stats.dying.length];
-			double[] period_raw_sum_avg_alive = new double[vital_stats.sum_avg_alive.length];
 			double[] period_alive = new double[vital_stats.alive.length];
-			double[] period_dying = new double[vital_stats.dying.length];
-			double[] period_sum_avg_alive = new double[vital_stats.sum_avg_alive.length];
-			vital_stats.pre_compute_alive_dying(period_death, period_raw_alive, period_raw_dying, period_raw_sum_avg_alive, period_alive, period_dying, period_sum_avg_alive, time_periods, 0);
+			vital_stats.pre_compute_alive_dying(period_death, period_alive, null, null, null, time_periods, 0);
 			for (int j = i + (config.annuity_payout_immediate ? 0 : 1); j < vital_stats.alive.length - 1; j++)
 			{
 			        double maturity = (j - i + 0.5) / time_periods;
