@@ -298,7 +298,7 @@ class AAMap
 			double[] aa = aa1;
 			double[] free_aa = aa2;
 			System.arraycopy(initial_aa, 0, aa, 0, scenario.all_alloc);
-			boolean retired = false;
+			boolean retire = false;
 			double spend_retirement = Double.NaN;
 			double cpi = 1;
 			if (scenario.do_tax)
@@ -366,7 +366,7 @@ class AAMap
 				double nia_prev = nia;
 
 				double amount_annual; // Contribution/withdrawal amount.
-				boolean retire = period + y >= (config.retirement_age - config.start_age) * returns.time_periods;
+				boolean retired = period + y >= (config.retirement_age - config.start_age) * returns.time_periods;
 				if (config.cw_schedule != null)
 				{
 					spend_annual = config.withdrawal;
@@ -375,7 +375,7 @@ class AAMap
 				else
 				{
 				        double income = ria + nia;
-					if (retire)
+					if (retired)
 					{
 					        income += config.defined_benefit;
 					        if (variable_withdrawals)
@@ -386,10 +386,10 @@ class AAMap
 						}
 						else
 						{
-						        if (!retired)
+						        if (!retire)
 							{
 							        spend_retirement = scenario.vw_strategy.equals("amount") ? config.withdrawal : income + config.vw_percentage * p_prev_exc_neg;
-								retired = true;
+								retire = true;
 							}
 						        spend_annual = spend_retirement;
 						}
@@ -440,7 +440,7 @@ class AAMap
 						nia -= tax_annuity_credit_expire[period + y] / cpi;
 					}
 				}
-				if (retire && variable_withdrawals)
+				if (retired && variable_withdrawals)
 				{
 					consume_annual += first_payout;
 				        double not_consumed;
@@ -694,7 +694,7 @@ class AAMap
 				else
 				        path_consume = scenario.utility_consume_time.inverse_utility(consume_path_utility);
 					        // Ensure consume and jpmorgan metrics match when gamma = 1/psi.
-				boolean compute_utility = !config.utility_retire || retire;
+				boolean compute_utility = !config.utility_retire || retired;
 				double upside_alive_discount;
 				if (compute_utility)
 				{
