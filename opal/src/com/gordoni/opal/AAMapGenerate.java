@@ -642,7 +642,10 @@ public class AAMapGenerate extends AAMap
 		if (!search_aa)
 		        me.aa = generate_aa(config.aa_strategy, config.start_age + period / returns.time_periods, me.rps);
 		if (!search_spend_fract)
+		{
+		        me.aa = me.aa.clone(); // May be shared with older bucket.
 		        me.aa[scenario.spend_fract_index] = vw_spend_fract(config.start_age + period / returns.time_periods, me.rps);
+		}
 
 		if (dimensions.size() == 0)
 		{
