@@ -69,7 +69,7 @@ public class PathMetricsResult
 			utility = scenario.utility_consume_time;
 		else if (metric == MetricsEnum.INHERIT)
 			utility = scenario.utility_inherit;
-		if (utility != null)
+		if (utility != null && !Double.isNaN(std_dev))
 		        std_dev = (utility.inverse_utility(mean + std_dev) - utility.inverse_utility(mean - std_dev)) / 2;
 		return std_dev;
 	}
@@ -78,12 +78,15 @@ public class PathMetricsResult
         {
 		for (MetricsEnum metric : MetricsEnum.values())
 		{
-		        if (Double.isNaN(means.get(metric)))
-			        continue;
 			double mean = mean(metric);
 			double std_dev = std_dev(metric);
 			if (metric == MetricsEnum.UPSIDE)
 			        mean -= config.utility_join_point;
+		        if (Double.isNaN(mean) || Double.isNaN(std_dev))
+			{
+			        mean = 0;
+			        std_dev = 0;
+			}
 		        String flag = ((config.validate == null) && metric == scenario.success_mode_enum) ? " <= Goal" : "";
 			if (Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(metric))
 			        System.out.printf("Metric %-18s %s\n", metric.toString().toLowerCase() + ": ", f3f.format(mean * 100) + "% +/- " + f3f.format(std_dev * 100) + "%" + flag);

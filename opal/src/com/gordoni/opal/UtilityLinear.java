@@ -36,6 +36,12 @@ public class UtilityLinear extends Utility
 		return 0;
 	}
 
+        public double slope2(double c)
+        {
+	        assert(c >= 0);
+		return 0;
+	}
+
         public UtilityLinear(double c_zero, double s, double range)
         {
 	        this.range = range;

@@ -101,6 +101,19 @@ public class UtilityPower extends Utility
 		        return c;
 	}
 
+        public double slope2(double c)
+        {
+	        assert(c >= 0);
+	        boolean assist = c * public_assistance_phaseout_rate < public_assistance;
+		if (assist)
+		        c = public_assistance + c * (1 - public_assistance_phaseout_rate);
+		double slope2 = - scale * eta * Math.pow((c - offset), - eta - 1);
+		if (assist)
+		        return (1 - public_assistance_phaseout_rate) * (1 - public_assistance_phaseout_rate) * slope2;
+		else
+		        return slope2;
+	}
+
         public UtilityPower(Config config, Double force_eta, double c_shift, double c_zero, Double ce, double ce_ratio, double c1, double s1, double c2, double s2, double public_assistance, double public_assistance_phaseout_rate, Double force_scale, double range)
         {
 	        double c1_adjust = c1;

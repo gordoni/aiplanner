@@ -15,13 +15,15 @@ abstract class Utility
 
         public abstract double inverse_slope(double s);
 
+        public abstract double slope2(double c);
+
         protected void set_constants()
         {
 	        u_0 = utility(0);
 	        u_inf = utility(Double.POSITIVE_INFINITY);
 	}
 
-        public static Utility utilityFactory(Config config, String utility_function, Double eta, Double alpha, double c_shift, double c_zero, Double ce, double ce_ratio, double c1, double s1, double c2, double s2, double public_assistance, double public_assistance_phaseout_rate, double range)
+        public static Utility utilityFactory(Config config, String utility_function, Double eta, double beta, Double alpha, double c_shift, double c_zero, Double ce, double ce_ratio, double c1, double s1, double c2, double s2, double public_assistance, double public_assistance_phaseout_rate, double range)
         {
 	        boolean linear = utility_function.equals("linear");
 	        if (utility_function.equals("power") && ((eta == null && s1 == s2) || (eta != null && eta == 0)) && public_assistance == 0)
@@ -40,6 +42,8 @@ abstract class Utility
 		        return new UtilityPower(config, eta, c_shift, c_zero, ce, ce_ratio, c1, s1, c2, s2, public_assistance, public_assistance_phaseout_rate, null, range);
 		else if (utility_function.equals("exponential"))
 		        return new UtilityExponential(config, alpha, c_shift, c_zero, c1, s1, c2, s2, public_assistance, public_assistance_phaseout_rate, range);
+		else if (utility_function.equals("hara"))
+		        return new UtilityHara(config, eta, beta, c_shift, c_zero, c2, s2, public_assistance, public_assistance_phaseout_rate, null, range);
 		else
 		        assert(false);
 		return null;

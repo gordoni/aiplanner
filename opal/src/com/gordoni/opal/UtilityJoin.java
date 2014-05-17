@@ -48,6 +48,15 @@ public class UtilityJoin extends Utility
 	        return 0;
 	}
 
+        public double slope2(double c)
+        {
+	        assert(c >= 0);
+		if (c < c1)
+		        return utility1.slope2(c);
+		else
+		        return utility2.slope2(c);
+	}
+
         public UtilityJoin(Config config, Utility utility1, Utility utility2, double join_point)
         {
 		this.config = config;

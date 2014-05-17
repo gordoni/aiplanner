@@ -43,6 +43,12 @@ public class UtilityScale extends Utility
 		        return (utility.inverse_slope(s / (scale * c_scale)) + offset) / c_scale;
 	}
 
+        public double slope2(double c)
+        {
+	        assert(c >= 0);
+		return scale * c_scale * c_scale * utility.slope2(c_scale * c - offset);
+	}
+
         public UtilityScale(Config config, Utility utility, double c_zero, double c_scale, double scale, double offset)
         {
 		this.config = config;

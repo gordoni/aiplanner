@@ -161,6 +161,7 @@ public class Config
         public double utility_gamma = 3; // Consumption Epstein-Zin utility risk aversion.
         public double utility_psi = 1 / 3.0; // Consumption Epstein-Zin utility elasticity of inter-temporal substitution.
         public Double utility_eta = null; // Consumption power utility eta parameter to use in place of utility_slope_zero definition, e.g. 3.
+        public double utility_beta = 0.0; // Consumption HARA utility beta parameter divided by withdrawal, e.g. 1.
         public Double utility_alpha = null; // Consumption exponential utility alpha parameter multiplied by withdrawal, e.g. 2.
                // If the same relative slopes are desired at consumptions c1 and c2 as occur with a power utility function eta then,
                // alpha = - eta . ln(c1/c2) / (c2 - c1).

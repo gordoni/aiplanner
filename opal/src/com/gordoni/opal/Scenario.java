@@ -290,7 +290,7 @@ public class Scenario
 		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-utility-" + name + ".csv"));
 		for (double c = 0; c <= utility.range; c += utility.range / 1000)
 		{
-		    out.print(f6f.format(c) + "," + utility.utility(c) + "," + utility.slope(c) + "," + utility.inverse_utility(utility.utility(c)) + "," + utility.inverse_slope(utility.slope(c)) + "\n"); // For debugging.
+		        out.print(f6f.format(c) + "," + utility.utility(c) + "," + utility.slope(c) + "," + utility.slope2(c) + "," + utility.inverse_utility(utility.utility(c)) + "," + utility.inverse_slope(utility.slope(c)) + "\n");
 		}
 		out.close();
 	}
@@ -1284,16 +1284,15 @@ public class Scenario
 		// Set up utility functions.
 
 		Double eta = (config.utility_epstein_zin ? (Double) config.utility_gamma : config.utility_eta);
-		Utility utility_consume_risk = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_alpha, 0, config.withdrawal, config.utility_ce, config.utility_ce_ratio, 2 * config.withdrawal, 1 / config.utility_slope_double_withdrawal, config.withdrawal, 1, config.public_assistance, config.public_assistance_phaseout_rate, config.withdrawal * 2);
+		Utility utility_consume_risk = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_beta, config.utility_alpha, 0, config.withdrawal, config.utility_ce, config.utility_ce_ratio, 2 * config.withdrawal, 1 / config.utility_slope_double_withdrawal, config.withdrawal, 1, config.public_assistance, config.public_assistance_phaseout_rate, config.withdrawal * 2);
 		eta = (config.utility_epstein_zin ? (Double) (1 / config.utility_psi) : config.utility_eta);
-		utility_consume_time = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_alpha, 0, config.withdrawal, config.utility_ce, config.utility_ce_ratio, 2 * config.withdrawal, 1 / config.utility_slope_double_withdrawal, config.withdrawal, 1, config.public_assistance, config.public_assistance_phaseout_rate, config.withdrawal * 2);
+		utility_consume_time = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_beta, config.utility_alpha, 0, config.withdrawal, config.utility_ce, config.utility_ce_ratio, 2 * config.withdrawal, 1 / config.utility_slope_double_withdrawal, config.withdrawal, 1, config.public_assistance, config.public_assistance_phaseout_rate, config.withdrawal * 2);
 
 		if (config.utility_join)
 		{
-		        Utility utility_consume_risk_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_point, config.utility_join_slope_ratio * utility_consume_risk.slope(config.utility_join_point), 0, 0, config.withdrawal * 2);
+		        Utility utility_consume_risk_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_point, config.utility_join_slope_ratio * utility_consume_risk.slope(config.utility_join_point), 0, 0, config.withdrawal * 2);
 		        utility_consume_risk = new UtilityJoin(config, utility_consume_risk, utility_consume_risk_2, config.utility_join_point);
-dump_utility(utility_consume_risk, "consume");
-		        Utility utility_consume_time_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_point, config.utility_join_slope_ratio * utility_consume_time.slope(config.utility_join_point), 0, 0, config.withdrawal * 2);
+                        Utility utility_consume_time_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_point, config.utility_join_slope_ratio * utility_consume_time.slope(config.utility_join_point), 0, 0, config.withdrawal * 2);
 		        utility_consume_time = new UtilityJoin(config, utility_consume_time, utility_consume_time_2, config.utility_join_point);
 		}
 	        utility_consume = utility_consume_risk;
