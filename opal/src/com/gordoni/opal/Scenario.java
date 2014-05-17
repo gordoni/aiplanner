@@ -468,11 +468,9 @@ public class Scenario
         {
 		double min = Double.POSITIVE_INFINITY;
 		double max = Double.NEGATIVE_INFINITY;
-		int retire_period = (int) Math.round((config.retirement_age - config.start_age) * config.validate_time_periods);
-		if (retire_period < 0)
-		        retire_period = 0;
-		int start = retire_only ? retire_period : 0;
-		start++; // Strategically ignore the first sample. Its behavior is fixed causing it to spike the results.
+		int start = (int) Math.round((config.retirement_age - config.start_age) * config.validate_time_periods);
+		if (!retire_only || start < 1)
+		        start = 1; // Strategically ignore the first sample. Its behavior is fixed causing it to spike the results.
 		for (int pi = 0; pi < config.max_distrib_paths; pi++)
 		{
 		        List<PathElement> path = paths.get(pi);
