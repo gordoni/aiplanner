@@ -368,29 +368,40 @@ set terminal png transparent size 800,400 font "/usr/share/fonts/truetype/libera
 
 set xrange [*:*]
 set format x "%.1s%c"
-set ylabel "utility"
-set yrange [*:*]
-set format y "%.1s%c"
+
+#set ylabel "utility"
+#set yrange [*:*]
+#set format y "%.1s%c"
+#
+#set xlabel "consumption ($)"
+#set output "opal-utility-consume.png"
+#plot "opal-utility-consume.csv" using 1:2 with lines notitle
+#
+#set xlabel "bequest ($)"
+#set output "opal-utility-inherit.png"
+#plot "opal-utility-inherit.csv" using 1:2 with lines notitle
+
+set ylabel "utility slope"
 
 set xlabel "consumption ($)"
-set output "opal-utility-consume.png"
-plot "opal-utility-consume.csv" using 1:2 with lines notitle
-
-set xlabel "bequest ($)"
-set output "opal-utility-inherit.png"
-plot "opal-utility-inherit.csv" using 1:2 with lines notitle
-
-set xlabel "consumption slope ($)"
 set yrange [0:20]
 set format y "%.0f"
 set output "opal-utility-slope-consume.png"
 plot "opal-utility-consume.csv" using 1:3 with lines notitle
 
-set xlabel "bequest slope ($)"
-set yrange [*:*]
+set xlabel "bequest ($)"
+set yrange [0:*]
 set format y "%.2f"
 set output "opal-utility-slope-inherit.png"
 plot "opal-utility-inherit.csv" using 1:3 with lines notitle
+
+set ylabel "absolute risk aversion"
+set format y "%.1e"
+
+set xlabel "consumption ($)"
+set yrange [0:*]
+set output "opal-utility-ara-consume.png"
+plot "opal-utility-consume.csv" using 1:(-$4/$3) with lines notitle
 
 unset format
 ''')

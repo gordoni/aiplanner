@@ -253,28 +253,24 @@ The composition of the asset allocation choices used to compute the optimum port
 Utility function:
 <br />
 <font size="-1">
-This records how consumption in the case of variable withdrawal rates and insolvency was valued.
-</font>
-<br />
-<img src="{{ dirurl }}/opal-utility-consume.png">
-<br />
-<font size="-1">
-This records how any bequest was valued.
-</font>
-<br />
-<img src="{{ dirurl }}/opal-utility-inherit.png">
-<br />
-<font size="-1">
 This records how an additional dollar of consumption was valued.
 </font>
 <br />
 <img src="{{ dirurl }}/opal-utility-slope-consume.png">
 <br />
 <font size="-1">
+Absolute risk aversion for consuption.
+</font>
+<br />
+<img src="{{ dirurl }}/opal-utility-ara-consume.png">
+{% if data.inherit %}
+<br />
+<font size="-1">
 This records how an additional dollar of bequest was valued.
 </font>
 <br />
 <img src="{{ dirurl }}/opal-utility-slope-inherit.png">
+{% endif %}
 {% if not sample %}
 <br />
 <br />
