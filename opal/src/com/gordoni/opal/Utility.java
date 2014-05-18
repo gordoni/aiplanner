@@ -39,11 +39,22 @@ abstract class Utility
 		        return new UtilityLinear(c_zero, s2, range);
 		}
 		else if (utility_function.equals("power"))
-		        return new UtilityPower(config, eta, c_shift, c_zero, ce, ce_ratio, c1, s1, c2, s2, public_assistance, public_assistance_phaseout_rate, null, range);
+		        return new UtilityPower(config, eta, c_shift, c_zero, 0, ce, ce_ratio, c1, s1, c2, s2, public_assistance, public_assistance_phaseout_rate, null, range);
 		else if (utility_function.equals("exponential"))
 		        return new UtilityExponential(config, alpha, c_shift, c_zero, c1, s1, c2, s2, public_assistance, public_assistance_phaseout_rate, range);
 		else if (utility_function.equals("hara"))
 		        return new UtilityHara(config, eta, beta, c_shift, c_zero, c2, s2, public_assistance, public_assistance_phaseout_rate, null, range);
+		else
+		        assert(false);
+		return null;
+	}
+
+        public static Utility joinFactory(Config config, String join_function, Utility utility1, Utility utility2, double c1, double c2)
+        {
+                if (join_function.equals("ara"))
+		        return new UtilityJoinAra(config, utility1, utility2, c1, c2);
+		else if (join_function.equals("slope"))
+		        return new UtilityJoinSlope(config, utility1, utility2, c1, c2);
 		else
 		        assert(false);
 		return null;

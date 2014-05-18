@@ -81,7 +81,7 @@ public class PathMetricsResult
 			double mean = mean(metric);
 			double std_dev = std_dev(metric);
 			if (metric == MetricsEnum.UPSIDE)
-			        mean -= config.utility_join_point;
+			        mean -= config.utility_join_required;
 		        if (Double.isNaN(mean) || Double.isNaN(std_dev))
 			{
 			        mean = 0;

@@ -114,7 +114,7 @@ public class UtilityPower extends Utility
 		        return slope2;
 	}
 
-        public UtilityPower(Config config, Double force_eta, double c_shift, double c_zero, Double ce, double ce_ratio, double c1, double s1, double c2, double s2, double public_assistance, double public_assistance_phaseout_rate, Double force_scale, double range)
+        public UtilityPower(Config config, Double force_eta, double c_shift, double c, double u, Double ce, double ce_ratio, double c1, double s1, double c2, double s2, double public_assistance, double public_assistance_phaseout_rate, Double force_scale, double range)
         {
 	        double c1_adjust = c1;
 	        double s1_adjust = s1;
@@ -168,8 +168,8 @@ public class UtilityPower extends Utility
 		        this.scale = s2_adjust * Math.pow(c2_adjust - offset, eta);
 		else
 		        this.scale = force_scale;
-		this.zero = utility(c_zero);
-		assert(utility(c_zero) == 0);
+		this.zero = utility(c) - u;
+		//assert(utility(c) == u);
 		//assert(Math.abs(slope(c1) - s1) < 1e-6);
 		//assert(Math.abs(slope(c2) - s2) < 1e-6);
 

@@ -151,13 +151,15 @@ public class Config
         public boolean negative_p = false; // Allow negative portfolio values versus utilized reduced consumption when p near zero.
         public double consume_discount_rate = 0.0; // Discount rate to apply to consumption.
                 // Should probably exceed maximum after tax asset class return, otherwise a winning strategy can be to invest everything in the maximum asset class.
-        public double upside_discount_rate = 0.0; // Discount rate to apply to consumption above utility_join_point.
+        public double upside_discount_rate = 0.0; // Discount rate to apply to consumption above utility_join_1.
         // No hyperbolic utility. Appers to just be power shifted and scaled, which we do anyway with public assistance.
         public boolean utility_retire = false; // Whether to compute non-tw/ntw metrics just for retirement, or across the entire lifecycle.
         public boolean utility_epstein_zin = false; // Whether to utilize separate risk and time consumption utility functions.
-        public String utility_consume_fn = "power"; // Consumption utility function to use. "power", "exponential", or "linear".
+        public String utility_consume_fn = "power"; // Consumption utility function to use. "power", "exponential", "hara", or "linear".
         public boolean utility_join = false; // Whether to join a second power utility to consume utility function.
-               // This prevents consume utility slope going to zero too quickly and ending up prefering to give when dead over give/consume while living.
+        public String utility_join_type = "slope"; // When joining where to interpolate any gap. 'slope', or 'ara'.
+               // slope - interpolate utility slopes using a cubic polynomial.
+               // ara - interpolate over the coefficient of absolute risk aversion linearly.
         public double utility_gamma = 3; // Consumption Epstein-Zin utility risk aversion.
         public double utility_psi = 1 / 3.0; // Consumption Epstein-Zin utility elasticity of inter-temporal substitution.
         public Double utility_eta = null; // Consumption power utility eta parameter to use in place of utility_slope_zero definition, e.g. 3.
@@ -178,8 +180,9 @@ public class Config
                // But in this last case need to run at a much higher scale to avoid noise.
         public double public_assistance_phaseout_rate = 0.0; // Public assistance is reduced at this rate for each dollar of consumption
         public double utility_eta_2 = 3; // Consumption power utility second utility_join eta parameter.
-        public double utility_join_point = 1e12; // Floor plus upside separation point. Consumption utility_join join point.
+        public double utility_join_required = 1e12; // Floor plus upside separation point. Consumption utility_join start of join.
         public double utility_join_slope_ratio = 1; // Consumption utility_join slope ratio at join point.
+        public double utility_join_desired = 0; // Consumption utility_join width of join.
         public double utility_dead_limit = 0; // Maximum fraction of remaining utility capable of being satisfied by being able to leave a bequest.
         public double utility_inherit_years = 10; // Value inheritance using the utility function but treat it as being spread over this many individuals or years.
                 // If leaving an inheritance, set this parameter to 1 and utility to power to avoid maximum return "swirl artifact" at high ages.

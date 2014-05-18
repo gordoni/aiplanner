@@ -271,7 +271,7 @@ class AAMap
 		double inherit_goal = 0.0;
 		double tax_goal = 0.0;
 		double cost = 0.0;
-		double uct_u_ujp = scenario.utility_consume_time.utility(config.utility_join_point);
+		double uct_u_ujp = scenario.utility_consume_time.utility(config.utility_join_required);
 		double consume_alive_discount = Double.NaN;
 		Metrics metrics = new Metrics();
 		List<List<PathElement>> paths = null;
@@ -650,7 +650,7 @@ class AAMap
 						double upside;
 						if (config.utility_join)
 						{
-						        floor = Math.min(consume_annual_key, config.utility_join_point);
+						        floor = Math.min(consume_annual_key, config.utility_join_required);
 							upside = consume_annual_key - floor;
 						}
 						else
@@ -659,7 +659,7 @@ class AAMap
 						        upside = 0;
 						}
 						floor_value = scenario.utility_consume_time.utility(floor);
-						upside_value = scenario.utility_consume_time.utility(config.utility_join_point + upside);
+						upside_value = scenario.utility_consume_time.utility(config.utility_join_required + upside);
 					}
 					double floor_utility = floor_value;
 					double upside_utility = upside_value;
@@ -672,7 +672,7 @@ class AAMap
 				        double upside;
 					if (config.utility_join)
 					{
-				                floor = Math.min(config.defined_benefit, config.utility_join_point);
+				                floor = Math.min(config.defined_benefit, config.utility_join_required);
 						upside = config.defined_benefit - floor;
 					}
 					else
@@ -681,7 +681,7 @@ class AAMap
 					        upside = 0;
 					}
 					double floor_utility = scenario.utility_consume_time.utility(floor);
-					double upside_utility = scenario.utility_consume_time.utility(config.utility_join_point + upside);
+					double upside_utility = scenario.utility_consume_time.utility(config.utility_join_required + upside);
 					floor_path_utility += (1.0 - consume_solvent) * floor_utility;
 					upside_path_utility += (1.0 - consume_solvent) * upside_utility;
 				}

@@ -1290,10 +1290,10 @@ public class Scenario
 
 		if (config.utility_join)
 		{
-		        Utility utility_consume_risk_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_point, config.utility_join_slope_ratio * utility_consume_risk.slope(config.utility_join_point), 0, 0, config.withdrawal * 2);
-		        utility_consume_risk = new UtilityJoin(config, utility_consume_risk, utility_consume_risk_2, config.utility_join_point);
-                        Utility utility_consume_time_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_point, config.utility_join_slope_ratio * utility_consume_time.slope(config.utility_join_point), 0, 0, config.withdrawal * 2);
-		        utility_consume_time = new UtilityJoin(config, utility_consume_time, utility_consume_time_2, config.utility_join_point);
+		        Utility utility_consume_risk_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_required, config.utility_join_slope_ratio * utility_consume_risk.slope(config.utility_join_required), 0, 0, config.withdrawal * 2);
+		        utility_consume_risk = Utility.joinFactory(config, config.utility_join_type, utility_consume_risk, utility_consume_risk_2, config.utility_join_required, config.utility_join_required + config.utility_join_desired);
+                        Utility utility_consume_time_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_required, config.utility_join_slope_ratio * utility_consume_time.slope(config.utility_join_required), 0, 0, config.withdrawal * 2);
+		        utility_consume_time = Utility.joinFactory(config, config.utility_join_type, utility_consume_time, utility_consume_time_2, config.utility_join_required, config.utility_join_required + config.utility_join_desired);
 		}
 	        utility_consume = utility_consume_risk;
 
