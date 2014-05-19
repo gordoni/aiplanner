@@ -16,7 +16,7 @@ import java.util.TreeMap;
  */
 public class Config
 {
-        public String version = "java-1.2.14";
+        public String version = "java-1.2.15";
 
 	public String prefix = "opal"; // Prefix to use for result files.
 
