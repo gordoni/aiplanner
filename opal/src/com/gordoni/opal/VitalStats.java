@@ -362,15 +362,14 @@ public class VitalStats
 
        public double metric_divisor(MetricsEnum metric, int age)
         {
-		int period = (int) ((age - config.start_age) * time_periods);
-
 	        if (metric != MetricsEnum.INHERIT)
 		        return 1;
 
-		int total_periods = (int) (ss.max_years * time_periods);
+		int period = (int) Math.round((age - config.start_age) * time_periods);
+		int total_periods = (int) Math.round(ss.max_years * time_periods);
 	        double d = 0;
 		for (int y = period; y < total_periods; y++)
-		        if (!config.utility_retire || period >= Math.round((config.retirement_age - config.start_age) * time_periods))
+		        if (!config.utility_retire || y >= Math.round((config.retirement_age - config.start_age) * time_periods))
 			        d += dying[y];
 		return d;
 	}
