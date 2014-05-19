@@ -26,7 +26,7 @@ public class Returns implements Cloneable
 	public String draw;
 	public int block_size;
 	public boolean pair;
-	public boolean wrap;
+	public boolean short_block;
 
         public double[] am;
         public double[] sd;
@@ -77,7 +77,7 @@ public class Returns implements Cloneable
 		return res;
 	}
 
-        public Returns(Scenario scenario, HistReturns hist, Config config, int ret_seed, boolean cache_returns, int start_year, Integer end_year, Integer num_sequences, double time_periods, Double ret_equity, Double ret_bonds, double ret_risk_free, Double ret_inflation, double management_expense, String ret_shuffle, boolean reshuffle, String draw, int random_block_size, boolean pair, boolean wrap, double all_adjust, double equity_vol_adjust)
+        public Returns(Scenario scenario, HistReturns hist, Config config, int ret_seed, boolean cache_returns, int start_year, Integer end_year, Integer num_sequences, double time_periods, Double ret_equity, Double ret_bonds, double ret_risk_free, Double ret_inflation, double management_expense, String ret_shuffle, boolean reshuffle, String draw, int random_block_size, boolean pair, boolean short_block, double all_adjust, double equity_vol_adjust)
 	{
 	        this.scenario = scenario;
 	        this.config = config;
@@ -90,7 +90,7 @@ public class Returns implements Cloneable
 		this.block_size = (random_block_size == 0 ? 1 : (int) Math.round(random_block_size * time_periods));
 		assert(time_periods >= 1 || random_block_size == 0 || Math.round(1.0 / time_periods) * this.block_size == random_block_size);
 		this.pair = pair;
-		this.wrap = wrap;
+		this.short_block = short_block;
 
                 double adjust_management_expense = Math.pow(1.0 - management_expense, 1.0 / time_periods);
 		double adjust_all = Math.pow(1 + all_adjust, 1.0 / time_periods);
@@ -448,7 +448,7 @@ public class Returns implements Cloneable
 
 		this.returns_unshuffled_probability = new double[returns_unshuffled.length];
 		for (int i = 0; i < returns_unshuffled_probability.length; i++)
-		        returns_unshuffled_probability[i] = (wrap ? 1 : Math.min(Math.min(block_size, i + 1), returns_unshuffled.length - i));
+		        returns_unshuffled_probability[i] = (short_block ? 1 : Math.min(Math.min(block_size, i + 1), returns_unshuffled.length - i));
 		double sum = Utils.sum(returns_unshuffled_probability);
 		for (int i = 0; i < returns_unshuffled_probability.length; i++)
 		        returns_unshuffled_probability[i] /= sum;
@@ -489,21 +489,39 @@ public class Returns implements Cloneable
 		if (draw.equals("random"))
 		{
 			int len_available;
-			if (wrap)
+			int bs1;
+			if (short_block)
+			{
 				len_available = len_returns;
+				bs1 = block_size - 1;
+			}
 			else
+			{
 				len_available = len_returns - block_size + 1;
+				bs1 = 0;
+			}
 
 			if (pair)
 			{
-				int offset = random.nextInt(block_size);
-				int index = random.nextInt(len_available + (wrap ? 0 : offset));
+			        // On plots of the frequency of different return index values being used, the first few years might show a bias of about +1%.
+			        // Don't understand why. XXX
+			        int offset = short_block ? random.nextInt(block_size) : 0;
+				int index = random.nextInt(len_available);
 				for (int y = 0; y < length; y++)
 				{
-					if ((y + offset) % block_size == 0)
-						index = random.nextInt(len_available);
+					if ((y + offset) % block_size == 0 || index == len_returns)
+					{
+					        index = random.nextInt(len_available + bs1) - bs1;
+						if (index < 0)
+						{
+						        offset = - index - y;
+						        index = 0;
+						}
+						else
+						        offset = - y;
+					}
 					new_returns[y] = returns.get(index);
-					index = (index + 1) % len_returns;
+					index++;
 				}
 			}
 			else
@@ -514,15 +532,24 @@ public class Returns implements Cloneable
 				int index[] = new int[ret0NoEfIndex];
 				for (int i = 0; i < ret0NoEfIndex; i++)
 				{
-					offset[i] = random.nextInt(block_size);
-					index[i] = random.nextInt(len_available + (wrap ? 0 : offset[i]));
+				        offset[i] = short_block ? random.nextInt(block_size) : 0;
+					index[i] = random.nextInt(len_available);
 				}
 				for (int y = 0; y < length; y++)
 				{
 					for (int i = 0; i < ret0NoEfIndex; i++)
 					{
-						if ((y + offset[i]) % block_size == 0)
-							index[i] = random.nextInt(len_available);
+						if ((y + offset[i]) % block_size == 0 || index[i] == len_returns)
+						{
+							index[i] = random.nextInt(len_available + bs1) - bs1;
+							if (index[i] < 0)
+							{
+							        offset[i] = - index[i] - y;
+								index[i] = 0;
+							}
+							else
+							        offset[i] = - y;
+						}
 					}
 					double[] new_return = new double[ret0Len];
 					for (int i = 0; i < ret0NoEfIndex; i++)

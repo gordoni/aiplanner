@@ -226,7 +226,7 @@ class AAMap
 		        return_periods = step_periods;
 
 		int len_available;
-		if (returns.wrap)
+		if (returns.short_block)
 			len_available = returns.data.size();
 		else
 			len_available = returns.data.size() - step_periods + 1;

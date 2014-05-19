@@ -319,7 +319,8 @@ public class Config
                 // 'skew_normal' - Skew normal to prevent return values less than 0% which would be catastrophic. Resulting distribution no longer matches statistics.
 	public int ret_random_block_size = 20; // Size of blocks in years to use when drawing returns at random.
 	public boolean ret_pair = true; // When shuffling whether to keep stock and bond returns for a given year together or treat them independently.
-	public boolean ret_wrap = true; // Allow time periods to wrap.
+	public boolean ret_short_block = true; // Make return probabilities uniform by allowing short blocks.
+                // Short blocks may be generated from the beginning and end of the original returns sequence, and for the initial block of the generated sequence.
 	public int generate_start_year = 1927;
 	public Integer generate_end_year = 2013; // None for until end of data.
 	public String sex = "male"; // Death probabilities. 'male', 'female', or 'person'.
@@ -352,7 +353,7 @@ public class Config
         public String target_draw = "random";
         public int target_start_year = 1927;
         public Integer target_end_year = 2013; // None for until end of data.
-	public boolean target_wrap = true;
+	public boolean target_short_block = true;
         public int num_sequences_target = 100000; // Number of paths for a targeting attempt.
 
         public List<String> compare_aa = new ArrayList<String>(Arrays.asList("age_in_bonds", "age_minus_10_in_bonds", "target_date"));
