@@ -236,6 +236,13 @@ public class Config
         public double ret_gs10_to_bonds = 0.0073; // Adjustment to apply to GS10 to get bond returns indicative of the bond universe.
                 // Justification:
                 //
+                // Considering the holdings of Treasury, Agency, Municipal, and Corporate bonds by households as reported in the Federal Reserve Financial Accounts
+                // of the United States. Estimating the average maturity and rating of corporate bonds using the iShares LQD corporate bond index fund fact sheet.
+                // Taking the real return on AAA and BAA long term corporate bonds reported by Moody's. Down projecting these values to intermediate term corporate
+                // bonds using the Treasury High Quality Markets average yield curve. Based on the rating distribution of municipal bonds seen on Yahoo's bond
+                // screener equating municipal bonds to AA corporate bonds after any tax advantage has been factored in. Guessing at the real return on Agency
+                // bonds as somewhere between that of Treasury and Municipal bonds. And adjusting the volatility to appear reasonable on a risk-return plot.
+                //
                 // Duration correction:
 		//                                                                  interest rate
 		//     HQM (1984-2013) 25 year                                           5.56% nominal
