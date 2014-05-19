@@ -475,19 +475,27 @@ set palette defined (0.0 "red", 25.0 "light-red", 50.0 "orange", 75.0 "light-gre
 set output "opal-consume.png"
 plot "opal-linear.csv" using (''' + str(now_year - age) + ''' + $1):2:7 with image notitle
 
-set yrange [0:''' + str(gnuplot_max_portfolio) + ''']
 ''')
 
     symbols = asset_class_symbols(s)
     names = asset_class_names(s)
     for (offset, (symbol, name)) in enumerate(zip(symbols, names)):
         f.write('''
+set ylabel "portfolio size ($)"
+set format y "%.1s%c"
+set yrange [0:''' + str(gnuplot_max_portfolio) + ''']
 set cblabel "''' + name + ''' / total assets"
 set cbrange [0:100]
 set format cb "%.0f%%"
 set palette defined (0.0 "blue", 50.0 "yellow", 100.0 "red")
 set output "opal-''' + symbol + '''.png"
 plot "opal-linear.csv" using (''' + str(now_year - age) + ''' + $1):2:($''' + str(9 + offset) + ''' * 100) with image notitle
+
+set yrange [0:100]
+set format y "%.0f%%"
+set ylabel "''' + name + ''' / total assets"
+set output "opal-pct-''' + symbol + '''.png"
+plot "opal-pct-''' + symbol + '''.csv" using (''' + str(now_year - age) + ''' + $1):($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 ''')
 
     if s['retirement_number']:
@@ -518,6 +526,10 @@ plot "opal-number.csv" using 1:4 with lines notitle
     else:
 
         f.write('''
+set yrange [0:''' + str(gnuplot_max_portfolio) + ''']
+set ylabel "portfolio size ($)"
+set format y "%.1s%c"
+
 set output "opal-paths-p.png"
 plot "opal-paths.csv" using (''' + str(now_year - age) + ''' + $1):2 with lines notitle
 

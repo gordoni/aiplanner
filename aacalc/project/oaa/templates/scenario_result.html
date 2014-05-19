@@ -180,13 +180,16 @@ with the annual consumption color scale on the right hand side.
 <br />
 <br />
 {% endif %}
-Asset allocation maps:
+Asset allocation:
 <br />
 <font size="-1">
-To obtain the above performance it is necessary to annually rebalance
+The asset allocation is predicted to evolve in accordance with the 95
+percentile asset allocation plots.
+<br />
+To obtain the performance above it is necessary to annually rebalance
 in accordance with the asset allocation maps.
 <br />
-These asset allocation maps are technically referred to as heat maps.
+The asset allocation maps are technically referred to as heat maps.
 To read them you locate the year on the x axis, the portfolio size for
 that year on the y axis, and then use the color of the point where they
 intersect to determine the recommended asset allocation for that year
@@ -199,6 +202,7 @@ with the asset allocation color scale on the right hand side.
 {{ aa.name|capfirst }}:
 </font>
 <br />
+<img src="{{ dirurl }}/opal-pct-{{ aa.symbol }}.png">
 <img src="{{ dirurl }}/opal-{{ aa.symbol }}.png">
 {% endfor %}
 <br />
