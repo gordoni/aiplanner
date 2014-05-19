@@ -42,12 +42,17 @@ public class PathMetricsResult
 		}
 		double mean = means.get(metric) / div;
 		Utility utility = null;
-		if (Arrays.asList(MetricsEnum.FLOOR, MetricsEnum.UPSIDE, MetricsEnum.CONSUME, MetricsEnum.COMBINED, MetricsEnum.JPMORGAN).contains(metric))
+		if (Arrays.asList(MetricsEnum.FLOOR, MetricsEnum.CONSUME, MetricsEnum.COMBINED, MetricsEnum.JPMORGAN).contains(metric) || (metric == MetricsEnum.UPSIDE && config.utility_join))
 			utility = scenario.utility_consume_time;
 		else if (metric == MetricsEnum.INHERIT)
 			utility = scenario.utility_inherit;
 		if (utility != null)
 			mean = utility.inverse_utility(mean);
+		if (metric == MetricsEnum.UPSIDE)
+		        if (config.utility_join)
+			        mean -= config.utility_join_required;
+			else
+			        mean = Double.NaN;
 		return mean;
 	}
 
@@ -65,7 +70,7 @@ public class PathMetricsResult
 		double mean = means.get(metric) / div;
 		double std_dev = standard_deviations.get(metric) / div;
 		Utility utility = null;
-		if (Arrays.asList(MetricsEnum.FLOOR, MetricsEnum.UPSIDE, MetricsEnum.CONSUME, MetricsEnum.COMBINED, MetricsEnum.JPMORGAN).contains(metric))
+		if (Arrays.asList(MetricsEnum.FLOOR, MetricsEnum.CONSUME, MetricsEnum.COMBINED, MetricsEnum.JPMORGAN).contains(metric) || (metric == MetricsEnum.UPSIDE && config.utility_join))
 			utility = scenario.utility_consume_time;
 		else if (metric == MetricsEnum.INHERIT)
 			utility = scenario.utility_inherit;
@@ -80,8 +85,6 @@ public class PathMetricsResult
 		{
 			double mean = mean(metric);
 			double std_dev = std_dev(metric);
-			if (metric == MetricsEnum.UPSIDE)
-			        mean -= config.utility_join_required;
 		        if (Double.isNaN(mean) || Double.isNaN(std_dev))
 			{
 			        mean = 0;

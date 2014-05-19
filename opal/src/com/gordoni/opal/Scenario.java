@@ -431,8 +431,7 @@ public class Scenario
 			else if (what.equals("inherit"))
 				return elem.p;
 			else
-				assert(false);
-			return Double.NaN;
+			        return elem.aa[asset_classes.indexOf(what)];
 		}
 	}
 
@@ -574,7 +573,7 @@ public class Scenario
 			double low = vals[(int) (pctl * vals.length)];
 			double median = vals[(int) (0.5 * vals.length)];
 			double high = vals[(int) ((1 - pctl) * vals.length)];
-			out.println(f2f.format(age_period / config.generate_time_periods) + "," + f2f.format(median) + "," + f2f.format(low) + "," + f2f.format(high));
+			out.println(f2f.format(age_period / config.generate_time_periods) + "," + f4f.format(median) + "," + f4f.format(low) + "," + f4f.format(high));
 			age_period++;
 		}
 		out.close();
@@ -584,6 +583,8 @@ public class Scenario
         {
 	    dump_pct_path(paths, "p", false);
 	    dump_pct_path(paths, "consume", false);
+	    for (int i = 0; i < normal_assets; i++)
+		    dump_pct_path(paths, asset_classes.get(i), false);
 
 	    dump_pct_path(paths, "p", true);
 	    dump_pct_path(paths, "consume", true);
