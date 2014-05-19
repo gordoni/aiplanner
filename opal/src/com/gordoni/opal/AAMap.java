@@ -8,6 +8,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.Random;
 
 class AAMap
 {
@@ -996,6 +997,7 @@ class AAMap
 		final int batchesPerTask = ((int) Math.ceil(num_batches / (double) config.tasks_validate));
 		final Integer fbatch_size = batch_size;
 		final int fnum_batches = num_batches;
+		final Random random = new Random(seed);
 		for (int i0 = 0; i0 < num_batches; i0 += batchesPerTask)
 		{
 			final int fi0 = i0;
@@ -1008,7 +1010,7 @@ class AAMap
 					for (int i = fi0; i < i1; i++)
 					{
 						Returns local_returns = returns.clone();
-						local_returns.setSeed(seed + i);
+						local_returns.setSeed(random.nextInt());
 						results[i] = simulate_paths((int) Math.round((age - config.start_age) * returns.time_periods), fbatch_size, num_paths_record, p, local_returns);
 						if (!config.skip_metric_jpmorgan)
 						        results[i].metrics.set(MetricsEnum.JPMORGAN, jpmorgan_metric(age, results[i].paths, fnum_batches, returns));

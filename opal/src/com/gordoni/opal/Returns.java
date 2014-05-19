@@ -503,8 +503,6 @@ public class Returns implements Cloneable
 
 			if (pair)
 			{
-			        // On plots of the frequency of different return index values being used, the first few years might show a bias of about +1%.
-			        // Don't understand why. XXX
 			        int offset = short_block ? random.nextInt(block_size) : 0;
 				int index = random.nextInt(len_available);
 				for (int y = 0; y < length; y++)
