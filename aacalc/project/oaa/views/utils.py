@@ -302,6 +302,7 @@ def write_scenario(dirname, s):
         'sex': s['sex'],
         'start_age': retirement_age if s['retirement_number'] else dob_to_age(s['dob']),
         'validate_age': retirement_age if s['retirement_number'] else dob_to_age(s['dob']),
+        'utility_age': retirement_age if s['retirement_number'] else dob_to_age(s['dob']),
         'sex2': s['sex2'],
         'start_age2': dob_to_age(s['dob2']),
         'retirement_age': retirement_age,
