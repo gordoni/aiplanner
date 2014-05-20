@@ -7,87 +7,12 @@ from django.core.exceptions import ValidationError
 from django.utils.safestring import mark_safe
 from time import strftime, strptime
 
-from oaa.utils import all_asset_classes, asset_class_start, asset_class_end
+from oaa.utils import all_asset_classes, asset_class_names, too_early_for_asset_classes, too_late_for_asset_classes
 from oaa.views.utils import default_params
 
 class HorizontalRadioRenderer(forms.RadioSelect.renderer):
     def render(self):
         return mark_safe(u'\n'.join([u'%s\n' % w for w in self]))
-
-class LoginForm(forms.Form):
-    username = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'username_input', 'autofocus': 'autofocus'}),
-        min_length=1, max_length=30)
-    password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'username_input'}),
-        min_length=6, max_length=30)
-
-class AccountCreateForm(forms.Form):
-    username = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'username_input'}),
-        min_length=1, max_length=30)
-      # No autofocus.  Would interfere with start mega_form.
-    password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'username_input'}),
-        min_length=6, max_length=30)
-    password2 = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'username_input'}))
-    email = forms.EmailField(
-        widget=forms.TextInput(attrs={'class': 'email_input'}),
-        required=False)
-
-    def clean(self):
-        cleaned_data = super(AccountCreateForm, self).clean()
-        password = cleaned_data.get('password')
-        password2 = cleaned_data.get('password2')
-        if password and password2:
-            if password != password2:
-                raise ValidationError('Password mismatch.')
-        return cleaned_data
-
-class AccountEditForm(forms.Form):
-    email = forms.EmailField(
-        widget=forms.TextInput(attrs={'class': 'email_input', 'autofocus': 'autofocus'}),
-        required=False)
-    msg_marketing = forms.BooleanField(required=False)
-
-class AccountEditPasswordForm(forms.Form):
-    old_password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'username_input', 'autofocus': 'autofocus'}),
-        min_length=6, max_length=30)
-    password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'username_input'}))
-    password2 = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'username_input'}),
-        min_length=6, max_length=30)
-
-    def clean(self):
-        cleaned_data = super(AccountEditPasswordForm, self).clean()
-        password = cleaned_data.get('password')
-        password2 = cleaned_data.get('password2')
-        if password and password2:
-            if password != password2:
-                raise ValidationError('Password mismatch.')
-        return cleaned_data
-
-class PolicyPasswordResetForm(PasswordResetForm):
-    '''Do not leak email addresses of users.'''
-
-    def clean_email(self):
-        email = self.cleaned_data["email"]
-        self.users_cache = User.objects.filter(
-                                email__iexact=email,
-                                is_active=True
-                            )
-        return email
-
-class PolicySetPasswordForm(SetPasswordForm):
-    '''Enforce minimum password length.'''
-    new_password1 = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'username_input', 'autofocus': 'autofocus'}),
-        min_length=6, max_length=30)
-    new_password2 = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'username_input'}))
 
 class DobOrAgeField(forms.CharField):
 
@@ -281,16 +206,20 @@ class ScenarioBaseForm(forms.Form):
         classes = sum(int(cleaned_data[asset_class]) for asset_class in all_asset_classes())
         if classes < 2:
             raise ValidationError('Must select at least two asset classes to analyze.')
-        if cleaned_data['generate_start_year'] < asset_class_start(cleaned_data):
-            raise ValidationError('No data available for analysis start year - edit selected asset classes or analysis start year in market parameters.')
-        if cleaned_data['generate_end_year'] > asset_class_end(cleaned_data):
-            raise ValidationError('No data available for analysis end year - edit selected asset classes or analysis end year in market parameters.')
+        too_early = asset_class_names(too_early_for_asset_classes(cleaned_data, cleaned_data['generate_start_year']))
+        if too_early:
+            raise ValidationError('No data available for analysis start year - deselect ' + ', '.join(too_early) + ', or edit analysis start year in market parameters.')
+        too_late = asset_class_names(too_late_for_asset_classes(cleaned_data, cleaned_data['generate_end_year']))
+        if too_late:
+            raise ValidationError('No data available for analysis end year - deselect ' + ', '.join(too_late) + ', or edit analysis end year in market parameters.')
         if cleaned_data['generate_end_year'] - cleaned_data['generate_start_year'] + 1 < 40:
             raise ValidationError('Too little analysis data available - edit analysis period in market parameters.')
-        if cleaned_data['validate_start_year'] < asset_class_start(cleaned_data):
-            raise ValidationError('No data available for simulation start year - edit selected asset classes or simulation start year in market parameters.')
-        if cleaned_data['validate_end_year'] > asset_class_end(cleaned_data):
-            raise ValidationError('No data available for simulation end year - edit selected asset classes or simulation end year in market parameters.')
+        too_early = asset_class_names(too_early_for_asset_classes(cleaned_data, cleaned_data['validate_start_year']))
+        if too_early:
+            raise ValidationError('No data available for simulation start year - deselect ' + ', '.join(too_early) + ', or edit simulation start year in market parameters.')
+        too_late = asset_class_names(too_late_for_asset_classes(cleaned_data, cleaned_data['validate_end_year']))
+        if too_late:
+            raise ValidationError('No data available for simulation end year - deselect ' + ', '.join(too_late) + ', or edit simulation end year in market parameters.')
         if cleaned_data['validate_end_year'] - cleaned_data['validate_start_year'] + 1 < 40:
             raise ValidationError('Too little simulation data available - edit simulation period in market parameters.')
         if cleaned_data['utility_inherit_years'] <= 0:

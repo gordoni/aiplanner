@@ -28,8 +28,8 @@ def asset_class_symbols(s):
 def asset_class_names(s):
     return tuple(name for (_, asset_class, name, _, _) in asset_classes if s[asset_class])
 
-def asset_class_start(s):
-    return max(start for (_, asset_class, _, start, _) in asset_classes if s[asset_class])
+def too_early_for_asset_classes(s, year):
+    return {asset_class: s[asset_class] and year < start for (_, asset_class, _, start, _) in asset_classes}
 
-def asset_class_end(s):
-    return min(end for (_, asset_class, _, _, end) in asset_classes if s[asset_class])
+def too_late_for_asset_classes(s, year):
+    return {asset_class: s[asset_class] and year > end for (_, asset_class, _, _, end) in asset_classes}

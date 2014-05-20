@@ -490,7 +490,9 @@ set format cb "%.0f%%"
 set palette defined (0.0 "blue", 50.0 "yellow", 100.0 "red")
 set output "opal-''' + symbol + '''.png"
 plot "opal-linear.csv" using (''' + str(now_year - age) + ''' + $1):2:($''' + str(9 + offset) + ''' * 100) with image notitle
-
+''')
+        if not s['retirement_number']:
+            f.write('''
 set yrange [0:100]
 set format y "%.0f%%"
 set ylabel "''' + name + ''' / total assets"

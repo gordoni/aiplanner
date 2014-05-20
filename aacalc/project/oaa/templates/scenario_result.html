@@ -183,9 +183,11 @@ with the annual consumption color scale on the right hand side.
 Asset allocation:
 <br />
 <font size="-1">
+{% if not data.retirement_number %}
 The asset allocation is predicted to evolve in accordance with the 95
 percentile asset allocation plots.
 <br />
+{% endif %}
 To obtain the performance above it is necessary to annually rebalance
 in accordance with the asset allocation maps.
 <br />
@@ -202,7 +204,9 @@ with the asset allocation color scale on the right hand side.
 {{ aa.name|capfirst }}:
 </font>
 <br />
+{% if not data.retirement_number %}
 <img src="{{ dirurl }}/opal-pct-{{ aa.symbol }}.png">
+{% endif %}
 <img src="{{ dirurl }}/opal-{{ aa.symbol }}.png">
 {% endfor %}
 <br />
