@@ -660,7 +660,10 @@ class AAMap
 						        upside = 0;
 						}
 						floor_value = scenario.utility_consume_time.utility(floor);
-						upside_value = scenario.utility_consume_time.utility(config.utility_join_required + upside);
+						if (upside == 0)
+						        upside_value = uct_u_ujp;
+						else
+						        upside_value = scenario.utility_consume_time.utility(config.utility_join_required + upside);
 					}
 					double floor_utility = floor_value;
 					double upside_utility = upside_value;

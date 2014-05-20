@@ -73,7 +73,7 @@ public class Config
 	public List<String> asset_class_names = null;
 	       // Corresponding asset class names to use for MVO inputs and transition map.
 	public int aa_steps = 1000; // Use 4 steps to mirror 5 choice Trinity study.
-        public String ef = "mvo";
+        public String ef = "none";
                // Efficient frontier calculation method. "mvo", or "none" to search asset allocations.
         public double risk_tolerance = 1e12; // Maximum permitted relative standard deviation in portfolio returns when performing MVO.
 
@@ -131,8 +131,8 @@ public class Config
         public String search = "memory"; // How to search the asset allocation / spend_fract space for each map location.
                 // "all" - exhaustive search (painfully slow)
                 // "hill" - axis based hill climbing (fast; fails on diagonal ridges causing vertical or horizontal line noise)
-                // "gradient" - gradient ascent (slow; zig-zags and fails on ridges causing horizontal line noise)
-                // "memory" - ascent with directional memory (medium; works on ridges)
+                // "gradient" - gradient ascent (slow; zig-zags and fails on ridges causing horizontal line noise; fails with efficient frontier)
+                // "memory" - ascent with directional memory (medium; works on ridges; fails with efficient frontier)
         public int search_memory_attempts = 20; // Number of random attempts for "memory" before deciding no improvement can be found and shrinking search radius.
 		//  8 results in accurate metrics with no annuities.
 		// 10 results in noisy nia plot and 4 horizontal lines with annuities.

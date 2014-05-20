@@ -147,7 +147,6 @@ def run_response(request, scenario_dict):
 
 def sample_scenario_dict():
     s = dict(default_params)
-    s['name'] = 'Sample Results'
     s['sex'] = 'male'
     s['dob'] = 45
     s['p'] = Decimal(600000)
