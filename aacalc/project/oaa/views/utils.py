@@ -96,7 +96,7 @@ default_params = {
     'utility_dead_limit_pct': Decimal(10),
     #'donate_inherit_discount_rate_pct': Decimal(15),
     'advanced_well_being': False,
-    'consume_discount_rate_pct': Decimal(2.0),
+    'consume_discount_rate_pct': Decimal('2.0'),
     'public_assistance': Decimal(10000),
     'public_assistance_phaseout_rate_pct': Decimal(50),
     'utility_method': 'ce',
@@ -147,12 +147,16 @@ def run_response(request, scenario_dict):
 
 def sample_scenario_dict():
     s = dict(default_params)
-    s['name'] = 'Sample Results'
     s['sex'] = 'male'
-    s['dob'] = 45
-    s['p'] = Decimal(600000)
+    s['sex2'] = 'female'
+    s['dob'] = 55
+    s['dob2'] = 55
+    s['defined_benefit_social_security'] = Decimal(20000)
+    s['p'] = Decimal(1000000)
     s['contribution'] = Decimal(5000)
-    s['retirement_year'] = datetime.utcnow().timetuple().tm_year + 65 - 45
+    s['tax_rate_cg_pct'] = Decimal(20)
+    s['tax_rate_div_default_pct'] = Decimal(20)
+    s['retirement_year'] = datetime.utcnow().timetuple().tm_year + 65 - 55
     return s
 
 def run_gen_sample():
