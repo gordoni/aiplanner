@@ -426,6 +426,10 @@ public class Scenario
 		        PathElement elem = path.get(i);
 			if (what.equals("p"))
 				return elem.p;
+			else if (what.equals("floor"))
+			        return config.utility_join ? Math.min(elem.consume_annual, config.utility_join_required) : elem.consume_annual;
+			else if (what.equals("upside"))
+			        return config.utility_join ? Math.max(elem.consume_annual - config.utility_join_required, 0) : 0;
 			else if (what.equals("consume"))
 				return elem.consume_annual;
 			else if (what.equals("inherit"))
@@ -547,10 +551,14 @@ public class Scenario
         private void dump_distributions(List<List<PathElement>> paths) throws IOException
         {
 	        dump_distribution(paths, "p", false, false);
+		dump_distribution(paths, "floor", false, true);
+		dump_distribution(paths, "upside", false, true);
 		dump_distribution(paths, "consume", false, true);
 	        dump_distribution(paths, "inherit", false, false);
 
 	        dump_distribution(paths, "p", true, false);
+	        dump_distribution(paths, "floor", true, true);
+	        dump_distribution(paths, "upside", true, true);
 	        dump_distribution(paths, "consume", true, true);
 	}
 
