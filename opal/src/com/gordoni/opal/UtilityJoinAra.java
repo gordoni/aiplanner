@@ -84,7 +84,7 @@ public class UtilityJoinAra extends Utility
 			double neg_ara1 = utility1.slope2(c1) / utility1.slope(c1);
 			double neg_ara2 = utility2.slope2(c2) / utility2.slope(c2);
 			this.a = (neg_ara1 - neg_ara2) / (c1 - c2);
-			this.b = neg_ara1 - a * c1;
+			this.b = utility1.slope2(c1) - a * c1;
 			this.scale = utility1.slope(c1) / slope(c1);
 			this.u_scale = scale * Math.sqrt(Math.PI / (2 * a)) * Math.exp(- b * b / (2 * a));
 			this.zero1 = utility(c1) - utility1.utility(c1);
