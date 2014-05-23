@@ -228,28 +228,6 @@ consume is made so as to maximize expected well being.
 <br />
 <div class="advanced">
 <br />
-{% comment %}
-Variable withdrawal donation/gifting (beta - not recommended): {{ se_form.utility_donate }}
-<br />
-Donate/gift when recommended consumption above: {{ se_form.utility_donate_above }}
-{{ se_form.utility_donate.errors }}
-{{ se_form.utility_donate_above.errors }}
-<br />
-<font size="-1">
-When utilizing a variable withdrawal rate strategy it is possible to
-obtain recommendations of how much money you should donate/gift. No
-special tax consequences are associated with such donations/gifts;
-they are simply treated as normal withdrawals.
-<br />
-This code is beta for two reasons. First it currently only recommends
-making donations once you are retired. Second it leaves ugly stripes
-for the asset allocation where donations should occur.  These stripes
-are in some sense accurate; they reflect the asset allocation you
-should use after you have donated; but they are highly off-putting.
-</font>
-<br />
-<br />
-{% endcomment %}
 Leaving a bequest matters: {{ se_form.inherit }}
 {{ se_form.inherit.errors }}
 <br />
@@ -565,7 +543,7 @@ checked="checked"
 />
 </td>
 <td>
-CRRA power utility function. Coefficient of relative risk aversion &eta;:
+CRRA power utility function. Coefficient of relative risk aversion &gamma;:
 {{ se_form.utility_eta }}
 {{ se_form.utility_utility_eta.errors }}
 </td>
