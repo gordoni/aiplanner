@@ -6,6 +6,13 @@ public class UtilityJoinAra extends Utility
 {
         // Join with linear interpolation of ARA across the join region.
 
+        // This code is useless.
+        //      u'' / u' = a c + b
+        // implies u = scale.erf((ac+b)/sqrt(2a))+offset [WolframAlpha]
+        // which implies u' has a maximum at ac+b=0
+        // but this is the intercept of the line in ARA space with an ARA of zero, which won't happen until after c2.
+        // In other words u' will be an increasing function until c2.
+
         private Config config;
         private Utility utility1;
         private Utility utility2;
@@ -14,7 +21,6 @@ public class UtilityJoinAra extends Utility
         private double a; // - ARA = u'' / u' = a c + b.
         private double b;
         private double scale = 1;
-        private double u_scale;
         private double zero1 = 0;
         private double zero2 = 0;
         private double u1;
@@ -28,7 +34,7 @@ public class UtilityJoinAra extends Utility
 		else if (c > c2)
 		        return utility2.utility(c) - zero2;
 		else
-		        return u_scale * Erf.erf((a * c + b) / Math.sqrt(2 * a)) - zero1;
+		        return scale * Erf.erf((a * c + b) / Math.sqrt(2 * a)) - zero1;
         }
 
         public double inverse_utility(double u)
@@ -38,7 +44,7 @@ public class UtilityJoinAra extends Utility
 		else if (u >= u2)
 		        return utility2.inverse_utility(u + zero2);
 		else
-		        return (Erf.erfInv((u + zero1) / u_scale) * Math.sqrt(2 * a) - b) / a;
+		        return (Erf.erfInv((u + zero1) / scale) * Math.sqrt(2 * a) - b) / a;
 	}
 
         public double slope(double c)
@@ -49,7 +55,7 @@ public class UtilityJoinAra extends Utility
 		else if (c >= c2)
 		        return utility2.slope(c);
 		else
-		        return scale * Math.exp(a * c * c / 2 + b * c);
+		        return scale * Math.sqrt(a / 2) * Math.exp(- Math.pow(a * c + b, 2) / (2 * a));
 	}
 
         public double inverse_slope(double s)
@@ -84,9 +90,9 @@ public class UtilityJoinAra extends Utility
 			double neg_ara1 = utility1.slope2(c1) / utility1.slope(c1);
 			double neg_ara2 = utility2.slope2(c2) / utility2.slope(c2);
 			this.a = (neg_ara1 - neg_ara2) / (c1 - c2);
-			this.b = utility1.slope2(c1) - a * c1;
+			assert(a != 0); // Would need to handle specially. CARA exponential utility form.
+			this.b = neg_ara1 - a * c1;
 			this.scale = utility1.slope(c1) / slope(c1);
-			this.u_scale = scale * Math.sqrt(Math.PI / (2 * a)) * Math.exp(- b * b / (2 * a));
 			this.zero1 = utility(c1) - utility1.utility(c1);
 		}
 		this.zero2 = utility2.utility(c2) - utility(c2);
