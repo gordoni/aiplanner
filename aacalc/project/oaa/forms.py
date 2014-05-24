@@ -249,6 +249,14 @@ class ScenarioAaForm(ScenarioBaseForm):
     contribution_growth_pct = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'percent_input'}))
 
+    def clean(self):
+        cleaned_data = super(ScenarioAaForm, self).clean()
+        if self._errors:
+            return cleaned_data
+        if cleaned_data['defined_benefit_social_security'] == 0 and cleaned_data['defined_benefit_pensions'] == 0 and cleaned_data['defined_benefit_fixed_annuities'] == 0 and cleaned_data['p_traditional_iras'] == 0 and cleaned_data['p_roth_iras'] == 0 and cleaned_data['p'] == 0 and (cleaned_data['contribution'] == 0 or cleaned_data['retirement_year'] <= datetime.utcnow().timetuple().tm_year):
+            raise ValidationError('You have no financial position.')
+        return cleaned_data
+
 def check_retirement_year(cleaned_data):
     dob = cleaned_data.get('dob')
     dob2 = cleaned_data.get('dob2')
