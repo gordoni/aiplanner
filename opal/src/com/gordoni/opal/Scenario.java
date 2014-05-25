@@ -781,7 +781,9 @@ public class Scenario
 		out.println("age_label = \"" + (config.start_age2 == null ? "age" : "age of first person") + "\"");
 		out.println("age_low = " + config.start_age);
 		int age_high = config.start_age + ss.max_years;
-		int age_limit = 99 + Math.max(0, config.start_age2 - config.start_age);
+		int age_limit = 99;
+		if (config.start_age2 != null && config.start_age2 > config.start_age)
+		        age_limit += config.start_age2 - config.start_age;
 		if (!config.debug_till_end && age_high > age_limit)
 		        age_high = age_limit;
 		out.println("age_high = " + age_high);
