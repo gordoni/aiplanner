@@ -6,6 +6,6 @@ jar cf classes/opal.jar -C bin . || exit 1
 
 mkdir -p ~/oaa.data/server
 sudo service opal stop
-tar cf - classes real_yield_curve.R mvo.R plot plot.R data | (cd ~/oaa.data/server; tar xf -)
+tar cf - classes real_yield_curve.R mvo.R plot plot.gnuplot plot.R data | (cd ~/oaa.data/server; tar xf -)
 sudo service opal start
 sudo service apache2 reload

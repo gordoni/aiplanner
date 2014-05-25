@@ -21,6 +21,8 @@ public class Config
 	public String prefix = "opal"; // Prefix to use for result files.
 
         public boolean trace = false; // Be chatty.
+        public boolean debug_till_end = false; // Whether to plot until the final year or display graphs only through age 99.
+
         public int tasks_generate = 100; // Break generation into this many concurrent tasks.
         public int tasks_validate = 500; // Break validation into this many concurrent tasks.
                 // Changing this value will alter the results due to different random number generators being used for each task.
@@ -198,6 +200,8 @@ public class Config
 	public double pf_validate = 2000000.0; // Generated maps only record up to this portfolio size.
 	public double pf_retirement_number = 2000000.0; // Generated retirement number up to this portfolio size.
 	public double pf_gnuplot = 1000000.0; // Only gnuplot data up to this portfolio size.
+        public Double gnuplot_tp = null; // Maximum taxable portfolio value to plot.
+        public Double gnuplot_consume = null; // Maximum consume value to plot.
         public int gnuplot_steps = 600; // Number of steps at which to gnuplot data.
 
 	public double[] goal_range = { 0.9, 0.99, 0.999, 0.9999, 1 }; // Used when dumping data to produce percentile success graphs.

@@ -125,12 +125,6 @@ public class OPALServer implements Runnable
 					new ScenarioSet(config, hist, dirname, params, null);
 				}
 				pstream.close();
-				String[] cmd = new String[] {"./plot", dirname};
-				Process proc = Runtime.getRuntime().exec(cmd);
-				proc.getInputStream().close();
-				proc.getErrorStream().close();
-				int status = proc.waitFor();
-				assert(status == 0);
 				//pout.print(
 				//      "HTTP/1.1 200 OK\r\n" +
 				//	"Content-Type: text/plain\r\n" +

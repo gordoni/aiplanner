@@ -1,10 +1,8 @@
 #!/bin/sh
 
-DIR=$1
+HOME="$PWD"
 
-HOME=$PWD
-cd $DIR || exit 1
-$HOME/plot.R || exit 1
-gnuplot ./plot.gnuplot || exit 1
+gnuplot "$OPAL_FILE_PREFIX"-gnuplot-params.gnuplot "$HOME"/plot.gnuplot || exit 1
+"$HOME"/plot.R || exit 1
 
 exit 0

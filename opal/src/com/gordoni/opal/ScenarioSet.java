@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.InputStream;
 import java.io.IOException;
+import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -27,13 +28,13 @@ public class ScenarioSet
         public VitalStats vital_stats_annuity;
         public AnnuityStats annuity_stats;
 
-    public void subprocess(String cmd, String prefix) throws IOException, InterruptedException
+        public void subprocess(String cmd, String prefix) throws IOException, InterruptedException
         {
 	        String real_cwd = System.getProperty("user.dir");
 		ProcessBuilder pb = new ProcessBuilder(real_cwd + "/" + cmd);
 		Map<String, String> env = pb.environment();
 		env.put("OPAL_FILE_PREFIX", cwd + "/" + prefix);
-		pb.redirectErrorStream(true);
+		pb.redirectError(Redirect.INHERIT);
 		Process p = pb.start();
 
 		InputStream stdout = p.getInputStream();
@@ -42,6 +43,7 @@ public class ScenarioSet
 		{
 		}
 		p.waitFor();
+		assert(p.exitValue() == 0);
 	}
 
         public ScenarioSet(Config config, HistReturns hist, String cwd, Map<String, Object> params, String param_filename) throws ExecutionException, IOException, InterruptedException
@@ -96,10 +98,10 @@ public class ScenarioSet
 		        assert(config.tax_rate_div == null);
 			assert(!config.ef.equals("none"));
 			List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds"));
-			compare_scenario = new Scenario(this, config, hist, asset_classes, null, null);
+			compare_scenario = new Scenario(this, config, hist, asset_classes, asset_classes, null, null);
 		}
 
-	        Scenario scenario = new Scenario(this, config, hist, config.asset_classes, config.start_ria, config.start_nia);
+	        Scenario scenario = new Scenario(this, config, hist, config.asset_classes, config.asset_class_names, config.start_ria, config.start_nia);
 		scenario.report_returns();
 
 		if (do_compare)

@@ -2,11 +2,9 @@
 
 # Based on: http://www.r-bloggers.com/introduction-to-asset-allocation/
 
-if (Sys.getenv('OPAL_FILE_PREFIX') == '') {
-    file_prefix = './opal'
-} else {
-    file_prefix = paste(Sys.getenv('OPAL_FILE_PREFIX'), sep='')
-}
+file_prefix = Sys.getenv('OPAL_FILE_PREFIX')
+if (file_prefix == '')
+    file_prefix = 'opal'
 
 # load Systematic Investor Toolbox
 source(gzcon(file('sit.gz', 'rb')))

@@ -20,18 +20,22 @@ public class Scenario
         public ScenarioSet ss;
         public Config config;
 	public Scale[] scale;
+        public List<String> asset_classes;
+        public List<String> asset_class_names;
+        public String vw_strategy;
         public Utility utility_consume;
         public Utility utility_consume_time;
         public Utility utility_inherit;
 	public List<double[]> aa_ef;
         protected HistReturns hist;
-        public List<String> asset_classes;
-        public String vw_strategy;
 
         public double[] start_p;
         public Integer tp_index;
         public Integer ria_index;
         public Integer nia_index;
+
+        public double tp_max_estimate;
+        public double consume_max_estimate;
 
         public int normal_assets;
         public int ria_aa_index;
@@ -562,10 +566,11 @@ public class Scenario
 	        dump_distribution(paths, "consume", true, true);
 	}
 
-        private void dump_pct_path(List<List<PathElement>> paths, String what, boolean change) throws IOException
+        private double dump_pct_path(List<List<PathElement>> paths, String what, boolean change) throws IOException
         {
 	        PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-pct-" + (change ? "change-" : "") + what + ".csv"));
 
+		double max_pctl = Double.NEGATIVE_INFINITY;
 	        int pathlen = paths.get(0).size() - 1;
 		double age_period = config.start_age * config.generate_time_periods;
 		for (int i = 0; i < pathlen; i++)
@@ -581,21 +586,22 @@ public class Scenario
 			double low = vals[(int) (pctl * vals.length)];
 			double median = vals[(int) (0.5 * vals.length)];
 			double high = vals[(int) ((1 - pctl) * vals.length)];
+			if (high > max_pctl)
+			        max_pctl = high;
 			out.println(f2f.format(age_period / config.generate_time_periods) + "," + f4f.format(median) + "," + f4f.format(low) + "," + f4f.format(high));
 			age_period++;
 		}
 		out.close();
+
+		return max_pctl;
 	}
 
         private void dump_pct_paths(List<List<PathElement>> paths) throws IOException
         {
-	    dump_pct_path(paths, "p", false);
-	    dump_pct_path(paths, "consume", false);
-	    for (int i = 0; i < normal_assets; i++)
-		    dump_pct_path(paths, asset_classes.get(i), false);
-
-	    dump_pct_path(paths, "p", true);
-	    dump_pct_path(paths, "consume", true);
+		for (int i = 0; i < normal_assets; i++)
+			dump_pct_path(paths, asset_classes.get(i), false);
+		dump_pct_path(paths, "p", true);
+		dump_pct_path(paths, "consume", true);
 	}
 
 	// Dump the paths taken.
@@ -769,13 +775,61 @@ public class Scenario
 		out.close();
         }
 
-	// Dump the data files.
-	private void dump(AAMap map, Metrics[] retirement_number, List<List<PathElement>> paths, Returns returns) throws IOException
+        public void dump_gnuplot_params(double p_max, double consume_max) throws IOException
+        {
+		PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-gnuplot-params.gnuplot")));
+		out.println("age_label = \"" + (config.start_age2 == null ? "age" : "age of first person") + "\"");
+		out.println("age_low = " + config.start_age);
+		int age_high = config.start_age + ss.max_years;
+		int age_limit = 99 + Math.max(0, config.start_age2 - config.start_age);
+		if (!config.debug_till_end && age_high > age_limit)
+		        age_high = age_limit;
+		out.println("age_high = " + age_high);
+		out.println("tp = " + p_max);
+		out.println("consume = " + consume_max);
+		double payout = 0;
+		double annuitization = 0;
+		if (ria_index != null && config.ria_high > payout)
+		{
+		        payout = config.ria_high;
+			annuitization = p_max;
+		}
+		if (nia_index != null && config.nia_high > payout)
+		{
+		        payout = config.nia_high;
+			annuitization = p_max;
+		}
+		out.println("annuity_payout = " + payout);
+		out.println("annuitization = " + annuitization);
+		List<String> ac_names = (asset_class_names == null ? asset_classes : asset_class_names);
+		StringBuilder symbols = new StringBuilder();
+		StringBuilder names = new StringBuilder();
+		for (int i = 0; i < normal_assets; i++)
+		{
+		        if (i > 0)
+			{
+			        symbols.append(" ");
+				names.append(" ");
+			}
+		        symbols.append(asset_classes.get(i));
+			names.append(ac_names.get(i).replace(" ", "_"));
+		}
+		out.println("asset_class_symbols = \"" + symbols + "\"");
+		out.println("asset_class_names = \"" + names + "\"");
+		out.close();
+        }
+
+        private void plot() throws IOException, InterruptedException
+        {
+		ss.subprocess("plot", config.prefix);
+        }
+
+	// Dump and plot the data files.
+        private void dump_plot(AAMap map, Metrics[] retirement_number, List<List<PathElement>> paths, Returns returns) throws IOException, InterruptedException
 	{
  	        dump_utility(utility_consume, "consume");
 	        dump_utility(utility_consume_time, "consume_time");
 	        dump_utility(utility_inherit, "inherit");
-		//dump_cw();
 		if (returns != null)
 		{
 		        dump_aa_linear(map, returns);
@@ -787,15 +841,30 @@ public class Scenario
 		{
 		        dump_retirement_number(retirement_number);
 		}
+		double tp_max = tp_max_estimate;
+		double consume_max = consume_max_estimate;
 		if (!config.skip_validate)
 		{
 		        dump_distributions(paths);
-		        dump_pct_paths(paths);
+			tp_max = dump_pct_path(paths, "p", false);
+			consume_max = dump_pct_path(paths, "consume", false);
+			dump_pct_paths(paths);
 			dump_paths(paths);
 			// Delta paths breaks when validate using validate dump because guaranteed_safe_aa relies on MVO tangency.
 			//dump_delta_paths(paths, 1);
 			//dump_delta_paths(paths, 5);
 		}
+
+		if (config.gnuplot_tp != null)
+		        tp_max = config.gnuplot_tp;
+		else
+		        tp_max *= 1.05;
+		if (config.gnuplot_consume != null)
+		        consume_max = config.gnuplot_consume;
+		else
+		        consume_max *= 1.05;
+		dump_gnuplot_params(tp_max, consume_max);
+		plot();
 	}
 
 	// Dump retirement number values.
@@ -819,66 +888,11 @@ public class Scenario
         {
 		PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-initial_aa.csv")));
 		out.println("asset class,allocation");
-		List<String> names = (config.asset_class_names == null ? asset_classes : config.asset_class_names);
+		List<String> names = (asset_class_names == null ? asset_classes : asset_class_names);
 		for (int i = 0; i < aa.length; i++)
 		        out.println(names.get(i) + "," + aa[i]);
 		out.close();
         }
-
- 	// // Dump success probability percentile lines.
-	// private void dump_success_lines(Metrics[][] success_lines, double[] goal_range, MetricsEnum metric) throws IOException
-	// {
-	// 	// Success probability percentile lines versus age and wr
-	// 	PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-success-" + metric.toString().toLowerCase() + ".csv")));
-	// 	for (int period = 0; period < ss.max_years * config.generate_time_periods; period++)
-	// 	{
-	// 		List<Double> prob_range = new ArrayList<Double>();
-	// 		for (int i = goal_range.length - 1; i >= 0; i--)
-	// 		{
-	// 			prob_range.add(goal_range[i]);
-	// 		}
-	// 		prob_range.add(0.0);
-
-	// 		List<String> percentile = new ArrayList<String>();
-	// 		boolean seen_upper_range = false;
-	// 		Double prev_min_pf = null;
-	// 		Metrics[] metrics_period = success_lines[period];
-	// 		for (int bucket = metrics_period.length - 1; bucket >= 0; bucket--)
-	// 		{
-	// 			double candidate_prob = metrics_period[bucket].get(metric);
-	// 			assert (0.0 <= candidate_prob && candidate_prob <= 1.0);
-	// 			if (prev_min_pf != null)
-	// 			{
-	// 				if (candidate_prob >= prob_range.get(0))
-	// 					seen_upper_range = true;
-	// 				while (candidate_prob < prob_range.get(0))
-	// 				{
-	// 					if (seen_upper_range)
-	// 						percentile.add(0, f2f.format(prev_min_pf));
-	// 					else
-	// 						percentile.add(0, "");
-	// 					prob_range.remove(0);
-	// 				}
-	// 			}
-	// 			prev_min_pf = bucket * config.success_lines_scale_size;
-	// 		}
-	// 		prob_range.remove(prob_range.size() - 1);
-	// 		while (true)
-	// 		{
-	// 			if (prob_range.size() == 0)
-	// 				break;
-	// 			prob_range.remove(0);
-	// 			percentile.add(0, "");
-	// 		}
-	// 		out.print(f2f.format((period + config.start_age * config.generate_time_periods) / config.generate_time_periods));
-	// 		for (String perc : percentile)
-	// 		{
-	// 			out.print("," + perc);
-	// 		}
-	// 		out.print("\n");
-	// 	}
-	// 	out.close();
-	// }
 
 	public void run_mvo(String s) throws IOException, InterruptedException
 	{
@@ -1161,18 +1175,18 @@ public class Scenario
 			if (config.validate_dump)
 			{
 			        long start = System.currentTimeMillis();
-				this.dump(null, retirement_number, paths, null);
+				dump_plot(null, retirement_number, paths, null);
 				double elapsed = (System.currentTimeMillis() - start) / 1000.0;
-				System.out.println("Dump done: " + f1f.format(elapsed) + " seconds");
+				System.out.println("Dump/plot done: " + f1f.format(elapsed) + " seconds");
 				System.out.println();
 			}
 		}
 		else
 		{
 		        long start = System.currentTimeMillis();
-			this.dump(map_precise, retirement_number, paths, returns_generate);
+			dump_plot(map_precise, retirement_number, paths, returns_generate);
 			double elapsed = (System.currentTimeMillis() - start) / 1000.0;
-			System.out.println("Dump done: " + f1f.format(elapsed) + " seconds");
+			System.out.println("Dump/plot done: " + f1f.format(elapsed) + " seconds");
 			System.out.println();
 			if (!config.skip_dump_log)
 			{
@@ -1185,13 +1199,14 @@ public class Scenario
 		}
 	}
 
-        public Scenario(ScenarioSet ss, Config config, HistReturns hist, List<String> asset_classes, Double start_ria, Double start_nia) throws IOException, InterruptedException
+        public Scenario(ScenarioSet ss, Config config, HistReturns hist, List<String> asset_classes, List<String> asset_class_names, Double start_ria, Double start_nia) throws IOException, InterruptedException
 	{
 	        this.ss = ss;
 	        this.config = config;
 	        this.hist = hist;
 		this.asset_classes = asset_classes;
- 
+		this.asset_class_names = asset_class_names;
+
                 // Internal parameters.
 
 		int p_size = 0;
@@ -1211,6 +1226,17 @@ public class Scenario
 		        start_p[ria_index] = start_ria;
 		if (nia_index != null)
 		        start_p[nia_index] = start_nia;
+
+		int years = Math.max(0, config.retirement_age - config.start_age);
+		double retirement_le = ss.vital_stats.le.get(config.retirement_age);
+		double ia_max = 0;
+		if (ria_index != null)
+		        ia_max += start_ria;
+		if (nia_index != null)
+		        ia_max += start_nia;
+		tp_max_estimate = config.start_tp + config.rcr * Math.pow(config.accumulation_ramp, years) * years;
+		consume_max_estimate = config.defined_benefit + tp_max_estimate / retirement_le + ia_max;
+		tp_max_estimate += config.defined_benefit + ia_max; // Assume minimal carry over from one period to the next.
 
 		// Set up the scales.
 		scale = new Scale[start_p.length];
