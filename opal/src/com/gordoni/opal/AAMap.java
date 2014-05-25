@@ -488,12 +488,12 @@ class AAMap
 				{
 				        consume_annual += p * returns.time_periods;
 					// We used to truncate negative consume_annual values, but this is problematic.
-					// It caused donate above to sometimes occur for rps config.withdrawal for period 0.
+					// It caused donate above to sometimes occur for rps scenario.consume_max_estimate for period 0.
 					// Truncation would cause different buckets at and just above rps 0 to have the same consume and combined metric.
 					// Then in the prior year just above withdrawal we would access these sub-buckets causing a comparison in which
 					// submetrics would make the low contrib values preferable, but it would then fail to do so.
 					// A non-zero ret_borrow could trigger this to occur. If this is desired some other solution will then be needed.
-					if (-1e-12 * config.withdrawal < consume_annual && consume_annual < 0)
+					if (-1e-12 * scenario.consume_max_estimate < consume_annual && consume_annual < 0)
 					        consume_annual = 0; // Rounding error.
 				}
 				if (consume_annual < 0 && p_prev_inc_neg < 0)
@@ -1054,7 +1054,7 @@ class AAMap
 		double low_target = Double.NaN;
 		double target_mean = Double.NaN;
 		boolean first_time = true;
-		while (high - low > 0.01 * config.withdrawal)
+		while (high - low > 0.005 * scenario.tp_max_estimate)
 		{
 			double mid = (high + low) / 2;
 			double p_mid[] = scenario.start_p.clone();
@@ -1088,14 +1088,14 @@ class AAMap
     public TargetResult rcr_target(int age, double target, boolean baseline, Returns returns_generate, Returns returns_target, boolean under_estimate) throws ExecutionException, IOException
 	{
 	        double keep_rcr = config.rcr;
-		double high = config.withdrawal;
+		double high = scenario.consume_max_estimate;
 		double low = 0.0;
 		AAMap map_loaded = null;
 		double high_target = Double.NaN;
 		double low_target = Double.NaN;
 		double target_mean = Double.NaN;
 		boolean first_time = true;
-		while (high - low > 0.00005 * config.withdrawal)
+		while (high - low > 0.00002 * scenario.consume_max_estimate)
 		{
 			double mid = (high + low) / 2;
 			config.rcr = mid;

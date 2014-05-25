@@ -53,7 +53,6 @@ public class UtilityScale extends Utility
         {
 		this.config = config;
 		this.utility = utility;
-	        this.range = utility.range;
 		this.c_scale = c_scale;
 		this.scale = scale;
 		this.offset = offset;

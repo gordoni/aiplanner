@@ -13,14 +13,6 @@ public class UtilityPower extends Utility
         private boolean cache = false;
         private double[] utility_cache = null;  // Lookup is slow so we use a cache. Cache effective utility since it is smooth.
 
-        public double effective_utility(double c)
-        {
-	        if (eta == 1)
-		        return scale * Math.log((c - offset)) - zero;
-		else
-		        return scale * Math.pow((c - offset), 1 - eta) / (1 - eta) - zero;
-        }
-
         public double utility(double c)
         {
 		// if (c < 0)
@@ -30,22 +22,12 @@ public class UtilityPower extends Utility
 		//         return Double.NEGATIVE_INFINITY; // Helpful when generating negative buckets.
 		// }
 	        assert(c >= 0);
-		double effective_c;
 		if (c * public_assistance_phaseout_rate < public_assistance)
-		        effective_c = public_assistance + c * (1 - public_assistance_phaseout_rate);
+		        c = public_assistance + c * (1 - public_assistance_phaseout_rate);
+	        if (eta == 1)
+		        return scale * Math.log((c - offset)) - zero;
 		else
-		        effective_c = c;
-		double u;
-		if (!cache || effective_c >= range)
-		        u = effective_utility(effective_c);
-		else
-		{
-		        double i_double = effective_c / range * config.utility_steps;
-			int i = (int) i_double;
-			double i_fract = i_double - i;
-			u = utility_cache[i] * (1 - i_fract) + utility_cache[i + 1] * i_fract;
-		}
-		return u;
+		        return scale * Math.pow((c - offset), 1 - eta) / (1 - eta) - zero;
         }
 
         public double inverse_utility(double u)
@@ -61,10 +43,10 @@ public class UtilityPower extends Utility
 		        c = offset + Math.exp((zero + u) / scale);
 		else
 		        c = offset + Math.pow((zero + u) * (1 - eta) / scale, 1 / (1 - eta));
-		if (Math.abs(c) < 1e-15 * config.withdrawal)
-		        // Floating point rounding error.
-		        // Treat it nicely because we want utility_donate.inverse_utility(0)=0, otherwise we run into problems when donation is disabled.
-		        c = 0;
+		//if (Math.abs(c) < 1e-15 * scenario.consume_max_estimate)
+		//        // Floating point rounding error.
+		//        // Treat it nicely because we want utility_donate.inverse_utility(0)=0, otherwise we run into problems when donation is disabled.
+		//        c = 0;
 	        if (c * public_assistance_phaseout_rate < public_assistance)
 		        return (c - public_assistance) / (1 - public_assistance_phaseout_rate);
 	        else
@@ -114,7 +96,7 @@ public class UtilityPower extends Utility
 		        return slope2;
 	}
 
-        public UtilityPower(Config config, Double force_eta, double c_shift, double c, double u, Double ce, double ce_ratio, double c1, double s1, double c2, double s2, double public_assistance, double public_assistance_phaseout_rate, Double force_scale, double range)
+        public UtilityPower(Config config, Double force_eta, double c_shift, double c, double u, Double ce, double ce_ratio, double c1, double s1, double c2, double s2, double public_assistance, double public_assistance_phaseout_rate, Double force_scale)
         {
 	        double c1_adjust = c1;
 	        double s1_adjust = s1;
@@ -129,7 +111,6 @@ public class UtilityPower extends Utility
 		        c2_adjust = public_assistance + c2 * (1 - public_assistance_phaseout_rate);
 		}
 		this.config = config;
-	        this.range = range;
 		this.public_assistance = public_assistance;
 		this.public_assistance_phaseout_rate = public_assistance_phaseout_rate;
 		this.offset = c_shift;
@@ -173,20 +154,20 @@ public class UtilityPower extends Utility
 		//assert(Math.abs(slope(c1) - s1) < 1e-6);
 		//assert(Math.abs(slope(c2) - s2) < 1e-6);
 
-		final boolean enable_cache = false;
+		// final boolean enable_cache = false;
 		// Cache is disabled for now. A bug once meant consumption lookups are all very close. The cache makes them linear.
 		// This makes the nearby consume utility constant for different contrib values as lower target_consume_utility values have higher solvencies.
 		// This makes aa_search_dir walk much further than it should.  Whether other parts of the system generate close lookups is unclear.
 		// Play it safe, and employ a local cache inside simulate().
-		if (enable_cache && config.utility_steps > 0)
-		{
-		        utility_cache = new double[config.utility_steps + 1];
-			for (int i = 0; i <= config.utility_steps; i++)
-			{
-			        utility_cache[i] = effective_utility(range * i / config.utility_steps);
-			}
-			cache = true;
-		}
+		// if (enable_cache && config.utility_steps > 0)
+		// {
+		//         utility_cache = new double[config.utility_steps + 1];
+		// 	for (int i = 0; i <= config.utility_steps; i++)
+		// 	{
+		// 	        utility_cache[i] = effective_utility(range * i / config.utility_steps);
+		// 	}
+		// 	cache = true;
+		// }
 
 		set_constants();
 	}

@@ -189,18 +189,12 @@ home in estimating the contribution growth rate.
 Year of retirement: {{ se_form.retirement_year }}
 {{ se_form.retirement_year.errors }}
 <br />
-Desired annual retirement consumption amount: {{ se_form.withdrawal }}
-{{ se_form.withdrawal.errors }}
-<br />
-Minimal annual retirement consumption amount: {{ se_form.floor }}
+Minimum annual retirement consumption amount: {{ se_form.floor }}
 {{ se_form.floor.errors }}
 <br />
 <font size="-1">
-The annual consumption amounts should be in today's dollars and include
-defined benefits. The desired amount will be used as a yardstick for
-measuring well being, as well as to determine the
-annual portfolio withdrawal in the absence of variable withdrawals.
-The minimal amount will be used for reporting when failure occurs.
+The minimum annual consumption amount should be in today's dollars and include
+defined benefits. It will be used for reporting when failure occurs.
 </font>
 <br />
 <br />
@@ -216,14 +210,15 @@ A value of 30% will allow almost unlimited exposure to any of the asset classes 
 </font>
 <br />
 <br />
-Utilize a variable withdrawal rate strategy: {{ se_form.vw }}
-{{ se_form.vw.errors }}
+Utilize a fixed withdrawal rate strategy: {{ se_form.vw_amount }}
+{{ se_form.vw_amount.errors }}
+<br />
+WIth the following annual retirement consumption amount: {{ se_form.withdrawal }}
+{{ se_form.withdrawal.errors }}
 <br />
 <font size="-1">
-Rather than consuming a fixed annual retirement amount it is
-possible to consume more if your portfolio is large relative to your
-projected needs and less if it is small. The decision of how much to
-consume is made so as to maximize expected well being.
+A variable withdrawal rate strategy is typically more realistic and
+will give better performance than a fixed withdrawal strategy.
 </font>
 <br />
 <div class="advanced">
@@ -242,16 +237,11 @@ portfolios.
 </font>
 <br />
 Fraction of unsatisfied well being capable of being satisfied by being able to leave a bequest: {{ se_form.utility_dead_limit_pct }}%
-{{ se_form.utility_dead_limit_pct.errors }}
-<br />
 Goal is to share bequest between {{ se_form.utility_inherit_years }} people over one year, or equivalently this many years by one person.
+Each person is currently consuming {{ se_form.utility_bequest_consume }}.
+{{ se_form.utility_dead_limit_pct.errors }}
 {{ se_form.utility_inherit_years.errors }}
-<br />
-<font size="-1">
-A bequest is valued using the same utility function used for consumption,
-but modified according to the above parameters, and assuming each inheritor
-would otherwise have been consuming the desired annual consumption amount.
-</font>
+{{ se_form.utility_bequest_consume.errors }}
 </div>
 </div>
 <h2>Market parameters</h2>
@@ -557,8 +547,7 @@ checked="checked"
 />
 </td>
 <td>
-CARA exponential utility function. Coefficient of absolute risk aversion &alpha;
-multiplied by desired consumption amount:
+CARA exponential utility function. Coefficient of absolute risk aversion &alpha;:
 {{ se_form.utility_alpha }}
 {{ se_form.utility_utility_alpha.errors }}
 </td>

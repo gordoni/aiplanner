@@ -82,7 +82,7 @@ class ScenarioBaseForm(forms.Form):
         min_value=0)
     risk_tolerance = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'percent_input'}))
-    vw = forms.BooleanField(required=False)
+    vw_amount = forms.BooleanField(required=False)
     advanced_market = forms.BooleanField(required=False,
         widget=forms.CheckboxInput(attrs={'class': 'advanced_button'}))
     class_stocks = forms.BooleanField(required=False)
@@ -133,6 +133,9 @@ class ScenarioBaseForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'percent_input'}),
         min_value=0,
         max_value=100)
+    utility_bequest_consume = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
     advanced_well_being = forms.BooleanField(required=False,
         widget=forms.CheckboxInput(attrs={'class': 'advanced_button'}))
     consume_discount_rate_pct = forms.DecimalField(
@@ -160,7 +163,7 @@ class ScenarioBaseForm(forms.Form):
         min_value=0,
         max_value=50) # 100 fails.
     utility_alpha = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        widget=forms.TextInput(attrs={'class': 'large_numeric_input'}),
         min_value=0,
         max_value=100) # 1000 fails.
 

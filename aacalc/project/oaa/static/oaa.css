@@ -146,7 +146,7 @@ body{
     text-align: right;
 }
 
-.p_input {
+.p_input, .large_numeric_input {
     width: 7em;
     text-align: right;
 }

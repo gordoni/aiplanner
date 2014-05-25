@@ -84,7 +84,7 @@ class TaxAvgCost extends Tax
 				basis[i] = base;
 				assert(basis[i] >= 0);
 				value[i] = target;
-				// assert(-1e-6 * config.withdrawal < val - value[i] && val - value[i] < 1e-6 * config.withdrawal);
+				// assert(-1e-6 * scenario.consume_max_estimate < val - value[i] && val - value[i] < 1e-6 * scenario.consume_max_estimate);
 				assert(value[i] >= 0);
 			}
 		}

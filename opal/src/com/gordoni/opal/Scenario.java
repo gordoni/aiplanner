@@ -289,11 +289,12 @@ public class Scenario
 		load_mvo_ef(s);
         }
 
-        public void dump_utility(Utility utility, String name) throws IOException
+        public void dump_utility(Utility utility, String name, double max) throws IOException
 	{
 		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-utility-" + name + ".csv"));
-		for (double c = 0; c <= utility.range; c += utility.range / 1000)
+		for (int i = 0; i <= 1000; i++)
 		{
+		        double c = i * max / 1000;
 		        out.print(f6f.format(c) + "," + utility.utility(c) + "," + utility.slope(c) + "," + utility.slope2(c) + "," + utility.inverse_utility(utility.utility(c)) + "," + utility.inverse_slope(utility.slope(c)) + "\n");
 		}
 		out.close();
@@ -832,9 +833,6 @@ public class Scenario
 	// Dump and plot the data files.
         private void dump_plot(AAMap map, Metrics[] retirement_number, List<List<PathElement>> paths, Returns returns) throws IOException, InterruptedException
 	{
- 	        dump_utility(utility_consume, "consume");
-	        dump_utility(utility_consume_time, "consume_time");
-	        dump_utility(utility_inherit, "inherit");
 		if (returns != null)
 		{
 		        dump_aa_linear(map, returns);
@@ -842,10 +840,12 @@ public class Scenario
 			dump_annuity_price();
 			dump_annuity_yield_curve();
 		}
+
 		if (!config.skip_retirement_number)
 		{
 		        dump_retirement_number(retirement_number);
 		}
+
 		double tp_max = tp_max_estimate;
 		double consume_max = consume_max_estimate;
 		if (!config.skip_validate)
@@ -859,7 +859,6 @@ public class Scenario
 			//dump_delta_paths(paths, 1);
 			//dump_delta_paths(paths, 5);
 		}
-
 		if (config.gnuplot_tp != null)
 		        tp_max = config.gnuplot_tp;
 		else
@@ -868,6 +867,12 @@ public class Scenario
 		        consume_max = config.gnuplot_consume;
 		else
 		        consume_max *= 1.05;
+
+ 	        dump_utility(utility_consume, "consume", consume_max);
+	        dump_utility(utility_consume_time, "consume_time", consume_max);
+		if (config.utility_dead_limit != 0)
+	                dump_utility(utility_inherit, "inherit", tp_max);
+
 		dump_gnuplot_params(tp_max, consume_max);
 		plot();
 	}
@@ -1239,7 +1244,11 @@ public class Scenario
 		        ia_max += start_ria;
 		if (nia_index != null)
 		        ia_max += start_nia;
-		tp_max_estimate = config.start_tp + config.rcr * Math.pow(config.accumulation_ramp, years) * years;
+		tp_max_estimate = 0;
+		if (!config.skip_retirement_number)
+		        tp_max_estimate = Math.max(0, config.floor - config.defined_benefit - ia_max) * retirement_le;
+		if (!config.skip_validate)
+		        tp_max_estimate = Math.max(tp_max_estimate, config.start_tp + config.rcr * Math.pow(config.accumulation_ramp, years) * years);
 		consume_max_estimate = config.defined_benefit + tp_max_estimate / retirement_le + ia_max;
 		tp_max_estimate += config.defined_benefit + ia_max; // Assume minimal carry over from one period to the next.
 
@@ -1323,35 +1332,35 @@ public class Scenario
 
 		// Set up utility functions.
 
+		double consume_ref = consume_max_estimate / 2; // Somewhat arbitrary.
 		Double eta = (config.utility_epstein_zin ? (Double) config.utility_gamma : config.utility_eta);
-		Utility utility_consume_risk = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_beta, config.utility_alpha, 0, config.withdrawal, config.utility_ce, config.utility_ce_ratio, 2 * config.withdrawal, 1 / config.utility_slope_double_withdrawal, config.withdrawal, 1, config.public_assistance, config.public_assistance_phaseout_rate, config.withdrawal * 2);
+		Utility utility_consume_risk = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_beta, config.utility_alpha, 0, consume_ref, config.utility_ce, config.utility_ce_ratio, 2 * consume_ref, 1 / config.utility_slope_double_withdrawal, consume_ref, 1, config.public_assistance, config.public_assistance_phaseout_rate);
 		eta = (config.utility_epstein_zin ? (Double) (1 / config.utility_psi) : config.utility_eta);
-		utility_consume_time = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_beta, config.utility_alpha, 0, config.withdrawal, config.utility_ce, config.utility_ce_ratio, 2 * config.withdrawal, 1 / config.utility_slope_double_withdrawal, config.withdrawal, 1, config.public_assistance, config.public_assistance_phaseout_rate, config.withdrawal * 2);
+		utility_consume_time = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_beta, config.utility_alpha, 0, consume_ref, config.utility_ce, config.utility_ce_ratio, 2 * consume_ref, 1 / config.utility_slope_double_withdrawal, consume_ref, 1, config.public_assistance, config.public_assistance_phaseout_rate);
 
 		if (config.utility_join)
 		{
-		        Utility utility_consume_risk_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_required, config.utility_join_slope_ratio * utility_consume_risk.slope(config.utility_join_required), 0, 0, config.withdrawal * 2);
+		        Utility utility_consume_risk_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0, 0.0, 0, consume_ref, 0.0, 0, 0, 0, config.utility_join_required, config.utility_join_slope_ratio * utility_consume_risk.slope(config.utility_join_required), 0, 0);
 		        utility_consume_risk = Utility.joinFactory(config, config.utility_join_type, utility_consume_risk, utility_consume_risk_2, config.utility_join_required, config.utility_join_required + config.utility_join_desired);
-                        Utility utility_consume_time_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0, 0.0, 0, config.withdrawal, 0.0, 0, 0, 0, config.utility_join_required, config.utility_join_slope_ratio * utility_consume_time.slope(config.utility_join_required), 0, 0, config.withdrawal * 2);
+                        Utility utility_consume_time_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0, 0.0, 0, consume_ref, 0.0, 0, 0, 0, config.utility_join_required, config.utility_join_slope_ratio * utility_consume_time.slope(config.utility_join_required), 0, 0);
 		        utility_consume_time = Utility.joinFactory(config, config.utility_join_type, utility_consume_time, utility_consume_time_2, config.utility_join_required, config.utility_join_required + config.utility_join_desired);
 		}
 	        utility_consume = utility_consume_risk;
 
-		// Model: Bequest to 1 person for utility_inherit_years or utility_inherit_years people for 1 year who are currently consuming bequest_consume
-		// and share the same utility function as you sans utility_join.
-		double bequest_consume = (config.utility_bequest_consume == null ? config.withdrawal : config.utility_bequest_consume);
-		utility_inherit = new UtilityScale(config, utility_consume_time, 0, 1 / config.utility_inherit_years, config.utility_inherit_years * config.utility_dead_limit, - bequest_consume);
-		utility_inherit.range = config.withdrawal * 100;
+		if (config.utility_dead_limit != 0)
+		        // Model: Bequest to 1 person for utility_inherit_years or utility_inherit_years people for 1 year who are currently consuming bequest_consume
+		        // and share the same utility function as you.
+		        utility_inherit = new UtilityScale(config, utility_consume_time, 0, 1 / config.utility_inherit_years, config.utility_inherit_years * config.utility_dead_limit, - config.utility_bequest_consume);
 
 		// Set up returns.
 
 		returns_generate = null;
 		if (do_generate || do_target  || do_tax)
-		    returns_generate = new Returns(this, hist, config, config.generate_seed, config.time_varying, config.generate_start_year, config.generate_end_year, config.num_sequences_generate, config.generate_time_periods, config.generate_ret_equity, config.generate_ret_bonds, config.ret_risk_free, config.generate_ret_inflation, config.management_expense, config.generate_shuffle, config.ret_reshuffle, config.generate_draw, config.ret_random_block_size, config.ret_pair, config.ret_short_block, config.generate_all_adjust, config.generate_equity_vol_adjust);
+		        returns_generate = new Returns(this, hist, config, config.generate_seed, config.time_varying, config.generate_start_year, config.generate_end_year, config.num_sequences_generate, config.generate_time_periods, config.generate_ret_equity, config.generate_ret_bonds, config.ret_risk_free, config.generate_ret_inflation, config.management_expense, config.generate_shuffle, config.ret_reshuffle, config.generate_draw, config.ret_random_block_size, config.ret_pair, config.ret_short_block, config.generate_all_adjust, config.generate_equity_vol_adjust);
 
 		returns_target = null;
 		if (do_target)
-		    returns_target = new Returns(this, hist, config, config.target_seed, false, config.target_start_year, config.target_end_year, config.num_sequences_target, config.target_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.target_shuffle, config.ret_reshuffle, config.target_draw, config.ret_random_block_size, config.ret_pair, config.target_short_block, config.validate_all_adjust, config.validate_equity_vol_adjust);
+		        returns_target = new Returns(this, hist, config, config.target_seed, false, config.target_start_year, config.target_end_year, config.num_sequences_target, config.target_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.target_shuffle, config.ret_reshuffle, config.target_draw, config.ret_random_block_size, config.ret_pair, config.target_short_block, config.validate_all_adjust, config.validate_equity_vol_adjust);
 
 		returns_validate = new Returns(this, hist, config, config.validate_seed, false, config.validate_start_year, config.validate_end_year, config.num_sequences_validate, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.validate_shuffle, config.ret_reshuffle, config.validate_draw, config.ret_random_block_size, config.ret_pair, config.ret_short_block, config.validate_all_adjust, config.validate_equity_vol_adjust);
 

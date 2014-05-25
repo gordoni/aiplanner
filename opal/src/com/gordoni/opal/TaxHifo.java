@@ -28,10 +28,10 @@ class TaxHifo extends Tax
 		cpi = 1;
 		for (int a = 0; a < scenario.normal_assets; a++)
 		{
-		        total_shares[a] = aa[a] * p / config.withdrawal; // Normalize shares so we can recognize rounding errors independent of scale.
-			curr_prices[a] = config.withdrawal; // Although, at present we let rounding errors rest.
-			shares[a][0] = aa[a] * p / config.withdrawal;
-			prices[a][0] = config.withdrawal;
+		        total_shares[a] = aa[a] * p / scenario.consume_max_estimate; // Normalize shares so we can recognize rounding errors independent of scale.
+			curr_prices[a] = scenario.consume_max_estimate; // Although, at present we let rounding errors rest.
+			shares[a][0] = aa[a] * p / scenario.consume_max_estimate;
+			prices[a][0] = scenario.consume_max_estimate;
 			nexts[a] = 1;
 		}
 		prev_aa = aa;

@@ -80,7 +80,6 @@ public class UtilityJoinAra extends Utility
 		this.config = config;
 		this.utility1 = utility1;
 		this.utility2 = utility2;
-	        this.range = utility1.range;
 
 		this.c1 = c1;
 		this.c2 = c2;

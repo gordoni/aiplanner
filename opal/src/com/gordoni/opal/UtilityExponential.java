@@ -82,7 +82,7 @@ public class UtilityExponential extends Utility
 		        return slope2;
 	}
 
-        public UtilityExponential(Config config, Double force_alpha, double c_shift, double c_zero, double c1, double s1, double c2, double s2, double public_assistance, double public_assistance_phaseout_rate, double range)
+        public UtilityExponential(Config config, Double force_alpha, double c_shift, double c_zero, double c1, double s1, double c2, double s2, double public_assistance, double public_assistance_phaseout_rate)
         {
 	        double c1_adjust = c1;
 	        double s1_adjust = s1;
@@ -97,12 +97,11 @@ public class UtilityExponential extends Utility
 		        c2_adjust = public_assistance + c2 * (1 - public_assistance_phaseout_rate);
 		}
 		this.config = config;
-	        this.range = range;
 		this.public_assistance = public_assistance;
 		this.public_assistance_phaseout_rate = public_assistance_phaseout_rate;
 		this.offset = c_shift; // Irrelevant.
 		if (force_alpha != null)
-		        this.alpha = force_alpha / config.withdrawal;
+		    this.alpha = force_alpha;
 		else
 		{
 			if (s1_adjust == s2_adjust)

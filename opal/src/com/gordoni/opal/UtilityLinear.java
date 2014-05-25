@@ -42,9 +42,8 @@ public class UtilityLinear extends Utility
 		return 0;
 	}
 
-        public UtilityLinear(double c_zero, double s, double range)
+        public UtilityLinear(double c_zero, double s)
         {
-	        this.range = range;
 		this.public_assistance = public_assistance;
 		this.public_assistance_phaseout_rate = public_assistance_phaseout_rate;
 		this.slope = s;

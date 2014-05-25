@@ -165,8 +165,8 @@ public class Config
         public double utility_gamma = 3; // Consumption Epstein-Zin utility risk aversion.
         public double utility_psi = 1 / 3.0; // Consumption Epstein-Zin utility elasticity of inter-temporal substitution.
         public Double utility_eta = null; // Consumption power utility eta parameter to use in place of utility_slope_zero definition, e.g. 3.
-        public double utility_beta = 0.0; // Consumption HARA utility beta parameter divided by withdrawal, e.g. 1.
-        public Double utility_alpha = null; // Consumption exponential utility alpha parameter multiplied by withdrawal, e.g. 2.
+        public double utility_beta = 0.0; // Consumption HARA utility beta parameter.
+        public Double utility_alpha = null; // Consumption exponential utility alpha parameter.
                // If the same relative slopes are desired at consumptions c1 and c2 as occur with a power utility function eta then,
                // alpha = - eta . ln(c1/c2) / (c2 - c1).
         public Double utility_ce = null; // Specify consumption power utility eta parameter as indifferent to utility_ce * c and a
@@ -188,7 +188,7 @@ public class Config
         public double utility_dead_limit = 0; // Maximum fraction of remaining utility capable of being satisfied by being able to leave a bequest.
         public double utility_inherit_years = 10; // Value inheritance using the utility function but treat it as being spread over this many individuals or years.
                 // If leaving an inheritance, set this parameter to 1 and utility to power to avoid maximum return "swirl artifact" at high ages.
-        public Double utility_bequest_consume = null; // Value inheritance at this consumption amount. Or null for withdrawal.
+        public Double utility_bequest_consume = null; // Value inheritance at this consumption amount.
         public int utility_steps = 1000;  // Utility cache steps.
 	        // Cutoff at utility_cutoff. For utility_eta == 2.0, utility_cutoff linear units are equal in size to all utility above utility_cutoff.
         public double rebalance_band_hw = 0.0; // During validation and non-single step generation rebalance everything if an asset class is this far or greater from its target value.
@@ -228,10 +228,7 @@ public class Config
         public double[] cw_schedule = null; // Contribute / withdraw schedule to use in place of formulaic schedule.  Array of numeric amounts for each time period.
 	public double rcr = 500; // Relative contribution rate. Initial rate of asset accumulation prior to retirement.
 	public double accumulation_ramp = 1.07; // Annual ramping factor by which to boost accumulation rate over time.
-        public double withdrawal = 50000; // Annual retirement consumption amount (includes both defined benefits and investment portfolio).
-                // Even if variable withdrawals are used, should still set to something reasonable.
-                // If too small, e.g. 1, then consumption values, e.g. 100000 and 200000, will have very close utility values.
-                // This will lead to a gross loss of precision when they are averaged, and a misleading inverse utility.
+        public Double withdrawal = null; // Annual retirement consumption amount (includes both defined benefits and investment portfolio).
         public double floor = 0.0; // Annual retirement floor consumption amount at below which portfolio failure is considered to have occured.
 	public Double generate_ret_equity = null; // None for no adjustment to equities during generation, float for stocks target geomean return.
 	public Double validate_ret_equity = null; // None for no adjustment to equities during targeting and validation, float for stocks target geomean return.

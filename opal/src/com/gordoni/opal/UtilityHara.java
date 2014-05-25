@@ -35,7 +35,7 @@ public class UtilityHara extends Utility
 		        c = offset + eta * (Math.exp((zero + u) / scale) - beta);
 		else
 		        c = offset + eta * (Math.pow((zero + u) * (1 - eta) / eta / scale, 1 / (1 - eta)) - beta);
-		//if (Math.abs(c) < 1e-15 * config.withdrawal)
+		//if (Math.abs(c) < 1e-15 * scenario.consume_max_estimate)
 		//        // Floating point rounding error.
 		//        // Treat it nicely because we want utility_donate.inverse_utility(0)=0, otherwise we run into problems when donation is disabled.
 		//        c = 0;
@@ -88,7 +88,7 @@ public class UtilityHara extends Utility
 		        return slope2;
 	}
 
-        public UtilityHara(Config config, double eta, double beta, double c_shift, double c_zero, double c2, double s2, double public_assistance, double public_assistance_phaseout_rate, Double force_scale, double range)
+        public UtilityHara(Config config, double eta, double beta, double c_shift, double c_zero, double c2, double s2, double public_assistance, double public_assistance_phaseout_rate, Double force_scale)
         {
 	        double c2_adjust = c2;
 	        double s2_adjust = s2;
@@ -97,12 +97,11 @@ public class UtilityHara extends Utility
 		        c2_adjust = public_assistance + c2 * (1 - public_assistance_phaseout_rate);
 		}
 		this.config = config;
-	        this.range = range;
 		this.public_assistance = public_assistance;
 		this.public_assistance_phaseout_rate = public_assistance_phaseout_rate;
 		this.offset = c_shift;
 		this.eta = eta;
-		this.beta = beta * config.withdrawal;
+		this.beta = beta;
 		if (force_scale == null)
 		        this.scale = s2 / slope(c2_adjust);
 		else
