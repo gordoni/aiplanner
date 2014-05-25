@@ -18,9 +18,9 @@ set output prefix . "-utility-consume.png"
 plot prefix . "-utility-consume.csv" using 1:2 with lines notitle
 
 set ylabel "utility slope"
-set yrange [0:200]
+set yrange [0:1]
 set output prefix . "-utility-slope-consume.png"
-plot prefix . "-utility-consume.csv" using 1:($3 / consume_slope_high) with lines notitle # Scale so last point is just visible.
+plot prefix . "-utility-consume.csv" using 1:(consume_slope_scale * $3) with lines notitle # Scale so last point is just visible.
 
 set ylabel "slope'"
 set format y "%g"
