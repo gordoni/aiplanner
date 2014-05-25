@@ -7,45 +7,44 @@ set terminal png transparent size 800,400 font "/usr/share/fonts/truetype/libera
 prefix = "`echo $OPAL_FILE_PREFIX`"
 if (prefix eq "") prefix = "opal"
 
+set xlabel "consumption ($)"
+set xrange [0:consume]
 set format x "%.1s%c"
 
-set ylabel "utility"
-set format y "%.1s%c"
+unset ytics
 
-set xlabel "consumption ($)"
+set ylabel "utility"
 set output prefix . "-utility-consume.png"
 plot prefix . "-utility-consume.csv" using 1:2 with lines notitle
 
-set xlabel "bequest ($)"
-if (bequest) set output prefix . "-utility-inherit.png"
-if (bequest) plot prefix . "-utility-inherit.csv" using 1:2 with lines notitle
-
 set ylabel "utility slope"
-set format y "%g"
-
-set xlabel "consumption ($)"
 set yrange [0:20]
 set output prefix . "-utility-slope-consume.png"
 plot prefix . "-utility-consume.csv" using 1:3 with lines notitle
 
 set ylabel "slope'"
 set format y "%g"
-
-set xlabel "consumption ($)"
 set yrange [-0.001:*]
 set output prefix . "-utility-slope2-consume.png"
 plot prefix . "-utility-consume.csv" using 1:4 with lines notitle
 
+set ytics
+
 set ylabel "absolute risk aversion"
 set format y "%g"
-
-set xlabel "consumption ($)"
 set yrange [0:*]
 set output prefix . "-utility-ara-consume.png"
-plot prefix . "-utility-consume.csv" using 1:(-$4/$3) with lines notitle
+plot prefix . "-utility-consume.csv" using ($1 < consume / 50 ? NaN : $1):(-$4/$3) with lines notitle
 
-set xrange [0:tp]
+unset ytics
+
 set xlabel "bequest ($)"
+set xrange [0:tp]
+
+set yrange [*:*]
+if (bequest) set output prefix . "-utility-inherit.png"
+if (bequest) plot prefix . "-utility-inherit.csv" using 1:2 with lines notitle
+
 set yrange [0:*]
 if (bequest) set output prefix . "-utility-slope-inherit.png"
 if (bequest) plot prefix . "-utility-inherit.csv" using 1:3 with lines notitle

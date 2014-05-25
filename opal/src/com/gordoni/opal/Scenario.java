@@ -1245,11 +1245,12 @@ public class Scenario
 		if (nia_index != null)
 		        ia_max += start_nia;
 		tp_max_estimate = 0;
+		// The following scaling factors are detrmined empirically to give reasonable matches to the actual values.
 		if (!config.skip_retirement_number)
-		        tp_max_estimate = Math.max(0, config.floor - config.defined_benefit - ia_max) * retirement_le;
+		        tp_max_estimate = 2 * Math.max(0, config.floor - config.defined_benefit - ia_max) * retirement_le;
 		if (!config.skip_validate)
-		        tp_max_estimate = Math.max(tp_max_estimate, config.start_tp + config.rcr * Math.pow(config.accumulation_ramp, years) * years);
-		consume_max_estimate = config.defined_benefit + tp_max_estimate / retirement_le + ia_max;
+		        tp_max_estimate = Math.max(tp_max_estimate, 2 * (config.start_tp + config.rcr * Math.pow(config.accumulation_ramp, years) * years));
+		consume_max_estimate = config.defined_benefit + 2 * tp_max_estimate / retirement_le + ia_max;
 		tp_max_estimate += config.defined_benefit + ia_max; // Assume minimal carry over from one period to the next.
 
 		// Set up the scales.
