@@ -807,6 +807,8 @@ public class Scenario
 		}
 		out.println("annuity_payout = " + payout);
 		out.println("annuitization = " + annuitization);
+		out.println("consume_slope_high = " + utility_consume.slope(consume_max));
+		out.println("consume_ara_small = " + (- utility_consume.slope2(consume_max / 50) / utility_consume.slope(consume_max / 50)));
 		List<String> ac_names = (asset_class_names == null ? asset_classes : asset_class_names);
 		StringBuilder symbols = new StringBuilder();
 		StringBuilder names = new StringBuilder();

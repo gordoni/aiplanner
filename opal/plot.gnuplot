@@ -18,9 +18,9 @@ set output prefix . "-utility-consume.png"
 plot prefix . "-utility-consume.csv" using 1:2 with lines notitle
 
 set ylabel "utility slope"
-set yrange [0:20]
+set yrange [0:200]
 set output prefix . "-utility-slope-consume.png"
-plot prefix . "-utility-consume.csv" using 1:3 with lines notitle
+plot prefix . "-utility-consume.csv" using 1:($3 / consume_slope_high) with lines notitle # Scale so last point is just visible.
 
 set ylabel "slope'"
 set format y "%g"
@@ -32,19 +32,21 @@ set ytics
 
 set ylabel "absolute risk aversion"
 set format y "%g"
-set yrange [0:*]
+set yrange [0:consume_ara_small] # Avoids plotting possibly highly postive points near the origin.
 set output prefix . "-utility-ara-consume.png"
-plot prefix . "-utility-consume.csv" using ($1 < consume / 50 ? NaN : $1):(-$4/$3) with lines notitle
+plot prefix . "-utility-consume.csv" using 1:(-$4/$3) with lines notitle
 
 unset ytics
 
 set xlabel "bequest ($)"
 set xrange [0:tp]
 
+set ylabel "utility"
 set yrange [*:*]
 if (bequest) set output prefix . "-utility-inherit.png"
 if (bequest) plot prefix . "-utility-inherit.csv" using 1:2 with lines notitle
 
+set ylabel "utility slope"
 set yrange [0:*]
 if (bequest) set output prefix . "-utility-slope-inherit.png"
 if (bequest) plot prefix . "-utility-inherit.csv" using 1:3 with lines notitle
