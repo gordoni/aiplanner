@@ -17,8 +17,8 @@ set output prefix . "-utility-consume.png"
 plot prefix . "-utility-consume.csv" using 1:2 with lines notitle
 
 set xlabel "bequest ($)"
-set output prefix . "-utility-inherit.png"
-plot prefix . "-utility-inherit.csv" using 1:2 with lines notitle
+if (bequest) set output prefix . "-utility-inherit.png"
+if (bequest) plot prefix . "-utility-inherit.csv" using 1:2 with lines notitle
 
 set ylabel "utility slope"
 set format y "%g"
@@ -47,8 +47,8 @@ plot prefix . "-utility-consume.csv" using 1:(-$4/$3) with lines notitle
 set xrange [0:tp]
 set xlabel "bequest ($)"
 set yrange [0:*]
-set output prefix . "-utility-slope-inherit.png"
-plot prefix . "-utility-inherit.csv" using 1:3 with lines notitle
+if (bequest) set output prefix . "-utility-slope-inherit.png"
+if (bequest) plot prefix . "-utility-inherit.csv" using 1:3 with lines notitle
 
 unset format
 
@@ -59,44 +59,44 @@ set yrange [0:*]
 unset ytics
 
 set xlabel "portfolio size ($)"
-set output prefix . "-distrib-p.png"
-plot prefix . "-distrib-p.csv" using 1:2 with lines notitle
+if (paths) set output prefix . "-distrib-p.png"
+if (paths) plot prefix . "-distrib-p.csv" using 1:2 with lines notitle
 
 set xlabel "annual floor consumption ($)"
-set output prefix . "-distrib-floor.png"
-plot prefix . "-distrib-floor.csv" using 1:2 with lines notitle
+if (paths) set output prefix . "-distrib-floor.png"
+if (paths) plot prefix . "-distrib-floor.csv" using 1:2 with lines notitle
 
 set xlabel "annual upside consumption ($)"
-set output prefix . "-distrib-upside.png"
-plot prefix . "-distrib-upside.csv" using 1:2 with lines notitle
+if (paths) set output prefix . "-distrib-upside.png"
+if (paths) plot prefix . "-distrib-upside.csv" using 1:2 with lines notitle
 
 set xlabel "annual consumption ($)"
-set output prefix . "-distrib-consume.png"
-plot prefix . "-distrib-consume.csv" using 1:2 with lines notitle
+if (paths) set output prefix . "-distrib-consume.png"
+if (paths) plot prefix . "-distrib-consume.csv" using 1:2 with lines notitle
 
 set xlabel "inheritance ($)"
-set output prefix . "-distrib-inherit.png"
-plot prefix . "-distrib-inherit.csv" using 1:2 with lines notitle
+if (paths) set output prefix . "-distrib-inherit.png"
+if (paths) plot prefix . "-distrib-inherit.csv" using 1:2 with lines notitle
 
 set xrange [*:*]
 set format x "%.0f%%"
 
 set xlabel "annual change in portfolio size"
-set output prefix . "-distrib-change-p.png"
-plot prefix . "-distrib-change-p.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
+if (paths) set output prefix . "-distrib-change-p.png"
+if (paths) plot prefix . "-distrib-change-p.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
   # Splines needed because results are very noisy due to use of limited historical data.
 
 set xlabel "change in annual floor consumption"
-set output prefix . "-distrib-change-floor.png"
-plot prefix . "-distrib-change-floor.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
+if (paths) set output prefix . "-distrib-change-floor.png"
+if (paths) plot prefix . "-distrib-change-floor.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
 
 set xlabel "change in annual upside consumption"
-set output prefix . "-distrib-change-upside.png"
-plot prefix . "-distrib-change-upside.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
+if (paths) set output prefix . "-distrib-change-upside.png"
+if (paths) plot prefix . "-distrib-change-upside.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
 
 set xlabel "change in annual consumption"
-set output prefix . "-distrib-change-consume.png"
-plot prefix . "-distrib-change-consume.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
+if (paths) set output prefix . "-distrib-change-consume.png"
+if (paths) plot prefix . "-distrib-change-consume.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
 
 set ytics
 
@@ -108,35 +108,35 @@ set xrange [0:*]
 set format x "%.1s%c"
 
 set xlabel "annual floor consumption ($)"
-set output prefix . "-distrib-floor-cdf.png"
-plot prefix . "-distrib-floor.csv" using 1:($3*100) with lines notitle
+if (paths) set output prefix . "-distrib-floor-cdf.png"
+if (paths) plot prefix . "-distrib-floor.csv" using 1:($3*100) with lines notitle
 
 set xlabel "annual upside consumption ($)"
-set output prefix . "-distrib-upside-cdf.png"
-plot prefix . "-distrib-upside.csv" using 1:($3*100) with lines notitle
+if (paths) set output prefix . "-distrib-upside-cdf.png"
+if (paths) plot prefix . "-distrib-upside.csv" using 1:($3*100) with lines notitle
 
 set xlabel "annual consumption ($)"
-set output prefix . "-distrib-consume-cdf.png"
-plot prefix . "-distrib-consume.csv" using 1:($3*100) with lines notitle
+if (paths) set output prefix . "-distrib-consume-cdf.png"
+if (paths) plot prefix . "-distrib-consume.csv" using 1:($3*100) with lines notitle
 
 set xrange [*:*]
 set format x "%.0f%%"
 
 set xlabel "change in annual floor consumption"
-set output prefix . "-distrib-change-floor-cdf.png"
-plot prefix . "-distrib-change-floor.csv" using ($1*100):($3*100) with lines notitle
+if (paths) set output prefix . "-distrib-change-floor-cdf.png"
+if (paths) plot prefix . "-distrib-change-floor.csv" using ($1*100):($3*100) with lines notitle
 
 set xlabel "change in annual upside consumption"
-set output prefix . "-distrib-change-upside-cdf.png"
-plot prefix . "-distrib-change-upside.csv" using ($1*100):($3*100) with lines notitle
+if (paths) set output prefix . "-distrib-change-upside-cdf.png"
+if (paths) plot prefix . "-distrib-change-upside.csv" using ($1*100):($3*100) with lines notitle
 
 set xlabel "change in annual consumption"
-set output prefix . "-distrib-change-consume-cdf.png"
-plot prefix . "-distrib-change-consume.csv" using ($1*100):($3*100) with lines notitle
+if (paths) set output prefix . "-distrib-change-consume-cdf.png"
+if (paths) plot prefix . "-distrib-change-consume.csv" using ($1*100):($3*100) with lines notitle
 
 set xlabel "annual change in portfolio size"
-set output prefix . "-distrib-change-p-cdf.png"
-plot prefix . "-distrib-change-p.csv" using ($1*100):($3*100) with lines notitle
+if (paths) set output prefix . "-distrib-change-p-cdf.png"
+if (paths) plot prefix . "-distrib-change-p.csv" using ($1*100):($3*100) with lines notitle
 
 set xlabel age_label
 set xrange [age_low:age_high]
@@ -146,12 +146,12 @@ set yrange [*:*]
 set format y "%.0f%%"
 
 set ylabel "change in annual consumption"
-set output prefix . "-pct-change-consume.png"
-plot prefix . "-pct-change-consume.csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent change in annual consumption"
+if (paths) set output prefix . "-pct-change-consume.png"
+if (paths) plot prefix . "-pct-change-consume.csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent change in annual consumption"
 
 set ylabel "annual change in portfolio size"
-set output prefix . "-pct-change-p.png"
-plot prefix . "-pct-change-p.csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent annual change in portfolio size"
+if (paths) set output prefix . "-pct-change-p.png"
+if (paths) plot prefix . "-pct-change-p.csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent annual change in portfolio size"
 
 set ylabel "portfolio size ($)"
 set yrange [0:tp]
@@ -344,35 +344,35 @@ if (symbol ne "") plot prefix . "-linear.csv" using 1:2:(column(8 + 20) * 100) w
 symbol = word(asset_class_symbols, 21)
 if (symbol ne "") die-invalid-command-too-many-asset_classes
 
-set output prefix . "-paths-p.png"
-plot prefix . "-paths.csv" using 1:2 with lines title "Sample portfolio size paths"
+if (paths) set output prefix . "-paths-p.png"
+if (paths) plot prefix . "-paths.csv" using 1:2 with lines title "Sample portfolio size paths"
 
-set output prefix . "-pct-p.png"
-plot prefix . "-pct-p.csv" using 1:2:3:4 with errorlines title "95 percent portfolio size"
+if (paths) set output prefix . "-pct-p.png"
+if (paths) plot prefix . "-pct-p.csv" using 1:2:3:4 with errorlines title "95 percent portfolio size"
 
 set ylabel "annual consumption ($)"
 set yrange [0:consume]
-set output prefix . "-paths-consume.png"
-plot prefix . "-paths.csv" using 1:3 with lines title "Sample consumption paths"
+if (paths) set output prefix . "-paths-consume.png"
+if (paths) plot prefix . "-paths.csv" using 1:3 with lines title "Sample consumption paths"
 
-set output prefix . "-pct-consume.png"
-plot prefix . "-pct-consume.csv" using 1:2:3:4 with errorlines title "95 percent consumption"
+if (paths) set output prefix . "-pct-consume.png"
+if (paths) plot prefix . "-pct-consume.csv" using 1:2:3:4 with errorlines title "95 percent consumption"
 
 set ylabel "annual payout ($)"
 set yrange [0:annuity_payout]
-if (annuitization > 0) set output prefix . "-paths-ria.png"
-if (annuitization > 0) plot prefix . "-paths.csv" using 1:4 with lines title "Sample inflation-indexed SPIA paths"
+if (paths && annuitization > 0) set output prefix . "-paths-ria.png"
+if (paths && annuitization > 0) plot prefix . "-paths.csv" using 1:4 with lines title "Sample inflation-indexed SPIA paths"
 
-if (annuitization > 0) set output prefix . "-paths-nia.png"
-if (annuitization > 0) plot prefix . "-paths.csv" using 1:5 with lines title "Sample nominal SPIA paths"
+if (paths && annuitization > 0) set output prefix . "-paths-nia.png"
+if (paths && annuitization > 0) plot prefix . "-paths.csv" using 1:5 with lines title "Sample nominal SPIA paths"
 
 set ylabel "annual annuitization amount ($)"
 set yrange [0:annuitization]
-if (annuitization > 0) set output prefix . "-paths-ria_annuitization.png"
-if (annuitization > 0) plot prefix . "-paths.csv" using 1:6 with lines title "Sample inflation-indexed SPIA annuitization paths"
+if (paths && annuitization > 0) set output prefix . "-paths-ria_annuitization.png"
+if (paths && annuitization > 0) plot prefix . "-paths.csv" using 1:6 with lines title "Sample inflation-indexed SPIA annuitization paths"
 
-if (annuitization > 0) set output prefix . "-paths-nia_annuitization.png"
-if (annuitization > 0) plot prefix . "-paths.csv" using 1:7 with lines title "Sample nominal SPIA annuitization paths"
+if (paths && annuitization > 0) set output prefix . "-paths-nia_annuitization.png"
+if (paths && annuitization > 0) plot prefix . "-paths.csv" using 1:7 with lines title "Sample nominal SPIA annuitization paths"
 
 set yrange [0:100]
 set format y "%.0f%%"
@@ -382,163 +382,163 @@ name = word(asset_class_names, 1)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 2)
 name = word(asset_class_names, 2)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 3)
 name = word(asset_class_names, 3)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 4)
 name = word(asset_class_names, 4)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 5)
 name = word(asset_class_names, 5)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 6)
 name = word(asset_class_names, 6)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 7)
 name = word(asset_class_names, 7)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 8)
 name = word(asset_class_names, 8)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 9)
 name = word(asset_class_names, 9)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 10)
 name = word(asset_class_names, 10)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 11)
 name = word(asset_class_names, 11)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 12)
 name = word(asset_class_names, 12)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 13)
 name = word(asset_class_names, 13)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 14)
 name = word(asset_class_names, 14)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 15)
 name = word(asset_class_names, 15)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 16)
 name = word(asset_class_names, 16)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 17)
 name = word(asset_class_names, 17)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 18)
 name = word(asset_class_names, 18)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 19)
 name = word(asset_class_names, 19)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 20)
 name = word(asset_class_names, 20)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
-if (symbol ne "") set output prefix . "-pct-" . symbol . ".png"
-if (symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
+if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 21)
-if (symbol ne "") die-invalid-command-too-many-asset_classes
+if (paths && symbol ne "") die-invalid-command-too-many-asset_classes
 
 set ylabel "inflation-indexed SPIA purchase / total portfolio size"
 set yrange [0:100]
@@ -569,8 +569,30 @@ set yrange [0:*]
 set format y "%g"
 if (annuitization > 0) set output prefix . "-annuity_price.png"
 if (annuitization > 0) plot prefix . "-annuity_price.csv" using 1:2 with lines title "real actual 2014", \
-  "opal-annuity_price.csv" using 1:3 with lines title "real modeled period", \
-  "opal-annuity_price.csv" using 1:4 with lines title "real modeled cohort", \
-  "opal-annuity_price.csv" using 1:5 with lines title "nominal actual 2014", \
-  "opal-annuity_price.csv" using 1:6 with lines title "nominal modeled period", \
-  "opal-annuity_price.csv" using 1:7 with lines title "nominal modeled cohort"
+  prefix . "-annuity_price.csv" using 1:3 with lines title "real modeled period", \
+  prefix . "-annuity_price.csv" using 1:4 with lines title "real modeled cohort", \
+  prefix . "-annuity_price.csv" using 1:5 with lines title "nominal actual 2014", \
+  prefix . "-annuity_price.csv" using 1:6 with lines title "nominal modeled period", \
+  prefix . "-annuity_price.csv" using 1:7 with lines title "nominal modeled cohort"
+
+set xlabel "retirement number ($)"
+set xrange [0:*]
+set format x "%.1s%c"
+
+set ylabel "failure probability"
+set yrange [0:20]
+set format y "%.0f%%"
+if (retirement_number) set output prefix . "-rn-probability.png"
+if (retirement_number) plot prefix . "-number.csv" using 1:($2 * 100) with lines notitle
+
+set ylabel "failure length (years)"
+set yrange [0:10]
+set format y "%.0f"
+if (retirement_number) set output prefix . "-rn-length.png"
+if (retirement_number) plot prefix . "-number.csv" using 1:3 with lines notitle
+
+set ylabel "equivalent guaranteed amount ($)"
+set yrange [0:*]
+set format y "%.1s%c"
+if (retirement_number) set output prefix . "-rn-inverse-utility.png"
+if (retirement_number) plot prefix . "-number.csv" using 1:4 with lines notitle

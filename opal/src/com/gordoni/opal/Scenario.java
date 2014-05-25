@@ -778,6 +778,9 @@ public class Scenario
         public void dump_gnuplot_params(double p_max, double consume_max) throws IOException
         {
 		PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-gnuplot-params.gnuplot")));
+		out.println("paths = " + (!config.skip_validate ? 1 : 0));
+		out.println("retirement_number = " + (!config.skip_retirement_number ? 1 : 0));
+		out.println("bequest = " + (config.utility_dead_limit != 0 ? 1 : 0));
 		out.println("age_label = \"" + (config.start_age2 == null ? "age" : "age of first person") + "\"");
 		out.println("age_low = " + config.start_age);
 		int age_high = config.start_age + ss.max_years;
@@ -1078,7 +1081,6 @@ public class Scenario
 		// 	System.out.println();
 		// }
 
-		List<List<PathElement>> paths = new ArrayList<List<PathElement>>();
 		if (do_target)
 		{
 			long start = System.currentTimeMillis();
@@ -1147,6 +1149,7 @@ public class Scenario
 			System.out.println();
 		}
 
+		List<List<PathElement>> paths = new ArrayList<List<PathElement>>();
 		if (!config.skip_validate)
 		{
 			long start = System.currentTimeMillis();
