@@ -271,6 +271,7 @@ class AAMap
 		double combined_goal = 0.0;
 		double inherit_goal = 0.0;
 		double tax_goal = 0.0;
+		double wer = 0.0; // Blanchett Withdrawal Efficiency Rate, not time discounted.
 		double cost = 0.0;
 		double uct_u_ujp = scenario.utility_consume_time.utility(config.utility_join_required);
 		double consume_alive_discount = Double.NaN;
@@ -308,6 +309,8 @@ class AAMap
 				        Arrays.fill(tax_annuity_credit_expire, 0);
 			        tax.initial(p, aa);
 			}
+			double ssr_terms = 0;
+			double all_return = 1;
 			double returns_probability = 0.0;
 			double p_post_inc_neg = p;
 			double solvent_always = 1;
@@ -319,6 +322,7 @@ class AAMap
 			double combined_goal_path = 0.0;
 			double inherit_goal_path = 0.0;
 			double tax_goal_path = 0.0;
+			double wer_path = 0.0;
 			double cost_path = 0.0;
 			List<PathElement> path = null;
 			if (s < num_paths_record)
@@ -368,6 +372,7 @@ class AAMap
 
 				double amount_annual; // Contribution/withdrawal amount.
 				boolean retired = period + y >= (config.retirement_age - config.start_age) * returns.time_periods;
+				boolean compute_utility = !config.utility_retire || retired;
 				if (config.cw_schedule != null)
 				{
 					spend_annual = config.withdrawal;
@@ -464,12 +469,14 @@ class AAMap
 				p += amount_annual / returns.time_periods;
 
 				double p_preinvest = p;
+				double tot_return = 0.0;
+				for (int i = 0; i < scenario.normal_assets; i++)
+				        tot_return += aa[i] * (1 + returns_array[index][i]);
+			        ssr_terms += 1 / all_return;
+				all_return *= tot_return;
 				if (p >= 0)
 				{
 					// Invest.
-					double tot_return = 0.0;
-					for (int i = 0; i < scenario.normal_assets; i++)
-						tot_return += aa[i] * (1 + returns_array[index][i]);
 					p *= tot_return;
 				}
 				else
@@ -698,7 +705,6 @@ class AAMap
 				else
 				        path_consume = scenario.utility_consume_time.inverse_utility(consume_path_utility);
 					        // Ensure consume and jpmorgan metrics match when gamma = 1/psi.
-				boolean compute_utility = !config.utility_retire || retired;
 				double upside_alive_discount;
 				if (compute_utility)
 				{
@@ -751,7 +757,16 @@ class AAMap
 					        // Multiply by consume_alive_discount not dying because well-being is derived from being able to bequest,
 					        // not the actual bequest.
 				}
-				tax_goal_path += consume_alive_discount * tax_amount * returns.time_periods;
+ 				tax_goal_path += consume_alive_discount * tax_amount * returns.time_periods;
+				if (!config.skip_metric_wer)
+				{
+				        double sum_alive = vital_stats.bounded_sum_avg_alive[period];
+					if (period + y + 1 < vital_stats.bounded_sum_avg_alive.length)
+					        sum_alive -= vital_stats.bounded_sum_avg_alive[period + y + 1];
+					double cew = scenario.utility_consume_time.inverse_utility(combined_goal_path / sum_alive) - config.defined_benefit;
+					double ssr = bucket_p[scenario.tp_index] / ssr_terms;
+					wer_path += raw_dying * cew / ssr;
+				}
 				if (scenario.success_mode_enum == MetricsEnum.COST)
 				{
 				        // Expensive.
@@ -785,6 +800,7 @@ class AAMap
 			combined_goal += combined_goal_path * returns_probability;
 			inherit_goal += inherit_goal_path * returns_probability;
 			tax_goal += tax_goal_path * returns_probability;
+			wer += wer_path * returns_probability;
 			cost += cost_path * returns_probability;
 			// The following code is performance critical.
 		        if (generate && max_periods > 1)
@@ -843,6 +859,8 @@ class AAMap
 		        inherit_goal = 0;
 		        combined_goal = 0;
 		        tax_goal = 0;
+			wer = 0;
+			cost = 0;
 		}
 		else if (config.utility_epstein_zin)
 		{
@@ -853,6 +871,8 @@ class AAMap
 		}
 		else
 		        combined_goal /= vital_stats.bounded_sum_avg_alive[period];
+		if (config.retirement_age > config.start_age)
+		        wer = 0;
 
 		// For reporting and success map display purposes keep goals normalized across ages.
 		tw_goal /= vital_stats.sum_avg_alive[period];
@@ -860,7 +880,9 @@ class AAMap
 		floor_goal /= vital_stats.bounded_sum_avg_alive[period];
 		upside_goal /= vital_stats.bounded_sum_avg_upside_alive[period];
 		consume_goal /= vital_stats.bounded_sum_avg_alive[period];
+		inherit_goal /= vital_stats.alive[period];
 		tax_goal /= vital_stats.bounded_sum_avg_alive[period];
+		wer /= vital_stats.raw_alive[period];
 
 		if (1.0 < tw_goal && tw_goal <= 1.0 + 1e-6)
 			tw_goal = 1.0;
@@ -869,7 +891,7 @@ class AAMap
 		assert (0.0 <= tw_goal && tw_goal <= 1.0);
 		assert (0.0 <= ntw_goal && ntw_goal <= 1.0);
 
-		Metrics result_metrics = new Metrics(tw_goal, ntw_goal, floor_goal, upside_goal, consume_goal, inherit_goal, combined_goal, tax_goal, cost);
+		Metrics result_metrics = new Metrics(tw_goal, ntw_goal, floor_goal, upside_goal, consume_goal, inherit_goal, combined_goal, tax_goal, wer, cost);
 
 		String metrics_str = null;  // Useful for debugging.
 		if (!config.skip_dump_log)
@@ -916,7 +938,7 @@ class AAMap
 					for (int bucket = b0; bucket < b1; bucket++)
 					{
 						Returns local_returns = returns.clone();
-					        double tp = bucket * config.pf_retirement_number / config.retirement_number_steps;
+					        double tp = bucket * config.retirement_number_max_factor * scenario.tp_max_estimate / config.retirement_number_steps;
 						double[] p = scenario.start_p.clone();
 						p[scenario.tp_index] = tp;
 						SimulateResult res = simulate_paths(period, config.num_sequences_retirement_number, 0, p, local_returns);
@@ -1048,7 +1070,7 @@ class AAMap
 
         public TargetResult rps_target(int age, double target, Returns returns_target, boolean under_estimate) throws ExecutionException
 	{
-		double high = config.pf_guaranteed;
+	        double high = scenario.scale[scenario.tp_index].bucket_to_pf(scenario.generate_bottom_bucket);
 		double low = 0.0;
 		double high_target = Double.NaN;
 		double low_target = Double.NaN;

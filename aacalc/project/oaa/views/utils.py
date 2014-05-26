@@ -110,17 +110,17 @@ default_params = {
 
 resolution = 'medium'
 if resolution == 'low':
-    zero_bucket_size = 0.2
+    tp_zero_factor = 0.05
     scaling_factor = 1.02
     aa_steps = 50
     spend_steps = 5000
 elif resolution == 'medium':
-    zero_bucket_size = 0.1
+    tp_zero_factor = 0.02
     scaling_factor = 1.001
     aa_steps = 1000
     spend_steps = 10000  # Some noise in withdrawal map, and possibly consumption paths.
 else:
-    zero_bucket_size = 0.1
+    tp_zero_factor = 0.02
     scaling_factor = 1.0001
     aa_steps = 1000
     spend_steps = 100000
@@ -273,8 +273,6 @@ class OPALServerOverloadedError(OPALServerError):
     pass
 
 def write_scenario(dirname, s):
-    gnuplot_max_portfolio = min(max(50 * float(s['withdrawal']), 2 * start_tp(s)), 1000 * float(s['withdrawal']))
-    guaranteed_max_portfolio = 1000 * float(s['withdrawal'])
     retirement_age = dob_to_age(s['dob']) + max(0, s['retirement_year'] - datetime.utcnow().timetuple().tm_year)
     # Caution: Config.java maintains values from previous runs, so all modified values must be updated each time.
     s_only = {
@@ -282,18 +280,10 @@ def write_scenario(dirname, s):
         'skip_compare': s['retirement_number'],
         'vw_percentage': 0.04,
         'skip_validate': s['retirement_number'],
-        'zero_bucket_size': zero_bucket_size * float(s['withdrawal']),
+        'tp_zero_factor': tp_zero_factor,
         'scaling_factor': scaling_factor,
         'search' : 'hill',
         'aa_steps': aa_steps,
-        'pf_guaranteed': guaranteed_max_portfolio,
-          # Compute map using portfolio size up to 1000 times withdrawal.
-        'pf_validate': guaranteed_max_portfolio,
-          # Now that we skip dump_load we compute metrics on the same map (we used to cut off at 60 times withdrawal).
-        'pf_retirement_number': 200 * max(float(s['floor']), float(s['withdrawal'])),
-            # Worst case seen ages 70/50, risk tolerance 5%, ret_equity=ret_bonds=0, floor=20k, withdrawal=25k.
-        'pf_gnuplot': gnuplot_max_portfolio,
-          # And we record the map 100-1000 times withdrawal.
         'asset_classes': asset_class_symbols(s),
         'asset_class_names': asset_class_names(s),
         'ef': 'mvo',

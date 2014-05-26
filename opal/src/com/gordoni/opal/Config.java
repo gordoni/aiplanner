@@ -38,13 +38,14 @@ public class Config
         public boolean skip_validate_all = true; // Speed up by performing validation at a specific age rather than at every age.
 	public boolean skip_smooth = true; // Speed up by not performing smoothing.
         public boolean skip_metric_jpmorgan = true; // Speed up by not calculating jpmorgan metric when validating.
+        public boolean skip_metric_wer = true; // Speed up by not calculating withdrawal efficiency rate.
 	public boolean skip_dump_load = true; // Speed up by not dumping and loading asset allocation.
 	public boolean skip_dump_log = true; // Save disk by not dumping future maps.
 
 	// Simulation specific parameters.
 
-        public  double zero_bucket_size = 1000; // Portfolio buckets this much appart at portfolio 0.
-        public double annuity_zero_bucket_size = 100; // Taxable immediate annuity payout buckets this much appart at payout 0.
+        public double tp_zero_factor = 0.01; // Portfolio buckets this much of consume_max_est at portfolio 0.
+        public double annuity_zero_factor = 0.001; // Taxable immediate annuity payout buckets this much of consume_max_est appart at payout 0.
 
 	public double scaling_factor = 1.001; // Successive portfolio buckets this much larger.
 	public double annuity_scaling_factor = 1.001; // Successive immediate annuity buckets this much larger.
@@ -178,7 +179,7 @@ public class Config
         public double public_assistance = 0.1; // Consumption level at which public assistance kicks in, in dollars.
                // Assuming power utility set defined_benefit and public_assistance to 0 to avoid low portfolio size maximum return "wedge artifact".
                // Then get a minimum return wegde artifact as interpolated -Infinity consumption utilities back up.
-               // Can either use a smaller zero_bucket_size, use an infinitesimal value for public_assistance, or generate_interpolate=false.
+               // Can either use a smaller tp_zero_factor, use an infinitesimal value for public_assistance, or generate_interpolate=false.
                // But in this last case need to run at a much higher scale to avoid noise.
         public double public_assistance_phaseout_rate = 0.0; // Public assistance is reduced at this rate for each dollar of consumption
         public double utility_eta_2 = 3; // Consumption power utility second utility_join eta parameter.
@@ -193,18 +194,16 @@ public class Config
 	        // Cutoff at utility_cutoff. For utility_eta == 2.0, utility_cutoff linear units are equal in size to all utility above utility_cutoff.
         public double rebalance_band_hw = 0.0; // During validation and non-single step generation rebalance everything if an asset class is this far or greater from its target value.
 
-	public double pf_guaranteed = 2000000.0; // Stop the generation process early if we reach a guaranteed safe portfolio size.
+        public double map_max_factor = 2; // Multiple of tp_max_estimate at which to generate maps.
                 // Set high enough or get top left maximum return artifact.
+                // Set low for now, and increase if notice problems.
 	public double pf_fail = 0.0; // Stop the generation process early if we reach a guaranteed failed portfolio size.
                 // For a contribution sequence other than contributions followed by withdrawals, or if we allow leverage, may need to allow a negative pf_fail value.
-	public double pf_validate = 2000000.0; // Generated maps only record up to this portfolio size.
-	public double pf_retirement_number = 2000000.0; // Generated retirement number up to this portfolio size.
-	public double pf_gnuplot = 1000000.0; // Only gnuplot data up to this portfolio size.
+        public double retirement_number_max_factor = 2; // Generated retirement number up to this value times tp_max_estimate portfolio size.
         public Double gnuplot_tp = null; // Maximum taxable portfolio value to plot.
         public Double gnuplot_consume = null; // Maximum consume value to plot.
+        public double gnuplot_extra = 1.05; // Headroom to leave on plots.
         public int gnuplot_steps = 600; // Number of steps at which to gnuplot data.
-
-	public double[] goal_range = { 0.9, 0.99, 0.999, 0.9999, 1 }; // Used when dumping data to produce percentile success graphs.
 
         public int distribution_steps = 20; // Number of bucket steps for probability distribution outputs.
         public double distribution_significant = 0.02; // Lowest relative probability density to map.

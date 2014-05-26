@@ -370,7 +370,7 @@ public class Scenario
 	}
 
 	// Gnuplot doesn't support heatmaps with an exponential scale, so we have to fixed-grid the data.
-        private void dump_aa_linear_slice(AAMap map, Returns returns, double[] slice, String slice_suffix) throws IOException
+        private void dump_aa_linear_slice(AAMap map, Returns returns, double[] slice, String slice_suffix, double tp_max) throws IOException
 	{
 		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-linear" + slice_suffix + ".csv"));
 
@@ -379,16 +379,16 @@ public class Scenario
 		        double age_period = i + config.start_age * config.generate_time_periods;
  			for (int step = 0; step < config.gnuplot_steps + 1; step++)
 			{
-				double curr_pf = (config.gnuplot_steps - step) * config.pf_gnuplot / (double) config.gnuplot_steps;
+				double curr_pf = (config.gnuplot_steps - step) * tp_max / config.gnuplot_steps;
 				double[] p = slice.clone();
 				p[tp_index] = curr_pf;
 				MapElement fpb = map.lookup_interpolate(p, i);
-				String metric = f5f.format(fpb.metric_sm);
+				//String metric = f5f.format(fpb.metric_sm);
 				double[] aa = fpb.aa;
 				String aa_str = stringify_aa(fpb.aa);
 				out.print(f2f.format(age_period / config.generate_time_periods));
 				out.print("," + f3f.format(curr_pf));
-				out.print("," + metric);
+				out.print("," /* + metric */);
 				out.print("," + ((returns == null) ? "" : f4f.format(expected_return(aa, returns))));
 				out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(aa, returns))));
 				//out.print("," + f3f.format(fpb.spend > 0 ? fpb.ria_purchase(this) / fpb.spend : 0));
@@ -404,9 +404,9 @@ public class Scenario
 		out.close();
 	}
 
-        private void dump_aa_linear(AAMap map, Returns returns) throws IOException
+        private void dump_aa_linear(AAMap map, Returns returns, double tp_max) throws IOException
         {
-	    dump_aa_linear_slice(map, returns, new double[start_p.length], "");
+	    dump_aa_linear_slice(map, returns, new double[start_p.length], "", tp_max);
 	    // dump_aa_linear_slice(map, returns, new double[]{0, 10000}, "10000");
         }
 
@@ -715,42 +715,42 @@ public class Scenario
 		out.close();
 	}
 
-        // Only useful if invariant over portfolio size.
-        private void dump_average(AAMap map) throws IOException
-        {
-		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-average.csv"));
+        // // Only useful if invariant over portfolio size.
+        // private void dump_average(AAMap map) throws IOException
+        // {
+	// 	PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-average.csv"));
 
-		for (int period = 0; period < map.map.length; period++)
-		{
-		        double age = config.start_age + period / config.generate_time_periods;
-		        double ria = 0;
-		        double nia = 0;
-			double[] aa = new double[normal_assets];
-			for (int step = 1; step <= config.gnuplot_steps; step++)
-			        // step = 0 results in division by zero.
-			{
-			        double curr_pf = step * config.pf_gnuplot / (double) config.gnuplot_steps;
-				double[] p = new double[start_p.length];
-				p[tp_index] = curr_pf;
-				MapElement fpb = map.lookup_interpolate(p, period);
-				double ria_purchase = fpb.ria_purchase(this);
-				double nia_purchase = fpb.nia_purchase(this);
-				//double spend = fpb.spend;
-				//ria += ria_purchase / spend;
-				//nia += nia_purchase / spend;
-				ria += ria_purchase / curr_pf;
-				nia += nia_purchase / curr_pf;
-				for (int a = 0; a < aa.length; a++)
-				        aa[a] += fpb.aa[a];
-			}
-			ria /= config.gnuplot_steps;
-			nia /= config.gnuplot_steps;
-			for (int a = 0; a < aa.length; a++)
-			        aa[a] /= config.gnuplot_steps;
-			out.println(f2f.format(age) + "," + f3f.format(ria) + "," + f3f.format(nia) + "," + stringify_aa(aa));
-		}
-		out.close();
-        }
+	// 	for (int period = 0; period < map.map.length; period++)
+	// 	{
+	// 	        double age = config.start_age + period / config.generate_time_periods;
+	// 	        double ria = 0;
+	// 	        double nia = 0;
+	// 		double[] aa = new double[normal_assets];
+	// 		for (int step = 1; step <= config.gnuplot_steps; step++)
+	// 		        // step = 0 results in division by zero.
+	// 		{
+	// 		        double curr_pf = step * config.pf_gnuplot / config.gnuplot_steps;
+	// 			double[] p = new double[start_p.length];
+	// 			p[tp_index] = curr_pf;
+	// 			MapElement fpb = map.lookup_interpolate(p, period);
+	// 			double ria_purchase = fpb.ria_purchase(this);
+	// 			double nia_purchase = fpb.nia_purchase(this);
+	// 			//double spend = fpb.spend;
+	// 			//ria += ria_purchase / spend;
+	// 			//nia += nia_purchase / spend;
+	// 			ria += ria_purchase / curr_pf;
+	// 			nia += nia_purchase / curr_pf;
+	// 			for (int a = 0; a < aa.length; a++)
+	// 			        aa[a] += fpb.aa[a];
+	// 		}
+	// 		ria /= config.gnuplot_steps;
+	// 		nia /= config.gnuplot_steps;
+	// 		for (int a = 0; a < aa.length; a++)
+	// 		        aa[a] /= config.gnuplot_steps;
+	// 		out.println(f2f.format(age) + "," + f3f.format(ria) + "," + f3f.format(nia) + "," + stringify_aa(aa));
+	// 	}
+	// 	out.close();
+        // }
 
         private void dump_annuity_price() throws IOException
         {
@@ -835,14 +835,6 @@ public class Scenario
 	// Dump and plot the data files.
         private void dump_plot(AAMap map, Metrics[] retirement_number, List<List<PathElement>> paths, Returns returns) throws IOException, InterruptedException
 	{
-		if (returns != null)
-		{
-		        dump_aa_linear(map, returns);
-			dump_average(map);
-			dump_annuity_price();
-			dump_annuity_yield_curve();
-		}
-
 		if (!config.skip_retirement_number)
 		{
 		        dump_retirement_number(retirement_number);
@@ -864,16 +856,24 @@ public class Scenario
 		if (config.gnuplot_tp != null)
 		        tp_max = config.gnuplot_tp;
 		else
-		        tp_max *= 1.05;
+		        tp_max *= config.gnuplot_extra;
 		if (config.gnuplot_consume != null)
 		        consume_max = config.gnuplot_consume;
 		else
-		        consume_max *= 1.05;
+		        consume_max *= config.gnuplot_extra;
 
  	        dump_utility(utility_consume, "consume", consume_max);
 	        dump_utility(utility_consume_time, "consume_time", consume_max);
 		if (config.utility_dead_limit != 0)
 	                dump_utility(utility_inherit, "inherit", tp_max);
+
+		if (returns != null)
+		{
+		        dump_aa_linear(map, returns, tp_max);
+			//dump_average(map);
+			dump_annuity_price();
+			dump_annuity_yield_curve();
+		}
 
 		dump_gnuplot_params(tp_max, consume_max);
 		plot();
@@ -886,7 +886,7 @@ public class Scenario
 		PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-number.csv")));
 		for (int i = retirement_number.length - 1; i >= 0; i--)
 		{
-		        double pf = i * config.pf_retirement_number / config.retirement_number_steps;
+		        double pf = i * config.retirement_number_max_factor * tp_max_estimate / config.retirement_number_steps;
 		        double failure_chance = retirement_number[i].fail_chance();
 		        double failure_length = retirement_number[i].fail_length() * ss.vital_stats.le.get(config.retirement_age);
 			double invutil = 0.0;
@@ -1258,17 +1258,17 @@ public class Scenario
 		// Set up the scales.
 		scale = new Scale[start_p.length];
 		if (tp_index != null)
-		        scale[tp_index] = Scale.scaleFactory(config.zero_bucket_size, config.scaling_factor);
+		        scale[tp_index] = Scale.scaleFactory(config.tp_zero_factor * consume_max_estimate, config.scaling_factor);
 		if (ria_index != null)
-		        scale[ria_index] = Scale.scaleFactory(config.annuity_zero_bucket_size, config.annuity_scaling_factor);
+		        scale[ria_index] = Scale.scaleFactory(config.annuity_zero_factor * consume_max_estimate, config.annuity_scaling_factor);
 		if (nia_index != null)
-		        scale[nia_index] = Scale.scaleFactory(config.annuity_zero_bucket_size, config.annuity_scaling_factor);
+		        scale[nia_index] = Scale.scaleFactory(config.annuity_zero_factor * consume_max_estimate, config.annuity_scaling_factor);
 
 		// Calculated parameters.
 
-		generate_bottom_bucket = this.scale[tp_index].pf_to_bucket(config.pf_guaranteed);
+		generate_bottom_bucket = this.scale[tp_index].pf_to_bucket(config.map_max_factor * tp_max_estimate);
 		generate_top_bucket = this.scale[tp_index].pf_to_bucket(config.pf_fail);
-		validate_bottom_bucket = this.scale[tp_index].pf_to_bucket(config.pf_validate);
+		validate_bottom_bucket = this.scale[tp_index].pf_to_bucket(config.map_max_factor * tp_max_estimate);
 		validate_top_bucket = this.scale[tp_index].pf_to_bucket(0.0);
 		success_mode_enum = Metrics.to_enum(config.success_mode);
 
