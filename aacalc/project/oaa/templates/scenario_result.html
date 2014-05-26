@@ -53,6 +53,9 @@ Comparison: <a title="Monte Carlo simulation. AACalc improvement is the addition
 <br />
 {% endif %}
 {% if data.retirement_number %}
+{% if data.number == '-' %}
+Retirement number not found. You have a high probability of failure for all the possible retirement numbers we considered.
+{% else %}
 Retirement number: {{ data.number }} <a title="Somewhat arbitrarily chosen as the smallest examined portfolio with a probability of failure below 5%. In order for this number to be valid you need to follow the asset allocation recommendations contained herein. These recommendations are made assuming market returns are independent over time. For equities this is a good first approximation, but it ignores phenomena known as volatility predictability, momentum, and reversion to the mean. For cash, the assumption is manifestly false, but the variance of real returns on cash is small. In addition mean-variance optimization assumes returns are normally distributed, however experiments show this assumption has little practical consequence."><img src="/static/images/Information-icon.png" alt="[?]"></a>
 <br />
 <br />
@@ -61,6 +64,7 @@ Simulated risk: <a title="Monte Carlo simulation. The retirement certainty equiv
 Chance of failure (any consumption of {{ data.floor }} or less): {{ data.failure_chance }}
 <br />
 If failure occurs: {{ data.failure_length }} years weighted failure duration
+{% endif %}
 <br />
 <font size="-1">
 Retirement certainty equivalence amount:
