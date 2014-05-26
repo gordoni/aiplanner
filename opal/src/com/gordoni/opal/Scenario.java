@@ -36,6 +36,7 @@ public class Scenario
 
         public double tp_max_estimate;
         public double consume_max_estimate;
+        public double retirement_number_max_estimate;
 
         public int normal_assets;
         public int ria_aa_index;
@@ -886,7 +887,7 @@ public class Scenario
 		PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-number.csv")));
 		for (int i = retirement_number.length - 1; i >= 0; i--)
 		{
-		        double pf = i * config.retirement_number_max_factor * tp_max_estimate / config.retirement_number_steps;
+		        double pf = i * config.retirement_number_max_factor * retirement_number_max_estimate / config.retirement_number_steps;
 		        double failure_chance = retirement_number[i].fail_chance();
 		        double failure_length = retirement_number[i].fail_length() * ss.vital_stats.le.get(config.retirement_age);
 			double invutil = 0.0;
@@ -1254,6 +1255,7 @@ public class Scenario
 		        tp_max_estimate = Math.max(tp_max_estimate, 2 * (config.start_tp + config.rcr * Math.pow(config.accumulation_ramp, years) * years));
 		consume_max_estimate = config.defined_benefit + 2 * tp_max_estimate / retirement_le + ia_max;
 		tp_max_estimate += config.defined_benefit + ia_max; // Assume minimal carry over from one period to the next.
+		retirement_number_max_estimate = Math.max(0, config.floor - config.defined_benefit) * retirement_le;
 
 		// Set up the scales.
 		scale = new Scale[start_p.length];

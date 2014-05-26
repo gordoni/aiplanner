@@ -938,7 +938,7 @@ class AAMap
 					for (int bucket = b0; bucket < b1; bucket++)
 					{
 						Returns local_returns = returns.clone();
-					        double tp = bucket * config.retirement_number_max_factor * scenario.tp_max_estimate / config.retirement_number_steps;
+					        double tp = bucket * config.retirement_number_max_factor * scenario.retirement_number_max_estimate / config.retirement_number_steps;
 						double[] p = scenario.start_p.clone();
 						p[scenario.tp_index] = tp;
 						SimulateResult res = simulate_paths(period, config.num_sequences_retirement_number, 0, p, local_returns);
