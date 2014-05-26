@@ -24,7 +24,7 @@ plot prefix . "-utility-consume.csv" using 1:(consume_slope_scale * $3) with lin
 
 set ylabel "slope'"
 set format y "%g"
-set yrange [-0.001:*]
+set yrange [*:*]
 set output prefix . "-utility-slope2-consume.png"
 plot prefix . "-utility-consume.csv" using 1:4 with lines notitle
 
