@@ -194,7 +194,7 @@ def display_result(request, dirname, sample, s):
             best_fields = fields
         if best_fields:
             number, failure_chance, failure_length, metric_withdrawal = best_fields
-            data['number'] = int(float(number))
+            data['number'] = int(float(number) / 10000) * 10000
             data['failure_chance'] = '%.1f%%' % (float(failure_chance) * 100)
             data['failure_length'] = '%.1f' % float(failure_length)
             data['metric_withdrawal'] = int(float(metric_withdrawal))
