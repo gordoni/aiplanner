@@ -198,7 +198,7 @@ public class Config
                 // Set high enough or get top left maximum return artifact.
 	public double pf_fail = 0.0; // Stop the generation process early if we reach a guaranteed failed portfolio size.
                 // For a contribution sequence other than contributions followed by withdrawals, or if we allow leverage, may need to allow a negative pf_fail value.
-        public double retirement_number_max_factor = 2; // Generated retirement number up to this value times tp_max_estimate portfolio size.
+        public double retirement_number_max_factor = 5; // Generated retirement number up to this value times retirement_number_max_estimate portfolio size.
         public Double gnuplot_tp = null; // Maximum taxable portfolio value to plot.
         public Double gnuplot_consume = null; // Maximum consume value to plot.
         public double gnuplot_extra = 1.05; // Headroom to leave on plots.

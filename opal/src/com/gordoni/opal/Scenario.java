@@ -1242,20 +1242,20 @@ public class Scenario
 
 		int years = Math.max(0, config.retirement_age - config.start_age);
 		double retirement_le = ss.vital_stats.le.get(config.retirement_age);
-		double ia_max = 0;
+		double ia = 0;
 		if (ria_index != null)
-		        ia_max += start_ria;
+		        ia += start_ria;
 		if (nia_index != null)
-		        ia_max += start_nia;
+		        ia += start_nia;
 		tp_max_estimate = 0;
 		// The following scaling factors are detrmined empirically to give reasonable matches to the actual values.
 		if (!config.skip_retirement_number)
-		        tp_max_estimate = 2 * Math.max(0, config.floor - config.defined_benefit - ia_max) * retirement_le;
+		        tp_max_estimate = 2 * Math.max(0, config.floor - config.defined_benefit - ia) * retirement_le;
 		if (!config.skip_validate)
 		        tp_max_estimate = Math.max(tp_max_estimate, 2 * (config.start_tp + config.rcr * Math.pow(config.accumulation_ramp, years) * years));
-		consume_max_estimate = config.defined_benefit + 2 * tp_max_estimate / retirement_le + ia_max;
-		tp_max_estimate += config.defined_benefit + ia_max; // Assume minimal carry over from one period to the next.
-		retirement_number_max_estimate = Math.max(0, config.floor - config.defined_benefit) * retirement_le;
+		consume_max_estimate = config.defined_benefit + 2 * tp_max_estimate / retirement_le + ia;
+		tp_max_estimate += config.defined_benefit + ia; // Assume minimal carry over from one period to the next.
+		retirement_number_max_estimate = Math.max(0, config.floor - config.defined_benefit - ia) * retirement_le;
 
 		// Set up the scales.
 		scale = new Scale[start_p.length];
