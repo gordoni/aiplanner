@@ -577,7 +577,7 @@ if (annuitization > 0) plot prefix . "-annuity_price.csv" using 1:2 with lines t
   prefix . "-annuity_price.csv" using 1:7 with lines title "nominal modeled cohort"
 
 set xlabel "retirement number ($)"
-set xrange [0:*]
+set xrange [0:retirement_number_max]
 set format x "%.1s%c"
 
 set ylabel "failure probability"

@@ -810,6 +810,7 @@ public class Scenario
 		out.println("annuitization = " + annuitization);
 		out.println("consume_slope_scale = " + (1 / Math.min(utility_consume.slope(0), utility_consume.slope(consume_max) * 200)));
 		out.println("consume_ara_small = " + (- utility_consume.slope2(consume_max / 50) / utility_consume.slope(consume_max / 50)));
+		out.println("retirement_number_max = " + (config.retirement_number_max_factor * retirement_number_max_estimate));
 		List<String> ac_names = (asset_class_names == null ? asset_classes : asset_class_names);
 		StringBuilder symbols = new StringBuilder();
 		StringBuilder names = new StringBuilder();
