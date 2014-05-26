@@ -194,9 +194,8 @@ public class Config
 	        // Cutoff at utility_cutoff. For utility_eta == 2.0, utility_cutoff linear units are equal in size to all utility above utility_cutoff.
         public double rebalance_band_hw = 0.0; // During validation and non-single step generation rebalance everything if an asset class is this far or greater from its target value.
 
-        public double map_max_factor = 2; // Multiple of tp_max_estimate at which to generate maps.
+        public double map_max_factor = 5; // Multiple of tp_max_estimate at which to generate maps.
                 // Set high enough or get top left maximum return artifact.
-                // Set low for now, and increase if notice problems.
 	public double pf_fail = 0.0; // Stop the generation process early if we reach a guaranteed failed portfolio size.
                 // For a contribution sequence other than contributions followed by withdrawals, or if we allow leverage, may need to allow a negative pf_fail value.
         public double retirement_number_max_factor = 2; // Generated retirement number up to this value times tp_max_estimate portfolio size.
