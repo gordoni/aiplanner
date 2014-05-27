@@ -20,6 +20,8 @@ public class Returns implements Cloneable
 	private Random random;
         private int ret_seed;
 
+        private double[] shuffle_adjust;
+
 	public double time_periods;
 	public String ret_shuffle;
 	public boolean reshuffle;
@@ -28,6 +30,7 @@ public class Returns implements Cloneable
 	public boolean pair;
 	public boolean short_block;
 
+        public double[] gm;
         public double[] am;
         public double[] sd;
         public double[][] corr;
@@ -413,11 +416,13 @@ public class Returns implements Cloneable
 			dividend_fract[a] = divf;
 		}
 
+		gm = new double[returns.size()];
 		am = new double[returns.size()];
 		sd = new double[returns.size()];
 		for (int a = 0; a < returns.size(); a++)
                 {
 		        double[] rets = returns.get(a);
+		        gm[a] = Utils.plus_1_geomean(rets);
 		        am[a] = Utils.mean(rets);
 			sd[a] = Utils.standard_deviation(rets);
                 }
@@ -432,6 +437,17 @@ public class Returns implements Cloneable
 
 	        this.data = returns;
 	        random = new Random(ret_seed);
+		shuffle_adjust = new double[scenario.normal_assets];
+	        for (int a = 0; a < shuffle_adjust.length; a++)
+		        shuffle_adjust[a] = 1;
+		if (!ret_shuffle.equals("none") && !draw.equals("random") && !draw.equals("shuffle") && config.ret_geomean_keep)
+		{
+		        List<double[]> samples = Utils.zipDoubleArray(Arrays.asList(shuffle_returns(config.ret_geomean_keep_count)));
+		        for (int a = 0; a < shuffle_adjust.length; a++)
+			{
+			        shuffle_adjust[a] = gm[a] / Utils.plus_1_geomean(samples.get(a));
+			}
+		}
 		if (ret_shuffle.equals("once"))
 		{
 		        this.data = Arrays.asList(shuffle_returns(num_sequences));
@@ -592,10 +608,18 @@ public class Returns implements Cloneable
 				new_returns = shuffle_returns.toArray(new double[length][]);
 			}
 		}
-		else if (draw.equals("normal") || draw.equals("skew_normal"))
+		else if (draw.equals("normal") || draw.equals("log_normal") || draw.equals("skew_normal"))
                 {
 		        int ret0Len = scenario.asset_classes.size();
 			int ret0NoEfIndex = scenario.normal_assets; // Prevent randomness change due to presence of ef index.
+
+		        double[] log_normal_mean = new double[ret0NoEfIndex];
+			double[] log_normal_std_dev = new double[ret0NoEfIndex];
+			for (int a = 0; a < ret0NoEfIndex; a++)
+			{
+		                log_normal_mean[a] = Math.exp(am[a] + sd[a] * sd[a] / 2);
+				log_normal_std_dev[a] = Math.sqrt(Math.exp(sd[a] * sd[a]) - 1) * log_normal_mean[a];
+			}
 
 		        if (pair)
 			{
@@ -607,8 +631,10 @@ public class Returns implements Cloneable
 					for (int a = 0; a < ret0NoEfIndex; a++)
 					        aa[a] = random.nextGaussian();
 					new_returns[y] = Utils.vector_sum(am, Utils.vector_product(sd, Utils.matrix_vector_product(cholesky, aa)));
-					if (draw.equals("skew_normal"))
-					        for (int a = 0; a < ret0NoEfIndex; a++)
+				        for (int a = 0; a < ret0NoEfIndex; a++)
+ 					        if (draw.equals("log_normal"))
+							new_returns[y][a] = am[a] + (Math.exp(new_returns[y][a]) - log_normal_mean[a]) / log_normal_std_dev[a] * sd[a];
+					        else if (draw.equals("skew_normal"))
 						        if (new_returns[y][a] < 0)
 							        new_returns[y][a] = 1 / (1 - new_returns[y][a]) - 1;
 				}
@@ -620,10 +646,22 @@ public class Returns implements Cloneable
 				{
 					double[] aa = new double[ret0Len];
 					for (int a = 0; a < ret0NoEfIndex; a++)
+					{
 					        aa[a] = am[a] + sd[a] * random.nextGaussian();
+ 					        if (draw.equals("log_normal"))
+							aa[a] = am[a] + (Math.exp(aa[a]) - log_normal_mean[a]) / log_normal_std_dev[a] * sd[a];
+					        else if (draw.equals("skew_normal"))
+						        if (aa[a] < 0)
+							        aa[a] = 1 / (1 - aa[a]) - 1;
+					}
 				        new_returns[y] = aa;
 				}
 		        }
+
+			for (int y = 0; y < new_returns.length; y++)
+			        for (int a = 0; a < scenario.normal_assets; a++)
+				        new_returns[y][a] = (1 + new_returns[y][a]) * shuffle_adjust[a] - 1;
+
                 }
 		else
 		        assert(false);

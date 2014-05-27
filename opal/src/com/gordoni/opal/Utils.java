@@ -159,33 +159,33 @@ public class Utils
 
 	public static double plus_1_geomean(List<Double> a)
 	{
-		double prod = 1;
+	        double sum = 0;
 		for (Double i : a)
 		{
-			prod *= 1 + i;
+		        sum += Math.log(1 + i);
 		}
-		return Math.pow(prod, 1.0 / a.size());
+		return Math.exp(sum / a.size());
 	}
 
 	public static double plus_1_geomean(double[] a)
 	{
-		double prod = 1;
+		double sum = 0;
 		for (int i = 0; i < a.length; i++)
 		{
-			prod *= 1 + a[i];
+		        sum += Math.log(1 + a[i]);
 		}
-		return Math.pow(prod, 1.0 / a.length);
+		return Math.exp(sum / a.length);
 	}
 
         public static double weighted_plus_1_geo(double[] vals, double[] weights)
 	{
 	        assert(vals.length == weights.length);
-		double prod = 1;
+		double sum = 0;
 		for (int i = 0; i < vals.length; i++)
 		{
-		    prod *= Math.pow(1 + vals[i], weights[i]);
+		        sum += Math.log(1 + vals[i]) * weights[i];
 		}
-		return prod;
+		return Math.exp(sum);
 	}
 
 	public static double autocorrelation(double[] a, int offset)

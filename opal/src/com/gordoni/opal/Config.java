@@ -141,7 +141,7 @@ public class Config
 		// 10 results in noisy nia plot and 4 horizontal lines with annuities.
 		// 20 results in only slightly noisy nia plot with annuities.
         public boolean search_neighbour = false; // Whether to attempt to uncover non-local maxima by searching based on neighbouring points at a given age.
-	public Integer num_sequences_generate = 500; // Number of paths for time_varying single step or None to base off of length of returns sequences.
+	public Integer num_sequences_generate = null; // Number of paths for shuffled or time_varying generate or None to base off of length of returns sequences.
 	public boolean time_varying = false; // Whether to assume returns are stepwise dependent when performing single_step.
 	public String success_mode = "combined";
 	        // What to optimize for.  'tw' for time weighted, or 'ntw' for non-time weighted, or 'tw_simple' or
@@ -314,8 +314,12 @@ public class Config
         public String generate_draw = "random"; // How to shuffle the returns.
                 // 'random' - Draw with replacement as ret_random_block_size length sequences.
                 // 'shuffle' - Draw without replacement.
-                // 'normal' - Draw from a normal distribution matching the return statistics.
-                // 'skew_normal' - Skew normal to prevent return values less than 0% which would be catastrophic. Resulting distribution no longer matches statistics.
+                // 'normal' - Draw from a normal distribution matching the return statistics. May produce values less than zero which would is catastrophic.
+                //            Error in resulting geometric mean.
+                // 'skew_normal' - Skew normal to prevent return values less than 0%. Resulting distribution no longer matches statistics.
+                // 'log_normal' - Transform normal to a log normal distribution. Slight error in geometric mean and correlations.
+        public boolean ret_geomean_keep = true; // Whether to destroy arithmetic means and standard deviations in order to preserve geometric means when drawing.
+        public int ret_geomean_keep_count = 200000; // Number of returns to use to callibrate geometric mean preservation.
 	public int ret_random_block_size = 20; // Size of blocks in years to use when drawing returns at random.
 	public boolean ret_pair = true; // When shuffling whether to keep stock and bond returns for a given year together or treat them independently.
 	public boolean ret_short_block = true; // Make return probabilities uniform by allowing short blocks.
@@ -339,9 +343,6 @@ public class Config
 	public int retirement_age = 65; // Age at retirement of first person assuming both retire at same age.
 
 	public int num_sequences_retirement_number = 50000; // Number of paths per asset allocation map location asset allocation value retirment number.
-	public int num_sequences_success = 500; // Number of paths per asset allocation map location asset allocation value lines, or None for default.
-	        // For testing/debugging: 200 or less.
-	        // For nice smooth graphs: 500.
 
         public String target_mode = "rps"; // None not to perform targetting, 'rps' to target search over RPS, or 'rcr' to target search over RCR.
 	public List<String> target_schemes = new ArrayList<String>(Arrays.asList("file"));
@@ -349,7 +350,7 @@ public class Config
         public boolean target_sdp_baseline = true; // Whether to use SDP or the target asset allocation scheme as the target for the other to target.
         public boolean target_rebalance = false; // True to perform target generation with no rebalancing band, so the impact of rebalancing can be seen.
         public String target_shuffle = "all";
-        public String target_draw = "random";
+        public String target_draw = "log_normal";
         public int target_start_year = 1927;
         public Integer target_end_year = 2013; // None for until end of data.
 	public boolean target_short_block = true;
@@ -365,7 +366,7 @@ public class Config
         public boolean validate_interpolate = true; // Whether to interpolate lookups during validation.
                // Normally produces better results, but can cause unexpected negative infinity utility for a power utility with no floor.
 	public String validate_shuffle = "all"; // How to shuffle the returns for a validation run.
-        public String validate_draw = "random";
+        public String validate_draw = "log_normal";
         public int validate_start_year = 1927;
         public Integer validate_end_year = 2013; // None for until end of data.
 	public int generate_seed = 0; // Random seed used for generate shuffle.
