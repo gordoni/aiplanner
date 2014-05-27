@@ -189,12 +189,15 @@ home in estimating the contribution growth rate.
 Year of retirement: {{ se_form.retirement_year }}
 {{ se_form.retirement_year.errors }}
 <br />
-Minimum annual retirement consumption amount: {{ se_form.floor }}
-{{ se_form.floor.errors }}
+Required annual retirement consumption (non-discretionary amount): {{ se_form.utility_join_required }}
+{{ se_form.utility_join_required.errors }}
+<br />
+Additional desired consumption (discretionary amount): {{ se_form.utility_join_desired }}
+{{ se_form.utility_join_desired.errors }}
 <br />
 <font size="-1">
-The minimum annual consumption amount should be in today's dollars and include
-defined benefits. It will be used for reporting when failure occurs.
+The annual consumption amounts should be in today's dollars and include
+defined benefits.
 </font>
 <br />
 <br />
@@ -495,6 +498,32 @@ determines the shape of the utility function.
 <tr>
 <td>
 {% comment %} Django 1.4 supports accessing individual elements, which would do away with a lot of the messyness here. {% endcomment %}
+<input type="radio" name="utility_method" value="floor_plus_upside"
+{% if se_form.utility_method.value == 'floor_plus_upside' %}
+checked="checked"
+{% endif %}
+/>
+</td>
+<td>
+Floor plus upside utility function with luxury consumption
+{{ se_form.utility_join_slope_ratio_pct }}% as valuable as floor consumption
+(at the required consumption level), coefficients of relative
+risk aversion of {{ se_form.utility_eta_1 }} for floor spending and
+{{ se_form.utility_eta_2 }} for luxury spending, and an upside discount
+rate of {{ se_form.upside_discount_rate_pct }}%.
+{{ se_form.utility_join_slope_ratio_pct.errors }}
+{{ se_form.utility_eta_1.errors }}
+{{ se_form.utility_eta_2.errors }}
+{{ se_form.upside_discount_rate_pct.errors }}
+<br />
+<font size="-1">
+Between floor and luxury spending lies desired spending, which will have
+a blended utility function value.
+</font>
+</td>
+</tr>
+<tr>
+<td>
 <input type="radio" name="utility_method" value="ce"
 {% if se_form.utility_method.value == 'ce' %}
 checked="checked"
