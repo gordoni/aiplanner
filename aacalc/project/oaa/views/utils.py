@@ -188,6 +188,7 @@ def db(s):
 
 def display_result(request, dirname, sample, s):
     data = dict(s)
+    data['floor'] = floor(s)
     schemes = []
     if s['retirement_number']:
         f = open(dirname + '/opal-number.csv')
@@ -278,6 +279,10 @@ class OPALServerError(Exception):
 class OPALServerOverloadedError(OPALServerError):
     pass
 
+def floor(s):
+    ref = float(s['withdrawal']) if s['vw_amount'] else float(s['utility_join_required'])
+    return int(0.9 * ref)
+
 def write_scenario(dirname, s):
     retirement_age = dob_to_age(s['dob']) + max(0, s['retirement_year'] - datetime.utcnow().timetuple().tm_year)
     # Caution: Config.java maintains values from previous runs, so all modified values must be updated each time.
@@ -316,7 +321,7 @@ def write_scenario(dirname, s):
         'tax_rate_div_default': float(s['tax_rate_div_default_pct']) / 100,
         'cost_basis_method' : s['cost_basis_method'],
         'withdrawal': s['withdrawal'],
-        'floor': 0.9 * float(s['utility_join_required']),
+        'floor': floor(s),
         'utility_join_required': float(s['utility_join_required']),
         'utility_join_desired': float(s['utility_join_desired']),
         'vw_strategy': 'amount' if s['vw_amount'] else 'sdp',
