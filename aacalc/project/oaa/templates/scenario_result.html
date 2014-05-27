@@ -90,7 +90,7 @@ Retirement certainty equivalence amount:
 <br />
 <br />
 {% else %}
-{% if data.vw and data.retire %}
+{% if not data.vw_amount and data.retire %}
 Suggested initial annual consumption amount: {{ data.consume }}
 <br />
 {% endif %}
@@ -118,7 +118,7 @@ what might happen if expected market returns are diminished or equity
 volatility increases in the future.
 </p>
 {% if not data.retirement_number %}
-{% if data.vw %}
+{% if not data.vw_amount %}
 Consumption:
 <br />
 <font size="-1">
@@ -165,7 +165,7 @@ investment portfolio size will lie within the indicated region:
 <br />
 <br />
 {% endif %}
-{% if data.vw %}
+{% if not data.vw_amount %}
 Consumption map:
 <br />
 <font size="-1">
