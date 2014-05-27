@@ -31,7 +31,7 @@ default_params = {
     'sex2': None,
     'dob2': None,
     'advanced_position': False,
-    'defined_benefit_social_security': Decimal(0),
+    'defined_benefit_social_security': Decimal(20000),
     'defined_benefit_pensions': Decimal(0),
     'defined_benefit_fixed_annuities': Decimal(0),
     'retirement_number': False,
