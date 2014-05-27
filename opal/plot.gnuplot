@@ -32,7 +32,7 @@ set ytics
 
 set ylabel "absolute risk aversion"
 set format y "%g"
-set yrange [0:consume_ara_small * 1.1] # Avoids plotting possibly highly postive points near the origin.
+set yrange [0:consume_ara_max]
 set output prefix . "-utility-ara-consume.png"
 plot prefix . "-utility-consume.csv" using 1:(-$4/$3) with lines notitle
 

@@ -290,15 +290,22 @@ public class Scenario
 		load_mvo_ef(s);
         }
 
-        public void dump_utility(Utility utility, String name, double max) throws IOException
+    public double dump_utility(Utility utility, String name, double max, double c_start) throws IOException
 	{
 		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-utility-" + name + ".csv"));
+
+		double ara_max = Double.NEGATIVE_INFINITY;
 		for (int i = 0; i <= 1000; i++)
 		{
 		        double c = i * max / 1000;
 		        out.print(f6f.format(c) + "," + utility.utility(c) + "," + utility.slope(c) + "," + utility.slope2(c) + "," + utility.inverse_utility(utility.utility(c)) + "," + utility.inverse_slope(utility.slope(c)) + "\n");
+			double ara = - utility.slope2(c) / utility.slope(c);
+			if (c >= c_start && ara > ara_max)
+			        ara_max = ara;
 		}
 		out.close();
+
+		return ara_max;
 	}
 
 	private String stringify_aa(double[] aa)
@@ -777,7 +784,7 @@ public class Scenario
 		out.close();
         }
 
-        public void dump_gnuplot_params(double p_max, double consume_max) throws IOException
+        public void dump_gnuplot_params(double p_max, double consume_max, double consume_ara_max) throws IOException
         {
 		PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-gnuplot-params.gnuplot")));
 		out.println("paths = " + (!config.skip_validate ? 1 : 0));
@@ -809,7 +816,7 @@ public class Scenario
 		out.println("annuity_payout = " + payout);
 		out.println("annuitization = " + annuitization);
 		out.println("consume_slope_scale = " + (1 / Math.min(utility_consume.slope(0), utility_consume.slope(consume_max) * 200)));
-		out.println("consume_ara_small = " + (- utility_consume.slope2(consume_max / 50) / utility_consume.slope(consume_max / 50)));
+		out.println("consume_ara_max = " + consume_ara_max);
 		out.println("retirement_number_max = " + (config.retirement_number_max_factor * retirement_number_max_estimate));
 		List<String> ac_names = (asset_class_names == null ? asset_classes : asset_class_names);
 		StringBuilder symbols = new StringBuilder();
@@ -864,10 +871,12 @@ public class Scenario
 		else
 		        consume_max *= config.gnuplot_extra;
 
- 	        dump_utility(utility_consume, "consume", consume_max);
-	        dump_utility(utility_consume_time, "consume_time", consume_max);
+ 	        double consume_ara_max = dump_utility(utility_consume, "consume", consume_max, consume_max / 50);
+		        // Avoid plotting possibly highly postive points near the origin.
+		consume_ara_max *= config.gnuplot_extra;
+	        dump_utility(utility_consume_time, "consume_time", consume_max, 0);
 		if (config.utility_dead_limit != 0)
-	                dump_utility(utility_inherit, "inherit", tp_max);
+		        dump_utility(utility_inherit, "inherit", tp_max, 0);
 
 		if (returns != null)
 		{
@@ -877,7 +886,7 @@ public class Scenario
 			dump_annuity_yield_curve();
 		}
 
-		dump_gnuplot_params(tp_max, consume_max);
+		dump_gnuplot_params(tp_max, consume_max, consume_ara_max);
 		plot();
 	}
 
