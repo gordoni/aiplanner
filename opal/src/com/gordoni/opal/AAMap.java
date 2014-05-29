@@ -916,12 +916,7 @@ class AAMap
 
 	public Metrics[] simulate_retirement_number(final Returns returns) throws ExecutionException
 	{
-	        final int period = (int) Math.round((config.retirement_age - config.start_age) * returns.time_periods);
-		final int bucket_0 = 0;
-		final int bucket_1 = config.retirement_number_steps + 1;
-
-		final Metrics[] metrics = new Metrics[bucket_1 - bucket_0];
-
+		Metrics[] metrics = new Metrics[config.retirement_number_steps + 1];
 		for (int bucket = 0; bucket < config.retirement_number_steps + 1; bucket++)
 		{
 			double tp = bucket * config.retirement_number_max_factor * scenario.retirement_number_max_estimate / config.retirement_number_steps;
