@@ -458,38 +458,14 @@ Annual discount rate for consumption and bequest: {{ se_form.consume_discount_ra
 It is better to consume sooner rather than later for a variety of reasons,
 and this parameter records how much better.
 </font>
-</div>
 <br />
-Zero consumption level: {{ se_form.public_assistance }}
-{{ se_form.public_assistance.errors }}
 <br />
-<font size="-1">
-The zero consumption level is the lowest consumption level you can
-imagine; it is the value of any possible public
-assistance and imputed help from friends and family that would be received.
-The concept of
-zero consumption is important because without it a power utility
-function will assign a utility of negative infinity to a consumption
-of zero.
-</font>
-<div class="advanced">
-Phase out of zero consumption level with income:
-{{ se_form.public_assistance_phaseout_rate_pct }}%
-{{ se_form.public_assistance_phaseout_rate_pct.errors }}
+Pick one of the following choices.
 <br />
 <font size="-1">
-A phase out of 40% would mean for each dollar of income you receive
-while on public assistance your public assistance benefits would be cut by 40%.
-0% would imply public assistance is guaranteed, and would then behave much like Social Security or other defined benefits.
+Well being is valued using a utility function.
+The question here determines the shape of the utility function.
 </font>
-<br />
-<br />
-<font size="-1">
-Pick one of the following choices. Well being is valued using a utility function.
-The question here determines the degree of risk aversion which
-determines the shape of the utility function.
-</font>
-<br />
 <br />
 <table>
 <tr>

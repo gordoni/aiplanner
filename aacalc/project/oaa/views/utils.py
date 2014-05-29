@@ -99,8 +99,8 @@ default_params = {
     #'donate_inherit_discount_rate_pct': Decimal(15),
     'advanced_well_being': False,
     'consume_discount_rate_pct': Decimal('2.0'),
-    'public_assistance': Decimal(10000),
-    'public_assistance_phaseout_rate_pct': Decimal(50),
+    #'public_assistance': Decimal(10000),
+    #'public_assistance_phaseout_rate_pct': Decimal(50),
     'utility_method': 'ce',
     'utility_ce': Decimal('1.26'),
     'utility_slope_double_withdrawal': Decimal(8),
@@ -319,8 +319,6 @@ def write_scenario(dirname, s):
         'utility_dead_limit': float(s['utility_dead_limit_pct']) / 100 if s['inherit'] else 0,
         'utility_bequest_consume': s['utility_bequest_consume'],
         'consume_discount_rate': float(s['consume_discount_rate_pct']) / 100,
-        'public_assistance': s['public_assistance'],
-        'public_assistance_phaseout_rate': float(s['public_assistance_phaseout_rate_pct']) / 100,
         'utility_consume_fn': 'exponential' if s['utility_method'] == 'alpha' else 'power',
         'utility_ce': s['utility_ce'] if s['utility_method'] == 'ce' else None,
         'utility_slope_double_withdrawal': s['utility_slope_double_withdrawal'],
@@ -334,8 +332,6 @@ def write_scenario(dirname, s):
         'management_expense': float(s['expense_pct']) / 100,
         'validate_all_adjust': - float(s['neg_validate_all_adjust_pct']) / 100,
         'validate_equity_vol_adjust': float(s['validate_equity_vol_adjust_pct']) / 100,
-        'target_schemes': ('age_in_bonds', 'age_minus_10_in_bonds', 'target_date'),
-        'num_sequences_target' : 20000,
     }
     f = open(dirname + '/opal-scenario.txt', mode='w')
     for field, value in s_only.items():

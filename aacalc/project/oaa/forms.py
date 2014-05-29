@@ -141,13 +141,6 @@ class ScenarioBaseForm(forms.Form):
     consume_discount_rate_pct = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'percent_input'}),
         min_value=0)
-    public_assistance = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    public_assistance_phaseout_rate_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}),
-        min_value=0,
-        max_value=80) # Bad things happen close to 100% as decide it is better to receive public assistance now and delay consumption; messy consume plots.
     utility_method = forms.ChoiceField(
         choices=(('ce', ''), ('slope', ''), ('eta', ''), ('alpha', '')))
     utility_ce = forms.DecimalField(
@@ -225,14 +218,11 @@ class ScenarioBaseForm(forms.Form):
             raise ValidationError('No data available for simulation end year - deselect ' + ', '.join(too_late) + ', or edit simulation end year in market parameters.')
         if cleaned_data['validate_end_year'] - cleaned_data['validate_start_year'] + 1 < 40:
             raise ValidationError('Too little simulation data available - edit simulation period in market parameters.')
+        # Require a minimal defined benefit to avoid negative infinities.
+        if cleaned_data['defined_benefit_social_security'] == 0 and cleaned_data['defined_benefit_pensions'] == 0 and cleaned_data['defined_benefit_fixed_annuities'] == 0:
+            raise ValidationError('You have no Social Security or other guaranteed income.')
         if cleaned_data['utility_inherit_years'] <= 0:
             raise ValidationError('Bequest share parameter must be positive.')
-        if cleaned_data['public_assistance'] <= 0:
-            raise ValidationError('Well being zero consumption level must be positive.')
-        if cleaned_data['public_assistance'] >= cleaned_data['withdrawal']:
-            raise ValidationError('Well being zero consumption level must be less than annual retirement withdrawal amount.')
-        #if cleaned_data['inherit_nominal'] == 0:
-        #    raise ValidationError('Zero nominal size of inheritance')
         return cleaned_data
 
 class ScenarioAaForm(ScenarioBaseForm):
@@ -251,14 +241,6 @@ class ScenarioAaForm(ScenarioBaseForm):
         min_value=0)
     contribution_growth_pct = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'percent_input'}))
-
-    def clean(self):
-        cleaned_data = super(ScenarioAaForm, self).clean()
-        if self._errors:
-            return cleaned_data
-        if cleaned_data['defined_benefit_social_security'] == 0 and cleaned_data['defined_benefit_pensions'] == 0 and cleaned_data['defined_benefit_fixed_annuities'] == 0 and cleaned_data['p_traditional_iras'] == 0 and cleaned_data['p_roth_iras'] == 0 and cleaned_data['p'] == 0 and (cleaned_data['contribution'] == 0 or cleaned_data['retirement_year'] <= datetime.utcnow().timetuple().tm_year):
-            raise ValidationError('You have no financial position.')
-        return cleaned_data
 
 def check_retirement_year(cleaned_data):
     dob = cleaned_data.get('dob')
