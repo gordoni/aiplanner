@@ -75,10 +75,11 @@ class AAMap
 				// We don't run into problems any more. Not sure why.
 				// Can still run into problems in the presence of taxes.
 			        below[i] = above[i];
-			else if (bucket_f[i] - below[i] > 0.5)
+			else if (bucket_f[i] - below[i] > 0.5 && above[i] != next_map.bottom[i] + next_map.length[0] - 1)
 			{
 			        // Swap above and below so below now contains the closest bucket.
 			        // This will allow us to get the most accurate extrapolations, since the distance we have to extrapolate over is less.
+			        // We don't swap if above is zero, because there might be a negative infinity utility.
 			        int tmp = below[i];
 			        below[i] = above[i];
 			        above[i] = tmp;
@@ -121,9 +122,11 @@ class AAMap
 					// Interpolate, but avoid -Infinity * 0 = NaN and -Infinity + -Infinity * -ve = NaN.
 					double delta = map_above.metric_sm;
 					if (!Double.isInfinite(delta))
-					    delta -= map_below.metric_sm;
-					if (weight_extrapolate != 0 && !(Double.isInfinite(metric) && Double.isInfinite(delta)))
-						metric += weight_extrapolate * delta;
+					{
+					        delta -= map_below.metric_sm;
+						if (weight_extrapolate != 0 && !Double.isInfinite(metric))
+						        metric += weight_extrapolate * delta;
+					}
 					if (maintain_all)
 					{
 					        Metrics metrics_below = map_below.results.metrics;
@@ -132,10 +135,12 @@ class AAMap
 						{
 							delta = metrics_above.get(m);
 							if (!Double.isInfinite(delta))
+							{
 								delta -= metrics_below.get(m);
-							double met = metrics.get(m);
-							if (weight_extrapolate != 0 && !(Double.isInfinite(met) && Double.isInfinite(delta)))
-								metrics.set(m, met + weight_extrapolate * delta);
+								double met = metrics.get(m);
+								if (weight_extrapolate != 0 && !Double.isInfinite(met))
+								        metrics.set(m, met + weight_extrapolate * delta);
+							}
 						}
 					}
 				}
@@ -895,7 +900,7 @@ class AAMap
 		if (!config.skip_dump_log)
 		{
 		        StringBuilder sb = new StringBuilder();
-                        sb.append("{'CONSUME': ");   sb.append(result_metrics.get(MetricsEnum.CONSUME));
+                        sb.append("{'CONSUME': ");     sb.append(result_metrics.get(MetricsEnum.CONSUME));
                         sb.append(", 'INHERIT': ");    sb.append(result_metrics.get(MetricsEnum.INHERIT));
                         sb.append(", 'SUBMETRICS': "); sb.append(metrics.get(MetricsEnum.COMBINED));
                         //sb.append(", 'SUBCONSUME': "); sb.append(metrics.get(MetricsEnum.CONSUME));

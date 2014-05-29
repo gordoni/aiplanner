@@ -134,7 +134,7 @@ public class Utils
 	public static double sum(double... vals)
 	{
 		double x = 0.0;
-		double floor = (vals.length == 0 ? 0 : vals[0]); // Avoid loss of precision summing many large nearby values.
+		double floor = (vals.length == 0 || Double.isInfinite(vals[0]) ? 0 : vals[0]); // Avoid loss of precision summing many large nearby values.
 		for (Double val : vals)
 		{
 			x += val - floor;
@@ -145,7 +145,7 @@ public class Utils
 	public static double sum(List<Double> vals)
 	{
 		double x = 0.0;
-		double floor = (vals.size() == 0 ? 0 : vals.get(0)); // Avoid loss of precision summing many large nearby values.
+		double floor = (vals.size() == 0 || Double.isInfinite(vals.get(0)) ? 0 : vals.get(0)); // Avoid loss of precision summing many large nearby values.
 		for (double val : vals)
 		{
 			x += val - floor;

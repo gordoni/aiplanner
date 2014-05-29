@@ -86,7 +86,7 @@ public class MapElement implements Cloneable
 	        return "========" +
 		        "\n  rps: " + Arrays.toString(rps) +
 		        "\n  aa: " + Arrays.toString(aa) +
-		        "\n  spend: " + spend +
+		        "\n  spendable: " + spend +
 		        "\n  metric_sm: " + metric_sm +
 		        (results == null ? "" : "\n  metrics: " + results.metrics) +
 		        (sim_string == null ? "" : "\n  simulate: " + sim_string) +
