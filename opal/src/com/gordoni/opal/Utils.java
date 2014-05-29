@@ -58,6 +58,21 @@ public class Utils
 		return x;
 	}
 
+	public static double[][] zipDoubleArrayArray(double[][] arrays)
+	{
+	        int len0 = arrays[0].length;
+		int len1 = arrays.length;
+		double[][] result = new double[len0][len1];
+		for (int i = 0; i < len0; i++)
+		{
+			for (int j = 0; j < len1; j++)
+			{
+			        result[i][j] = arrays[j][i];
+			}
+		}
+		return result;
+	}
+
 	public static List<double[]> zipDoubleArray(List<double[]> lists)
 	{
 		List<double[]> result = new ArrayList<double[]>();
@@ -119,21 +134,23 @@ public class Utils
 	public static double sum(double... vals)
 	{
 		double x = 0.0;
+		double floor = (vals.length == 0 ? 0 : vals[0]); // Avoid loss of precision summing many large nearby values.
 		for (Double val : vals)
 		{
-			x += val;
+			x += val - floor;
 		}
-		return x;
+		return vals.length * floor + x;
 	}
 
 	public static double sum(List<Double> vals)
 	{
 		double x = 0.0;
+		double floor = (vals.size() == 0 ? 0 : vals.get(0)); // Avoid loss of precision summing many large nearby values.
 		for (double val : vals)
 		{
-			x += val;
+			x += val - floor;
 		}
-		return x;
+		return vals.size() * floor + x;
 	}
 
 	public static double mean(List<Double> vals)
@@ -311,14 +328,14 @@ public class Utils
 		        return r / (sda * sdb);
 	}
 
-        public static double[][] correlation_returns(List<double[]> returns)
+        public static double[][] correlation_returns(double[][] returns)
         {
-                double[][] a = new double[returns.size()][returns.size()];
+                double[][] a = new double[returns.length][returns.length];
 		for (int i = 0; i < a.length; i++)
                 {
 		        for (int j = 0; j < i; j++)
 		        {
-			        a[i][j] = correlation(returns.get(i), returns.get(j), true);
+			        a[i][j] = correlation(returns[i], returns[j], true);
 			}
 			a[i][i] = 1.0;
 		}

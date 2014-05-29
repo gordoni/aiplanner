@@ -958,7 +958,7 @@ public class Scenario
 				// System.err.println((config.generate_start_year + minloc) + " " + (minval - 1));
 			}
 			// System.out.println(Arrays.deepToString(Utils.covariance_returns(returns)));
-			// System.out.println(Arrays.deepToString(Utils.correlation_returns(returns)));
+			// System.out.println(Arrays.deepToString(Utils.correlation_returns(returns.toArray(new double[0][]))));
 			System.out.println();
 
 			System.out.println("Generated returns:");
@@ -972,7 +972,7 @@ public class Scenario
 			}
 			System.out.println();
 			// System.out.println(Arrays.deepToString(Utils.covariance_returns(ac_returns)));
-			// System.out.println(Arrays.deepToString(Utils.correlation_returns(ac_returns)));
+			// System.out.println(Arrays.deepToString(Utils.correlation_returns(ac_returns.toArray(new double[0][]))));
 
 			if (do_tax)
 			{
@@ -1002,7 +1002,7 @@ public class Scenario
 			{
 			        vw_strategy = vw;
 			        AAMap map_compare = AAMap.factory(this, aa, null);
-				PathMetricsResult pm = map_compare.path_metrics(config.validate_age, start_p, config.num_sequences_validate, config.validate_seed, returns_validate);
+				PathMetricsResult pm = map_compare.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
 				System.out.printf("Compare %s/%s: %f\n", aa, vw, pm.mean(success_mode_enum));
 			}
 		}
@@ -1112,7 +1112,7 @@ public class Scenario
 					config.rebalance_band_hw = 0.0;
 				AAMap baseline_map = (config.target_sdp_baseline ? map_loaded : map_compare);
 				AAMap target_map = (config.target_sdp_baseline ? map_compare : map_loaded);
-				PathMetricsResult pm = baseline_map.path_metrics(config.validate_age, start_p, config.num_sequences_target, 0, returns_target);
+				PathMetricsResult pm = baseline_map.path_metrics(config.validate_age, start_p, config.num_sequences_target, false, 0, returns_target);
 				config.rebalance_band_hw = keep_rebalance_band;
 				Metrics means = pm.means;
 				Metrics standard_deviations = pm.standard_deviations;
@@ -1178,14 +1178,14 @@ public class Scenario
 			        PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-ce.csv")));
 			        for (int age = config.start_age; age < config.start_age + ss.max_years; age++)
 				{
-				        PathMetricsResult pm = map_loaded.path_metrics(age, start_p, config.num_sequences_validate, config.validate_seed, returns_validate);
+				        PathMetricsResult pm = map_loaded.path_metrics(age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
 					double ce = utility_consume.inverse_utility(pm.means.get(MetricsEnum.CONSUME) / ss.vital_stats.metric_divisor(MetricsEnum.CONSUME, age));
 					out.println(age + "," + f7f.format(ce));
 
 				}
 				out.close();
 			}
-			PathMetricsResult pm = map_loaded.path_metrics(config.validate_age, start_p, config.num_sequences_validate, config.validate_seed, returns_validate);
+			PathMetricsResult pm = map_loaded.path_metrics(config.validate_age, start_p, config.num_sequences_validate, true, config.validate_seed, returns_validate);
 			paths = pm.paths;
 			pm.print();
 			double elapsed = (System.currentTimeMillis() - start) / 1000.0;
@@ -1371,13 +1371,13 @@ public class Scenario
 
 		returns_generate = null;
 		if (do_generate || do_target  || do_tax)
-		        returns_generate = new Returns(this, hist, config, config.generate_seed, config.time_varying, config.generate_start_year, config.generate_end_year, config.num_sequences_generate, config.generate_time_periods, config.generate_ret_equity, config.generate_ret_bonds, config.ret_risk_free, config.generate_ret_inflation, config.management_expense, config.generate_shuffle, config.ret_reshuffle, config.generate_draw, config.ret_random_block_size, config.ret_pair, config.ret_short_block, config.generate_all_adjust, config.generate_equity_vol_adjust);
+		        returns_generate = new Returns(this, hist, config, config.generate_seed, false, config.generate_start_year, config.generate_end_year, config.num_sequences_generate, config.generate_time_periods, config.generate_ret_equity, config.generate_ret_bonds, config.ret_risk_free, config.generate_ret_inflation, config.management_expense, config.generate_shuffle, config.ret_reshuffle, config.generate_draw, config.ret_bootstrap_block_size, config.ret_pair, config.ret_short_block, config.generate_all_adjust, config.generate_equity_vol_adjust);
 
 		returns_target = null;
 		if (do_target)
-		        returns_target = new Returns(this, hist, config, config.target_seed, false, config.target_start_year, config.target_end_year, config.num_sequences_target, config.target_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.target_shuffle, config.ret_reshuffle, config.target_draw, config.ret_random_block_size, config.ret_pair, config.target_short_block, config.validate_all_adjust, config.validate_equity_vol_adjust);
+		        returns_target = new Returns(this, hist, config, config.target_seed, false, config.target_start_year, config.target_end_year, config.num_sequences_target, config.target_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.target_shuffle, config.ret_reshuffle, config.target_draw, config.ret_bootstrap_block_size, config.ret_pair, config.target_short_block, config.validate_all_adjust, config.validate_equity_vol_adjust);
 
-		returns_validate = new Returns(this, hist, config, config.validate_seed, false, config.validate_start_year, config.validate_end_year, config.num_sequences_validate, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.validate_shuffle, config.ret_reshuffle, config.validate_draw, config.ret_random_block_size, config.ret_pair, config.ret_short_block, config.validate_all_adjust, config.validate_equity_vol_adjust);
+		returns_validate = new Returns(this, hist, config, config.validate_seed, !config.skip_retirement_number, config.validate_start_year, config.validate_end_year, config.num_sequences_validate, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.validate_shuffle, config.ret_reshuffle, config.validate_draw, config.ret_bootstrap_block_size, config.ret_pair, config.ret_short_block, config.validate_all_adjust, config.validate_equity_vol_adjust);
 
  		if (returns_generate != null)
 		{

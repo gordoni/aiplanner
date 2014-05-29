@@ -76,7 +76,7 @@ public class AAMapGenerate extends AAMap
 		String note;
 		if (results == null)
 		{
-		        results = simulate(aa, p, period, config.num_sequences_generate, 0, true, returns);
+		    results = simulate(aa, p, period, config.num_sequences_generate, 0, true, returns, 0);
 			me.cache.put(key, results);
 			note = results.metrics_str;
 	        }
@@ -146,7 +146,7 @@ public class AAMapGenerate extends AAMap
 	    if (d_index == dimensions.size())
 	    {
 		    // Don't cache results because we don't have the memory to store a large number of results.
-		    SimulateResult results = simulate(current_aa, p, period, config.num_sequences_generate, 0, true, returns);
+		    SimulateResult results = simulate(current_aa, p, period, config.num_sequences_generate, 0, true, returns, 0);
 		    if ((me.results == null) || (search_difference(results, me.results) > 0))
 		    {
 		            me.aa = current_aa;

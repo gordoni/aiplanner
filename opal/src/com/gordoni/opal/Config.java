@@ -39,6 +39,7 @@ public class Config
 	public boolean skip_smooth = true; // Speed up by not performing smoothing.
         public boolean skip_metric_jpmorgan = true; // Speed up by not calculating jpmorgan metric when validating.
         public boolean skip_metric_wer = true; // Speed up by not calculating withdrawal efficiency rate.
+        public boolean skip_sample_cholesky = true; // Speedup simulation by using the returns Cholesky matrix for the trial sample Cholesky matrix.
 	public boolean skip_dump_load = true; // Speed up by not dumping and loading asset allocation.
 	public boolean skip_dump_log = true; // Save disk by not dumping future maps.
 
@@ -118,7 +119,7 @@ public class Config
 	public double ret_borrow = 0.0; // Annual cost rate when portfolio is negative. Also annual cost for cost metric.
         public double min_safe_le = 0.0; // Minimum safe_aa holding divided by then life expectancy.
 
-	public int spend_steps = 1000; // Number of portfolio expenditure steps.
+	public int spend_steps = 10000; // Number of portfolio expenditure steps.
 
         public String vw_strategy = "sdp";
                 // Variable withdrawal strategy to use.
@@ -142,7 +143,6 @@ public class Config
 		// 20 results in only slightly noisy nia plot with annuities.
         public boolean search_neighbour = false; // Whether to attempt to uncover non-local maxima by searching based on neighbouring points at a given age.
 	public Integer num_sequences_generate = null; // Number of paths for shuffled or time_varying generate or None to base off of length of returns sequences.
-	public boolean time_varying = false; // Whether to assume returns are stepwise dependent when performing single_step.
 	public String success_mode = "combined";
 	        // What to optimize for.  'tw' for time weighted, or 'ntw' for non-time weighted, or 'tw_simple' or
                 // 'ntw_simple' to ignore partial year solvency and success through death,
@@ -311,16 +311,23 @@ public class Config
 	        // 'once' - A single shuffled set of returns will be used.
 	        // 'all' - The returns will be shuffled at each opportunity.
 	public boolean ret_reshuffle = false; // Whether to re-shuffle for different asset allocation choices at the same asset allocation map location.
-        public String generate_draw = "random"; // How to shuffle the returns.
-                // 'random' - Draw with replacement as ret_random_block_size length sequences.
+        public String generate_draw = "log_normal"; // How to shuffle the returns.
+                // 'bootstrap' - Draw with replacement as ret_bootstrap_block_size length sequences.
                 // 'shuffle' - Draw without replacement.
                 // 'normal' - Draw from a normal distribution matching the return statistics. May produce values less than zero which would is catastrophic.
                 //            Error in resulting geometric mean.
                 // 'skew_normal' - Skew normal to prevent return values less than 0%. Resulting distribution no longer matches statistics.
                 // 'log_normal' - Transform normal to a log normal distribution. Slight error in geometric mean and correlations.
+        public Integer ret_resample = 1; // For distribution based draws whether and how to treat the underlying returns as a descriptive sample or population.
+                // Treating as a sample means for each draw we generate a new sequence of returns from the underlying returns statistics every this many draws,
+                // use its statistics as the population statistics, and from that produce the draw. This allows us to get a draw that is perpetually good
+                // or bad, simulating that the underlying returns differed from their population.
+                // Setting this to null means we produce the draw directly from the underlying return statistics.
+                // Setting this to a value greater than 1, we find we need to increase num_sequences to get the same accuracy,
+                // and cost of increasing num_sequences more than offsets the performance savings.
         public boolean ret_geomean_keep = true; // Whether to destroy arithmetic means and standard deviations in order to preserve geometric means when drawing.
-        public int ret_geomean_keep_count = 200000; // Number of returns to use to callibrate geometric mean preservation.
-	public int ret_random_block_size = 20; // Size of blocks in years to use when drawing returns at random.
+        public int ret_geomean_keep_count = 20000; // Number of returns sequences to use to callibrate geometric mean preservation.
+	public int ret_bootstrap_block_size = 20; // Size of blocks in years to use when drawing returns using bootstrap.
 	public boolean ret_pair = true; // When shuffling whether to keep stock and bond returns for a given year together or treat them independently.
 	public boolean ret_short_block = true; // Make return probabilities uniform by allowing short blocks.
                 // Short blocks may be generated from the beginning and end of the original returns sequence, and for the initial block of the generated sequence.
@@ -342,8 +349,6 @@ public class Config
 	public Integer years = null; // Years to run. Set to None to use the full death array length.
 	public int retirement_age = 65; // Age at retirement of first person assuming both retire at same age.
 
-	public int num_sequences_retirement_number = 50000; // Number of paths per asset allocation map location asset allocation value retirment number.
-
         public String target_mode = "rps"; // None not to perform targetting, 'rps' to target search over RPS, or 'rcr' to target search over RCR.
 	public List<String> target_schemes = new ArrayList<String>(Arrays.asList("file"));
                 // Asset allocation schemes to use in targetting. "sdp", "file" for validate=datafile, "fixed", "age_in_bonds", "age_minus_10_in_bonds", or "target_date".
@@ -354,7 +359,6 @@ public class Config
         public int target_start_year = 1927;
         public Integer target_end_year = 2013; // None for until end of data.
 	public boolean target_short_block = true;
-        public int num_sequences_target = 100000; // Number of paths for a targeting attempt.
 
         public List<String> compare_aa = new ArrayList<String>(Arrays.asList("age_in_bonds", "age_minus_10_in_bonds", "target_date"));
                 // Asset allocation schemes to use in comparing. "file" for validate=datafile, "fixed", "age_in_bonds", "age_minus_10_in_bonds", or "target_date".
@@ -369,12 +373,22 @@ public class Config
         public String validate_draw = "log_normal";
         public int validate_start_year = 1927;
         public Integer validate_end_year = 2013; // None for until end of data.
+
 	public int generate_seed = 0; // Random seed used for generate shuffle.
 	public int target_seed = 1; // Random seed used for target shuffle.
 	public int validate_seed = 76254; // Random seed used for validation shuffle.
-	public Integer num_sequences_validate = 100000; // Number of paths for a validation run.
-	public int path_metrics_bucket_size = 1000; // How many paths to evaluate at once.
+
+	public int num_sequences_retirement_number = 20000; // Number of paths per location for retirement number.
+        public int num_sequences_target = 20000; // Number of paths per targeting attempt.
+	public Integer num_sequences_validate = 50000; // Number of paths for a validation run.
+                // 20000 would be fine. The accuracy of the metric is then around 1%.
+                // But since we have spent so much time generating a map we might spend a little extra evaluating it more accurately.
+                // Not too much though, since we also use this value for any comparison runs, so we may run several times.
+
+	public int path_metrics_bucket_size = 200; // How many paths to evaluate at once.
 	        // Smaller allows better computation of the standard deviation of success probabilities, but takes more time.
+        public int returns_cache_size = 100; // How many buckets of path_metrics_bucket size returns sequences to pre-calculate.
+
 	public boolean validate_dump = false; // Whether to dump paths and aa-linear for validation runs.
 
         // Static values that can't be changed from run to run.

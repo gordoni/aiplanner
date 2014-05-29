@@ -3,6 +3,7 @@ package com.gordoni.opal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -205,7 +206,7 @@ class AAMap
 
 	// Simulation core.
 	@SuppressWarnings("unchecked")
-        protected SimulateResult simulate(double[] initial_aa, double[] bucket_p, int period, Integer num_sequences, int num_paths_record, boolean generate, Returns returns)
+	        protected SimulateResult simulate(double[] initial_aa, double[] bucket_p, int period, Integer num_sequences, int num_paths_record, boolean generate, Returns returns, int bucket)
 	{
 		boolean cost_basis_method_immediate = config.cost_basis_method.equals("immediate");
 		boolean variable_withdrawals = !scenario.vw_strategy.equals("amount") && !scenario.vw_strategy.equals("retirement_amount");
@@ -233,7 +234,7 @@ class AAMap
 			len_available = returns.data.size() - step_periods + 1;
 
 		int num_paths;
-		if ((num_sequences != null) && (!generate || config.time_varying))
+		if (num_sequences != null && !generate)
 			num_paths = num_sequences;
 		else
 			num_paths = len_available;
@@ -328,17 +329,14 @@ class AAMap
 			if (s < num_paths_record)
 			        path = new ArrayList<PathElement>();
 			int index;
-			if (returns.ret_shuffle.equals("all") && (!generate || config.time_varying))
+			if (!generate && returns.ret_shuffle.equals("all"))
 			{
-				if (!generate || returns.reshuffle)
+				if (returns.reshuffle)
 					returns_array = returns.shuffle_returns(return_periods);
 				else
-				        returns_array = returns.shuffle_returns_cached(s, return_periods);
+				        returns_array = returns.shuffle_returns_cached(bucket, s, return_periods);
 				len_returns = return_periods;
-				if (generate)
-				        index = period;
-				else
-				        index = 0;
+				index = 0;
 				returns_probability = 1.0 / num_paths;
 			}
 			else
@@ -910,9 +908,9 @@ class AAMap
 	}
 
 	// Validation.
-        private SimulateResult simulate_paths(int period, Integer num_sequences, int num_paths_record, double[] p, Returns returns)
+        private SimulateResult simulate_paths(int period, Integer num_sequences, int num_paths_record, double[] p, Returns returns, int bucket)
 	{
-	        SimulateResult res = simulate(null, p, period, num_sequences, num_paths_record, false, returns);
+	        SimulateResult res = simulate(null, p, period, num_sequences, num_paths_record, false, returns, bucket);
 		return res;
 	}
 
@@ -924,32 +922,14 @@ class AAMap
 
 		final Metrics[] metrics = new Metrics[bucket_1 - bucket_0];
 
-		final int bucketsPerTask = ((int) Math.ceil((bucket_1 - bucket_0) / (double) config.tasks_validate));
-		List<Callable<Integer>> tasks = new ArrayList<Callable<Integer>>();
-		for (int block_bucket_1 = bucket_1; block_bucket_1 > bucket_0; block_bucket_1 -= bucketsPerTask)
+		for (int bucket = 0; bucket < config.retirement_number_steps + 1; bucket++)
 		{
-			final int b1 = block_bucket_1;
-			tasks.add(new Callable<Integer>()
-			{
-				public Integer call()
-				{
-					Thread.currentThread().setPriority((Thread.MIN_PRIORITY + Thread.NORM_PRIORITY) / 2);
-					int b0 = Math.max(bucket_0, b1 - bucketsPerTask);
-					for (int bucket = b0; bucket < b1; bucket++)
-					{
-						Returns local_returns = returns.clone();
-					        double tp = bucket * config.retirement_number_max_factor * scenario.retirement_number_max_estimate / config.retirement_number_steps;
-						double[] p = scenario.start_p.clone();
-						p[scenario.tp_index] = tp;
-						SimulateResult res = simulate_paths(period, config.num_sequences_retirement_number, 0, p, local_returns);
-						metrics[bucket] = res.metrics;
-					}
-					return null;
-				}
-			});
+			double tp = bucket * config.retirement_number_max_factor * scenario.retirement_number_max_estimate / config.retirement_number_steps;
+			double[] p = scenario.start_p.clone();
+			p[scenario.tp_index] = tp;
+			PathMetricsResult pm = path_metrics(config.retirement_age, p, config.num_sequences_retirement_number, false, config.validate_seed, returns);
+			metrics[bucket] = pm.means;
 		}
-
-		invoke_all(tasks);
 
 		return metrics;
 	}
@@ -993,11 +973,15 @@ class AAMap
 	}
 
 
-	public PathMetricsResult path_metrics(final int age, final double[] p, Integer num_sequences, final int seed, final Returns returns) throws ExecutionException
+        public PathMetricsResult path_metrics(final int age, final double[] p, Integer num_sequences, boolean record_paths, final int seed, final Returns returns) throws ExecutionException
 	{
-	        double max_paths = Math.max(config.max_distrib_paths, Math.max(config.max_pct_paths, Math.max(config.max_delta_paths, config.max_display_paths)));
-		if (!config.skip_metric_jpmorgan)
-		        max_paths = Math.max(max_paths, config.max_jpmorgan_paths);
+	        double max_paths = 0;
+		if (record_paths)
+		{
+		        max_paths = Math.max(config.max_distrib_paths, Math.max(config.max_pct_paths, Math.max(config.max_delta_paths, config.max_display_paths)));
+			if (!config.skip_metric_jpmorgan)
+			        max_paths = Math.max(max_paths, config.max_jpmorgan_paths);
+		}
 
 		// Compute paths in batches so that we can calculate a sample standard deviation of the mean.
 		Integer batch_size;
@@ -1026,17 +1010,19 @@ class AAMap
 		for (int i0 = 0; i0 < num_batches; i0 += batchesPerTask)
 		{
 			final int fi0 = i0;
+			final int fseed = random.nextInt();
 			tasks.add(new Callable<Integer>()
 			{
 				public Integer call()
 				{
 					Thread.currentThread().setPriority((Thread.MIN_PRIORITY + Thread.NORM_PRIORITY) / 2);
+					Random rand = new Random(fseed);
 					int i1 = Math.min(fnum_batches, fi0 + batchesPerTask);
 					for (int i = fi0; i < i1; i++)
 					{
 						Returns local_returns = returns.clone();
-						local_returns.setSeed(random.nextInt());
-						results[i] = simulate_paths((int) Math.round((age - config.start_age) * returns.time_periods), fbatch_size, num_paths_record, p, local_returns);
+						local_returns.setSeed(rand.nextInt());
+						results[i] = simulate_paths((int) Math.round((age - config.start_age) * returns.time_periods), fbatch_size, num_paths_record, p, local_returns, i);
 						if (!config.skip_metric_jpmorgan)
 						        results[i].metrics.set(MetricsEnum.JPMORGAN, jpmorgan_metric(age, results[i].paths, fnum_batches, returns));
 					}
@@ -1081,7 +1067,7 @@ class AAMap
 			double mid = (high + low) / 2;
 			double p_mid[] = scenario.start_p.clone();
 			p_mid[scenario.tp_index] = mid;
-			PathMetricsResult r = path_metrics(age, p_mid, config.num_sequences_target, 0, returns_target);
+			PathMetricsResult r = path_metrics(age, p_mid, config.num_sequences_target, false, 0, returns_target);
 			target_mean = r.means.get(scenario.success_mode_enum);
 			if (target_mean == target && first_time)
 			{
@@ -1127,7 +1113,7 @@ class AAMap
 			        AAMapGenerate map_precise = new AAMapGenerate(scenario, returns_generate);
 			        map_loaded = new AAMapDumpLoad(scenario, map_precise);
 			}
-			PathMetricsResult r = map_loaded.path_metrics(age, scenario.start_p, config.num_sequences_target, 0, returns_target);
+			PathMetricsResult r = map_loaded.path_metrics(age, scenario.start_p, config.num_sequences_target, false, 0, returns_target);
 			target_mean = r.means.get(scenario.success_mode_enum);
 			if (target_mean == target && first_time)
 			{

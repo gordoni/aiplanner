@@ -15,7 +15,7 @@ public class Returns implements Cloneable
         public List<double[]> original_data;
         public double[][] returns_unshuffled;
         public double[] returns_unshuffled_probability;
-        private List<double[][]> returns_cache = new ArrayList<double[][]>();
+        private double[][][][] returns_cache;
 
 	private Random random;
         private int ret_seed;
@@ -80,7 +80,7 @@ public class Returns implements Cloneable
 		return res;
 	}
 
-        public Returns(Scenario scenario, HistReturns hist, Config config, int ret_seed, boolean cache_returns, int start_year, Integer end_year, Integer num_sequences, double time_periods, Double ret_equity, Double ret_bonds, double ret_risk_free, Double ret_inflation, double management_expense, String ret_shuffle, boolean reshuffle, String draw, int random_block_size, boolean pair, boolean short_block, double all_adjust, double equity_vol_adjust)
+        public Returns(Scenario scenario, HistReturns hist, Config config, int ret_seed, boolean cache_returns, int start_year, Integer end_year, Integer num_sequences, double time_periods, Double ret_equity, Double ret_bonds, double ret_risk_free, Double ret_inflation, double management_expense, String ret_shuffle, boolean reshuffle, String draw, int bootstrap_block_size, boolean pair, boolean short_block, double all_adjust, double equity_vol_adjust)
 	{
 	        this.scenario = scenario;
 	        this.config = config;
@@ -90,8 +90,8 @@ public class Returns implements Cloneable
 	        this.ret_shuffle = ret_shuffle;
 		this.reshuffle = reshuffle;
 		this.draw = draw;
-		this.block_size = (random_block_size == 0 ? 1 : (int) Math.round(random_block_size * time_periods));
-		assert(time_periods >= 1 || random_block_size == 0 || Math.round(1.0 / time_periods) * this.block_size == random_block_size);
+		this.block_size = (bootstrap_block_size == 0 ? 1 : (int) Math.round(bootstrap_block_size * time_periods));
+		assert(time_periods >= 1 || bootstrap_block_size == 0 || Math.round(1.0 / time_periods) * this.block_size == bootstrap_block_size);
 		this.pair = pair;
 		this.short_block = short_block;
 
@@ -416,17 +416,19 @@ public class Returns implements Cloneable
 			dividend_fract[a] = divf;
 		}
 
+		double[][] array_returns = new double[returns.size()][];
 		gm = new double[returns.size()];
 		am = new double[returns.size()];
 		sd = new double[returns.size()];
 		for (int a = 0; a < returns.size(); a++)
                 {
 		        double[] rets = returns.get(a);
+			array_returns[a] = rets;
 		        gm[a] = Utils.plus_1_geomean(rets);
 		        am[a] = Utils.mean(rets);
 			sd[a] = Utils.standard_deviation(rets);
                 }
-                corr = Utils.correlation_returns(returns);
+                corr = Utils.correlation_returns(array_returns);
 		cholesky = Utils.cholesky_decompose(corr);
 
 		returns = Utils.zipDoubleArray(returns);
@@ -440,23 +442,37 @@ public class Returns implements Cloneable
 		shuffle_adjust = new double[scenario.normal_assets];
 	        for (int a = 0; a < shuffle_adjust.length; a++)
 		        shuffle_adjust[a] = 1;
-		if (!ret_shuffle.equals("none") && !draw.equals("random") && !draw.equals("shuffle") && config.ret_geomean_keep)
+		if (!ret_shuffle.equals("none") && !draw.equals("bootstrap") && !draw.equals("shuffle") && config.ret_geomean_keep)
 		{
-		        List<double[]> samples = Utils.zipDoubleArray(Arrays.asList(shuffle_returns(config.ret_geomean_keep_count)));
-		        for (int a = 0; a < shuffle_adjust.length; a++)
+		        // Calculate scaling necessary to preserve geometric mean; it might get messed up by the draw.
+		        // The draw concerns itself with preserving the arithmetic mean (which matters less), the standard deviation, and the correlations.
+		        double[][] geomean_samples = new double[scenario.normal_assets][config.ret_geomean_keep_count];
+			for (int i = 0; i < config.ret_geomean_keep_count; i++)
 			{
-			        shuffle_adjust[a] = gm[a] / Utils.plus_1_geomean(samples.get(a));
+		                List<double[]> sample = Utils.zipDoubleArray(Arrays.asList(shuffle_returns(returns.size())));
+				for (int a = 0; a < shuffle_adjust.length; a++)
+				        geomean_samples[a][i] = Utils.plus_1_geomean(sample.get(a)) - 1;
+			}
+		        for (int a = 0; a < scenario.normal_assets; a++)
+			{
+			        shuffle_adjust[a] = gm[a] / Utils.plus_1_geomean(geomean_samples[a]);
 			}
 		}
+		int total_periods = (int) Math.round(scenario.ss.max_years * time_periods);
 		if (ret_shuffle.equals("once"))
 		{
-		        this.data = Arrays.asList(shuffle_returns(num_sequences));
+		        List<double[]> new_data = new ArrayList<double[]>();
+			for (int i = 0; i < num_sequences; i++)
+			        new_data.addAll(Arrays.asList(shuffle_returns(total_periods)));
+			this.data = new_data;
 		}
 		else if (cache_returns && ret_shuffle.equals("all") && !reshuffle)
 		{
-			int total_periods = (int) (scenario.ss.max_years * time_periods);
-			for (int i = 0; i < num_sequences; i++)
-				returns_cache.add(shuffle_returns(total_periods));
+		        // Do this here. Don't fill cache when accessed or random number generator will get out of sync.
+		        returns_cache = new double[config.returns_cache_size][config.path_metrics_bucket_size][][];
+			for (int bucket = 0; bucket < config.returns_cache_size; bucket++)
+			        for (int s = 0; s < config.path_metrics_bucket_size; s++)
+				        returns_cache[bucket][s] = shuffle_returns(total_periods);
 		}
 		random = null;
 
@@ -494,16 +510,22 @@ public class Returns implements Cloneable
 	        random.setSeed(i);
         }
 
+        private int shuffle_count = 0;
+        private double[] sample_mean;
+        private double[] sample_std_dev;
+        private double[][] sample_chol;
+
 	public double[][] shuffle_returns(int length)
 	{
 	        List<double[]> returns = this.data;
 
 		int len_returns = returns.size();
 
-		double[][] new_returns = new double[length][];
-
-		if (draw.equals("random"))
+		double new_returns[][] = null;
+		if (draw.equals("bootstrap"))
 		{
+		        new_returns = new double[length][];
+
 			int len_available;
 			int bs1;
 			if (short_block)
@@ -582,6 +604,8 @@ public class Returns implements Cloneable
 		{
 			assert(length <= len_returns);
 
+		        new_returns = new double[length][];
+
 			if (pair)
 			{
 			        List<double[]> shuffle_returns = new ArrayList<double[]>();
@@ -610,70 +634,124 @@ public class Returns implements Cloneable
 		}
 		else if (draw.equals("normal") || draw.equals("log_normal") || draw.equals("skew_normal"))
                 {
-		        int ret0Len = scenario.asset_classes.size();
-			int ret0NoEfIndex = scenario.normal_assets; // Prevent randomness change due to presence of ef index.
-
-		        double[] log_normal_mean = new double[ret0NoEfIndex];
-			double[] log_normal_std_dev = new double[ret0NoEfIndex];
-			for (int a = 0; a < ret0NoEfIndex; a++)
-			{
-		                log_normal_mean[a] = Math.exp(am[a] + sd[a] * sd[a] / 2);
-				log_normal_std_dev[a] = Math.sqrt(Math.exp(sd[a] * sd[a]) - 1) * log_normal_mean[a];
-			}
-
-		        if (pair)
-			{
-			        // Generation of correlated non-autocorrelated returns using Cholesky decomposition.
-			        // Cholesky produces returns that are normally distributed.
-				double[] aa = new double[ret0Len];
-			        for (int y = 0; y < length; y++)
-				{
-					for (int a = 0; a < ret0NoEfIndex; a++)
-					        aa[a] = random.nextGaussian();
-					new_returns[y] = Utils.vector_sum(am, Utils.vector_product(sd, Utils.matrix_vector_product(cholesky, aa)));
-				        for (int a = 0; a < ret0NoEfIndex; a++)
- 					        if (draw.equals("log_normal"))
-							new_returns[y][a] = am[a] + (Math.exp(new_returns[y][a]) - log_normal_mean[a]) / log_normal_std_dev[a] * sd[a];
-					        else if (draw.equals("skew_normal"))
-						        if (new_returns[y][a] < 0)
-							        new_returns[y][a] = 1 / (1 - new_returns[y][a]) - 1;
-				}
-		        }
+		        if (config.ret_resample == null)
+			        new_returns = draw_returns(am, sd, cholesky, length);
 		        else
-		        {
-			        // Generation of non-correlated returns using normal distribution.
-				for (int y = 0; y < length; y++)
+			{
+			        if (shuffle_count % config.ret_resample == 0)
 				{
-					double[] aa = new double[ret0Len];
-					for (int a = 0; a < ret0NoEfIndex; a++)
+					double[][] sample = draw_returns(am, sd, cholesky, len_returns);
+					sample_mean = new double[scenario.asset_classes.size()];
+					sample_std_dev = new double[scenario.asset_classes.size()];
+					for (int a = 0; a < scenario.normal_assets; a++)
 					{
-					        aa[a] = am[a] + sd[a] * random.nextGaussian();
- 					        if (draw.equals("log_normal"))
-							aa[a] = am[a] + (Math.exp(aa[a]) - log_normal_mean[a]) / log_normal_std_dev[a] * sd[a];
-					        else if (draw.equals("skew_normal"))
-						        if (aa[a] < 0)
-							        aa[a] = 1 / (1 - aa[a]) - 1;
+						double sum = 0;
+						double sum_squares = 0;
+						for (int y = 0; y < sample.length; y++)
+						{
+						        sum += sample[y][a];
+							sum_squares += sample[y][a] * sample[y][a];
+						}
+						sample_mean[a] = sum / sample.length;
+						sample_std_dev[a] = Math.sqrt(sum_squares / sample.length - sample_mean[a] * sample_mean[a]);
 					}
-				        new_returns[y] = aa;
+					if (config.skip_sample_cholesky)
+					        sample_chol = cholesky; // Major performance savings, little metrics impact (around 0.05% change in metrics).
+					else
+					{
+					        double[][] zip_sample = Utils.zipDoubleArrayArray(sample);
+						double[][] sample_corr = Utils.correlation_returns(zip_sample);
+						sample_chol = Utils.cholesky_decompose(sample_corr);
+					}
 				}
-		        }
+				new_returns = draw_returns(sample_mean, sample_std_dev, sample_chol, length);
+			}
 
 			for (int y = 0; y < new_returns.length; y++)
 			        for (int a = 0; a < scenario.normal_assets; a++)
 				        new_returns[y][a] = (1 + new_returns[y][a]) * shuffle_adjust[a] - 1;
-
                 }
 		else
 		        assert(false);
 
+		shuffle_count++;
+
 		return new_returns;
 	}
 
-	public double[][] shuffle_returns_cached(int s, int length)
+        private double[][] draw_returns(double[] mean, double[] std_dev, double[][] chol, int length)
 	{
-	        double[][] returns_array = returns_cache.get(s);
-		assert(returns_array.length >= length);
-		return returns_array;
+		int aa_len = scenario.asset_classes.size();
+		int aa_valid = scenario.normal_assets; // Prevent randomness change due to presence of ef index.
+
+		double[][] new_returns = new double[length][];
+
+		double[] log_normal_mean = new double[aa_valid];
+		double[] log_normal_std_dev = new double[aa_valid];
+		for (int a = 0; a < aa_valid; a++)
+		{
+			log_normal_mean[a] = Math.exp(mean[a] + std_dev[a] * std_dev[a] / 2);
+			log_normal_std_dev[a] = Math.sqrt(Math.exp(std_dev[a] * std_dev[a]) - 1) * log_normal_mean[a];
+		}
+
+		boolean log_normal = draw.equals("log_normal");
+		boolean skew_normal = draw.equals("skew_normal");
+
+		if (pair)
+		{
+			// Generation of correlated non-autocorrelated returns using Cholesky decomposition.
+			// Cholesky produces returns that are normally distributed.
+			double[] aa = new double[aa_len];
+			for (int y = 0; y < length; y++)
+			{
+				for (int a = 0; a < aa_valid; a++)
+				        aa[a] = random.nextGaussian();
+				double[] result = Utils.matrix_vector_product(chol, aa);
+				for (int a = 0; a < aa_valid; a++)
+				{
+				        result[a] = mean[a] + std_dev[a] * result[a];
+					if (log_normal)
+						result[a] = mean[a] + (Math.exp(result[a]) - log_normal_mean[a]) / log_normal_std_dev[a] * std_dev[a];
+					else if (skew_normal)
+						if (new_returns[y][a] < 0)
+							result[a] = 1 / (1 - result[a]) - 1;
+				}
+				new_returns[y] = result;
+			}
+		}
+		else
+		{
+			// Generation of non-correlated returns using normal distribution.
+			for (int y = 0; y < length; y++)
+			{
+				double[] aa = new double[aa_len];
+				for (int a = 0; a < aa_valid; a++)
+				{
+				        aa[a] = mean[a] + std_dev[a] * random.nextGaussian();
+					if (log_normal)
+						aa[a] = mean[a] + (Math.exp(aa[a]) - log_normal_mean[a]) / log_normal_std_dev[a] * std_dev[a];
+					else if (skew_normal)
+						if (aa[a] < 0)
+							aa[a] = 1 / (1 - aa[a]) - 1;
+				}
+				new_returns[y] = aa;
+			}
+		}
+
+		return new_returns;
+	}
+
+        public double[][] shuffle_returns_cached(int bucket, int s, int length)
+	{
+	    double[][] returns_array;
+	    if (returns_cache != null && bucket < returns_cache.length)
+	            returns_array = returns_cache[bucket][s];
+	    else
+		    returns_array = shuffle_returns(length);
+
+	    assert(returns_array.length >= length);
+
+	    return returns_array;
 	}
 
 	private List<Double> reduce_returns(List<Double> l, int size)
