@@ -435,7 +435,7 @@ public class Returns implements Cloneable
 		this.original_data = returns;
 
 		if (num_sequences == null)
-		        num_sequences = returns.size();
+		        num_sequences = 1;
 
 	        this.data = returns;
 	        random = new Random(ret_seed);
