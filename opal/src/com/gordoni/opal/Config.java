@@ -204,7 +204,7 @@ public class Config
         public double gnuplot_extra = 1.05; // Headroom to leave on plots.
         public int gnuplot_steps = 600; // Number of steps at which to gnuplot data.
 
-        public int distribution_steps = 20; // Number of bucket steps for probability distribution outputs.
+        public int distribution_steps = 100; // Number of bucket steps for probability distribution outputs.
         public double distribution_significant = 0.02; // Lowest relative probability density to map.
 
         // All max_path values must be equal to or below num_sequences_validate.

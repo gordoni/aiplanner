@@ -84,20 +84,19 @@ set format x "%.0f%%"
 
 set xlabel "annual change in portfolio size"
 if (paths) set output prefix . "-distrib-change-p.png"
-if (paths) plot prefix . "-distrib-change-p.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
-  # Splines needed because results are very noisy due to use of limited historical data.
+if (paths) plot prefix . "-distrib-change-p.csv" using ($1*100):2 with lines notitle
 
 set xlabel "change in annual floor consumption"
 if (paths) set output prefix . "-distrib-change-floor.png"
-if (paths) plot prefix . "-distrib-change-floor.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
+if (paths) plot prefix . "-distrib-change-floor.csv" using ($1*100):2 with lines notitle
 
 set xlabel "change in annual upside consumption"
 if (paths) set output prefix . "-distrib-change-upside.png"
-if (paths) plot prefix . "-distrib-change-upside.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
+if (paths) plot prefix . "-distrib-change-upside.csv" using ($1*100):2 with lines notitle
 
 set xlabel "change in annual consumption"
 if (paths) set output prefix . "-distrib-change-consume.png"
-if (paths) plot prefix . "-distrib-change-consume.csv" using ($1*100):2:(0.02) smooth acsplines with lines notitle
+if (paths) plot prefix . "-distrib-change-consume.csv" using ($1*100):2 with lines notitle
 
 set ytics
 
