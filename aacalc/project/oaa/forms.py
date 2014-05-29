@@ -147,7 +147,7 @@ class ScenarioBaseForm(forms.Form):
     public_assistance_phaseout_rate_pct = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'percent_input'}),
         min_value=0,
-        max_value=100)
+        max_value=80) # Bad things happen close to 100% as decide it is better to receive public assistance now and delay consumption; messy consume plots.
     utility_method = forms.ChoiceField(
         choices=(('ce', ''), ('slope', ''), ('eta', ''), ('alpha', '')))
     utility_ce = forms.DecimalField(
