@@ -458,18 +458,18 @@ public class Returns implements Cloneable
 			        shuffle_adjust[a] = gm[a] / Utils.plus_1_geomean(geomean_samples[a]);
 			}
 		}
-		int total_periods = (int) Math.round(scenario.ss.max_years * time_periods);
 		if (ret_shuffle.equals("once"))
 		{
 		        List<double[]> new_data = new ArrayList<double[]>();
 			for (int i = 0; i < num_sequences; i++)
-			        new_data.addAll(Arrays.asList(shuffle_returns(total_periods)));
+			        new_data.addAll(Arrays.asList(shuffle_returns(this.data.size())));
 			this.data = new_data;
 		}
 		else if (cache_returns && ret_shuffle.equals("all") && !reshuffle)
 		{
 		        // Do this here. Don't fill cache when accessed or random number generator will get out of sync.
 		        returns_cache = new double[config.returns_cache_size][config.path_metrics_bucket_size][][];
+			int total_periods = (int) Math.round(scenario.ss.max_years * time_periods);
 			for (int bucket = 0; bucket < config.returns_cache_size; bucket++)
 			        for (int s = 0; s < config.path_metrics_bucket_size; s++)
 				        returns_cache[bucket][s] = shuffle_returns(total_periods);
