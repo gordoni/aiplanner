@@ -379,6 +379,7 @@ class AAMap
 				if (config.cw_schedule != null)
 				{
 					spend_annual = config.withdrawal;
+					consume_annual = spend_annual;
 					amount_annual = config.cw_schedule[period + y] * returns.time_periods;
 				}
 				else
@@ -402,17 +403,18 @@ class AAMap
 							}
 						        spend_annual = spend_retirement;
 						}
-						amount_annual = income - spend_annual;
+						consume_annual = spend_annual;
+						amount_annual = income - consume_annual;
 					}
 					else
 					{
-					        spend_annual = config.withdrawal;
+					        spend_annual = config.floor;
+						consume_annual = spend_annual + 1e-15 * scenario.consume_max_estimate; // Want to be solvent.
 						amount_annual = rcr + income;
 						rcr *= rcr_step;
 					}
 				}
 
-				consume_annual = spend_annual;
 				double first_payout = 0;
 				double real_annuitize = 0;
 				if (scenario.ria_index != null)
