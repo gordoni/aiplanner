@@ -116,7 +116,7 @@ if resolution == 'low':
     spend_steps = 5000
 elif resolution == 'medium':
     tp_zero_factor = 0.02
-    scaling_factor = 1.001
+    scaling_factor = 1.01
     aa_steps = 1000
     spend_steps = 10000  # Some noise in withdrawal map, and possibly consumption paths.
 else:

@@ -48,7 +48,11 @@ public class Config
         public double tp_zero_factor = 0.01; // Portfolio buckets this much of consume_max_est at portfolio 0.
         public double annuity_zero_factor = 0.001; // Taxable immediate annuity payout buckets this much of consume_max_est appart at payout 0.
 
-	public double scaling_factor = 1.001; // Successive portfolio buckets this much larger.
+	public double scaling_factor = 1.002; // Successive portfolio buckets this much larger.
+               // This can be set quite a bit higher without affecting path metrics.
+               // However the map metric will start to suffer very slightly.
+               // We set it low to allow validate_draw='bootstrap' bootstrap_block_size=0 generation validation.
+               // Above 1.01 aa plots start to become pixelated.
 	public double annuity_scaling_factor = 1.001; // Successive immediate annuity buckets this much larger.
 
         public double ria_high = 1.0; // Maximum taxable real immediate annuity payout.
