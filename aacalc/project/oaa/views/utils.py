@@ -102,7 +102,7 @@ default_params = {
     #'public_assistance': Decimal(10000),
     #'public_assistance_phaseout_rate_pct': Decimal(50),
     'utility_method': 'ce',
-    'utility_ce': Decimal('1.65'),
+    'utility_ce': Decimal('1.21'),
     'utility_slope_double_withdrawal': Decimal(16),
     'utility_eta': Decimal('4.0'),
     'utility_alpha': Decimal('0.0001'),
