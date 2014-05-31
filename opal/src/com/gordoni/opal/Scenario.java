@@ -869,6 +869,7 @@ public class Scenario
 		        tp_max = config.gnuplot_tp;
 		else
 		        tp_max *= config.gnuplot_extra;
+		tp_max = Math.min(tp_max, config.map_max_factor * tp_max_estimate);
 		if (config.gnuplot_consume != null)
 		        consume_max = config.gnuplot_consume;
 		else
@@ -1158,9 +1159,9 @@ public class Scenario
 				else
 				{
 				        if (config.target_sdp_baseline)
-					        savings = (target_rcr - config.rcr) / target_rcr;
+					        savings = (target_rcr - config.accumulation_rate) / target_rcr;
 					else
-					        savings = (config.rcr - target_rcr) / config.rcr;
+					        savings = (config.accumulation_rate - target_rcr) / config.accumulation_rate;
 					savings_str = f1f.format(savings * 100) + "%";
 				}
 				System.out.printf("Target %-21s %s found at %s savings %s\n", scheme, target_str, location_str, savings_str);
@@ -1265,7 +1266,16 @@ public class Scenario
 		if (!config.skip_retirement_number)
 		        tp_max_estimate = 2 * Math.max(0, config.floor - config.defined_benefit - ia) * retirement_le;
 		if (!config.skip_validate)
-		        tp_max_estimate = Math.max(tp_max_estimate, 2 * (config.start_tp + config.rcr * Math.pow(config.accumulation_ramp, years) * years));
+		{
+		        final double return_rate = 1.05;
+			double discounted_savings;
+			if (config.accumulation_ramp == return_rate)
+			        discounted_savings = years;
+			else
+		                discounted_savings = (Math.pow(config.accumulation_ramp / return_rate, years) - 1) / (config.accumulation_ramp / return_rate - 1);
+		        discounted_savings *= config.accumulation_rate;
+		        tp_max_estimate = Math.max(tp_max_estimate, 5 * (config.start_tp + discounted_savings) * Math.pow(return_rate, years));
+		}
 		consume_max_estimate = config.defined_benefit + 2 * tp_max_estimate / retirement_le + ia;
 		tp_max_estimate += config.defined_benefit + ia; // Assume minimal carry over from one period to the next.
 		retirement_number_max_estimate = Math.max(0, config.floor - config.defined_benefit - ia) * retirement_le;

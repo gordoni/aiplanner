@@ -268,7 +268,7 @@ class AAMap
 
 		int len_returns = 0;
 		double rcr_step = Math.pow(config.accumulation_ramp, 1.0 / returns.time_periods);
-		double initial_rcr = config.rcr * Math.pow(rcr_step, period);
+		double initial_rcr = config.accumulation_rate * Math.pow(rcr_step, period);
 		double tw_goal = 0.0;
 		double ntw_goal = 0.0;
 		double floor_goal = 0.0;
@@ -1097,7 +1097,7 @@ class AAMap
 
     public TargetResult rcr_target(int age, double target, boolean baseline, Returns returns_generate, Returns returns_target, boolean under_estimate) throws ExecutionException, IOException
 	{
-	        double keep_rcr = config.rcr;
+	        double keep_rcr = config.accumulation_rate;
 		double high = scenario.consume_max_estimate;
 		double low = 0.0;
 		AAMap map_loaded = null;
@@ -1108,7 +1108,7 @@ class AAMap
 		while (high - low > 0.00002 * scenario.consume_max_estimate)
 		{
 			double mid = (high + low) / 2;
-			config.rcr = mid;
+			config.accumulation_rate = mid;
 			if (baseline) {
 			        map_loaded = this;
 			} else {
@@ -1133,7 +1133,7 @@ class AAMap
 				high_target = target_mean;
 			}
 		}
-		config.rcr = keep_rcr;
+		config.accumulation_rate = keep_rcr;
 		if (under_estimate)
 		        return new TargetResult(map_loaded, low, low_target);
 		else
@@ -1241,7 +1241,7 @@ class AAMap
 						if (pp == period)
 					                continue;
 						avg_alive /= scenario.ss.vital_stats.raw_alive[period];
-					        income = config.rcr * Math.pow(config.accumulation_ramp, pp / config.generate_time_periods);
+					        income = config.accumulation_rate * Math.pow(config.accumulation_ramp, pp / config.generate_time_periods);
 					}
 				}
 				else
