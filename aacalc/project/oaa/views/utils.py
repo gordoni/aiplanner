@@ -98,13 +98,13 @@ default_params = {
     'utility_bequest_consume': Decimal(50000),
     #'donate_inherit_discount_rate_pct': Decimal(15),
     'advanced_well_being': False,
-    'consume_discount_rate_pct': Decimal('2.0'),
+    'consume_discount_rate_pct': Decimal('3.0'),
     #'public_assistance': Decimal(10000),
     #'public_assistance_phaseout_rate_pct': Decimal(50),
     'utility_method': 'ce',
-    'utility_ce': Decimal('1.26'),
-    'utility_slope_double_withdrawal': Decimal(8),
-    'utility_eta': Decimal('3.0'),
+    'utility_ce': Decimal('1.65'),
+    'utility_slope_double_withdrawal': Decimal(16),
+    'utility_eta': Decimal('4.0'),
     'utility_alpha': Decimal('0.0001'),
 }
 

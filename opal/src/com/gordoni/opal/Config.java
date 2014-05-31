@@ -167,8 +167,8 @@ public class Config
         public String utility_join_type = "slope"; // When joining where to interpolate any gap. 'slope', or 'ara'.
                // slope - interpolate utility slopes using a cubic polynomial.
                // ara - interpolate over the coefficient of absolute risk aversion linearly.
-        public double utility_gamma = 3; // Consumption Epstein-Zin utility risk aversion.
-        public double utility_psi = 1 / 3.0; // Consumption Epstein-Zin utility elasticity of inter-temporal substitution.
+        public double utility_gamma = 4; // Consumption Epstein-Zin utility risk aversion.
+        public double utility_psi = 1 / 4.0; // Consumption Epstein-Zin utility elasticity of inter-temporal substitution.
         public Double utility_eta = null; // Consumption power utility eta parameter to use in place of utility_slope_zero definition, e.g. 3.
         public double utility_beta = 0.0; // Consumption HARA utility beta parameter.
         public Double utility_alpha = null; // Consumption exponential utility alpha parameter.
@@ -177,7 +177,7 @@ public class Config
         public Double utility_ce = null; // Specify consumption power utility eta parameter as indifferent to utility_ce * c and a
                // 50/50 chance of either c or utility_ce_ratio * c.
         public double utility_ce_ratio = 2;
-        public double utility_slope_double_withdrawal = 8; // Change in utility for a dollar of consumption at withdrawal relative to 2 * withdrawal.
+        public double utility_slope_double_withdrawal = 16; // Change in utility for a dollar of consumption at withdrawal relative to 2 * withdrawal.
                // Excludes assistance reduction.
         public double defined_benefit = 0.0; // Defined benefit plans in retirement annual amount.
         public double public_assistance = 0.1; // Consumption level at which public assistance kicks in, in dollars.
