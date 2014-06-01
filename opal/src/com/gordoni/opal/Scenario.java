@@ -792,7 +792,7 @@ public class Scenario
 		out.println("paths = " + (!config.skip_validate ? 1 : 0));
 		out.println("retirement_number = " + (!config.skip_retirement_number ? 1 : 0));
 		out.println("bequest = " + (config.utility_dead_limit != 0 ? 1 : 0));
-		out.println("age_label = \"" + (config.start_age2 == null ? "age" : "age of first person") + "\"");
+		out.println("age_label = \"" + (config.start_age2 == null || config.start_age == config.start_age2 ? "age" : "age of first person") + "\"");
 		out.println("age_low = " + config.start_age);
 		int age_high = config.start_age + ss.max_years;
 		int age_limit = 99;
