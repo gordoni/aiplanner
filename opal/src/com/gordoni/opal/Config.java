@@ -133,7 +133,8 @@ public class Config
                 // "sdp" for sdp.
                 // "percentage" for constant percentage.
                 // "life" for 1 / life_expectancy.
-        public double vw_percentage = 0.04; // Withdrawal percentage to use for strategies retirement_amount and percentage.
+        public Double vw_percentage = 0.04; // Withdrawal percentage to use for strategies retirement_amount and percentage. Null to search.
+        public double vw_percentage_steps = 1000; // Search delta to use when searching for best vw_percentage.
         public double vw_life_max = 1.0; // Maximum percentage to withdraw for percentage.
 
         public boolean spend_fract_all = false; // Whether to allow consumption/contribution choice for all years or only in retirement.

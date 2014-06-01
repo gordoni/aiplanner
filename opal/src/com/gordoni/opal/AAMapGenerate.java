@@ -898,7 +898,7 @@ public class AAMapGenerate extends AAMap
 		double inc_pct = 0;
 		if (income > 0)
 		        inc_pct = income / (p[scenario.tp_index] + income);
-	        double pct = config.vw_percentage;
+	        double pct = scenario.vw_percent;
 		int period = (int) Math.round((age - config.start_age) * config.generate_time_periods);
 		double le = scenario.ss.vital_stats.raw_sum_avg_alive[period] / scenario.ss.vital_stats.raw_alive[period];
 		le /= scenario.ss.vital_stats.time_periods;

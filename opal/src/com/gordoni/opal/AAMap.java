@@ -398,7 +398,7 @@ class AAMap
 						{
 						        if (!retire)
 							{
-							        spend_retirement = scenario.vw_strategy.equals("amount") ? config.withdrawal : income + config.vw_percentage * p_prev_exc_neg;
+							        spend_retirement = scenario.vw_strategy.equals("amount") ? config.withdrawal : income + scenario.vw_percent * p_prev_exc_neg;
 								retire = true;
 							}
 						        spend_annual = spend_retirement;

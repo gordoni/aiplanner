@@ -23,6 +23,7 @@ public class Scenario
         public List<String> asset_classes;
         public List<String> asset_class_names;
         public double fixed_stocks;
+        public double vw_percent;
         public String vw_strategy;
         public Utility utility_consume;
         public Utility utility_consume_time;
@@ -1016,6 +1017,40 @@ public class Scenario
 		System.out.println();
         }
 
+    private PathMetricsResult search_aa(Returns returns_generate, Returns returns_validate) throws ExecutionException, IOException
+	{
+	        if (config.aa_fixed_stocks == null)
+		{
+			double low = 0;
+			double high = 1;
+			while (high - low > 2.0 / config.aa_fixed_steps)
+			{
+				double left = (2 * low + high) / 3;
+				fixed_stocks = left;
+				AAMap map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
+				PathMetricsResult pm = map_fixed.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+				double left_metric = pm.means.get(success_mode_enum);
+				double right = (low + 2 * high) / 3;
+				fixed_stocks = right;
+				map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
+				pm = map_fixed.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+				double right_metric = pm.means.get(success_mode_enum);
+				if (left_metric < right_metric)
+					low = left;
+				else
+					high = right;
+			}
+			fixed_stocks = (low + high) / 2;
+		}
+		else
+		        fixed_stocks = config.aa_fixed_stocks;
+
+		AAMap map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
+		PathMetricsResult pm = map_fixed.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+
+		return pm;
+	}
+
 	public void run_main() throws ExecutionException, IOException, InterruptedException
 	{
 		AAMap map_validate = null;
@@ -1024,40 +1059,51 @@ public class Scenario
 
 		Metrics[] retirement_number = null;
 
-		boolean do_fixed_search = config.aa_strategy.equals("fixed") && config.aa_fixed_stocks == null;
-		if (do_fixed_search)
+		boolean do_aa_search = config.aa_strategy.equals("fixed") && config.aa_fixed_stocks == null;
+		boolean do_vw_search = (config.vw_strategy.equals("percentage") || config.vw_strategy.equals("retirement_amount")) && config.vw_percentage == null;
+		if (do_aa_search || do_vw_search)
 		{
 			long start = System.currentTimeMillis();
 			// Make sure don't have to recompute vital_stats each time.
 			assert(config.generate_time_periods == config.validate_time_periods);
 			assert(config.generate_life_table.equals(config.validate_life_table));
-		        double low = 0;
-			double high = 1;
-			while (high - low > 2.0 / config.aa_fixed_steps)
+			if (config.vw_percentage == null)
 			{
-			        double left = (2 * low + high) / 3;
-				fixed_stocks = left;
-			        AAMap map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
-				PathMetricsResult pm = map_fixed.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
-				double left_metric = pm.means.get(success_mode_enum);
-			        double right = (low + 2 * high) / 3;
-				fixed_stocks = right;
-			        map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
-				pm = map_fixed.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
-				double right_metric = pm.means.get(success_mode_enum);
-				if (left_metric < right_metric)
-				        low = left;
-				else
-				        high = right;
+			        double vw_low = 0;
+				double vw_high = 1;
+				while (vw_high - vw_low > 2.0 / config.vw_percentage_steps)
+				{
+				        double vw_left = (2 * vw_low + vw_high) / 3;
+					vw_percent = vw_left;
+					PathMetricsResult vw_left_pm = search_aa(returns_generate, returns_validate);
+				        double vw_right = (vw_low + 2 * vw_high) / 3;
+					vw_percent = vw_right;
+					PathMetricsResult vw_right_pm = search_aa(returns_generate, returns_validate);
+					if (vw_left_pm.means.get(success_mode_enum) < vw_right_pm.means.get(success_mode_enum))
+					    vw_low = vw_left;
+					else
+					    vw_high = vw_right;
+				}
+				vw_percent = (vw_low + vw_high) / 2;
 			}
-			fixed_stocks = (low + high) / 2;
-			System.out.println("Fixed stocks: " + fixed_stocks);
+			else
+			        vw_percent = config.vw_percentage;
+
+			search_aa(returns_generate, returns_validate); // Sets fixed stocks.
+
+		        if (do_aa_search)
+			        System.out.println("Fixed stocks: " + fixed_stocks);
+		        if (do_vw_search)
+			        System.out.println("Variable withdrawal percentage: " + vw_percent);
 			double elapsed = (System.currentTimeMillis() - start) / 1000.0;
-			System.out.println("Fixed search done: " + f1f.format(elapsed) + " seconds");
+			System.out.println("Search done: " + f1f.format(elapsed) + " seconds");
 			System.out.println();
 	        }
 		else
+		{
 		        fixed_stocks = config.aa_fixed_stocks;
+		        vw_percent = config.vw_percentage;
+	        }
 
 		if (do_generate)
 		{
