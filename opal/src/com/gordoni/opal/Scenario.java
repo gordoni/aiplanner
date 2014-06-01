@@ -1045,7 +1045,6 @@ public class Scenario
 			        map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
 				pm = map_fixed.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
 				double right_metric = pm.means.get(success_mode_enum);
-				System.err.println(low + " " + high + " " + left_metric + " " + right_metric);
 				if (left_metric < right_metric)
 				        low = left;
 				else
