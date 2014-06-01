@@ -1198,7 +1198,7 @@ class AAMap
         {
 		double bonds;
 		if (aa_strategy.equals("fixed"))
-		        bonds = 1 - config.aa_fixed_stocks;
+		        bonds = 1 - scenario.fixed_stocks;
 		else if (aa_strategy.equals("age_in_bonds"))
 			bonds = age / 100.0;
 		else if (aa_strategy.equals("age_minus_10_in_bonds"))

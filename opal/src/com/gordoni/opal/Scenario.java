@@ -22,6 +22,7 @@ public class Scenario
 	public Scale[] scale;
         public List<String> asset_classes;
         public List<String> asset_class_names;
+        public double fixed_stocks;
         public String vw_strategy;
         public Utility utility_consume;
         public Utility utility_consume_time;
@@ -1023,6 +1024,42 @@ public class Scenario
 
 		Metrics[] retirement_number = null;
 
+		boolean do_fixed_search = config.aa_strategy.equals("fixed") && config.aa_fixed_stocks == null;
+		if (do_fixed_search)
+		{
+			long start = System.currentTimeMillis();
+			// Make sure don't have to recompute vital_stats each time.
+			assert(config.generate_time_periods == config.validate_time_periods);
+			assert(config.generate_life_table.equals(config.validate_life_table));
+		        double low = 0;
+			double high = 1;
+			while (high - low > 2.0 / config.aa_fixed_steps)
+			{
+			        double left = (2 * low + high) / 3;
+				fixed_stocks = left;
+			        AAMap map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
+				PathMetricsResult pm = map_fixed.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+				double left_metric = pm.means.get(success_mode_enum);
+			        double right = (low + 2 * high) / 3;
+				fixed_stocks = right;
+			        map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
+				pm = map_fixed.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+				double right_metric = pm.means.get(success_mode_enum);
+				System.err.println(low + " " + high + " " + left_metric + " " + right_metric);
+				if (left_metric < right_metric)
+				        low = left;
+				else
+				        high = right;
+			}
+			fixed_stocks = (low + high) / 2;
+			System.out.println("Fixed stocks: " + fixed_stocks);
+			double elapsed = (System.currentTimeMillis() - start) / 1000.0;
+			System.out.println("Fixed search done: " + f1f.format(elapsed) + " seconds");
+			System.out.println();
+	        }
+		else
+		        fixed_stocks = config.aa_fixed_stocks;
+
 		if (do_generate)
 		{
 			long start = System.currentTimeMillis();
@@ -1204,7 +1241,7 @@ public class Scenario
 			        long start = System.currentTimeMillis();
 				dump_plot(null, retirement_number, paths, null);
 				double elapsed = (System.currentTimeMillis() - start) / 1000.0;
-				System.out.println("Dump/plot done: " + f1f.format(elapsed) + " seconds");
+				System.out.println("Dump and plot done: " + f1f.format(elapsed) + " seconds");
 				System.out.println();
 			}
 		}
