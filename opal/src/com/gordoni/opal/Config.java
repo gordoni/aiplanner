@@ -133,9 +133,10 @@ public class Config
                 // "sdp" for sdp.
                 // "percentage" for constant percentage.
                 // "life" for 1 / life_expectancy.
+                // "discounted_life" for 1 / consume_discount_weight discounted life_expectancy.
         public Double vw_percentage = 0.04; // Withdrawal percentage to use for strategies retirement_amount and percentage. Null to search.
         public double vw_percentage_steps = 1000; // Search delta to use when searching for best vw_percentage.
-        public double vw_life_max = 1.0; // Maximum percentage to withdraw for percentage.
+        public double vw_le_min = 0; // Minimum allowed life expectancy for life and discounted_life.
 
         public boolean spend_fract_all = false; // Whether to allow consumption/contribution choice for all years or only in retirement.
         public String search = "memory"; // How to search the asset allocation / spend_fract space for each map location.

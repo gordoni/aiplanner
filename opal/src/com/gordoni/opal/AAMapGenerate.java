@@ -900,15 +900,20 @@ public class AAMapGenerate extends AAMap
 		        inc_pct = income / (p[scenario.tp_index] + income);
 	        double pct = scenario.vw_percent;
 		int period = (int) Math.round((age - config.start_age) * config.generate_time_periods);
-		double le = scenario.ss.vital_stats.raw_sum_avg_alive[period] / scenario.ss.vital_stats.raw_alive[period];
+		double le;
+		if (scenario.vw_strategy.equals("discounted_life"))
+		        le = scenario.ss.vital_stats.sum_avg_alive[period] / scenario.ss.vital_stats.alive[period];
+		else
+		        le = scenario.ss.vital_stats.raw_sum_avg_alive[period] / scenario.ss.vital_stats.raw_alive[period];
 		le /= scenario.ss.vital_stats.time_periods;
-		double life_pct = Math.min(1 / le, config.vw_life_max);
+		le = Math.max(le, config.vw_le_min);
+		double life_pct = Math.min(1 / le, 1);
 
 		if (scenario.vw_strategy.equals("amount") || scenario.vw_strategy.equals("retirement_amount"))
 		        return 0;
 		else if (scenario.vw_strategy.equals("percentage"))
 		        return Math.min(pct + inc_pct, 1);
-		else if (scenario.vw_strategy.equals("life"))
+		else if (scenario.vw_strategy.equals("life") || scenario.vw_strategy.equals("discounted_life"))
 		        return Math.min(life_pct + inc_pct, 1);
 		else
 		        assert(false);
