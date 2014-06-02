@@ -114,7 +114,6 @@ public class UtilityExponential extends Utility
 			                // public_assistance must be positive if utility_consume_fn="power" and utility_inherit_fn="exponential" unless force_alpha.
 			        this.alpha = Math.log(s1_adjust / s2_adjust) / (c2_adjust - c1_adjust);
 		}
-		double alpha_normalize = this.alpha * config.withdrawal; // For reporting.
 		if (this.alpha == 0)
 		        this.scale = 0;
 		else
