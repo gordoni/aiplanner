@@ -643,7 +643,7 @@ public class Returns implements Cloneable
 					double[][] sample = draw_returns(am, sd, cholesky, len_returns);
 					sample_mean = new double[scenario.asset_classes.size()];
 					sample_std_dev = new double[scenario.asset_classes.size()];
-					for (int a = 0; a < scenario.normal_assets; a++)
+					for (int a = 0; a < scenario.stochastic_classes; a++)
 					{
 						double sum = 0;
 						double sum_squares = 0;
@@ -682,7 +682,7 @@ public class Returns implements Cloneable
         private double[][] draw_returns(double[] mean, double[] std_dev, double[][] chol, int length)
 	{
 		int aa_len = scenario.asset_classes.size();
-		int aa_valid = scenario.normal_assets; // Prevent randomness change due to presence of ef index.
+		int aa_valid = scenario.stochastic_classes; // Prevent randomness change due to presence of ef index.
 
 		double[][] new_returns = new double[length][];
 

@@ -491,6 +491,7 @@ class AAMap
 				if (scenario.ria_index != null || scenario.nia_index != null)
 				{
 					double cpi_delta = returns_array[index][scenario.cpi_index];
+					assert(1 + cpi_delta >= 0);
 					cpi *= 1 + cpi_delta;
 					ria /= 1 + cpi_delta * config.tax_rate_annuity;
 					nia /= 1 + cpi_delta;

@@ -41,6 +41,7 @@ public class Scenario
         public double retirement_number_max_estimate;
 
         public int normal_assets;
+        public int stochastic_classes;
         public int ria_aa_index;
         public int nia_aa_index;
         public int spend_fract_index;
@@ -1410,6 +1411,13 @@ public class Scenario
 		do_generate = (config.validate == null) || (do_target && (config.target_sdp_baseline || config.target_mode.equals("rps")));
 
 		normal_assets = asset_classes.size();
+		cpi_index = -1;
+		if (do_tax || nia_index != null)
+		{
+		        cpi_index = asset_classes.size();
+		        asset_classes.add("[cpi]");
+		}
+		stochastic_classes = asset_classes.size();
 		ria_aa_index = -1;
 		if (ria_index != null)
 		{
@@ -1427,12 +1435,6 @@ public class Scenario
 		spend_fract_index = asset_classes.size();
 		asset_classes.add("[spend_fract]");
 		all_alloc = asset_classes.size();
-		cpi_index = -1;
-		if (do_tax || nia_index != null)
-		{
-		        cpi_index = asset_classes.size();
-		        asset_classes.add("[cpi]");
-		}
 		ef_index = -1;
 		if (!config.ef.equals("none"))
 		{
