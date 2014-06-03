@@ -304,7 +304,7 @@ def write_scenario(dirname, s):
         'retirement_age': retirement_age,
         'start_tp': start_tp(s),
         'defined_benefit': db(s),
-        'rcr': s['contribution'],
+        'accumulation_rate': s['contribution'],
         'accumulation_ramp': 1 + float(s['contribution_growth_pct']) / 100,
         'tax_rate_cg': float(s['tax_rate_cg_pct']) / 100,
         'tax_rate_div_default': float(s['tax_rate_div_default_pct']) / 100,
