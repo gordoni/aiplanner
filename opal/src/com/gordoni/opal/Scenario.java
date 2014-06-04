@@ -1099,12 +1099,7 @@ public class Scenario
 			double elapsed = (System.currentTimeMillis() - start) / 1000.0;
 			System.out.println("Search done: " + f1f.format(elapsed) + " seconds");
 			System.out.println();
-	        }
-		else
-		{
-		        fixed_stocks = config.aa_fixed_stocks;
-		        vw_percent = config.vw_percentage;
-	        }
+		}
 
 		if (do_generate)
 		{
@@ -1380,7 +1375,10 @@ public class Scenario
 		validate_top_bucket = this.scale[tp_index].pf_to_bucket(0.0);
 		success_mode_enum = Metrics.to_enum(config.success_mode);
 
+		fixed_stocks = config.aa_fixed_stocks;
+
 		vw_strategy = config.vw_strategy;
+		vw_percent = config.vw_percentage;
 
 		if (config.cw_schedule != null && ss.max_years > config.cw_schedule.length)
 		        ss.max_years = config.cw_schedule.length;
