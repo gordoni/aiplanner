@@ -22,8 +22,8 @@ public class Scenario
 	public Scale[] scale;
         public List<String> asset_classes;
         public List<String> asset_class_names;
-        public double fixed_stocks;
-        public double vw_percent;
+        public Double fixed_stocks;
+        public Double vw_percent;
         public String vw_strategy;
         public Utility utility_consume;
         public Utility utility_consume_time;
