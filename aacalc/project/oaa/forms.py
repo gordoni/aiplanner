@@ -20,7 +20,11 @@ class DobOrAgeField(forms.CharField):
         for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y'):
             try:
                 dob = strptime(v, fmt)
-                strftime('%Y-%m-%d', dob)  # Some dobs convert but can't be represented as a string. eg. 06/30/1080.
+                now_year = datetime.utcnow().timetuple().tm_year
+                if fmt == '%m/%d/%y' and dob.tm_year > now_year:
+                    dob = (dob.tm_year - 100, dob.tm_mon, dob.tm_mday, 0, 0, 0, 0, 0, 0)
+                dob = strftime('%Y-%m-%d', dob)  # Some dobs convert but can't be represented as a string. eg. 06/30/1080.
+                dob = strptime(dob, '%Y-%m-%d')
                 return dob
             except ValueError:
                 pass
@@ -172,7 +176,7 @@ class ScenarioBaseForm(forms.Form):
         else:
             now_year = datetime.utcnow().timetuple().tm_year
             age = now_year - dob.tm_year
-            dob = strftime('%Y-%m-%d', dob)
+            dob = strftime('%Y-%m-%d', dob) # Ensure can be serailized.
         if age <= 13:
             raise ValidationError('Children under 13 prohibited as per COPPA.')
         return dob
@@ -257,6 +261,7 @@ def check_retirement_year(cleaned_data):
     if isinstance(dob, int):
         retirement_age = dob + retirement_year - now_year
     else:
+        dob = strptime(dob, '%Y-%m-%d')
         retirement_age = retirement_year - dob.tm_year
     if retirement_age >= 100:
         raise ValidationError('Too old for retirement year.')
@@ -266,6 +271,7 @@ def check_retirement_year(cleaned_data):
         if isinstance(dob2, int):
             retirement_age = dob2 + retirement_year - now_year
         else:
+            dob2 = strptime(dob2, '%Y-%m-%d')
             retirement_age = retirement_year - dob2.tm_year
         if retirement_age >= 100:
             raise ValidationError('Spouse/partner too old for retirement year.')
