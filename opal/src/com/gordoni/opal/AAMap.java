@@ -764,8 +764,9 @@ class AAMap
 					        // not the actual bequest.
 				}
  				tax_goal_path += consume_alive_discount * tax_amount * returns.time_periods;
-				if (!config.skip_metric_wer)
+				if (!config.skip_metric_wer && !generate)
 				{
+				        assert(retired);
 				        double sum_alive = vital_stats.bounded_sum_avg_alive[period];
 					if (period + y + 1 < vital_stats.bounded_sum_avg_alive.length)
 					        sum_alive -= vital_stats.bounded_sum_avg_alive[period + y + 1];
