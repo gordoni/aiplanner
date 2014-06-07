@@ -901,11 +901,21 @@ public class AAMapGenerate extends AAMap
 	        double pct = scenario.vw_percent;
 		int period = (int) Math.round((age - config.start_age) * config.generate_time_periods);
 		double le;
-		if (scenario.vw_strategy.equals("discounted_life"))
-		        le = scenario.ss.vital_stats.sum_avg_alive[period] / scenario.ss.vital_stats.alive[period];
+		if (scenario.vw_strategy.equals("rmd"))
+		{
+		        if (Math.round(age) < scenario.hist.rmd_le.length)
+			        le = scenario.hist.rmd_le[(int) Math.round(age)];
+			else
+			        le = scenario.hist.rmd_le[scenario.hist.rmd_le.length - 1];
+		}
 		else
-		        le = scenario.ss.vital_stats.raw_sum_avg_alive[period] / scenario.ss.vital_stats.raw_alive[period];
-		le /= scenario.ss.vital_stats.time_periods;
+		{
+		        if (scenario.vw_strategy.equals("discounted_life"))
+			        le = scenario.ss.vital_stats.sum_avg_alive[period] / scenario.ss.vital_stats.alive[period];
+			else
+			        le = scenario.ss.vital_stats.raw_sum_avg_alive[period] / scenario.ss.vital_stats.raw_alive[period];
+		        le /= scenario.ss.vital_stats.time_periods;
+	        }
 		le = Math.max(le, config.vw_le_min);
 		double life_pct = Math.min(1 / le, 1);
 
@@ -913,7 +923,7 @@ public class AAMapGenerate extends AAMap
 		        return 0;
 		else if (scenario.vw_strategy.equals("percentage"))
 		        return Math.min(pct + inc_pct, 1);
-		else if (scenario.vw_strategy.equals("life") || scenario.vw_strategy.equals("discounted_life"))
+		else if (scenario.vw_strategy.equals("rmd") || scenario.vw_strategy.equals("life") || scenario.vw_strategy.equals("discounted_life"))
 		        return Math.min(life_pct + inc_pct, 1);
 		else
 		        assert(false);

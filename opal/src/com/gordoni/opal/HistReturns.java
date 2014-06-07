@@ -577,6 +577,28 @@ public class HistReturns
 		in.close();
         }
 
+        public double[] rmd_le;
+
+        private int rmd_start = 30;
+
+        private void load_rmd_le(String filename) throws IOException
+        {
+		BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
+		String line = in.readLine();
+		List<Double> le_list = new ArrayList<Double>();
+		for (int i = 0; i < rmd_start; i++)
+		        le_list.add(Double.NaN);
+		while ((line = in.readLine()) != null)
+		{
+		        String[] fields = line.split(",", -1);
+			assert(fields.length == 1);
+			double le = Double.parseDouble(fields[0]);
+			le_list.add(le);
+		}
+		rmd_le = Utils.DoubleTodouble(le_list);
+		in.close();
+        }
+
         public HistReturns() throws IOException
         {
 		// Set up returns and initial_year based on data_source.
@@ -623,5 +645,6 @@ public class HistReturns
 		load_hqm("hqm/hqm_09_13.csv");
 		load_hqm("hqm/hqm_14_18.csv");
 		load_annuity_multiples("irs-pub939-table_v-2013.csv");
+		load_rmd_le("irs-pub590-appendix_c-table_ii-2013.csv");
         }
 }
