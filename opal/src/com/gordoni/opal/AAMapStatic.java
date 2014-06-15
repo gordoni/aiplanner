@@ -2,9 +2,9 @@ package com.gordoni.opal;
 
 public class AAMapStatic extends AAMap
 {
-        public AAMapStatic(Scenario scenario, String aa_strategy)
+        public AAMapStatic(Scenario scenario, String aa_strategy, AAMap aamap1, AAMap aamap2, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income)
 	{
-	        super(scenario);
+	        super(scenario, aamap1, aamap2, null, validate_stats, uc_time, uc_risk, guaranteed_income);
 
 		assert(scenario.start_p.length == 1 && scenario.tp_index != null);
 

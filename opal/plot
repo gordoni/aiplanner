@@ -3,6 +3,8 @@
 HOME="$PWD"
 
 gnuplot "$OPAL_FILE_PREFIX"-gnuplot-params.gnuplot "$HOME"/plot.gnuplot || exit 1
+  # Processing stdin rather than from a file prevents gnuplot exiting on an error, such as no valid x points causing an x range invalid error.
+  # But then we don't get to see any error message.
 "$HOME"/plot.R || exit 1
 
 exit 0

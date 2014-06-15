@@ -734,9 +734,10 @@ public class AAMapGenerate extends AAMap
 	// Generate asset allocation.
         Object next_check_lock = new Object();
         int next_check; // Can't declare locally as modified by thread.
-        public AAMapGenerate(final Scenario scenario, final Returns returns) throws ExecutionException
+        public AAMapGenerate(final Scenario scenario, final Returns returns, AAMap aamap1, AAMap aamap2, VitalStats generate_stats, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income) throws ExecutionException
 	{
-	        super(scenario);
+	        super(scenario, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income);
+
 	        map = new MapPeriod[(int) (scenario.ss.max_years * returns.time_periods)];
 
 		List<Callable<Integer>> tasks = new ArrayList<Callable<Integer>>();
@@ -890,7 +891,7 @@ public class AAMapGenerate extends AAMap
 	        if (age < config.retirement_age)
 		        return 0;
 
-		double income = config.defined_benefit;
+		double income = guaranteed_income;
 		if (scenario.ria_index != null)
 		        income += p[scenario.ria_index];
 		if (scenario.nia_index != null)
@@ -911,10 +912,10 @@ public class AAMapGenerate extends AAMap
 		else
 		{
 		        if (scenario.vw_strategy.equals("discounted_life"))
-			        le = scenario.ss.vital_stats.sum_avg_alive[period] / scenario.ss.vital_stats.alive[period];
+			        le = scenario.ss.generate_stats.sum_avg_alive[period] / scenario.ss.generate_stats.alive[period];
 			else
-			        le = scenario.ss.vital_stats.raw_sum_avg_alive[period] / scenario.ss.vital_stats.raw_alive[period];
-		        le /= scenario.ss.vital_stats.time_periods;
+			        le = scenario.ss.generate_stats.raw_sum_avg_alive[period] / scenario.ss.generate_stats.raw_alive[period];
+		        le /= scenario.ss.generate_stats.time_periods;
 	        }
 		le = Math.max(le, config.vw_le_min);
 		double life_pct = Math.min(1 / le, 1);

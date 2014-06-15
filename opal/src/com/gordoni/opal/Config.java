@@ -61,7 +61,6 @@ public class Config
         public int retirement_number_steps = 100; // Retirement number steps.
         public double success_lines_scale_size = 0.2; // Success probability line linear scale.
 	public double generate_time_periods = 1.0; // 1.0 to perform analysis on an annual basis, or 12.0 to perform analysis monthly.
-	public double target_time_periods = 1.0;
 	public double validate_time_periods = 1.0;
 	public double rebalance_time_periods = 1.0;
 
@@ -342,9 +341,13 @@ public class Config
 	public Integer generate_end_year = 2013; // None for until end of data.
 	public String sex = "male"; // Death probabilities. 'male', 'female', or 'person'.
         public String sex2 = null; // Sex of seond person in a couple, or None for an individual.
+        public boolean couple_unit = true; // Model a couple as a single unit.
+        public double couple_weight1 = 0.5; // Weight placed on well-being of first individual relative to couple when not couple_unit.
+        public double couple_annuity1 = 0.5; // Portion of annuities belonging to first individual when not couple_unit.
+        public double couple_db = 0.5; // Portion of defined benefit income received when one member dead when not couple_unit.
+        public double couple_consume = 0.7; // Fraction of consuption required when one member dead for same level of individual utility when not couple_unit.
         public String generate_life_table = "ssa-cohort"; // Life table to use for generation.
                // 'immortal', 'cdc-period', 'ssa-period', 'iam2000-unloaded-period', 'iam2000-loaded-period', or 'iam2012-basic-period'.
-        public String target_life_table = "ssa-cohort"; // Life table to use for targetting.
         public String validate_life_table = "ssa-cohort"; // Life table to use for validation.
         public String annuity_table = "iam2012-basic-period"; // Life table to use for synthetic annuuity pricing.
         public String mortality_projection_method = "g2"; // Method to use to convert period life tables into cohort life tables.
@@ -384,6 +387,7 @@ public class Config
 	public int generate_seed = 0; // Random seed used for generate shuffle.
 	public int target_seed = 1; // Random seed used for target shuffle.
 	public int validate_seed = 76254; // Random seed used for validation shuffle.
+        public int vital_stats_seed = 3; // Random seed used for vital stats generation during validation when couple_unit=false.
 
 	public int num_sequences_retirement_number = 20000; // Number of paths per location for retirement number.
         public int num_sequences_target = 20000; // Number of paths per targeting attempt.

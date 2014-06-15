@@ -5,11 +5,15 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 public class VitalStats
 {
         public double time_periods = Double.NaN;
         public String table = null;
+
+        public VitalStats vital_stats1;
+        public VitalStats vital_stats2;
 
 	public Double[] death = null;
 	public List<Double> le;
@@ -92,6 +96,20 @@ public class VitalStats
 			0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, // # 100-109
 			0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, // # 110-119
 	};
+        private static Double suicidal[] = {
+	                1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, // # 100-109
+			1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, // # 110-119
+	};
 
         private int lcm(int a, int b)
         {
@@ -162,9 +180,13 @@ public class VitalStats
         private Double[] get(String table, String sex, int age)
 	{
 	        Double[] death_cohort = null;
-		if ("immortal".equals(table))
+		if ("immortal".equals(sex) || "immortal".equals(table))
 		{
 		        death_cohort = immortal;
+		}
+		else if ("suicidal".equals(sex) || "suicidal".equals(table))
+		{
+		        death_cohort = suicidal;
 		}
 		else if ("ssa-cohort".equals(table))
 		{
@@ -248,8 +270,14 @@ public class VitalStats
 				double f_death = age2 < death2.length ? death2[age2] : 1.0;
 				double m_dead = 1.0 - m_alive;
 				double f_dead = 1.0 - f_alive;
-				double c_death_num = m_alive * f_dead * m_death + m_dead * f_alive * f_death + m_alive * f_alive * m_death * f_death;
-				double c_death = c_death_num / c_alive;
+				double c_death;
+				if (c_alive > 0.0)
+				{
+				        double c_death_num = m_alive * f_dead * m_death + m_dead * f_alive * f_death + m_alive * f_alive * m_death * f_death;
+				        c_death = c_death_num / c_alive;
+				}
+				else
+				        c_death = 1.0;
 				m_alive *= 1.0 - m_death;
 				f_alive *= 1.0 - f_death;
 				c_alive *= 1.0 - c_death;
@@ -261,7 +289,7 @@ public class VitalStats
 		return couple;
 	}
 
-        // NB: sum_avg_alive[i] / alive[i] = le.get(start_age + i) when time_periods==1 and consume_discoount_rate==0.
+        // NB: sum_avg_alive[i] / alive[i] = le.get(start_age + i) when time_periods==1 and consume_discount_rate==0.
 	private void pre_compute_life_expectancy()
 	{
 	        this.le = new ArrayList<Double>();
@@ -274,11 +302,9 @@ public class VitalStats
 			int y = s + i;
 			while (y < limit)
 			{
-			        double prev_alive = alive;
 				if (y >= config.start_age)
 				        alive *= 1.0 - death[y];
-				double avg_alive = (alive + prev_alive) / 2.0;
-				expectancy += avg_alive;
+				expectancy += alive;
 				i += 1;
 				y = s + i;
 		        }
@@ -300,8 +326,6 @@ public class VitalStats
 		if (alive_array != null)
 		        alive_array[0] = alive * discount;
 
-	        List<Double> avg_alive = new ArrayList<Double>();
-
 		int len = 0;
 		if (alive_array != null)
 		        len = Math.max(len, alive_array.length - 1);
@@ -311,6 +335,9 @@ public class VitalStats
 		        len = Math.max(len, sum_avg_alive_array.length);
 		if (bounded_sum_avg_alive != null)
 		        len = Math.max(len, bounded_sum_avg_alive.length);
+
+		double[] avg_alive = new double[(int) Math.round (len * time_periods)];
+
 		double death_period = 0.0;
 		int index = 0;
 		for (int y = 0; y < len; y++)
@@ -333,26 +360,23 @@ public class VitalStats
 				if (alive_array != null)
 				        alive_array[index + 1] = alive * discount;
 				if (dying_array != null)
-				        dying_array[index] =  dying * discount * Math.pow(1 + r, - 0.5 / time_periods);
-				avg_alive.add((alive_array[index] + alive_array[index + 1]) / 2.0);
+				        dying_array[index] = dying * discount * Math.pow(1 + r, - 0.5 / time_periods);
+				avg_alive[index] = alive_array[index];
 				discount *= Math.pow(1 + r, - 1.0 / time_periods);
 				index++;
 			}
 			death_period = 0;
 		}
 
-		for (int i = 0; i < avg_alive.size(); i++)
+		double sum_aa = 0;
+		double bounded_sum_aa = 0;
+		for (int i = avg_alive.length - 1; i >= 0; i--)
 		{
-			double sum_aa = 0;
-			double bounded_sum_aa = 0;
-			for (int j = i; j < avg_alive.size(); j++)
-			{
-				sum_aa += avg_alive.get(j);
-			        double divisor = 0;
-				if (bounded_sum_avg_alive != null && j < bounded_sum_avg_alive.length)
-				        if (!config.utility_retire || j >= Math.round((config.retirement_age - config.start_age) * time_periods))
-					        bounded_sum_aa += avg_alive.get(j);
-			}
+		        sum_aa += avg_alive[i];
+			double divisor = 0;
+			if (bounded_sum_avg_alive != null && i < bounded_sum_avg_alive.length)
+			        if (!config.utility_retire || i >= Math.round((config.retirement_age - config.start_age) * time_periods))
+				        bounded_sum_aa += avg_alive[i];
 			if (sum_avg_alive_array != null)
 			        sum_avg_alive_array[i] = sum_aa;
 			if (bounded_sum_avg_alive != null && i < bounded_sum_avg_alive.length)
@@ -360,7 +384,7 @@ public class VitalStats
 		}
 	}
 
-       public double metric_divisor(MetricsEnum metric, int age)
+        public double metric_divisor(MetricsEnum metric, int age)
         {
 	        if (metric != MetricsEnum.INHERIT)
 		        return 1;
@@ -374,30 +398,20 @@ public class VitalStats
 		return d;
 	}
 
-        public VitalStats(Config config, HistReturns hist)
+        public VitalStats(ScenarioSet ss, Config config, HistReturns hist, double time_periods)
         {
+		this.ss = ss;
 	        this.config = config;
 		this.hist = hist;
+	        this.time_periods = time_periods;
         }
 
-        public boolean compute_stats(ScenarioSet ss, double time_periods, String table)
+        private void pre_compute_stats(Double[] death, int death_len)
         {
-	        if (time_periods == this.time_periods && table.equals(this.table))
-		        return false;
+		this.death = death;
 
-		this.ss = ss;
-	        this.time_periods = time_periods;
-		this.table = table;
-
-		if (config.sex2 == null)
-		        death = get(table, config.sex, config.start_age);
-		else
-		        death = pre_compute_couple_death(get(table, config.sex, config.start_age), get(table, config.sex2, config.start_age2));
-
-	        pre_compute_life_expectancy();
-
-		int vs_years = death.length - config.start_age;
-		int actual_years = (config.years == null) ? death.length : config.years;
+		int vs_years = death_len - config.start_age;
+		int actual_years = (config.years == null) ? death_len : config.years;
 		this.raw_alive = new double[(int) Math.round(vs_years * time_periods) + 1];
 		this.raw_dying = new double[(int) Math.round(vs_years * time_periods)];
 		this.raw_sum_avg_alive = new double[(int) Math.round(vs_years * time_periods)];
@@ -413,15 +427,66 @@ public class VitalStats
 
 		if (ss.max_years == -1)
 		{
-			ss.max_years = Math.min(actual_years, death.length - config.start_age);
+			ss.max_years = Math.min(actual_years, death_len - config.start_age);
 			ss.max_years -= ss.max_years % lcm((int) Math.round(1.0 / config.generate_time_periods), (int) Math.round(1.0 / config.validate_time_periods));
 		}
 		else
 		{
-		        ss.max_years = Math.min(ss.max_years, (int) (dying.length / config.target_time_periods));
-			        // Buglet : when validating should really use max_years prior to targeting in min expression.
+		        ss.max_years = Math.min(ss.max_years, (int) (dying.length / config.validate_time_periods));
 		}
+        }
+
+        private void joint_compute_stats(Double[] death1, Double[] death2)
+        {
+	        Double[] death_joint = pre_compute_couple_death(death1, death2);
+		vital_stats1 = new VitalStats(ss, config, hist, time_periods);
+		vital_stats2 = new VitalStats(ss, config, hist, time_periods);
+		int death_len = Math.max(death1.length, death2.length);
+		death_len = Math.max(death_len, death_joint.length);
+		vital_stats1.pre_compute_stats(death1, death_len);
+		vital_stats2.pre_compute_stats(death2, death_len);
+		pre_compute_stats(death_joint, death_len);
+	}
+
+        public boolean compute_stats(String table)
+        {
+	        if (table.equals(this.table))
+		        return false;
+
+		this.table = table;
+
+		Double[] death1 = get(table, config.sex, config.start_age);
+		if (config.sex2 == null)
+		{
+		        pre_compute_stats(death1, death1.length);
+		}
+		else
+		{
+		        Double[] death2 = get(table, config.sex2, config.start_age2);
+			joint_compute_stats(death1, death2);
+		}
+
+	        pre_compute_life_expectancy();
 
 		return true;
 	}
+
+        private Double[] generate(VitalStats vital_stats, int start_age, Random random)
+        {
+	        Double[] death = new Double[vital_stats.death.length];
+	        double longevity = random.nextDouble();
+		for (int y = start_age; y < death.length; y++)
+		        death[y] = (longevity < vital_stats.alive[y - start_age] ? 0.0 : 1.0);
+		return death;
+	}
+
+        public VitalStats joint_generate(Random random)
+        {
+	        Double[] death1 = generate(vital_stats1, config.start_age, random);
+	        Double[] death2 = generate(vital_stats2, config.start_age2, random);
+		VitalStats generate_stats = new VitalStats(ss, config, hist, time_periods);
+		generate_stats.joint_compute_stats(death1, death2);
+
+		return generate_stats;
+        }
 }

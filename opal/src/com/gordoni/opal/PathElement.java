@@ -2,6 +2,8 @@ package com.gordoni.opal;
 
 public class PathElement
 {
+        public double weight;
+
         public double[] aa;
         public double p;
         public double consume_annual;
@@ -11,8 +13,10 @@ public class PathElement
         public double nominal_annuitize;
         public double tax_amount;
 
-        public PathElement(double[] aa, double p, double consume_annual, double ria, double nia, double real_annuitize, double nominal_annuitize, double tax_amount)
+        public PathElement(double[] aa, double p, double consume_annual, double ria, double nia, double real_annuitize, double nominal_annuitize, double tax_amount, double weight)
         {
+	        this.weight = weight;
+
 	        if (aa == null)
 		        this.aa = null;
 	        else

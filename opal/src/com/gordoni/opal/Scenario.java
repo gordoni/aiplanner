@@ -165,7 +165,7 @@ public class Scenario
 		        // but this is the simplest approach and it shouldn't affect the underlying asset allocation machinery.
 		        int a_safe = asset_classes.indexOf(config.safe_aa);
 			double alloc_safe = new_aa[a_safe];
-			double min_safe = config.min_safe_le * (ss.vital_stats.raw_sum_avg_alive[period] / ss.vital_stats.raw_alive[period]) / p[tp_index];
+			double min_safe = config.min_safe_le * (ss.generate_stats.raw_sum_avg_alive[period] / ss.generate_stats.raw_alive[period]) / p[tp_index];
 			min_safe = Math.min(1, min_safe);
 			double delta_safe = Math.max(0, min_safe - alloc_safe);
 			for (int i = 0; i < normal_assets; i++)
@@ -421,24 +421,28 @@ public class Scenario
 	    // dump_aa_linear_slice(map, returns, new double[]{0, 10000}, "10000");
         }
 
-        private double get_path_value(List<PathElement> path, int i, String what, boolean change)
+        private Double get_path_value(List<PathElement> path, int i, String what, boolean change)
         {
 	        if (change)
 		{
 		        if (i > 0)
 			{
-			        double prev_value = get_path_value(path, i - 1, what, false);
-				double curr_value = get_path_value(path, i, what, false);
-				if (prev_value == 0 && curr_value == 0)
-				        return 0;
+			        Double prev_value = get_path_value(path, i - 1, what, false);
+				Double curr_value = get_path_value(path, i, what, false);
+				if (curr_value == null)
+				        return null;
+				else if (prev_value == 0 && curr_value == 0)
+				        return 0.0;
 				else
 			                return curr_value / prev_value - 1;
 			}
 			else
-			        return 0;
+			        return 0.0;
 		}
 		else
 		{
+		        if (i >= path.size())
+			        return null;
 		        PathElement elem = path.get(i);
 			if (what.equals("p"))
 				return elem.p;
@@ -461,14 +465,15 @@ public class Scenario
 		{
 		        List<PathElement> path = paths.get(pi);
 			int period = 0;
-			for (int i = start; i < path.size() - 1; i++)
+			for (int i = start; i < path.size(); i++)
 			{
 				double value = get_path_value(path, i, what, change);
 				double weight;
 				if (what.equals("inherit"))
-				        weight = ss.vital_stats.dying[period];
+				        weight = ss.validate_stats.dying[period];
+				        // XXX Fails for couple_unit=false. Both "inherit" and couple_unit=false not currently used in production.
 				else
-				        weight = (ss.vital_stats.alive[period] + ss.vital_stats.alive[period + 1]) / 2;
+				        weight = path.get(i).weight;
 				int bucket = (int) ((value - min) / (max - min) * config.distribution_steps);
 				if (bucket < 0)
 				        count_submin += weight;
@@ -493,7 +498,7 @@ public class Scenario
 		for (int pi = 0; pi < config.max_distrib_paths; pi++)
 		{
 		        List<PathElement> path = paths.get(pi);
-			for (int i = start; i < path.size() - 1; i++)
+			for (int i = start; i < path.size(); i++)
 			{
 			        double value = get_path_value(path, i, what, change);
 				if (Double.isInfinite(value))
@@ -583,21 +588,25 @@ public class Scenario
 	        PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-pct-" + (change ? "change-" : "") + what + ".csv"));
 
 		double max_pctl = Double.NEGATIVE_INFINITY;
-	        int pathlen = paths.get(0).size() - 1;
 		double age_period = config.start_age * config.generate_time_periods;
-		for (int i = 0; i < pathlen; i++)
+		for (int i = 0; ; i++)
 		{
+		        int values = 0;
 		        double[] vals = new double[config.max_pct_paths];
 		        for (int j = 0; j < config.max_pct_paths; j++)
 			{
 			        List<PathElement> path = paths.get(j);
-			        vals[j] = get_path_value(path, i, what, change);
+			        Double value = get_path_value(path, i, what, change);
+				if (value != null)
+				        vals[values++] = value;
 			}
-			Arrays.sort(vals);
+			if (values == 0)
+			        break;
+			Arrays.sort(vals, 0, values);
 			double pctl = 0.05 / 2;
-			double low = vals[(int) (pctl * vals.length)];
-			double median = vals[(int) (0.5 * vals.length)];
-			double high = vals[(int) ((1 - pctl) * vals.length)];
+			double low = vals[(int) (pctl * values)];
+			double median = vals[(int) (0.5 * values)];
+			double high = vals[(int) ((1 - pctl) * values)];
 			if (high > max_pctl)
 			        max_pctl = high;
 			out.println(f2f.format(age_period / config.generate_time_periods) + "," + f4f.format(median) + "," + f4f.format(low) + "," + f4f.format(high));
@@ -767,10 +776,10 @@ public class Scenario
         {
 		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-annuity_price.csv"));
 
-		for (int i = 0; i < ss.annuity_stats.actual_real_annuity_price.length; i++)
+		for (int i = 0; i < ss.validate_annuity_stats.actual_real_annuity_price.length; i++)
 		{
 		        double age = config.start_age + i / config.generate_time_periods;
-			out.println(f2f.format(age) + "," + f3f.format(ss.annuity_stats.actual_real_annuity_price[i]) + "," + f3f.format(ss.annuity_stats.period_real_annuity_price[i]) + "," + f3f.format(ss.annuity_stats.synthetic_real_annuity_price[i]) + "," + f3f.format(ss.annuity_stats.actual_nominal_annuity_price[i]) + "," + f3f.format(ss.annuity_stats.period_nominal_annuity_price[i]) + "," + f3f.format(ss.annuity_stats.synthetic_nominal_annuity_price[i]));
+			out.println(f2f.format(age) + "," + f3f.format(ss.validate_annuity_stats.actual_real_annuity_price[i]) + "," + f3f.format(ss.validate_annuity_stats.period_real_annuity_price[i]) + "," + f3f.format(ss.validate_annuity_stats.synthetic_real_annuity_price[i]) + "," + f3f.format(ss.validate_annuity_stats.actual_nominal_annuity_price[i]) + "," + f3f.format(ss.validate_annuity_stats.period_nominal_annuity_price[i]) + "," + f3f.format(ss.validate_annuity_stats.synthetic_nominal_annuity_price[i]));
 		}
 		out.close();
         }
@@ -781,7 +790,7 @@ public class Scenario
 
 	        for (int i = 0; i <= 30; i++)
 		{
-		        out.println(i + "," + (config.annuity_real_yield_curve == null ? config.annuity_real_rate : ss.annuity_stats.rcmt_get(i)) + "," + (config.annuity_nominal_yield_curve == null ? config.annuity_nominal_rate : ss.annuity_stats.hqm_get(i)));
+		        out.println(i + "," + (config.annuity_real_yield_curve == null ? config.annuity_real_rate : ss.validate_annuity_stats.rcmt_get(i)) + "," + (config.annuity_nominal_yield_curve == null ? config.annuity_nominal_rate : ss.validate_annuity_stats.hqm_get(i)));
 		}
 
 		out.close();
@@ -906,9 +915,9 @@ public class Scenario
 		{
 		        double pf = i * config.retirement_number_max_factor * retirement_number_max_estimate / config.retirement_number_steps;
 		        double failure_chance = retirement_number[i].fail_chance();
-		        double failure_length = retirement_number[i].fail_length() * ss.vital_stats.le.get(config.retirement_age);
+		        double failure_length = retirement_number[i].fail_length() * ss.validate_stats.le.get(config.retirement_age);
 			double invutil = 0.0;
-			invutil = utility_consume.inverse_utility(retirement_number[i].get(MetricsEnum.CONSUME) / ss.vital_stats.metric_divisor(MetricsEnum.CONSUME, config.validate_age));
+			invutil = utility_consume.inverse_utility(retirement_number[i].get(MetricsEnum.CONSUME) / ss.validate_stats.metric_divisor(MetricsEnum.CONSUME, config.validate_age));
 			out.print(pf + "," + failure_chance + "," + failure_length + "," + invutil + "\n");
 		}
 		out.close();
@@ -1018,7 +1027,7 @@ public class Scenario
 		System.out.println();
         }
 
-    private PathMetricsResult search_aa(Returns returns_generate, Returns returns_validate) throws ExecutionException, IOException
+        private PathMetricsResult search_aa(Returns returns_generate, Returns returns_validate) throws ExecutionException, IOException
 	{
 	        if (config.aa_fixed_stocks == null)
 		{
@@ -1065,9 +1074,6 @@ public class Scenario
 		if (do_aa_search || do_vw_search)
 		{
 			long start = System.currentTimeMillis();
-			// Make sure don't have to recompute vital_stats each time.
-			assert(config.generate_time_periods == config.validate_time_periods);
-			assert(config.generate_life_table.equals(config.validate_life_table));
 			if (config.vw_percentage == null)
 			{
 			        double vw_low = 0;
@@ -1107,7 +1113,7 @@ public class Scenario
 			map_precise = AAMap.factory(this, config.aa_strategy, returns_generate);
 			MapElement fpb = map_precise.lookup_interpolate(start_p, (int) Math.round((config.validate_age - config.start_age) * config.generate_time_periods));
 			String metric_str;
-			double metric_sm = fpb.metric_sm / ss.vital_stats.metric_divisor(success_mode_enum, config.start_age);
+			double metric_sm = fpb.metric_sm / ss.generate_stats.metric_divisor(success_mode_enum, config.start_age);
 			if (!Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(success_mode_enum))
 			{
 			        if (config.utility_epstein_zin)
@@ -1140,7 +1146,7 @@ public class Scenario
 			dump_initial_aa(aa);
 
 			start = System.currentTimeMillis();
-			map_loaded = new AAMapDumpLoad(this, map_precise);
+			map_loaded = new AAMapDumpLoad(this, map_precise, ss.validate_stats);
 			elapsed = (System.currentTimeMillis() - start) / 1000.0;
 			if (!config.skip_dump_load)
 			{
@@ -1159,7 +1165,7 @@ public class Scenario
 		}
 		else if (config.validate != null)
 		{
-		        map_validate = new AAMapDumpLoad(this, config.validate);
+		        map_validate = new AAMapDumpLoad(this, config.validate, ss.validate_stats);
 			map_loaded = map_validate;
 		}
 
@@ -1184,8 +1190,6 @@ public class Scenario
 		if (do_target)
 		{
 			long start = System.currentTimeMillis();
-			ss.vital_stats.compute_stats(ss, config.target_time_periods, config.target_life_table);
-			ss.annuity_stats.compute_stats(ss, config.target_time_periods, config.annuity_table);
 			for (String scheme : config.target_schemes)
 			{
 			        AAMap map_compare = AAMap.factory(this, scheme, null);
@@ -1212,12 +1216,14 @@ public class Scenario
 				}
 				else
 				{
-				        TargetResult t = target_map.rcr_target(config.validate_age, means.get(success_mode_enum), config.target_sdp_baseline, returns_generate, returns_target, config.target_sdp_baseline);
-					//if (!config.target_sdp_baseline)
-					//	map_loaded = t.map;
-				        target_result = t.target_result;
-					target_rcr = t.target;
-					location_str = "RCR " + f4f.format(target_rcr);
+				        assert(false);
+					location_str = null;
+				        // TargetResult t = target_map.rcr_target(config.validate_age, means.get(success_mode_enum), config.target_sdp_baseline, returns_generate, returns_target, config.target_sdp_baseline);
+					// //if (!config.target_sdp_baseline)
+					// //	map_loaded = t.map;
+				        // target_result = t.target_result;
+					// target_rcr = t.target;
+					// location_str = "RCR " + f4f.format(target_rcr);
 				}
 				String target_str;
 				if (!Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(success_mode_enum))
@@ -1253,15 +1259,13 @@ public class Scenario
 		if (!config.skip_validate)
 		{
 			long start = System.currentTimeMillis();
-			ss.vital_stats.compute_stats(ss, config.validate_time_periods, config.validate_life_table);
-			ss.annuity_stats.compute_stats(ss, config.validate_time_periods, config.annuity_table);
 			if (!config.skip_validate_all)
 			{
 			        PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-ce.csv")));
 			        for (int age = config.start_age; age < config.start_age + ss.max_years; age++)
 				{
 				        PathMetricsResult pm = map_loaded.path_metrics(age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
-					double ce = utility_consume.inverse_utility(pm.means.get(MetricsEnum.CONSUME) / ss.vital_stats.metric_divisor(MetricsEnum.CONSUME, age));
+					double ce = utility_consume.inverse_utility(pm.means.get(MetricsEnum.CONSUME) / ss.validate_stats.metric_divisor(MetricsEnum.CONSUME, age));
 					out.println(age + "," + f7f.format(ce));
 
 				}
@@ -1333,7 +1337,7 @@ public class Scenario
 		        start_p[nia_index] = start_nia;
 
 		int years = Math.max(0, config.retirement_age - config.start_age);
-		double retirement_le = ss.vital_stats.le.get(config.retirement_age);
+		double retirement_le = ss.validate_stats.le.get(config.retirement_age);
 		double ia = 0;
 		if (ria_index != null)
 		        ia += start_ria;
@@ -1343,17 +1347,14 @@ public class Scenario
 		// The following scaling factors are detrmined empirically to give reasonable matches to the actual values.
 		if (!config.skip_retirement_number)
 		        tp_max_estimate = 2 * Math.max(0, config.floor - config.defined_benefit - ia) * retirement_le;
-		if (!config.skip_validate)
-		{
-		        final double return_rate = 1.05;
-			double discounted_savings;
-			if (config.accumulation_ramp == return_rate)
-			        discounted_savings = years;
-			else
-		                discounted_savings = (Math.pow(config.accumulation_ramp / return_rate, years) - 1) / (config.accumulation_ramp / return_rate - 1);
-		        discounted_savings *= config.accumulation_rate;
-		        tp_max_estimate = Math.max(tp_max_estimate, 5 * (config.start_tp + discounted_savings) * Math.pow(return_rate, years));
-		}
+	        final double return_rate = 1.05;
+		double discounted_savings;
+		if (config.accumulation_ramp == return_rate)
+		        discounted_savings = years;
+		else
+		        discounted_savings = (Math.pow(config.accumulation_ramp / return_rate, years) - 1) / (config.accumulation_ramp / return_rate - 1);
+		discounted_savings *= config.accumulation_rate;
+		tp_max_estimate = Math.max(tp_max_estimate, 5 * (config.start_tp + discounted_savings) * Math.pow(return_rate, years));
 		consume_max_estimate = config.defined_benefit + 2 * tp_max_estimate / retirement_le + ia;
 		tp_max_estimate += config.defined_benefit + ia; // Assume minimal carry over from one period to the next.
 		retirement_number_max_estimate = Math.max(0, config.floor - config.defined_benefit - ia) * retirement_le;
@@ -1470,7 +1471,7 @@ public class Scenario
 
 		returns_target = null;
 		if (do_target)
-		        returns_target = new Returns(this, hist, config, config.target_seed, false, config.target_start_year, config.target_end_year, config.num_sequences_target, config.target_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.target_shuffle, config.ret_reshuffle, config.target_draw, config.ret_bootstrap_block_size, config.ret_pair, config.target_short_block, config.validate_all_adjust, config.validate_equity_vol_adjust);
+		        returns_target = new Returns(this, hist, config, config.target_seed, false, config.target_start_year, config.target_end_year, config.num_sequences_target, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.target_shuffle, config.ret_reshuffle, config.target_draw, config.ret_bootstrap_block_size, config.ret_pair, config.target_short_block, config.validate_all_adjust, config.validate_equity_vol_adjust);
 
 		returns_validate = new Returns(this, hist, config, config.validate_seed, !config.skip_retirement_number, config.validate_start_year, config.validate_end_year, config.num_sequences_validate, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.validate_shuffle, config.ret_reshuffle, config.validate_draw, config.ret_bootstrap_block_size, config.ret_pair, config.ret_short_block, config.validate_all_adjust, config.validate_equity_vol_adjust);
 

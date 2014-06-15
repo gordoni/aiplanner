@@ -60,4 +60,16 @@ public class UtilityScale extends Utility
 
 		set_constants();
 	}
+
+        public UtilityScale(Config config, Utility utility, double c_scale)
+        {
+		this.config = config;
+		this.utility = utility;
+		this.c_scale = c_scale;
+		this.scale = 1;
+		this.offset = 0;
+		this.zero = 0;
+
+		set_constants();
+	}
 }

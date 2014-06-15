@@ -16,6 +16,17 @@ class AAMap
         protected Scenario scenario;
         protected Config config;
 
+        protected AAMap aamap1;
+        protected AAMap aamap2;
+
+        private VitalStats generate_stats;
+        private VitalStats validate_stats;
+
+        public Utility uc_time;
+        public Utility uc_risk;
+
+        protected double guaranteed_income;
+
         public MapPeriod[] map;
 
         // We interpolate metrics when generating.
@@ -211,12 +222,13 @@ class AAMap
 
 	// Simulation core.
 	@SuppressWarnings("unchecked")
-	        protected SimulateResult simulate(double[] initial_aa, double[] bucket_p, int period, Integer num_sequences, int num_paths_record, boolean generate, Returns returns, int bucket)
+	protected SimulateResult simulate(double[] initial_aa, double[] bucket_p, int period, Integer num_sequences, int num_paths_record, boolean generate, Returns returns, int bucket)
 	{
 		boolean cost_basis_method_immediate = config.cost_basis_method.equals("immediate");
 		boolean variable_withdrawals = !scenario.vw_strategy.equals("amount") && !scenario.vw_strategy.equals("retirement_amount");
-		VitalStats vital_stats = scenario.ss.vital_stats;
-		AnnuityStats annuity_stats = scenario.ss.annuity_stats;
+		VitalStats original_vital_stats = generate ? generate_stats : validate_stats;
+		AnnuityStats annuity_stats = generate ? scenario.ss.generate_annuity_stats : scenario.ss.validate_annuity_stats;
+		boolean monte_carlo_validate = config.sex2 != null && !config.couple_unit;
 		int total_periods = (int) (scenario.ss.max_years * returns.time_periods);
 		int max_periods = total_periods - period;
 
@@ -258,13 +270,19 @@ class AAMap
 		double[] aa2 = new double[scenario.all_alloc];
 
 		double[] li_p = new double[scenario.start_p.length];
+		double[] li_p1 = new double[scenario.start_p.length];
+		double[] li_p2 = new double[scenario.start_p.length];
 	        double[] li_dbucket = new double[scenario.start_p.length];
 		int[] li_bucket1 = new int[scenario.start_p.length];
 		int[] li_bucket2 = new int[scenario.start_p.length];
 		double[] li_aa = new double[scenario.all_alloc];
 		Metrics li_metrics = new Metrics();
 		SimulateResult li_results = new SimulateResult(li_metrics, Double.NaN, Double.NaN, null, null);
+		SimulateResult li_results1 = new SimulateResult(null, Double.NaN, Double.NaN, null, null);
+		SimulateResult li_results2 = new SimulateResult(null, Double.NaN, Double.NaN, null, null);
 		MapElement li_me = new MapElement(null, li_aa, li_results, null, null);
+		MapElement li_me1 = new MapElement(null, null, li_results1, null, null);
+		MapElement li_me2 = new MapElement(null, null, li_results2, null, null);
 
 		int len_returns = 0;
 		double rcr_step = Math.pow(config.accumulation_ramp, 1.0 / returns.time_periods);
@@ -279,7 +297,6 @@ class AAMap
 		double tax_goal = 0.0;
 		double wer = 0.0; // Blanchett Withdrawal Efficiency Rate, not time discounted.
 		double cost = 0.0;
-		double uct_u_ujp = scenario.utility_consume_time.utility(config.utility_join_required);
 		double consume_alive_discount = Double.NaN;
 		Metrics metrics = new Metrics();
 		List<List<PathElement>> paths = null;
@@ -295,9 +312,23 @@ class AAMap
 		double spend_annual = Double.NaN; // Amount spent on consumption and purchasing annuities.
 		double consume_annual = Double.NaN;
 		double consume_annual_key = Double.NaN;  // Cache provides 25% speedup for generate.
+		double uct_u_ujp = uc_time.utility(config.utility_join_required);
 		double floor_value = Double.NaN;
 		double upside_value = Double.NaN;
 		//double consume_utility = 0.0;
+		double divisor_saa = 0;
+		double divisor_bsaa = 0;
+		double divisor_bsaua = 0;
+		double divisor_ra = 0;
+		double divisor_a = 0;
+
+		Random random = null;
+		if (!generate && monte_carlo_validate)
+		{
+		        random = new Random(config.vital_stats_seed);
+			random = new Random(random.nextInt() + bucket);
+		}
+
 		for (int s = 0; s < num_paths; s++)
 		{
 		        double p = (scenario.tp_index == null ? 0 : bucket_p[scenario.tp_index]);
@@ -352,20 +383,45 @@ class AAMap
 				returns_probability = returns.returns_unshuffled_probability[index];
 
 			}
+			AAMap aamap = this;
+			VitalStats couple_vital_stats;
+			if (!generate && monte_carlo_validate)
+			        couple_vital_stats = original_vital_stats.joint_generate(random);
+			else
+			        couple_vital_stats = original_vital_stats;
+			VitalStats vital_stats = couple_vital_stats;
+			int fperiod = -1;
 			MapElement me = null;
 			double rcr = initial_rcr;
 			double raw_alive = Double.NaN;
-			double alive = Double.NaN;
 			int y = 0;
 			while (y < step_periods)
 			{
+			        double utility_weight = 1;
+			        if (!generate && monte_carlo_validate)
+				{
+				        boolean dead1 = couple_vital_stats.vital_stats1.alive[period + y + 1] == 0;
+					boolean dead2 = couple_vital_stats.vital_stats2.alive[period + y + 1] == 0;
+				        if (dead1 || dead2)
+					{
+						aamap = dead1 ? aamap2 : aamap1;
+					        vital_stats = dead1 ? couple_vital_stats.vital_stats2 : couple_vital_stats.vital_stats1;
+						utility_weight = dead1 ? (dead2 ? 0 : 1 - config.couple_weight1) : config.couple_weight1;
+						consume_annual_key = Double.NaN;
+					}
+
+					uct_u_ujp = aamap.uc_time.utility(config.utility_join_required);
+				}
+				double current_guaranteed_income = aamap.guaranteed_income;
+
 				double raw_dying = vital_stats.raw_dying[period + y];
 				raw_alive = vital_stats.raw_alive[period + y + 1];
 			        double prev_alive = vital_stats.alive[period + y];
-				alive = vital_stats.alive[period + y + 1];
 				double dying = vital_stats.dying[period + y];
-				double avg_alive = (alive + prev_alive) / 2.0;
 
+				if (vital_stats.alive[period + y] == 0)
+				        break;
+				        
 		                double p_prev_inc_neg = p;
 				double p_prev_exc_neg = p;
 				if (p_prev_exc_neg < 0)
@@ -387,7 +443,7 @@ class AAMap
 				        double income = ria + nia;
 					if (retired)
 					{
-					        income += config.defined_benefit;
+					        income += current_guaranteed_income;
 					        if (variable_withdrawals)
 						{
 						        // Full investment portfolio amount subject to contrib choice.
@@ -545,7 +601,6 @@ class AAMap
 				double[] aa_prev = aa;
 				if (y + 1 < max_periods)
 				{
-				        int fperiod;
 					if (returns.time_periods == config.generate_time_periods)
 					        fperiod = new_period;
 					else
@@ -558,7 +613,7 @@ class AAMap
 					        li_p[scenario.nia_index] = nia;
 
 					li_me.aa = free_aa;
-					me = lookup_interpolate_fast(li_p, fperiod, true, generate, li_dbucket, li_bucket1, li_bucket2, li_me);
+					me = aamap.lookup_interpolate_fast(li_p, fperiod, true, generate, li_dbucket, li_bucket1, li_bucket2, li_me);
 
 					if (!generate)
 					{
@@ -649,12 +704,12 @@ class AAMap
 				// as consume_annual falls below target_consume_annual.
 				// Without this we get horizontal lines for low RPS asset allocations with fixed withdrawals.
 				double consume_solvent;
-				if (target_consume_annual == config.defined_benefit)
+				if (target_consume_annual == current_guaranteed_income)
 				        consume_solvent = 1;
 				else
-				        // We somewhat arbitrarily set the zero consumption level to defined_benefit and interpolate based on the distance from that.
+				        // We somewhat arbitrarily set the zero consumption level to guaranteed_icome and interpolate based on the distance from that.
 					// This is better than using 0, and then computing utility(0) on a power utility function.
-				        consume_solvent = (consume_annual - config.defined_benefit) / (target_consume_annual - config.defined_benefit);
+				        consume_solvent = (consume_annual - current_guaranteed_income) / (target_consume_annual - current_guaranteed_income);
 				if (consume_solvent != 0.0)
 				{
 					if (target_consume_annual != consume_annual_key)
@@ -672,11 +727,11 @@ class AAMap
 						        floor = consume_annual_key;
 						        upside = 0;
 						}
-						floor_value = scenario.utility_consume_time.utility(floor);
+						floor_value = aamap.uc_time.utility(floor);
 						if (upside == 0)
 						        upside_value = uct_u_ujp;
 						else
-						        upside_value = scenario.utility_consume_time.utility(config.utility_join_required + upside);
+						        upside_value = aamap.uc_time.utility(config.utility_join_required + upside);
 					}
 					double floor_utility = floor_value;
 					double upside_utility = upside_value;
@@ -689,16 +744,16 @@ class AAMap
 				        double upside;
 					if (config.utility_join)
 					{
-				                floor = Math.min(config.defined_benefit, config.utility_join_required);
-						upside = config.defined_benefit - floor;
+				                floor = Math.min(current_guaranteed_income, config.utility_join_required);
+						upside = current_guaranteed_income - floor;
 					}
 					else
 					{
-					        floor = config.defined_benefit;
+					        floor = current_guaranteed_income;
 					        upside = 0;
 					}
-					double floor_utility = scenario.utility_consume_time.utility(floor);
-					double upside_utility = scenario.utility_consume_time.utility(config.utility_join_required + upside);
+					double floor_utility = aamap.uc_time.utility(floor);
+					double upside_utility = aamap.uc_time.utility(config.utility_join_required + upside);
 					floor_path_utility += (1.0 - consume_solvent) * floor_utility;
 					upside_path_utility += (1.0 - consume_solvent) * upside_utility;
 				}
@@ -709,13 +764,22 @@ class AAMap
 				if (consume_solvent == 1.0)
 				        path_consume = consume_annual;
 				else
-				        path_consume = scenario.utility_consume_time.inverse_utility(consume_path_utility);
+				        path_consume = aamap.uc_time.inverse_utility(consume_path_utility);
 					        // Ensure consume and jpmorgan metrics match when gamma = 1/psi.
+				double avg_alive = prev_alive;
 				double upside_alive_discount;
 				if (compute_utility)
 				{
-				        consume_alive_discount = avg_alive;
-				        upside_alive_discount = (vital_stats.upside_alive[period + y] + vital_stats.upside_alive[period + y + 1]) / 2;
+				        if (generate && aamap1 != null)
+					{
+					        consume_alive_discount = config.couple_weight1 * vital_stats.vital_stats1.alive[period + y] + (1 - config.couple_weight1) * vital_stats.vital_stats2.alive[period + y];
+					        upside_alive_discount = config.couple_weight1 * vital_stats.vital_stats1.upside_alive[period + y] + (1 - config.couple_weight1) * vital_stats.vital_stats2.upside_alive[period + y];
+					}
+					else
+					{
+					        consume_alive_discount = utility_weight * avg_alive;
+						upside_alive_discount = utility_weight * vital_stats.upside_alive[period + y];
+					}
 				}
 				else
 				{
@@ -754,11 +818,11 @@ class AAMap
 					// Instead we pro-rate the distance to the asymptote.
 					double inherit_proportion = (inherit_utility - scenario.utility_inherit.u_0) / (scenario.utility_inherit.u_inf - scenario.utility_inherit.u_0);
 					double combined_inherit_utility;
-					if (consume_path_utility == Double.NEGATIVE_INFINITY || scenario.utility_consume_time.u_inf == Double.POSITIVE_INFINITY)
+					if (consume_path_utility == Double.NEGATIVE_INFINITY || aamap.uc_time.u_inf == Double.POSITIVE_INFINITY)
 					        combined_inherit_utility = 0;
 					else
-					        combined_inherit_utility = inherit_proportion * (scenario.utility_consume_time.u_inf - consume_path_utility);
-					assert(consume_path_utility + combined_inherit_utility <= scenario.utility_consume_time.u_inf);
+					        combined_inherit_utility = inherit_proportion * (aamap.uc_time.u_inf - consume_path_utility);
+					assert(consume_path_utility + combined_inherit_utility <= aamap.uc_time.u_inf);
 					combined_goal_path += consume_alive_discount * config.utility_dead_limit * combined_inherit_utility / returns.time_periods;
 					        // Multiply by consume_alive_discount not dying because well-being is derived from being able to bequest,
 					        // not the actual bequest.
@@ -767,10 +831,11 @@ class AAMap
 				if (!config.skip_metric_wer && !generate)
 				{
 				        assert(retired);
+					assert(!monte_carlo_validate);
 				        double sum_alive = vital_stats.bounded_sum_avg_alive[period];
 					if (period + y + 1 < vital_stats.bounded_sum_avg_alive.length)
 					        sum_alive -= vital_stats.bounded_sum_avg_alive[period + y + 1];
-					double cew = scenario.utility_consume_time.inverse_utility(combined_goal_path / sum_alive) - config.defined_benefit;
+					double cew = uc_time.inverse_utility(combined_goal_path / sum_alive) - current_guaranteed_income;
 					double ssr = bucket_p[scenario.tp_index] / ssr_terms;
 					wer_path += raw_dying * cew / ssr;
 				}
@@ -782,10 +847,17 @@ class AAMap
 				tw_goal_path += avg_alive * solvent;
 				ntw_goal_path += raw_dying * solvent_always;
 
+				if (!generate && monte_carlo_validate)
+				{
+				        divisor_saa += avg_alive * returns_probability;
+				        divisor_bsaa += consume_alive_discount * returns_probability;
+				        divisor_bsaua += upside_alive_discount * returns_probability;
+				}
+
 				// Record path.
 				if (s < num_paths_record)
 				{
-				        path.add(new PathElement(aa_prev, p_prev_inc_neg, path_consume, ria_prev, nia_prev, real_annuitize, nominal_annuitize, tax_amount));
+				        path.add(new PathElement(aa_prev, p_prev_inc_neg, path_consume, ria_prev, nia_prev, real_annuitize, nominal_annuitize, tax_amount, utility_weight));
 				}
 				free_aa = aa_prev;
 
@@ -793,11 +865,13 @@ class AAMap
 				y += 1;
 				index = (index + 1) % len_returns;
 			}
+
 			// Record solvency.
 			if (!generate || period == total_periods - 1)
 			{
 			        ntw_goal_path += raw_alive * solvent_always;
 			}
+
 			// Add individual path metrics to overall metrics.
 			tw_goal += tw_goal_path * returns_probability;
 			ntw_goal += ntw_goal_path * returns_probability;
@@ -809,29 +883,64 @@ class AAMap
 			tax_goal += tax_goal_path * returns_probability;
 			wer += wer_path * returns_probability;
 			cost += cost_path * returns_probability;
+
 			// The following code is performance critical.
 		        if (generate && max_periods > 1)
 			{
-				final boolean maintain_all = generate && !config.skip_dump_log && !config.conserve_ram;
-				if (maintain_all)
+				if (!monte_carlo_validate || aamap1 == null)
 				{
-					for (MetricsEnum m : MetricsEnum.values())
+					final boolean maintain_all = generate && !config.skip_dump_log && !config.conserve_ram;
+					if (maintain_all)
 					{
-						metrics.set(m, metrics.get(m) + me.results.metrics.get(m) * returns_probability);
+						for (MetricsEnum m : MetricsEnum.values())
+						{
+							metrics.set(m, metrics.get(m) + me.results.metrics.get(m) * returns_probability);
+						}
+					}
+					else
+					{
+						// Get and set are slow; access fields directly.
+						metrics.metrics[scenario.success_mode_enum.ordinal()] += me.metric_sm * returns_probability;
+						// Other metric values invalid.
 					}
 				}
 				else
 				{
-				        // Get and set are slow; access fields directly.
-					metrics.metrics[scenario.success_mode_enum.ordinal()] += me.metric_sm * returns_probability;
-					// Other metric values invalid.
+					System.arraycopy(li_p, 0, li_p1, 0, li_p.length);
+					System.arraycopy(li_p, 0, li_p2, 0, li_p.length);
+					if (scenario.ria_index != null)
+					{
+						li_p1[scenario.ria_index] *= config.couple_annuity1;
+						li_p2[scenario.ria_index] *= 1 - config.couple_annuity1;
+					}
+					if (scenario.nia_index != null)
+					{
+						li_p1[scenario.nia_index] *= config.couple_annuity1;
+						li_p2[scenario.nia_index] *= 1 - config.couple_annuity1;
+					}
+					MapElement me1 = aamap1.lookup_interpolate_fast(li_p1, fperiod, true, generate, li_dbucket, li_bucket1, li_bucket2, li_me1);
+					MapElement me2 = aamap2.lookup_interpolate_fast(li_p2, fperiod, true, generate, li_dbucket, li_bucket1, li_bucket2, li_me2);
+
+					double alive1 = vital_stats.vital_stats1.raw_alive[period + 1] == 0 ? 0 : vital_stats.vital_stats1.raw_alive[period + 1] / vital_stats.vital_stats1.raw_alive[period];
+					double alive2 = vital_stats.vital_stats2.raw_alive[period + 1] == 0 ? 0 : vital_stats.vital_stats2.raw_alive[period + 1] / vital_stats.vital_stats2.raw_alive[period];
+					// This doesn't mesh perfectly with couple_unit=true because
+					// here we take advantage of knowledge of when one member is dead.
+					double m_sm = alive1 * alive2 * me.metric_sm;
+					m_sm += config.couple_weight1 * alive1 * (1 - alive2) * me1.metric_sm;
+					        // No need for:
+					        //         uc_time.utility(aamap1.uc_time.inverse_utility(me1.metric_sm))
+					        // because aamap1.uc_time is a simple scaling of uc_time.
+					m_sm += (1 - config.couple_weight1) * (1 - alive1) * alive2 * me2.metric_sm;
+					m_sm /= alive1 * alive2 + config.couple_weight1 * alive1 * (1 - alive2) + (1 - config.couple_weight1) * (1 - alive1) * alive2;
+					metrics.set(scenario.success_mode_enum, metrics.get(scenario.success_mode_enum) + m_sm * returns_probability);
 				}
 			}
+
 			// Record path.
 			if (s < num_paths_record)
 			{
 				// 8% speedup by not recording path if know it is not needed
-			    path.add(new PathElement(null, p, Double.NaN, ria, nia, Double.NaN, Double.NaN, Double.NaN));
+			        //path.add(new PathElement(null, p, Double.NaN, ria, nia, Double.NaN, Double.NaN, Double.NaN, 0));
 				        // Ignore any pending taxes associated with p, mainly because they are difficult to compute.
 				paths.add(path);
 			}
@@ -839,23 +948,46 @@ class AAMap
 
 		if (generate && max_periods > 1)
 		{
-		        tw_goal += metrics.get(MetricsEnum.TW) * vital_stats.sum_avg_alive[period + 1];
-			ntw_goal += metrics.get(MetricsEnum.NTW) * vital_stats.raw_alive[period + 1];
-			floor_goal += metrics.get(MetricsEnum.FLOOR) * vital_stats.bounded_sum_avg_alive[period + 1];
-			upside_goal += metrics.get(MetricsEnum.UPSIDE) * vital_stats.bounded_sum_avg_upside_alive[period + 1];
-			consume_goal += metrics.get(MetricsEnum.CONSUME) * vital_stats.bounded_sum_avg_alive[period + 1];
+		        tw_goal += metrics.get(MetricsEnum.TW) * generate_stats.sum_avg_alive[period + 1];
+			ntw_goal += metrics.get(MetricsEnum.NTW) * generate_stats.raw_alive[period + 1];
+			floor_goal += metrics.get(MetricsEnum.FLOOR) * generate_stats.bounded_sum_avg_alive[period + 1];
+			upside_goal += metrics.get(MetricsEnum.UPSIDE) * generate_stats.bounded_sum_avg_upside_alive[period + 1];
+			consume_goal += metrics.get(MetricsEnum.CONSUME) * generate_stats.bounded_sum_avg_alive[period + 1];
 			if (config.utility_epstein_zin)
 			{
-				double divisor = vital_stats.bounded_sum_avg_alive[period];
+			        assert(!monte_carlo_validate);
+				double divisor = generate_stats.bounded_sum_avg_alive[period];
 				double future_utility_risk = metrics.get(MetricsEnum.COMBINED);
-			        double future_utility_time = scenario.utility_consume_time.utility(scenario.utility_consume.inverse_utility(future_utility_risk));
+			        double future_utility_time = uc_time.utility(uc_risk.inverse_utility(future_utility_risk));
 				combined_goal = (combined_goal + (divisor - consume_alive_discount) * future_utility_time) / divisor;
 			}
 			else
-			        combined_goal += metrics.get(MetricsEnum.COMBINED) * vital_stats.bounded_sum_avg_alive[period + 1];
-			tax_goal += metrics.get(MetricsEnum.TAX) * vital_stats.bounded_sum_avg_alive[period + 1];
+			{
+			        if (aamap1 == null)
+				        combined_goal += metrics.get(MetricsEnum.COMBINED) * generate_stats.bounded_sum_avg_alive[period + 1];
+				else
+				        combined_goal += metrics.get(MetricsEnum.COMBINED) * (config.couple_weight1 * generate_stats.vital_stats1.bounded_sum_avg_alive[period + 1] + (1 - config.couple_weight1) * generate_stats.vital_stats2.bounded_sum_avg_alive[period + 1]);
+			}
+			tax_goal += metrics.get(MetricsEnum.TAX) * generate_stats.bounded_sum_avg_alive[period + 1];
 			cost += metrics.get(MetricsEnum.COST);
 		}
+
+		if (generate || !monte_carlo_validate)
+		{
+		        divisor_saa = original_vital_stats.sum_avg_alive[period];
+			if (aamap1 == null)
+			{
+			        divisor_bsaa = original_vital_stats.bounded_sum_avg_alive[period];
+				divisor_bsaua = original_vital_stats.bounded_sum_avg_upside_alive[period];
+			}
+			else
+			{
+			        divisor_bsaa = config.couple_weight1 * original_vital_stats.vital_stats1.bounded_sum_avg_alive[period] + (1 - config.couple_weight1) * original_vital_stats.vital_stats2.bounded_sum_avg_alive[period];
+				divisor_bsaua = config.couple_weight1 * original_vital_stats.vital_stats1.bounded_sum_avg_upside_alive[period] + (1 - config.couple_weight1) * original_vital_stats.vital_stats2.bounded_sum_avg_upside_alive[period];
+			}
+		}
+		divisor_ra = original_vital_stats.raw_alive[period];
+		divisor_a = original_vital_stats.alive[period];
 
 		if (scenario.vw_strategy.equals("retirement_amount") && generate)
 		{
@@ -872,24 +1004,53 @@ class AAMap
 		else if (config.utility_epstein_zin)
 		{
 		        if (generate)
-			        combined_goal = scenario.utility_consume.utility(scenario.utility_consume_time.inverse_utility(combined_goal));
+			        combined_goal = uc_risk.utility(uc_time.inverse_utility(combined_goal));
 			else
 			        combined_goal = 0; // Epstein-Zin utility can't be estimated by simulating paths.
 		}
 		else
-		        combined_goal /= vital_stats.bounded_sum_avg_alive[period];
+		{
+		        if (divisor_bsaa == 0)
+			        assert(combined_goal == 0);
+			else
+			        combined_goal /= divisor_bsaa;
+		}
 		if (config.retirement_age > config.start_age)
 		        wer = 0;
 
 		// For reporting and success map display purposes keep goals normalized across ages.
-		tw_goal /= vital_stats.sum_avg_alive[period];
-		ntw_goal /= vital_stats.raw_alive[period];
-		floor_goal /= vital_stats.bounded_sum_avg_alive[period];
-		upside_goal /= vital_stats.bounded_sum_avg_upside_alive[period];
-		consume_goal /= vital_stats.bounded_sum_avg_alive[period];
-		inherit_goal /= vital_stats.alive[period];
-		tax_goal /= vital_stats.bounded_sum_avg_alive[period];
-		wer /= vital_stats.raw_alive[period];
+		if (divisor_saa == 0)
+		        assert(tw_goal == 0);
+		else
+		        tw_goal /= divisor_saa;
+		if (divisor_ra == 0)
+		        assert(ntw_goal == 0);
+		else
+		        ntw_goal /= divisor_ra;
+		if (divisor_bsaa == 0)
+		        assert(floor_goal == 0);
+		else
+		        floor_goal /= divisor_bsaa;
+		if (divisor_bsaua == 0)
+		        assert(upside_goal == 0);
+		else
+		        upside_goal /= divisor_bsaua;
+		if (divisor_bsaa == 0)
+		        assert(consume_goal == 0);
+		else
+		        consume_goal /= divisor_bsaa;
+		if (divisor_a == 0)
+		        assert(inherit_goal == 0);
+		else
+		        inherit_goal /= divisor_a;
+		if (divisor_bsaa == 0)
+		        assert(tax_goal == 0);
+		else
+		        tax_goal /= divisor_bsaa;
+		if (divisor_ra == 0)
+		        assert(wer == 0);
+		else
+		        wer /= divisor_ra;
 
 		if (1.0 < tw_goal && tw_goal <= 1.0 + 1e-6)
 			tw_goal = 1.0;
@@ -955,23 +1116,23 @@ class AAMap
 			{
 			        List<PathElement> path = paths.get(pi);
 			        PathElement e = path.get(period);
-				double u_consume = scenario.utility_consume_time.utility(e.consume_annual);
+				double u_consume = uc_time.utility(e.consume_annual);
 				double u_inherit = scenario.utility_inherit.utility((e.p > 0) ? e.p : 0);
 				double u_combined = u_consume;
 				if (config.utility_dead_limit != 0)
 				{
 				        double inherit_proportion = (u_inherit - scenario.utility_inherit.u_0) / (scenario.utility_inherit.u_inf - scenario.utility_inherit.u_0);
-				        u_combined += config.utility_dead_limit * inherit_proportion * (scenario.utility_consume_time.u_inf - u_consume);
+				        u_combined += config.utility_dead_limit * inherit_proportion * (uc_time.u_inf - u_consume);
 				}
-				u2 += scenario.utility_consume.utility(scenario.utility_consume_time.inverse_utility(u_combined));
+				u2 += uc_risk.utility(uc_time.inverse_utility(u_combined));
 			}
 			u2 /= num_paths;
 			double weight = 0;
 			if (!config.utility_retire || period >= Math.round((config.retirement_age - config.start_age) * returns.time_periods))
-			        weight = (scenario.ss.vital_stats.alive[period_offset + period] + scenario.ss.vital_stats.alive[period_offset + period + 1]) / 2;
-			u += weight * scenario.utility_consume_time.utility(scenario.utility_consume.inverse_utility(u2));
+			        weight = (scenario.ss.validate_stats.alive[period_offset + period] + scenario.ss.validate_stats.alive[period_offset + period + 1]) / 2;
+			u += weight * uc_time.utility(uc_risk.inverse_utility(u2));
 		}
-		u /= scenario.ss.vital_stats.bounded_sum_avg_alive[period_offset];
+		u /= scenario.ss.validate_stats.bounded_sum_avg_alive[period_offset];
 
 		return u;
 	}
@@ -1097,50 +1258,50 @@ class AAMap
 		        return new TargetResult(this, high, high_target);
 	}
 
-    public TargetResult rcr_target(int age, double target, boolean baseline, Returns returns_generate, Returns returns_target, boolean under_estimate) throws ExecutionException, IOException
-	{
-	        double keep_rcr = config.accumulation_rate;
-		double high = scenario.consume_max_estimate;
-		double low = 0.0;
-		AAMap map_loaded = null;
-		double high_target = Double.NaN;
-		double low_target = Double.NaN;
-		double target_mean = Double.NaN;
-		boolean first_time = true;
-		while (high - low > 0.00002 * scenario.consume_max_estimate)
-		{
-			double mid = (high + low) / 2;
-			config.accumulation_rate = mid;
-			if (baseline) {
-			        map_loaded = this;
-			} else {
-			        AAMapGenerate map_precise = new AAMapGenerate(scenario, returns_generate);
-			        map_loaded = new AAMapDumpLoad(scenario, map_precise);
-			}
-			PathMetricsResult r = map_loaded.path_metrics(age, scenario.start_p, config.num_sequences_target, false, 0, returns_target);
-			target_mean = r.means.get(scenario.success_mode_enum);
-			if (target_mean == target && first_time)
-			{
-			        high = Double.NaN;
-				break;
-			}
-			if (target_mean < target)
-			{
-				low = mid;
-			        low_target = target_mean;
-			}
-			else
-			{
-				high = mid;
-				high_target = target_mean;
-			}
-		}
-		config.accumulation_rate = keep_rcr;
-		if (under_estimate)
-		        return new TargetResult(map_loaded, low, low_target);
-		else
-		        return new TargetResult(map_loaded, high, high_target);
-	}
+        // public TargetResult rcr_target(int age, double target, boolean baseline, Returns returns_generate, Returns returns_target, boolean under_estimate) throws ExecutionException, IOException
+	// {
+	//         double keep_rcr = config.accumulation_rate;
+	// 	double high = scenario.consume_max_estimate;
+	// 	double low = 0.0;
+	// 	AAMap map_loaded = null;
+	// 	double high_target = Double.NaN;
+	// 	double low_target = Double.NaN;
+	// 	double target_mean = Double.NaN;
+	// 	boolean first_time = true;
+	// 	while (high - low > 0.00002 * scenario.consume_max_estimate)
+	// 	{
+	// 		double mid = (high + low) / 2;
+	// 		config.accumulation_rate = mid;
+	// 		if (baseline) {
+	// 		        map_loaded = this;
+	// 		} else {
+	// 		        AAMapGenerate map_precise = new AAMapGenerate(scenario, returns_generate);
+	// 		        map_loaded = new AAMapDumpLoad(scenario, map_precise);
+	// 		}
+	// 		PathMetricsResult r = map_loaded.path_metrics(age, scenario.start_p, config.num_sequences_target, false, 0, returns_target);
+	// 		target_mean = r.means.get(scenario.success_mode_enum);
+	// 		if (target_mean == target && first_time)
+	// 		{
+	// 		        high = Double.NaN;
+	// 			break;
+	// 		}
+	// 		if (target_mean < target)
+	// 		{
+	// 			low = mid;
+	// 		        low_target = target_mean;
+	// 		}
+	// 		else
+	// 		{
+	// 			high = mid;
+	// 			high_target = target_mean;
+	// 		}
+	// 	}
+	// 	config.accumulation_rate = keep_rcr;
+	// 	if (under_estimate)
+	// 	        return new TargetResult(map_loaded, low, low_target);
+	// 	else
+	// 	        return new TargetResult(map_loaded, high, high_target);
+	// }
 
         public void invoke_all(List<Callable<Integer>> tasks) throws ExecutionException
 	{
@@ -1227,22 +1388,22 @@ class AAMap
 
 		bonds = Math.min(1, bonds);
 
-		if (config.defined_benefit != 0 && config.db_bond || config.savings_bond)
+		if (guaranteed_income != 0 && config.db_bond || config.savings_bond)
 		{
 		        int period = (int) Math.round((age - config.start_age) * config.generate_time_periods);
 			int retire_period = (int) Math.round((Math.max(age, config.retirement_age) - config.start_age) * config.generate_time_periods);
 			double future_income = 0;
-		        for (int pp = period; pp < scenario.ss.vital_stats.dying.length; pp++)
+		        for (int pp = period; pp < scenario.ss.generate_stats.dying.length; pp++)
 			{
 			        double income = 0;
-				double avg_alive = (scenario.ss.vital_stats.raw_alive[pp] + scenario.ss.vital_stats.raw_alive[pp + 1]) / 2;
+				double avg_alive = scenario.ss.generate_stats.raw_alive[pp];
 			        if (pp < Math.round((config.retirement_age - config.start_age) * config.generate_time_periods))
 				{
 				        if (config.savings_bond)
 					{
 						if (pp == period)
 					                continue;
-						avg_alive /= scenario.ss.vital_stats.raw_alive[period];
+						avg_alive /= scenario.ss.generate_stats.raw_alive[period];
 					        income = config.accumulation_rate * Math.pow(config.accumulation_ramp, pp / config.generate_time_periods);
 					}
 				}
@@ -1252,15 +1413,15 @@ class AAMap
 					{
 						if (config.vbond_discounted)
 						{
-						        avg_alive /= scenario.ss.vital_stats.raw_alive[period];
+						        avg_alive /= scenario.ss.generate_stats.raw_alive[period];
 						        if (pp == period)
 							        continue;
 					        }
 						else
 						        // If not discounting include pp=period and approximate chance of being alive at retirement_age as 1
 						        // so that rule of thumb can lookup le from a table.
-						        avg_alive /= scenario.ss.vital_stats.raw_alive[retire_period];
-					        income = config.defined_benefit;
+						        avg_alive /= scenario.ss.generate_stats.raw_alive[retire_period];
+					        income = guaranteed_income;
 					}
 				}
 				income *= avg_alive;
@@ -1289,22 +1450,50 @@ class AAMap
 		return aa;
 	}
 
+        private static AAMap sub_factory(Scenario scenario, String aa_strategy, Returns returns, AAMap aamap1, AAMap aamap2, VitalStats generate_stats, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income) throws IOException, ExecutionException
+        {
+	        if (returns != null)
+		        return new AAMapGenerate(scenario, returns, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income);
+		else
+		        // returns == null. Hack. Called by targeting. Should get AAMapGenerate to handle. Then delete AAMapStatic.java.
+		        return new AAMapStatic(scenario, aa_strategy, aamap1, aamap2, validate_stats, uc_time, uc_risk, guaranteed_income);
+        }
+
         public static AAMap factory(Scenario scenario, String aa_strategy, Returns returns) throws IOException, ExecutionException
         {
+	        ScenarioSet ss = scenario.ss;
 	        Config config = scenario.config;
 
 	        if (aa_strategy.equals("file"))
-		        return new AAMapDumpLoad(scenario, config.validate);
-		else if (returns != null)
-		        return new AAMapGenerate(scenario, returns);
+		{
+		        assert(config.couple_unit);
+		        return new AAMapDumpLoad(scenario, config.validate, ss.validate_stats);
+		}
+		else if (config.sex2 == null || config.couple_unit)
+		{
+		        return sub_factory(scenario, aa_strategy, returns, null, null, ss.generate_stats, ss.validate_stats, scenario.utility_consume_time, scenario.utility_consume, config.defined_benefit);
+		}
 		else
-		        // returns == null. Hack. Called by targeting. Should get AAMapGenerate to handle. Then delete AAMapStatic.java.
-		        return new AAMapStatic(scenario, aa_strategy);
+		{
+		        Utility uc_time = new UtilityScale(config, scenario.utility_consume_time, 1 / config.couple_consume);
+		        Utility uc_risk = new UtilityScale(config, scenario.utility_consume, 1 / config.couple_consume);
+		        AAMap aamap1 = sub_factory(scenario, aa_strategy, returns, null, null, ss.generate_stats.vital_stats1, ss.validate_stats.vital_stats1, uc_time, uc_risk, config.couple_db * config.defined_benefit);
+		        AAMap aamap2 = sub_factory(scenario, aa_strategy, returns, null, null, ss.generate_stats.vital_stats2, ss.validate_stats.vital_stats2, uc_time, uc_risk, config.couple_db * config.defined_benefit);
+		        return sub_factory(scenario, aa_strategy, returns, aamap1, aamap2, ss.generate_stats, ss.validate_stats, scenario.utility_consume_time, scenario.utility_consume, config.defined_benefit);
+		}
 	}
 
-        public AAMap(Scenario scenario)
+        public AAMap(Scenario scenario, AAMap aamap1, AAMap aamap2, VitalStats generate_stats, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income)
         {
 	        this.scenario = scenario;
 	        this.config = scenario.config;
+
+		this.aamap1 = aamap1;
+		this.aamap2 = aamap2;
+		this.generate_stats = generate_stats;
+		this.validate_stats = validate_stats;
+		this.uc_time = uc_time;
+		this.uc_risk = uc_risk;
+		this.guaranteed_income = guaranteed_income;
 	}
 }

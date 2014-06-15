@@ -159,9 +159,9 @@ class AAMapDumpLoad extends AAMap
         }
 
 	@SuppressWarnings("unchecked")
-	public AAMapDumpLoad(Scenario scenario, String aa_file_prefix) throws IOException
+	public AAMapDumpLoad(Scenario scenario, String aa_file_prefix, VitalStats validate_stats) throws IOException
 	{
-	        super(scenario);
+	        super(scenario, null, null, null, validate_stats, scenario.utility_consume_time, scenario.utility_consume, scenario.config.defined_benefit);
 
 	        map = new MapPeriod[(int) (scenario.ss.max_years * config.generate_time_periods)];
 
@@ -293,12 +293,12 @@ class AAMapDumpLoad extends AAMap
 		    load_extra(map, aa_file_prefix, "nia");
 	}
 
-        public AAMapDumpLoad(Scenario scenario, AAMap map_precise) throws IOException
+        public AAMapDumpLoad(Scenario scenario, AAMap map_precise, VitalStats validate_stats) throws IOException
 	{
 		// Dump out and re-read asset allocation so that we are reporting stats after any loss of precision resulting from the limited
 		// precision of the aa file.  Emperically, the results are found to vary by around 0.01% as a result of this.
 
-	        super(scenario);
+	        super(scenario, null, null, null, validate_stats, map_precise.uc_time, map_precise.uc_risk, map_precise.guaranteed_income);
 
 		if (config.skip_dump_load)
 		{
@@ -319,8 +319,16 @@ class AAMapDumpLoad extends AAMap
 				}
 			}
 
+			if (map_precise.aamap1 != null)
+			{
+			        aamap1 = new AAMapDumpLoad(scenario, map_precise.aamap1, validate_stats.vital_stats1);
+			        aamap2 = new AAMapDumpLoad(scenario, map_precise.aamap2, validate_stats.vital_stats2);
+			}
+
 		        return;
 		}
+
+		assert(config.sex2 == null || config.couple_unit);
 
 		dump_aa(map_precise);
 		// for (int pi = 0; pi < map_precise.map.length; pi++)
@@ -343,7 +351,7 @@ class AAMapDumpLoad extends AAMap
 		        dump_map(map_precise, "ria");
 		if (scenario.nia_index != null)
 		        dump_map(map_precise, "nia");
-		AAMapDumpLoad loaded_map = new AAMapDumpLoad(scenario, (String) null);
+		AAMapDumpLoad loaded_map = new AAMapDumpLoad(scenario, (String) null, validate_stats);
 		map = loaded_map.map;
 		// // Copy across raw goal so that dump_paths() can display it. Only for opal-paths-success.png, which isn't very popular.
 		// // Also used by opal-success-raw.png.

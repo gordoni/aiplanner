@@ -199,14 +199,14 @@ public class AnnuityStats
 		        rcmt();
 	}
 
-        public void compute_stats(ScenarioSet ss, double time_periods, String table)
+        public void compute_stats(double time_periods, String table)
         {
 	        if (config.sex2 != null)
 		        return;
 
 		this.time_periods = time_periods;
 
-		boolean regenerated = vital_stats.compute_stats(ss, time_periods, table);
+		boolean regenerated = vital_stats.compute_stats(table);
 
 		if (regenerated)
 		{
