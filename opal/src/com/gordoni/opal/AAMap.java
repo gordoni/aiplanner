@@ -417,6 +417,7 @@ class AAMap
 				double raw_dying = vital_stats.raw_dying[period + y];
 				raw_alive = vital_stats.raw_alive[period + y + 1];
 			        double prev_alive = vital_stats.alive[period + y];
+			        double alive = vital_stats.alive[period + y + 1];
 				double dying = vital_stats.dying[period + y];
 
 				if (vital_stats.alive[period + y] == 0)
@@ -766,7 +767,10 @@ class AAMap
 				else
 				        path_consume = aamap.uc_time.inverse_utility(consume_path_utility);
 					        // Ensure consume and jpmorgan metrics match when gamma = 1/psi.
-				double avg_alive = prev_alive;
+				double avg_alive = monte_carlo_validate ? prev_alive : alive;
+				        // Use of alive rather than prev_alive gets rid of annoying uptick on first consumption when initially retired,
+				        // but destroys monte_carlo_validate model so generated model fails to validate.
+				        // It is also more conservative as consumption benefits only acrue if you survive the full year.
 				double upside_alive_discount;
 				if (compute_utility)
 				{
@@ -778,7 +782,7 @@ class AAMap
 					else
 					{
 					        consume_alive_discount = utility_weight * avg_alive;
-						upside_alive_discount = utility_weight * vital_stats.upside_alive[period + y];
+						upside_alive_discount = utility_weight * vital_stats.upside_alive[period + y + (monte_carlo_validate ? 0 : 1)];
 					}
 				}
 				else

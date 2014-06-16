@@ -317,7 +317,6 @@ public class VitalStats
 	{
 		double alive = 1.0;
 		double dying = 0.0;
-		double prev_alive = 1.0;
 
 		int upside_age = config.utility_age;
 		double discount = Math.pow(1 + r, - (config.start_age - upside_age));
@@ -355,7 +354,6 @@ public class VitalStats
 			for (int i = 0; i < time_periods; i++)
 			{
 				dying = alive * death_period;
-				prev_alive = alive * discount;
 				alive -= dying;
 				if (alive_array != null)
 				        alive_array[index + 1] = alive * discount;
