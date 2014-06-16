@@ -881,6 +881,8 @@ public class Scenario
 		        tp_max = config.gnuplot_tp;
 		else
 		        tp_max *= config.gnuplot_extra;
+		if (tp_max == 0)
+		        tp_max = tp_max_estimate; // Avoid crashing gnuplot.
 		tp_max = Math.min(tp_max, config.map_max_factor * tp_max_estimate);
 		if (config.gnuplot_consume != null)
 		        consume_max = config.gnuplot_consume;
