@@ -331,11 +331,12 @@ public class VitalStats
 		if (dying_array != null)
 		        len = Math.max(len, dying_array.length);
 		if (sum_avg_alive_array != null)
-		        len = Math.max(len, sum_avg_alive_array.length);
+		        len = Math.max(len, sum_avg_alive_array.length - 1);
 		if (bounded_sum_avg_alive != null)
-		        len = Math.max(len, bounded_sum_avg_alive.length);
+		        len = Math.max(len, bounded_sum_avg_alive.length - 1);
 
-		double[] avg_alive = new double[(int) Math.round (len * time_periods)];
+		double[] avg_alive = new double[(int) Math.round (len * time_periods) + 1];
+		avg_alive[0] = alive * discount;
 
 		double death_period = 0.0;
 		int index = 0;
@@ -359,7 +360,7 @@ public class VitalStats
 				        alive_array[index + 1] = alive * discount;
 				if (dying_array != null)
 				        dying_array[index] = dying * discount * Math.pow(1 + r, - 0.5 / time_periods);
-				avg_alive[index] = alive_array[index];
+				avg_alive[index + 1] = alive * discount;
 				discount *= Math.pow(1 + r, - 1.0 / time_periods);
 				index++;
 			}
@@ -412,15 +413,15 @@ public class VitalStats
 		int actual_years = (config.years == null) ? death_len : config.years;
 		this.raw_alive = new double[(int) Math.round(vs_years * time_periods) + 1];
 		this.raw_dying = new double[(int) Math.round(vs_years * time_periods)];
-		this.raw_sum_avg_alive = new double[(int) Math.round(vs_years * time_periods)];
+		this.raw_sum_avg_alive = new double[(int) Math.round(vs_years * time_periods) + 1];
  		pre_compute_alive_dying(death, raw_alive, raw_dying, raw_sum_avg_alive, null, time_periods, 0);
 		this.alive = new double[(int) Math.round(vs_years * time_periods) + 1];
 		this.dying = new double[(int) Math.round(vs_years * time_periods)];
-		this.sum_avg_alive = new double[(int) Math.round(vs_years * time_periods)];
-		this.bounded_sum_avg_alive = new double[Math.min(actual_years, (int) Math.round(vs_years * time_periods))];
+		this.sum_avg_alive = new double[(int) Math.round(vs_years * time_periods) + 1];
+		this.bounded_sum_avg_alive = new double[Math.min(actual_years, (int) Math.round(vs_years * time_periods)) + 1];
  		pre_compute_alive_dying(death, alive, dying, sum_avg_alive, bounded_sum_avg_alive, time_periods, config.consume_discount_rate);
 		this.upside_alive = new double[(int) Math.round(vs_years * time_periods) + 1];
-		this.bounded_sum_avg_upside_alive = new double[Math.min(actual_years, (int) Math.round(vs_years * time_periods))];
+		this.bounded_sum_avg_upside_alive = new double[Math.min(actual_years, (int) Math.round(vs_years * time_periods)) + 1];
  		pre_compute_alive_dying(death, upside_alive, null, null, bounded_sum_avg_upside_alive, time_periods, config.upside_discount_rate);
 
 		if (ss.max_years == -1)

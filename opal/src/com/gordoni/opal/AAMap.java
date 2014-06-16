@@ -767,10 +767,6 @@ class AAMap
 				else
 				        path_consume = aamap.uc_time.inverse_utility(consume_path_utility);
 					        // Ensure consume and jpmorgan metrics match when gamma = 1/psi.
-				double avg_alive = monte_carlo_validate ? prev_alive : alive;
-				        // Use of alive rather than prev_alive gets rid of annoying uptick on first consumption when initially retired,
-				        // but destroys monte_carlo_validate model so generated model fails to validate.
-				        // It is also more conservative as consumption benefits only acrue if you survive the full year.
 				double upside_alive_discount;
 				if (compute_utility)
 				{
@@ -781,7 +777,10 @@ class AAMap
 					}
 					else
 					{
-					        consume_alive_discount = utility_weight * avg_alive;
+					        consume_alive_discount = utility_weight * vital_stats.alive[period + y + (monte_carlo_validate ? 0 : 1)];
+						        // Use of alive rather than prev_alive gets rid of annoying uptick on first consumption when retired,
+						        // but destroys monte_carlo_validate model so generated model fails to validate.
+						        // It is also more conservative as consumption benefits only acrue if you survive the full year.
 						upside_alive_discount = utility_weight * vital_stats.upside_alive[period + y + (monte_carlo_validate ? 0 : 1)];
 					}
 				}
@@ -837,8 +836,7 @@ class AAMap
 				        assert(retired);
 					assert(!monte_carlo_validate);
 				        double sum_alive = vital_stats.bounded_sum_avg_alive[period];
-					if (period + y + 1 < vital_stats.bounded_sum_avg_alive.length)
-					        sum_alive -= vital_stats.bounded_sum_avg_alive[period + y + 1];
+				        sum_alive -= vital_stats.bounded_sum_avg_alive[period + y + 1];
 					double cew = uc_time.inverse_utility(combined_goal_path / sum_alive) - current_guaranteed_income;
 					double ssr = bucket_p[scenario.tp_index] / ssr_terms;
 					wer_path += raw_dying * cew / ssr;
@@ -848,12 +846,12 @@ class AAMap
 				        // Expensive.
 					cost_path += amount_annual / returns.time_periods * Math.pow(1.0 + config.ret_borrow, - (period + y) / returns.time_periods);
 				}
-				tw_goal_path += avg_alive * solvent;
+				tw_goal_path += alive * solvent;
 				ntw_goal_path += raw_dying * solvent_always;
 
 				if (!generate && monte_carlo_validate)
 				{
-				        divisor_saa += avg_alive * returns_probability;
+				        divisor_saa += alive * returns_probability;
 				        divisor_bsaa += consume_alive_discount * returns_probability;
 				        divisor_bsaua += upside_alive_discount * returns_probability;
 				}
@@ -952,7 +950,7 @@ class AAMap
 
 		if (generate && max_periods > 1)
 		{
-		        tw_goal += metrics.get(MetricsEnum.TW) * generate_stats.sum_avg_alive[period + 1];
+		        tw_goal += metrics.get(MetricsEnum.TW) * generate_stats.sum_avg_alive[period + 2];
 			ntw_goal += metrics.get(MetricsEnum.NTW) * generate_stats.raw_alive[period + 1];
 			floor_goal += metrics.get(MetricsEnum.FLOOR) * generate_stats.bounded_sum_avg_alive[period + 1];
 			upside_goal += metrics.get(MetricsEnum.UPSIDE) * generate_stats.bounded_sum_avg_upside_alive[period + 1];
@@ -978,7 +976,7 @@ class AAMap
 
 		if (generate || !monte_carlo_validate)
 		{
-		        divisor_saa = original_vital_stats.sum_avg_alive[period];
+		        divisor_saa = original_vital_stats.sum_avg_alive[period + 1];
 			if (aamap1 == null)
 			{
 			        divisor_bsaa = original_vital_stats.bounded_sum_avg_alive[period];
