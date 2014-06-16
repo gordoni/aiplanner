@@ -911,10 +911,16 @@ public class AAMapGenerate extends AAMap
 		}
 		else
 		{
+		        VitalStats generate_stats = scenario.ss.generate_stats;
 		        if (scenario.vw_strategy.equals("discounted_life"))
-			        le = scenario.ss.generate_stats.sum_avg_alive[period] / scenario.ss.generate_stats.alive[period];
+			{
+			        assert(generate_stats.vital_stats1 == null);
+			        le = generate_stats.sum_avg_alive[period + 1] / generate_stats.alive[period];
+			}
+			else if (generate_stats.vital_stats1 == null)
+			        le = generate_stats.raw_sum_avg_alive[period + 1] / generate_stats.raw_alive[period];
 			else
-			        le = scenario.ss.generate_stats.raw_sum_avg_alive[period] / scenario.ss.generate_stats.raw_alive[period];
+			        le = config.couple_weight1 * generate_stats.vital_stats1.raw_sum_avg_alive[period + 1] / generate_stats.vital_stats1.raw_alive[period] + (1 - config.couple_weight1) * generate_stats.vital_stats2.raw_sum_avg_alive[period + 1] / generate_stats.vital_stats2.raw_alive[period];
 		        le /= scenario.ss.generate_stats.time_periods;
 	        }
 		le = Math.max(le, config.vw_le_min);
