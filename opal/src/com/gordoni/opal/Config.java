@@ -137,6 +137,11 @@ public class Config
         public double vw_percentage_steps = 1000; // Search delta to use when searching for best vw_percentage.
         public double vw_le_min = 0; // Minimum allowed life expectancy for life and discounted_life.
 
+        public boolean book_post = false; // false to book consumption at the start of the time period when it is subtracted; true to book at the end.
+                // Use of book_post=true gets rid of an annoying uptick on first median consumption when retired, but this uptick might be valid,
+                // reflecting a greater weight placed on below median consumption values.
+	        // Use of book_post=true also seems to destroy monte_carlo_validate model, or at least monte_carlo_validate generated model fails to fully validate.
+	        // Use of book_post=true is also more conservative as consumption benefits only accrue if you survive the full year.
         public boolean spend_fract_all = false; // Whether to allow consumption/contribution choice for all years or only in retirement.
         public String search = "memory"; // How to search the asset allocation / spend_fract space for each map location.
                 // "all" - exhaustive search (painfully slow)

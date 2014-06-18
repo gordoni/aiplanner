@@ -224,13 +224,14 @@ class AAMap
 	@SuppressWarnings("unchecked")
 	protected SimulateResult simulate(double[] initial_aa, double[] bucket_p, int period, Integer num_sequences, int num_paths_record, boolean generate, Returns returns, int bucket)
 	{
-		boolean cost_basis_method_immediate = config.cost_basis_method.equals("immediate");
-		boolean variable_withdrawals = !scenario.vw_strategy.equals("amount") && !scenario.vw_strategy.equals("retirement_amount");
-		VitalStats original_vital_stats = generate ? generate_stats : validate_stats;
-		AnnuityStats annuity_stats = generate ? scenario.ss.generate_annuity_stats : scenario.ss.validate_annuity_stats;
-		boolean monte_carlo_validate = config.sex2 != null && !config.couple_unit;
-		int total_periods = (int) (scenario.ss.max_years * returns.time_periods);
-		int max_periods = total_periods - period;
+	        final int book_post = (config.book_post ? 1 : 0);
+		final boolean cost_basis_method_immediate = config.cost_basis_method.equals("immediate");
+		final boolean variable_withdrawals = !scenario.vw_strategy.equals("amount") && !scenario.vw_strategy.equals("retirement_amount");
+		final VitalStats original_vital_stats = generate ? generate_stats : validate_stats;
+		final AnnuityStats annuity_stats = generate ? scenario.ss.generate_annuity_stats : scenario.ss.validate_annuity_stats;
+		final boolean monte_carlo_validate = config.sex2 != null && !config.couple_unit;
+		final int total_periods = (int) (scenario.ss.max_years * returns.time_periods);
+		final int max_periods = total_periods - period;
 
 		int step_periods;
 		if (generate)
@@ -400,8 +401,8 @@ class AAMap
 			        double utility_weight = 1;
 			        if (!generate && monte_carlo_validate)
 				{
-				        boolean dead1 = couple_vital_stats.vital_stats1.alive[period + y + 1] == 0;
-					boolean dead2 = couple_vital_stats.vital_stats2.alive[period + y + 1] == 0;
+				        boolean dead1 = couple_vital_stats.vital_stats1.alive[period + y] == 0;
+					boolean dead2 = couple_vital_stats.vital_stats2.alive[period + y] == 0;
 				        if (dead1 || dead2)
 					{
 						aamap = dead1 ? aamap2 : aamap1;
@@ -772,16 +773,13 @@ class AAMap
 				{
 				        if (generate && aamap1 != null)
 					{
-					        consume_alive_discount = config.couple_weight1 * vital_stats.vital_stats1.alive[period + y] + (1 - config.couple_weight1) * vital_stats.vital_stats2.alive[period + y];
-					        upside_alive_discount = config.couple_weight1 * vital_stats.vital_stats1.upside_alive[period + y] + (1 - config.couple_weight1) * vital_stats.vital_stats2.upside_alive[period + y];
+					        consume_alive_discount = config.couple_weight1 * vital_stats.vital_stats1.alive[period + y + book_post] + (1 - config.couple_weight1) * vital_stats.vital_stats2.alive[period + y + book_post];
+					        upside_alive_discount = config.couple_weight1 * vital_stats.vital_stats1.upside_alive[period + y + book_post] + (1 - config.couple_weight1) * vital_stats.vital_stats2.upside_alive[period + y + book_post];
 					}
 					else
 					{
-					        consume_alive_discount = utility_weight * vital_stats.alive[period + y + (monte_carlo_validate ? 0 : 1)];
-						        // Use of alive rather than prev_alive gets rid of annoying uptick on first consumption when retired,
-						        // but destroys monte_carlo_validate model so generated model fails to validate.
-						        // It is also more conservative as consumption benefits only acrue if you survive the full year.
-						upside_alive_discount = utility_weight * vital_stats.upside_alive[period + y + (monte_carlo_validate ? 0 : 1)];
+					        consume_alive_discount = utility_weight * vital_stats.alive[period + y + book_post];
+						upside_alive_discount = utility_weight * vital_stats.upside_alive[period + y + book_post];
 					}
 				}
 				else
@@ -952,9 +950,9 @@ class AAMap
 		{
 		        tw_goal += metrics.get(MetricsEnum.TW) * generate_stats.sum_avg_alive[period + 2];
 			ntw_goal += metrics.get(MetricsEnum.NTW) * generate_stats.raw_alive[period + 1];
-			floor_goal += metrics.get(MetricsEnum.FLOOR) * generate_stats.bounded_sum_avg_alive[period + 1];
-			upside_goal += metrics.get(MetricsEnum.UPSIDE) * generate_stats.bounded_sum_avg_upside_alive[period + 1];
-			consume_goal += metrics.get(MetricsEnum.CONSUME) * generate_stats.bounded_sum_avg_alive[period + 1];
+			floor_goal += metrics.get(MetricsEnum.FLOOR) * generate_stats.bounded_sum_avg_alive[period + 1 + book_post];
+			upside_goal += metrics.get(MetricsEnum.UPSIDE) * generate_stats.bounded_sum_avg_upside_alive[period + 1 + book_post];
+			consume_goal += metrics.get(MetricsEnum.CONSUME) * generate_stats.bounded_sum_avg_alive[period + 1 + book_post];
 			if (config.utility_epstein_zin)
 			{
 			        assert(!monte_carlo_validate);
@@ -966,11 +964,11 @@ class AAMap
 			else
 			{
 			        if (aamap1 == null)
-				        combined_goal += metrics.get(MetricsEnum.COMBINED) * generate_stats.bounded_sum_avg_alive[period + 1];
+				        combined_goal += metrics.get(MetricsEnum.COMBINED) * generate_stats.bounded_sum_avg_alive[period + 1 + book_post];
 				else
-				        combined_goal += metrics.get(MetricsEnum.COMBINED) * (config.couple_weight1 * generate_stats.vital_stats1.bounded_sum_avg_alive[period + 1] + (1 - config.couple_weight1) * generate_stats.vital_stats2.bounded_sum_avg_alive[period + 1]);
+				        combined_goal += metrics.get(MetricsEnum.COMBINED) * (config.couple_weight1 * generate_stats.vital_stats1.bounded_sum_avg_alive[period + 1 + book_post] + (1 - config.couple_weight1) * generate_stats.vital_stats2.bounded_sum_avg_alive[period + 1 + book_post]);
 			}
-			tax_goal += metrics.get(MetricsEnum.TAX) * generate_stats.bounded_sum_avg_alive[period + 1];
+			tax_goal += metrics.get(MetricsEnum.TAX) * generate_stats.bounded_sum_avg_alive[period + 1 + book_post];
 			cost += metrics.get(MetricsEnum.COST);
 		}
 
@@ -979,21 +977,22 @@ class AAMap
 		        divisor_saa = original_vital_stats.sum_avg_alive[period + 1];
 			if (aamap1 == null)
 			{
-			        divisor_bsaa = original_vital_stats.bounded_sum_avg_alive[period];
-				divisor_bsaua = original_vital_stats.bounded_sum_avg_upside_alive[period];
+			        divisor_bsaa = original_vital_stats.bounded_sum_avg_alive[period + book_post];
+				divisor_bsaua = original_vital_stats.bounded_sum_avg_upside_alive[period + book_post];
 			}
 			else
 			{
-			        divisor_bsaa = config.couple_weight1 * original_vital_stats.vital_stats1.bounded_sum_avg_alive[period] + (1 - config.couple_weight1) * original_vital_stats.vital_stats2.bounded_sum_avg_alive[period];
-				divisor_bsaua = config.couple_weight1 * original_vital_stats.vital_stats1.bounded_sum_avg_upside_alive[period] + (1 - config.couple_weight1) * original_vital_stats.vital_stats2.bounded_sum_avg_upside_alive[period];
+			        divisor_bsaa = config.couple_weight1 * original_vital_stats.vital_stats1.bounded_sum_avg_alive[period + book_post] + (1 - config.couple_weight1) * original_vital_stats.vital_stats2.bounded_sum_avg_alive[period + book_post];
+				divisor_bsaua = config.couple_weight1 * original_vital_stats.vital_stats1.bounded_sum_avg_upside_alive[period + book_post] + (1 - config.couple_weight1) * original_vital_stats.vital_stats2.bounded_sum_avg_upside_alive[period + book_post];
 			}
 		}
 		divisor_ra = original_vital_stats.raw_alive[period];
 		divisor_a = original_vital_stats.alive[period];
 
-		if (scenario.vw_strategy.equals("retirement_amount") && generate)
+		if (generate && scenario.vw_strategy.equals("retirement_amount") && !(config.start_tp == 0 && config.accumulation_rate == 0))
 		{
 		        // This is a run time strategy. The withdrawal amount will vary depending on the run not the map, and so generated metrics are invalid.
+		        // As a special exception we allow start_tp=0 && accumulation_rate=0 so we can use retirement_amount to validate guaranteed income.
 		        floor_goal = 0;
 		        upside_goal = 0;
 		        consume_goal = 0;

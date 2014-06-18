@@ -289,7 +289,7 @@ public class VitalStats
 		return couple;
 	}
 
-        // NB: sum_avg_alive[i] / alive[i] = le.get(start_age + i) when time_periods==1 and consume_discount_rate==0.
+        // NB: sum_avg_alive[i+1] / alive[i] = le.get(start_age + i) when time_periods==1 and consume_discount_rate==0.
 	private void pre_compute_life_expectancy()
 	{
 	        this.le = new ArrayList<Double>();
@@ -372,9 +372,8 @@ public class VitalStats
 		for (int i = avg_alive.length - 1; i >= 0; i--)
 		{
 		        sum_aa += avg_alive[i];
-			double divisor = 0;
 			if (bounded_sum_avg_alive != null && i < bounded_sum_avg_alive.length)
-			        if (!config.utility_retire || i >= Math.round((config.retirement_age - config.start_age) * time_periods))
+			        if (!config.utility_retire || i >= Math.round((config.retirement_age - config.start_age) * time_periods) + (config.book_post ? 1 : 0))
 				        bounded_sum_aa += avg_alive[i];
 			if (sum_avg_alive_array != null)
 			        sum_avg_alive_array[i] = sum_aa;
