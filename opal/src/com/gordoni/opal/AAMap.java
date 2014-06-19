@@ -1358,6 +1358,18 @@ class AAMap
                 // S&P Target Date indexes as reported by iShares prospectus of 2012-12-01 for holdings as of 2012-06-30.
         private double target_date_offset = -5 + -2.5;
 
+        private double weighted_alive(VitalStats vital_stats, int period, int ref_period)
+        {
+	        if (config.couple_unit || vital_stats.vital_stats1 == null)
+		        return vital_stats.raw_alive[period] / vital_stats.raw_alive[ref_period];
+		else
+		{
+		        double alive1 = vital_stats.vital_stats1.raw_alive[period] / vital_stats.vital_stats1.raw_alive[ref_period];
+		        double alive2 = vital_stats.vital_stats2.raw_alive[period] / vital_stats.vital_stats2.raw_alive[ref_period];
+		        return alive1 * alive2 + config.couple_db * (alive1 * (1 - alive1) + (1 - alive1) * alive2);
+		}
+	}
+
         protected double[] generate_aa(String aa_strategy, double age, double[] p)
         {
 		double bonds;
@@ -1396,15 +1408,15 @@ class AAMap
 			double future_income = 0;
 		        for (int pp = period; pp < scenario.ss.generate_stats.dying.length; pp++)
 			{
+			        VitalStats vital_stats = scenario.ss.generate_stats;
 			        double income = 0;
-				double avg_alive = scenario.ss.generate_stats.raw_alive[pp];
+				int ref_period = period;
 			        if (pp < Math.round((config.retirement_age - config.start_age) * config.generate_time_periods))
 				{
 				        if (config.savings_bond)
 					{
 						if (pp == period)
 					                continue;
-						avg_alive /= scenario.ss.generate_stats.raw_alive[period];
 					        income = config.accumulation_rate * Math.pow(config.accumulation_ramp, pp / config.generate_time_periods);
 					}
 				}
@@ -1414,17 +1426,17 @@ class AAMap
 					{
 						if (config.vbond_discounted)
 						{
-						        avg_alive /= scenario.ss.generate_stats.raw_alive[period];
 						        if (pp == period)
 							        continue;
 					        }
 						else
 						        // If not discounting include pp=period and approximate chance of being alive at retirement_age as 1
 						        // so that rule of thumb can lookup le from a table.
-						        avg_alive /= scenario.ss.generate_stats.raw_alive[retire_period];
+						        ref_period = retire_period;
 					        income = guaranteed_income;
 					}
 				}
+				double avg_alive = weighted_alive(vital_stats, pp, ref_period);
 				income *= avg_alive;
 				if (config.vbond_discounted)
 				        income /= Math.pow((1 + config.vbond_discount_rate), (pp - period) / config.generate_time_periods);
