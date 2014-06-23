@@ -10,12 +10,18 @@ interface MapPeriodIterator<T> extends Iterator<T>
 
 class MapPeriod implements Iterable<MapElement>
 {
+        public Scenario scenario;
+	public Config config;
+
         private MapElement[] mp;
 
 	public int[] bottom;
         public int[] length;
 
-	private int tp_stride;
+	public double[] floor;
+	public double[] ceiling;
+
+	//private int tp_stride;
 
         public MapElement get(int[] p_index)
         {
@@ -39,6 +45,73 @@ class MapPeriod implements Iterable<MapElement>
 		        offset = offset * length[i] + offset0;
 		}
 		mp[offset] = me;
+	}
+
+	private Interpolator metric_interp;
+	private Interpolator consume_interp;
+	private Interpolator spend_interp;
+	private Interpolator[] aa_interp;
+
+	public void interpolate(boolean generate)
+	{
+	        metric_interp = Interpolator.factory(this, Interpolator.metric_interp_index);
+	        consume_interp = Interpolator.factory(this, Interpolator.consume_interp_index);
+		spend_interp = Interpolator.factory(this, Interpolator.spend_interp_index);
+		aa_interp = new Interpolator[scenario.all_alloc];
+		for (int i = 0; i < scenario.all_alloc; i++)
+		        aa_interp[i] = Interpolator.factory(this, i);
+	}
+
+	public MapElement lookup_interpolate(double[] p, boolean fast_path, boolean generate, MapElement li_me)
+	{
+	        MapElement me = li_me;
+		double[] aa = li_me.aa;
+
+	        double metric_sm = Double.NaN;
+	        double spend = Double.NaN;
+	        double consume = Double.NaN;
+
+	        if (!fast_path || generate)
+		        metric_sm = metric_interp.value(p);
+
+		if (!fast_path || !generate)
+		{
+			for (int i = 0; i < scenario.all_alloc; i++)
+			        if (i != scenario.cpi_index)
+				        aa[i] = aa_interp[i].value(p);
+		        // Keep bounded and summed to one as exactly as possible.
+		        double sum = 0;
+		        for (int a = 0; a < scenario.all_alloc; a++)
+			{
+			        double alloc = aa[a];
+			        if (alloc <= 0)
+			                alloc = 0;
+			        if (alloc > 1)
+			                alloc = 1;
+				aa[a] = alloc;
+				if (a < scenario.normal_assets)
+				        sum += alloc;
+			}
+			for (int a = 0; a < scenario.normal_assets; a++)
+			      aa[a] /= sum;
+		}
+
+	        if (!fast_path)
+		{
+		        spend = spend_interp.value(p);
+		        consume = consume_interp.value(p);
+
+			assert(spend >= 0);
+			assert(consume >= 0);
+		}
+
+		me.metric_sm = metric_sm;
+		me.spend = spend;
+		me.consume = consume;
+
+		me.rps = p;
+
+		return me;
 	}
 
         public Iterator<MapElement> iterator_unused()
@@ -108,7 +181,8 @@ class MapPeriod implements Iterable<MapElement>
 
         public MapPeriod(Scenario scenario, boolean generate)
         {
-	        Config config = scenario.config;
+	        this.scenario = scenario;
+	        this.config = scenario.config;
 
 	        bottom = new int[scenario.start_p.length];
 	        length = new int[scenario.start_p.length];
@@ -126,6 +200,14 @@ class MapPeriod implements Iterable<MapElement>
 		{
 			bottom[scenario.nia_index] = scenario.scale[scenario.nia_index].pf_to_bucket(config.nia_high);
 		        length[scenario.nia_index] = scenario.scale[scenario.nia_index].pf_to_bucket(0) - bottom[scenario.nia_index] + 1;
+		}
+
+		floor = new double[scenario.start_p.length];
+		ceiling = new double[scenario.start_p.length];
+		for (int i = 0; i < scenario.start_p.length; i++)
+		{
+		        floor[i] = scenario.scale[i].bucket_to_pf(bottom[i] + length[i] - 1);
+		        ceiling[i] = scenario.scale[i].bucket_to_pf(bottom[i]);
 		}
 
 		int len = 1;

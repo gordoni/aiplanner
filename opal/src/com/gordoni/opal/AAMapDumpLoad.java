@@ -283,6 +283,7 @@ class AAMapDumpLoad extends AAMap
 					assert(-config.max_borrow - 1e-6 <= a);
 				}
  			}
+			map[pi].interpolate(false);
 		}
 
 		if (!scenario.vw_strategy.equals("amount"))
@@ -317,6 +318,7 @@ class AAMapDumpLoad extends AAMap
 				        mp.set(v_index, map_precise.map[pi].get(g_index));
 					itr.next();
 				}
+				mp.interpolate(false);
 			}
 
 			if (map_precise.aamap1 != null)

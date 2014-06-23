@@ -51,8 +51,12 @@ class AAMap
 
         private MapElement lookup_interpolate_fast(double[] p, int period, boolean fast_path, boolean generate, double[] li_dbucket, int[] li_bucket1, int[] li_bucket2, MapElement li_me)
         {
-		MapElement me = li_me;
 	        MapPeriod next_map = map[period];
+
+		if (!config.interpolation.equals("linear"))
+		    return next_map.lookup_interpolate(p, fast_path, generate, li_me);
+
+		MapElement me = li_me;
 		double[] bucket_f = scenario.pToFractionalBucket(p, li_dbucket);
 		int[] below = li_bucket1;
 		int[] above = li_bucket2;

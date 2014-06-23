@@ -868,6 +868,8 @@ public class AAMapGenerate extends AAMap
 				me.metric_sm = me.results.metrics.get(scenario.success_mode_enum);
 			}
 
+			map[period].interpolate(true);
+
 			if ((config.skip_dump_log || config.conserve_ram) && period + 1 < map.length)
 			{
 			        for (MapElement me : map[period + 1])
