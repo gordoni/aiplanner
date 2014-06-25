@@ -110,18 +110,18 @@ default_params = {
 
 resolution = 'medium'
 if resolution == 'low':
-    tp_zero_factor = 0.05
-    scaling_factor = 1.02
+    tp_zero_factor = 0.001
+    scaling_factor = 1.05
     aa_steps = 50
     spend_steps = 5000
 elif resolution == 'medium':
-    tp_zero_factor = 0.02
-    scaling_factor = 1.01
+    tp_zero_factor = 0.0001
+    scaling_factor = 1.05
     aa_steps = 1000
     spend_steps = 10000  # Some noise in withdrawal map, and possibly consumption paths.
 else:
-    tp_zero_factor = 0.02
-    scaling_factor = 1.0001
+    tp_zero_factor = 0.00005
+    scaling_factor = 1.02
     aa_steps = 1000
     spend_steps = 100000
 

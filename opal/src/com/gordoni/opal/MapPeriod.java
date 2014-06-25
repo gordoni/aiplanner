@@ -105,6 +105,7 @@ class MapPeriod implements Iterable<MapElement>
 			assert(consume >= 0);
 		}
 
+		me.results.metrics.metrics[scenario.success_mode_enum.ordinal()] = metric_sm; // Needed by maintain_all.
 		me.metric_sm = metric_sm;
 		me.spend = spend;
 		me.consume = consume;

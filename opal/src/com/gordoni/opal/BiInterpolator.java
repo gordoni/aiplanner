@@ -1,5 +1,7 @@
 package com.gordoni.opal;
 
+import java.util.Arrays;
+
 import org.apache.commons.math3.analysis.BivariateFunction;
 import org.apache.commons.math3.analysis.interpolation.BicubicSplineInterpolator;
 import org.apache.commons.math3.analysis.interpolation.BivariateGridInterpolator;
@@ -7,6 +9,10 @@ import org.apache.commons.math3.analysis.interpolation.BivariateGridInterpolator
 class BiInterpolator extends Interpolator
 {
         MapPeriod mp;
+
+        double xval[];
+        double yval[];
+        double fval[][];
 
         BivariateFunction f;
 
@@ -18,7 +24,33 @@ class BiInterpolator extends Interpolator
 	        double y = p[1];
 		y = Math.max(y, mp.floor[1]);
 		y = Math.min(y, mp.ceiling[1]);
-	        return f.value(x, y);
+	        double v = f.value(x, y);
+		int xindex = Arrays.binarySearch(xval, x);
+		if (xindex < 0)
+		        xindex = - xindex - 2;
+		int yindex = Arrays.binarySearch(yval, x);
+		if (yindex < 0)
+		        yindex = - yindex - 2;
+		double fmin = fval[xindex][yindex];
+		double fmax = fval[xindex][yindex];
+		if (xindex + 1 < xval.length)
+		{
+		        fmin = Math.min(fmin, fval[xindex + 1][yindex]);
+		        fmax = Math.max(fmax, fval[xindex + 1][yindex]);
+		}
+		if (yindex + 1 < yval.length)
+		{
+		        fmin = Math.min(fmin, fval[xindex][yindex + 1]);
+		        fmax = Math.max(fmax, fval[xindex][yindex + 1]);
+		}
+		if (xindex + 1 < xval.length && yindex + 1 < yval.length)
+		{
+		        fmin = Math.min(fmin, fval[xindex + 1][yindex + 1]);
+		        fmax = Math.max(fmax, fval[xindex + 1][yindex + 1]);
+		}
+		v = Math.max(v, fmin);
+		v = Math.min(v, fmax);
+		return v;
         }
 
         public BiInterpolator(MapPeriod mp, int what)
@@ -28,14 +60,14 @@ class BiInterpolator extends Interpolator
 	        Scenario scenario = mp.scenario;
 		Config config = scenario.config;
 
-		double[] xval = new double[mp.length[0]];
+		xval = new double[mp.length[0]];
 		for (int i = 0; i < xval.length; i++)
 		        xval[(xval.length - 1) - i] = scenario.scale[0].bucket_to_pf(mp.bottom[0] + i);
-		double[] yval = new double[mp.length[1]];
+		yval = new double[mp.length[1]];
 		for (int i = 0; i < yval.length; i++)
 		        yval[(yval.length - 1) - i] = scenario.scale[1].bucket_to_pf(mp.bottom[1] + i);
 
-		double[][] fval = new double[mp.length[0]][mp.length[1]];
+		fval = new double[mp.length[0]][mp.length[1]];
 		MapPeriodIterator<MapElement> mpitr = mp.iterator();
 		while (mpitr.hasNext())
 		{

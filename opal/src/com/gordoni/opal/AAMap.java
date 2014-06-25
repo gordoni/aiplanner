@@ -386,7 +386,6 @@ class AAMap
 				len_returns = returns_array.length;
 				index = s % len_returns;
 				returns_probability = returns.returns_unshuffled_probability[index];
-
 			}
 			AAMap aamap = this;
 			VitalStats couple_vital_stats;

@@ -1,5 +1,7 @@
 package com.gordoni.opal;
 
+import java.util.Arrays;
+
 import org.apache.commons.math3.analysis.TrivariateFunction;
 import org.apache.commons.math3.analysis.interpolation.TricubicSplineInterpolator;
 import org.apache.commons.math3.analysis.interpolation.TrivariateGridInterpolator;
@@ -7,6 +9,11 @@ import org.apache.commons.math3.analysis.interpolation.TrivariateGridInterpolato
 class TriInterpolator extends Interpolator
 {
         MapPeriod mp;
+
+        double xval[];
+        double yval[];
+        double zval[];
+        double fval[][][];
 
         TrivariateFunction f;
 
@@ -21,7 +28,56 @@ class TriInterpolator extends Interpolator
 	        double z = p[2];
 		z = Math.max(z, mp.floor[2]);
 		z = Math.min(z, mp.ceiling[2]);
-	        return f.value(x, y, z);
+	        double v = f.value(x, y, z);
+		int xindex = Arrays.binarySearch(xval, x);
+		if (xindex < 0)
+		        xindex = - xindex - 2;
+		int yindex = Arrays.binarySearch(yval, x);
+		if (yindex < 0)
+		        yindex = - yindex - 2;
+		int zindex = Arrays.binarySearch(zval, x);
+		if (zindex < 0)
+		        zindex = - zindex - 2;
+		double fmin = fval[xindex][yindex][zindex];
+		double fmax = fval[xindex][yindex][zindex];
+		if (xindex + 1 < xval.length)
+		{
+		        fmin = Math.min(fmin, fval[xindex + 1][yindex][zindex]);
+		        fmax = Math.max(fmax, fval[xindex + 1][yindex][zindex]);
+		}
+		if (yindex + 1 < yval.length)
+		{
+		        fmin = Math.min(fmin, fval[xindex][yindex + 1][zindex]);
+		        fmax = Math.max(fmax, fval[xindex][yindex + 1][zindex]);
+		}
+		if (zindex + 1 < zval.length)
+		{
+		        fmin = Math.min(fmin, fval[xindex][yindex][zindex + 1]);
+		        fmax = Math.max(fmax, fval[xindex][yindex][zindex + 1]);
+		}
+		if (xindex + 1 < xval.length && yindex + 1 < yval.length)
+		{
+		        fmin = Math.min(fmin, fval[xindex + 1][yindex + 1][zindex]);
+		        fmax = Math.max(fmax, fval[xindex + 1][yindex + 1][zindex]);
+		}
+		if (xindex + 1 < xval.length && zindex + 1 < zval.length)
+		{
+		        fmin = Math.min(fmin, fval[xindex + 1][yindex][zindex + 1]);
+		        fmax = Math.max(fmax, fval[xindex + 1][yindex][zindex + 1]);
+		}
+		if (yindex + 1 < yval.length && zindex + 1 < zval.length)
+		{
+		        fmin = Math.min(fmin, fval[xindex][yindex + 1][zindex + 1]);
+		        fmax = Math.max(fmax, fval[xindex][yindex + 1][zindex + 1]);
+		}
+		if (xindex + 1 < xval.length && yindex + 1 < yval.length && zindex + 1 < zval.length)
+		{
+		        fmin = Math.min(fmin, fval[xindex + 1][yindex + 1][zindex + 1]);
+		        fmax = Math.max(fmax, fval[xindex + 1][yindex + 1][zindex + 1]);
+		}
+		v = Math.max(v, fmin);
+		v = Math.min(v, fmax);
+		return v;
         }
 
         public TriInterpolator(MapPeriod mp, int what)
@@ -31,17 +87,17 @@ class TriInterpolator extends Interpolator
 	        Scenario scenario = mp.scenario;
 		Config config = scenario.config;
 
-		double[] xval = new double[mp.length[0]];
+		xval = new double[mp.length[0]];
 		for (int i = 0; i < xval.length; i++)
 		        xval[(xval.length - 1) - i] = scenario.scale[0].bucket_to_pf(mp.bottom[0] + i);
-		double[] yval = new double[mp.length[1]];
+		yval = new double[mp.length[1]];
 		for (int i = 0; i < yval.length; i++)
 		        yval[(yval.length - 1) - i] = scenario.scale[1].bucket_to_pf(mp.bottom[1] + i);
-		double[] zval = new double[mp.length[2]];
+		zval = new double[mp.length[2]];
 		for (int i = 0; i < zval.length; i++)
 		        zval[(zval.length - 1) - i] = scenario.scale[2].bucket_to_pf(mp.bottom[2] + i);
 
-		double[][][] fval = new double[mp.length[0]][mp.length[1]][mp.length[2]];
+		fval = new double[mp.length[0]][mp.length[1]][mp.length[2]];
 		MapPeriodIterator<MapElement> mpitr = mp.iterator();
 		while (mpitr.hasNext())
 		{
