@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -165,7 +166,14 @@ public class AnnuityStats
 			this.synthetic_nominal_annuity_price[i] = na_price / (vital_stats.raw_alive[i] * time_periods * config.annuity_nominal_mwr);
 			this.period_real_annuity_price[i] =  period_ra_price / (period_alive[i] * time_periods * config.annuity_real_mwr);
 			this.period_nominal_annuity_price[i] = period_na_price / (period_alive[i] * time_periods * config.annuity_nominal_mwr);
-			this.actual_real_annuity_price[i] = Double.POSITIVE_INFINITY;
+			double real_annuity_price_male[] = hist.real_annuity_price.get(config.annuity_real_quote + "-male");
+			double real_annuity_price_female[] = hist.real_annuity_price.get(config.annuity_real_quote + "-female");
+			if (config.sex.equals("male") && config.start_age + (int) (i / time_periods) < real_annuity_price_male.length)
+			        this.actual_real_annuity_price[i] = real_annuity_price_male[config.start_age + (int) (i / time_periods)];
+			else if (config.sex.equals("female") && config.start_age + (int) (i / time_periods) < real_annuity_price_female.length)
+			        this.actual_real_annuity_price[i] = real_annuity_price_female[config.start_age + (int) (i / time_periods)];
+			else
+			        this.actual_real_annuity_price[i] = Double.POSITIVE_INFINITY;
 			double nominal_annuity_price_male[] = hist.nominal_annuity_price.get(config.annuity_nominal_quote + "-male");
 			double nominal_annuity_price_female[] = hist.nominal_annuity_price.get(config.annuity_nominal_quote + "-female");
 			if (config.sex.equals("male") && config.start_age + (int) (i / time_periods) < nominal_annuity_price_male.length)
@@ -177,10 +185,7 @@ public class AnnuityStats
 			if (config.annuity_real_synthetic)
 			        this.real_annuity_price[i] = this.synthetic_real_annuity_price[i];
 			else
-			{
 			        this.real_annuity_price[i] = this.actual_real_annuity_price[i];
-			        assert(config.start_ria == null);
-			}
 			if (config.annuity_nominal_synthetic)
 			        this.nominal_annuity_price[i] = this.synthetic_nominal_annuity_price[i];
 			else

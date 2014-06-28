@@ -540,16 +540,16 @@ if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*1
 symbol = word(asset_class_symbols, 21)
 if (paths && symbol ne "") die-invalid-command-too-many-asset_classes
 
-set ylabel "inflation-indexed SPIA purchase / total portfolio size"
-set yrange [0:100]
-set format y "%.0f%%"
-if (annuitization > 0) set output prefix . "-average-ria.png"
-if (annuitization > 0) plot prefix . "-average.csv" using 1:($2 * 100) with lines notitle
-
-set ylabel "nominal SPIA purchase / total portfolio size"
-if (annuitization > 0) set output prefix . "-average-nia.png"
-if (annuitization > 0) plot prefix . "-average.csv" using 1:($3 * 100) with lines notitle
-
+#set ylabel "inflation-indexed SPIA purchase / total portfolio size"
+#set yrange [0:100]
+#set format y "%.0f%%"
+#if (annuitization > 0) set output prefix . "-average-ria.png"
+#if (annuitization > 0) plot prefix . "-average.csv" using 1:($2 * 100) with lines notitle
+#
+#set ylabel "nominal SPIA purchase / total portfolio size"
+#if (annuitization > 0) set output prefix . "-average-nia.png"
+#if (annuitization > 0) plot prefix . "-average.csv" using 1:($3 * 100) with lines notitle
+#
 #set ylabel "small value / total portfolio size"
 #set output prefix . "-average-sh.png"
 #plot prefix . "-average.csv" using 1:((1 - ($2 + $3)) * $4 * 100) with lines notitle

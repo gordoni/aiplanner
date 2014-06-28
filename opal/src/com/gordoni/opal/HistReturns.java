@@ -462,6 +462,35 @@ public class HistReturns
 		return death;
 	}
 
+        public Map<String, double[]> real_annuity_price = new HashMap<String, double[]>();
+
+        private void load_incomesolutions(String filename) throws IOException
+        {
+	        int max_age = 120;
+		double[] real_annuity_price_male = new double[max_age + 1];
+		double[] real_annuity_price_female = new double[max_age + 1];
+		for (int i = 0; i <= max_age; i++)
+		{
+		        real_annuity_price_male[i] = Double.POSITIVE_INFINITY;
+		        real_annuity_price_female[i] = Double.POSITIVE_INFINITY;
+		}
+	        BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + "incomesolutions.com/" + filename)));
+		String line = in.readLine();
+		while ((line = in.readLine()) != null)
+		{
+  			String[] fields = line.split(",", -1);
+			int age = Integer.parseInt(fields[0]);
+			double payout_male = fields[1].equals("") ? 0 : Double.parseDouble(fields[1]);
+			double payout_female = fields[2].equals("") ? 0 : Double.parseDouble(fields[2]);
+			real_annuity_price_male[age] = 100000 / (12 * payout_male);
+			real_annuity_price_female[age] = 100000 / (12 * payout_female);
+		}
+		in.close();
+		String date = filename.substring(0, filename.lastIndexOf(".csv"));
+		real_annuity_price.put(date + "-male", real_annuity_price_male);
+		real_annuity_price.put(date + "-female", real_annuity_price_female);
+	}
+
         public Map<String, double[]> nominal_annuity_price = new HashMap<String, double[]>();
 
 	// From immediateannuities.com (add -state=CA to get state):
@@ -633,7 +662,11 @@ public class HistReturns
 		soa_iam2012_basic_death_f = load_soa_iam2012("soa-iam2012-basic-female.csv", true);
 		soa_projection_g2_m = load_soa_iam2012("soa-projection-g2-male.csv", false);
 		soa_projection_g2_f = load_soa_iam2012("soa-projection-g2-female.csv", false);
-                File dir = new File(data + "/" + "immediateannuities.com");
+                File dir = new File(data + "/" + "incomesolutions.com");
+		for (File file : dir.listFiles())
+		        if (file.getName().endsWith(".csv"))
+			        load_incomesolutions(file.getName());
+                dir = new File(data + "/" + "immediateannuities.com");
 		for (File file : dir.listFiles())
 		        if (file.isDirectory())
 			        load_immediateannuities(file.getName());

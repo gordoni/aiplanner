@@ -88,6 +88,9 @@ public class Config
         public double annuity_steps = 10000; // Number of annuitization steps. Keep steps small since annuitization can't be undone.
         public boolean annuity_partial = true; // Allow partial annuitization, or make annuitization a one time complete irrevocable decision.
         public boolean annuity_real_synthetic = false; // Whether to use sythetically generated real annuity quotes based on life table.
+               // Strictly speaking use of actual quotes is cheating becasue actual quotes are period quotes that don't reflect cohort mortality improvements.
+               // Actual quotes are only available for a few sparse years which may be inadequate for annuity_partial.
+        public String annuity_real_quote = "2014-04-15"; // Source for non-synthetic real quotes.
         public double annuity_real_mwr = 1.0; // Money's Worth Ratio associated with synthetic real annuity (NPV less profit and expense).
         public double annuity_real_rate = 0.02; // Real interest rate/discount rate associated with synthetic real annuity.
         public String annuity_real_yield_curve = null; // Treasury TIPS yield curve to use for synthetic annuity.
@@ -97,13 +100,13 @@ public class Config
         public int annuity_real_long_years = 30; // Maturity beyond which a lack of bond availability causes rates to be increased.
         public double annuity_real_long_penalty = 0.0; // Amount by which to reduce rates post long_years to reflect lack of bond availability.
         public boolean annuity_nominal_synthetic = false; // Whether to use sythetically generated nominal annuity quotes based on life table.
-               // Strictly speaking use of real quotes is cheating becasue real quotes are period quotes that don't reflect cohort mortality improvements.
+               // Strictly speaking use of actual quotes is cheating becasue actual quotes are period quotes that don't reflect cohort mortality improvements.
                // In other words annuities are expected to become more expensive in the future.
-        public String annuity_nominal_quote = "2014-01-15"; // Source for non-synthetic quotes.
+        public String annuity_nominal_quote = "2014-04-15"; // Source for non-synthetic nominal quotes.
         public double annuity_nominal_mwr = 1.0; // Money's Worth Ratio associated with synthetic nominal annuity (NPV less profit and expense).
         public double annuity_nominal_rate = 0.04; // Nominal interest rate/discount rate associated with synthetic nominal annuity.
                // Have seen values of 5 and 6% used on the web. So possibly on the low side, but gives results consistent with non-synthetic annuities.
-        public String annuity_nominal_yield_curve = "2014-Jan";
+        public String annuity_nominal_yield_curve = "2014-Apr";
                // Treasury corporate high quality market yield curve to use for synthetic annuity. May be an implicitly anchored regexp.
                // Null to use constant annuity_nominal_rate.
                // Erroneously assumes the same yield curve will be present throughout time.
