@@ -53,10 +53,10 @@ public class Config
                // However the map metric will start to suffer very slightly.
                // We set it low to allow validate_draw='bootstrap' bootstrap_block_size=0 generation validation.
                // Old comment (pre-spline value was 1.002): Above 1.01 aa plots start to become pixelated.
-	public double annuity_scaling_factor = 1.001; // Successive immediate annuity buckets this much larger.
+	public double annuity_scaling_factor = 1.05; // Successive immediate annuity buckets this much larger.
 
-        public double ria_high = 1.0; // Maximum taxable real immediate annuity payout.
-        public double nia_high = 1.0; // Maximum taxable nominal immediate annuity payout.
+        public double ria_high = 100000; // Maximum taxable real immediate annuity payout.
+        public double nia_high = 100000; // Maximum taxable nominal immediate annuity payout.
 
         public int retirement_number_steps = 100; // Retirement number steps.
         public double success_lines_scale_size = 0.2; // Success probability line linear scale.
@@ -87,7 +87,7 @@ public class Config
 
         public double annuity_steps = 10000; // Number of annuitization steps. Keep steps small since annuitization can't be undone.
         public boolean annuity_partial = true; // Allow partial annuitization, or make annuitization a one time complete irrevocable decision.
-        public boolean annuity_real_synthetic = false; // Whether to use sythetically generated real annuity quotes based on life table.
+        public boolean annuity_real_synthetic = true; // Whether to use sythetically generated real annuity quotes based on life table.
                // Strictly speaking use of actual quotes is cheating becasue actual quotes are period quotes that don't reflect cohort mortality improvements.
                // Actual quotes are only available for a few sparse years which may be inadequate for annuity_partial.
         public String annuity_real_quote = "2014-04-15"; // Source for non-synthetic real quotes.
@@ -95,11 +95,12 @@ public class Config
         public double annuity_real_rate = 0.02; // Real interest rate/discount rate associated with synthetic real annuity.
         public String annuity_real_yield_curve = null; // Treasury TIPS yield curve to use for synthetic annuity.
                // Null to use constant annuity_real_rate. Or a date like "04/15/14" (invokes R to interpolate yield curve so marginally slower).
+               // (Can't use math3 to interpolate because doesn't handle years less than lowest actual year ie. years 0-4).
                // Erroneously assumes the same yield curve will be present throughout time.
         public double annuity_real_yield_curve_adjust = 0; // Adjustment to apply to yield curve rates.
         public int annuity_real_long_years = 30; // Maturity beyond which a lack of bond availability causes rates to be increased.
         public double annuity_real_long_penalty = 0.0; // Amount by which to reduce rates post long_years to reflect lack of bond availability.
-        public boolean annuity_nominal_synthetic = false; // Whether to use sythetically generated nominal annuity quotes based on life table.
+        public boolean annuity_nominal_synthetic = true; // Whether to use sythetically generated nominal annuity quotes based on life table.
                // Strictly speaking use of actual quotes is cheating becasue actual quotes are period quotes that don't reflect cohort mortality improvements.
                // In other words annuities are expected to become more expensive in the future.
         public String annuity_nominal_quote = "2014-04-15"; // Source for non-synthetic nominal quotes.
@@ -304,7 +305,7 @@ public class Config
         public double tax_rate_div_default = 0.0; // Default tax rate for dividends.
         public double tax_rate_annuity = 0.0; // Average tax rate for annuities.
                // Annuity taxation is not reported in tax metric output (could probably modify to track and report if desired).
-        public boolean tax_annuity_us = true; // Perform US rather than Canadian style annity taxation.
+        public boolean tax_annuity_us = true; // Perform US rather than Canadian style annuity taxation.
               // Both allow a credit for the purchase price, but in law US style taxation provides a credit to the estate if you die before the IRS life expectancy
               // and revokes the credit after. Canadian style taxation simply allows an ongoing credit derived from the purchase price for as long as you are alive.
               // When generating we normally ignore the tax credit for purchase (conservatively reducing the income expected from annuities),

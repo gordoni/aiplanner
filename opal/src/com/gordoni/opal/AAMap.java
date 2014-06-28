@@ -500,6 +500,7 @@ class AAMap
 				if ((scenario.ria_index != null || scenario.nia_index != null) && config.tax_rate_annuity != 0 &&
 				        (!generate || (!config.tax_annuity_us && config.tax_annuity_canadian_nominal_generate_credit)))
 				{
+				        assert(!(generate && scenario.nia_index == null));
 				        double nia_tax_credit = (real_annuitize + nominal_annuitize) * config.tax_rate_annuity / annuity_stats.annuity_le[period + y];
 					nia += nia_tax_credit;
 					if (config.annuity_payout_immediate)
