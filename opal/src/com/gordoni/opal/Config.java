@@ -114,8 +114,10 @@ public class Config
         public double annuity_nominal_yield_curve_adjust = 0; // Adjustment to apply to yield curve rates.
         public int annuity_nominal_long_years = 30; // Maturity beyond which a lack of bond availability causes rates to be increased.
         public double annuity_nominal_long_penalty = 0.0; // Amount by which to reduce rates post long_years to reflect lack of bond availability.
-        public boolean annuity_payout_immediate = true;
-               // Whether the first payout of a newly purchased annuity should take place immediately, or after one time period.
+        public double annuity_payout_immediate = 0.5; // Ratio of any immediate first payout of a newly purchased annuity.
+               // 0.0 fails to provide for first 12 months of payments.
+               // 0.5 approximates monthly payments.
+               // 1.0 provides for subsequent 12 months of payments at later ages when high probability of being dead and not-entitled to them.
 
 	public String safe_aa = "bonds";
 	        // Which asset allocation choice to favor when choices are equal, and success is guaranteed.

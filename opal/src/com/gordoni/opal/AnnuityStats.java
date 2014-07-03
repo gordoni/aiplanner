@@ -117,12 +117,7 @@ public class AnnuityStats
 
 		for (int i = 0; i < vital_stats.alive.length - 1; i++)
 		{
-			double ra_price = 0;
-			double na_price = 0;
-			double period_ra_price = 0;
-			double period_na_price = 0;
 			Double[] period_death = vital_stats.death.clone();
-			// double cohort_to_cohort = Math.pow(1 - config.mortality_reduction_rate, - i / time_periods);
 			for (int j = 0; j < period_death.length; j++)
 			{
 			        assert(config.sex2 == null);
@@ -132,11 +127,15 @@ public class AnnuityStats
 			}
 			double[] period_alive = new double[vital_stats.alive.length];
 			vital_stats.pre_compute_alive_dying(period_death, period_alive, null, null, null, time_periods, 0);
-			for (int j = i + (config.annuity_payout_immediate ? 0 : 1); j < vital_stats.alive.length - 1; j++)
+			double ra_price = config.annuity_payout_immediate * vital_stats.raw_alive[i];
+			double na_price = config.annuity_payout_immediate * vital_stats.raw_alive[i];
+			double period_ra_price = config.annuity_payout_immediate * period_alive[i];
+			double period_na_price = config.annuity_payout_immediate * period_alive[i];
+			for (int j = i + 1; j < vital_stats.alive.length; j++)
 			{
-			        double maturity = (j - i + 0.5) / time_periods;
-				double avg_alive = (vital_stats.raw_alive[j] + vital_stats.raw_alive[j + 1]) / 2;
-				double period_avg_alive = (period_alive[j] + period_alive[j + 1]) / 2;
+			        double maturity = (j - i) / time_periods;
+				double avg_alive = vital_stats.raw_alive[j];
+				double period_avg_alive = period_alive[j];
 				double real_rate;
 				if (config.annuity_real_yield_curve == null)
 				        real_rate = config.annuity_real_rate;

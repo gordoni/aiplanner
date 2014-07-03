@@ -484,8 +484,7 @@ class AAMap
 					consume_annual -= real_annuitize;
 					double ria_purchase = real_annuitize * (1 - config.tax_rate_annuity) / annuity_stats.real_annuity_price[period + y];
 					ria += ria_purchase;
-					if (config.annuity_payout_immediate)
-					        first_payout += ria_purchase;
+				        first_payout += config.annuity_payout_immediate * ria_purchase;
 				}
 				double nominal_annuitize = 0;
 				if (scenario.nia_index != null)
@@ -494,8 +493,7 @@ class AAMap
 					consume_annual -= nominal_annuitize;
 					double nia_purchase = nominal_annuitize * (1 - config.tax_rate_annuity) / annuity_stats.nominal_annuity_price[period + y];
 					nia += nia_purchase;
-					if (config.annuity_payout_immediate)
-					        first_payout += nia_purchase;
+				        first_payout += config.annuity_payout_immediate * nia_purchase;
 				}
 				if ((scenario.ria_index != null || scenario.nia_index != null) && config.tax_rate_annuity != 0 &&
 				        (!generate || (!config.tax_annuity_us && config.tax_annuity_canadian_nominal_generate_credit)))
@@ -503,11 +501,10 @@ class AAMap
 				        assert(!(generate && scenario.nia_index == null));
 				        double nia_tax_credit = (real_annuitize + nominal_annuitize) * config.tax_rate_annuity / annuity_stats.annuity_le[period + y];
 					nia += nia_tax_credit;
-					if (config.annuity_payout_immediate)
-					        first_payout += nia_tax_credit;
+				        first_payout += config.annuity_payout_immediate * nia_tax_credit;
 					if (config.tax_annuity_us)
 					{
-						int expire = period + y + annuity_stats.annuity_le[period + y] - (config.annuity_payout_immediate ? 1 : 0);
+					        int expire = period + y + annuity_stats.annuity_le[period + y];
 						if (expire < tax_annuity_credit_expire.length)
 							tax_annuity_credit_expire[expire] += cpi * nia_tax_credit;
 						nia -= tax_annuity_credit_expire[period + y] / cpi;
