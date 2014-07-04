@@ -167,14 +167,23 @@ public class VitalStats
         {
 		if (config.mortality_projection_method.equals("g2"))
 		        if ("male".equals(sex))
-			        return hist.soa_projection_g2_f.get(age);
+			        return (hist.soa_projection_g2_f.get(age) + hist.soa_projection_g2_f.get(age + 1)) / 2; // Nearest to attained age.
 			else
-			        return hist.soa_projection_g2_f.get(age);
+			        return (hist.soa_projection_g2_f.get(age) + hist.soa_projection_g2_f.get(age + 1)) / 2;
 		else if (config.mortality_projection_method.equals("rate"))
 		        return config.mortality_reduction_rate;
 		else
 		        assert(false);
 		return Double.NaN;
+	}
+
+        private Double[] nearest_to_attained(Double[] nearest)
+        {
+	        Double[] attained = new Double[nearest.length - 1];
+		for (int i = 0; i < attained.length; i++)
+		        attained[i] = (nearest[i] + nearest[i + 1]) / 2;
+
+		return attained;
 	}
 
         private Double[] get(String table, String sex, int age)
@@ -197,6 +206,7 @@ public class VitalStats
 		}
 		else
 		{
+		        boolean age_nearest = false;
 			int period_base = 0;
 		        Double[] death_period = null;
 			if ("ssa-period".equals(table))
@@ -219,6 +229,7 @@ public class VitalStats
 			}
 			else if ("iam2000-unloaded-period".equals(table))
 		        {
+			        age_nearest = true;
 				period_base = 2000;
 				if ("male".equals(sex))
 				        death_period = hist.soa_iam2000_unloaded_death_m.toArray(new Double[0]);
@@ -227,6 +238,7 @@ public class VitalStats
 			}
 			else if ("iam2000-loaded-period".equals(table))
 		        {
+			        age_nearest = true;
 				period_base = 2000;
 				if ("male".equals(sex))
 				        death_period = hist.soa_iam2000_loaded_death_m.toArray(new Double[0]);
@@ -235,6 +247,7 @@ public class VitalStats
 			}
 			else if ("iam2012-basic-period".equals(table))
 		        {
+			        age_nearest = true;
 				period_base = 2012;
 				if ("male".equals(sex))
 				        death_period = hist.soa_iam2012_basic_death_m.toArray(new Double[0]);
@@ -242,6 +255,8 @@ public class VitalStats
 				        death_period = hist.soa_iam2012_basic_death_f.toArray(new Double[0]);
 			}
 			assert(death_period != null);
+			if (age_nearest)
+			        death_period = nearest_to_attained(death_period);
 			double birth_year = get_birth_year(age);
 			death_cohort = new Double[death_period.length];
 			for (int i = 0; i < death_cohort.length; i++)
