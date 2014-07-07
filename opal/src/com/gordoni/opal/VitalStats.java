@@ -167,7 +167,7 @@ public class VitalStats
         {
 		if (config.mortality_projection_method.equals("g2"))
 		        if ("male".equals(sex))
-			        return (hist.soa_projection_g2_f.get(age) + hist.soa_projection_g2_f.get(age + 1)) / 2; // Nearest to attained age.
+			        return (hist.soa_projection_g2_m.get(age) + hist.soa_projection_g2_m.get(age + 1)) / 2; // Nearest to attained age.
 			else
 			        return (hist.soa_projection_g2_f.get(age) + hist.soa_projection_g2_f.get(age + 1)) / 2;
 		else if (config.mortality_projection_method.equals("rate"))
