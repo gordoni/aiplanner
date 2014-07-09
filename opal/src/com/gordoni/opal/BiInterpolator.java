@@ -28,7 +28,7 @@ class BiInterpolator extends Interpolator
 		int xindex = Arrays.binarySearch(xval, x);
 		if (xindex < 0)
 		        xindex = - xindex - 2;
-		int yindex = Arrays.binarySearch(yval, x);
+		int yindex = Arrays.binarySearch(yval, y);
 		if (yindex < 0)
 		        yindex = - yindex - 2;
 		double fmin = fval[xindex][yindex];
