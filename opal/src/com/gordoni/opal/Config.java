@@ -173,6 +173,8 @@ public class Config
 	        // "linear" - linear interpolation; any number of p dimensions.
 	        // "linear-math3" - linear interpolation using math3 library; uni-p-dimensional. For debugging.
 	        // "spline" - cubic spline interpolation; 3 or fewer p dimensions.
+                // "linear-spline" - linear in first dimension; spline in second; 2 p dimensions.
+                // "spline-linear" - spline in first dimension; linear in second; 2 p dimensions.
 
         public boolean negative_p = false; // Allow negative portfolio values versus utilized reduced consumption when p near zero.
         public double consume_discount_rate = 0.0; // Discount rate to apply to consumption.

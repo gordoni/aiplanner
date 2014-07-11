@@ -35,7 +35,14 @@ abstract class Interpolator
 		if (mp.length.length == 1)
 		        return new UniInterpolator(mp, what);
 		else if (mp.length.length == 2)
-		        return new BiInterpolator(mp, what);
+		{
+		        if (mp.config.interpolation.equals("linear-spline"))
+			        return new LSInterpolator(mp, what, true);
+		        else if (mp.config.interpolation.equals("spline-linear"))
+			        return new LSInterpolator(mp, what, false);
+			else
+			        return new BiInterpolator(mp, what);
+		}
 		else if (mp.length.length == 3)
 		        return new TriInterpolator(mp, what);
 		else
