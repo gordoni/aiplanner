@@ -60,9 +60,9 @@ class UniInterpolator extends Interpolator
 		}
 
 		UnivariateInterpolator interpolator;
-		if (config.interpolation.equals("linear-math3"))
+		if (config.interpolation1.equals("linear"))
 		        interpolator = new LinearInterpolator();
-		else if (config.interpolation.equals("spline"))
+		else if (config.interpolation1.equals("spline"))
 		        interpolator = new SplineInterpolator();
 		else
 		{

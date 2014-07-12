@@ -110,7 +110,7 @@ class TriInterpolator extends Interpolator
 		}
 
 		TrivariateGridInterpolator interpolator;
-		if (config.interpolation.equals("spline"))
+		if (config.interpolation3.equals("spline"))
 		        interpolator = new TricubicSplineInterpolator();
 		else
 		{

@@ -169,12 +169,16 @@ public class Config
 	        // 41 for 30 years, or 1 / 51 for 20 years, or in general 1 / the number of samples.
 	        // This appears to be the case.
 
-        public String interpolation = "spline"; // How to interpolate non-grid p values.
-	        // "linear" - linear interpolation; any number of p dimensions.
-	        // "linear-math3" - linear interpolation using math3 library; uni-p-dimensional. For debugging.
-	        // "spline" - cubic spline interpolation; 3 or fewer p dimensions.
-                // "linear-spline" - linear in first dimension; spline in second; 2 p dimensions.
-                // "spline-linear" - spline in first dimension; linear in second; 2 p dimensions.
+        public boolean interpolation_linear = false; // Use old linear interpolation code; any number of p dimensions.
+        public String interpolation1 = "spline"; // How to interpolate non-grid 1 dimensional p values.
+	        // "linear" - linear interpolation using math3 library. For debugging.
+	        // "spline" - cubic spline interpolation.
+        public String interpolation2 = "spline-linear"; // How to interpolate non-grid 2 dimensional p values.
+	        // "spline" - cubic spline interpolation. Gives bad results with annuities.
+                // "linear-spline" - linear in first dimension; spline in second.
+                // "spline-linear" - spline in first dimension; linear in second.
+        public String interpolation3 = "spline"; // How to interpolate non-grid 3 dimensional p values.
+	        // "spline" - cubic spline interpolation.
 
         public boolean negative_p = false; // Allow negative portfolio values versus utilized reduced consumption when p near zero.
         public double consume_discount_rate = 0.0; // Discount rate to apply to consumption.

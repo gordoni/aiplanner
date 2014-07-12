@@ -79,7 +79,7 @@ class BiInterpolator extends Interpolator
 		}
 
 		BivariateGridInterpolator interpolator;
-		if (config.interpolation.equals("spline"))
+		if (config.interpolation2.equals("spline"))
 		        interpolator = new BicubicSplineInterpolator();
 		else
 		{

@@ -30,15 +30,15 @@ abstract class Interpolator
 
         public static Interpolator factory(MapPeriod mp, int what)
         {
-	        if (mp.config.interpolation.equals("linear"))
+	        if (mp.config.interpolation_linear)
 		        return null;
 		if (mp.length.length == 1)
 		        return new UniInterpolator(mp, what);
 		else if (mp.length.length == 2)
 		{
-		        if (mp.config.interpolation.equals("linear-spline"))
+		        if (mp.config.interpolation2.equals("linear-spline"))
 			        return new LSInterpolator(mp, what, true);
-		        else if (mp.config.interpolation.equals("spline-linear"))
+		        else if (mp.config.interpolation2.equals("spline-linear"))
 			        return new LSInterpolator(mp, what, false);
 			else
 			        return new BiInterpolator(mp, what);

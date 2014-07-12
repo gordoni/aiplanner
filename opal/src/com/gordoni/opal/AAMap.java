@@ -53,7 +53,7 @@ class AAMap
         {
 	        MapPeriod next_map = map[period];
 
-		if (!config.interpolation.equals("linear"))
+		if (!config.interpolation_linear)
 		    return next_map.lookup_interpolate(p, fast_path, generate, li_me);
 
 		MapElement me = li_me;
