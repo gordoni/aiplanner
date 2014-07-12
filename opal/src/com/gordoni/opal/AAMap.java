@@ -552,7 +552,7 @@ class AAMap
 					double cpi_delta = returns_array[index][scenario.cpi_index];
 					assert(1 + cpi_delta >= 0);
 					cpi *= 1 + cpi_delta;
-					ria /= 1 + cpi_delta * config.tax_rate_annuity;
+					ria /= 1 + cpi_delta * config.tax_rate_annuity; // XXX Fails to capture avoidance of repeated taxation.
 					nia /= 1 + cpi_delta;
 				}
 				p_post_inc_neg = p;
