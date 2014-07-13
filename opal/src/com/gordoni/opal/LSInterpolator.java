@@ -54,7 +54,7 @@ class LSInterpolator extends Interpolator
 		if (yindex < 0)
 		        yindex = - yindex - 2;
 		double fmin = Math.min(fval[x1][yindex], fval[x2][yindex]);
-		double fmax = Math.min(fval[x1][yindex], fval[x2][yindex]);
+		double fmax = Math.max(fval[x1][yindex], fval[x2][yindex]);
 		if (yindex + 1 < yval.length)
 		{
 		        fmin = Math.min(fmin, fval[x1][yindex + 1]);
