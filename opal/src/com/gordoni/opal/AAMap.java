@@ -516,11 +516,15 @@ class AAMap
 				        double not_consumed;
 					if (config.annuity_partial || (ria == 0 && nia == 0))
 					        not_consumed = consume_annual * (1 - aa[scenario.spend_fract_index]);
-					else if (ria_prev == 0 && nia_prev == 0)
-					        // Allow extra year to complete initial annuitization.
-					        // This prevents a bump in consumption from having to consume full first_payout,
-					        // and not being able to re-annuitize a small part of it.
-					        not_consumed = first_payout * (1 - aa[scenario.spend_fract_index]);
+					// Disabled code may be undesireable since breaks smoothness of aa[spend_fract_index].
+					// This may cause problems when interpolate.
+					// Even with consume_annual in place of spend_fract code is not needed since first_payout is typically
+					// a partial payout.
+					//else if (ria_prev == 0 && nia_prev == 0)
+					//        // Allow extra year to complete initial annuitization.
+					//        // This prevents a bump in consumption from having to consume full first_payout,
+					//        // and not being able to re-annuitize a small part of it.
+					//        not_consumed = first_payout * (1 - aa[scenario.spend_fract_index]);
 					else
 					        not_consumed = 0;
 					consume_annual -= not_consumed;
