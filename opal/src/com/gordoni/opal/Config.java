@@ -170,6 +170,9 @@ public class Config
 	        // This appears to be the case.
 
         public boolean interpolation_linear = false; // Use old linear interpolation code; any number of p dimensions.
+        public boolean interpolation_validate = true; // Perform interpolation on validation.
+                // Want to disable for non-partial annuitization, otherwise decision to annuitize could get interpolated.
+                // Results in nia_aa and spend_fract indexes around 0.5 instead of both close to 0 or 1, which causes a consumption spike.
         public String interpolation1 = "spline"; // How to interpolate non-grid 1 dimensional p values.
 	        // "linear" - linear interpolation using math3 library. For debugging.
 	        // "spline" - cubic spline interpolation.

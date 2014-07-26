@@ -8,7 +8,7 @@ abstract class Interpolator
         public static final int consume_interp_index = -3;
         // 0..normal_assets-1 - asset class allocation fractions
         // ria_aa_index - ria purchase fraction
-        // ria_aa_index - nia purchase fraction
+        // nia_aa_index - nia purchase fraction
         // spend_fract_index - spend fraction
 
         protected double getWhat(MapElement me, int what)
@@ -28,14 +28,19 @@ abstract class Interpolator
 
         abstract double value(double[] p);
 
-        public static Interpolator factory(MapPeriod mp, int what)
+        public static Interpolator factory(MapPeriod mp, boolean generate, int what)
         {
+	        Scenario scenario = mp.scenario;
+		Config config = scenario.config;
+
 	        if (mp.config.interpolation_linear)
 		        return null;
 		if (mp.length.length == 1)
 		        return new UniInterpolator(mp, what);
 		else if (mp.length.length == 2)
 		{
+		        if (!generate && !config.interpolation_validate)
+			        return new BiNoInterpolator(mp, what);
 		        if (mp.config.interpolation2.equals("linear-spline"))
 			        return new LSInterpolator(mp, what, true);
 		        else if (mp.config.interpolation2.equals("spline-linear"))

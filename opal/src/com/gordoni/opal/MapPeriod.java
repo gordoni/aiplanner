@@ -54,12 +54,12 @@ class MapPeriod implements Iterable<MapElement>
 
 	public void interpolate(boolean generate)
 	{
-	        metric_interp = Interpolator.factory(this, Interpolator.metric_interp_index);
-	        consume_interp = Interpolator.factory(this, Interpolator.consume_interp_index);
-		spend_interp = Interpolator.factory(this, Interpolator.spend_interp_index);
+	        metric_interp = Interpolator.factory(this, generate, Interpolator.metric_interp_index);
+	        consume_interp = Interpolator.factory(this, generate, Interpolator.consume_interp_index);
+		spend_interp = Interpolator.factory(this, generate, Interpolator.spend_interp_index);
 		aa_interp = new Interpolator[scenario.all_alloc];
 		for (int i = 0; i < scenario.all_alloc; i++)
-		        aa_interp[i] = Interpolator.factory(this, i);
+		        aa_interp[i] = Interpolator.factory(this, generate, i);
 	}
 
 	public MapElement lookup_interpolate(double[] p, boolean fast_path, boolean generate, MapElement li_me)
