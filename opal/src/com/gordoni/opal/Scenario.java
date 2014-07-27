@@ -397,16 +397,16 @@ public class Scenario
 				//String metric = f5f.format(fpb.metric_sm);
 				double[] aa = fpb.aa;
 				String aa_str = stringify_aa(fpb.aa);
+				double annuitizable = fpb.spend - fpb.consume;
 				out.print(f2f.format(age_period / config.generate_time_periods));
 				out.print("," + f3f.format(curr_pf));
 				out.print("," /* + metric */);
 				out.print("," + ((returns == null) ? "" : f4f.format(expected_return(aa, returns))));
 				out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(aa, returns))));
-				//out.print("," + f3f.format(fpb.spend > 0 ? fpb.ria_purchase(this) / fpb.spend : 0));
-				out.print("," + f3f.format(curr_pf > 0 ? fpb.ria_purchase(this) / curr_pf : 0));
+				// Annuitization may be greater than 100% because first_payout may contribute to consume.
+				out.print("," + f3f.format(annuitizable > 0 ? fpb.ria_purchase(this) / annuitizable : 0));
 				out.print("," + f2f.format(fpb.consume));
-				//out.print("," + f3f.format(fpb.spend > 0 ? fpb.nia_purchase(this) / fpb.spend : 0));
-				out.print("," + f3f.format(curr_pf > 0 ? fpb.nia_purchase(this) / curr_pf : 0));
+				out.print("," + f3f.format(annuitizable > 0 ? fpb.nia_purchase(this) / annuitizable : 0));
 				out.print("," + aa_str);
 				out.print("\n");
 			}
