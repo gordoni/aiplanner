@@ -796,7 +796,7 @@ public class Scenario
 		out.close();
         }
 
-        public void dump_gnuplot_params(double p_max, double consume_max, double consume_ara_max) throws IOException
+        public void dump_gnuplot_params(double p_max, double consume_max, double annuitization_max, double consume_ara_max) throws IOException
         {
 		PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-gnuplot-params.gnuplot")));
 		out.println("paths = " + (!config.skip_validate ? 1 : 0));
@@ -818,12 +818,12 @@ public class Scenario
 		if (ria_index != null && config.ria_high > payout)
 		{
 		        payout = config.ria_high;
-			annuitization = p_max;
+			annuitization = annuitization_max;
 		}
 		if (nia_index != null && config.nia_high > payout)
 		{
 		        payout = config.nia_high;
-			annuitization = p_max;
+			annuitization = annuitization_max;
 		}
 		out.println("annuity_payout = " + payout);
 		out.println("annuitization = " + annuitization);
@@ -888,6 +888,11 @@ public class Scenario
 		        consume_max = config.gnuplot_consume;
 		else
 		        consume_max *= config.gnuplot_extra;
+		double annuitization_max;
+		if (config.gnuplot_annuitization != null)
+		        annuitization_max = config.gnuplot_annuitization;
+		else
+		        annuitization_max = tp_max;
 
  	        double consume_ara_max = dump_utility(utility_consume, "consume", consume_max, consume_max / 50);
 		        // Avoid plotting possibly highly postive points near the origin.
@@ -904,7 +909,7 @@ public class Scenario
 			dump_annuity_yield_curve();
 		}
 
-		dump_gnuplot_params(tp_max, consume_max, consume_ara_max);
+		dump_gnuplot_params(tp_max, consume_max, annuitization_max, consume_ara_max);
 		plot();
 	}
 

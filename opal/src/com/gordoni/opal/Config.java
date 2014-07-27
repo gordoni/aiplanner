@@ -233,6 +233,7 @@ public class Config
         public double retirement_number_max_factor = 10; // Generated retirement number up to this value times retirement_number_max_estimate portfolio size.
         public Double gnuplot_tp = null; // Maximum taxable portfolio value to plot.
         public Double gnuplot_consume = null; // Maximum consume value to plot.
+        public Double gnuplot_annuitization = null; // Maximum annuuitization value to plot.
         public double gnuplot_extra = 1.05; // Headroom to leave on plots.
         public int gnuplot_steps = 600; // Number of steps at which to gnuplot data.
 
