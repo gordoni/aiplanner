@@ -773,23 +773,21 @@ class AAMap
 				        path_consume = aamap.uc_time.inverse_utility(consume_path_utility);
 					        // Ensure consume and jpmorgan metrics match when gamma = 1/psi.
 				double upside_alive_discount;
-				if (compute_utility)
+				if (generate && aamap1 != null)
 				{
-				        if (generate && aamap1 != null)
-					{
-					        consume_alive_discount = config.couple_weight1 * vital_stats.vital_stats1.alive[period + y + book_post] + (1 - config.couple_weight1) * vital_stats.vital_stats2.alive[period + y + book_post];
-					        upside_alive_discount = config.couple_weight1 * vital_stats.vital_stats1.upside_alive[period + y + book_post] + (1 - config.couple_weight1) * vital_stats.vital_stats2.upside_alive[period + y + book_post];
-					}
-					else
-					{
-					        consume_alive_discount = utility_weight * vital_stats.alive[period + y + book_post];
-						upside_alive_discount = utility_weight * vital_stats.upside_alive[period + y + book_post];
-					}
+					consume_alive_discount = config.couple_weight1 * vital_stats.vital_stats1.alive[period + y + book_post] + (1 - config.couple_weight1) * vital_stats.vital_stats2.alive[period + y + book_post];
+					upside_alive_discount = config.couple_weight1 * vital_stats.vital_stats1.upside_alive[period + y + book_post] + (1 - config.couple_weight1) * vital_stats.vital_stats2.upside_alive[period + y + book_post];
 				}
 				else
 				{
+					consume_alive_discount = utility_weight * vital_stats.alive[period + y + book_post];
+					upside_alive_discount = utility_weight * vital_stats.upside_alive[period + y + book_post];
+				}
+				double path_element_weight = consume_alive_discount;
+				if (!compute_utility)
+				{
 				        consume_alive_discount = 0;
-                                        upside_alive_discount = 0;
+					upside_alive_discount = 0;
 				}
 				double floor_goal_path_elem = consume_alive_discount * floor_path_utility / returns.time_periods;
 				double upside_goal_path_elem = upside_alive_discount * upside_path_utility / returns.time_periods;
@@ -861,7 +859,7 @@ class AAMap
 				// Record path.
 				if (s < num_paths_record)
 				{
-				        path.add(new PathElement(aa_prev, p_prev_inc_neg, path_consume, ria_prev, nia_prev, real_annuitize, nominal_annuitize, tax_amount, utility_weight));
+				        path.add(new PathElement(aa_prev, p_prev_inc_neg, path_consume, ria_prev, nia_prev, real_annuitize, nominal_annuitize, tax_amount, path_element_weight));
 				}
 				free_aa = aa_prev;
 
