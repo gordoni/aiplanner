@@ -554,16 +554,6 @@ if (paths && symbol ne "") die-invalid-command-too-many-asset_classes
 #set output prefix . "-average-sh.png"
 #plot prefix . "-average.csv" using 1:((1 - ($2 + $3)) * $4 * 100) with lines notitle
 
-set xlabel "maturity (years)"
-set xrange [*:*]
-set format x "%g"
-set ylabel "annual return"
-set yrange [*:*]
-set format y "%.0f%%"
-set output prefix . "-yield_curve.png"
-plot prefix . "-yield_curve.csv" using 1:($2 * 100) with lines title "real", \
-   prefix . "-yield_curve.csv" using 1:($3 * 100) with lines title "nominal"
-
 set ylabel "SPIA price ($/$/year)"
 set yrange [0:*]
 set format y "%g"
@@ -574,6 +564,16 @@ if (annuitization > 0) plot prefix . "-annuity_price.csv" using 1:2 with lines t
   prefix . "-annuity_price.csv" using 1:5 with lines title "nominal actual 2014", \
   prefix . "-annuity_price.csv" using 1:6 with lines title "nominal modeled period", \
   prefix . "-annuity_price.csv" using 1:7 with lines title "nominal modeled cohort"
+
+set xlabel "maturity (years)"
+set xrange [*:*]
+set format x "%g"
+set ylabel "annual return"
+set yrange [*:*]
+set format y "%.0f%%"
+set output prefix . "-yield_curve.png"
+plot prefix . "-yield_curve.csv" using 1:($2 * 100) with lines title "real", \
+   prefix . "-yield_curve.csv" using 1:($3 * 100) with lines title "nominal"
 
 set xlabel "retirement number ($)"
 set xrange [0:retirement_number_max]
