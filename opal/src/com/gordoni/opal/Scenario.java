@@ -588,7 +588,7 @@ public class Scenario
 	        PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-pct-" + (change ? "change-" : "") + what + ".csv"));
 
 		double max_pctl = Double.NEGATIVE_INFINITY;
-		double age_period = config.start_age * config.generate_time_periods;
+		double age_period = config.validate_age * config.generate_time_periods;
 		for (int i = 0; ; i++)
 		{
 		        int values = 0;
@@ -630,7 +630,7 @@ public class Scenario
 	{
 		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-paths.csv"));
 
-		double initial_period = config.start_age * config.generate_time_periods;
+		double initial_period = config.validate_age * config.generate_time_periods;
 		for (int pi = 0; pi < config.max_display_paths; pi++)
 		{
 		        List<PathElement> path = paths.get(pi);
