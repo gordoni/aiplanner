@@ -146,7 +146,7 @@ public class HistReturns
 			else
 			{
 				recent_d_plus_1.add(1 + (d / 12) / p);
-				double bond_sale_price = bond_npv(nominal_interest_rate, old_nominal_interest_rate, 10 - 1);
+				double bond_sale_price = bond_npv(nominal_interest_rate, old_nominal_interest_rate, 10 - 1 / 12.0);
 				double monthly_rate = Math.pow(1 + old_nominal_interest_rate, 1 / 12.0) - 1;
 				recent_interest_rate_plus_1.add((bond_sale_price + monthly_rate) / (cpi / old_cpi));
 			}
