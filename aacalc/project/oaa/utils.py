@@ -15,6 +15,7 @@ asset_classes = (
     ('gs10',           'class_t10yr',     't-note 10yr',    1872, 2013),
     ('gs1',            'class_t1yr',      't-bill 1yr',     1954, 2013),
     ('cash',           'class_t1mo',      't-bill 1mo',     1927, 2013),
+    ('tips',           'class_tips10yr',  'tips 10yr',      1972, 2013),
     ('gold',           'class_gold',      'gold',           1872, 2013),
     ('risk_free',      'class_risk_free', 'risk free',      1872, 2013),
 )

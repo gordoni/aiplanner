@@ -350,6 +350,12 @@ transitions may appear.</span>
 </font>
 {{ se_form.class_t10yr.errors }}
 <br />
+{{ se_form.class_tips10yr }} TIPS 10yr
+<font size="-1">
+(Semi-synthetic US 10 year Treasury inflation protected securities; 1972-2013 available)
+</font>
+{{ se_form.class_tips10yr.errors }}
+<br />
 {{ se_form.class_aaa }} AAA corporate bonds
 <font size="-1">
 (US long term; 1920-2013 available)
@@ -374,9 +380,9 @@ transitions may appear.</span>
 </font>
 {{ se_form.class_gold.errors }}
 <br />
-{{ se_form.class_risk_free }} Risk free asset returning {{ se_form.ret_risk_free_pct }}%
+{{ se_form.class_risk_free }} Risk free asset returning {{ se_form.ret_risk_free_pct }}% real
 <font size="-1">
-(zero volatility after inflation; most closely approximates inflation indexed bonds; 1872-2013 available)
+(zero volatility after inflation; 1872-2013 available)
 </font>
 {{ se_form.class_risk_free.errors }}
 {{ se_form.ret_risk_free_pct.errors }}

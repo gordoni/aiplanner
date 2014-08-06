@@ -68,6 +68,7 @@ default_params = {
     'class_t1mo': False,
     'class_t1yr': False,
     'class_t10yr': False,
+    'class_tips10yr': False,
     'class_aaa': False,
     'class_baa': False,
     'class_reits': False,

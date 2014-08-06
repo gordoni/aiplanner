@@ -105,6 +105,7 @@ class ScenarioBaseForm(forms.Form):
     class_t10yr = forms.BooleanField(required=False)
     class_t1yr = forms.BooleanField(required=False)
     class_t1mo = forms.BooleanField(required=False)
+    class_tips10yr = forms.BooleanField(required=False)
     class_gold = forms.BooleanField(required=False)
     class_risk_free = forms.BooleanField(required=False)
     ret_risk_free_pct = forms.DecimalField(
