@@ -265,7 +265,7 @@ public class Config
 	public Double validate_ret_equity = null; // None for no adjustment to equities during targeting and validation, float for stocks target geomean return.
         public Double ret_equity_adjust = null; // None for no adjustment to equities, float for adjust.
         public double ret_sh_adjust = 0.0; // Small high asset class additional adjust.
-        public double ret_gs10_to_bonds = 0.0073; // Adjustment to apply to GS10 to get bond returns indicative of the bond universe.
+        public double ret_gs10_to_bonds = 0.00755; // Adjustment to apply to GS10 to get bond returns indicative of the bond universe.
                 // Justification:
                 //
                 // Considering the holdings of Treasury, Agency, Municipal, and Corporate bonds by households as reported in the Federal Reserve Financial Accounts
@@ -276,7 +276,7 @@ public class Config
                 // bonds as somewhere between that of Treasury and Municipal bonds. And adjusting the volatility to appear reasonable on a risk-return plot.
                 //
                 // Duration correction:
-		//                                                                  interest rate
+		//                                                                  interest rate (1927-2013)
 		//     HQM (1984-2013) 25 year                                           5.56% nominal
 		//     HQM (1984-2013)  9 year (LQD has 12 yr weighted maturity)         4.88% nominal; diff. -0.68%
 		//                             (but curve slopes down; est. 9 yr average)
@@ -286,23 +286,23 @@ public class Config
 		//   Total                             11526
                 //
 		// 2013 Q4 L.100 Household  L.121 Mutual funds   Total      arithm. real return
-		//   Treasury            944             641              1316 17%       2.29% GS10
+		//   Treasury            944             641              1316 17%       2.32% GS10
 		//   Agency              121             837               607  8%      ~2.50% guess
-		//   Muni               1617             610              1971 25%       2.91% after correct for tax adv; equiv to AA corporates; duration correction
-		//   Corp and foreign   2793            2001              3955 50%       3.59% mid-point A / BAA corporates; after avg duration correction
-		//     AAA             25 year                                           3.14%
-		//     BAA             25 year                                           4.50%
-		//   Weighted                                                            3.11% ie. would reasonable to use AAA, except duration is too long
-		//   Total                -              -                7849                 better to use GS10 and adjust gm value by +0.73% to get 3.11% am
+		//   Muni               1617             610              1971 25%       2.97% after correct for tax adv; equiv to AA corporates; duration correction
+		//   Corp and foreign   2793            2001              3955 50%       3.66% mid-point A / BAA corporates; after avg duration correction
+		//     AAA             25 year                                           3.23%
+		//     BAA             25 year                                           4.56%
+		//   Weighted                                                            3.17% ie. would reasonable to use AAA, except duration is too long
+		//   Total                -              -                7849                 better to use GS10 and adjust gm value by +0.755% to get 3.17% am
                 //                                                                             (adjustment value applies in the presence of a 1.1 vol. adjust)
         public double ret_gs10_to_bonds_vol_adjust = 1.1; // Adjustment to apply to GS10 volatility to get bond returns indicative of the bond universe.
                 // A guess based on risk-return plots placing its risk close to but slightly less than AAA bonds, with which it shares a similar return.
                 // If risk was higher than AAA bonds, no point in holding "bonds", ignoring different correlations.
                 // Rough calc:
                 // Vol(0.25 GS10 + 0.25 AAA-16yrs + 0.5 BBB-16yrs). Assume volatility differences can be summed. Not really true.
-                // = 0.25 8.14% + 0.25 9.19%-1.05% + 0.5 10.95-1.05%. Because AAA reduces to GS10. Assume volatility additively reduces off BBB.
-                // = 0.5 8.14% + 0.5 (8.14% + 1.86%).
-                // = Vol(1.093 GS10).
+                // = 0.25 8.65% + 0.25 10.15%-1.05% + 0.5 12.20-1.05%. Because AAA reduces to GS10. Assume volatility additively reduces off BBB.
+                // = 0.5 8.14% + 0.5 (9.10% + 2.05%).
+                // = Vol(1.096 GS10).
 	public Double generate_ret_bonds = null; // None for no adjustment to bonds during generation, float for target geomean return.
 	public Double validate_ret_bonds = null; // None for no adjustment to bonds during targeting and validation, float for target geomean return.
         public Double ret_bonds_adjust = null; // None for no adjustment to fixed income, float for adjust.

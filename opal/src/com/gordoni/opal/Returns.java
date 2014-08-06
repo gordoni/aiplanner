@@ -205,33 +205,30 @@ public class Returns implements Cloneable
 		List<Double> gs1_returns = null;
 		if (scenario.asset_classes.contains("gs1"))
 	        {
-		        assert(time_periods == 1);
-		        int offset = (int) Math.round((start_year - hist.gs1_initial) * time_periods);
+		        int offset = (int) Math.round((start_year - hist.gs1_initial) * 12);
 			assert(offset >= 0);
-			assert(offset + count <= hist.gs1.size());
-			gs1_returns = hist.gs1.subList(offset, offset + count);
+			assert(offset + month_count <= hist.gs1.size());
+			gs1_returns = reduce_returns(hist.gs1.subList(offset, offset + month_count), (int) Math.round(12 / time_periods));
 			gs1_returns = adjust_returns(gs1_returns, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
 		}
 
 		List<Double> aaa_returns = null;
 		if (scenario.asset_classes.contains("aaa"))
 	        {
-		        assert(time_periods == 1);
-		        int offset = (int) Math.round((start_year - hist.aaa_initial) * time_periods);
+		        int offset = (int) Math.round((start_year - hist.aaa_initial) * 12);
 			assert(offset >= 0);
-			assert(offset + count <= hist.aaa.size());
-			aaa_returns = hist.aaa.subList(offset, offset + count);
+			assert(offset + month_count <= hist.aaa.size());
+			aaa_returns = reduce_returns(hist.aaa.subList(offset, offset + month_count), (int) Math.round(12 / time_periods));
 			aaa_returns = adjust_returns(aaa_returns, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
 		}
 
 		List<Double> baa_returns = null;
 		if (scenario.asset_classes.contains("baa"))
 	        {
-		        assert(time_periods == 1);
-		        int offset = (int) Math.round((start_year - hist.baa_initial) * time_periods);
+		        int offset = (int) Math.round((start_year - hist.baa_initial) * 12);
 			assert(offset >= 0);
-			assert(offset + count <= hist.baa.size());
-			baa_returns = hist.baa.subList(offset, offset + count);
+			assert(offset + month_count <= hist.baa.size());
+			baa_returns = reduce_returns(hist.baa.subList(offset, offset + month_count), (int) Math.round(12 / time_periods));
 			baa_returns = adjust_returns(baa_returns, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
 		}
 

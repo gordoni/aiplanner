@@ -302,8 +302,7 @@ public class HistReturns
 
         private int load_fred_interest_rate(String prefix, List<Double> l, int maturity, int coupon_freq) throws IOException
 	{
-	        int time_periods = 1;
-		        // Able to load non-annual returns, but we keep it simple and load annual returns.
+	        int time_periods = 12;
 
 		BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + prefix + ".csv")));
 		String line = in.readLine();
@@ -322,18 +321,19 @@ public class HistReturns
 			assert(day == 1);
 
 			double annual_rate = Math.pow(1 + rate / coupon_freq, coupon_freq) - 1;
+			double period_rate = Math.pow(1 + annual_rate, 1.0 / time_periods) - 1;
 
-			if (month % Math.round(12 / time_periods) == 0)
+			if (month % (int) Math.round(12 / time_periods) == 0)
 			{
 				if (init_year != null)
 				{
 				        int i = (year - initial_year) * 12 + month;
-					assert(i >= 12);
+					assert(i >= (int) Math.round(12.0 / time_periods));
 					if (i < cpi_index.size())
 					{
-					        double bond_sale_price = bond_npv(annual_rate, old_rate, maturity - 1);
-					        double cpi_d = cpi_index.get(i) / cpi_index.get(i - 12);
-				        	l.add(Math.pow(bond_sale_price + annual_rate, 1.0 / time_periods) / cpi_d - 1);
+					        double bond_sale_price = bond_npv(annual_rate, old_rate, maturity - 1.0 / time_periods);
+					        double cpi_d = cpi_index.get(i) / cpi_index.get(i - (int) Math.round(12.0 / time_periods));
+						l.add((bond_sale_price + period_rate) / cpi_d - 1);
 					}
 				}
 				if ((init_year == null) && (month == 12))
