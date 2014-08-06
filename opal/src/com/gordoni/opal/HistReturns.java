@@ -300,7 +300,7 @@ public class HistReturns
 		return init_year;
 	}
 
-        private int load_fred_interest_rate(String prefix, List<Double> l, int maturity) throws IOException
+        private int load_fred_interest_rate(String prefix, List<Double> l, int maturity, int coupon_freq) throws IOException
 	{
 	        int time_periods = 1;
 		        // Able to load non-annual returns, but we keep it simple and load annual returns.
@@ -321,6 +321,8 @@ public class HistReturns
 			int day = Integer.parseInt(ymd[2]);
 			assert(day == 1);
 
+			double annual_rate = Math.pow(1 + rate / coupon_freq, coupon_freq) - 1;
+
 			if (month % Math.round(12 / time_periods) == 0)
 			{
 				if (init_year != null)
@@ -329,14 +331,14 @@ public class HistReturns
 					assert(i >= 12);
 					if (i < cpi_index.size())
 					{
-					        double bond_sale_price = bond_npv(rate, old_rate, maturity - 1);
+					        double bond_sale_price = bond_npv(annual_rate, old_rate, maturity - 1);
 					        double cpi_d = cpi_index.get(i) / cpi_index.get(i - 12);
-				        	l.add(Math.pow(bond_sale_price + rate, 1.0 / time_periods) / cpi_d - 1);
+				        	l.add(Math.pow(bond_sale_price + annual_rate, 1.0 / time_periods) / cpi_d - 1);
 					}
 				}
 				if ((init_year == null) && (month == 12))
 				       init_year = year + 1;
-				old_rate = rate;
+				old_rate = annual_rate;
 			}
 		}
 		in.close();
@@ -646,12 +648,12 @@ public class HistReturns
 	        ff_initial = load_ff("6_Portfolios_2x3.txt");
 		reit_initial = load_returns("reit-all_equity.csv", reit_initial, reits_equity, false);
 		reit_initial = load_returns("reit-mortgage.csv", reit_initial, reits_mortgage, false);
-		gs1_initial = load_fred_interest_rate("GS1", gs1, 1);
+		gs1_initial = load_fred_interest_rate("GS1", gs1, 1, 2);
                 // "Moody's tries to include bonds with remaining maturities as close as possible to 30 years.
 		// Moody's drops bonds if the remaining life falls below 20 years, if the bond is susceptible to redemption, or if the rating changes."
 		// So we take the mid-point as a rough estimate of the average maturity.
-		aaa_initial = load_fred_interest_rate("AAA", aaa, 25);
-		baa_initial = load_fred_interest_rate("BAA", baa, 25);
+		aaa_initial = load_fred_interest_rate("AAA", aaa, 25, 1); // Coupon frequency believed to be annual.
+		baa_initial = load_fred_interest_rate("BAA", baa, 25, 1);
 	        t1_initial = load_returns("cash.csv", t1_initial, t1, false);
 	        gold_initial = load_returns("gold.csv", gold_initial, gold, true);
 		load_ssa_period("ssa-table4c6.txt");
