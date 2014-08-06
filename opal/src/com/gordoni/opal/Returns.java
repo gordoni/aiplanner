@@ -212,6 +212,16 @@ public class Returns implements Cloneable
 			gs1_returns = adjust_returns(gs1_returns, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
 		}
 
+		List<Double> tips10_returns = null;
+		if (scenario.asset_classes.contains("tips"))
+	        {
+		        int offset = (int) Math.round((start_year - hist.tips10_initial) * 12);
+			assert(offset >= 0);
+			assert(offset + month_count <= hist.tips10.size());
+			tips10_returns = reduce_returns(hist.tips10.subList(offset, offset + month_count), (int) Math.round(12 / time_periods));
+			tips10_returns = adjust_returns(tips10_returns, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
+		}
+
 		List<Double> aaa_returns = null;
 		if (scenario.asset_classes.contains("aaa"))
 	        {
@@ -367,6 +377,11 @@ public class Returns implements Cloneable
 			else if ("gs1".equals(asset_class))
 			{
 				rets = gs1_returns;
+				divf = config.dividend_fract_fixed_income;
+			}
+			else if ("tips".equals(asset_class))
+			{
+				rets = tips10_returns;
 				divf = config.dividend_fract_fixed_income;
 			}
 			else if ("aaa".equals(asset_class))

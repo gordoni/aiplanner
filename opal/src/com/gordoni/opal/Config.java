@@ -76,7 +76,7 @@ public class Config
         public double vbond_discount_rate = 0.0; // Discount rate to use if discounting db_bond and savings_bond income.
         public double stock_bias = 0.0; // Bias to apply to stocks to improve random_block_size > 1 results due to momentum and reversion to the mean.
 
-	public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'aaa', 'baa', 'cash', 'gold', 'risk_free', and 'margin'.
+	public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', and 'margin'.
                 // Seem to get quicker search time if list highest return assets first.
 	public List<String> asset_class_names = null;
 	       // Corresponding asset class names to use for MVO inputs and transition map.

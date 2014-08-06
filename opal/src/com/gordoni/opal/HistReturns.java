@@ -41,6 +41,10 @@ public class HistReturns
 	// Real annual US 1-year Treasury note data (GS1) from http://research.stlouisfed.org/fred2/series/GS1/downloaddata?cid=115 .
 	public Integer gs1_initial = null;
 
+	// Real annual US 10-year Treasury inflation-indexed note data (FII10) from http://libertystreeteconomics.newyorkfed.org/2013/08/creating-a-history-of-us-inflation-expectations.html and FRED.
+        // Former quotes are for end of month, later are beginning of month (or possibly month average), but discrepancy should be small.
+	public Integer tips10_initial = null;
+
 	// Real annual Moody's AAA and BAA corporate bond indexes from FRED.
 	public Integer aaa_initial = null;
 	public Integer baa_initial = null;
@@ -64,6 +68,7 @@ public class HistReturns
         public List<Double> reits_mortgage = new ArrayList<Double>();
 	public List<Double> gold = new ArrayList<Double>();
         public List<Double> gs1 = new ArrayList<Double>();
+        public List<Double> tips10 = new ArrayList<Double>();
         public List<Double> aaa = new ArrayList<Double>();
         public List<Double> baa = new ArrayList<Double>();
         public List<Double> t1 = new ArrayList<Double>();
@@ -88,7 +93,11 @@ public class HistReturns
 		// http://en.wikipedia.org/wiki/Bond_valuation
 		// http://pages.stern.nyu.edu/~adamodar/ ... histretSP.xls
 		// Bodie, Kane, and Marcus: Investments
-	        double coupon_npv = interest_rate * (1 - Math.pow(1 + discount_rate, - maturity)) / discount_rate;
+	        double coupon_npv;
+		if (discount_rate == 0)
+		        coupon_npv = interest_rate * maturity;
+		else
+			coupon_npv = interest_rate * (1 - Math.pow(1 + discount_rate, - maturity)) / discount_rate;
 		double principal_npv = Math.pow(1 + discount_rate, - maturity);
 		return coupon_npv + principal_npv;
 	}
@@ -300,7 +309,7 @@ public class HistReturns
 		return init_year;
 	}
 
-        private int load_fred_interest_rate(String prefix, List<Double> l, int maturity, int coupon_freq) throws IOException
+        private int load_fred_interest_rate(String prefix, List<Double> l, int maturity, int coupon_freq, boolean nominal) throws IOException
 	{
 	        int time_periods = 12;
 
@@ -318,7 +327,6 @@ public class HistReturns
 			int year = Integer.parseInt(ymd[0]);
 			int month = Integer.parseInt(ymd[1]);
 			int day = Integer.parseInt(ymd[2]);
-			assert(day == 1);
 
 			double annual_rate = Math.pow(1 + rate / coupon_freq, coupon_freq) - 1;
 			double period_rate = Math.pow(1 + annual_rate, 1.0 / time_periods) - 1;
@@ -332,7 +340,11 @@ public class HistReturns
 					if (i < cpi_index.size())
 					{
 					        double bond_sale_price = bond_npv(annual_rate, old_rate, maturity - 1.0 / time_periods);
-					        double cpi_d = cpi_index.get(i) / cpi_index.get(i - (int) Math.round(12.0 / time_periods));
+					        double cpi_d;
+						if (nominal)
+						        cpi_d = cpi_index.get(i) / cpi_index.get(i - (int) Math.round(12.0 / time_periods));
+						else
+						        cpi_d = 1;
 						l.add((bond_sale_price + period_rate) / cpi_d - 1);
 					}
 				}
@@ -648,12 +660,14 @@ public class HistReturns
 	        ff_initial = load_ff("6_Portfolios_2x3.txt");
 		reit_initial = load_returns("reit-all_equity.csv", reit_initial, reits_equity, false);
 		reit_initial = load_returns("reit-mortgage.csv", reit_initial, reits_mortgage, false);
-		gs1_initial = load_fred_interest_rate("GS1", gs1, 1, 2);
+		gs1_initial = load_fred_interest_rate("GS1", gs1, 1, 2, true);
+		tips10_initial = load_fred_interest_rate("FII10", tips10, 10, 2, false);
+		        // pre-2003 may not be semi-annual coupon, but difference here is only 1-2 basis points.
                 // "Moody's tries to include bonds with remaining maturities as close as possible to 30 years.
 		// Moody's drops bonds if the remaining life falls below 20 years, if the bond is susceptible to redemption, or if the rating changes."
 		// So we take the mid-point as a rough estimate of the average maturity.
-		aaa_initial = load_fred_interest_rate("AAA", aaa, 25, 1); // Coupon frequency believed to be annual.
-		baa_initial = load_fred_interest_rate("BAA", baa, 25, 1);
+		aaa_initial = load_fred_interest_rate("AAA", aaa, 25, 1, true); // Coupon frequency believed to be annual.
+		baa_initial = load_fred_interest_rate("BAA", baa, 25, 1, true);
 	        t1_initial = load_returns("cash.csv", t1_initial, t1, false);
 	        gold_initial = load_returns("gold.csv", gold_initial, gold, true);
 		load_ssa_period("ssa-table4c6.txt");
