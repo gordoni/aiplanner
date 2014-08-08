@@ -146,6 +146,8 @@ public class HistReturns
 			double d = nominal_d / cpi;
 			// System.out.println("year month nominal_p nominal_d p d cpi nominal_interest_rate");
 
+			nominal_interest_rate = Math.pow(1 + nominal_interest_rate / 2, 2) - 1; // Quoted GS10 payments are semi-annual.
+
 			if (first_time)
 			{
 			        if (month != 12)
