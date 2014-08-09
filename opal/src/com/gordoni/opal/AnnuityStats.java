@@ -84,7 +84,7 @@ public class AnnuityStats
 	{
 		maturity = Math.max(0, maturity);
 		maturity = Math.min(maturity, 30);
-		return real_yield_curve.get(maturity);
+		return Math.pow(1 + real_yield_curve.get(maturity) / 2, 2) - 1; // Treasury quotes are semi-annual values.
 	}
 
 	public double hqm_get(double maturity)
@@ -101,7 +101,7 @@ public class AnnuityStats
 				matches++;
 			}
 		}
-		return nominal_rate / matches;
+		return Math.pow(1 + nominal_rate / matches / 2, 2) - 1; // Treasury quotes are semi-annual values.
 	}
 
         private void pre_compute_annuity_price(VitalStats vital_stats)
