@@ -267,7 +267,7 @@ public class Config
         public double ret_sh_adjust = 0.0; // Small high asset class additional adjust.
         public double ret_tips_adjust = 0.0; // TIPS bond asset class additional adjustment.
         public double ret_tips_vol_adjust = 1.0; // Adjustment to apply to TIPS bond volatility.
-        public double ret_gs10_to_bonds = 0.00755; // Adjustment to apply to GS10 to get bond returns indicative of the bond universe.
+        public double ret_gs10_to_bonds = 0.0068; // Adjustment to apply to GS10 to get bond returns indicative of the bond universe.
                 // Justification:
                 //
                 // Considering the holdings of Treasury, Agency, Municipal, and Corporate bonds by households as reported in the Federal Reserve Financial Accounts
@@ -287,16 +287,16 @@ public class Config
 		//   Household                          6692 58%
 		//   Total                             11526
                 //
-		// 2013 Q4 L.100 Household  L.121 Mutual funds   Total      arithm. real return
-		//   Treasury            944             641              1316 17%       2.32% GS10
-		//   Agency              121             837               607  8%      ~2.50% guess
-		//   Muni               1617             610              1971 25%       2.97% after correct for tax adv; equiv to AA corporates; duration correction
-		//   Corp and foreign   2793            2001              3955 50%       3.66% mid-point A / BAA corporates; after avg duration correction
-		//     AAA             25 year                                           3.23%
-		//     BAA             25 year                                           4.56%
-		//   Weighted                                                            3.17% ie. would reasonable to use AAA, except duration is too long
-		//   Total                -              -                7849                 better to use GS10 and adjust gm value by +0.755% to get 3.17% am
-                //                                                                             (adjustment value applies in the presence of a 1.1 vol. adjust)
+		// 2013 Q4 L.100 Household  L.121 Mutual funds   Total      arithm. real return (1927-2013)
+		//   Treasury            944             641     1316 17%       2.42% GS10
+		//   Agency              121             837      607  8%      ~2.60% guess
+		//   Muni               1617             610     1971 25%       2.97% after correct for tax adv; equiv to AA corporates; duration correction
+		//   Corp and foreign   2793            2001     3955 50%       3.66% mid-point A / BAA corporates; after avg duration correction
+		//     AAA             25 year                                  3.23%
+		//     BAA             25 year                                  4.56%
+		//   Weighted                                                   3.19% ie. would reasonable to use AAA, except duration is too long
+		//   Total                -              -       7849                 better to use GS10 and adjust gm value by +0.68% to get 3.19% am
+                //                                                                    (adjustment value applies in the presence of a 1.1 vol. adjust)
         public double ret_gs10_to_bonds_vol_adjust = 1.1; // Adjustment to apply to GS10 volatility to get bond returns indicative of the bond universe.
                 // A guess based on risk-return plots placing its risk close to but slightly less than AAA bonds, with which it shares a similar return.
                 // If risk was higher than AAA bonds, no point in holding "bonds", ignoring different correlations.
