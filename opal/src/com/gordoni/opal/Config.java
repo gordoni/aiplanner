@@ -265,6 +265,8 @@ public class Config
 	public Double validate_ret_equity = null; // None for no adjustment to equities during targeting and validation, float for stocks target geomean return.
         public Double ret_equity_adjust = null; // None for no adjustment to equities, float for adjust.
         public double ret_sh_adjust = 0.0; // Small high asset class additional adjust.
+        public double ret_tips_adjust = 0.0; // TIPS bond asset class additional adjustment.
+        public double ret_tips_vol_adjust = 1.0; // Adjustment to apply to TIPS bond volatility.
         public double ret_gs10_to_bonds = 0.00755; // Adjustment to apply to GS10 to get bond returns indicative of the bond universe.
                 // Justification:
                 //

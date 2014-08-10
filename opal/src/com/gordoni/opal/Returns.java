@@ -219,7 +219,8 @@ public class Returns implements Cloneable
 			assert(offset >= 0);
 			assert(offset + month_count <= hist.tips10.size());
 			tips10_returns = reduce_returns(hist.tips10.subList(offset, offset + month_count), (int) Math.round(12 / time_periods));
-			tips10_returns = adjust_returns(tips10_returns, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
+			double adjust_tips = Math.pow(1 + config.ret_tips_adjust, 1.0 / time_periods);
+			tips10_returns = adjust_returns(tips10_returns, fixed_income_adjust * adjust_tips * adjust_management_expense * adjust_all, config.ret_tips_vol_adjust);
 		}
 
 		List<Double> aaa_returns = null;
