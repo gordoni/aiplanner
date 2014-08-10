@@ -1419,7 +1419,7 @@ public class Scenario
 
 		normal_assets = asset_classes.size();
 		cpi_index = -1;
-		if (do_tax || nia_index != null)
+		if (do_tax || (ria_index != null && config.tax_rate_annuity != 0) || nia_index != null)
 		{
 		        cpi_index = asset_classes.size();
 		        asset_classes.add("[cpi]");

@@ -551,7 +551,7 @@ class AAMap
 				{
 					p *= (1.0 + config.ret_borrow);
 				}
-				if (scenario.ria_index != null || scenario.nia_index != null)
+				if ((scenario.ria_index != null && config.tax_rate_annuity != 0) || scenario.nia_index != null)
 				{
 					double cpi_delta = returns_array[index][scenario.cpi_index];
 					assert(1 + cpi_delta >= 0);
