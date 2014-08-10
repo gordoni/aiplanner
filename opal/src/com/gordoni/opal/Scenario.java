@@ -788,7 +788,8 @@ public class Scenario
         {
 		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-yield_curve.csv"));
 
-	        for (int i = 0; i <= 30; i++)
+	        for (int i = 1; i <= 30; i++)
+		        // yield for maturity=0 is arbitrary.
 		{
 		        out.println(i + "," + (config.annuity_real_yield_curve == null ? config.annuity_real_rate : ss.validate_annuity_stats.rcmt_get(i)) + "," + (config.annuity_nominal_yield_curve == null ? config.annuity_nominal_rate : ss.validate_annuity_stats.hqm_get(i)));
 		}

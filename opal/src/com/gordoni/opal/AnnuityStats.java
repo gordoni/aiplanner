@@ -46,12 +46,18 @@ public class AnnuityStats
 
 		BufferedReader in = new BufferedReader(new FileReader(new File(ss.cwd + "/" + config.prefix + "-rcmt.csv")));
 		String line = in.readLine();
+		double discount_rate_sum = 0;
 		while ((line = in.readLine()) != null)
 		{
   			String[] fields = line.split(",", -1);
 			double years = Double.parseDouble(fields[0]);
 			double yield = Double.parseDouble(fields[1]) / 100;
-			real_yield_curve.put(years, yield);
+			double coupon_yield = yield / 2;
+			double discount_rate = (1 - coupon_yield * discount_rate_sum) / (1 + coupon_yield);
+			double spot_yield = years == 0 ? 0 : Math.pow(discount_rate, - 1 / (2 * years)) - 1;
+			real_yield_curve.put(years, spot_yield * 2);
+			if (years > 0)
+			        discount_rate_sum += discount_rate;
 		}
 
 		in.close();
