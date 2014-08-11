@@ -558,10 +558,10 @@ set ylabel "SPIA price ($/$/year)"
 set yrange [0:*]
 set format y "%g"
 if (annuitization > 0) set output prefix . "-annuity_price.png"
-if (annuitization > 0) plot prefix . "-annuity_price.csv" using 1:2 with lines title "real actual 2014", \
+if (annuitization > 0) plot prefix . "-annuity_price.csv" using 1:2 with lines title "real actual", \
   prefix . "-annuity_price.csv" using 1:3 with lines title "real modeled period", \
   prefix . "-annuity_price.csv" using 1:4 with lines title "real modeled cohort", \
-  prefix . "-annuity_price.csv" using 1:5 with lines title "nominal actual 2014", \
+  prefix . "-annuity_price.csv" using 1:5 with lines title "nominal actual", \
   prefix . "-annuity_price.csv" using 1:6 with lines title "nominal modeled period", \
   prefix . "-annuity_price.csv" using 1:7 with lines title "nominal modeled cohort"
 
