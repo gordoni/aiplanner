@@ -25,6 +25,7 @@ public class AAMapStatic extends AAMap
 				MapElement me = new MapElement(p, aa, null, null, null);
 				map[pi].set(bucket, me);
 		        }
+			map[pi].interpolate(false);
 	        }
         }
 }
