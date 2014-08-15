@@ -127,6 +127,7 @@ public class Config
 		// Irrelevant if tangency_aa is non-null.
 	public double ret_risk_free = 0.0; // Real return for risk-free asset class.
 	public double ret_borrow = 0.0; // Annual cost rate when portfolio is negative. Also annual cost for cost metric.
+        public double min_safe = 0.0; // Minimum safe_aa holding fraction.
         public double min_safe_le = 0.0; // Minimum safe_aa holding divided by then life expectancy.
 
 	public int spend_steps = 10000; // Number of portfolio expenditure steps.
