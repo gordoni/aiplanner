@@ -159,13 +159,18 @@ public class Scenario
 				        new_aa[i] = - delta / (normal_assets - 1);
 			        else
 				        new_aa[i] *= 1 - delta / (1 - alloc);
-		if (config.min_safe_le != 0)
+		if (config.min_safe != 0 || config.min_safe_le != 0)
 		{
 		        // Not entirely satisfying to fully or partially decrement asset class when it was requested that it be incremented,
 		        // but this is the simplest approach and it shouldn't affect the underlying asset allocation machinery.
 		        int a_safe = asset_classes.indexOf(config.safe_aa);
 			double alloc_safe = new_aa[a_safe];
-			double min_safe = config.min_safe_le * (ss.generate_stats.raw_sum_avg_alive[period] / ss.generate_stats.raw_alive[period]) / p[tp_index];
+			double min_safe;
+			if (p[tp_index] == 0)
+			    min_safe = 1;
+			else
+			        min_safe = config.min_safe_le * (ss.generate_stats.raw_sum_avg_alive[period] / ss.generate_stats.raw_alive[period]) / p[tp_index];
+			min_safe = Math.max(min_safe, config.min_safe);
 			min_safe = Math.min(1, min_safe);
 			double delta_safe = Math.max(0, min_safe - alloc_safe);
 			for (int i = 0; i < normal_assets; i++)
