@@ -9,7 +9,7 @@
 <h1>Asset Allocation Results</h1>
 {% endif %}
 {% if not sample %}
-<a href="{% url scenario_edit %}">Edit scenario</a>
+<a href="{% url 'scenario_edit' %}">Edit scenario</a>
 <br />
 <br />
 {% endif %}
@@ -278,6 +278,6 @@ This records how an additional dollar of bequest was valued.
 {% if not sample %}
 <br />
 <br />
-<a href="{% url scenario_edit %}">Edit scenario</a>
+<a href="{% url 'scenario_edit' %}">Edit scenario</a>
 {% endif %}
 {% endblock %}

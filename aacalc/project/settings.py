@@ -130,15 +130,16 @@ LOGGING = {
 
 DEFAULT_FROM_EMAIL = 'noreply@aacalc.com'
 
+# Django 1.2:
 CACHE_BACKEND = 'memcached://127.0.0.1:11211/'
 
 # Django 1.3+:
-#CACHES = {
-#    'default': {
-#        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
-#        'LOCATION': '127.0.0.1:11211',
-#    }
-#}
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',
+    }
+}
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 

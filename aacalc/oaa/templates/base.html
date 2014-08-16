@@ -24,12 +24,12 @@
 {% if not suppress_navigation %}
 <div class="navigation">
 <ul>
-<li> <a href="{% url home %}">Home</a> </li>
-<li> <a href="{% url about %}">About</a> </li>
+<li> <a href="{% url 'home' %}">Home</a> </li>
+<li> <a href="{% url 'about' %}">About</a> </li>
 {% if user.is_authenticated and not user.account.temp_user %}
-<li> <a href="{% url scenarios %}">Scenarios</a> </li>
-<li> <a href="{% url account_edit %}">Account</a> </li>
-<li> <a href="{% url logout %}">Logout</a> </li>
+<li> <a href="{% url 'scenarios' %}">Scenarios</a> </li>
+<li> <a href="{% url 'account_edit' %}">Account</a> </li>
+<li> <a href="{% url 'logout' %}">Logout</a> </li>
 {% endif %}
 </ul>
 </div>

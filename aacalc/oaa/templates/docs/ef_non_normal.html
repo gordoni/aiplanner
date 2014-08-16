@@ -9,7 +9,7 @@
 <h1>An Efficient Frontier for Non-normal Returns?</h1>
 
 <p>
-<a href="{% url home %}"}>AACalc.com</a> performs MVO and then assigns points on the MVO efficient frontier to the asset allocation map. For variable withdrawals, the resulting asset allocation maps frequently display a large region of relatively constant asset allocation, transitioning to the asset class with the highest return in the region where portfolio failure seems highly likely. And in the presence of leaving a bequest, for large portfolio sizes, transitioning again to the asset class with the highest returns. These transitions are understandable. The theoretical result that asset allocations are constant only applies if the utility function has constant relative risk aversion, and the presence of Social Security or other defined benefits for low portfolio sizes this is no longer true. On the other hand when things are going very well the diminishing utility of consumption means you reach a point where the linear returns of leaving a bequest outweigh investing for future consumption. What is hard to explain is why these transitions should be abrupt, and this the concern of the rest of this note.
+<a href="{% url 'home' %}"}>AACalc.com</a> performs MVO and then assigns points on the MVO efficient frontier to the asset allocation map. For variable withdrawals, the resulting asset allocation maps frequently display a large region of relatively constant asset allocation, transitioning to the asset class with the highest return in the region where portfolio failure seems highly likely. And in the presence of leaving a bequest, for large portfolio sizes, transitioning again to the asset class with the highest returns. These transitions are understandable. The theoretical result that asset allocations are constant only applies if the utility function has constant relative risk aversion, and the presence of Social Security or other defined benefits for low portfolio sizes this is no longer true. On the other hand when things are going very well the diminishing utility of consumption means you reach a point where the linear returns of leaving a bequest outweigh investing for future consumption. What is hard to explain is why these transitions should be abrupt, and this the concern of the rest of this note.
 </p>
 
 <h2>Abrupt transitions</h2>
@@ -139,7 +139,7 @@ Evaluation: For each retirement number value 100,000 returns sequences were gene
 </p>
 
 <p>
-Platform: An internal command line version of <a href="{% url home %}">AACalc.com</a> was used to generate the asset allocations, withdrawal strategies, and to simulate the portfolio performance.
+Platform: An internal command line version of <a href="{% url 'home' %}">AACalc.com</a> was used to generate the asset allocations, withdrawal strategies, and to simulate the portfolio performance.
 </p>
 
 {% endblock %}

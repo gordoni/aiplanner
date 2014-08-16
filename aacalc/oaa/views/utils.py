@@ -157,6 +157,7 @@ def sample_scenario_dict():
     s['defined_benefit_social_security'] = Decimal(20000)
     s['p'] = Decimal(1000000)
     s['contribution'] = Decimal(5000)
+    s['contribution_growth_pct'] = Decimal(7)
     s['tax_rate_cg_pct'] = Decimal(20)
     s['tax_rate_div_default_pct'] = Decimal(20)
     s['retirement_year'] = datetime.utcnow().timetuple().tm_year + 65 - 55
