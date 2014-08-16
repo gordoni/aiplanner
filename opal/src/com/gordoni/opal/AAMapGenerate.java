@@ -120,16 +120,19 @@ public class AAMapGenerate extends AAMap
 			{
 				low = 0;
 				high = 0;
+				index = 0;
 				weight = 1;
 			}
 			else if (high >= scenario.aa_ef.size())
 			{
 				low = scenario.aa_ef.size() - 1;
 				high = scenario.aa_ef.size() - 1;
+				index = scenario.aa_ef.size() - 1;
 				weight = 1;
 			}
-			for (int i = 0; i < aa.length; i++)
+			for (int i = 0; i < scenario.normal_assets; i++)
 			        new_aa[i] = weight * scenario.aa_ef.get(low)[i] + (1 - weight) * scenario.aa_ef.get(high)[i];
+			new_aa[scenario.ef_index] = index;
 			return new_aa;
 		}
 	}
@@ -172,7 +175,7 @@ public class AAMapGenerate extends AAMap
 	    }
 	}
 
-    private boolean search_hill_climb(MapElement me, List<Integer> dimensions, double[] step, double step_size, double[] aa, int period, Returns returns)
+        private boolean search_hill_climb(MapElement me, List<Integer> dimensions, double[] step, double step_size, double[] aa, int period, Returns returns)
         {
 	        if (me.simulate != null && !me.simulate.isEmpty())
 	                me.simulate.add(new SearchResult(null, Double.NaN, "++++++++"));
