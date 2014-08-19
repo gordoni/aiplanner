@@ -94,6 +94,16 @@ public class ScenarioSet
 		validate_annuity_stats = new AnnuityStats(this, config, hist, validate_stats_annuity);
 		validate_annuity_stats.compute_stats(config.validate_time_periods, config.annuity_table);
 
+		// System.out.println("Life expectancy: " + generate_stats.le.get(config.start_age));
+		// int ple;
+		// for (ple = 0; ple < generate_stats.alive.length; ple++)
+	        // {
+		//         if (generate_stats.alive[ple] <= 0.05)
+		// 	        break;
+		// }
+		// System.out.println("Discounted 95th percentile life expectancy: " + ple);
+		// System.out.println();
+
 		System.out.println("Parameters:");
 		config.dumpParams();
 		System.out.println();
