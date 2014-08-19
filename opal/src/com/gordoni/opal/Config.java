@@ -268,7 +268,7 @@ public class Config
         public double ret_sh_adjust = 0.0; // Small high asset class additional adjust.
         public double ret_tips_adjust = 0.0; // TIPS bond asset class additional adjustment.
         public double ret_tips_vol_adjust = 1.0; // Adjustment to apply to TIPS bond volatility.
-        public double ret_gs10_to_bonds = 0.0068; // Adjustment to apply to GS10 to get bond returns indicative of the bond universe.
+        public double ret_gs10_to_bonds = 0.0060; // Adjustment to apply to GS10 to get bond returns indicative of the bond universe.
                 // Justification:
                 //
                 // Considering the holdings of Treasury, Agency, Municipal, and Corporate bonds by households as reported in the Federal Reserve Financial Accounts
@@ -278,11 +278,45 @@ public class Config
                 // screener equating municipal bonds to AA corporate bonds after any tax advantage has been factored in. Guessing at the real return on Agency
                 // bonds as somewhere between that of Treasury and Municipal bonds. And adjusting the volatility to appear reasonable on a risk-return plot.
                 //
+                // Moody's corporate bond index:
+                //                            nominal yield (1927-2013)
+                //     AAA    25 year             5.90%
+                //     BAA    25 year             7.04% diff 1.14%; 0.38% per rating
+                //
+                // Downgrade correction:
+                //
+                //     Moody's reports a yield till maturity which does not include loss incurred when a bond is downgraded and has to be replaced.
+                //     http://efinance.org.cn/cn/FEben/Corporate%20Default%20and%20Recovery%20Rates,1920-2010.pdf
+                //
+                //     One year upgrade/downgrade rates (1920-2010) (excluding transitions to withdrawn rating):
+                //            To:   AAA    AA      A     BAA    BA     B      CAA    CA_C   weighted net migration   migration loss
+                //           AAA     -    8.21%  0.83%  0.16%  0.03%   0       0      0              -10.47%            0.04%
+                //     From: AA    1.20%    -    7.24%  0.74%  0.17%  0.04%  0.01%  0.01%             -8.30%            0.03%
+                //           A     0.08%  2.92%    -    5.55%  0.68%  0.12%  0.03%  0.01%             -4.36%            0.02%
+                //           BAA   0.04%  0.29%  4.47%    -    5.00%  0.79%  0.13%  0.02%             -1.88%            0.01%
+                //
+                //     One year credit loss rates due to default based on post default trading prices (1982-2010):
+                //           credit loss   total annual losses
+                //         AAA  0                0.04%
+                //         AA   0.01%            0.04%
+                //         A    0.04%            0.06%
+                //         BAA  0.12%            0.13%
+                //     NB: Total annual losses are small so we don't bother to adjust AAA and BAA bond yield series.
+                //
                 // Duration correction:
-		//                                                                  interest rate (1927-2013)
+		//                                                                  interest rate
 		//     HQM (1984-2013) 25 year                                           5.56% nominal
 		//     HQM (1984-2013)  9 year (LQD has 12 yr weighted maturity)         4.88% nominal; diff. -0.68%
-		//                             (but curve slopes down; est. 9 yr average)
+		//                             (but yield curve slopes down; est. 9 yr average)
+                //
+                // Moody's corporate bond index:
+                //            25 yr arithm. real return (1927-2013)        25 yr est. am. return   9 yr est. am. return after duration correction and annual losses
+		//     AAA      3.23%                                            3.23%                                 2.51%
+                //     AA       -                                                3.67%                                 2.95%
+                //     A        -                                                4.12%                                 3.38%
+		//     BAA      4.56% diff 1.33%; roughly 0.44% per rating       4.56%                                 3.75%
+                //
+                // Fed. Flow of Funds:
                 //
 		// L.214 Mutual fund shares
 		//   Household                          6692 58%
@@ -291,13 +325,10 @@ public class Config
 		// 2013 Q4 L.100 Household  L.121 Mutual funds   Total      arithm. real return (1927-2013)
 		//   Treasury            944             641     1316 17%       2.42% GS10
 		//   Agency              121             837      607  8%      ~2.60% guess
-		//   Muni               1617             610     1971 25%       2.97% after correct for tax adv; equiv to AA corporates; duration correction
-		//   Corp and foreign   2793            2001     3955 50%       3.66% mid-point A / BAA corporates; after avg duration correction
-		//     AAA             25 year                                  3.23%
-		//     BAA             25 year                                  4.56%
-		//   Weighted                                                   3.19% ie. would reasonable to use AAA, except duration is too long
-		//   Total                -              -       7849                 better to use GS10 and adjust gm value by +0.68% to get 3.19% am
-                //                                                                    (adjustment value applies in the presence of a 1.1 vol. adjust)
+		//   Muni               1617             610     1971 25%       2.95% after correct for tax adv; equiv to AA corporates
+		//   Corp and foreign   2793            2001     3955 50%       3.50% 2/3 A and 1/3 BAA based on LQD
+		//   Weighted                                                   3.11% use GS10 and adjust gm value by +0.60% to get 3.11% am
+		//   Total                -              -       7849                 (adjustment value applies in the presence of a 1.1 vol. adjust)
         public double ret_gs10_to_bonds_vol_adjust = 1.1; // Adjustment to apply to GS10 volatility to get bond returns indicative of the bond universe.
                 // A guess based on risk-return plots placing its risk close to but slightly less than AAA bonds, with which it shares a similar return.
                 // If risk was higher than AAA bonds, no point in holding "bonds", ignoring different correlations.
