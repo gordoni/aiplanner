@@ -98,7 +98,7 @@ public class Config
                // (Can't use math3 to interpolate because doesn't handle years less than lowest actual year ie. years 0-4).
                // Erroneously assumes the same yield curve will be present throughout time.
         public double annuity_real_yield_curve_adjust = 0; // Adjustment to apply to yield curve rates.
-        public int annuity_real_long_years = 30; // Maturity beyond which a lack of bond availability causes rates to be increased.
+        public int annuity_real_long_years = 30; // Maturity beyond which a lack of bond availability causes rates to be reduced.
         public double annuity_real_long_penalty = 0.0; // Amount by which to reduce rates post long_years to reflect lack of bond availability.
         public boolean annuity_nominal_synthetic = true; // Whether to use sythetically generated nominal annuity quotes based on life table.
                // Strictly speaking use of actual quotes is cheating becasue actual quotes are period quotes that don't reflect cohort mortality improvements.
@@ -112,7 +112,7 @@ public class Config
                // Null to use constant annuity_nominal_rate.
                // Erroneously assumes the same yield curve will be present throughout time.
         public double annuity_nominal_yield_curve_adjust = 0; // Adjustment to apply to yield curve rates.
-        public int annuity_nominal_long_years = 30; // Maturity beyond which a lack of bond availability causes rates to be increased.
+        public int annuity_nominal_long_years = 30; // Maturity beyond which a lack of bond availability causes rates to be reduced.
         public double annuity_nominal_long_penalty = 0.0; // Amount by which to reduce rates post long_years to reflect lack of bond availability.
         public double annuity_payout_immediate = 0.5; // Ratio of any immediate first payout of a newly purchased annuity.
                // 0.0 fails to provide for first 12 months of payments.
@@ -410,13 +410,15 @@ public class Config
         public String generate_life_table = "ssa-cohort"; // Life table to use for generation.
                // 'immortal', 'cdc-period', 'ssa-period', 'iam2000-unloaded-period', 'iam2000-loaded-period', or 'iam2012-basic-period'.
         public String validate_life_table = "ssa-cohort"; // Life table to use for validation.
-        public String annuity_table = "iam2012-basic-period"; // Life table to use for synthetic annuuity pricing.
+        public String annuity_table = "ssa-cohort"; // Life table to use for synthetic annuuity pricing.
         public String mortality_projection_method = "g2"; // Method to use to convert period life tables into cohort life tables.
                // "g2" - SOA Projection Scale G2.
                // "rate" - use mortality_reduction_rate.
         public double mortality_reduction_rate = 0.01; // Annual rate of mortality reduction for converting period life tables to cohort tables.
                // See http://www.ssa.gov/oact/NOTES/as120/LifeTables_Tbl_3.html and SoA projection scale G for choice of value.
         public double mortality_load = 0.0; // Loading to apply to mortality beyond that contained in table.
+        public double annuity_healthy = 0.0; // Reduction in death rates to apply at point of annuity purchase when calculating annuity price.
+        public double annuity_healthy_decay = 0.9; // Annual decay factor to apply to annuity_healthy in subsequent years.
 	public Integer years = null; // Years to run. Set to None to use the full death array length.
 	public int retirement_age = 65; // Age at retirement of first person assuming both retire at same age.
 
