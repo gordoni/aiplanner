@@ -358,7 +358,7 @@ public class Config
               // but include it when simulating.
               // We fail to apply a credit to the estate if die before reach IRS life expectancy.
         public boolean tax_annuity_canadian_nominal_generate_credit = false;
-              // For Candian nominal annuities whether to take into account the tax credit when generating.
+              // For Candian nominal annuities whether to take into account the tax credit when generating. If so, requires nia (ria optional).
         public String cost_basis_method = "immediate";  // Cost basis method for validation.  Immediate is used for generation.
                // "immediate", "avgcost", "hifo", or "fifo".
         public double tax_immediate_adjust = 0.8; // Immediate taxation isn't realistic. Multiplicative adjustment to tax rate when generating to make it more so.
