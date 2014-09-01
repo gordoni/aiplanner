@@ -165,14 +165,23 @@ public class Scenario
 		        // but this is the simplest approach and it shouldn't affect the underlying asset allocation machinery.
 		        int a_safe = asset_classes.indexOf(config.safe_aa);
 			double alloc_safe = new_aa[a_safe];
-			double min_safe;
+			double have_safe = 0;
+			if (ria_index != null)
+			        have_safe += p[ria_index] * ss.generate_annuity_stats.real_annuity_price[period];
+			if (nia_index != null)
+			        have_safe += p[nia_index] * ss.generate_annuity_stats.nominal_annuity_price[period];
+			double min_safe_aa;
 			if (p[tp_index] == 0)
-			    min_safe = 1;
+			        min_safe_aa = 1;
 			else
-			        min_safe = config.min_safe_le * (ss.generate_stats.raw_sum_avg_alive[period] / ss.generate_stats.raw_alive[period]) / p[tp_index];
-			min_safe = Math.max(min_safe, config.min_safe);
-			min_safe = Math.min(1, min_safe);
-			double delta_safe = Math.max(0, min_safe - alloc_safe);
+			{
+			        double min_safe_le = config.min_safe_le * (ss.generate_stats.raw_sum_avg_alive[period] / ss.generate_stats.raw_alive[period]);
+			        min_safe_aa = (min_safe_le - have_safe) / p[tp_index];
+			        min_safe_aa = Math.max(min_safe_aa, config.min_safe);
+				min_safe_aa = Math.max(0, min_safe_aa);
+				min_safe_aa = Math.min(1, min_safe_aa);
+			}
+			double delta_safe = Math.max(0, min_safe_aa - alloc_safe);
 			for (int i = 0; i < normal_assets; i++)
 			        if (i == a_safe)
 				        new_aa[i] += delta_safe;
