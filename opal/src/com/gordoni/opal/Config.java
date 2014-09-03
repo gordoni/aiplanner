@@ -351,14 +351,12 @@ public class Config
         public double tax_rate_div_default = 0.0; // Default tax rate for dividends.
         public double tax_rate_annuity = 0.0; // Average tax rate for annuities.
                // Annuity taxation is not reported in tax metric output (could probably modify to track and report if desired).
-        public boolean tax_annuity_us = true; // Perform US rather than Canadian style annuity taxation.
+        public boolean tax_annuity_credit_expire = true; // Perform US rather than Canadian style annuity taxation.
               // Both allow a credit for the purchase price, but in law US style taxation provides a credit to the estate if you die before the IRS life expectancy
               // and revokes the credit after. Canadian style taxation simply allows an ongoing credit derived from the purchase price for as long as you are alive.
-              // When generating we normally ignore the tax credit for purchase (conservatively reducing the income expected from annuities),
-              // but include it when simulating.
+              // When generating we fail to consider the expiration of the tax credit (increasing the income expected from annuities and making them appear more
+              // favorable). We include its expiration when simulating US style annuities.
               // We fail to apply a credit to the estate if die before reach IRS life expectancy.
-        public boolean tax_annuity_canadian_nominal_generate_credit = false;
-              // For Candian nominal annuities whether to take into account the tax credit when generating. If so, requires nia (ria optional).
         public String cost_basis_method = "immediate";  // Cost basis method for validation.  Immediate is used for generation.
                // "immediate", "avgcost", "hifo", or "fifo".
         public double tax_immediate_adjust = 0.8; // Immediate taxation isn't realistic. Multiplicative adjustment to tax rate when generating to make it more so.

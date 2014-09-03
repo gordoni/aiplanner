@@ -495,14 +495,13 @@ class AAMap
 					nia += nia_purchase;
 				        first_payout += config.annuity_payout_immediate * nia_purchase;
 				}
-				if ((scenario.ria_index != null || scenario.nia_index != null) && config.tax_rate_annuity != 0 &&
-				        (!generate || (!config.tax_annuity_us && config.tax_annuity_canadian_nominal_generate_credit)))
+				if ((scenario.ria_index != null || scenario.nia_index != null) && config.tax_rate_annuity != 0)
 				{
-				        assert(!(generate && scenario.nia_index == null));
+				    assert(!(generate && scenario.nia_index == null)); // Require nia if SPIA taxation.
 				        double nia_tax_credit = (real_annuitize + nominal_annuitize) * config.tax_rate_annuity / annuity_stats.annuity_le[period + y];
 					nia += nia_tax_credit;
 				        first_payout += config.annuity_payout_immediate * nia_tax_credit;
-					if (config.tax_annuity_us)
+					if (!generate && config.tax_annuity_credit_expire) // Can't simulate expiration of tax credit when generate.
 					{
 					        int expire = period + y + annuity_stats.annuity_le[period + y];
 						if (expire < tax_annuity_credit_expire.length)
