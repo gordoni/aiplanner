@@ -178,8 +178,19 @@ if (annuitization > 0) set output prefix . "-nia.png"
 if (annuitization > 0) plot prefix . "-linear.csv" using 1:2:($8 * 100) with image notitle
 
 # Looping, introduced in Gnuplot 4.6, should make the following easier and cleaner.
+# Unfortunately column(8 + i) fails with "constant expression required".
 
 set macros
+
+#do for [i=1:words(asset_class_symbols)] {
+#    symbol = word(asset_class_symbols, i)
+#    name = word(asset_class_names, i)
+#    name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+#    name = @name_cmd
+#    set cblabel name . " / investments"
+#    set output prefix . "-" . symbol . ".png"
+#    plot prefix . "-linear.csv" using 1:2:(column(8 + i) * 100) with image notitle
+#}
 
 symbol = word(asset_class_symbols, 1)
 name = word(asset_class_names, 1)
