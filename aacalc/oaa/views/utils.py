@@ -46,7 +46,9 @@ default_params = {
     'advanced_goals': False,
     'retirement_year': None,
     'withdrawal': Decimal(50000),
-    'floor': Decimal(30000),
+    #'floor': Decimal(30000),
+    'utility_join_required': Decimal(40000),
+    'utility_join_desired': Decimal(20000),
     'risk_tolerance': Decimal(20),
     #'vw': True,
     'vw_amount': False,
@@ -100,12 +102,16 @@ default_params = {
     #'donate_inherit_discount_rate_pct': Decimal(15),
     'advanced_well_being': False,
     'consume_discount_rate_pct': Decimal('3.0'),
+    'upside_discount_rate_pct': Decimal('10.0'),
     #'public_assistance': Decimal(10000),
     #'public_assistance_phaseout_rate_pct': Decimal(50),
-    'utility_method': 'ce',
-    'utility_ce': Decimal('1.21'),
-    'utility_slope_double_withdrawal': Decimal(16),
-    'utility_eta': Decimal('4.0'),
+    'utility_method': 'floor_plus_upside',
+    'utility_join_slope_ratio_pct': Decimal(5),
+    'utility_eta_1': Decimal('4.0'),
+    'utility_eta_2': Decimal('1.0'),
+    'utility_ce': Decimal('1.26'),
+    'utility_slope_double_withdrawal': Decimal(8),
+    'utility_eta': Decimal('3.0'),
     'utility_alpha': Decimal('0.0001'),
 }
 
@@ -184,6 +190,7 @@ def db(s):
 
 def display_result(request, dirname, sample, s):
     data = dict(s)
+    data['floor'] = floor(s)
     schemes = []
     if s['retirement_number']:
         f = open(dirname + '/opal-number.csv')
@@ -274,6 +281,10 @@ class OPALServerError(Exception):
 class OPALServerOverloadedError(OPALServerError):
     pass
 
+def floor(s):
+    ref = float(s['withdrawal']) if s['vw_amount'] else float(s['utility_join_required'])
+    return int(0.9 * ref)
+
 def write_scenario(dirname, s):
     retirement_age = dob_to_age(s['dob']) + max(0, s['retirement_year'] - datetime.utcnow().timetuple().tm_year)
     # Caution: Config.java maintains values from previous runs, so all modified values must be updated each time.
@@ -312,7 +323,9 @@ def write_scenario(dirname, s):
         'tax_rate_div_default': float(s['tax_rate_div_default_pct']) / 100,
         'cost_basis_method' : s['cost_basis_method'],
         'withdrawal': s['withdrawal'],
-        'floor': s['floor'],
+        'floor': floor(s),
+        'utility_join_required': float(s['utility_join_required']),
+        'utility_join_desired': float(s['utility_join_desired']),
         'vw_strategy': 'amount' if s['vw_amount'] else 'sdp',
         'spend_steps': spend_steps,
         'utility_retire': True,
@@ -321,10 +334,14 @@ def write_scenario(dirname, s):
         'utility_dead_limit': float(s['utility_dead_limit_pct']) / 100 if s['inherit'] else 0,
         'utility_bequest_consume': s['utility_bequest_consume'],
         'consume_discount_rate': float(s['consume_discount_rate_pct']) / 100,
+        'upside_discount_rate': float(s['upside_discount_rate_pct']) / 100,
         'utility_consume_fn': 'exponential' if s['utility_method'] == 'alpha' else 'power',
+        'utility_join': s['utility_method'] == 'floor_plus_upside',
+        'utility_join_slope_ratio': float(s['utility_join_slope_ratio_pct']) / 100,
+        'utility_eta_2': s['utility_eta_2'],
         'utility_ce': s['utility_ce'] if s['utility_method'] == 'ce' else None,
         'utility_slope_double_withdrawal': s['utility_slope_double_withdrawal'],
-        'utility_eta': s['utility_eta'] if s['utility_method'] == 'eta' else None,
+        'utility_eta': s['utility_eta_1'] if s['utility_method'] == 'floor_plus_upside' else s['utility_eta'] if s['utility_method'] == 'eta' else None,
         'utility_alpha': s['utility_alpha'],
         'ret_risk_free': float(s['ret_risk_free_pct']) / 100,
         'generate_ret_equity': float(s['ret_equity_pct']) / 100,

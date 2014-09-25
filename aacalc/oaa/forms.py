@@ -81,7 +81,10 @@ class ScenarioBaseForm(forms.Form):
     withdrawal = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'p_input'}),
         min_value=0)
-    floor = forms.DecimalField(
+    utility_join_required = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    utility_join_desired = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'p_input'}),
         min_value=0)
     risk_tolerance = forms.DecimalField(
@@ -146,8 +149,23 @@ class ScenarioBaseForm(forms.Form):
     consume_discount_rate_pct = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'percent_input'}),
         min_value=0)
+    upside_discount_rate_pct = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'percent_input'}),
+        min_value=0)
     utility_method = forms.ChoiceField(
-        choices=(('ce', ''), ('slope', ''), ('eta', ''), ('alpha', '')))
+        choices=(('floor_plus_upside', ''), ('ce', ''), ('slope', ''), ('eta', ''), ('alpha', '')))
+    utility_join_slope_ratio_pct = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'percent_input'}),
+        min_value=0,
+        max_value=100)
+    utility_eta_1 = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=50)
+    utility_eta_2 = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=50)
     utility_ce = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=Decimal('1.02'), # 1.01 fails.
@@ -228,6 +246,8 @@ class ScenarioBaseForm(forms.Form):
             raise ValidationError('You have no Social Security or other guaranteed income.')
         if cleaned_data['utility_inherit_years'] <= 0:
             raise ValidationError('Bequest share parameter must be positive.')
+        if cleaned_data['utility_method'] == 'floor_plus_upside' and cleaned_data['upside_discount_rate_pct'] < cleaned_data['consume_discount_rate_pct']:
+            raise ValidationError('Upside discount rate is less than consumption and bequest discount rate')
         return cleaned_data
 
 class ScenarioAaForm(ScenarioBaseForm):
