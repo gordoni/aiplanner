@@ -282,8 +282,8 @@ class OPALServerOverloadedError(OPALServerError):
     pass
 
 def floor(s):
-    ref = float(s['withdrawal']) if s['vw_amount'] else float(s['utility_join_required'])
-    return int(0.9 * ref)
+    ref = (0.9 * float(s['withdrawal'])) if s['vw_amount'] else float(s['utility_join_required'])
+    return int(ref)
 
 def write_scenario(dirname, s):
     retirement_age = dob_to_age(s['dob']) + max(0, s['retirement_year'] - datetime.utcnow().timetuple().tm_year)
