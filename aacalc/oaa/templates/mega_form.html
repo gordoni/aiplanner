@@ -67,11 +67,11 @@ Please correct the errors in red below:
 
 <h2>Life expectancy</h2>
 Sex: {{ se_form.sex }}
-Age or date of birth: {{ se_form.dob }} (mm/dd/yyyy or yyyy-mm-dd)
+Age: {{ se_form.dob }} {% comment %}(mm/dd/yyyy or yyyy-mm-dd){% endcomment %}
 {{ se_form.dob.errors }}
 <br />
 Spouse/partner: {{ se_form.sex2 }}
-Age or date of birth: {{ se_form.dob2 }}
+Age: {{ se_form.dob2 }}
 {{ se_form.dob2.errors }}
 <br />
 <font size="-1">
@@ -487,7 +487,7 @@ checked="checked"
 />
 </td>
 <td>
-Floor plus upside utility function with luxury consumption
+Floor and upside utility function with luxury consumption
 {{ se_form.utility_join_slope_ratio_pct }}% as valuable as floor consumption
 (at the required consumption level), coefficients of relative
 risk aversion of {{ se_form.utility_eta_1 }} for floor spending and
