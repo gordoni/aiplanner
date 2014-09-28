@@ -51,8 +51,8 @@ abstract class Utility
         {
                 if (join_function.equals("ara"))
 		        return new UtilityJoinAra(config, utility1, utility2, c1, c2);
-		else if (join_function.equals("slope"))
-		        return new UtilityJoinSlope(config, utility1, utility2, c1, c2);
+		else if (join_function.startsWith("slope-"))
+		        return new UtilityJoinSlope(config, join_function, utility1, utility2, c1, c2);
 		else
 		        assert(false);
 		return null;

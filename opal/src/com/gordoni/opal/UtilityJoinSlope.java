@@ -9,7 +9,7 @@ import org.apache.commons.math3.linear.LUDecomposition;
 
 public class UtilityJoinSlope extends Utility
 {
-        // Join with cubic poynomial interpolation of slope across the join region.
+        // Join with linear or cubic poynomial interpolation of slope across the join region.
 
         private Config config;
         private Utility utility1;
@@ -88,7 +88,7 @@ public class UtilityJoinSlope extends Utility
 		        return (3 * w * c + 2 * x) * c + y;
 	}
 
-        public UtilityJoinSlope(Config config, Utility utility1, Utility utility2, double c1, double c2)
+        public UtilityJoinSlope(Config config, String join_function, Utility utility1, Utility utility2, double c1, double c2)
         {
 		this.config = config;
 		this.utility1 = utility1;
@@ -99,19 +99,31 @@ public class UtilityJoinSlope extends Utility
 
 		if (c1 < c2)
 		{
-			RealMatrix a = new Array2DRowRealMatrix(new double[][] {
-				{ c1 * c1 * c1, c1 * c1, c1, 1 },
-				{ c2 * c2 * c2, c2 * c2, c2, 1 },
-				{ 3 * c1 * c1, 2 * c1, 1, 0 },
-				{ 3 * c2 * c2, 2 * c2, 1, 0 }
-			});
-			RealVector b = new ArrayRealVector(new double[] { utility1.slope(c1), utility2.slope(c2), utility1.slope2(c1), utility2.slope2(c2) });
-			DecompositionSolver solver = new LUDecomposition(a).getSolver();
-			RealVector solution = solver.solve(b);
-			this.w = solution.getEntry(0);
-			this.x = solution.getEntry(1);
-			this.y = solution.getEntry(2);
-			this.z = solution.getEntry(3);
+		        if (join_function.equals("slope-cubic"))
+			{
+				RealMatrix a = new Array2DRowRealMatrix(new double[][] {
+					{ c1 * c1 * c1, c1 * c1, c1, 1 },
+					{ c2 * c2 * c2, c2 * c2, c2, 1 },
+					{ 3 * c1 * c1, 2 * c1, 1, 0 },
+					{ 3 * c2 * c2, 2 * c2, 1, 0 }
+				});
+				RealVector b = new ArrayRealVector(new double[] { utility1.slope(c1), utility2.slope(c2), utility1.slope2(c1), utility2.slope2(c2) });
+				DecompositionSolver solver = new LUDecomposition(a).getSolver();
+				RealVector solution = solver.solve(b);
+				this.w = solution.getEntry(0);
+				this.x = solution.getEntry(1);
+				this.y = solution.getEntry(2);
+				this.z = solution.getEntry(3);
+			}
+			else if (join_function.equals("slope-linear"))
+			{
+			        this.w = 0;
+				this.x = 0;
+				this.y = (utility2.slope(c2) - utility1.slope(c1)) / (c2 - c1);
+				this.z = utility1.slope(c1) - this.y * c1;
+			}
+			else
+			        assert(false);
 		}
 		else
 	        {
