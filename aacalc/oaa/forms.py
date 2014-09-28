@@ -83,7 +83,7 @@ class ScenarioBaseForm(forms.Form):
         min_value=0)
     utility_join_required = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
+        min_value=1)
     utility_join_desired = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'p_input'}),
         min_value=0)
