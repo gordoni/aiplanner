@@ -222,6 +222,9 @@ class ScenarioBaseForm(forms.Form):
             raise ValidationError('Invalid spouse/partner.')
         if cleaned_data['withdrawal'] == 0:
             raise ValidationError('Zero annual retirement withdrawal amount')
+        if cleaned_data['inherit'] and cleaned_data['utility_method'] == 'floor_plus_upside' and cleaned_data['utility_eta_2'] <= 1:
+            raise ValidationError('Bequest requires well-being coefficient of relative risk aversion >= 1.')
+        # Don't worry about other utility methods, unlikely to have a coefficient <= 1; bequest will just be ignored.
         classes = sum(int(cleaned_data[asset_class]) for asset_class in all_asset_classes())
         if classes < 2:
             raise ValidationError('Must select at least two asset classes to analyze.')

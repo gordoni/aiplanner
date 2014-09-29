@@ -108,7 +108,7 @@ default_params = {
     'utility_method': 'floor_plus_upside',
     'utility_join_slope_ratio_pct': Decimal(5),
     'utility_eta_1': Decimal('4.0'),
-    'utility_eta_2': Decimal('1.0'),
+    'utility_eta_2': Decimal('1.01'),
     'utility_ce': Decimal('1.26'),
     'utility_slope_double_withdrawal': Decimal(8),
     'utility_eta': Decimal('3.0'),
