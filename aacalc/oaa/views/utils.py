@@ -235,6 +235,7 @@ def display_result(request, dirname, sample, s):
         data['aa_name'] = '/'.join(asset_class_names(s))
         data['aa'] = '/'.join(str(int(a * 100 + 0.5)) for a in aa)
         failure_chance, failure_length = compile(r'^(\S+)% chance of failure; (\S+) years weighted failure length$', MULTILINE).search(log).groups()
+        metric_tw = compile(r'^Metric tw: *(-?\d+.\d+).*$', MULTILINE).search(log).group(1)
         metric_withdrawal = compile(r'^Metric consume: *(-?\d+.\d+).*$', MULTILINE).search(log).group(1)
         data['failure_chance'] = '%.1f%%' % float(failure_chance)
         data['failure_length'] = '%.1f' % float(failure_length)
@@ -250,9 +251,9 @@ def display_result(request, dirname, sample, s):
                 else:
                     improvement = '-'
                 schemes.append({'name': scheme_name[scheme], 'ce': ce, 'improvement': improvement})
-        if float(failure_chance) >= 10:
+        if float(metric_tw) < 90:
             data['risk'] = 'high'
-        elif float(failure_chance) >= 1:
+        elif float(metric_tw) < 99:
             data['risk'] = 'medium'
         else:
             data['risk'] = 'low'
