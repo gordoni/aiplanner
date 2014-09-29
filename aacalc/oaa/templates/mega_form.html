@@ -270,10 +270,17 @@ variance optimization is very sensitive to small differences between
 similar asset classes. Additionally, for more than two asset classes
 with non-normal return distributions be aware that the results of mean
 variance optimization are ever so slightly non-optimal even when the
-returns are independent over time. As a result abrupt asset allocation
-transitions may appear.</span>
-</font>
+returns are independent over time.</span>
 <br />
+<span class="advanced">
+<div class="warning">
+Blindly selecting all asset classes will result in a recommended
+portfolio of small value and gold, which is true according to the
+historical record, but care needs to be exercised in interpreting this
+recommendation going forward. Caveat emptor.
+</div>
+</span>
+</font>
 {{ se_form.class_stocks }} Stocks
 <font size="-1">
 (US stocks; 1872-2013 available)
@@ -347,7 +354,7 @@ transitions may appear.</span>
 </font>
 {{ se_form.class_t1yr.errors }}
 <br />
-{{ se_form.class_t10yr }} T-bill 10yr
+{{ se_form.class_t10yr }} T-note 10yr
 <font size="-1">
 (US 10 year T-notes; 1872-2013 available)
 </font>
