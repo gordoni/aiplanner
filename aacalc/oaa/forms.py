@@ -33,7 +33,7 @@ class DobOrAgeField(forms.CharField):
         except ValueError:
             pass
         else:
-            if 0 <= age < 100:
+            if 0 <= age < 98:
                 return age
         if v == '':
             if self.required:
