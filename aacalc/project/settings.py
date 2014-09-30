@@ -128,6 +128,10 @@ LOGGING = {
     }
 }
 
+ALLOWED_HOSTS = [
+    '.aacalc.com',
+]
+
 DEFAULT_FROM_EMAIL = 'noreply@aacalc.com'
 
 # Django 1.2:
