@@ -1379,7 +1379,7 @@ public class Scenario
 		tp_max_estimate = Math.max(tp_max_estimate, 5 * (config.start_tp + discounted_savings) * Math.pow(return_rate, years));
 		consume_max_estimate = config.defined_benefit + 2 * tp_max_estimate / retirement_le + ia;
 		tp_max_estimate += config.defined_benefit + ia; // Assume minimal carry over from one period to the next.
-		retirement_number_max_estimate = Math.max(0, config.floor - config.defined_benefit - ia) * retirement_le;
+		retirement_number_max_estimate = Math.max(1e-3 * config.floor, (config.floor - config.defined_benefit - ia) * retirement_le);
 
 		// Set up the scales.
 		scale = new Scale[start_p.length];
