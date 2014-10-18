@@ -409,14 +409,18 @@ public class Config
         public String generate_life_table = "ssa-cohort"; // Life table to use for generation.
                // 'immortal', 'cdc-period', 'ssa-period', 'iam2000-unloaded-period', 'iam2000-loaded-period', or 'iam2012-basic-period'.
         public String validate_life_table = "ssa-cohort"; // Life table to use for validation.
-        public String annuity_table = "ssa-cohort"; // Life table to use for synthetic annuuity pricing.
+        public String annuity_table = "iam2012-basic-period"; // Life table to use for synthetic annuuity pricing.
         public String mortality_projection_method = "g2"; // Method to use to convert period life tables into cohort life tables.
                // "g2" - SOA Projection Scale G2.
                // "rate" - use mortality_reduction_rate.
         public double mortality_reduction_rate = 0.01; // Annual rate of mortality reduction for converting period life tables to cohort tables.
                // See http://www.ssa.gov/oact/NOTES/as120/LifeTables_Tbl_3.html and SoA projection scale G for choice of value.
         public double mortality_load = 0.0; // Loading to apply to mortality beyond that contained in table.
-        public double annuity_healthy = 0.0; // Reduction in death rates to apply at point of annuity purchase when calculating annuity price.
+        public String annuity_contract_years = "aer2005_08"; // Method of adjusting annuity death rates to account for low death rates when contract first signed.
+               // "none" - No adjustment.
+               // "aer2005_08" - SOA Annuity Experience Report 2005-08. Requires IAM 2012 for annuity_table.
+               // "healthy_decay" - Apply annuity health and annuity_healthy_decay.
+        public double annuity_healthy = 0.5; // Reduction in death rates to apply at point of annuity purchase when calculating annuity price.
         public double annuity_healthy_decay = 0.9; // Annual decay factor to apply to annuity_healthy in subsequent years.
 	public Integer years = null; // Years to run. Set to None to use the full death array length.
 	public int retirement_age = 65; // Age at retirement of first person assuming both retire at same age.

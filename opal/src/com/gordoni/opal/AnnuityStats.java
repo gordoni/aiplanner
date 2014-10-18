@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class AnnuityStats
@@ -129,7 +130,25 @@ public class AnnuityStats
 			{
 			        assert(config.sex2 == null);
 			        double maturity = (j - i) / time_periods - config.start_age;
-				double good_health_discount = (maturity < 0 ? 1 : 1 - config.annuity_healthy * Math.pow(config.annuity_healthy_decay, maturity));
+				double good_health_discount = 1;
+				if (maturity >= 0)
+				{
+				        if (config.annuity_contract_years.equals("aer2005_08"))
+					{
+						assert(config.annuity_table.equals("iam2012-basic-period"));
+						List<Double> aer2005_08 = (config.sex == "male") ? hist.soa_aer2005_08_m : hist.soa_aer2005_08_f;
+						double contract_length = Math.min(maturity, aer2005_08.size() - 1);
+						good_health_discount = aer2005_08.get((int) contract_length);
+					}
+					else if (config.annuity_contract_years.equals("healthy_decay"))
+					{
+						good_health_discount = 1 - config.annuity_healthy * Math.pow(config.annuity_healthy_decay, maturity);
+					}
+					else
+					{
+					        assert(config.annuity_contract_years.equals("none"));
+					}
+				}
 				annuitant_death[j] = good_health_discount * annuitant_death[j];
 			        double rate = vital_stats.mortality_projection(config.sex, (int) (j / time_periods));
 			        double cohort_to_cohort = Math.pow(1 - rate, - i / time_periods); // Back up earlier projection in VitalStats.get().

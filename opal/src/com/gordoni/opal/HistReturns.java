@@ -85,6 +85,8 @@ public class HistReturns
         public List<Double> soa_iam2012_basic_death_f = null;
         public List<Double> soa_projection_g2_m = null;
         public List<Double> soa_projection_g2_f = null;
+        public List<Double> soa_aer2005_08_m = null;
+        public List<Double> soa_aer2005_08_f = null;
 
         double bond_npv(double discount_rate, double interest_rate, double maturity)
         {
@@ -454,7 +456,7 @@ public class HistReturns
 		in.close();
 	}
 
-    private List<Double> load_soa_iam2012(String filename, boolean q1000) throws IOException
+        private List<Double> load_soa_iam2012(String filename, boolean q1000) throws IOException
         {
 		BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
 	        Map<Integer, Double> death_map = new HashMap<Integer, Double>();
@@ -476,6 +478,33 @@ public class HistReturns
 		        death.add(q);
 
 		return death;
+	}
+
+        private List<Double> load_soa_aer(String filename) throws IOException
+        {
+		BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
+	        ArrayList<Double> a_e_list = new ArrayList<Double>();
+		int contract_years = 1;
+		double old_a_e = Double.NaN;
+		String line = in.readLine();
+		while ((line = in.readLine()) != null)
+		{
+			String[] fields = line.split(",", -1);
+			int years = Integer.parseInt(fields[0]);
+			double a_e = Double.parseDouble(fields[1]);
+			if (Double.isNaN(old_a_e))
+			        old_a_e = a_e;
+			while (contract_years < years)
+			{
+			        a_e_list.add(old_a_e);
+			        contract_years++;
+			}
+			old_a_e = a_e;
+		}
+		a_e_list.add(old_a_e);
+		in.close();
+
+		return a_e_list;
 	}
 
         public Map<String, double[]> real_annuity_price = new HashMap<String, double[]>();
@@ -680,6 +709,8 @@ public class HistReturns
 		soa_iam2012_basic_death_f = load_soa_iam2012("soa-iam2012-basic-female.csv", true);
 		soa_projection_g2_m = load_soa_iam2012("soa-projection-g2-male.csv", false);
 		soa_projection_g2_f = load_soa_iam2012("soa-projection-g2-female.csv", false);
+		soa_aer2005_08_m = load_soa_aer("soa-aer2005_08-male.csv");
+		soa_aer2005_08_f = load_soa_aer("soa-aer2005_08-female.csv");
                 File dir = new File(data + "/" + "incomesolutions.com");
 		for (File file : dir.listFiles())
 		        if (file.getName().endsWith(".csv"))
