@@ -393,6 +393,8 @@ name = word(asset_class_names, 1)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 1) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -401,6 +403,8 @@ name = word(asset_class_names, 2)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 2) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -409,6 +413,8 @@ name = word(asset_class_names, 3)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 3) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -417,6 +423,8 @@ name = word(asset_class_names, 4)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 4) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -425,6 +433,8 @@ name = word(asset_class_names, 5)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 5) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -433,6 +443,8 @@ name = word(asset_class_names, 6)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 6) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -441,6 +453,8 @@ name = word(asset_class_names, 7)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 7) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -449,6 +463,8 @@ name = word(asset_class_names, 8)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 8) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -457,6 +473,8 @@ name = word(asset_class_names, 9)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 9) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -465,6 +483,8 @@ name = word(asset_class_names, 10)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 10) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -473,6 +493,8 @@ name = word(asset_class_names, 11)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 11) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -481,6 +503,8 @@ name = word(asset_class_names, 12)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 12) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -489,6 +513,8 @@ name = word(asset_class_names, 13)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 13) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -497,6 +523,8 @@ name = word(asset_class_names, 14)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 14) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -505,6 +533,8 @@ name = word(asset_class_names, 15)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 15) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -513,6 +543,8 @@ name = word(asset_class_names, 16)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 16) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -521,6 +553,8 @@ name = word(asset_class_names, 17)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 17) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -529,6 +563,8 @@ name = word(asset_class_names, 18)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 18) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -537,6 +573,8 @@ name = word(asset_class_names, 19)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 19) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -545,6 +583,8 @@ name = word(asset_class_names, 20)
 name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
+if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(7 + 20) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 

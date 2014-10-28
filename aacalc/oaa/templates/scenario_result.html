@@ -189,6 +189,7 @@ Asset allocation:
 <br />
 <font size="-1">
 {% if not data.retirement_number %}
+Sample asset allocation paths and 95 percentile asset allocation plots are shown below.
 The asset allocation is predicted to evolve in accordance with the 95
 percentile asset allocation plots.
 <br />
@@ -210,7 +211,10 @@ with the asset allocation color scale on the right hand side.
 </font>
 <br />
 {% if not data.retirement_number %}
+<img src="{{ dirurl }}/opal-paths-{{ aa.symbol }}.png">
+<br />
 <img src="{{ dirurl }}/opal-pct-{{ aa.symbol }}.png">
+<br />
 {% endif %}
 <img src="{{ dirurl }}/opal-{{ aa.symbol }}.png">
 {% endfor %}
