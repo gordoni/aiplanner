@@ -198,3 +198,13 @@ body{
     padding: 5px;
     text-align: center;
 }
+
+.doc dt {
+    font-weight: bolder;
+}
+
+.doc dd {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    background-color: #f2f2f2;
+}
