@@ -192,24 +192,27 @@ public class AnnuityStats
 				na_price += avg_alive / nominal_tr;
 			        period_na_price += period_avg_alive / nominal_tr;
 			}
-			this.synthetic_real_annuity_price[i] = ra_price / (annuitant_alive[i] * time_periods * config.annuity_real_mwr);
-			this.synthetic_nominal_annuity_price[i] = na_price / (annuitant_alive[i] * time_periods * config.annuity_nominal_mwr);
-			this.period_real_annuity_price[i] =  period_ra_price / (period_alive[i] * time_periods * config.annuity_real_mwr);
-			this.period_nominal_annuity_price[i] = period_na_price / (period_alive[i] * time_periods * config.annuity_nominal_mwr);
+			double age = config.start_age + i / time_periods;
+			double real_mwr = config.annuity_real_mwr1 + (age - config.annuity_mwr_age1) * (config.annuity_real_mwr2 - config.annuity_real_mwr1) / (config.annuity_mwr_age2 - config.annuity_mwr_age1);
+			double nominal_mwr = config.annuity_nominal_mwr1 + (age - config.annuity_mwr_age1) * (config.annuity_nominal_mwr2 - config.annuity_nominal_mwr1) / (config.annuity_mwr_age2 - config.annuity_mwr_age1);
+			this.synthetic_real_annuity_price[i] = ra_price / (annuitant_alive[i] * time_periods * real_mwr);
+			this.synthetic_nominal_annuity_price[i] = na_price / (annuitant_alive[i] * time_periods * nominal_mwr);
+			this.period_real_annuity_price[i] =  period_ra_price / (period_alive[i] * time_periods * real_mwr);
+			this.period_nominal_annuity_price[i] = period_na_price / (period_alive[i] * time_periods * nominal_mwr);
 			double real_annuity_price_male[] = hist.real_annuity_price.get(config.annuity_real_quote + "-male");
 			double real_annuity_price_female[] = hist.real_annuity_price.get(config.annuity_real_quote + "-female");
-			if (config.sex.equals("male") && config.start_age + (int) (i / time_periods) < real_annuity_price_male.length)
-			        this.actual_real_annuity_price[i] = real_annuity_price_male[config.start_age + (int) (i / time_periods)];
-			else if (config.sex.equals("female") && config.start_age + (int) (i / time_periods) < real_annuity_price_female.length)
-			        this.actual_real_annuity_price[i] = real_annuity_price_female[config.start_age + (int) (i / time_periods)];
+			if (config.sex.equals("male") && (int) age < real_annuity_price_male.length)
+			        this.actual_real_annuity_price[i] = real_annuity_price_male[(int) age];
+			else if (config.sex.equals("female") && (int) age < real_annuity_price_female.length)
+			        this.actual_real_annuity_price[i] = real_annuity_price_female[(int) age];
 			else
 			        this.actual_real_annuity_price[i] = Double.POSITIVE_INFINITY;
 			double nominal_annuity_price_male[] = hist.nominal_annuity_price.get(config.annuity_nominal_quote + "-male");
 			double nominal_annuity_price_female[] = hist.nominal_annuity_price.get(config.annuity_nominal_quote + "-female");
-			if (config.sex.equals("male") && config.start_age + (int) (i / time_periods) < nominal_annuity_price_male.length)
-			        this.actual_nominal_annuity_price[i] = nominal_annuity_price_male[config.start_age + (int) (i / time_periods)];
-			else if (config.sex.equals("female") && config.start_age + (int) (i / time_periods) < nominal_annuity_price_female.length)
-			        this.actual_nominal_annuity_price[i] = nominal_annuity_price_female[config.start_age + (int) (i / time_periods)];
+			if (config.sex.equals("male") && (int) age < nominal_annuity_price_male.length)
+			        this.actual_nominal_annuity_price[i] = nominal_annuity_price_male[(int) age];
+			else if (config.sex.equals("female") && (int) age < nominal_annuity_price_female.length)
+			        this.actual_nominal_annuity_price[i] = nominal_annuity_price_female[(int) age];
 			else
 			        this.actual_nominal_annuity_price[i] = Double.POSITIVE_INFINITY;
 			if (config.annuity_real_synthetic)
