@@ -193,9 +193,11 @@ public class Config
         public boolean utility_epstein_zin = false; // Whether to utilize separate risk and time consumption utility functions.
         public String utility_consume_fn = "power"; // Consumption utility function to use. "power", "exponential", "hara", or "linear".
         public boolean utility_join = false; // Whether to join a second power utility to consume utility function.
-        public String utility_join_type = "slope-linear"; // When joining where to interpolate any gap. 'slope-linear', 'slope-cubic', or 'ara'.
+        public String utility_join_type = "slope-cubic-monotone"; // When joining where to interpolate any gap. 'slope-linear',
+               // 'slope-cubic-monotone', 'slope-cubic-smooth', or 'ara'.
                // slope-linear - interpolate utility slopes linearly.
-               // slope-cubic - interpolate utility slopes using a cubic polynomial.
+               // slope-cubic-monotone - interpolate utility slopes using a cubic polynomial; slope not guaranteed to be smooth at join points.
+               // slope-cubic-smooth - interpolate utility slopes using a cubic polynomial; guaranteed smooth at join points but may be impossible to produce.
                // ara - interpolate over the coefficient of absolute risk aversion linearly.
         public double utility_gamma = 4; // Consumption Epstein-Zin utility risk aversion.
         public double utility_psi = 1 / 4.0; // Consumption Epstein-Zin utility elasticity of inter-temporal substitution.
