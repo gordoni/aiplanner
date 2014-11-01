@@ -821,7 +821,7 @@ public class Scenario
 		out.println("age_low = " + config.start_age);
 		int age_high = config.start_age + ss.max_years;
 		int age_limit = 99;
-		if (config.start_age2 != null && config.start_age2 < config.start_age)
+		if (config.sex2 != null && config.start_age2 < config.start_age)
 		        age_limit += config.start_age - config.start_age2;
 		if (!config.debug_till_end && age_high > age_limit)
 		        age_high = age_limit;
