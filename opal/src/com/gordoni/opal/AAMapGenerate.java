@@ -904,7 +904,17 @@ public class AAMapGenerate extends AAMap
 		double inc_pct = 0;
 		if (income > 0)
 		        inc_pct = income / (p[scenario.tp_index] + income);
-	        double pct = scenario.vw_percent;
+	        double pct;
+		if (scenario.vw_strategy.equals("vpw"))
+		{
+		        assert(config.generate_time_periods == 1);
+		        if (age - config.retirement_age >= config.vw_years)
+			        pct = 1;
+			else
+		                pct = config.vw_rate * Math.pow(1 + config.vw_rate, config.vw_years - (age - config.retirement_age) - 1) / (Math.pow(1 + config.vw_rate, config.vw_years - (age - config.retirement_age)) - 1);
+		}
+		else
+		        pct = scenario.vw_percent;
 		int period = (int) Math.round((age - config.start_age) * config.generate_time_periods);
 		double le;
 		if (scenario.vw_strategy.equals("rmd"))
@@ -933,7 +943,7 @@ public class AAMapGenerate extends AAMap
 
 		if (scenario.vw_strategy.equals("amount") || scenario.vw_strategy.equals("retirement_amount"))
 		        return 0;
-		else if (scenario.vw_strategy.equals("percentage"))
+		else if (scenario.vw_strategy.equals("percentage") || scenario.vw_strategy.equals("vpw"))
 		        return Math.min(pct + inc_pct, 1);
 		else if (scenario.vw_strategy.equals("rmd") || scenario.vw_strategy.equals("life") || scenario.vw_strategy.equals("discounted_life"))
 		        return Math.min(life_pct + inc_pct, 1);
