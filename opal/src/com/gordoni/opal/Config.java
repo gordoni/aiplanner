@@ -30,6 +30,7 @@ public class Config
 	public boolean conserve_ram = false; // Whether to conserve memory by not storing the simulate() results.
         public boolean search_cache_map = true; // Whether to use a hashmap or an arraylist for the search cache.
         public String validate = null; // Load asset allocation from validate prefix rather than generating it.
+        public boolean skip_generate = false; // Speed up by not generating aa/consume.
 	public boolean skip_retirement_number = true; // Speed up by not generating retirement number values.
 	public boolean skip_success_lines = true; // Speed up by not generating success lines.
 	public boolean skip_compare = true; // Speed up by not performing comparison.
@@ -41,6 +42,7 @@ public class Config
         public boolean skip_metric_wer = true; // Speed up by not calculating withdrawal efficiency rate.
         public boolean skip_sample_cholesky = true; // Speedup simulation by using the returns Cholesky matrix for the trial sample Cholesky matrix.
 	public boolean skip_dump_load = true; // Speed up by not dumping and loading asset allocation.
+        public boolean skip_dump_le = false; // Speed up by not dumping life expectencies.
 	public boolean skip_dump_log = true; // Save disk by not dumping future maps.
 
 	// Simulation specific parameters.
@@ -422,8 +424,8 @@ public class Config
         public String mortality_projection_method = "g2"; // Method to use to convert period life tables into cohort life tables.
                // "g2" - SOA Projection Scale G2.
                // "rate" - use mortality_reduction_rate.
-        public double mortality_reduction_rate = 0.01; // Annual rate of mortality reduction for converting period life tables to cohort tables.
-               // See http://www.ssa.gov/oact/NOTES/as120/LifeTables_Tbl_3.html and SoA projection scale G for choice of value.
+        public double mortality_reduction_rate = 0.0; // Annual rate of mortality reduction for converting period life tables to cohort tables.
+               // See http://www.ssa.gov/oact/NOTES/as120/LifeTables_Tbl_3.html and SoA projection scale G for choice of value; 0.01 is reasonable.
         public double mortality_load = 0.0; // Loading to apply to mortality beyond that contained in table.
         public String annuity_contract_years = "aer2005_08"; // Method of adjusting annuity death rates to account for low death rates when contract first signed.
                // "none" - No adjustment.

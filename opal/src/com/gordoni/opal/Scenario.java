@@ -811,6 +811,40 @@ public class Scenario
 		out.close();
         }
 
+        private void dump_le() throws IOException
+        {
+		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-le.csv"));
+		for (String table : Arrays.asList("ssa-cohort", "iam2012-basic-period", "ssa-period"))
+		{
+		        VitalStats stats = new VitalStats(ss, config, hist, 1.0);
+			String keep_method = config.mortality_projection_method;
+			config.mortality_projection_method = (table.equals("iam2012-basic-period") ? "g2" : "rate"); // Irrelevant for cohort.
+		        stats.compute_stats(table);
+			config.mortality_projection_method = keep_method;
+			double le = stats.le.get(config.start_age);
+		        out.print(table + "," + le);
+			double pct_prev = 0;
+			double pct_curr = 0;
+			int ple = 0;
+			for (double pct_level : Arrays.asList(0.5, 0.8, 0.9, 0.95, 0.98, 0.99))
+			{
+				for (; ple < stats.alive.length; ple++)
+				{
+				        pct_curr = 1 - stats.alive[ple];
+				        if (pct_curr >= pct_level)
+					        break;
+					pct_prev = pct_curr;
+				}
+				double extra = (pct_curr - pct_level) / (pct_curr - pct_prev);
+				if (Double.isInfinite(extra))
+				        extra = 0;
+		                out.print("," + (ple - extra));
+			}
+			out.println();
+		}
+		out.close();
+	}
+
         public void dump_gnuplot_params(double p_max, double consume_max, double annuitization_max, double consume_ara_max) throws IOException
         {
 		PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-gnuplot-params.gnuplot")));
@@ -924,8 +958,14 @@ public class Scenario
 			dump_annuity_yield_curve();
 		}
 
-		dump_gnuplot_params(tp_max, consume_max, annuitization_max, consume_ara_max);
-		plot();
+		if (!config.skip_dump_le)
+		        dump_le();
+
+		if (!config.skip_generate || !config.skip_retirement_number)
+		{
+		        dump_gnuplot_params(tp_max, consume_max, annuitization_max, consume_ara_max);
+			plot();
+		}
 	}
 
 	// Dump retirement number values.
@@ -1429,7 +1469,7 @@ public class Scenario
 
 		do_tax = config.tax_rate_cg != 0 || config.tax_rate_div != null || config.tax_rate_div_default != 0 || config.tax_rate_annuity != 0;
 		do_target = !config.skip_target && config.target_mode != null;
-		do_generate = (config.validate == null) || (do_target && (config.target_sdp_baseline || config.target_mode.equals("rps")));
+		do_generate = !config.skip_generate || (!config.skip_validate && (config.validate == null)) || (do_target && (config.target_sdp_baseline || config.target_mode.equals("rps")));
 
 		normal_assets = asset_classes.size();
 		cpi_index = -1;

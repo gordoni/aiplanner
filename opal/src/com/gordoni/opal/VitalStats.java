@@ -304,7 +304,7 @@ public class VitalStats
 		return couple;
 	}
 
-        // NB: sum_avg_alive[i+1] / alive[i] = le.get(start_age + i) when time_periods==1 and consume_discount_rate==0.
+        // NB: sum_avg_alive[i+1] / alive[i] + 0.5 = le.get(start_age + i) when time_periods==1 and consume_discount_rate==0.
 	private void pre_compute_life_expectancy()
 	{
 	        this.le = new ArrayList<Double>();
@@ -323,7 +323,7 @@ public class VitalStats
 				i += 1;
 				y = s + i;
 		        }
-			this.le.add(expectancy);
+			this.le.add(expectancy + 0.5); // Die at random in last year.
 		}
 	}
 

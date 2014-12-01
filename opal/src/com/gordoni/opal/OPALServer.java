@@ -140,7 +140,7 @@ public class OPALServer implements Runnable
 				for (File file : dir.listFiles())
 				{
 					String filename = file.getName();
-					if (Arrays.asList("opal.log", "opal-number.csv").contains(filename) || filename.endsWith(".png"))
+					if (Arrays.asList("opal.log", "opal-number.csv", "opal-le.csv").contains(filename) || filename.endsWith(".png"))
 					{
 						pout.print(
 							 "\r\n--" + boundary + "\r\n" +
