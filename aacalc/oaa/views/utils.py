@@ -25,6 +25,7 @@ from settings import SECRET_KEY, STATIC_ROOT, STATIC_URL
 
 # Deleted names can only be judicially re-used, since inactive users might still hold an old parameter of that name. This means types can never be changed.
 default_params = {
+    'calulator': 'aa',
     #'name': None,
     'sex': None,
     'dob': None,
@@ -149,10 +150,14 @@ def run_http(request, scenario_dict):
     return response
 
 def run_response(request, scenario_dict):
+    dirname = run_dirname(request, scenario_dict)
+    return display_result(request, dirname, False, scenario_dict)
+
+def run_dirname(request, scenario_dict):
     umask(0077)
     dirname = mkdtemp(prefix='', dir=STATIC_ROOT + 'results')
     run_opal(dirname, scenario_dict)
-    return display_result(request, dirname, False, scenario_dict)
+    return dirname
 
 def sample_scenario_dict():
     s = dict(default_params)
@@ -291,10 +296,11 @@ def write_scenario(dirname, s):
     retirement_age = dob_to_age(s['dob']) + max(0, s['retirement_year'] - datetime.utcnow().timetuple().tm_year)
     # Caution: Config.java maintains values from previous runs, so all modified values must be updated each time.
     s_only = {
+        'skip_generate': s['calculator'] == 'le',
         'skip_retirement_number': not s['retirement_number'],
-        'skip_compare': s['retirement_number'],
+        'skip_compare': s['calculator'] == 'le' or s['retirement_number'],
         'vw_percentage': 0.04,
-        'skip_validate': s['retirement_number'],
+        'skip_validate':  s['calculator'] == 'le' or s['retirement_number'],
         'tp_zero_factor': tp_zero_factor,
         'scaling_factor': scaling_factor,
         'search' : 'hill',

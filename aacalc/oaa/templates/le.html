@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}What is my percentile life expectancy?{% endblock %}
+
+{% block content %}
+
+<h1>What is my percentile life expectancy?</h1>
+
+<p>
+The life expectancies most commonly quoted in official U.S. tables and
+reports are wrong for retirement planning on 4 counts:
+<ul>
+<li> Mean vs. percentile - for retirement planning purposes you have
+to plan assuming you might live significantly longer than the mean
+reported value, such as the 95th percentile life expectancy, for which
+there is a 95% chance that you won't exceed
+<li> Individual vs. couple - for many, what matters is the life
+expectancy of the last survivor
+<li> Period vs. cohort tables - i.e. failure to take into account
+mortality improvement trends
+<li> Average health is assumed - yet the life expectancies of those of
+below average health and above average health are quite different
+</ul>
+</p>
+
+<p>
+If you are using <a href="{% url 'home' %}">AACalc.com</a> you don't
+have to worry about figuring out your life expectancy, the calculator
+considers the full range of longevity possibilities automatically, but
+if you are using some other scheme the information computed below is
+highly relevant.
+</p>
+
+<form  method="post">
+{% csrf_token %}
+
+{% if errors_present %}
+<p class="errorlist">
+Please correct the errors in red below:
+</p>
+{{ le_form.non_field_errors }}
+{% endif %}
+
+Sex: {{ le_form.sex }}
+Age: {{ le_form.dob }}
+{{ le_form.dob.errors }}
+<br />
+Spouse/partner: {{ le_form.sex2 }}
+Age: {{ le_form.dob2 }}
+{{ le_form.dob2.errors }}
+<br />
+<br />
+
+<div style="text-align:center;">
+<input class="button" type="submit" value="Submit (takes 0-60 seconds to process)" />
+</div>
+
+<br />
+
+<p>
+Life expectancy if you are of average health (includes people with
+chronic illnesses and terminal conditions):
+</p>
+
+<table cellpadding=1 cellspacing=0 border=1 style="margin:auto;">
+<tr> <td colspan=7 align="center"> cohort mortality
+<br />
+<font size="-1">
+Based on Social Security Administration Actuarial Study No. 120
+</font>
+</td>
+</tr>
+<tr> <td rowspan=2 align="center"> mean </td> <td colspan=6 align="center"> percentile </td> </tr>
+<tr>
+{% for label in le_labels %}
+<td align="center"> {{ label }} </td>
+{% endfor %}
+</tr>
+<tr>
+{% for le in le_cohort %}
+<td align="right"> {{ le|safe }} </td>
+{% endfor %}
+</tr>
+</table>
+
+<br />
+
+<p>
+Life expectancy if you are reasonably healthy (based on holders of
+annuities who were presumably healthy at the time they purchased the
+annuity, but may no longer be so):
+</p>
+
+<table cellpadding=1 cellspacing=0 border=1 style="margin:auto;">
+<tr> <td colspan=7 align="center"> reasonably-healthy cohort mortality
+<br />
+<font size="-1">
+Based on Society of Actuaries 2012 Individual Annuity Mortality Basic Table with Projection Scale G2
+</font>
+</td>
+</tr>
+<tr> <td rowspan=2 align="center"> mean </td> <td colspan=6 align="center"> percentile </td> </tr>
+<tr>
+{% for label in le_labels %}
+<td align="center"> {{ label }} </td>
+{% endfor %}
+</tr>
+<tr>
+{% for le in le_cohort_healthy %}
+<td align="right"> {{ le|safe }} </td>
+{% endfor %}
+</tr>
+</table>
+
+<br />
+
+<p>
+Life expectancy if you are currently healthy: unknown, but presumably
+longer than the above.
+</p>
+
+<p>
+Life expectancy typically reported in official tables (for
+comparison):
+</p>
+
+<table cellpadding=1 cellspacing=0 border=1 style="margin:auto;">
+<tr> <td colspan=7 align="center"> period mortality
+<br />
+<font size="-1">
+Based on Social Security Administration Period Life Table 2010
+</font>
+</td>
+</tr>
+<tr> <td align="center"> mean </td> </tr>
+<tr>
+<td align="right"> {{ le_period|first|safe }} </td>
+</tr>
+</table>
+
+</form>
+
+{% endblock %}

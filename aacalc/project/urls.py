@@ -22,6 +22,7 @@ urlpatterns = patterns('',
     url(r'^scenarios/results$', 'oaa.views.scenario_run.scenario_run', name='scenario_run'),
     url(r'^calculators/aa$', 'oaa.views.scenario_edit.scenario_edit', {'mode': 'aa'}, name='start_aa'),
     url(r'^calculators/number$', 'oaa.views.scenario_edit.scenario_edit', {'mode': 'number'}, name='start_number'),
+    url(r'^calculators/le$', 'oaa.views.le.le', name='start_le'),
     url(r'^docs/?$', RedirectView.as_view(url='/about')), # use reverse_lazy in Django 1.5+.
     url(r'^docs/(.*)$', 'oaa.views.docs.docs', name='docs'),
     url(r'^sample$', 'oaa.views.sample.sample', name='sample'),

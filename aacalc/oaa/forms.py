@@ -314,3 +314,37 @@ class ScenarioEditForm(ScenarioAaForm):
         return cleaned_data
 
     retirement_number = forms.BooleanField(required=False)
+
+class LeForm(forms.Form):
+
+    def clean_sex2(self):
+        sex2 = self.cleaned_data['sex2']
+        if sex2 == '':
+            return None
+        else:
+            return sex2
+
+    def clean(self):
+        cleaned_data = super(LeForm, self).clean()
+        if self._errors:
+            return cleaned_data
+        sex2 = cleaned_data.get('sex2')
+        dob2 = cleaned_data.get('dob2')
+        if sex2 == None and dob2 != None or sex2 != None and dob2 == None:
+            raise ValidationError('Invalid spouse/partner.')
+        return cleaned_data
+
+    sex = forms.ChoiceField(
+        choices = (('male', 'male'), ('female', 'female')))
+    dob = forms.IntegerField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=100)
+    sex2 = forms.ChoiceField(
+        choices = (('', 'none'), ('male', 'male'), ('female', 'female')),
+        required=False)
+    dob2 = forms.IntegerField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=100,
+        required=False)
