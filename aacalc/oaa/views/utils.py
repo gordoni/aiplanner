@@ -25,7 +25,7 @@ from settings import SECRET_KEY, STATIC_ROOT, STATIC_URL
 
 # Deleted names can only be judicially re-used, since inactive users might still hold an old parameter of that name. This means types can never be changed.
 default_params = {
-    'calulator': 'aa',
+    'calculator': 'aa',
     #'name': None,
     'sex': None,
     'dob': None,
