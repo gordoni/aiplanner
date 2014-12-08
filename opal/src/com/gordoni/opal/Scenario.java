@@ -814,13 +814,17 @@ public class Scenario
         private void dump_le() throws IOException
         {
 		PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-le.csv"));
-		for (String table : Arrays.asList("ssa-cohort", "iam2012-basic-period", "ssa-period"))
+		for (String table : Arrays.asList("ssa-cohort", "iam2012-basic-period", "iam2012-basic-period-aer2005_08", "ssa-period"))
 		{
+		        boolean iam_aer = table.equals("iam2012-basic-period-aer2005_08");
 		        VitalStats stats = new VitalStats(ss, config, hist, 1.0);
 			String keep_method = config.mortality_projection_method;
-			config.mortality_projection_method = (table.equals("iam2012-basic-period") ? "g2" : "rate"); // Irrelevant for cohort.
-		        stats.compute_stats(table);
+			String keep_experience = config.mortality_experience;
+			config.mortality_projection_method = (table.startsWith("iam2012-basic-period") ? "g2" : "rate"); // Irrelevant for cohort.
+			config.mortality_experience = (iam_aer ? "aer2005_08" : "none");
+		        stats.compute_stats(iam_aer ? "iam2012-basic-period" : table);
 			config.mortality_projection_method = keep_method;
+			config.mortality_experience = keep_experience;
 			double le = stats.le.get(config.start_age);
 		        out.print(table + "," + le);
 			double pct_prev = 0;

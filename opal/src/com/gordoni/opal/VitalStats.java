@@ -262,6 +262,19 @@ public class VitalStats
 			for (int i = 0; i < death_cohort.length; i++)
 			        death_cohort[i] = Math.min(death_period[i] * Math.pow(1 - mortality_projection(sex, i), i - (period_base - birth_year)), 1.0);
 		}
+		if (!config.mortality_experience.equals("none"))
+		{
+		        List<Double> aer = null;
+			if (config.mortality_experience.equals("aer2005_08"))
+			        aer = sex.equals("male") ? hist.soa_aer2005_08_m : hist.soa_aer2005_08_f;
+			else
+				assert(false);
+		        for (int i = age; i < death_cohort.length; i++)
+			{
+			        double contract_length = Math.min(i - age, aer.size() - 1);
+			        death_cohort[i] = Math.min(death_cohort[i] * aer.get((int) contract_length), 1.0);
+			}
+	        }
 		for (int i = 0; i < death_cohort.length; i++)
 		        death_cohort[i] *= (1 - config.mortality_load);
 		return death_cohort;

@@ -36,7 +36,7 @@ later time and try your query then.'''
             for line in reader(le_file):
                 le_map[line[0]] = ['%.2f' % float(le) for le in line[1:]]
             le_cohort = le_map['ssa-cohort']
-            le_cohort_healthy = le_map['iam2012-basic-period']
+            le_cohort_healthy = le_map['iam2012-basic-period-aer2005_08']
             le_period = le_map['ssa-period']
         else:
             errors_present = True

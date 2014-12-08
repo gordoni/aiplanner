@@ -136,7 +136,7 @@ public class AnnuityStats
 				        if (config.annuity_contract_years.equals("aer2005_08"))
 					{
 						assert(config.annuity_table.equals("iam2012-basic-period"));
-						List<Double> aer2005_08 = (config.sex == "male") ? hist.soa_aer2005_08_m : hist.soa_aer2005_08_f;
+						List<Double> aer2005_08 = config.sex.equals("male") ? hist.soa_aer2005_08_m : hist.soa_aer2005_08_f;
 						double contract_length = Math.min(maturity, aer2005_08.size() - 1);
 						good_health_discount = aer2005_08.get((int) contract_length);
 					}

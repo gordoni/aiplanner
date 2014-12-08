@@ -426,6 +426,9 @@ public class Config
                // "rate" - use mortality_reduction_rate.
         public double mortality_reduction_rate = 0.0; // Annual rate of mortality reduction for converting period life tables to cohort tables.
                // See http://www.ssa.gov/oact/NOTES/as120/LifeTables_Tbl_3.html and SoA projection scale G for choice of value; 0.01 is reasonable.
+        public String mortality_experience = "none"; // Actual/expected mortality experience to apply.
+               // "none" - No adjustment.
+               // "aer2005_08" - SOA 2005-08 Annuity Experience Report contract year length adjustment starting from start_age/start_age2.
         public double mortality_load = 0.0; // Loading to apply to mortality beyond that contained in table.
         public String annuity_contract_years = "aer2005_08"; // Method of adjusting annuity death rates to account for low death rates when contract first signed.
                // "none" - No adjustment.
