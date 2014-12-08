@@ -86,7 +86,7 @@ class ScenarioBaseForm(forms.Form):
         min_value=1)
     utility_join_desired = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
+        min_value=200)  # Prevent singular matrix when solve in UtilityJoinSlope.java.
     risk_tolerance = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'percent_input'}))
     vw_amount = forms.BooleanField(required=False)
