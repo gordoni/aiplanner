@@ -1,3 +1,4 @@
+from csv import reader
 from datetime import datetime
 from decimal import Decimal
 from django.contrib.auth import authenticate, login, models
@@ -25,7 +26,7 @@ from settings import SECRET_KEY, STATIC_ROOT, STATIC_URL
 
 # Deleted names can only be judicially re-used, since inactive users might still hold an old parameter of that name. This means types can never be changed.
 default_params = {
-    'calulator': 'aa',
+    'calculator': 'aa',
     #'name': None,
     'sex': None,
     'dob': None,
@@ -158,6 +159,13 @@ def run_dirname(request, scenario_dict):
     dirname = mkdtemp(prefix='', dir=STATIC_ROOT + 'results')
     run_opal(dirname, scenario_dict)
     return dirname
+
+def get_le(dirname):
+    le_file = open(dirname + "/opal-le.csv")
+    le_map = {}
+    for line in reader(le_file):
+        le_map[line[0]] = ['%.2f' % float(le) for le in line[1:]]
+    return le_map['ssa-cohort'], le_map['iam2012-basic-period-aer2005_08'], le_map['ssa-period']
 
 def sample_scenario_dict():
     s = dict(default_params)

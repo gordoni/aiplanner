@@ -1,9 +1,8 @@
-from csv import reader
 from decimal import Decimal
 from django.shortcuts import render
 
 from oaa.forms import LeForm
-from oaa.views.utils import default_params, OPALServerOverloadedError, run_dirname
+from oaa.views.utils import default_params, get_le, OPALServerOverloadedError, run_dirname
 
 def le(request):
 
@@ -31,13 +30,7 @@ def le(request):
 '''We are temporarily overloaded.  Please return to this site at a
 later time and try your query then.'''
         })
-            le_file = open(dirname + "/opal-le.csv")
-            le_map = {}
-            for line in reader(le_file):
-                le_map[line[0]] = ['%.2f' % float(le) for le in line[1:]]
-            le_cohort = le_map['ssa-cohort']
-            le_cohort_healthy = le_map['iam2012-basic-period-aer2005_08']
-            le_period = le_map['ssa-period']
+            le_cohort, le_cohort_healthy, le_period = get_le(dirname)
         else:
             errors_present = True
 
