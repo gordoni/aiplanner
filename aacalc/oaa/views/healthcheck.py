@@ -15,7 +15,7 @@ def healthcheck(request):
     dirname = run_dirname(request, scenario_dict)
     le_cohort, le_cohort_healthy, le_period = get_le(dirname)
     assert(17 < float(le_cohort[0]) < 20)
-    assert(22 < float(le_cohort_healthy[0]) < 25)
+    assert(21 < float(le_cohort_healthy[0]) < 24)
     assert(17 < float(le_period[0]) < 20)
     assert(abs(float(le_cohort[0]) - float(le_cohort[1])) < 2)
     assert(abs(float(le_cohort_healthy[0]) - float(le_cohort_healthy[1])) < 2)
