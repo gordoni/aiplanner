@@ -11,65 +11,65 @@ public class UtilityScale extends Utility
 
         public double utility(double c)
         {
-	        assert(c >= 0);
-		return scale * utility.utility(c_scale * c - offset) - zero;
+                assert(c >= 0);
+                return scale * utility.utility(c_scale * c - offset) - zero;
         }
 
         public double inverse_utility(double u)
-	{
-	        if (scale == 0)
-		{
-		        assert(u == - zero);
-		        return 0;
-		}
-		else
-		        return (utility.inverse_utility((u + zero) / scale) + offset) / c_scale;
-	}
+        {
+                if (scale == 0)
+                {
+                        assert(u == - zero);
+                        return 0;
+                }
+                else
+                        return (utility.inverse_utility((u + zero) / scale) + offset) / c_scale;
+        }
 
         public double slope(double c)
         {
-	        assert(c >= 0);
-		return scale * c_scale * utility.slope(c_scale * c - offset);
-	}
+                assert(c >= 0);
+                return scale * c_scale * utility.slope(c_scale * c - offset);
+        }
 
         public double inverse_slope(double s)
         {
-	        if (scale == 0)
-		{
-		        assert(s == 0);
-		        return 0;
-		}
-		else
-		        return (utility.inverse_slope(s / (scale * c_scale)) + offset) / c_scale;
-	}
+                if (scale == 0)
+                {
+                        assert(s == 0);
+                        return 0;
+                }
+                else
+                        return (utility.inverse_slope(s / (scale * c_scale)) + offset) / c_scale;
+        }
 
         public double slope2(double c)
         {
-	        assert(c >= 0);
-		return scale * c_scale * c_scale * utility.slope2(c_scale * c - offset);
-	}
+                assert(c >= 0);
+                return scale * c_scale * c_scale * utility.slope2(c_scale * c - offset);
+        }
 
         public UtilityScale(Config config, Utility utility, double c_zero, double c_scale, double scale, double offset)
         {
-		this.config = config;
-		this.utility = utility;
-		this.c_scale = c_scale;
-		this.scale = scale;
-		this.offset = offset;
-		this.zero = utility(c_zero);
+                this.config = config;
+                this.utility = utility;
+                this.c_scale = c_scale;
+                this.scale = scale;
+                this.offset = offset;
+                this.zero = utility(c_zero);
 
-		set_constants();
-	}
+                set_constants();
+        }
 
         public UtilityScale(Config config, Utility utility, double c_scale)
         {
-		this.config = config;
-		this.utility = utility;
-		this.c_scale = c_scale;
-		this.scale = 1;
-		this.offset = 0;
-		this.zero = 0;
+                this.config = config;
+                this.utility = utility;
+                this.c_scale = c_scale;
+                this.scale = 1;
+                this.offset = 0;
+                this.zero = 0;
 
-		set_constants();
-	}
+                set_constants();
+        }
 }

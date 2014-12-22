@@ -13,46 +13,46 @@ abstract class Interpolator
 
         protected double getWhat(MapElement me, int what)
         {
-	        if (what >= 0)
-		        return me.aa[what];
-		else if (what == metric_interp_index)
-		        return me.metric_sm;
-		else if (what == spend_interp_index)
-		        return me.spend;
-		else if (what == consume_interp_index)
-		        return me.consume;
+                if (what >= 0)
+                        return me.aa[what];
+                else if (what == metric_interp_index)
+                        return me.metric_sm;
+                else if (what == spend_interp_index)
+                        return me.spend;
+                else if (what == consume_interp_index)
+                        return me.consume;
 
-		assert(false);
-		return 0;
-	}
+                assert(false);
+                return 0;
+        }
 
         abstract double value(double[] p);
 
         public static Interpolator factory(MapPeriod mp, boolean generate, int what)
         {
-	        Scenario scenario = mp.scenario;
-		Config config = scenario.config;
+                Scenario scenario = mp.scenario;
+                Config config = scenario.config;
 
-	        if (mp.config.interpolation_linear)
-		        return null;
-		if (mp.length.length == 1)
-		        return new UniInterpolator(mp, what);
-		else if (mp.length.length == 2)
-		{
-		        if (!generate && !config.interpolation_validate)
-			        return new BiNoInterpolator(mp, what);
-		        if (mp.config.interpolation2.equals("linear-spline"))
-			        return new LSInterpolator(mp, what, true);
-		        else if (mp.config.interpolation2.equals("spline-linear"))
-			        return new LSInterpolator(mp, what, false);
-			else
-			        return new BiInterpolator(mp, what);
-		}
-		else if (mp.length.length == 3)
-		        return new TriInterpolator(mp, what);
-		else
-			assert(false);
+                if (mp.config.interpolation_linear)
+                        return null;
+                if (mp.length.length == 1)
+                        return new UniInterpolator(mp, what);
+                else if (mp.length.length == 2)
+                {
+                        if (!generate && !config.interpolation_validate)
+                                return new BiNoInterpolator(mp, what);
+                        if (mp.config.interpolation2.equals("linear-spline"))
+                                return new LSInterpolator(mp, what, true);
+                        else if (mp.config.interpolation2.equals("spline-linear"))
+                                return new LSInterpolator(mp, what, false);
+                        else
+                                return new BiInterpolator(mp, what);
+                }
+                else if (mp.length.length == 3)
+                        return new TriInterpolator(mp, what);
+                else
+                        assert(false);
 
-		return null;
+                return null;
         }
 }

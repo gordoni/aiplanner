@@ -7,7 +7,7 @@ public class SearchCacheElement
 
         SearchCacheElement(String key, SimulateResult results)
         {
-	        this.key = key;
-	        this.results = results;
-	}
+                this.key = key;
+                this.results = results;
+        }
 }

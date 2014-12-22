@@ -9,46 +9,46 @@ public class UtilityLinear extends Utility
 
         public double utility(double c)
         {
-	        assert(c >= 0);
-	       return (c - zero) * slope;
+                assert(c >= 0);
+               return (c - zero) * slope;
         }
 
         public double inverse_utility(double u)
-	{
-	        if (slope == 0)
-		{
-		        assert(u == 0);
-		        return zero;
-		}
-		else
-		        return zero + u / slope;
-	}
+        {
+                if (slope == 0)
+                {
+                        assert(u == 0);
+                        return zero;
+                }
+                else
+                        return zero + u / slope;
+        }
 
         public double slope(double c)
         {
-	        assert(c >= 0);
-		return slope;
-	}
+                assert(c >= 0);
+                return slope;
+        }
 
         public double inverse_slope(double s)
         {
-	        assert(s == slope);
-		return 0;
-	}
+                assert(s == slope);
+                return 0;
+        }
 
         public double slope2(double c)
         {
-	        assert(c >= 0);
-		return 0;
-	}
+                assert(c >= 0);
+                return 0;
+        }
 
         public UtilityLinear(double c_zero, double s)
         {
-		this.public_assistance = public_assistance;
-		this.public_assistance_phaseout_rate = public_assistance_phaseout_rate;
-		this.slope = s;
-		this.zero = c_zero;
+                this.public_assistance = public_assistance;
+                this.public_assistance_phaseout_rate = public_assistance_phaseout_rate;
+                this.slope = s;
+                this.zero = c_zero;
 
-		set_constants();
-	}
+                set_constants();
+        }
 }

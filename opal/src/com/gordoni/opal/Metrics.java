@@ -10,24 +10,24 @@ public class Metrics implements Cloneable
 
         public Metrics()
         {
-	}
+        }
 
         public Metrics(double tw_goal, double ntw_goal, double floor_goal, double upside_goal, double consume_goal, double inherit_goal, double combined_goal, double tax_goal, double wer, double cost)
         {
-		metrics[MetricsEnum.TW.ordinal()] = tw_goal;
-		metrics[MetricsEnum.NTW.ordinal()] = ntw_goal;
-		metrics[MetricsEnum.FLOOR.ordinal()] = floor_goal;
-		metrics[MetricsEnum.UPSIDE.ordinal()] = upside_goal;
-		metrics[MetricsEnum.CONSUME.ordinal()] = consume_goal;
-		metrics[MetricsEnum.INHERIT.ordinal()] = inherit_goal;
-		metrics[MetricsEnum.COMBINED.ordinal()] = combined_goal;
-		metrics[MetricsEnum.TAX.ordinal()] = tax_goal;
-		metrics[MetricsEnum.WER.ordinal()] = wer;
-		metrics[MetricsEnum.COST.ordinal()] = cost;
-	}
+                metrics[MetricsEnum.TW.ordinal()] = tw_goal;
+                metrics[MetricsEnum.NTW.ordinal()] = ntw_goal;
+                metrics[MetricsEnum.FLOOR.ordinal()] = floor_goal;
+                metrics[MetricsEnum.UPSIDE.ordinal()] = upside_goal;
+                metrics[MetricsEnum.CONSUME.ordinal()] = consume_goal;
+                metrics[MetricsEnum.INHERIT.ordinal()] = inherit_goal;
+                metrics[MetricsEnum.COMBINED.ordinal()] = combined_goal;
+                metrics[MetricsEnum.TAX.ordinal()] = tax_goal;
+                metrics[MetricsEnum.WER.ordinal()] = wer;
+                metrics[MetricsEnum.COST.ordinal()] = cost;
+        }
 
         public Metrics clone()
-	{
+        {
                 Metrics res = null;
                 try
                 {
@@ -37,52 +37,52 @@ public class Metrics implements Cloneable
                 {
                         assert(false);
                 }
-		res.metrics = metrics.clone();
+                res.metrics = metrics.clone();
 
-		return res;
+                return res;
         }
 
         public double get(MetricsEnum e)
         {
-	        //return metrics.get(e);
-	        return metrics[e.ordinal()];
-	}
+                //return metrics.get(e);
+                return metrics[e.ordinal()];
+        }
 
         public void set(MetricsEnum e, double v)
         {
-	        //metrics.put(e, v);
-		metrics[e.ordinal()] = v;
-	}
+                //metrics.put(e, v);
+                metrics[e.ordinal()] = v;
+        }
 
         public double fail_chance()
         {
-	        return 1.0 - get(MetricsEnum.NTW);
-	}
+                return 1.0 - get(MetricsEnum.NTW);
+        }
 
         public double fail_length()
         {
-		if (1.0 - get(MetricsEnum.NTW) < 1e-9)
-		        return 0.0;
-		else
-			return (1.0 - get(MetricsEnum.TW)) / (1.0 - get(MetricsEnum.NTW));
-	}
+                if (1.0 - get(MetricsEnum.NTW) < 1e-9)
+                        return 0.0;
+                else
+                        return (1.0 - get(MetricsEnum.TW)) / (1.0 - get(MetricsEnum.NTW));
+        }
 
         public String toString()
-	{
-	        StringBuilder sb = new StringBuilder();
-		sb.append('{');
-		for (MetricsEnum m : MetricsEnum.values())
-		{
-		        if (m.ordinal() > 0)
-		                sb.append(", ");
-		        sb.append(m + ": " + get(m));
-		}
+        {
+                StringBuilder sb = new StringBuilder();
+                sb.append('{');
+                for (MetricsEnum m : MetricsEnum.values())
+                {
+                        if (m.ordinal() > 0)
+                                sb.append(", ");
+                        sb.append(m + ": " + get(m));
+                }
                 sb.append('}');
-	        return sb.toString();
-	}
+                return sb.toString();
+        }
 
         public static MetricsEnum to_enum(String s)
         {
-	        return MetricsEnum.valueOf(s.toUpperCase());
-	}
+                return MetricsEnum.valueOf(s.toUpperCase());
+        }
 }

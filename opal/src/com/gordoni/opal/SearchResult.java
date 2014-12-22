@@ -10,16 +10,16 @@ public class SearchResult
 
         public SearchResult(double[] aa, double metric, String note)
         {
-	        this.aa = aa;
-		this.metric = metric;
-		this.note = note;
-	}
+                this.aa = aa;
+                this.metric = metric;
+                this.note = note;
+        }
 
         public String toString()
-	{
-	        if (aa == null)
-		        return note;
-	        else
-	                return Arrays.toString(aa) + ", " + metric + ", " + note;
-	}
+        {
+                if (aa == null)
+                        return note;
+                else
+                        return Arrays.toString(aa) + ", " + metric + ", " + note;
+        }
 }

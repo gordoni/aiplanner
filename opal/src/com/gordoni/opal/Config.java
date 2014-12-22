@@ -18,7 +18,7 @@ public class Config
 {
         public String version = "java-1.2.15";
 
-	public String prefix = "opal"; // Prefix to use for result files.
+        public String prefix = "opal"; // Prefix to use for result files.
 
         public boolean trace = false; // Be chatty.
         public boolean debug_till_end = false; // Whether to plot until the final year or display graphs only through age 99.
@@ -26,45 +26,45 @@ public class Config
         public int tasks_generate = 100; // Break generation into this many concurrent tasks.
         public int tasks_validate = 500; // Break validation into this many concurrent tasks.
                 // Changing this value will alter the results due to different random number generators being used for each task.
-	public int workers = Runtime.getRuntime().availableProcessors(); // Number of worker threads to use.
-	public boolean conserve_ram = false; // Whether to conserve memory by not storing the simulate() results.
+        public int workers = Runtime.getRuntime().availableProcessors(); // Number of worker threads to use.
+        public boolean conserve_ram = false; // Whether to conserve memory by not storing the simulate() results.
         public boolean search_cache_map = true; // Whether to use a hashmap or an arraylist for the search cache.
         public String validate = null; // Load asset allocation from validate prefix rather than generating it.
         public boolean skip_generate = false; // Speed up by not generating aa/consume.
-	public boolean skip_retirement_number = true; // Speed up by not generating retirement number values.
-	public boolean skip_success_lines = true; // Speed up by not generating success lines.
-	public boolean skip_compare = true; // Speed up by not performing comparison.
-	public boolean skip_target = true; // Speed up by not performing goal targeting.
-	public boolean skip_validate = false; // Speed up by not performing any validation.
+        public boolean skip_retirement_number = true; // Speed up by not generating retirement number values.
+        public boolean skip_success_lines = true; // Speed up by not generating success lines.
+        public boolean skip_compare = true; // Speed up by not performing comparison.
+        public boolean skip_target = true; // Speed up by not performing goal targeting.
+        public boolean skip_validate = false; // Speed up by not performing any validation.
         public boolean skip_validate_all = true; // Speed up by performing validation at a specific age rather than at every age.
-	public boolean skip_smooth = true; // Speed up by not performing smoothing.
+        public boolean skip_smooth = true; // Speed up by not performing smoothing.
         public boolean skip_metric_jpmorgan = true; // Speed up by not calculating jpmorgan metric when validating.
         public boolean skip_metric_wer = true; // Speed up by not calculating withdrawal efficiency rate.
         public boolean skip_sample_cholesky = true; // Speedup simulation by using the returns Cholesky matrix for the trial sample Cholesky matrix.
-	public boolean skip_dump_load = true; // Speed up by not dumping and loading asset allocation.
+        public boolean skip_dump_load = true; // Speed up by not dumping and loading asset allocation.
         public boolean skip_dump_le = false; // Speed up by not dumping life expectencies.
-	public boolean skip_dump_log = true; // Save disk by not dumping future maps.
+        public boolean skip_dump_log = true; // Save disk by not dumping future maps.
 
-	// Simulation specific parameters.
+        // Simulation specific parameters.
 
         public double tp_zero_factor = 0.0001; // Portfolio buckets this much of consume_max_est at portfolio 0.
         public double annuity_zero_factor = 0.001; // Taxable immediate annuity payout buckets this much of consume_max_est appart at payout 0.
 
-	public double scaling_factor = 1.05; // Successive portfolio buckets this much larger.
+        public double scaling_factor = 1.05; // Successive portfolio buckets this much larger.
                // This can be set quite a bit higher without affecting path metrics.
                // However the map metric will start to suffer very slightly.
                // We set it low to allow validate_draw='bootstrap' bootstrap_block_size=0 generation validation.
                // Old comment (pre-spline value was 1.002): Above 1.01 aa plots start to become pixelated.
-	public double annuity_scaling_factor = 1.05; // Successive immediate annuity buckets this much larger.
+        public double annuity_scaling_factor = 1.05; // Successive immediate annuity buckets this much larger.
 
         public double ria_high = 100000; // Maximum taxable real immediate annuity payout.
         public double nia_high = 100000; // Maximum taxable nominal immediate annuity payout.
 
         public int retirement_number_steps = 100; // Retirement number steps.
         public double success_lines_scale_size = 0.2; // Success probability line linear scale.
-	public double generate_time_periods = 1.0; // 1.0 to perform analysis on an annual basis, or 12.0 to perform analysis monthly.
-	public double validate_time_periods = 1.0;
-	public double rebalance_time_periods = 1.0;
+        public double generate_time_periods = 1.0; // 1.0 to perform analysis on an annual basis, or 12.0 to perform analysis monthly.
+        public double validate_time_periods = 1.0;
+        public double rebalance_time_periods = 1.0;
 
         public String aa_strategy = "sdp";
                 // Asset allocation scheme for generation. "sdp", "file" for validate=datafile, "fixed", "age_in_bonds", "age_minus_10_in_bonds", or "target_date".
@@ -78,11 +78,11 @@ public class Config
         public double vbond_discount_rate = 0.0; // Discount rate to use if discounting db_bond and savings_bond income.
         public double stock_bias = 0.0; // Bias to apply to stocks to improve random_block_size > 1 results due to momentum and reversion to the mean.
 
-	public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', and 'margin'.
+        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', and 'margin'.
                 // Seem to get quicker search time if list highest return assets first.
-	public List<String> asset_class_names = null;
-	       // Corresponding asset class names to use for MVO inputs and transition map.
-	public int aa_steps = 1000; // Use 4 steps to mirror 5 choice Trinity study.
+        public List<String> asset_class_names = null;
+               // Corresponding asset class names to use for MVO inputs and transition map.
+        public int aa_steps = 1000; // Use 4 steps to mirror 5 choice Trinity study.
         public String ef = "none";
                // Efficient frontier calculation method. "mvo", or "none" to search asset allocations.
         public double risk_tolerance = 1e12; // Maximum permitted relative standard deviation in portfolio returns when performing MVO.
@@ -125,18 +125,18 @@ public class Config
                // 0.5 approximates monthly payments.
                // 1.0 provides for subsequent 12 months of payments at later ages when high probability of being dead and not-entitled to them.
 
-	public String safe_aa = "bonds";
-	        // Which asset allocation choice to favor when choices are equal, and success is guaranteed.
-		// Irrelevant if tangency_aa is non-null.
+        public String safe_aa = "bonds";
+                // Which asset allocation choice to favor when choices are equal, and success is guaranteed.
+                // Irrelevant if tangency_aa is non-null.
         public String fail_aa = "stocks";
-	        // Which asset allocation choice to favor when choices are equal, and failure is guaranteed.
-		// Irrelevant if tangency_aa is non-null.
-	public double ret_risk_free = 0.0; // Real return for risk-free asset class.
-	public double ret_borrow = 0.0; // Annual cost rate when portfolio is negative. Also annual cost for cost metric.
+                // Which asset allocation choice to favor when choices are equal, and failure is guaranteed.
+                // Irrelevant if tangency_aa is non-null.
+        public double ret_risk_free = 0.0; // Real return for risk-free asset class.
+        public double ret_borrow = 0.0; // Annual cost rate when portfolio is negative. Also annual cost for cost metric.
         public double min_safe = 0.0; // Minimum safe_aa holding fraction.
         public double min_safe_le = 0.0; // Minimum safe_aa holding plus annuity values divided by then life expectancy.
 
-	public int spend_steps = 10000; // Number of portfolio expenditure steps.
+        public int spend_steps = 10000; // Number of portfolio expenditure steps.
 
         public String vw_strategy = "sdp";
                 // Variable withdrawal strategy to use.
@@ -156,8 +156,8 @@ public class Config
         public boolean book_post = false; // false to book consumption at the start of the time period when it is subtracted; true to book at the end.
                 // Use of book_post=true gets rid of an annoying uptick on first median consumption when retired, but this uptick might be valid,
                 // reflecting a greater weight placed on below median consumption values.
-	        // Use of book_post=true also seems to destroy monte_carlo_validate model, or at least monte_carlo_validate generated model fails to fully validate.
-	        // Use of book_post=true is also more conservative as consumption benefits only accrue if you survive the full year.
+                // Use of book_post=true also seems to destroy monte_carlo_validate model, or at least monte_carlo_validate generated model fails to fully validate.
+                // Use of book_post=true is also more conservative as consumption benefits only accrue if you survive the full year.
         public boolean spend_fract_all = false; // Whether to allow consumption/contribution choice for all years or only in retirement.
         public String search = "memory"; // How to search the asset allocation / spend_fract space for each map location.
                 // "all" - exhaustive search (painfully slow)
@@ -165,33 +165,33 @@ public class Config
                 // "gradient" - gradient ascent (slow; zig-zags and fails on ridges causing horizontal line noise; fails with efficient frontier)
                 // "memory" - ascent with directional memory (medium; works on ridges; fails with efficient frontier)
         public int search_memory_attempts = 20; // Number of random attempts for "memory" before deciding no improvement can be found and shrinking search radius.
-		//  8 results in accurate metrics with no annuities.
-		// 10 results in noisy nia plot and 4 horizontal lines with annuities.
-		// 20 results in only slightly noisy nia plot with annuities.
+                //  8 results in accurate metrics with no annuities.
+                // 10 results in noisy nia plot and 4 horizontal lines with annuities.
+                // 20 results in only slightly noisy nia plot with annuities.
         public boolean search_neighbour = false; // Whether to attempt to uncover non-local maxima by searching based on neighbouring points at a given age.
-	public Integer num_sequences_generate = null; // Number of paths for shuffled or time_varying generate or None to base off of length of returns sequences.
-	public String success_mode = "combined";
-	        // What to optimize for.  'tw' for time weighted, or 'ntw' for non-time weighted, or 'tw_simple' or
+        public Integer num_sequences_generate = null; // Number of paths for shuffled or time_varying generate or None to base off of length of returns sequences.
+        public String success_mode = "combined";
+                // What to optimize for.  'tw' for time weighted, or 'ntw' for non-time weighted, or 'tw_simple' or
                 // 'ntw_simple' to ignore partial year solvency and success through death,
                 // 'inherit' for discounted inheritance, 'consume' for discounted consumption utility, 'combined' for both, or 'cost' for NPV cost.
-	        // The Trinity study claims to uses NTW simple. How else could they get 0% success for 30 year bonds at 7%?
-	        // One would thus expect them to get percentages that are a multiple of 1 /
-	        // 41 for 30 years, or 1 / 51 for 20 years, or in general 1 / the number of samples.
-	        // This appears to be the case.
+                // The Trinity study claims to uses NTW simple. How else could they get 0% success for 30 year bonds at 7%?
+                // One would thus expect them to get percentages that are a multiple of 1 /
+                // 41 for 30 years, or 1 / 51 for 20 years, or in general 1 / the number of samples.
+                // This appears to be the case.
 
         public boolean interpolation_linear = false; // Use old linear interpolation code; any number of p dimensions.
         public boolean interpolation_validate = true; // Perform interpolation on validation.
                 // Want to disable for non-partial annuitization, otherwise decision to annuitize could get interpolated.
                 // Results in nia_aa and spend_fract indexes around 0.5 instead of both close to 0 or 1, which causes a consumption spike.
         public String interpolation1 = "spline"; // How to interpolate non-grid 1 dimensional p values.
-	        // "linear" - linear interpolation using math3 library. For debugging.
-	        // "spline" - cubic spline interpolation.
+                // "linear" - linear interpolation using math3 library. For debugging.
+                // "spline" - cubic spline interpolation.
         public String interpolation2 = "spline-linear"; // How to interpolate non-grid 2 dimensional p values.
-	        // "spline" - cubic spline interpolation. Gives bad results with annuities.
+                // "spline" - cubic spline interpolation. Gives bad results with annuities.
                 // "linear-spline" - linear in first dimension; spline in second.
                 // "spline-linear" - spline in first dimension; linear in second.
         public String interpolation3 = "spline"; // How to interpolate non-grid 3 dimensional p values.
-	        // "spline" - cubic spline interpolation.
+                // "spline" - cubic spline interpolation.
 
         public boolean negative_p = false; // Allow negative portfolio values versus utilized reduced consumption when p near zero.
         public double consume_discount_rate = 0.0; // Discount rate to apply to consumption.
@@ -236,12 +236,12 @@ public class Config
                 // If leaving an inheritance, set this parameter to 1 and utility to power to avoid maximum return "swirl artifact" at high ages.
         public Double utility_bequest_consume = null; // Value inheritance at this consumption amount.
         public int utility_steps = 1000;  // Utility cache steps.
-	        // Cutoff at utility_cutoff. For utility_eta == 2.0, utility_cutoff linear units are equal in size to all utility above utility_cutoff.
+                // Cutoff at utility_cutoff. For utility_eta == 2.0, utility_cutoff linear units are equal in size to all utility above utility_cutoff.
         public double rebalance_band_hw = 0.0; // During validation and non-single step generation rebalance everything if an asset class is this far or greater from its target value.
 
         public double map_max_factor = 8; // Multiple of tp_max_estimate at which to generate maps.
                 // Set high enough or get top left maximum return artifact.
-	public double pf_fail = 0.0; // Stop the generation process early if we reach a guaranteed failed portfolio size.
+        public double pf_fail = 0.0; // Stop the generation process early if we reach a guaranteed failed portfolio size.
                 // For a contribution sequence other than contributions followed by withdrawals, or if we allow leverage, may need to allow a negative pf_fail value.
         public double retirement_number_max_factor = 10; // Generated retirement number up to this value times retirement_number_max_estimate portfolio size.
         public Double gnuplot_tp = null; // Maximum taxable portfolio value to plot.
@@ -255,27 +255,27 @@ public class Config
 
         // All max_path values must be equal to or below num_sequences_validate.
         public int max_jpmorgan_paths = 100000; // Maximum number of paths to use for the jpmorgan metric.
-	public int max_distrib_paths = 10000; // Maximum number of paths to use for the probability distribution output files.
-	public int max_pct_paths = 10000; // Maximum number of paths to use for the percentile output files.
-	public int max_delta_paths = 100; // Maximum number of paths to use for the delta paths output files.
-	public int max_display_paths = 10; // Maximum number of paths to use for the paths output file.
+        public int max_distrib_paths = 10000; // Maximum number of paths to use for the probability distribution output files.
+        public int max_pct_paths = 10000; // Maximum number of paths to use for the percentile output files.
+        public int max_delta_paths = 100; // Maximum number of paths to use for the delta paths output files.
+        public int max_display_paths = 10; // Maximum number of paths to use for the paths output file.
 
-	public Double start_tp = 0.0; // Starting taxable investement portfolio size. Null if not a portfolio dimension.
-	public Double start_ria = null; // Starting taxable real annuity annual payout size. Null if not a portfolio dimension.
-	public Double start_nia = null; // Starting taxable nominal annuity annual payout size. Null if not a portfolio dimension.
+        public Double start_tp = 0.0; // Starting taxable investement portfolio size. Null if not a portfolio dimension.
+        public Double start_ria = null; // Starting taxable real annuity annual payout size. Null if not a portfolio dimension.
+        public Double start_nia = null; // Starting taxable nominal annuity annual payout size. Null if not a portfolio dimension.
 
         public Integer birth_year = null; // Year of birth or null to non-deterministically base it on the current date and start_age.
-	public int start_age = 25; // Generate data from this age on.
+        public int start_age = 25; // Generate data from this age on.
         public Integer start_age2 = 25; // Initial age of second person in a couple.
-	public int validate_age = 25; // Validate and target for this age of first person.
+        public int validate_age = 25; // Validate and target for this age of first person.
         public int utility_age = 25; // Age at which the utility function was specified (subsequent ages experience upside discounting).
         public double[] cw_schedule = null; // Contribute / withdraw schedule to use in place of formulaic schedule.  Array of numeric amounts for each time period.
-	public double accumulation_rate = 500; // Relative contribution rate. Initial rate of asset accumulation prior to retirement.
-	public double accumulation_ramp = 1.07; // Annual ramping factor by which to boost accumulation rate over time.
+        public double accumulation_rate = 500; // Relative contribution rate. Initial rate of asset accumulation prior to retirement.
+        public double accumulation_ramp = 1.07; // Annual ramping factor by which to boost accumulation rate over time.
         public Double withdrawal = null; // Annual retirement consumption amount (includes both defined benefits and investment portfolio).
         public double floor = 0.0; // Annual retirement floor consumption amount at below which portfolio failure is considered to have occured.
-	public Double generate_ret_equity = null; // None for no adjustment to equities during generation, float for stocks target geomean return.
-	public Double validate_ret_equity = null; // None for no adjustment to equities during targeting and validation, float for stocks target geomean return.
+        public Double generate_ret_equity = null; // None for no adjustment to equities during generation, float for stocks target geomean return.
+        public Double validate_ret_equity = null; // None for no adjustment to equities during targeting and validation, float for stocks target geomean return.
         public Double ret_equity_adjust = null; // None for no adjustment to equities, float for adjust.
         public double ret_sh_adjust = 0.0; // Small high asset class additional adjust.
         public double ret_tips_adjust = 0.0; // TIPS bond asset class additional adjustment.
@@ -316,31 +316,31 @@ public class Config
                 //     NB: Total annual losses are small so we don't bother to adjust AAA and BAA bond yield series.
                 //
                 // Duration correction:
-		//                                                                  interest rate
-		//     HQM (1984-2013) 25 year                                           5.56% nominal
-		//     HQM (1984-2013)  9 year (LQD has 12 yr weighted maturity)         4.88% nominal; diff. -0.68%
-		//                             (but yield curve slopes down; est. 9 yr average)
+                //                                                                  interest rate
+                //     HQM (1984-2013) 25 year                                           5.56% nominal
+                //     HQM (1984-2013)  9 year (LQD has 12 yr weighted maturity)         4.88% nominal; diff. -0.68%
+                //                             (but yield curve slopes down; est. 9 yr average)
                 //
                 // Moody's corporate bond index:
                 //            25 yr arithm. real return (1927-2013)        25 yr est. am. return   9 yr est. am. return after duration correction and annual losses
-		//     AAA      3.23%                                            3.23%                                 2.51%
+                //     AAA      3.23%                                            3.23%                                 2.51%
                 //     AA       -                                                3.67%                                 2.95%
                 //     A        -                                                4.12%                                 3.38%
-		//     BAA      4.56% diff 1.33%; roughly 0.44% per rating       4.56%                                 3.75%
+                //     BAA      4.56% diff 1.33%; roughly 0.44% per rating       4.56%                                 3.75%
                 //
                 // Fed. Flow of Funds:
                 //
-		// L.214 Mutual fund shares
-		//   Household                          6692 58%
-		//   Total                             11526
+                // L.214 Mutual fund shares
+                //   Household                          6692 58%
+                //   Total                             11526
                 //
-		// 2013 Q4 L.100 Household  L.121 Mutual funds   Total      arithm. real return (1927-2013)
-		//   Treasury            944             641     1316 17%       2.42% GS10
-		//   Agency              121             837      607  8%      ~2.60% guess
-		//   Muni               1617             610     1971 25%       2.95% after correct for tax adv; equiv to AA corporates
-		//   Corp and foreign   2793            2001     3955 50%       3.50% 2/3 A and 1/3 BAA based on LQD
-		//   Weighted                                                   3.11% use GS10 and adjust gm value by +0.60% to get 3.11% am
-		//   Total                -              -       7849                 (adjustment value applies in the presence of a 1.1 vol. adjust)
+                // 2013 Q4 L.100 Household  L.121 Mutual funds   Total      arithm. real return (1927-2013)
+                //   Treasury            944             641     1316 17%       2.42% GS10
+                //   Agency              121             837      607  8%      ~2.60% guess
+                //   Muni               1617             610     1971 25%       2.95% after correct for tax adv; equiv to AA corporates
+                //   Corp and foreign   2793            2001     3955 50%       3.50% 2/3 A and 1/3 BAA based on LQD
+                //   Weighted                                                   3.11% use GS10 and adjust gm value by +0.60% to get 3.11% am
+                //   Total                -              -       7849                 (adjustment value applies in the presence of a 1.1 vol. adjust)
         public double ret_gs10_to_bonds_vol_adjust = 1.1; // Adjustment to apply to GS10 volatility to get bond returns indicative of the bond universe.
                 // A guess based on risk-return plots placing its risk close to but slightly less than AAA bonds, with which it shares a similar return.
                 // If risk was higher than AAA bonds, no point in holding "bonds", ignoring different correlations.
@@ -349,13 +349,13 @@ public class Config
                 // = 0.25 8.65% + 0.25 10.15%-1.05% + 0.5 12.20-1.05%. Because AAA reduces to GS10. Assume volatility additively reduces off BBB.
                 // = 0.5 8.14% + 0.5 (9.10% + 2.05%).
                 // = Vol(1.096 GS10).
-	public Double generate_ret_bonds = null; // None for no adjustment to bonds during generation, float for target geomean return.
-	public Double validate_ret_bonds = null; // None for no adjustment to bonds during targeting and validation, float for target geomean return.
+        public Double generate_ret_bonds = null; // None for no adjustment to bonds during generation, float for target geomean return.
+        public Double validate_ret_bonds = null; // None for no adjustment to bonds during targeting and validation, float for target geomean return.
         public Double ret_bonds_adjust = null; // None for no adjustment to fixed income, float for adjust.
         public double generate_all_adjust = 0.0;  // Adjust applied to all asset classes during generation.
         public double validate_all_adjust = 0.0;  // Adjust applied to all asset classes during targeting and validation.
-	public Double generate_ret_inflation = null; // None for no adjustment to inflation during generation, float for geomean value.
-	public Double validate_ret_inflation = null; // None for no adjustment to inflation during targeting and validation, float for geomean value.
+        public Double generate_ret_inflation = null; // None for no adjustment to inflation during generation, float for geomean value.
+        public Double validate_ret_inflation = null; // None for no adjustment to inflation during targeting and validation, float for geomean value.
         public double generate_equity_vol_adjust = 1.0;  // Adjust applied to volatility of equity asset classes during generation.
         public double validate_equity_vol_adjust = 1.0;  // Adjust applied to volatility of equity asset classes during targeting and validation.
         public double tax_rate_cg = 0.0; // Average tax rate for capital gains.
@@ -378,16 +378,16 @@ public class Config
         public double[] dividend_fract = null; // Fraction of nominal gains for each asset class attributed to dividends. Null for defaults.
         public double dividend_fract_equity = 0.25; // Dividend fraction equity default.
         public double dividend_fract_fixed_income = 1.0; // Dividend fraction fixed income default.
-	public double management_expense = 0.0; // Management fees adjustment for all asset classes except margin.
+        public double management_expense = 0.0; // Management fees adjustment for all asset classes except margin.
         public double margin_premium = 0.05; // Premium above current cash interest rate charged for margin borrowing.
         public String borrow_aa = "margin"; // Asset class to borrow against.
         public String borrow_only_aa = "margin"; // Don't allow positive investing in margin returns.
-	public double max_borrow = 0.0; // Maximum amount borrowed relative to total net assets to provide leverage.  May be greater than 1.0.
- 	public String generate_shuffle = "none"; // How to shuffle the returns.
+        public double max_borrow = 0.0; // Maximum amount borrowed relative to total net assets to provide leverage.  May be greater than 1.0.
+        public String generate_shuffle = "none"; // How to shuffle the returns.
                 // 'none' - The return sequence will be used exactly as received.
-	        // 'once' - A single shuffled set of returns will be used.
-	        // 'all' - The returns will be shuffled at each opportunity.
-	public boolean ret_reshuffle = false; // Whether to re-shuffle for different asset allocation choices at the same asset allocation map location.
+                // 'once' - A single shuffled set of returns will be used.
+                // 'all' - The returns will be shuffled at each opportunity.
+        public boolean ret_reshuffle = false; // Whether to re-shuffle for different asset allocation choices at the same asset allocation map location.
         public String generate_draw = "log_normal"; // How to shuffle the returns.
                 // 'bootstrap' - Draw with replacement as ret_bootstrap_block_size length sequences.
                 // 'shuffle' - Draw without replacement.
@@ -404,13 +404,13 @@ public class Config
                 // and cost of increasing num_sequences more than offsets the performance savings.
         public boolean ret_geomean_keep = true; // Whether to destroy arithmetic means and standard deviations in order to preserve geometric means when drawing.
         public int ret_geomean_keep_count = 20000; // Number of returns sequences to use to callibrate geometric mean preservation.
-	public int ret_bootstrap_block_size = 20; // Size of blocks in years to use when drawing returns using bootstrap.
-	public boolean ret_pair = true; // When shuffling whether to keep stock and bond returns for a given year together or treat them independently.
-	public boolean ret_short_block = true; // Make return probabilities uniform by allowing short blocks.
+        public int ret_bootstrap_block_size = 20; // Size of blocks in years to use when drawing returns using bootstrap.
+        public boolean ret_pair = true; // When shuffling whether to keep stock and bond returns for a given year together or treat them independently.
+        public boolean ret_short_block = true; // Make return probabilities uniform by allowing short blocks.
                 // Short blocks may be generated from the beginning and end of the original returns sequence, and for the initial block of the generated sequence.
-	public int generate_start_year = 1927;
-	public Integer generate_end_year = 2013; // None for until end of data.
-	public String sex = "male"; // Death probabilities. 'male', 'female', or 'person'.
+        public int generate_start_year = 1927;
+        public Integer generate_end_year = 2013; // None for until end of data.
+        public String sex = "male"; // Death probabilities. 'male', 'female', or 'person'.
         public String sex2 = null; // Sex of seond person in a couple, or None for an individual.
         public boolean couple_unit = true; // Model a couple as a single unit.
         public double couple_weight1 = 0.5; // Weight placed on well-being of first individual relative to couple when not couple_unit.
@@ -436,11 +436,11 @@ public class Config
                // "healthy_decay" - Apply annuity health and annuity_healthy_decay.
         public double annuity_healthy = 0.5; // Reduction in death rates to apply at point of annuity purchase when calculating annuity price.
         public double annuity_healthy_decay = 0.9; // Annual decay factor to apply to annuity_healthy in subsequent years.
-	public Integer years = null; // Years to run. Set to None to use the full death array length.
-	public int retirement_age = 65; // Age at retirement of first person assuming both retire at same age.
+        public Integer years = null; // Years to run. Set to None to use the full death array length.
+        public int retirement_age = 65; // Age at retirement of first person assuming both retire at same age.
 
         public String target_mode = "rps"; // None not to perform targetting, 'rps' to target search over RPS, or 'rcr' to target search over RCR.
-	public List<String> target_schemes = new ArrayList<String>(Arrays.asList("file"));
+        public List<String> target_schemes = new ArrayList<String>(Arrays.asList("file"));
                 // Asset allocation schemes to use in targetting. "sdp", "file" for validate=datafile, "fixed", "age_in_bonds", "age_minus_10_in_bonds", or "target_date".
         public boolean target_sdp_baseline = true; // Whether to use SDP or the target asset allocation scheme as the target for the other to target.
         public boolean target_rebalance = false; // True to perform target generation with no rebalancing band, so the impact of rebalancing can be seen.
@@ -448,7 +448,7 @@ public class Config
         public String target_draw = "log_normal";
         public int target_start_year = 1927;
         public Integer target_end_year = 2013; // None for until end of data.
-	public boolean target_short_block = true;
+        public boolean target_short_block = true;
 
         public List<String> compare_aa = new ArrayList<String>(Arrays.asList("age_in_bonds", "age_minus_10_in_bonds", "target_date"));
                 // Asset allocation schemes to use in comparing. "file" for validate=datafile, "fixed", "age_in_bonds", "age_minus_10_in_bonds", or "target_date".
@@ -459,231 +459,231 @@ public class Config
                // Normally produces better results, but can cause unexpected negative infinity utility for a power utility with no floor.
         public boolean validate_interpolate = true; // Whether to interpolate lookups during validation.
                // Normally produces better results, but can cause unexpected negative infinity utility for a power utility with no floor.
-	public String validate_shuffle = "all"; // How to shuffle the returns for a validation run.
+        public String validate_shuffle = "all"; // How to shuffle the returns for a validation run.
         public String validate_draw = "log_normal";
         public int validate_start_year = 1927;
         public Integer validate_end_year = 2013; // None for until end of data.
 
-	public int generate_seed = 0; // Random seed used for generate shuffle.
-	public int target_seed = 1; // Random seed used for target shuffle.
-	public int validate_seed = 76254; // Random seed used for validation shuffle.
+        public int generate_seed = 0; // Random seed used for generate shuffle.
+        public int target_seed = 1; // Random seed used for target shuffle.
+        public int validate_seed = 76254; // Random seed used for validation shuffle.
         public int vital_stats_seed = 3; // Random seed used for vital stats generation during validation when couple_unit=false.
 
-	public int num_sequences_retirement_number = 20000; // Number of paths per location for retirement number.
+        public int num_sequences_retirement_number = 20000; // Number of paths per location for retirement number.
         public int num_sequences_target = 20000; // Number of paths per targeting attempt.
-	public Integer num_sequences_validate = 50000; // Number of paths for a validation run.
+        public Integer num_sequences_validate = 50000; // Number of paths for a validation run.
                 // 20000 would be fine. The accuracy of the metric is then around 1%.
                 // But since we have spent so much time generating a map we might spend a little extra evaluating it more accurately.
                 // Not too much though, since we also use this value for any comparison runs, so we may run several times.
 
-	public int path_metrics_bucket_size = 200; // How many paths to evaluate at once.
-	        // Smaller allows better computation of the standard deviation of success probabilities, but takes more time.
+        public int path_metrics_bucket_size = 200; // How many paths to evaluate at once.
+                // Smaller allows better computation of the standard deviation of success probabilities, but takes more time.
         public int returns_cache_size = 100; // How many buckets of path_metrics_bucket size returns sequences to pre-calculate.
 
-	public boolean validate_dump = false; // Whether to dump paths and aa-linear for validation runs.
+        public boolean validate_dump = false; // Whether to dump paths and aa-linear for validation runs.
 
         // Static values that can't be changed from run to run.
-	public static String data_source = "shiller"; // 'sbbi' or 'shiller'.
+        public static String data_source = "shiller"; // 'sbbi' or 'shiller'.
 
-	/**
-	 * Return all the fields/values as a Map
-	 * 
-	 * @return
-	 */
-	private Map<String, Object> getAsMap()
-	{
-		Map<String, Object> params = new TreeMap<String, Object>();
-		for (Field f : this.getClass().getDeclaredFields())
-		{
-			try
-			{
-				params.put(f.getName(), f.get(this));
-			}
-			catch (IllegalArgumentException e)
-			{
-				e.printStackTrace();
-			}
-			catch (IllegalAccessException e)
-			{
-				e.printStackTrace();
-			}
-		}
-		return params;
-	}
+        /**
+         * Return all the fields/values as a Map
+         * 
+         * @return
+         */
+        private Map<String, Object> getAsMap()
+        {
+                Map<String, Object> params = new TreeMap<String, Object>();
+                for (Field f : this.getClass().getDeclaredFields())
+                {
+                        try
+                        {
+                                params.put(f.getName(), f.get(this));
+                        }
+                        catch (IllegalArgumentException e)
+                        {
+                                e.printStackTrace();
+                        }
+                        catch (IllegalAccessException e)
+                        {
+                                e.printStackTrace();
+                        }
+                }
+                return params;
+        }
 
         public void load_params(Map<String, Object> params, String in)
-	{
-		String[] lines = in.split(System.getProperty("line.separator"));
-		for (String line : lines)
-		{
-			int comment_pos = line.indexOf("#");
-			if (comment_pos != -1)
-				line = line.substring(0, comment_pos);
-			line = line.trim(); // Handle empty lines containing whitespace.
-			String[] split_line = line.split("=");
-			if (split_line.length == 0 || (split_line.length == 1 && split_line[0].equals("")))
-				continue;
+        {
+                String[] lines = in.split(System.getProperty("line.separator"));
+                for (String line : lines)
+                {
+                        int comment_pos = line.indexOf("#");
+                        if (comment_pos != -1)
+                                line = line.substring(0, comment_pos);
+                        line = line.trim(); // Handle empty lines containing whitespace.
+                        String[] split_line = line.split("=");
+                        if (split_line.length == 0 || (split_line.length == 1 && split_line[0].equals("")))
+                                continue;
 
-			String var = split_line[0];
-			String val = split_line[1];
-			var = var.trim();
-			val = val.trim();
-			params.put(var, convertObjectFor(var, val));
-		}
-	}
+                        String var = split_line[0];
+                        String val = split_line[1];
+                        var = var.trim();
+                        val = val.trim();
+                        params.put(var, convertObjectFor(var, val));
+                }
+        }
 
-	/**
-	 * Apply the parameters from the Map to the internal parameters
-	 * 
-	 * @param params
-	 */
-	public void applyParams(Map<String, Object> params)
-	{
-		for (String field : params.keySet())
-		{
-			try
-			{
-			        Field f = this.getClass().getDeclaredField(field);
-				f.set(this, params.get(field));
-			}
-			catch (NoSuchFieldException e)
-			{
- 				throw new IllegalArgumentException("Invalid field " + field);
-			}
-			catch (IllegalAccessException e)
-			{
-				throw new IllegalArgumentException("Illegal access field " + field);
-			}
-		}
-	}
+        /**
+         * Apply the parameters from the Map to the internal parameters
+         * 
+         * @param params
+         */
+        public void applyParams(Map<String, Object> params)
+        {
+                for (String field : params.keySet())
+                {
+                        try
+                        {
+                                Field f = this.getClass().getDeclaredField(field);
+                                f.set(this, params.get(field));
+                        }
+                        catch (NoSuchFieldException e)
+                        {
+                                throw new IllegalArgumentException("Invalid field " + field);
+                        }
+                        catch (IllegalAccessException e)
+                        {
+                                throw new IllegalArgumentException("Illegal access field " + field);
+                        }
+                }
+        }
 
-	/**
-	 * Dump all the parameters to the output
-	 */
-	public void dumpParams()
-	{
-		Map<String, Object> params = getAsMap();
-		for (String key : params.keySet())
-		{
-			Object param = params.get(key);
-			String sparam;
-			if (param instanceof double[])
-			{
-				double[] da = (double[]) param;
-				sparam = "[";
-				boolean first = true;
-				for (double d : da)
-				{
-					if (first)
-						first = false;
-					else
-						sparam += ",";
-					sparam += String.valueOf(d);
-				}
-				sparam += "]";
-			}
-			else
-				sparam = String.valueOf(param);
-			System.out.println("   " + key + " = " + sparam);
-		}
-	}
+        /**
+         * Dump all the parameters to the output
+         */
+        public void dumpParams()
+        {
+                Map<String, Object> params = getAsMap();
+                for (String key : params.keySet())
+                {
+                        Object param = params.get(key);
+                        String sparam;
+                        if (param instanceof double[])
+                        {
+                                double[] da = (double[]) param;
+                                sparam = "[";
+                                boolean first = true;
+                                for (double d : da)
+                                {
+                                        if (first)
+                                                first = false;
+                                        else
+                                                sparam += ",";
+                                        sparam += String.valueOf(d);
+                                }
+                                sparam += "]";
+                        }
+                        else
+                                sparam = String.valueOf(param);
+                        System.out.println("   " + key + " = " + sparam);
+                }
+        }
 
-	/**
-	 * Convert the string raw parameter to an object compatible with the specified field
-	 * 
-	 * @param field
-	 * @param raw
-	 * @return
-	 */
-	@SuppressWarnings("rawtypes")
-	private Object convertObjectFor(String field, String raw)
-	{
-	        Field f;
-		try
-		{
-		        f = this.getClass().getDeclaredField(field);
-		}
-		catch (Exception e)
-		{
-			throw new IllegalArgumentException("No such field " + field);
-		}
-		try
-		{
-			Class type = f.getType();
-			return convertObject(type, raw);
-		}
-		catch (Exception e)
-		{
-			throw new IllegalArgumentException("Value " + raw + " is not valid for the field " + field);
-		}
-	}
+        /**
+         * Convert the string raw parameter to an object compatible with the specified field
+         * 
+         * @param field
+         * @param raw
+         * @return
+         */
+        @SuppressWarnings("rawtypes")
+        private Object convertObjectFor(String field, String raw)
+        {
+                Field f;
+                try
+                {
+                        f = this.getClass().getDeclaredField(field);
+                }
+                catch (Exception e)
+                {
+                        throw new IllegalArgumentException("No such field " + field);
+                }
+                try
+                {
+                        Class type = f.getType();
+                        return convertObject(type, raw);
+                }
+                catch (Exception e)
+                {
+                        throw new IllegalArgumentException("Value " + raw + " is not valid for the field " + field);
+                }
+        }
 
-	/**
-	 * Convert the string raw parameter to an object of the specified class
-	 * 
-	 * @param type
-	 * @param raw
-	 * @return
-	 */
-	@SuppressWarnings("rawtypes")
-	private Object convertObject(Class type, String raw)
-	{
-		raw = raw.trim();
-		
-		if ("none".equalsIgnoreCase(raw) || "null".equalsIgnoreCase(raw))
-			return null;
+        /**
+         * Convert the string raw parameter to an object of the specified class
+         * 
+         * @param type
+         * @param raw
+         * @return
+         */
+        @SuppressWarnings("rawtypes")
+        private Object convertObject(Class type, String raw)
+        {
+                raw = raw.trim();
+                
+                if ("none".equalsIgnoreCase(raw) || "null".equalsIgnoreCase(raw))
+                        return null;
 
-		if (type == String.class)
-		{
-			if (raw.startsWith("\"") && raw.endsWith("\""))
-				raw = raw.substring(1, raw.length() - 1);
-			else if (raw.startsWith("\'") && raw.endsWith("\'"))
-				raw = raw.substring(1, raw.length() - 1);
-			else
-			        throw new IllegalArgumentException("Unquoted string value");
-			return raw;
-		}
-		else if (type == boolean.class)
-			return "true".equals(raw.toLowerCase()) || "1".equals(raw);
-		else if (type == int.class || type == Integer.class)
-			return Integer.parseInt(raw);
-		else if (type == double.class || type == Double.class)
-			return Double.parseDouble(raw);
-		else if (type == List.class)
-		{
-			String slist = raw.substring(1, raw.length() - 1);
-			String sa[] = slist.split(",");
-			List<String> data = new ArrayList<String>();
-			if (sa.length > 1 || sa[0].trim().length() > 0)
-			{
-				for (String s : sa)
-				{
-					data.add((String) convertObject(String.class, s));
-				}
-			}
-			return data;
-		}
-		else if (type == double[].class)
-		{
-			String slist = raw.substring(1, raw.length() - 1);
-			String sa[] = slist.split(",");
-			double[] data;
-			if (sa.length > 1 || sa[0].trim().length() > 0)
-		        {
-			        data = new double[sa.length];
-				int idx = 0;
-				for (String s : sa)
-				{
-					data[idx++] = (Double) convertObject(double.class, s);
-				}
-			}
-			else
-			{
-			        data = new double[0];
-			}
-			return data;
-		}
-		else
-			return null;
-	}
+                if (type == String.class)
+                {
+                        if (raw.startsWith("\"") && raw.endsWith("\""))
+                                raw = raw.substring(1, raw.length() - 1);
+                        else if (raw.startsWith("\'") && raw.endsWith("\'"))
+                                raw = raw.substring(1, raw.length() - 1);
+                        else
+                                throw new IllegalArgumentException("Unquoted string value");
+                        return raw;
+                }
+                else if (type == boolean.class)
+                        return "true".equals(raw.toLowerCase()) || "1".equals(raw);
+                else if (type == int.class || type == Integer.class)
+                        return Integer.parseInt(raw);
+                else if (type == double.class || type == Double.class)
+                        return Double.parseDouble(raw);
+                else if (type == List.class)
+                {
+                        String slist = raw.substring(1, raw.length() - 1);
+                        String sa[] = slist.split(",");
+                        List<String> data = new ArrayList<String>();
+                        if (sa.length > 1 || sa[0].trim().length() > 0)
+                        {
+                                for (String s : sa)
+                                {
+                                        data.add((String) convertObject(String.class, s));
+                                }
+                        }
+                        return data;
+                }
+                else if (type == double[].class)
+                {
+                        String slist = raw.substring(1, raw.length() - 1);
+                        String sa[] = slist.split(",");
+                        double[] data;
+                        if (sa.length > 1 || sa[0].trim().length() > 0)
+                        {
+                                data = new double[sa.length];
+                                int idx = 0;
+                                for (String s : sa)
+                                {
+                                        data[idx++] = (Double) convertObject(double.class, s);
+                                }
+                        }
+                        else
+                        {
+                                data = new double[0];
+                        }
+                        return data;
+                }
+                else
+                        return null;
+        }
 }
