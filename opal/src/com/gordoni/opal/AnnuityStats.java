@@ -219,9 +219,9 @@ public class AnnuityStats
                         this.period_nominal_annuity_price[i] = period_na_price / (period_alive[i] * time_periods * nominal_mwr);
                         double real_annuity_price_male[] = hist.real_annuity_price.get(config.annuity_real_quote + "-male");
                         double real_annuity_price_female[] = hist.real_annuity_price.get(config.annuity_real_quote + "-female");
-                        if (config.sex.equals("male") && (int) age < real_annuity_price_male.length)
+                        if (config.sex.equals("male") && real_annuity_price_male != null && (int) age < real_annuity_price_male.length)
                                 this.actual_real_annuity_price[i] = real_annuity_price_male[(int) age];
-                        else if (config.sex.equals("female") && (int) age < real_annuity_price_female.length)
+                        else if (config.sex.equals("female") && real_annuity_price_female != null && (int) age < real_annuity_price_female.length)
                                 this.actual_real_annuity_price[i] = real_annuity_price_female[(int) age];
                         else
                                 this.actual_real_annuity_price[i] = Double.POSITIVE_INFINITY;

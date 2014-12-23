@@ -32,6 +32,9 @@ public class HistReturns
 {
         private String data = "data"; // Prefix to use for data files.
 
+        private List<String> search_dirs = Arrays.asList("/private/", "/public/", "/"); // Sub-directories to search for data files.
+            // "/" is only for backwards compatibility. Delete when no longer needed.
+
         public int initial_year;
 
         // Real monthly S&P Composite, GS10, and inflation data from Shiller:
@@ -105,6 +108,28 @@ public class HistReturns
         public List<Double> soa_projection_g2_f = null;
         public List<Double> soa_aer2005_08_m = null;
         public List<Double> soa_aer2005_08_f = null;
+
+        String find_subdir(String filename)
+        {
+                for (String dir : search_dirs)
+                {
+                        if (new File(data + dir + filename).exists())
+                                return dir + filename;
+                }
+
+                System.err.println("Data file not found: " + filename);
+
+                return null;
+        }
+
+        BufferedReader buffered_reader(String filename) throws IOException
+        {
+                String file = find_subdir(filename);
+                if (file != null)
+                        return new BufferedReader(new FileReader(new File(data + file)));
+                else
+                        return null;
+        }
 
         double bond_npv(double discount_rate, double interest_rate, double maturity)
         {
@@ -244,9 +269,11 @@ public class HistReturns
                 in.close();
         }
 
-        private int load_returns(String filename, int initial, List<Double> l, boolean price_level) throws IOException
+        private Integer load_returns(String filename, int initial, List<Double> l, boolean price_level) throws IOException
         {
-                BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
+                BufferedReader in = buffered_reader(filename);
+                if (in == null)
+                        return null;
                 String line = in.readLine();
                 double prev_price = Double.NaN;
                 for (int year = initial; (line = in.readLine()) != null; year++)
@@ -275,7 +302,7 @@ public class HistReturns
 
         private int load_ff(String filename) throws IOException
         {
-                BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
+                BufferedReader in = buffered_reader(filename);
                 Integer init_year = null;
                 String line;
                 for (line = in.readLine(); !line.trim().equals("Average Value Weighted Returns -- Annual"); line = in.readLine())
@@ -335,7 +362,7 @@ public class HistReturns
         {
                 int time_periods = 12;
 
-                BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + prefix + ".csv")));
+                BufferedReader in = buffered_reader(prefix + ".csv");
                 String line = in.readLine();
                 Integer init_year = null;
                 double old_rate = Double.NaN;
@@ -383,7 +410,7 @@ public class HistReturns
         // http://www.ssa.gov/oact/STATS/table4c6.html
         private void load_ssa_period(String filename) throws IOException
         {
-                BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
+                BufferedReader in = buffered_reader(filename);
                 String line = in.readLine();
                 for (int l = 0; (line = in.readLine()) != null; l++)
                 {
@@ -405,7 +432,7 @@ public class HistReturns
         {
                 for (int birth_year = 1900; birth_year <= 2100; birth_year += 10)
                 {
-                        BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + "as120/LifeTables_Tbl_7_" + birth_year + ".html")));
+                        BufferedReader in = buffered_reader("as120/LifeTables_Tbl_7_" + birth_year + ".html");
                         List<Double> death_list_m = new ArrayList<Double>();
                         List<Double> death_list_f = new ArrayList<Double>();
                         String line;
@@ -447,7 +474,7 @@ public class HistReturns
 
         private void load_soa_iam2000(List<Double> death_m, List<Double> death_f, String filename) throws IOException
         {
-                BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
+                BufferedReader in = buffered_reader(filename);
                 String line = in.readLine();
                 double prev_m = 0;
                 double prev_f = 0;
@@ -476,7 +503,7 @@ public class HistReturns
 
         private List<Double> load_soa_iam2012(String filename, boolean q1000) throws IOException
         {
-                BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
+                BufferedReader in = buffered_reader(filename);
                 Map<Integer, Double> death_map = new HashMap<Integer, Double>();
                 String line = in.readLine();
                 while ((line = in.readLine()) != null)
@@ -500,7 +527,7 @@ public class HistReturns
 
         private List<Double> load_soa_aer(String filename) throws IOException
         {
-                BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
+                BufferedReader in = buffered_reader(filename);
                 ArrayList<Double> a_e_list = new ArrayList<Double>();
                 int contract_years = 1;
                 double old_a_e = Double.NaN;
@@ -537,7 +564,7 @@ public class HistReturns
                         real_annuity_price_male[i] = Double.POSITIVE_INFINITY;
                         real_annuity_price_female[i] = Double.POSITIVE_INFINITY;
                 }
-                BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + "incomesolutions.com/" + filename)));
+                BufferedReader in = buffered_reader("incomesolutions.com/" + filename);
                 String line = in.readLine();
                 while ((line = in.readLine()) != null)
                 {
@@ -577,7 +604,7 @@ public class HistReturns
                 }
                 for (int age = min_age; age <= max_age; age++)
                 {
-                        BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + "immediateannuities.com/" + quote + "/" + age + ".html")));
+                        BufferedReader in = buffered_reader("immediateannuities.com/" + quote + "/" + age + ".html");
                         String line;
                         while (!(line = in.readLine()).contains("<li><span>Male " + age + "</span></li>"))
                         {
@@ -616,7 +643,7 @@ public class HistReturns
         // http://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/Corp-Yield-Bond-Curve-Papers.aspx
         private void load_hqm(String filename) throws IOException
         {
-                BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
+                BufferedReader in = buffered_reader(filename);
                 String line = in.readLine();
                 line = in.readLine();
                 line = in.readLine();
@@ -651,7 +678,7 @@ public class HistReturns
         // http://www.irs.gov/pub/irs-pdf/p939.pdf - Table V-ORDINARY LIFE ANNUITIES - ONE LIFE-EXPECTED RETURN MULTIPLES
         private void load_annuity_multiples(String filename) throws IOException
         {
-                BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
+                BufferedReader in = buffered_reader(filename);
                 String line = in.readLine();
                 List<Double> multiples = new ArrayList<Double>();
                 int next = 0;
@@ -675,7 +702,7 @@ public class HistReturns
 
         private void load_rmd_le(String filename) throws IOException
         {
-                BufferedReader in = new BufferedReader(new FileReader(new File(data + "/" + filename)));
+                BufferedReader in = buffered_reader(filename);
                 String line = in.readLine();
                 List<Double> le_list = new ArrayList<Double>();
                 for (int i = 0; i < rmd_start; i++)
@@ -696,12 +723,12 @@ public class HistReturns
                 // Set up returns and initial_year based on data_source.
                 if (Config.data_source.equals("sbbi"))
                 {
-                        load_sbbi_data(new BufferedReader(new FileReader(new File(data + "/" + sbbi_file))));
+                        load_sbbi_data(buffered_reader(sbbi_file));
                         initial_year = sbbi_initial;
                 }
                 else
                 {
-                        load_shiller_data(new BufferedReader(new FileReader(new File(data + "/" + shiller_file))));
+                        load_shiller_data(buffered_reader(shiller_file));
                         initial_year = shiller_initial;
                 }
 
@@ -729,14 +756,16 @@ public class HistReturns
                 soa_projection_g2_f = load_soa_iam2012("soa-projection-g2-female.csv", false);
                 soa_aer2005_08_m = load_soa_aer("soa-aer2005_08-male.csv");
                 soa_aer2005_08_f = load_soa_aer("soa-aer2005_08-female.csv");
-                File dir = new File(data + "/" + "incomesolutions.com");
-                for (File file : dir.listFiles())
-                        if (file.getName().endsWith(".csv"))
-                                load_incomesolutions(file.getName());
-                dir = new File(data + "/" + "immediateannuities.com");
-                for (File file : dir.listFiles())
-                        if (file.isDirectory())
-                                load_immediateannuities(file.getName());
+                String dir = find_subdir("incomesolutions.com");
+                if (dir != null)
+                        for (File file : new File(data + "/" + dir).listFiles())
+                                if (file.getName().endsWith(".csv"))
+                                        load_incomesolutions(file.getName());
+                dir = find_subdir("immediateannuities.com");
+                if (dir != null)
+                        for (File file : new File(data + "/" + dir).listFiles())
+                                if (file.isDirectory())
+                                        load_immediateannuities(file.getName());
                 load_hqm("hqm/hqm_84_88.csv");
                 load_hqm("hqm/hqm_89_93.csv");
                 load_hqm("hqm/hqm_94_98.csv");
