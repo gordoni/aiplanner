@@ -10,7 +10,7 @@ params = read.csv(paste(file_prefix, '-rcmt-params.csv', sep=''), colClasses=c('
   # R doesn't recognise 04/07/14 as a string, so force it to do so.
 date = params[1, 'date']
 
-data = read.table('data/rcmt.csv', sep=',')
+data = read.table('data/public/rcmt.csv', sep=',')
 x = data[1,][2:ncol(data)]
 y = data[data$V1==date,][2:ncol(data)]
 
