@@ -1,0 +1,4 @@
+#!/bin/sh
+
+#find /home/ubuntu/aacalc.data/static/results \! -path /home/ubuntu/aacalc.data/static/results -prune -mmin +60 -exec rm -r \{\} \;
+/home/ubuntu/aacalc/web/purge_results

@@ -7,8 +7,8 @@ from django.core.exceptions import ValidationError
 from django.utils.safestring import mark_safe
 from time import strftime, strptime
 
-from oaa.utils import all_asset_classes, asset_class_names, too_early_for_asset_classes, too_late_for_asset_classes
-from oaa.views.utils import default_params
+from aacalc.utils import all_asset_classes, asset_class_names, too_early_for_asset_classes, too_late_for_asset_classes
+from aacalc.views.utils import default_params
 
 class HorizontalRadioRenderer(forms.RadioSelect.renderer):
     def render(self):

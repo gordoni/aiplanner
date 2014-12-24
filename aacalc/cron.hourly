@@ -1,4 +1,0 @@
-#!/bin/sh
-
-#find /home/ubuntu/oaa.data/static/results \! -path /home/ubuntu/oaa.data/static/results -prune -mmin +60 -exec rm -r \{\} \;
-/home/ubuntu/oaa/aacalc/purge_results

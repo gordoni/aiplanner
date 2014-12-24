@@ -1,11 +1,11 @@
 import os
 import sys
 
-path = '/home/ubuntu/oaa/aacalc'
+path = '/home/ubuntu/aacalc/web'
 if path not in sys.path:
     sys.path.append(path)
 
-path = '/home/ubuntu/oaa/aacalc/project'
+path = '/home/ubuntu/aacalc/web/project'
 if path not in sys.path:
     sys.path.append(path)
 

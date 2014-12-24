@@ -26,7 +26,7 @@ keep_free = 0.2  # Keep this much proportion of disk space free.
 keep_ifree = 100000  # Keep this many inodes free.
 delete_time = 30 * 86400  # Delete directories after this long.
 keep_time = 3600  # Keep directories around for this long regardless.
-result_dirs = ('/home/ubuntu/oaa.data/run', '/home/ubuntu/oaa.data/static/results')
+result_dirs = ('/home/ubuntu/aacalc.data/run', '/home/ubuntu/aacalc.data/static/results')
 
 dirs = []
 for result_dir in result_dirs:

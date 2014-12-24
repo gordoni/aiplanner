@@ -20,8 +20,8 @@ from django.forms.forms import NON_FIELD_ERRORS
 from django.shortcuts import render
 from time import strptime
 
-from oaa.forms import ScenarioAaForm, ScenarioNumberForm, ScenarioEditForm
-from oaa.views.utils import default_params, dob_to_age
+from aacalc.forms import ScenarioAaForm, ScenarioNumberForm, ScenarioEditForm
+from aacalc.views.utils import default_params, dob_to_age
 
 def init_se_form(mode, s):
     if mode == 'aa':

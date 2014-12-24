@@ -85,7 +85,7 @@ public class OPALServer implements Runnable
                         }
                         String method = request_words[0];
                         String dirname = request_words[1];
-                        if (!method.equals("POST") || !(dirname.startsWith("/home/ubuntu/oaa.data/static/results/") || dirname.equals("/home/ubuntu/oaa.data/static/sample")))
+                        if (!method.equals("POST") || !(dirname.startsWith("/home/ubuntu/aacalc.data/static/results/") || dirname.equals("/home/ubuntu/aacalc.data/static/sample")))
                         {
                                 return;
                         }

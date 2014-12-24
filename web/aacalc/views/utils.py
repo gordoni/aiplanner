@@ -37,7 +37,7 @@ from subprocess import call, Popen
 from tempfile import mkdtemp
 from time import strptime
 
-from oaa.utils import asset_class_names, asset_class_symbols
+from aacalc.utils import asset_class_names, asset_class_symbols
 from settings import SECRET_KEY, STATIC_ROOT, STATIC_URL
 
 # Deleted names can only be judicially re-used, since inactive users might still hold an old parameter of that name. This means types can never be changed.

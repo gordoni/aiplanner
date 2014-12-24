@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from oaa.views.utils import display_sample
+from aacalc.views.utils import display_sample
 
 def sample(request):
     return display_sample(request)
