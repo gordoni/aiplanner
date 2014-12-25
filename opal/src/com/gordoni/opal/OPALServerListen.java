@@ -25,6 +25,8 @@ import java.net.Socket;
 public class OPALServerListen
 {
         private HistReturns hist;
+        private String opalhost;
+        private String opalport;
 
         private Object run_lock = new Object();
 
@@ -33,7 +35,10 @@ public class OPALServerListen
                 ServerSocket sock = null;
                 try
                 {
-                        sock = new ServerSocket(8000); // InetAddress.getByName("localhost")
+                        if (opalhost.equals("*"))
+                                sock = new ServerSocket(Integer.parseInt(opalport));
+                        else
+                                sock = new ServerSocket(Integer.parseInt(opalport), 0, InetAddress.getByName(opalhost));
                                 // Minimum backlog on Linux 3.2.0 appears to be 16, and connects possibly retry.
                                 // Have to try something more tricky.  Namely place the connections in a queue, and close connections above the backlog.
                                 // May need to test using multiple browsers rather than multiple browser windows for reasons that are not understood.
@@ -70,8 +75,10 @@ public class OPALServerListen
                 }
         }
 
-        public OPALServerListen(HistReturns hist)
+        public OPALServerListen(HistReturns hist, String opalhost, String opalport)
         {
                 this.hist = hist;
+                this.opalhost = opalhost;
+                this.opalport = opalport;
         }
 }

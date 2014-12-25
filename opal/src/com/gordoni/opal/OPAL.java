@@ -25,7 +25,7 @@ public class OPAL
 {
         public static void usage()
         {
-                System.err.println("expecting: [-d] [-c C] [-e E]");
+                System.err.println("expecting: [-d <host> <port>] [-c C] [-e E]");
                 System.exit(1);
         }
 
@@ -33,7 +33,8 @@ public class OPAL
         {
                 Config config = new Config();
                 HistReturns hist = new HistReturns();
-                boolean daemon = false;
+                String opalhost = null;
+                String opalport = null;
                 boolean params_present = false;
                 String param_filename = null;
                 Map<String, Object> params = new HashMap<String, Object>();
@@ -44,7 +45,10 @@ public class OPAL
                         {
                                 String arg = args[idx];
                                 if ("-d".equals(arg))
-                                        daemon = true;
+                                {
+                                        opalhost = args[++idx];
+                                        opalport = args[++idx];
+                                }
                                 else if ("-c".equals(arg))
                                         param_filename = args[++idx];
                                 else if ("-e".equals(arg))
@@ -65,10 +69,10 @@ public class OPAL
                         usage();
                 }
 
-                if (daemon)
+                if (opalhost != null)
                 {
                         assert(!params_present && param_filename == null);
-                        OPALServerListen listen = new OPALServerListen(hist);
+                        OPALServerListen listen = new OPALServerListen(hist, opalhost, opalport);
                         listen.run();
                 }
                 else

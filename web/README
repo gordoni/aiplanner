@@ -4,7 +4,16 @@ Source files reside in aacalc, while running instance files reside in
 aacalc.data .
 
 It is suggested that Amazon EC2 be used for development work. A
-c3.xlarge instance works fine.
+c3.xlarge instance works fine. The same instance can be used to run
+the web server and the opal server. In production the load can be
+larger, and it may be necessary to run a separate web server and run
+multiple opal servers behind a load balancer.
+
+VERY IMPORTANT: The Opal server listens on port 8000 for requests. By
+default it only listens to localhost. If configured to run on separate
+servers behind a load balancer then it needs to listen to * and port
+8000 must be protected by a firewall from the Internet, or there is a
+major security hole.
 
 Obtaining additional required components
 ----------------------------------------
@@ -38,6 +47,7 @@ Set up and run Opal server
 
 # Install upstart script to automatically run Opal server on reboot.
 sudo cp aacalc/web/opal.conf /etc/init/
+[if opalserver on remote system (must be behind firewall): edit /etc/init/opal.conf to change listen address from "-d localhost 8000" to "-d * 8000"]
 
 # Copy across files.
 cd aacalc/opal
