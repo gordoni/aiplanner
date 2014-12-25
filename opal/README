@@ -1,0 +1,165 @@
+Opal is a Java based asset allocation and consumption planning calculator.
+
+The name Opal came from Optimal Portfolio ALgorithm.
+
+Obtaining additional required components
+----------------------------------------
+
+# Java, R, and Gnuplot:
+sudo apt-get install openjdk-7-jre-headless openjdk-7-jdk r-base gnuplot
+
+# If doing developement you might want to enable the desktop display of graphs:
+sudo apt-get install gnuplot-x11
+
+# Obtaining the Java commons Math 3 library.
+cd aacalc/opal
+# In a web browser visit http://commons.apache.org/proper/commons-math/download_math.cgi and download commons-math3 tar.gz binary library.
+mkdir classes
+cd classes
+tar -zxf <path-to>/commons-math3-3.3-bin.tar.gz commons-math3-3.3.jar
+
+# Obtain the asset class returns and mortality data files:
+cd aacalc/opal
+curl http://www.gordoni.com/aacalc-data.tar.gz | tar -zxf -
+
+Setting up Systematic Investor Toolbox and R packages for performing MVO
+------------------------------------------------------------------------
+
+# Mean variance optimization reduces 3 or more asset classes down to a
+# single dimension to be searched.
+# Only needed if plan to specify ef='mvo' when running Opal.
+# This is the case for the web front end, and is needed to give decent
+# performance with 4 or more asset classes.
+
+# Notes cribbed from: http://www.r-bloggers.com/introduction-to-asset-allocation/
+
+sudo apt-get r-base r-cran-quadprog r-cran-lpsolve
+
+# Either:
+sudo R # to instlal in /usr/local
+# or
+R # to install in ~/R
+
+install.packages('quantmod')
+install.packages('corpcor')
+install.packages('kernlab')
+q()
+
+cd aacalc/opal
+curl -O https://github.com/systematicinvestor/SIT/blob/master/sit.gz
+
+Building Opal
+-------------
+
+cd aacalc/opal
+javac -d bin -cp 'classes/*' src/com/gordoni/opal/*.java
+jar cf classes/opal.jar -C bin .
+
+Running Opal
+------------
+
+java -ea -cp 'classes/*' com.gordoni.opal.OPAL <option> ...
+
+options:
+  -e var=value
+    Set variable var to value val.
+    It is important to get quoting correct.
+    E.g. to add small cap value asset class: -e "asset_classes=('stocks', 'bonds', "sh')"
+    See aacalc/opal/src/com/gordoni/opal/Config.java for a list of variables and possible values.
+    Note, not all combinations are valid, and the responsibility for sanity checking relies on the user.
+ -c config_filename
+    Read var=value lines from config_file, default opal-scenario.txt in current directory.
+    1 per line. # for comments.
+    Only 1 config file is alowed, and it will be processed ahead of any -e options.
+
+Examples:
+
+    aa_strategy='age_in_bonds' vw_strategy='retirement_amount' vw_percentage=0.04 -e defined_benefit=10000 -e floor=20000
+                             - Monte Carlo simulation with $10k Social Security and failure consuming less than $20k
+
+    utility_retire  = True   - only report performance metrics post retirement
+                               PROBABLY WANT  TO SPECIFY THIS FLAG
+                               without this flag, and without floor or public assistance,
+                               zero consumption prior creates negative infinities which result in zero metrics
+
+    sex = 'male'
+    sex2 = 'female'          - simulate couple
+    start_age = 25
+    start_age2 = 25
+    retirement_age = 65      - retirement age relative to first person
+
+    start_tp = 100000        - start with $100k
+    accumulation_rate = 1000 - annual contribution $500
+    accumulation_ramp = 1.07 - contributions growing by 7% per year
+
+    floor=20000              - floor consumption level for time weighted and non-time weighted metrics and pre-retirement if not utility_retire
+
+    asset_classes=('tips', 'sh') safe_aa='tips' fail_aa='sh' generate_start_year=1972 generate_end_year=2013 validate_start_year=1972 validate_end_year=2013
+                             - TIPS and small cap value 1972-2013.
+
+    ef='mvo'                 - Perform MVO to reduce asset classes.
+
+    management_expense=0.001 - Apply 0.1% management expenses to all asset classes.
+
+    num_sequences_validate=100000 - 100k Monte Carlo simulations.
+
+    consume_discount_rate=0.03 upside_discount_rate=0.03
+                             - 3% discounting of the future
+
+    utility_eta=3.0          - CRRA utility with gamma of 3.0
+    utility_join=True utility_eta=3.0 utility_eta_2=1.0 utility_join_required=30000 utility_join_desired=10000 utility_join_slope_ratio=0.1
+                             - 3 part utility function
+
+    skip_*                   - skip various stages of the program, see Config.java
+
+    trace=True               - be verbose about progress
+
+Output
+------
+
+Opal displays the input parameters, recommended investment and
+consumption action for the starting age, and Monte Carlo simulation
+performance metrics. The key metric is "combined", which is the
+default optimization goal.
+    tw - time weighted time consumption is above floor level
+    ntw - probability of consumption always being above floor level
+    consume - inverse of time weighted discounted expected utility
+    inherit - value of any inheritance
+    combined - consume plus inherit
+    tax - value of taxes paid
+
+Opal produces a number of .csv output files. The best way to get a
+handle on them is to view the corresponding .png files using the
+ImageMagick "display" vieweer, or some other command.
+
+opal-linear.csv contains the asset allocation and consumption heat
+maps.
+
+Development
+-----------
+
+AACalc has a long history. First as a Monte Carlo PHP script, then as
+a SDP Python script for cleanliness, then as a Java program for
+performance. Some of the design decisions can be traced back to this
+history. E.g. most Java variables are in underscore lower case rather
+than camel case, an unusual indentation style, and increasing
+portfolio sizes being represented by decreasing bucket values.
+
+Key files:
+    AAMap.java - SDP/Monte Carlo main loop
+    Config.java - list of configuration values
+    HistReturns.java - loads all data files
+    Returns.java - adjusts returns and generates bootstrap/synthetic sequences
+    Scenario.java - oversees running of SDP and Monte Carlo simulation and results ouput
+
+Validation. SDP produces the optimal strategy for timewise independent
+returns, therefore the metric produced during generation should match
+the metric during Monte Carlo simulation.
+
+So doing:
+
+    -e ret_resample=None -e "validate_draw='bootstrap'" -e ret_bootstrap_block_size=1
+
+in conjunction with say -e utility_retire=True then the generated
+metric should match the combined simulation metric, to the limit of
+the finite num_sequences_generate sample size.

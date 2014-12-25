@@ -1,0 +1,121 @@
+Web based frontend for the AACalc asset allocation and consumption planning calculator.
+
+Source files reside in aacalc, while running instance files reside in
+aacalc.data .
+
+It is suggested that Amazon EC2 be used for development work. A
+c3.xlarge instance works fine.
+
+Obtaining additional required components
+----------------------------------------
+
+sudo apt-get install apache2 apache2-utils libapache2-mod-wsgi python-django memcached python-memcache
+
+Set up hostname
+---------------
+
+Set up hostname and domain name if not already set:
+
+sudo bash
+echo  <unqualified-hostname> > /etc/hostname
+hostname -F /etc/hostname
+[edit] /etc/hosts
+[add: 127.0.0.1 <unqualified-hostname> <qualified-hostname> ]
+# Unqualified hostname needed to prevent sudo warnings.
+# Fully qualified resolvable hostname needed to prevent warning when Apache starts.
+echo 'supersede domain-name "<domain-name>";' >> /etc/dhcp/dhclient.conf
+# Not sure how to get dhclient.conf re-read and resolv.conf re-written.  Not to worry, it will get picked up when we reboot.
+reboot
+
+DNS
+---
+
+# The web front end tries to talk to the backend based on a load balancer hostname.
+# Make it talk to itself for development.
+
+# Make <host>-lb.<domain> be a CNAME for <host>.<domain>
+
+# How to do this will depend on your DNS provider.
+
+Create directories
+------------------
+
+mkdir -p aacalc.data/{static/results,static/sample,run}
+sudo chown www-data:www-data aacalc.data/{static/results,static/sample,run}
+
+Set up and run Opal server
+--------------------------
+
+# Install upstart script to automatically run Opal server on reboot.
+sudo cp aacalc/web/opal.conf /etc/init/
+
+# Copy across files.
+cd aacalc/opal
+./install-opal
+
+Set up Django
+-------------
+
+# Create site files.
+mkdir aacalc.data/project
+touch aacalc.data/project/__init__.py
+cp aacalc/web/example-sitesettings.py aacalc.data/project/sitesettings.py
+[edit] aaclac.data/project/sitesettings.py
+# Set DEBUG to True to display backtraces in the web browser (displays sensistive data).
+# Set ADMINS to receive email messages.
+# Make SECRETKEY unique.
+
+# Collect statically served files.
+aacalc/web/manage.py collectstatic --noinput
+
+Set up Apache
+-------------
+
+a2dissite 000-default
+# Select appropriate site.conf.
+cp aacalc/web/sites-available/<sample-site.conf-file> /etc/apache2/sites-available/<site.conf>
+# Edit site.conf appropriately.
+<edit> /etc/apache2/sites-available/<site.conf>
+a2ensite <site>
+
+# For ssl, also need:
+a2enmod ssl
+
+service apache2 restart
+
+# Create password file if required to limit access to host:
+htpasswd -c ~/aacalc.data/aacalc.htpasswd <user>
+[password: <passwd>]
+
+Generating the sample page
+--------------------------
+
+cd aacalc/web
+sudo ./gen_sample
+
+Set up cron
+-----------
+
+cat aacalc/web/crontab.example
+sudo crontab -e
+[edit to add crontab.example]
+
+Set up mailer
+-------------
+
+# Only needed for production to email crash reports.
+
+apt-get install exim4
+sudo dpkg-reconfigure exim4-config
+#  internet site
+#  <domain>
+#  127.0.0.1 ; ::1
+#  <domain>
+#  ...
+#  <your-email-address>
+
+
+Test it out
+-----------
+
+In a web browser visit http://<site>/ .
