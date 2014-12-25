@@ -27,16 +27,6 @@ echo 'supersede domain-name "<domain-name>";' >> /etc/dhcp/dhclient.conf
 # Not sure how to get dhclient.conf re-read and resolv.conf re-written.  Not to worry, it will get picked up when we reboot.
 reboot
 
-DNS
----
-
-# The web front end tries to talk to the backend based on a load balancer hostname.
-# Make it talk to itself for development.
-
-# Make <host>-lb.<domain> be a CNAME for <host>.<domain>
-
-# How to do this will depend on your DNS provider.
-
 Create directories
 ------------------
 
@@ -64,6 +54,7 @@ cp aacalc/web/example-sitesettings.py aacalc.data/project/sitesettings.py
 # Set DEBUG to True to display backtraces in the web browser (displays sensistive data).
 # Set ADMINS to receive email messages.
 # Make SECRETKEY unique.
+# Edit OPAL_HOST from localhost to name of the Opal server load balancer if required.
 
 # Collect statically served files.
 aacalc/web/manage.py collectstatic --noinput

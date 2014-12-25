@@ -31,14 +31,13 @@ from os import chmod, environ, umask
 from random import randint
 from re import compile, MULTILINE
 import socket # error
-from socket import gethostname
 from stat import S_IRWXU
 from subprocess import call, Popen
 from tempfile import mkdtemp
 from time import strptime
 
 from aacalc.utils import asset_class_names, asset_class_symbols
-from settings import SECRET_KEY, STATIC_ROOT, STATIC_URL
+from settings import OPAL_HOST, SECRET_KEY, STATIC_ROOT, STATIC_URL
 
 # Deleted names can only be judicially re-used, since inactive users might still hold an old parameter of that name. This means types can never be changed.
 default_params = {
@@ -406,13 +405,8 @@ def run_opal(dirname, s):
         f.close()
         body += '\r\n'
     body += '--' + boundary +  '--\r\n'
-    current_site = gethostname()
-    if '.' in current_site:
-        load_balancer = current_site.domain.replace('.', '-lb.', 1)
-    else:
-        load_balancer = current_site + '-lb'
     try:
-        conn = HTTPConnection(load_balancer, 8000)
+        conn = HTTPConnection(OPAL_HOST, 8000)
         conn.request('POST', dirname, body, headers)
     except socket.error:
         raise OPALServerError('OPAL server is down.')
