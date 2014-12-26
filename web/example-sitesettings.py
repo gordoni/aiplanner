@@ -5,7 +5,7 @@ DEBUG = False
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
-    ('My Name', 'myname@myemaildomain'),
+    ('<FirstName> <LastNmae>', '<user@email.com>'),
 )
 
 # Make this unique, and don't share it with anybody.

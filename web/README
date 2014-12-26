@@ -3,12 +3,6 @@ Web based frontend for the AACalc asset allocation and consumption planning calc
 Source files reside in aacalc, while running instance files reside in
 aacalc.data .
 
-It is suggested that Amazon EC2 be used for development work. A
-c3.xlarge instance works fine. The same instance can be used to run
-the web server and the opal server. In production the load can be
-larger, and it may be necessary to run a separate web server and run
-multiple opal servers behind a load balancer.
-
 VERY IMPORTANT: The Opal server listens on port 8000 for requests. By
 default it only listens to localhost. If configured to run on separate
 servers behind a load balancer then it needs to listen to * and port
@@ -23,7 +17,10 @@ sudo apt-get install apache2 apache2-utils libapache2-mod-wsgi python-django mem
 Set up hostname
 ---------------
 
-Set up hostname and domain name if not already set:
+# This step is optional. It helps if using EC2 to give various
+# instances meaningful names.
+
+# Set up hostname and domain name if not already set:
 
 sudo bash
 echo  <unqualified-hostname> > /etc/hostname
