@@ -2,6 +2,14 @@ Opal is a Java based asset allocation and consumption planning calculator.
 
 The name Opal came from Optimal Portfolio ALgorithm.
 
+Opal performs hill climbing searches to find the optimal solution when
+searching the asset allocation/consumption space. This requires no
+local maxima. Proof of this is not provided, but it seems likely for
+reasonable scenarios. It is however known not to be strictly true in
+some circumstances at age 119. Violation of this condition requires
+there be a direction in which you can traverse in which utility first
+decreases then as you proceed further increases.
+
 Obtaining additional required components
 ----------------------------------------
 
