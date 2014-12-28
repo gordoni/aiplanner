@@ -114,8 +114,22 @@ sudo dpkg-reconfigure exim4-config
 #  ...
 #  <your-email-address>
 
-
 Test it out
 -----------
 
 In a web browser visit http://<site>/ .
+
+Final notes
+-----------
+
+The file eafe.csv is not included. You should either obtain it and
+place it in aacalc/opal{,.data}/private/ or remove:
+
+{{ se_form.class_eafe }} International
+<font size="-1">
+(developed large cap international unhedged; 1970-2013 available)
+</font>
+{{ se_form.class_eafe.errors }}
+
+from aacalc/templates/mega_form.html . Otherwise attempting to select
+International will result in a crash.

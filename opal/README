@@ -54,8 +54,8 @@ install.packages('corpcor')
 install.packages('kernlab')
 q()
 
-cd aacalc/opal
-curl -O https://github.com/systematicinvestor/SIT/blob/master/sit.gz
+# Using a web browser download: https://github.com/systematicinvestor/SIT/raw/master/sit.gz
+cp <path-to-download>/sit.gz aacalc/opal/
 
 Building Opal
 -------------
@@ -107,7 +107,7 @@ Examples:
     asset_classes=('tips', 'sh') safe_aa='tips' fail_aa='sh' generate_start_year=1972 generate_end_year=2013 validate_start_year=1972 validate_end_year=2013
                              - TIPS and small cap value 1972-2013.
 
-    ef='mvo'                 - Perform MVO to reduce asset classes.
+    ef='mvo' search='hill'   - Perform MVO to reduce asset classes.
 
     management_expense=0.001 - Apply 0.1% management expenses to all asset classes.
 
@@ -138,8 +138,8 @@ default optimization goal.
     combined - consume plus inherit
     tax - value of taxes paid
 
-Opal produces a number of .csv output files. The best way to get a
-handle on them is to view the corresponding .png files using the
+Opal produces a number of opal-*.csv output files. The best way to get
+a handle on them is to view the corresponding .png files using the
 ImageMagick "display" vieweer, or some other command.
 
 opal-linear.csv contains the asset allocation and consumption heat
