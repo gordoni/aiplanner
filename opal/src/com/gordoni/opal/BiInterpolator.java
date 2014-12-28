@@ -21,7 +21,7 @@ package com.gordoni.opal;
 import java.util.Arrays;
 
 import org.apache.commons.math3.analysis.BivariateFunction;
-import org.apache.commons.math3.analysis.interpolation.BicubicSplineInterpolator;
+import org.apache.commons.math3.analysis.interpolation.PiecewiseBicubicSplineInterpolator;
 import org.apache.commons.math3.analysis.interpolation.BivariateGridInterpolator;
 
 class BiInterpolator extends Interpolator
@@ -98,7 +98,7 @@ class BiInterpolator extends Interpolator
 
                 BivariateGridInterpolator interpolator;
                 if (config.interpolation2.equals("spline"))
-                        interpolator = new BicubicSplineInterpolator();
+                        interpolator = new PiecewiseBicubicSplineInterpolator();
                 else
                 {
                         assert(false);

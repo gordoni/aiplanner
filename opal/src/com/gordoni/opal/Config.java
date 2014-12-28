@@ -205,7 +205,7 @@ public class Config
                 // "linear" - linear interpolation using math3 library. For debugging.
                 // "spline" - cubic spline interpolation.
         public String interpolation2 = "spline-linear"; // How to interpolate non-grid 2 dimensional p values.
-                // "spline" - cubic spline interpolation. Gives bad results with annuities.
+                // "spline" - cubic spline interpolation. Unacceptable 6 fold slowdown with annuities.
                 // "linear-spline" - linear in first dimension; spline in second.
                 // "spline-linear" - spline in first dimension; linear in second.
         public String interpolation3 = "spline"; // How to interpolate non-grid 3 dimensional p values.

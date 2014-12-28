@@ -21,7 +21,7 @@ package com.gordoni.opal;
 import java.util.Arrays;
 
 import org.apache.commons.math3.analysis.TrivariateFunction;
-import org.apache.commons.math3.analysis.interpolation.TricubicSplineInterpolator;
+import org.apache.commons.math3.analysis.interpolation.TricubicInterpolator;
 import org.apache.commons.math3.analysis.interpolation.TrivariateGridInterpolator;
 
 class TriInterpolator extends Interpolator
@@ -129,7 +129,7 @@ class TriInterpolator extends Interpolator
 
                 TrivariateGridInterpolator interpolator;
                 if (config.interpolation3.equals("spline"))
-                        interpolator = new TricubicSplineInterpolator();
+		    interpolator = new TricubicInterpolator();
                 else
                 {
                         assert(false);
