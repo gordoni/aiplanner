@@ -25,6 +25,6 @@ if project not in path:
 
 environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
-from oaa.views.utils import run_gen_sample
+from aacalc.views.utils import run_gen_sample
 
 run_gen_sample();

@@ -22,9 +22,10 @@ sudo apt-get install gnuplot-x11
 # Obtaining the Java commons Math 3 library.
 cd aacalc/opal
 # In a web browser visit http://commons.apache.org/proper/commons-math/download_math.cgi and download commons-math3 tar.gz binary library.
+tar -zxf <path-to>/commons-math3-3.4-bin.tar.gz
 mkdir classes
-cd classes
-tar -zxf <path-to>/commons-math3-3.3-bin.tar.gz commons-math3-3.3.jar
+mv commons-math3-3.4/commons-math3-3.4.jar classes
+rm -r commons-math3-3.4/
 
 # Obtain the asset class returns and mortality data files:
 cd aacalc/opal
@@ -41,7 +42,7 @@ Setting up Systematic Investor Toolbox and R packages for performing MVO
 
 # Notes cribbed from: http://www.r-bloggers.com/introduction-to-asset-allocation/
 
-sudo apt-get r-base r-cran-quadprog r-cran-lpsolve
+sudo apt-get install r-base r-cran-quadprog r-cran-lpsolve
 
 # Either:
 sudo R # to instlal in /usr/local
@@ -60,6 +61,7 @@ Building Opal
 -------------
 
 cd aacalc/opal
+mkdir bin
 javac -d bin -cp 'classes/*' src/com/gordoni/opal/*.java
 jar cf classes/opal.jar -C bin .
 

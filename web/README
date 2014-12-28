@@ -17,7 +17,7 @@ sudo apt-get install apache2 apache2-utils libapache2-mod-wsgi python-django mem
 Set up hostname
 ---------------
 
-# This step is optional. It helps if using EC2 to give various
+# This step is optional. It helps when using EC2 to give various
 # instances meaningful names.
 
 # Set up hostname and domain name if not already set:
@@ -57,7 +57,7 @@ Set up Django
 mkdir aacalc.data/project
 touch aacalc.data/project/__init__.py
 cp aacalc/web/example-sitesettings.py aacalc.data/project/sitesettings.py
-[edit] aaclac.data/project/sitesettings.py
+[edit] aacalc.data/project/sitesettings.py
 # Set DEBUG to True to display backtraces in the web browser (displays sensistive data).
 # Set ADMINS to receive email messages.
 # Make SECRETKEY unique.
@@ -69,8 +69,10 @@ aacalc/web/manage.py collectstatic --noinput
 Set up Apache
 -------------
 
+sudo bash
 a2dissite 000-default
 # Select appropriate site.conf.
+# dev1.aacalc.com and dev2.aacalc.com contain sample development Apache conf files.
 cp aacalc/web/sites-available/<sample-site.conf-file> /etc/apache2/sites-available/<site.conf>
 # Edit site.conf appropriately.
 <edit> /etc/apache2/sites-available/<site.conf>

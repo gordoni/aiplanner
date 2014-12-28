@@ -108,7 +108,7 @@ Getting started:
 
   - Obtain the sources:
 
-        sudo apt-get git-core
+        sudo apt-get install git-core
         git clone https://github.com/gordoni/aacalc.git
 
   - If might do developement work:

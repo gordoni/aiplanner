@@ -18,7 +18,7 @@ from datetime import datetime
 from decimal import Decimal
 from django.shortcuts import render
 
-from oaa.views.utils import default_params, OPALServerOverloadedError, run_http
+from aacalc.views.utils import default_params, OPALServerOverloadedError, run_http
 
 def scenario_run(request):
     scenario_dict = request.session.get('scenario', None)
