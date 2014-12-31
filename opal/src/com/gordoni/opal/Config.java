@@ -479,6 +479,26 @@ public class Config
                // Normally produces better results, but can cause unexpected negative infinity utility for a power utility with no floor.
         public String validate_shuffle = "all"; // How to shuffle the returns for a validation run.
         public String validate_draw = "log_normal";
+        // Only bootstrap provides any momentum/reversion to the
+        // mean. This is acceptable.
+        //
+        // Variance ratio tests and Pearson's r test show stock return
+        // (after inflation) reversion to the mean does not currently
+        // appear to be statistically significant, but if it does
+        // occur it has a period of around 20 years. Papers looking
+        // for mean reversion in stock prices are equivical.
+        //
+        // Variance ratio tests and Pearson's r test of gs10 returns
+        // (after inflation) shows momentum with a period of 2-3
+        // years, and for it to be strongly statistically significant,
+        // but not quite significant if you shift everything backwards
+        // 6 months. Appears to be a combination of distinct clusters
+        // of values around different mean values for a given era
+        // giving momentum overall but not within the era, and
+        // Pearson's r statistic getting tricked by limited number of
+        // distinct samples of mean value. Simulating different eras
+        // would be difficult, so we assume all returns are from a
+        // single era.
         public int validate_start_year = 1927;
         public Integer validate_end_year = 2013; // None for until end of data.
 

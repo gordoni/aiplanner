@@ -82,12 +82,6 @@ To do:
 
   - Full scale optimization rather than MVO.
 
-  - Generate synthetic returns with reversion to the mean by first
-    computing a return vs. distance from the mean regression.
-
-  - Experiment with reducing the volatility when performing SDP to
-    account for reversion to the mean.
-
   - Take a health level input E.g. 110% that reduces death rates.
 
   - Handle multiple start dates for Social Security, pensions, annuity
