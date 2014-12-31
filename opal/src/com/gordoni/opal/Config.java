@@ -85,8 +85,10 @@ public class Config
         public double rebalance_time_periods = 1.0;
 
         public String aa_strategy = "sdp";
-                // Asset allocation scheme for generation. "sdp", "file" for validate=datafile, "fixed", "age_in_bonds", "age_minus_10_in_bonds", or "target_date".
+                // Asset allocation scheme for generation. "sdp", "file" for validate=datafile,
+                // "fixed_aa", "fixed", "age_in_bonds", "age_minus_10_in_bonds", or "target_date".
         public Double aa_fixed_stocks = 1.0; // Proportion stocks for fixed asset allocation scheme. Null to search for best fixed aa.
+        public double[] fixed_aa = null; // Fixed_aa holding fractions.
         public double aa_fixed_steps = 100; // Search delta to use when searching for best fixed aa.
         public boolean db_bond = false;
                 // Treat defined benefit as equal to a bond of value defined_benefit * retirement life expectancy in determining asset allocation.

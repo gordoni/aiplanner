@@ -1392,7 +1392,15 @@ class AAMap
         protected double[] generate_aa(String aa_strategy, double age, double[] p)
         {
                 double bonds;
-                if (aa_strategy.equals("fixed"))
+                if (aa_strategy.equals("fixed_aa"))
+                {
+                        assert(config.fixed_aa.length == scenario.normal_assets);
+                        assert(Math.abs(Utils.sum(config.fixed_aa) - 1) < 1e-6);
+                        double[] aa = new double[scenario.asset_classes.size()];
+                        System.arraycopy(config.fixed_aa, 0, aa, 0, config.fixed_aa.length);
+                        return aa;
+                }
+                else if (aa_strategy.equals("fixed"))
                         bonds = 1 - scenario.fixed_stocks;
                 else if (aa_strategy.equals("age_in_bonds"))
                         bonds = age / 100.0;
