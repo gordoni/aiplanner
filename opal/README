@@ -87,20 +87,20 @@ Examples:
     aa_strategy='age_in_bonds' vw_strategy='retirement_amount' vw_percentage=0.04 -e defined_benefit=10000 -e floor=20000
                              - Monte Carlo simulation with $10k Social Security and failure consuming less than $20k
 
-    utility_retire  = True   - only report performance metrics post retirement
+    utility_retire=True      - only report performance metrics post retirement
                                PROBABLY WANT  TO SPECIFY THIS FLAG
                                without this flag, and without floor or public assistance,
                                zero consumption prior creates negative infinities which result in zero metrics
 
-    sex = 'male'
-    sex2 = 'female'          - simulate couple
-    start_age = 25
-    start_age2 = 25
-    retirement_age = 65      - retirement age relative to first person
+    sex='male'
+    sex2='female'            - simulate couple
+    start_age=25
+    start_age2=25
+    retirement_aged =65      - retirement age relative to first person
 
-    start_tp = 100000        - start with $100k
-    accumulation_rate = 1000 - annual contribution $500
-    accumulation_ramp = 1.07 - contributions growing by 7% per year
+    start_tp=100000          - start with $100k
+    accumulation_rate=1000   - annual contribution $500
+    accumulation_ramp=1.07   - contributions growing by 7% per year
 
     floor=20000              - floor consumption level for time weighted and non-time weighted metrics and pre-retirement if not utility_retire
 
@@ -119,6 +119,9 @@ Examples:
     utility_eta=3.0          - CRRA utility with gamma of 3.0
     utility_join=True utility_eta=3.0 utility_eta_2=1.0 utility_join_required=30000 utility_join_desired=10000 utility_join_slope_ratio=0.1
                              - 3 part utility function
+
+    prefix='../test/opal'    - output results to files ../test/opal-*; ../test directory must already exist
+                               ABSOLUTE PATHS ARE NOT SUPPORTED
 
     skip_*                   - skip various stages of the program, see Config.java
 
