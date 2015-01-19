@@ -386,7 +386,7 @@ public class HistReturns
                                 {
                                         int i = (year - initial_year) * 12 + month;
                                         assert(i >= (int) Math.round(12.0 / time_periods));
-                                        if (i < cpi_index.size())
+                                        if (!nominal || i < cpi_index.size())
                                         {
                                                 double bond_sale_price = bond_npv(annual_rate, old_rate, maturity - 1.0 / time_periods);
                                                 double cpi_d;
