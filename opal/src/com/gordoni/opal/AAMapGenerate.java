@@ -919,20 +919,11 @@ public class AAMapGenerate extends AAMap
                         income += p[scenario.ria_index];
                 if (scenario.nia_index != null)
                         income += p[scenario.nia_index];
+                double wealth = p[scenario.tp_index] + income;
                 double inc_pct = 0;
-                if (income > 0)
-                        inc_pct = income / (p[scenario.tp_index] + income);
-                double pct;
-                if (scenario.vw_strategy.equals("vpw"))
-                {
-                        assert(config.generate_time_periods == 1);
-                        if (age - config.retirement_age >= config.vw_years)
-                                pct = 1;
-                        else
-                                pct = config.vw_rate * Math.pow(1 + config.vw_rate, config.vw_years - (age - config.retirement_age) - 1) / (Math.pow(1 + config.vw_rate, config.vw_years - (age - config.retirement_age)) - 1);
-                }
-                else
-                        pct = scenario.vw_percent;
+                if (wealth > 0)
+                    inc_pct = income / wealth;
+
                 int period = (int) Math.round((age - config.start_age) * config.generate_time_periods);
                 double le;
                 if (scenario.vw_strategy.equals("rmd"))
@@ -959,9 +950,36 @@ public class AAMapGenerate extends AAMap
                 le = Math.max(le, config.vw_le_min);
                 double life_pct = Math.min(1 / le, 1);
 
+                double pct;
+                if (scenario.vw_strategy.equals("merton"))
+                {
+                        if (config.vw_merton_nu == 0)
+                        {
+                                pct = life_pct;
+                        }
+                        else
+                        {
+                                double merton_le = le * config.vw_merton_le_factor;
+                                pct = config.vw_merton_nu * (1 + income * merton_le / wealth) / (1 - Math.exp(- config.vw_merton_nu * merton_le));
+                                        // Is it appropriate to use a fixed le when le is variable?
+                                        // Should really discount future income.
+                                pct -= inc_pct;
+                        }
+                }
+                else if (scenario.vw_strategy.equals("vpw"))
+                {
+                        assert(config.generate_time_periods == 1);
+                        if (age - config.retirement_age >= config.vw_years)
+                                pct = 1;
+                        else
+                                pct = config.vw_rate * Math.pow(1 + config.vw_rate, config.vw_years - (age - config.retirement_age) - 1) / (Math.pow(1 + config.vw_rate, config.vw_years - (age - config.retirement_age)) - 1);
+                }
+                else
+                        pct = scenario.vw_percent;
+
                 if (scenario.vw_strategy.equals("amount") || scenario.vw_strategy.equals("retirement_amount"))
                         return 0;
-                else if (scenario.vw_strategy.equals("percentage") || scenario.vw_strategy.equals("vpw"))
+                else if (scenario.vw_strategy.equals("percentage") || scenario.vw_strategy.equals("merton") || scenario.vw_strategy.equals("vpw"))
                         return Math.min(pct + inc_pct, 1);
                 else if (scenario.vw_strategy.equals("rmd") || scenario.vw_strategy.equals("life") || scenario.vw_strategy.equals("discounted_life"))
                         return Math.min(life_pct + inc_pct, 1);
