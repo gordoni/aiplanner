@@ -741,8 +741,12 @@ public class Returns implements Cloneable
                                 for (int a = 0; a < aa_valid; a++)
                                 {
                                         result[a] = mean[a] + std_dev[a] * result[a];
-                                        if (log_normal)
-                                                result[a] = mean[a] + (Math.exp(result[a]) - log_normal_mean[a]) / log_normal_std_dev[a] * std_dev[a];
+                                        if (log_normal) {
+                                                if (std_dev[a] > 0)
+                                                        result[a] = mean[a] + (Math.exp(result[a]) - log_normal_mean[a]) / log_normal_std_dev[a] * std_dev[a];
+                                                else
+                                                        result[a] = mean[a];
+                                        }
                                         else if (skew_normal)
                                                 if (new_returns[y][a] < 0)
                                                         result[a] = 1 / (1 - result[a]) - 1;

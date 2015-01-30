@@ -94,7 +94,7 @@ public class Config
                 // Treat defined benefit as equal to a bond of value defined_benefit * retirement life expectancy in determining asset allocation.
         public boolean savings_bond = false;
                 // Treat future savings as equal to a bond in determining asset allocation.
-        public boolean vbond_discounted = false; // Use consume_discount_rate discounted life expectancy when computing db_bond and savings_bond.
+        public boolean vbond_discounted = false; // Use vbond_discount_rate discounted life expectancy when computing db_bond and savings_bond.
         public double vbond_discount_rate = 0.0; // Discount rate to use if discounting db_bond and savings_bond income.
         public double stock_bias = 0.0; // Bias to apply to stocks to improve random_block_size > 1 results due to momentum and reversion to the mean.
 
