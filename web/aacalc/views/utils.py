@@ -118,7 +118,7 @@ default_params = {
     'utility_bequest_consume': Decimal(50000),
     #'donate_inherit_discount_rate_pct': Decimal(15),
     'advanced_well_being': False,
-    'consume_discount_rate_pct': Decimal('3.0'),
+    'consume_discount_rate_pct': Decimal('1.5'),
     'upside_discount_rate_pct': Decimal('10.0'),
     #'public_assistance': Decimal(10000),
     #'public_assistance_phaseout_rate_pct': Decimal(50),
