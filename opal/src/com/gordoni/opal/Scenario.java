@@ -848,7 +848,7 @@ public class Scenario
                         double pct_prev = 0;
                         double pct_curr = 0;
                         int ple = 0;
-                        for (double pct_level : Arrays.asList(0.5, 0.8, 0.9, 0.95, 0.98, 0.99))
+                        for (double pct_level : Arrays.asList(0.05, 0.1, 0.2, 0.5, 0.8, 0.9, 0.95, 0.98, 0.99))
                         {
                                 for (; ple < stats.alive.length; ple++)
                                 {
