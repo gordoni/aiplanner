@@ -402,12 +402,12 @@ public class VitalStats
                         {
                                 dying = alive * death_period;
                                 alive -= dying;
-                                if (alive_array != null)
-                                        alive_array[index + 1] = alive * discount;
                                 if (dying_array != null)
                                         dying_array[index] = dying * discount * Math.pow(1 + r, - 0.5 / time_periods);
-                                avg_alive[index + 1] = alive * discount;
                                 discount *= Math.pow(1 + r, - 1.0 / time_periods);
+                                if (alive_array != null)
+                                        alive_array[index + 1] = alive * discount;
+                                avg_alive[index + 1] = alive * discount;
                                 index++;
                         }
                         death_period = 0;
