@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% comment %}
+
+AACalc - Asset Allocation Calculator
+Copyright (C) 2009, 2011-2015 Gordon Irlam
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+{% endcomment %}
+
+{% block title %}Simple Rules of Thumb for Investing{% endblock %}
+
+{% block content %}
+
+<div class="doc">
+
+<h1>Simple Rules of Thumb for Investing</h1>
+
+<p>
+Perhaps less well known than Markowitz's modern portfolio theory (MPT)
+is the subsequent work of Merton and Samuelson. This is a shame
+because while MPT only concerns itself with optimizing investing in a
+single time period, <a href="http://en.wikipedia.org/wiki/Merton%27s_portfolio_problem">Merton's
+portfolio model</a> concerns itself with optimizing over time, where
+it is possible to change asset allocation and consumption in response
+to portfolio performance. This is far closer to the problem faced by
+most investors. Unfortunately the math involved is quite complex. I've
+been trying to derive some very simple rules of thumb for stock/bond
+asset allocation and consumption planning using Merton's portfolio
+model and the current returns environment as a guide. Here is what I
+came up with:
+</p>
+
+<div class="bubble">
+<p>
+stocks percent of portfolio = 50% with future income treated like bonds = 50% * (1 + If / W)
+<br>
+(but not to exceed your risk tolerance)
+</p>
+
+<p>
+annual retirement portfolio consumption = W / e
+</p>
+</div>
+
+<p>
+both evaluated each year, where:
+</p>
+
+<div>
+<p>
+If = future income (expected value of future defined benefits and
+retirement savings contributions without any discounting for
+simplicity; will often be equal to annual Social Security multiplied
+by life expectancy)
+<br>
+W = portfolio size
+<br>
+e = remaining life expectancy
+</p>
+</div>
+
+<p>
+There is a lot of simplification to get this far, but empirically
+these rules appear to stand up well to simulated testing. The
+certainty equivalent retirement income (CE) is the constant amount of
+income received over retirement that an individual would be neutral to
+receiving compared to the uneven uncertain amount they expect to
+receive using the given strategy. For one reasonable
+accumulation/decumulation lifecycle scenario (male born 1950;
+accumulating $500/year starting at age 25 growing by 7% real/year;
+retiring age 65 Social Security $15,000; coefficient of relative risk
+aversion 4; subjective discount rate 3%; historical stock/bond data
+from Shiller 1927-2013 massaged to 4.5%/0.5% real 20%/10% stdev with
+returns chosen at random (no autocorrelations)) the CE was:
+
+<div class="bubble">
+<pre>                               CE     CE less $15,000 Social Security
+age in bonds/4% rule         $20,964       $5,964
+simple rules                 $25,390      $10,390 (74% better)
+SDP (theoretical maximum)    $25,676      $10,676 (79% better)</pre>
+</div>
+
+<p>
+In other words for this scenario the simple rules delivered close to
+the theoretical maximum, and substantially more than age in bonds/4%
+rule (for the age in bonds rule future income was not treated like
+bonds).
+</p>
+
+<hr>
+
+<p>
+The rest of this article explains how the two rules were derived.
+</p>
+
+<p>
+Model assumptions:
+</p>
+
+<div class="bubble">
+<p>
+stocks: 4.5% real geometric, 6.5% real arithmetic, 20% standard deviation
+<br>
+bonds: 0.5% real geometric, 1.0% real arithmetic, 10% standard deviation
+<br>
+covariance: 0.0, i.e. independent
+</p>
+</div>
+
+<p>
+No taxes are assumed, such as for savings in an IRA or 401k. Leverage
+is not assumed to be available.
+</p>
+
+<p>
+Consider for a moment a constant relative risk averse utility function
+with a coefficient of relative risk aversion, gamma, of 4. Merton
+provides a simple formula for the optimal stock proportion assuming
+bonds are risk free:
+</p>
+
+<div>
+<p>
+total stocks percent = (stock return - bond return) / (stock stdev ^ 2 * gamma)
+<br>
+= (6.5% - 1.0%) / (20% ^ 2 * 4)
+<br>
+= 34%
+</p>
+</div>
+
+<p>
+Note that it is the difference between stock and bond returns that
+matters. As a result, provided they are roughly the same for both
+stocks and bonds, management expenses don't enter into the picture.
+</p>
+
+<p>
+Two problems. Bonds aren't risk free. This is especially true of bond
+funds which try to maintain a constant maturity. Computing the optimal
+asset allocation in this case requires the use of matrix algebra, as
+shown by this <a href="/static/docs/simple_rules-merton_solution.R">R
+script</a>. The script solves for the risk free rate at which the risk
+free holdings are zero, so that stocks plus bonds equals 100%. Second
+gamma might not be 4. Running the script with different values for
+gamma produces the following table:
+</p>
+
+<div>
+<pre class="bubble">gamma  total stocks percent
+  1        130%
+  2         75%
+  3         57%
+  4         48%
+  5         42%</pre>
+</div>
+
+<p>
+What does gamma mean? A dollar at consumption level C/2 is 2^gamma
+times more valuable than consumption of a dollar at C. Most investors
+probably have a gamma of 3 or 4. If you have exceeded your required
+and desired consumption levels, and are spending on philanthropic
+projects gamma might be 0.5 or even lower. For most investors though a
+total stocks percent of 50% would seem reasonable.
+</p>
+
+<p>
+Most investor's already hold substantial virtual bond like assets in
+the form of expected Social Security payments and even future planned
+retirement savings contributions. These offset the need to hold bonds
+in the investment portfolio, increasing the amount of stocks that need
+to be held. Setting:
+</p>
+
+<div class="bubble">
+<p>
+stocks percent of portfolio = 50% * (1 + If / W)
+</p>
+</div>
+
+<p>
+results in:
+</p>
+
+<div class="bubble">
+<p>
+total stocks percent = stocks percent of portfolio * W / (W + If)
+<br>
+= 50% * (W + If) / (W + If)
+</br>
+= 50%
+</p>
+</div>
+
+<p>
+as required.
+</p>
+
+<p>
+For many investors stocks percent of portfolio is likely to
+significantly exceed their risk tolerance, and quite possibly exceed
+100%. Indeed if If > W, which will be true for most investors until at
+least close to retirement age, then stocks percent of portfolio >
+100%. Note that the If / W term could explain rising glide paths late
+in retirement when the planned life expectancy has been exceeded.
+</p>
+
+<p>
+The ability to short is limited. If shorting is not allowed this has
+the effect of increasing stocks when stocks is less than 100% to
+compensate. Conversely if future income is less volatile than bonds
+this will reduce stocks. Also in an ideal world future income should
+be discounted over time at about the bond rate reducing stocks. On
+balance 50% seems like a reasonable rule of thumb, but there are
+clearly limits to it.
+</p>
+
+<p>
+Consumption is trickier. Merton provides a formula for optimal
+consumption but it depends upon life expectancy being fixed. I
+attempted to modify it to handle a stochastic lifespan:
+</p>
+
+<div class="bubble">
+<p>
+annual retirement portfolio consumption = nu * (W + Ifa * e * ef) / (1 - exp(- nu * e * ef)) - Ifa
+</p>
+</div>
+
+where:
+
+<div class="bubble">
+<p>
+Ifa = annual future expected income
+ef = a life expectancy scaling factor to account for stochastic life span (1.5 was found to be a good value)
+nu = 0.00942 for the model when gamma is 4 and no subjective time discounting is being performed
+</p>
+</div>
+
+<p>
+I am being lazy in not discounting estimated future income. I can get
+away with this because the discount rate is small. If nu is small
+enough, and life expectancy is fixed, the optimal consumption is W /
+e. In reality we should consume more because the portfolio experiences
+growth over time (ignoring withdrawals), but we should consume less to
+set aside funds for the possibility that we live longer than our life
+expectancy. On balance it is thought these two largely cancel out and
+the simple rule, W / e, seems to work quite well.
+</p>
+
+<p>
+A more sophisticated approach of using the complex formula was tried,
+but while it performed 3% better for large portfolios it performed 4%
+worse for small portfolios (where there was a shorting
+constraint). Lacking a consistent advantage for the complex formula, I
+elected to use the simple formula, W / e. (Using VPW is another
+possibility. If you get the parameters right, it performed 1% better
+than the simple formula for affluent and constrained investors
+alike. W / max(e, 8) was also found to be a contender: 3% better for
+the affluent, 1% better for the constrained.)
+</p>
+
+<p>
+These two rules are very simple, but they have strong theoretical
+underpinnings, and they work well empirically. Like all rules of thumb
+there are limits. These limits are likely to be hit when gamma is not
+a constant but drops as consumption becomes satiated, if real interest
+rates ever rise significantly and we are no longer able to ignore the
+need for time discounting of future income, or there is interest in
+leaving a bequest. In these cases it may be better to perform
+stochastic dynamic programming (SDP) to compute the optimal asset
+allocation and consumption.
+</p>
+
+</div>
+
+{% endblock %}
