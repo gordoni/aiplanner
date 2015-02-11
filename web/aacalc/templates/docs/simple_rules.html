@@ -43,24 +43,20 @@ model and the current returns environment as a guide. Here is what I
 came up with:
 </p>
 
-<div class="bubble">
-<p>
+<p class="bubble">
 stocks percent of portfolio = 50% with future income treated like bonds = 50% * (1 + If / W)
 <br>
 (but not to exceed your risk tolerance)
-</p>
-
-<p>
+<br>
+<br>
 annual retirement portfolio consumption = W / e
 </p>
-</div>
 
 <p>
 both evaluated each year, where:
 </p>
 
-<div>
-<p>
+<p class="bubble">
 If = future income (expected value of future defined benefits and
 retirement savings contributions without any discounting for
 simplicity; will often be equal to annual Social Security multiplied
@@ -70,7 +66,6 @@ W = portfolio size
 <br>
 e = remaining life expectancy
 </p>
-</div>
 
 <p>
 There is a lot of simplification to get this far, but empirically
@@ -86,12 +81,10 @@ aversion 4; subjective discount rate 3%; historical stock/bond data
 from Shiller 1927-2013 massaged to 4.5%/0.5% real 20%/10% stdev with
 returns chosen at random (no autocorrelations)) the CE was:
 
-<div class="bubble">
-<pre>                               CE     CE less $15,000 Social Security
+<pre class="bubble">                               CE     CE less $15,000 Social Security
 age in bonds/4% rule         $20,964       $5,964
 simple rules                 $25,390      $10,390 (74% better)
 SDP (theoretical maximum)    $25,676      $10,676 (79% better)</pre>
-</div>
 
 <p>
 In other words for this scenario the simple rules delivered close to
@@ -99,8 +92,6 @@ the theoretical maximum, and substantially more than age in bonds/4%
 rule (for the age in bonds rule future income was not treated like
 bonds).
 </p>
-
-<hr>
 
 <p>
 The rest of this article explains how the two rules were derived.
@@ -110,15 +101,13 @@ The rest of this article explains how the two rules were derived.
 Model assumptions:
 </p>
 
-<div class="bubble">
-<p>
+<p class="bubble">
 stocks: 4.5% real geometric, 6.5% real arithmetic, 20% standard deviation
 <br>
 bonds: 0.5% real geometric, 1.0% real arithmetic, 10% standard deviation
 <br>
 covariance: 0.0, i.e. independent
 </p>
-</div>
 
 <p>
 No taxes are assumed, such as for savings in an IRA or 401k. Leverage
@@ -132,15 +121,13 @@ provides a simple formula for the optimal stock proportion assuming
 bonds are risk free:
 </p>
 
-<div>
-<p>
+<p class="bubble">
 total stocks percent = (stock return - bond return) / (stock stdev ^ 2 * gamma)
 <br>
 = (6.5% - 1.0%) / (20% ^ 2 * 4)
 <br>
 = 34%
 </p>
-</div>
 
 <p>
 Note that it is the difference between stock and bond returns that
@@ -159,14 +146,12 @@ gamma might not be 4. Running the script with different values for
 gamma produces the following table:
 </p>
 
-<div>
 <pre class="bubble">gamma  total stocks percent
   1        130%
   2         75%
   3         57%
   4         48%
   5         42%</pre>
-</div>
 
 <p>
 What does gamma mean? A dollar at consumption level C/2 is 2^gamma
@@ -185,25 +170,21 @@ in the investment portfolio, increasing the amount of stocks that need
 to be held. Setting:
 </p>
 
-<div class="bubble">
-<p>
+<p class="bubble">
 stocks percent of portfolio = 50% * (1 + If / W)
 </p>
-</div>
 
 <p>
 results in:
 </p>
 
-<div class="bubble">
-<p>
+<p class="bubble">
 total stocks percent = stocks percent of portfolio * W / (W + If)
 <br>
 = 50% * (W + If) / (W + If)
 </br>
 = 50%
 </p>
-</div>
 
 <p>
 as required.
@@ -234,21 +215,19 @@ consumption but it depends upon life expectancy being fixed. I
 attempted to modify it to handle a stochastic lifespan:
 </p>
 
-<div class="bubble">
-<p>
+<p class="bubble">
 annual retirement portfolio consumption = nu * (W + Ifa * e * ef) / (1 - exp(- nu * e * ef)) - Ifa
 </p>
-</div>
 
 where:
 
-<div class="bubble">
-<p>
+<p class="bubble">
 Ifa = annual future expected income
+<br>
 ef = a life expectancy scaling factor to account for stochastic life span (1.5 was found to be a good value)
+<br>
 nu = 0.00942 for the model when gamma is 4 and no subjective time discounting is being performed
 </p>
-</div>
 
 <p>
 I am being lazy in not discounting estimated future income. I can get
