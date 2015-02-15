@@ -222,7 +222,7 @@ class ScenarioBaseForm(forms.Form):
             raise ValidationError('Invalid spouse/partner.')
         if cleaned_data['utility_join_desired'] < Decimal('0.002') * cleaned_data['utility_join_required']:
             # Prevent singular matrix when solve in UtilityJoinSlope.java.
-            raise ValidationError('Desired consumption too small. Increae desired consumption.')
+            raise ValidationError('Desired consumption too small. Increase desired consumption.')
         if cleaned_data['withdrawal'] == 0:
             raise ValidationError('Zero annual retirement withdrawal amount')
         if cleaned_data['inherit'] and cleaned_data['utility_method'] == 'floor_plus_upside' and cleaned_data['utility_eta_2'] <= 1:
