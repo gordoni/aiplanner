@@ -220,7 +220,7 @@ class ScenarioBaseForm(forms.Form):
         dob2 = cleaned_data.get('dob2')
         if sex2 == None and dob2 != None or sex2 != None and dob2 == None:
             raise ValidationError('Invalid spouse/partner.')
-        if cleaned_data['utility_join_desired'] < 0.002 * cleaned_data['utility_join_required']:
+        if cleaned_data['utility_join_desired'] < Decimal('0.002') * cleaned_data['utility_join_required']:
             # Prevent singular matrix when solve in UtilityJoinSlope.java.
             raise ValidationError('Desired consumption too small. Increae desired consumption.')
         if cleaned_data['withdrawal'] == 0:
