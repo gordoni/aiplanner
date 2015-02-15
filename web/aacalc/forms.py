@@ -86,7 +86,7 @@ class ScenarioBaseForm(forms.Form):
         min_value=1)
     utility_join_desired = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'p_input'}),
-        min_value=200)  # Prevent singular matrix when solve in UtilityJoinSlope.java.
+        min_value=0)
     risk_tolerance = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'percent_input'}))
     vw_amount = forms.BooleanField(required=False)
@@ -220,6 +220,9 @@ class ScenarioBaseForm(forms.Form):
         dob2 = cleaned_data.get('dob2')
         if sex2 == None and dob2 != None or sex2 != None and dob2 == None:
             raise ValidationError('Invalid spouse/partner.')
+        if cleaned_data['utility_join_desired'] < 0.002 * cleaned_data['utility_join_required']:
+            # Prevent singular matrix when solve in UtilityJoinSlope.java.
+            raise ValidationError('Desired consumption too small. Increae desired consumption.')
         if cleaned_data['withdrawal'] == 0:
             raise ValidationError('Zero annual retirement withdrawal amount')
         if cleaned_data['inherit'] and cleaned_data['utility_method'] == 'floor_plus_upside' and cleaned_data['utility_eta_2'] <= 1:
