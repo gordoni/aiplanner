@@ -325,7 +325,21 @@ public class Scenario
                 load_mvo_ef(s);
         }
 
-    public double dump_utility(Utility utility, String name, double max, double c_start) throws IOException
+        public double metric_normalize(MetricsEnum metric, double metric_sm, double age)
+        {
+                metric_sm /= ss.generate_stats.metric_divisor(metric, age);
+                if (Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(metric))
+                        return metric_sm;
+                if (config.utility_epstein_zin)
+                        return utility_consume.inverse_utility(metric_sm);
+                if (Arrays.asList(MetricsEnum.CONSUME, MetricsEnum.COMBINED).contains(metric))
+                        return utility_consume_time.inverse_utility(metric_sm);
+                if (metric == MetricsEnum.INHERIT)
+                        return utility_inherit.inverse_utility(metric_sm);
+                return metric_sm;
+        }
+
+        public double dump_utility(Utility utility, String name, double max, double c_start) throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-utility-" + name + ".csv"));
 
@@ -422,17 +436,18 @@ public class Scenario
                         double age_period = i + config.start_age * config.generate_time_periods;
                         for (int step = 0; step < config.gnuplot_steps + 1; step++)
                         {
+                                double age = age_period / config.generate_time_periods;
                                 double curr_pf = (config.gnuplot_steps - step) * tp_max / config.gnuplot_steps;
                                 double[] p = slice.clone();
                                 p[tp_index] = curr_pf;
                                 MapElement fpb = map.lookup_interpolate(p, i);
-                                //String metric = f5f.format(fpb.metric_sm);
+                                double metric_normalized = metric_normalize(success_mode_enum, fpb.metric_sm, age);
                                 double[] aa = fpb.aa;
-                                String aa_str = stringify_aa(fpb.aa);
+                                String aa_str = stringify_aa(aa);
                                 double annuitizable = fpb.spend - fpb.consume;
-                                out.print(f2f.format(age_period / config.generate_time_periods));
-                                out.print("," + f3f.format(curr_pf));
-                                out.print("," /* + metric */);
+                                out.print(f2f.format(age));
+                                out.print("," + f2f.format(curr_pf));
+                                out.print("," + f2f.format(metric_normalized));
                                 out.print("," + ((returns == null) ? "" : f4f.format(expected_return(aa, returns))));
                                 out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(aa, returns))));
                                 // Annuitization may be greater than 100% because first_payout may contribute to consume.
@@ -1197,20 +1212,14 @@ public class Scenario
                         map_precise = AAMap.factory(this, config.aa_strategy, returns_generate);
                         MapElement fpb = map_precise.lookup_interpolate(start_p, (int) Math.round((config.validate_age - config.start_age) * config.generate_time_periods));
                         String metric_str;
-                        double metric_sm = fpb.metric_sm / ss.generate_stats.metric_divisor(success_mode_enum, config.start_age);
-                        if (!Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(success_mode_enum))
+                        double metric_normalized = metric_normalize(success_mode_enum, fpb.metric_sm, config.start_age);
+                        if (Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(success_mode_enum))
                         {
-                                if (config.utility_epstein_zin)
-                                        metric_sm = utility_consume.inverse_utility(metric_sm);
-                                else if (Arrays.asList(MetricsEnum.CONSUME, MetricsEnum.COMBINED).contains(success_mode_enum))
-                                        metric_sm = utility_consume_time.inverse_utility(metric_sm);
-                                else if (success_mode_enum == MetricsEnum.INHERIT)
-                                        metric_sm = utility_inherit.inverse_utility(metric_sm);
-                                metric_str = Double.toString(metric_sm);
+                                metric_str = f2f.format(metric_normalized * 100) + "%";
                         }
                         else
                         {
-                                metric_str = f2f.format(metric_sm * 100) + "%";
+                                metric_str = Double.toString(metric_normalized);
                         }
                         double[] aa = new double[normal_assets];
                         for (int a = 0; a < aa.length; a++)

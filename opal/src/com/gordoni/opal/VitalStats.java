@@ -428,7 +428,7 @@ public class VitalStats
                 }
         }
 
-        public double metric_divisor(MetricsEnum metric, int age)
+        public double metric_divisor(MetricsEnum metric, double age)
         {
                 if (metric != MetricsEnum.INHERIT)
                         return 1;
