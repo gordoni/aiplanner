@@ -82,6 +82,21 @@ To do:
 
   - Full scale optimization rather than MVO.
 
+  - Possibly support sticky market parameters (current value depends
+    on prior years value): volatily, correlations, inflation, interest
+    rate, etc. Sticky volatility doesn't look all that
+    promising. Ability to predict volatility on an annual basis is
+    probably 20-40%. See a 10% gain in metrics for expected versus
+    unexpected 200% volatility. If occurs 25% of the time, net gain
+    would only be 0.5-1%. Suspect stock-bond correlation is always
+    low, so little advantage except if have other asset
+    classes. Sticky inflation might influence nominal bond returns and
+    SPIA prices. Sticky interest rates might influence bond returns
+    and SPIA prices. Usually probably doesn't influence bond returns
+    much, the one exception being the present regime, in which nominal
+    interest rates can't fall much lower, so bond returns are at best
+    only likely to be weakly positive.
+
   - Take a health level input E.g. 110% that reduces death rates.
 
   - Handle multiple start dates for Social Security, pensions, annuity
