@@ -173,6 +173,11 @@ So doing:
 
     -e ret_resample=None -e "validate_draw='bootstrap'" -e ret_bootstrap_block_size=1
 
-in conjunction with say -e utility_retire=True then the generated
-metric should match the combined simulation metric, to the limit of
-the finite num_sequences_generate sample size.
+then the generated metric should match the combined simulation metric,
+to the limit of the finite num_sequences_generate sample size.
+
+When doing this you need to ensure there are no taxes because only an
+approximate solution is generated in the presence of taxes.
+
+You might also need to increase map_max_factor to improve the accuracy
+of the calculations for large portfolio sizes.
