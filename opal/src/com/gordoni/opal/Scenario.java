@@ -1494,7 +1494,7 @@ public class Scenario
                 {
                         assert(config.consume_discount_rate <= config.upside_discount_rate);
                                 // Ensures able to add upside utility to floor utility without exceeding u_inf.
-                        assert(config.utility_age <= (config.utility_retire ? config.retirement_age : config.start_age));
+                        assert(config.utility_age <= (config.utility_retire ? Math.max(config.start_age, config.retirement_age) : config.start_age));
                                 // Ditto.
                 }
                 assert(!config.utility_epstein_zin || (success_mode_enum == MetricsEnum.COMBINED)); // Other success modes not Epstein-Zinized.
