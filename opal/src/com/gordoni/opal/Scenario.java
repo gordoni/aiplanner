@@ -1490,10 +1490,13 @@ public class Scenario
                 }
                 assert(config.max_borrow == 0.0 || !config.borrow_aa.equals(config.fail_aa));
                 assert(config.validate_time_periods >= config.rebalance_time_periods);
-                assert(!config.utility_join || config.consume_discount_rate <= config.upside_discount_rate);
-                        // Ensures able to add upside utility to floor utility without exceeding u_inf.
-                assert(!config.utility_join || config.utility_age <= config.start_age);
-                        // Ditto.
+                if (config.utility_join)
+                {
+                        assert(config.consume_discount_rate <= config.upside_discount_rate);
+                                // Ensures able to add upside utility to floor utility without exceeding u_inf.
+                        assert(config.utility_age <= (config.utility_retire ? config.retirement_age : config.start_age));
+                                // Ditto.
+                }
                 assert(!config.utility_epstein_zin || (success_mode_enum == MetricsEnum.COMBINED)); // Other success modes not Epstein-Zinized.
 
                 // More internal parameters.

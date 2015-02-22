@@ -222,7 +222,7 @@ public class Config
                 // Should probably exceed maximum after tax asset class return, otherwise a winning strategy can be to invest everything in the maximum asset class.
         public double upside_discount_rate = 0.0; // Discount rate to apply to consumption above utility_join_1.
         // No hyperbolic utility. Appers to just be power shifted and scaled, which we do anyway with public assistance.
-        public boolean utility_retire = false; // Whether to compute non-tw/ntw metrics just for retirement, or across the entire lifecycle.
+        public boolean utility_retire = true; // Whether to compute non-tw/ntw metrics just for retirement, or across the entire lifecycle.
         public boolean utility_epstein_zin = false; // Whether to utilize separate risk and time consumption utility functions.
         public String utility_consume_fn = "power"; // Consumption utility function to use. "power", "exponential", "hara", or "linear".
         public boolean utility_join = false; // Whether to join a second power utility to consume utility function.
@@ -292,7 +292,8 @@ public class Config
         public int start_age = 25; // Generate data from this age on.
         public Integer start_age2 = 25; // Initial age of second person in a couple.
         public int validate_age = 25; // Validate and target for this age of first person.
-        public int utility_age = 25; // Age at which the utility function was specified (subsequent ages experience upside discounting).
+        public int retirement_age = 65; // Age at retirement of first person assuming both retire at same age.
+        public int utility_age = 65; // Age at which the utility function was specified (subsequent ages experience upside discounting).
         public double[] cw_schedule = null; // Contribute / withdraw schedule to use in place of formulaic schedule.  Array of numeric amounts for each time period.
         public double accumulation_rate = 500; // Relative contribution rate. Initial rate of asset accumulation prior to retirement.
         public double accumulation_ramp = 1.07; // Annual ramping factor by which to boost accumulation rate over time.
@@ -461,7 +462,6 @@ public class Config
         public double annuity_healthy = 0.5; // Reduction in death rates to apply at point of annuity purchase when calculating annuity price.
         public double annuity_healthy_decay = 0.9; // Annual decay factor to apply to annuity_healthy in subsequent years.
         public Integer years = null; // Years to run. Set to None to use the full death array length.
-        public int retirement_age = 65; // Age at retirement of first person assuming both retire at same age.
 
         public String target_mode = "rps"; // None not to perform targetting, 'rps' to target search over RPS, or 'rcr' to target search over RCR.
         public List<String> target_schemes = new ArrayList<String>(Arrays.asList("file"));
