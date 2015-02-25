@@ -44,8 +44,6 @@ public class ScenarioSet
 
         public VitalStats generate_stats;
         public VitalStats validate_stats;
-        private VitalStats generate_stats_annuity;
-        private VitalStats validate_stats_annuity;
         public AnnuityStats generate_annuity_stats;
         public AnnuityStats validate_annuity_stats;
 
@@ -105,12 +103,8 @@ public class ScenarioSet
                 generate_stats.compute_stats(config.generate_life_table); // Compute here so we can access death.length.
                 validate_stats = new VitalStats(this, config, hist, config.validate_time_periods);
                 validate_stats.compute_stats(config.validate_life_table);
-                generate_stats_annuity = new VitalStats(this, config, hist, config.generate_time_periods);
-                generate_annuity_stats = new AnnuityStats(this, config, hist, generate_stats_annuity);
-                generate_annuity_stats.compute_stats(config.generate_time_periods, config.annuity_table);
-                validate_stats_annuity = new VitalStats(this, config, hist, config.validate_time_periods);
-                validate_annuity_stats = new AnnuityStats(this, config, hist, validate_stats_annuity);
-                validate_annuity_stats.compute_stats(config.validate_time_periods, config.annuity_table);
+                generate_annuity_stats = new AnnuityStats(this, config, hist, generate_stats, config.generate_time_periods, config.annuity_table);
+                validate_annuity_stats = new AnnuityStats(this, config, hist, validate_stats, config.validate_time_periods, config.annuity_table);
 
                 System.out.println("Parameters:");
                 config.dumpParams();

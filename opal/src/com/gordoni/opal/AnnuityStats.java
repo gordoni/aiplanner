@@ -44,9 +44,7 @@ public class AnnuityStats
         private ScenarioSet ss;
         private Config config;
         private HistReturns hist;
-        private VitalStats vital_stats;
 
-        private double time_periods = Double.NaN;
         private String table = null;
 
         private void dump_rcmt_params() throws IOException
@@ -91,7 +89,29 @@ public class AnnuityStats
                 load_rcmt();
         }
 
-        private void pre_compute_annuity_le(VitalStats vital_stats)
+        private Map<Double, Double> nominal_yield_curve = null;
+
+        private void hqm()
+        {
+                nominal_yield_curve = new HashMap<Double, Double>();
+
+                for (double maturity = 0.5; maturity <= 100.0; maturity += 0.5)
+                {
+                        double sum_nominal_rate = 0;
+                        int matches = 0;
+                        for (String k : hist.hqm.keySet())
+                        {
+                                if (k.matches(config.annuity_nominal_yield_curve))
+                                {
+                                        sum_nominal_rate += hist.hqm.get(k).get(maturity);
+                                        matches++;
+                                }
+                        }
+                        nominal_yield_curve.put(maturity, sum_nominal_rate / matches);
+                }
+        }
+
+        private void pre_compute_annuity_le(VitalStats vital_stats, double time_periods)
         {
                 if (config.tax_rate_annuity == 0)
                         return;
@@ -107,6 +127,7 @@ public class AnnuityStats
 
         public double rcmt_get(double maturity)
         {
+                maturity = Math.round(maturity * 2) / 2.0; // Quotes are semi-annual.
                 maturity = Math.max(0, maturity);
                 maturity = Math.min(maturity, 30);
                 return Math.pow(1 + real_yield_curve.get(maturity) / 2, 2) - 1; // Treasury quotes are semi-annual values.
@@ -114,23 +135,16 @@ public class AnnuityStats
 
         public double hqm_get(double maturity)
         {
+                maturity = Math.round(maturity * 2) / 2.0;
                 maturity = Math.max(0.5, maturity);
-                maturity = Math.min(maturity, 30); // Data goes up to 100, but cap because bonds not readily available.
-                double nominal_rate = 0;
-                int matches = 0;
-                for (String k : hist.hqm.keySet())
-                {
-                        if (k.matches(config.annuity_nominal_yield_curve))
-                        {
-                                nominal_rate += hist.hqm.get(k).get(maturity);
-                                matches++;
-                        }
-                }
-                return Math.pow(1 + nominal_rate / matches / 2, 2) - 1; // Treasury quotes are semi-annual values.
+                maturity = Math.min(maturity, 100); // Might want to cap at 30 because longer bonds not readily available.
+                return Math.pow(1 + nominal_yield_curve.get(maturity) / 2, 2) - 1; // Treasury quotes are semi-annual values.
         }
 
-        private void pre_compute_annuity_price(VitalStats vital_stats)
+        private void pre_compute_annuity_price(VitalStats vital_stats, double time_periods)
         {
+                assert(config.sex2 == null);
+
                 this.synthetic_real_annuity_price = new double[vital_stats.dying.length];
                 this.synthetic_nominal_annuity_price = new double[vital_stats.dying.length];
                 this.period_real_annuity_price = new double[vital_stats.dying.length];
@@ -142,49 +156,28 @@ public class AnnuityStats
 
                 for (int i = 0; i < vital_stats.alive.length - 1; i++)
                 {
-                        Double[] annuitant_death = vital_stats.death.clone();
-                        Double[] period_death = vital_stats.death.clone();
-                        for (int j = 0; j < period_death.length; j++)
+                        Double[] annuitant_death = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age), config.start_age + i, true);
+                        Double[] period_death = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age) - i, config.start_age + i, true);
+                        int annuitant_alive_len = (int) Math.round((annuitant_death.length - config.start_age) * config.annuity_time_periods) + 1;
+                        double[] annuitant_alive = new double[annuitant_alive_len];
+                        double[] period_alive = new double[annuitant_alive_len];
+                        vital_stats.pre_compute_alive_dying(annuitant_death, annuitant_alive, null, null, null, config.annuity_time_periods, 0);
+                        vital_stats.pre_compute_alive_dying(period_death, period_alive, null, null, null, config.annuity_time_periods, 0);
+                        int first_index = (int) Math.round(i * config.annuity_time_periods / time_periods);
+                        double ra_price = 0;
+                        double na_price = 0;
+                        double period_ra_price = 0;
+                        double period_na_price = 0;
+                        for (int j = 0;; j++)
                         {
-                                assert(config.sex2 == null);
-                                double maturity = (j - i) / time_periods - config.start_age;
-                                double good_health_discount = 1;
-                                if (maturity >= 0)
-                                {
-                                        if (config.annuity_contract_years.equals("aer2005_08"))
-                                        {
-                                                assert(config.annuity_table.equals("iam2012-basic-period"));
-                                                List<Double> aer2005_08 = config.sex.equals("male") ? hist.soa_aer2005_08_m : hist.soa_aer2005_08_f;
-                                                double contract_length = Math.min(maturity, aer2005_08.size() - 1);
-                                                good_health_discount = aer2005_08.get((int) contract_length);
-                                        }
-                                        else if (config.annuity_contract_years.equals("healthy_decay"))
-                                        {
-                                                good_health_discount = 1 - config.annuity_healthy * Math.pow(config.annuity_healthy_decay, maturity);
-                                        }
-                                        else
-                                        {
-                                                assert(config.annuity_contract_years.equals("none"));
-                                        }
-                                }
-                                annuitant_death[j] = good_health_discount * annuitant_death[j];
-                                double rate = vital_stats.mortality_projection(config.sex, (int) (j / time_periods));
-                                double cohort_to_cohort = Math.pow(1 - rate, - i / time_periods); // Back up earlier projection in VitalStats.get().
-                                period_death[j] = Math.min(cohort_to_cohort * good_health_discount * period_death[j], 1); // Values j < i don't matter so long as valid.
-                        }
-                        double[] annuitant_alive = new double[vital_stats.alive.length];
-                        double[] period_alive = new double[vital_stats.alive.length];
-                        vital_stats.pre_compute_alive_dying(annuitant_death, annuitant_alive, null, null, null, time_periods, 0);
-                        vital_stats.pre_compute_alive_dying(period_death, period_alive, null, null, null, time_periods, 0);
-                        double ra_price = config.annuity_payout_immediate * annuitant_alive[i];
-                        double na_price = config.annuity_payout_immediate * annuitant_alive[i];
-                        double period_ra_price = config.annuity_payout_immediate * period_alive[i];
-                        double period_na_price = config.annuity_payout_immediate * period_alive[i];
-                        for (int j = i + 1; j < vital_stats.alive.length; j++)
-                        {
-                                double maturity = (j - i) / time_periods;
-                                double avg_alive = annuitant_alive[j];
-                                double period_avg_alive = period_alive[j];
+                                double maturity = config.annuity_payout_delay / 12 + j / config.annuity_time_periods;
+                                double d_index = first_index + maturity * config.annuity_time_periods;  // bucket is age nearest.
+                                int index = (int) (d_index);
+                                double fract = d_index % 1;
+                                if (index + 1 >= annuitant_alive.length)
+                                        break;
+                                double avg_alive = (1 - fract) * annuitant_alive[index] + fract * annuitant_alive[index + 1];
+                                double period_avg_alive = (1 - fract) * period_alive[index] + fract * period_alive[index + 1];
                                 double real_rate;
                                 if (config.annuity_real_yield_curve == null)
                                         real_rate = config.annuity_real_rate;
@@ -213,10 +206,10 @@ public class AnnuityStats
                         double age = config.start_age + i / time_periods;
                         double real_mwr = config.annuity_real_mwr1 + (age - config.annuity_mwr_age1) * (config.annuity_real_mwr2 - config.annuity_real_mwr1) / (config.annuity_mwr_age2 - config.annuity_mwr_age1);
                         double nominal_mwr = config.annuity_nominal_mwr1 + (age - config.annuity_mwr_age1) * (config.annuity_nominal_mwr2 - config.annuity_nominal_mwr1) / (config.annuity_mwr_age2 - config.annuity_mwr_age1);
-                        this.synthetic_real_annuity_price[i] = ra_price / (annuitant_alive[i] * time_periods * real_mwr);
-                        this.synthetic_nominal_annuity_price[i] = na_price / (annuitant_alive[i] * time_periods * nominal_mwr);
-                        this.period_real_annuity_price[i] =  period_ra_price / (period_alive[i] * time_periods * real_mwr);
-                        this.period_nominal_annuity_price[i] = period_na_price / (period_alive[i] * time_periods * nominal_mwr);
+                        this.synthetic_real_annuity_price[i] = ra_price / (annuitant_alive[first_index] * config.annuity_time_periods * real_mwr);
+                        this.synthetic_nominal_annuity_price[i] = na_price / (annuitant_alive[first_index] * config.annuity_time_periods * nominal_mwr);
+                        this.period_real_annuity_price[i] =  period_ra_price / (period_alive[first_index] * config.annuity_time_periods * real_mwr);
+                        this.period_nominal_annuity_price[i] = period_na_price / (period_alive[first_index] * config.annuity_time_periods * nominal_mwr);
                         double real_annuity_price_male[] = hist.real_annuity_price.get(config.annuity_real_quote + "-male");
                         double real_annuity_price_female[] = hist.real_annuity_price.get(config.annuity_real_quote + "-female");
                         if (config.sex.equals("male") && real_annuity_price_male != null && (int) age < real_annuity_price_male.length)
@@ -244,30 +237,19 @@ public class AnnuityStats
                 }
         }
 
-        public AnnuityStats(ScenarioSet ss, Config config, HistReturns hist, VitalStats vital_stats) throws IOException, InterruptedException
+        public AnnuityStats(ScenarioSet ss, Config config, HistReturns hist, VitalStats vital_stats, double time_periods, String table) throws IOException, InterruptedException
         {
                 this.ss = ss;
                 this.config = config;
                 this.hist = hist;
-                this.vital_stats = vital_stats;
+                // vital_stats and time_periods only used for scaling the resulting annuity_le and annuity_price arrays.
+                this.table = table;
 
                 if (config.annuity_real_yield_curve != null)
                         rcmt();
-        }
+                hqm();
 
-        public void compute_stats(double time_periods, String table)
-        {
-                if (config.sex2 != null)
-                        return;
-
-                this.time_periods = time_periods;
-
-                boolean regenerated = vital_stats.compute_stats(table);
-
-                if (regenerated)
-                {
-                        pre_compute_annuity_le(vital_stats);
-                        pre_compute_annuity_price(vital_stats);
-                }
+                pre_compute_annuity_le(vital_stats, time_periods);
+                pre_compute_annuity_price(vital_stats, time_periods);
         }
 }

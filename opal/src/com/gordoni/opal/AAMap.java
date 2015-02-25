@@ -352,6 +352,9 @@ class AAMap
                         random = new Random(random.nextInt() + bucket);
                 }
 
+                double first_payout_fract = 1 / returns.time_periods - config.annuity_payout_delay / 12;
+                assert(first_payout_fract >= 0);
+
                 for (int s = 0; s < num_paths; s++)
                 {
                         double p = (scenario.tp_index == null ? 0 : bucket_p[scenario.tp_index]);
@@ -502,7 +505,7 @@ class AAMap
                                         consume_annual -= real_annuitize;
                                         double ria_purchase = real_annuitize * (1 - config.tax_rate_annuity) / annuity_stats.real_annuity_price[period + y];
                                         ria += ria_purchase;
-                                        first_payout += config.annuity_payout_immediate * ria_purchase;
+                                        first_payout += first_payout_fract * ria_purchase;
                                 }
                                 double nominal_annuitize = 0;
                                 if (scenario.nia_index != null)
@@ -511,14 +514,14 @@ class AAMap
                                         consume_annual -= nominal_annuitize;
                                         double nia_purchase = nominal_annuitize * (1 - config.tax_rate_annuity) / annuity_stats.nominal_annuity_price[period + y];
                                         nia += nia_purchase;
-                                        first_payout += config.annuity_payout_immediate * nia_purchase;
+                                        first_payout += first_payout_fract * nia_purchase;
                                 }
                                 if ((scenario.ria_index != null || scenario.nia_index != null) && config.tax_rate_annuity != 0)
                                 {
                                     assert(!(generate && scenario.nia_index == null)); // Require nia if SPIA taxation.
                                         double nia_tax_credit = (real_annuitize + nominal_annuitize) * config.tax_rate_annuity / annuity_stats.annuity_le[period + y];
                                         nia += nia_tax_credit;
-                                        first_payout += config.annuity_payout_immediate * nia_tax_credit;
+                                        first_payout += first_payout_fract * nia_tax_credit;
                                         if (!generate && config.tax_annuity_credit_expire) // Can't simulate expiration of tax credit when generate.
                                         {
                                                 int expire = period + y + annuity_stats.annuity_le[period + y];

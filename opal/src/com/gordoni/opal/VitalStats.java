@@ -144,7 +144,7 @@ public class VitalStats
                 }
         }
 
-        private double get_birth_year(int age)
+        public double get_birth_year(int age)
         {
                 Calendar now = Calendar.getInstance();
                 if (config.birth_year == null)
@@ -181,13 +181,19 @@ public class VitalStats
                 return death_cohort;
         }
 
-        public double mortality_projection(String sex, int age)
+        public double mortality_projection(String sex, int age, boolean age_nearest)
         {
                 if (config.mortality_projection_method.equals("g2"))
-                        if ("male".equals(sex))
-                                return (hist.soa_projection_g2_m.get(age) + hist.soa_projection_g2_m.get(age + 1)) / 2; // Nearest to attained age.
+                        if (age_nearest)
+                                if ("male".equals(sex))
+                                        return hist.soa_projection_g2_m.get(age);
+                                else
+                                        return hist.soa_projection_g2_f.get(age);
                         else
-                                return (hist.soa_projection_g2_f.get(age) + hist.soa_projection_g2_f.get(age + 1)) / 2;
+                                if ("male".equals(sex))
+                                        return (hist.soa_projection_g2_m.get(age) + hist.soa_projection_g2_m.get(age + 1)) / 2;
+                                else
+                                        return (hist.soa_projection_g2_f.get(age) + hist.soa_projection_g2_f.get(age + 1)) / 2;
                 else if (config.mortality_projection_method.equals("rate"))
                         return config.mortality_reduction_rate;
                 else
@@ -197,15 +203,28 @@ public class VitalStats
 
         private Double[] nearest_to_attained(Double[] nearest)
         {
-                Double[] attained = new Double[nearest.length - 1];
-                for (int i = 0; i < attained.length; i++)
+                Double[] attained = new Double[nearest.length];
+                for (int i = 0; i < attained.length - 1; i++)
                         attained[i] = (nearest[i] + nearest[i + 1]) / 2;
+                attained[attained.length - 1] = nearest[attained.length - 1];
 
                 return attained;
         }
 
-        private Double[] get(String table, String sex, int age)
+        private Double[] attained_to_nearest(Double[] attained)
         {
+                Double[] nearest = new Double[attained.length];
+                nearest[0] = attained[0];
+                for (int i = 1; i < nearest.length; i++)
+                        nearest[i] = (attained[i - 1] + attained[i]) / 2;
+
+                return nearest;
+        }
+
+        public Double[] get_q(String table, String sex, double birth_year, int age, boolean age_nearest_birthday)
+        {
+                boolean age_nearest = false;
+                boolean annuity_table = false;
                 Double[] death_cohort = null;
                 if ("immortal".equals(sex) || "immortal".equals(table))
                 {
@@ -224,12 +243,11 @@ public class VitalStats
                 }
                 else
                 {
-                        boolean age_nearest = false;
                         int period_base = 0;
                         Double[] death_period = null;
                         if ("ssa-period".equals(table))
                         {
-                                period_base = 2009;
+                                period_base = 2010;
                                 if ("male".equals(sex))
                                         death_period = hist.ssa_death_m.toArray(new Double[0]);
                                 else if ("female".equals(sex))
@@ -249,6 +267,7 @@ public class VitalStats
                         {
                                 age_nearest = true;
                                 period_base = 2000;
+                                annuity_table = true;
                                 if ("male".equals(sex))
                                         death_period = hist.soa_iam2000_unloaded_death_m.toArray(new Double[0]);
                                 else if ("female".equals(sex))
@@ -258,6 +277,7 @@ public class VitalStats
                         {
                                 age_nearest = true;
                                 period_base = 2000;
+                                annuity_table = true;
                                 if ("male".equals(sex))
                                         death_period = hist.soa_iam2000_loaded_death_m.toArray(new Double[0]);
                                 else if ("female".equals(sex))
@@ -267,35 +287,47 @@ public class VitalStats
                         {
                                 age_nearest = true;
                                 period_base = 2012;
+                                annuity_table = true;
                                 if ("male".equals(sex))
                                         death_period = hist.soa_iam2012_basic_death_m.toArray(new Double[0]);
                                 else if ("female".equals(sex))
                                         death_period = hist.soa_iam2012_basic_death_f.toArray(new Double[0]);
                         }
                         assert(death_period != null);
-                        if (age_nearest)
-                                death_period = nearest_to_attained(death_period);
-                        double birth_year = get_birth_year(age);
                         death_cohort = new Double[death_period.length];
                         for (int i = 0; i < death_cohort.length; i++)
-                                death_cohort[i] = Math.min(death_period[i] * Math.pow(1 - mortality_projection(sex, i), i - (period_base - birth_year)), 1.0);
+                        {
+                                double mp = mortality_projection(sex, i, age_nearest);
+                                death_cohort[i] = Math.min(death_period[i] * Math.pow(1 - mp, i - (period_base - birth_year)), 1.0);
+                        }
                 }
-                if (!config.mortality_experience.equals("none"))
+                if (annuity_table && !config.annuity_mortality_experience.equals("none"))
                 {
                         List<Double> aer = null;
-                        if (config.mortality_experience.equals("aer2005_08"))
+                        if (config.annuity_mortality_experience.equals("aer2005_08"))
                                 aer = sex.equals("male") ? hist.soa_aer2005_08_m : hist.soa_aer2005_08_f;
                         else
                                 assert(false);
-                        for (int i = age; i < death_cohort.length; i++)
+                        for (int i = 0; i < death_cohort.length; i++)
                         {
-                                double contract_length = Math.min(i - age, aer.size() - 1);
-                                death_cohort[i] = Math.min(death_cohort[i] * aer.get((int) contract_length), 1.0);
+                                double contract_length = i - age;
+                                contract_length = Math.max(contract_length, 0);
+                                contract_length = Math.min(contract_length, aer.size() - 1);
+                                double ae_ratio;
+                                ae_ratio = aer.get((int) contract_length);
+                                if (!age_nearest && contract_length < aer.size())
+                                        ae_ratio = (ae_ratio + aer.get((int) contract_length + 1)) / 2;
+                                death_cohort[i] = Math.min(death_cohort[i] * ae_ratio, 1.0);
                         }
                 }
                 for (int i = 0; i < death_cohort.length; i++)
                         death_cohort[i] *= (1 - config.mortality_load);
-                return death_cohort;
+                if (age_nearest_birthday && !age_nearest)
+                        return attained_to_nearest(death_cohort);
+                else if (!age_nearest_birthday && age_nearest)
+                        return nearest_to_attained(death_cohort);
+                else
+                        return death_cohort;
         }
 
         private Double[] pre_compute_couple_death(Double[] death1, Double[] death2)
@@ -381,22 +413,24 @@ public class VitalStats
                 if (bounded_sum_avg_alive != null)
                         len = Math.max(len, bounded_sum_avg_alive.length - 1);
 
-                double[] avg_alive = new double[(int) Math.round (len * time_periods) + 1];
+                double[] avg_alive = new double[len + 1];
                 avg_alive[0] = alive * discount;
 
                 double death_period = 0.0;
                 int index = 0;
-                for (int y = 0; y < len; y++)
+                boolean done = false;
+                for (int y = 0; !done; y++)
                 {
+                        double q = death[Math.min(config.start_age + y, death.length - 1)];
                         if (time_periods <= 1.0)
                         {
-                                death_period = 1.0 - (1.0 - death_period) * (1.0 - death[Math.min(config.start_age + y, death.length - 1)]);
+                                death_period = 1.0 - (1.0 - death_period) * (1.0 - q);
                                 if ((y + 1) % Math.round(1 / time_periods) != 0)
                                         continue;
                         }
                         else
                         {
-                                death_period = 1.0 - Math.pow(1.0 - death[Math.min(config.start_age + y, death.length - 1)], 1.0 / time_periods);
+                                death_period = 1.0 - Math.pow(1.0 - q, 1.0 / time_periods);
                         }
                         for (int i = 0; i < time_periods; i++)
                         {
@@ -409,6 +443,7 @@ public class VitalStats
                                         alive_array[index + 1] = alive * discount;
                                 avg_alive[index + 1] = alive * discount;
                                 index++;
+                                done = (index + 1 >= avg_alive.length);
                         }
                         death_period = 0;
                 }
@@ -499,14 +534,15 @@ public class VitalStats
 
                 this.table = table;
 
-                Double[] death1 = get(table, config.sex, config.start_age);
+                double birth_year = get_birth_year(config.start_age);
+                Double[] death1 = get_q(table, config.sex, birth_year, config.start_age, false);
                 if (config.sex2 == null)
                 {
                         pre_compute_stats(death1, death1.length);
                 }
                 else
                 {
-                        Double[] death2 = get(table, config.sex2, config.start_age2);
+                        Double[] death2 = get_q(table, config.sex2, birth_year - (config.start_age2 - config.start_age), config.start_age2, false);
                         joint_compute_stats(death1, death2);
                 }
 

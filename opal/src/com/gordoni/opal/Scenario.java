@@ -852,12 +852,12 @@ public class Scenario
                         boolean iam_aer = table.equals("iam2012-basic-period-aer2005_08");
                         VitalStats stats = new VitalStats(ss, config, hist, 1.0);
                         String keep_method = config.mortality_projection_method;
-                        String keep_experience = config.mortality_experience;
+                        String keep_experience = config.annuity_mortality_experience;
                         config.mortality_projection_method = (table.startsWith("iam2012-basic-period") ? "g2" : "rate"); // Irrelevant for cohort.
-                        config.mortality_experience = (iam_aer ? "aer2005_08" : "none");
+                        config.annuity_mortality_experience = (iam_aer ? "aer2005_08" : "none");
                         stats.compute_stats(iam_aer ? "iam2012-basic-period" : table);
                         config.mortality_projection_method = keep_method;
-                        config.mortality_experience = keep_experience;
+                        config.annuity_mortality_experience = keep_experience;
                         double le = stats.le.get(config.start_age);
                         out.print(table + "," + le);
                         double pct_prev = 0;

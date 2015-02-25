@@ -109,6 +109,7 @@ public class Config
 
         public double annuity_steps = 10000; // Number of annuitization steps. Keep steps small since annuitization can't be undone.
         public boolean annuity_partial = true; // Allow partial annuitization, or make annuitization a one time complete irrevocable decision.
+        public double annuity_time_periods = 12; // Number of times per year to receive annuity payments in the annuity pricing model.
         public int annuity_mwr_age1 = 50; // Age for first Money's Worth Ratio value.
         public int annuity_mwr_age2 = 90; // Age for second Money's Worth Ratio value.
         public boolean annuity_real_synthetic = true; // Whether to use sythetically generated real annuity quotes based on life table.
@@ -140,10 +141,7 @@ public class Config
         public double annuity_nominal_yield_curve_adjust = 0; // Adjustment to apply to yield curve rates.
         public int annuity_nominal_long_years = 30; // Maturity beyond which a lack of bond availability causes rates to be reduced.
         public double annuity_nominal_long_penalty = 0.0; // Amount by which to reduce rates post long_years to reflect lack of bond availability.
-        public double annuity_payout_immediate = 0.5; // Ratio of any immediate first payout of a newly purchased annuity.
-               // 0.0 fails to provide for first 12 months of payments.
-               // 0.5 approximates monthly payments.
-               // 1.0 provides for subsequent 12 months of payments at later ages when high probability of being dead and not-entitled to them.
+        public double annuity_payout_delay = 1.5; // Delay in months until first payout from a newly purchased annuity.
 
         public String safe_aa = "bonds";
                 // Which asset allocation choice to favor when choices are equal, and success is guaranteed.
@@ -288,7 +286,7 @@ public class Config
         public Double start_ria = null; // Starting taxable real annuity annual payout size. Null if not a portfolio dimension.
         public Double start_nia = null; // Starting taxable nominal annuity annual payout size. Null if not a portfolio dimension.
 
-        public Integer birth_year = null; // Year of birth or null to non-deterministically base it on the current date and start_age.
+        public Integer birth_year = null; // Year of birth of first person or null to non-deterministically base it on the current date and start_age.
         public int start_age = 25; // Generate data from this age on.
         public Integer start_age2 = 25; // Initial age of second person in a couple.
         public int validate_age = 25; // Validate and target for this age of first person.
@@ -451,16 +449,10 @@ public class Config
                // "rate" - use mortality_reduction_rate.
         public double mortality_reduction_rate = 0.0; // Annual rate of mortality reduction for converting period life tables to cohort tables.
                // See http://www.ssa.gov/oact/NOTES/as120/LifeTables_Tbl_3.html and SoA projection scale G for choice of value; 0.01 is reasonable.
-        public String mortality_experience = "none"; // Actual/expected mortality experience to apply.
+        public String annuity_mortality_experience = "aer2005_08"; // Actual/expected mortality experience to apply to annuity life tables.
                // "none" - No adjustment.
                // "aer2005_08" - SOA 2005-08 Annuity Experience Report contract year length adjustment starting from start_age/start_age2.
         public double mortality_load = 0.0; // Loading to apply to mortality beyond that contained in table.
-        public String annuity_contract_years = "aer2005_08"; // Method of adjusting annuity death rates to account for low death rates when contract first signed.
-               // "none" - No adjustment.
-               // "aer2005_08" - SOA Annuity Experience Report 2005-08. Requires IAM 2012 for annuity_table.
-               // "healthy_decay" - Apply annuity health and annuity_healthy_decay.
-        public double annuity_healthy = 0.5; // Reduction in death rates to apply at point of annuity purchase when calculating annuity price.
-        public double annuity_healthy_decay = 0.9; // Annual decay factor to apply to annuity_healthy in subsequent years.
         public Integer years = null; // Years to run. Set to None to use the full death array length.
 
         public String target_mode = "rps"; // None not to perform targetting, 'rps' to target search over RPS, or 'rcr' to target search over RCR.
