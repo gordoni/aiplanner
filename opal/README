@@ -94,8 +94,9 @@ Examples:
 
     sex='male'
     sex2='female'            - simulate couple
-    start_age=25
+    start_age=25             - start age for map generation
     start_age2=25
+    validate_age=25          - start age for subsequent Monte Carlo simulation
     retirement_aged =65      - retirement age relative to first person
 
     start_tp=100000          - start with $100k
