@@ -75,6 +75,9 @@ public class Config
                // Old comment (pre-spline value was 1.002): Above 1.01 aa plots start to become pixelated.
         public double annuity_scaling_factor = 1.05; // Successive immediate annuity buckets this much larger.
 
+        public Double consume_max = null; // Estimate of maximum consumption level. Should only need to specify when debugging.
+        public Double tp_max = null; // Estimate of maximum portfolio size. Should only need to specify when debugging.
+
         public double ria_high = 100000; // Maximum taxable real immediate annuity payout.
         public double nia_high = 100000; // Maximum taxable nominal immediate annuity payout.
 
@@ -289,9 +292,9 @@ public class Config
         public Integer birth_year = null; // Year of birth of first person or null to non-deterministically base it on the current date and start_age.
         public int start_age = 25; // Generate data from this age on.
         public Integer start_age2 = 25; // Initial age of second person in a couple.
-        public int validate_age = 25; // Validate and target for this age of first person.
+        public Integer validate_age = null; // Validate and target for this age of first person, start_age if null.
         public int retirement_age = 65; // Age at retirement of first person assuming both retire at same age.
-        public int utility_age = 65; // Age at which the utility function was specified (subsequent ages experience upside discounting).
+        public Integer utility_age = null; // Age at which utility function specified (subsequent ages experience upside discounting), last possible age if null.
         public double[] cw_schedule = null; // Contribute / withdraw schedule to use in place of formulaic schedule.  Array of numeric amounts for each time period.
         public double accumulation_rate = 500; // Relative contribution rate. Initial rate of asset accumulation prior to retirement.
         public double accumulation_ramp = 1.07; // Annual ramping factor by which to boost accumulation rate over time.

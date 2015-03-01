@@ -51,7 +51,7 @@ public class PathMetricsResult
                 if (metric == MetricsEnum.COMBINED && config.utility_epstein_zin)
                         // Epstein-Zin utility can't be estimated by simulating paths. Only the combined metric is Epstein-Zinized.
                         return 0;
-                double div = scenario.ss.validate_stats.metric_divisor(metric, config.validate_age);
+                double div = scenario.ss.validate_stats.metric_divisor(metric, scenario.validate_age);
                 if (div == 0)
                 {
                         assert(means.get(metric) == 0);
@@ -78,7 +78,7 @@ public class PathMetricsResult
         {
                 if (metric == MetricsEnum.JPMORGAN && config.skip_metric_jpmorgan)
                         return 0;
-                double div = scenario.ss.validate_stats.metric_divisor(metric, config.validate_age);
+                double div = scenario.ss.validate_stats.metric_divisor(metric, scenario.validate_age);
                 if (div == 0)
                 {
                         assert(means.get(metric) == 0);
@@ -115,7 +115,7 @@ public class PathMetricsResult
                                 System.out.printf("Metric %-18s %s\n", metric.toString().toLowerCase() + ": ", f7f.format(mean) + " +/- " + f7f.format(std_dev) + flag);
                 }
                 double failure_chance = means.fail_chance() * 100;
-                double failure_length = means.fail_length() * scenario.ss.validate_stats.le.get(config.validate_age);
+                double failure_length = means.fail_length() * scenario.ss.validate_stats.le.get(scenario.validate_age);
                 System.out.printf("%.2f%% chance of failure; %.1f years weighted failure length\n", failure_chance, failure_length);
         }
 }

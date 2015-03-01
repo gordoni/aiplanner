@@ -87,17 +87,12 @@ Examples:
     aa_strategy='age_in_bonds' vw_strategy='retirement_amount' vw_percentage=0.04 -e defined_benefit=10000 -e floor=20000
                              - Monte Carlo simulation with $10k Social Security and failure consuming less than $20k
 
-    utility_retire=True      - only report performance metrics post retirement
-                               PROBABLY WANT  TO SPECIFY THIS FLAG
-                               without this flag, and without floor or public assistance,
-                               zero consumption prior creates negative infinities which result in zero metrics
-
     sex='male'
     sex2='female'            - simulate couple
-    start_age=25             - start age for map generation
+    start_age=25             - start age for map generation and by default subsequent Monte Carlo simulation
     start_age2=25
-    validate_age=25          - start age for subsequent Monte Carlo simulation
-    retirement_aged =65      - retirement age relative to first person
+    retirement_age=65        - retirement age relative to first person
+    birth_year=1990          - birth year of first person; default is the current_year minus start_age
 
     start_tp=100000          - start with $100k
     accumulation_rate=1000   - annual contribution $500
@@ -113,13 +108,19 @@ Examples:
     management_expense=0.001 - Apply 0.1% management expenses to all asset classes.
 
     num_sequences_validate=100000 - 100k Monte Carlo simulations.
+    validate_age=25          - start age for Monte Carlo simulation; default is start_age; also want to set birth_year if fixed validate_age and moving start_age
 
     consume_discount_rate=0.03 upside_discount_rate=0.03
                              - 3% discounting of the future
 
     utility_eta=3.0          - CRRA utility with gamma of 3.0
     utility_join=True utility_eta=3.0 utility_eta_2=1.0 utility_join_required=30000 utility_join_desired=10000 utility_join_slope_ratio=0.1
-                             - 3 part utility function
+                             - floor and upside utility function
+
+    utility_retire=True      - only report performance metrics post retirement
+                               PROBABLY DON'T WANT TO ALTER THIS FLAG
+                               without this flag, and without floor or public assistance,
+                               zero consumption prior to retirement creates negative infinities which result in zero metrics
 
     prefix='../test/opal'    - output results to files ../test/opal-*; ../test directory must already exist
                                ABSOLUTE PATHS ARE NOT SUPPORTED

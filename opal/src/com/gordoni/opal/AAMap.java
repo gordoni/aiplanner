@@ -1129,9 +1129,9 @@ class AAMap
                 int period_offset = (int) Math.round((age - config.start_age) * returns.time_periods);
                 if (config.utility_retire && age < config.retirement_age)
                         first_age = config.retirement_age;
-                int first_period = (int) Math.round((first_age - config.validate_age) * returns.time_periods);
+                int first_period = (int) Math.round((first_age - scenario.validate_age) * returns.time_periods);
                 double u = 0;
-                for (int period = first_period; period < (int) ((scenario.ss.max_years - (config.validate_age - config.start_age)) * returns.time_periods); period++)
+                for (int period = first_period; period < (int) ((scenario.ss.max_years - (scenario.validate_age - config.start_age)) * returns.time_periods); period++)
                 {
                         double u2 = 0;
                         int num_paths = config.max_jpmorgan_paths / num_batches;

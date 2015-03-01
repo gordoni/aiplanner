@@ -40,6 +40,8 @@ public class Scenario
         public Scale[] scale;
         public List<String> asset_classes;
         public List<String> asset_class_names;
+        public int validate_age;
+        public int utililty_age;
         public Double fixed_stocks;
         public Double vw_percent;
         public String vw_strategy;
@@ -635,7 +637,7 @@ public class Scenario
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-pct-" + (change ? "change-" : "") + what + ".csv"));
 
                 double max_pctl = Double.NEGATIVE_INFINITY;
-                double age_period = config.validate_age * config.generate_time_periods;
+                double age_period = validate_age * config.generate_time_periods;
                 for (int i = 0; ; i++)
                 {
                         int values = 0;
@@ -677,7 +679,7 @@ public class Scenario
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-paths.csv"));
 
-                double initial_period = config.validate_age * config.generate_time_periods;
+                double initial_period = validate_age * config.generate_time_periods;
                 for (int pi = 0; pi < config.max_display_paths; pi++)
                 {
                         List<PathElement> path = paths.get(pi);
@@ -1016,7 +1018,7 @@ public class Scenario
                         double failure_chance = retirement_number[i].fail_chance();
                         double failure_length = retirement_number[i].fail_length() * ss.validate_stats.le.get(config.retirement_age);
                         double invutil = 0.0;
-                        invutil = utility_consume.inverse_utility(retirement_number[i].get(MetricsEnum.CONSUME) / ss.validate_stats.metric_divisor(MetricsEnum.CONSUME, config.validate_age));
+                        invutil = utility_consume.inverse_utility(retirement_number[i].get(MetricsEnum.CONSUME) / ss.validate_stats.metric_divisor(MetricsEnum.CONSUME, validate_age));
                         out.print(pf + "," + failure_chance + "," + failure_length + "," + invutil + "\n");
                 }
                 out.close();
@@ -1117,7 +1119,7 @@ public class Scenario
                         {
                                 vw_strategy = vw;
                                 AAMap map_compare = AAMap.factory(this, aa, null);
-                                PathMetricsResult pm = map_compare.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+                                PathMetricsResult pm = map_compare.path_metrics(validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
                                 System.out.printf("Compare %s/%s: %f\n", aa, vw, pm.mean(success_mode_enum));
                         }
                 }
@@ -1137,12 +1139,12 @@ public class Scenario
                                 double left = (2 * low + high) / 3;
                                 fixed_stocks = left;
                                 AAMap map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
-                                PathMetricsResult pm = map_fixed.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+                                PathMetricsResult pm = map_fixed.path_metrics(validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
                                 double left_metric = pm.means.get(success_mode_enum);
                                 double right = (low + 2 * high) / 3;
                                 fixed_stocks = right;
                                 map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
-                                pm = map_fixed.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+                                pm = map_fixed.path_metrics(validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
                                 double right_metric = pm.means.get(success_mode_enum);
                                 if (left_metric < right_metric)
                                         low = left;
@@ -1155,7 +1157,7 @@ public class Scenario
                         fixed_stocks = config.aa_fixed_stocks;
 
                 AAMap map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
-                PathMetricsResult pm = map_fixed.path_metrics(config.validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+                PathMetricsResult pm = map_fixed.path_metrics(validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
 
                 return pm;
         }
@@ -1210,7 +1212,7 @@ public class Scenario
                 {
                         long start = System.currentTimeMillis();
                         map_precise = AAMap.factory(this, config.aa_strategy, returns_generate);
-                        MapElement fpb = map_precise.lookup_interpolate(start_p, (int) Math.round((config.validate_age - config.start_age) * config.generate_time_periods));
+                        MapElement fpb = map_precise.lookup_interpolate(start_p, (int) Math.round((validate_age - config.start_age) * config.generate_time_periods));
                         String metric_str;
                         double metric_normalized = metric_normalize(success_mode_enum, fpb.metric_sm, config.start_age);
                         if (Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(success_mode_enum))
@@ -1226,7 +1228,7 @@ public class Scenario
                         {
                                 aa[a] = fpb.aa[a];
                         }
-                        System.out.println("Age " + config.validate_age + ", Portfolio " + Arrays.toString(fpb.rps));
+                        System.out.println("Age " + validate_age + ", Portfolio " + Arrays.toString(fpb.rps));
                         System.out.println("Consume: " + fpb.consume);
                         System.out.println("Asset allocation: " + Arrays.toString(aa));
                         System.out.println("Real immediate annuities purchase: " + fpb.ria_purchase(this));
@@ -1291,7 +1293,7 @@ public class Scenario
                                         config.rebalance_band_hw = 0.0;
                                 AAMap baseline_map = (config.target_sdp_baseline ? map_loaded : map_compare);
                                 AAMap target_map = (config.target_sdp_baseline ? map_compare : map_loaded);
-                                PathMetricsResult pm = baseline_map.path_metrics(config.validate_age, start_p, config.num_sequences_target, false, 0, returns_target);
+                                PathMetricsResult pm = baseline_map.path_metrics(validate_age, start_p, config.num_sequences_target, false, 0, returns_target);
                                 config.rebalance_band_hw = keep_rebalance_band;
                                 Metrics means = pm.means;
                                 Metrics standard_deviations = pm.standard_deviations;
@@ -1301,7 +1303,7 @@ public class Scenario
                                 double target_rcr = Double.NaN;
                                 if (config.target_mode.equals("rps"))
                                 {
-                                        TargetResult t = target_map.rps_target(config.validate_age, means.get(success_mode_enum), returns_target, config.target_sdp_baseline);
+                                        TargetResult t = target_map.rps_target(validate_age, means.get(success_mode_enum), returns_target, config.target_sdp_baseline);
                                         //map_loaded = t.map;
                                         target_result = t.target_result;
                                         target_tp = t.target;
@@ -1311,7 +1313,7 @@ public class Scenario
                                 {
                                         assert(false);
                                         location_str = null;
-                                        // TargetResult t = target_map.rcr_target(config.validate_age, means.get(success_mode_enum), config.target_sdp_baseline, returns_generate, returns_target, config.target_sdp_baseline);
+                                        // TargetResult t = target_map.rcr_target(validate_age, means.get(success_mode_enum), config.target_sdp_baseline, returns_generate, returns_target, config.target_sdp_baseline);
                                         // //if (!config.target_sdp_baseline)
                                         // //   map_loaded = t.map;
                                         // target_result = t.target_result;
@@ -1364,7 +1366,7 @@ public class Scenario
                                 }
                                 out.close();
                         }
-                        PathMetricsResult pm = map_loaded.path_metrics(config.validate_age, start_p, config.num_sequences_validate, true, config.validate_seed, returns_validate);
+                        PathMetricsResult pm = map_loaded.path_metrics(validate_age, start_p, config.num_sequences_validate, true, config.validate_seed, returns_validate);
                         paths = pm.paths;
                         pm.print();
                         double elapsed = (System.currentTimeMillis() - start) / 1000.0;
@@ -1437,7 +1439,7 @@ public class Scenario
                 if (nia_index != null)
                         ia += start_nia;
                 tp_max_estimate = 0;
-                // The following scaling factors are detrmined empirically to give reasonable matches to the actual values.
+                // The following scaling factors are determined empirically to give reasonable matches to the actual values.
                 if (!config.skip_retirement_number)
                         tp_max_estimate = 2 * Math.max(0, config.floor - config.defined_benefit - ia) * retirement_le;
                 final double return_rate = 1.05;
@@ -1451,6 +1453,11 @@ public class Scenario
                 consume_max_estimate = config.defined_benefit + 2 * tp_max_estimate / retirement_le + ia;
                 tp_max_estimate += config.defined_benefit + ia; // Assume minimal carry over from one period to the next.
                 retirement_number_max_estimate = Math.max(1e-3 * config.floor, (config.floor - config.defined_benefit - ia) * retirement_le);
+                if (config.consume_max != null)
+                    consume_max_estimate = config.consume_max;
+                if (config.tp_max != null)
+                    tp_max_estimate = config.tp_max;
+                assert(consume_max_estimate > 0);
 
                 // Set up the scales.
                 scale = new Scale[start_p.length];
@@ -1469,6 +1476,9 @@ public class Scenario
                 validate_top_bucket = this.scale[tp_index].pf_to_bucket(0.0);
                 success_mode_enum = Metrics.to_enum(config.success_mode);
 
+                validate_age = (config.validate_age == null ? config.start_age : config.validate_age);
+                assert(validate_age >= config.start_age);
+
                 fixed_stocks = config.aa_fixed_stocks;
 
                 vw_strategy = config.vw_strategy;
@@ -1478,7 +1488,7 @@ public class Scenario
                         ss.max_years = config.cw_schedule.length;
 
                 // Sanity checks.
-                assert(config.validate_age < config.start_age + ss.max_years);
+                assert(validate_age < config.start_age + ss.max_years);
                 if (config.ef.equals("none"))
                 {
                         assert(asset_classes.contains(config.safe_aa));
@@ -1494,8 +1504,6 @@ public class Scenario
                 {
                         assert(config.consume_discount_rate <= config.upside_discount_rate);
                                 // Ensures able to add upside utility to floor utility without exceeding u_inf.
-                        assert(config.utility_age <= (config.utility_retire ? Math.max(config.start_age, config.retirement_age) : config.start_age));
-                                // Ditto.
                 }
                 assert(!config.utility_epstein_zin || (success_mode_enum == MetricsEnum.COMBINED)); // Other success modes not Epstein-Zinized.
 
