@@ -1485,9 +1485,6 @@ public class Scenario
                 vw_strategy = config.vw_strategy;
                 vw_percent = config.vw_percentage;
 
-                if (config.cw_schedule != null && ss.max_years > config.cw_schedule.length)
-                        ss.max_years = config.cw_schedule.length;
-
                 // Sanity checks.
                 assert(validate_age < config.start_age + ss.max_years);
                 if (config.ef.equals("none"))
