@@ -249,6 +249,9 @@ public class AnnuityStats
                         rcmt();
                 hqm();
 
+                if (config.sex2 != null)
+                        return;
+
                 pre_compute_annuity_le(vital_stats, time_periods);
                 pre_compute_annuity_price(vital_stats, time_periods);
         }
