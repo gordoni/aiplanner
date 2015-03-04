@@ -154,8 +154,10 @@ public class Config
                 // Irrelevant if tangency_aa is non-null.
         public double ret_risk_free = 0.0; // Real return for risk-free asset class.
         public double ret_borrow = 0.0; // Annual cost rate when portfolio is negative. Also annual cost for cost metric.
-        public double min_safe = 0.0; // Minimum safe_aa holding fraction.
+        public double min_safe_aa = 0.0; // Minimum safe_aa holding fraction.
+        public double min_safe_abs = 0.0; // Minimum safe_aa holding plus annuity values.
         public double min_safe_le = 0.0; // Minimum safe_aa holding plus annuity values divided by then life expectancy.
+        public double min_safe_until_age = 999; // Don't enforce min_safe constraints at or beyond this age.
 
         public int spend_steps = 10000; // Number of portfolio expenditure steps.
 
@@ -295,7 +297,8 @@ public class Config
         public Integer validate_age = null; // Validate and target for this age of first person, start_age if null.
         public int retirement_age = 65; // Age at retirement of first person assuming both retire at same age.
         public Integer utility_age = null; // Age at which utility function specified (subsequent ages experience upside discounting), last possible age if null.
-        public double[] cw_schedule = null; // Contribute / withdraw schedule to use in place of formulaic schedule.  Array of numeric amounts for each time period.
+        public double[] cw_schedule = new double[0]; // Contribute / withdrawal schedule to use in addition to computed plans.
+                // No utility is derived from cw_schedule withdrawals.  Array of numeric amounts for each time period, extended with zeros.
         public double accumulation_rate = 500; // Relative contribution rate. Initial rate of asset accumulation prior to retirement.
         public double accumulation_ramp = 1.07; // Annual ramping factor by which to boost accumulation rate over time.
         public Double withdrawal = null; // Annual retirement consumption amount (includes both defined benefits and investment portfolio).

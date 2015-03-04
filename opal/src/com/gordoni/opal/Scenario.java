@@ -179,7 +179,8 @@ public class Scenario
                                         new_aa[i] = - delta / (normal_assets - 1);
                                 else
                                         new_aa[i] *= 1 - delta / (1 - alloc);
-                if (config.min_safe != 0 || config.min_safe_le != 0)
+                if ((config.min_safe_aa != 0 || config.min_safe_abs != 0 || config.min_safe_le != 0) &&
+                    (config.start_age + period / config.generate_time_periods < config.min_safe_until_age))
                 {
                         // Not entirely satisfying to fully or partially decrement asset class when it was requested that it be incremented,
                         // but this is the simplest approach and it shouldn't affect the underlying asset allocation machinery.
@@ -196,8 +197,8 @@ public class Scenario
                         else
                         {
                                 double min_safe_le = config.min_safe_le * (ss.generate_stats.raw_sum_avg_alive[period] / ss.generate_stats.raw_alive[period]);
-                                min_safe_aa = (min_safe_le - have_safe) / p[tp_index];
-                                min_safe_aa = Math.max(min_safe_aa, config.min_safe);
+                                min_safe_aa = (Math.max(config.min_safe_abs, min_safe_le) - have_safe) / p[tp_index];
+                                min_safe_aa = Math.max(min_safe_aa, config.min_safe_aa);
                                 min_safe_aa = Math.max(0, min_safe_aa);
                                 min_safe_aa = Math.min(1, min_safe_aa);
                         }

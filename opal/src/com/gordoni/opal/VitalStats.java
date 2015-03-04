@@ -155,6 +155,7 @@ public class VitalStats
 
         private Double[] cohort(Map<Integer, List<Double>> cohort_death, double birth_year, int age)
         {
+                birth_year -= 0.5; // Cohort is population born in a given year.
                 int min_year = Integer.MAX_VALUE;
                 int max_year = Integer.MIN_VALUE;
                 for (int year : cohort_death.keySet())

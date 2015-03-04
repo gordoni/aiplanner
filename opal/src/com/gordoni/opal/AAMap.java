@@ -455,46 +455,41 @@ class AAMap
                                 double ria_prev = ria;
                                 double nia_prev = nia;
 
+                                if (period + y < config.cw_schedule.length)
+                                        p += config.cw_schedule[period + y];
+
                                 double amount_annual; // Contribution/withdrawal amount.
                                 boolean retired = period + y >= (config.retirement_age - config.start_age) * returns.time_periods;
                                 boolean compute_utility = !config.utility_retire || retired;
-                                if (config.cw_schedule != null)
+
+                                double income = ria + nia;
+                                if (retired)
                                 {
-                                        spend_annual = config.withdrawal;
-                                        consume_annual = spend_annual;
-                                        amount_annual = config.cw_schedule[period + y] * returns.time_periods;
-                                }
-                                else
-                                {
-                                        double income = ria + nia;
-                                        if (retired)
+                                        income += current_guaranteed_income;
+                                        if (variable_withdrawals)
                                         {
-                                                income += current_guaranteed_income;
-                                                if (variable_withdrawals)
-                                                {
-                                                        // Full investment portfolio amount subject to contrib choice.
-                                                        // Not so for pre-retirement, only amount beyond RCR.
-                                                        spend_annual = p_prev_exc_neg + income;
-                                                }
-                                                else
-                                                {
-                                                        if (!retire)
-                                                        {
-                                                                spend_retirement = scenario.vw_strategy.equals("amount") ? config.withdrawal : income + scenario.vw_percent * p_prev_exc_neg;
-                                                                retire = true;
-                                                        }
-                                                        spend_annual = spend_retirement;
-                                                }
-                                                consume_annual = spend_annual;
-                                                amount_annual = income - consume_annual;
+                                                // Full investment portfolio amount subject to contrib choice.
+                                                // Not so for pre-retirement, only amount beyond RCR.
+                                                spend_annual = p_prev_exc_neg + income;
                                         }
                                         else
                                         {
-                                                spend_annual = config.floor;
-                                                consume_annual = spend_annual + 1e-15 * scenario.consume_max_estimate; // Want to be solvent.
-                                                amount_annual = rcr + income;
-                                                rcr *= rcr_step;
+                                                if (!retire)
+                                                {
+                                                        spend_retirement = scenario.vw_strategy.equals("amount") ? config.withdrawal : income + scenario.vw_percent * p_prev_exc_neg;
+                                                        retire = true;
+                                                }
+                                                spend_annual = spend_retirement;
                                         }
+                                        consume_annual = spend_annual;
+                                        amount_annual = income - consume_annual;
+                                }
+                                else
+                                {
+                                        spend_annual = config.floor;
+                                        consume_annual = spend_annual + 1e-15 * scenario.consume_max_estimate; // Want to be solvent.
+                                        amount_annual = rcr + income;
+                                        rcr *= rcr_step;
                                 }
 
                                 double first_payout = 0;
