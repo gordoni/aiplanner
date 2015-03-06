@@ -162,16 +162,17 @@ def dob_to_age(dob_str_or_age):
     return age
 
 def run_http(request, scenario_dict):
-    response = run_response(request, scenario_dict)
+    response = run_response(request, scenario_dict, False)
     return response
 
-def run_response(request, scenario_dict):
-    dirname = run_dirname(request, scenario_dict)
+def run_response(request, scenario_dict, healthcheck):
+    dirname = run_dirname(request, scenario_dict, healthcheck)
     return display_result(request, dirname, False, scenario_dict)
 
-def run_dirname(request, scenario_dict):
+def run_dirname(request, scenario_dict, healthcheck):
+    prefix = 'healthcheck-' if healthcheck else ''
     umask(0077)
-    dirname = mkdtemp(prefix='', dir=STATIC_ROOT + 'results')
+    dirname = mkdtemp(prefix=prefix, dir=STATIC_ROOT + 'results')
     run_opal(dirname, scenario_dict)
     return dirname
 

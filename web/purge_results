@@ -19,12 +19,14 @@
 # Delete old results directories.
 
 from os import listdir, stat, statvfs
+from os.path import basename
 from time import time
 from shutil import rmtree
 
 keep_free = 0.2  # Keep this much proportion of disk space free.
 keep_ifree = 100000  # Keep this many inodes free.
-delete_time = 30 * 86400  # Delete directories after this long.
+delete_time = 30 * 86400  # Delete normal directories after this long.
+healthcheck_delete_time = 3600  # Delete healthcheck directories after this long.
 keep_time = 3600  # Keep directories around for this long regardless.
 result_dirs = ('/home/ubuntu/aacalc.data/run', '/home/ubuntu/aacalc.data/static/results')
 
@@ -39,10 +41,10 @@ for d in dirs:
   free = float(s.f_bavail) / s.f_blocks
   ifree = s.f_favail
   age = time() - stat(d).st_mtime
-  if free >= keep_free and ifree >= keep_ifree and age < delete_time:
-    break
+  healthcheck = basename(d).startswith('healthcheck-')
 
   if age <= keep_time:
     break
 
-  rmtree(d)
+  if free < keep_free or ifree < keep_ifree or age >= (healthcheck_delete_time if healthcheck else delete_time):
+    rmtree(d)

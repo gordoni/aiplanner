@@ -39,7 +39,7 @@ def le(request):
             scenario_dict['retirement_year'] = 2000 # Hack.
             scenario_dict['consume_discount_rate_pct'] = Decimal('0.0') # Don't want discounted percentiles.
             try:
-                dirname = run_dirname(request, scenario_dict)
+                dirname = run_dirname(request, scenario_dict, False)
             except OPALServerOverloadedError:
                 return render(request, 'notice.html', {
                     'msg' :

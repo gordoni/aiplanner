@@ -28,7 +28,7 @@ def healthcheck(request):
     scenario_dict['dob'] = 65
     scenario_dict['retirement_year'] = 2000 # Hack.
     scenario_dict['consume_discount_rate_pct'] = Decimal('0.0') # Don't want discounted percentiles.
-    dirname = run_dirname(request, scenario_dict)
+    dirname = run_dirname(request, scenario_dict, True)
     le_cohort, le_cohort_healthy, le_period = get_le(dirname)
     assert(17 < float(le_cohort[0]) < 20)
     assert(21 < float(le_cohort_healthy[0]) < 24)
@@ -44,4 +44,4 @@ def healthcheck(request):
     scenario_dict['dob'] = 90
     scenario_dict['p'] = Decimal(100000)
     scenario_dict['retirement_year'] = datetime.utcnow().timetuple().tm_year
-    return run_response(request, scenario_dict)
+    return run_response(request, scenario_dict, True)
