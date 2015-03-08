@@ -123,7 +123,7 @@ public class Config
         public double annuity_real_mwr2 = 1.0; // Money's Worth Ratio associated with synthetic real annuity (NPV less profit and expense) at second age.
         public double annuity_real_rate = 0.02; // Real interest rate/discount rate associated with synthetic real annuity.
         public String annuity_real_yield_curve = null; // Treasury TIPS yield curve to use for synthetic annuity.
-               // Null to use constant annuity_real_rate. Or a date like "04/15/14" (invokes R to interpolate yield curve so marginally slower).
+               // Null to use constant annuity_real_rate. Or a date like "2014-04-15" (invokes R to interpolate yield curve so marginally slower).
                // (Can't use math3 to interpolate because doesn't handle years less than lowest actual year ie. years 0-4).
                // Erroneously assumes the same yield curve will be present throughout time.
         public double annuity_real_yield_curve_adjust = 0; // Adjustment to apply to yield curve rates.

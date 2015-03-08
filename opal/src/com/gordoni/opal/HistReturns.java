@@ -32,8 +32,7 @@ public class HistReturns
 {
         private String data = "data"; // Prefix to use for data files.
 
-        private List<String> search_dirs = Arrays.asList("/private/", "/public/", "/"); // Sub-directories to search for data files.
-            // "/" is only for backwards compatibility. Delete when no longer needed.
+        private List<String> search_dirs = Arrays.asList("/private/", "/public/"); // Sub-directories to search for data files.
 
         public int initial_year;
 
@@ -114,7 +113,7 @@ public class HistReturns
                 for (String dir : search_dirs)
                 {
                         if (new File(data + dir + filename).exists())
-                                return dir + filename;
+                                return data + dir + filename;
                 }
 
                 System.err.println("Data file not found: " + filename);
@@ -126,7 +125,7 @@ public class HistReturns
         {
                 String file = find_subdir(filename);
                 if (file != null)
-                        return new BufferedReader(new FileReader(new File(data + file)));
+                        return new BufferedReader(new FileReader(new File(file)));
                 else
                         return null;
         }
@@ -643,17 +642,20 @@ public class HistReturns
         // http://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/Corp-Yield-Bond-Curve-Papers.aspx
         private void load_hqm(String filename) throws IOException
         {
-                BufferedReader in = buffered_reader(filename);
+                BufferedReader in = buffered_reader("hqm/" + filename);
                 String line = in.readLine();
                 line = in.readLine();
                 line = in.readLine();
-                line = in.readLine();
+                if (line.matches(",*"))  // catdoc xls2csv ommits this line for reasons unknown.
+                         line = in.readLine();
                 String[] years = line.split(",", -1);
                 line = in.readLine();
                 String[] months = line.split(",", -1);
                 line = in.readLine();
                 while ((line = in.readLine()) != null)
                 {
+                    if (line.startsWith("\f"))  // catdoc xls2csv uses formfeed as end of sheet marker.
+                                break;
                         String[] fields = line.split(",", -1);
                         double maturity = Double.parseDouble(fields[0]);
                         for (int i = 2; i < fields.length; i++)
@@ -756,23 +758,19 @@ public class HistReturns
                 soa_projection_g2_f = load_soa_iam2012("soa-projection-g2-female.csv", false);
                 soa_aer2005_08_m = load_soa_aer("soa-aer2005_08-male.csv");
                 soa_aer2005_08_f = load_soa_aer("soa-aer2005_08-female.csv");
-                String dir = find_subdir("incomesolutions.com");
-                if (dir != null)
-                        for (File file : new File(data + "/" + dir).listFiles())
+                String dir;
+                if ((dir = find_subdir("incomesolutions.com")) != null)
+                        for (File file : new File(dir).listFiles())
                                 if (file.getName().endsWith(".csv"))
                                         load_incomesolutions(file.getName());
-                dir = find_subdir("immediateannuities.com");
-                if (dir != null)
-                        for (File file : new File(data + "/" + dir).listFiles())
+                if ((dir = find_subdir("immediateannuities.com")) != null)
+                        for (File file : new File(dir).listFiles())
                                 if (file.isDirectory())
                                         load_immediateannuities(file.getName());
-                load_hqm("hqm/hqm_84_88.csv");
-                load_hqm("hqm/hqm_89_93.csv");
-                load_hqm("hqm/hqm_94_98.csv");
-                load_hqm("hqm/hqm_99_03.csv");
-                load_hqm("hqm/hqm_04_08.csv");
-                load_hqm("hqm/hqm_09_13.csv");
-                load_hqm("hqm/hqm_14_18.csv");
+                if ((dir = find_subdir("hqm")) != null)
+                        for (File file : new File(dir).listFiles())
+                                if (file.getName().endsWith(".csv"))
+                                        load_hqm(file.getName());
                 load_annuity_multiples("irs-pub939-table_v-2013.csv");
                 load_rmd_le("irs-pub590-appendix_c-table_ii-2013.csv");
         }

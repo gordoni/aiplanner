@@ -50,8 +50,10 @@ public class AnnuityStats
         private void dump_rcmt_params() throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-rcmt-params.csv"));
-                out.println("date");
-                out.println(config.annuity_real_yield_curve);
+                out.println("file,date");
+                String dir = hist.find_subdir("rcmt");
+                String fname = config.annuity_real_yield_curve.substring(0, config.annuity_real_yield_curve.indexOf("-"));
+                out.println("\"" + dir + "/" + fname + ".csv\",\"" + config.annuity_real_yield_curve + "\"");
                 out.close();
         }
 
@@ -107,6 +109,7 @@ public class AnnuityStats
                                         matches++;
                                 }
                         }
+                        assert(matches > 0);
                         nominal_yield_curve.put(maturity, sum_nominal_rate / matches);
                 }
         }
