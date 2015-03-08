@@ -1,3 +1,6 @@
 #!/bin/sh
 
+/home/ubuntu/aacalc/web/fetch_yield_curve -t nominal -d /home/ubuntu/aacalc/opal/data/public/hqm
+/home/ubuntu/aacalc/web/fetch_yield_curve -t real -d /home/ubuntu/aacalc/opal/data/public/rcmt
+
 /home/ubuntu/aacalc/web/gen_sample

@@ -1,0 +1,179 @@
+#!/usr/bin/python
+
+from argparse import ArgumentParser
+from lxml import etree
+from os import devnull, remove, rename, stat
+from os.path import isfile
+from re import match
+from subprocess import call, check_call, check_output
+from time import sleep
+from urllib import quote
+
+class Fetcher:
+
+    last_year = 2050  # Prevent runaway process in event of bug.
+
+    def last_check_file(self):
+        return self.dir + '/last_check.' + ('nominal' if self.nominal else 'real')
+
+    def curl_cmd(self, year, last_check):
+
+        cmd = ['curl', '-s', '-f']
+        if last_check:
+            cmd.extend(('-z', self.last_check_file()))
+        cmd.append(self.url(year))
+
+        return cmd
+
+    def __init__(self, dir):
+
+        self.dir = dir
+
+        last_file_year = self.start_year
+        for year in range(self.start_year, self.last_year, self.year_step):
+            if isfile(self.csv_file(year)):
+                 last_file_year = year
+
+        # Missing files.
+        for year in range(self.start_year, last_file_year + self.year_step, self.year_step):
+            if not isfile(self.csv_file(year)):
+                self.fetch_year(year, False)
+
+        open(self.last_check_file() + '.tmp', 'w').close()
+        sleep(10)  # Prevent clock skew problems.
+
+        self.fetch_year(last_file_year, True)
+        for year in range(last_file_year + self.year_step, self.last_year, self.year_step):
+            if not self.fetch_year(year, False):
+                break
+
+        rename(self.last_check_file() + '.tmp', self.last_check_file())
+
+def fetcher_factory(nominal, dir):
+
+    if nominal:
+        return NominalFetcher(dir)
+    else:
+        return RealFetcher(dir)
+
+class NominalFetcher(Fetcher):
+
+    nominal = True
+
+    start_year = 1984
+    year_step = 5
+
+    url_base = 'http://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Documents/'
+    url_file_part = 'hqm_%(start)02d_%(end)02d'
+
+    def file_part(self, year):
+        return self.url_file_part % {'start' : year % 100, 'end' : (year + self.year_step - 1) % 100}
+
+    def url(self, year):
+        return self.url_base + self.file_part(year) + '.xls'
+
+    def csv_file(self, year):
+        return self.dir + '/' + self.file_part(year) + '.csv'
+
+    def xls_file(self, year):
+        return self.dir + '/' + self.file_part(year) + '.xls.tmp'
+
+    def fetch_year(self, fetch_year, last_check):
+
+        csv_filename = self.csv_file(fetch_year)
+        xls_filename = self.xls_file(fetch_year)
+
+        out = open(xls_filename, 'w')
+        status = call(self.curl_cmd(fetch_year, last_check), stdout=out)
+        out.close()
+
+        if status != 0 or stat(xls_filename).st_size == 0:
+            remove(xls_filename)
+            return False
+
+        out = open(csv_filename + '.tmp', 'w')
+        DEVNULL = open(devnull, 'w')  # Discard "Format a4 is redefined" warnings.
+        check_call(('xls2csv', '-q1', '-g5', xls_filename), stdout=out, stderr=DEVNULL)
+        out.close()
+        DEVNULL.close()
+
+        remove(xls_filename)
+
+        rename(csv_filename + '.tmp', csv_filename)
+
+        return True
+
+class RealFetcher(Fetcher):
+
+    nominal = False
+
+    start_year = 2003
+    year_step = 1
+
+    url_base = 'http://data.treasury.gov/feed.svc/DailyTreasuryRealYieldCurveRateData?$filter='
+    url_args = 'year(NEW_DATE) eq %(year)d'
+
+    def url(self, year):
+        return self.url_base + quote(self.url_args % {'year' : year})
+
+    def csv_file(self, year):
+        return self.dir + '/' + str(year) + '.csv'
+
+    def fetch_year(self, fetch_year, last_check):
+
+        s = check_output(self.curl_cmd(fetch_year, last_check))
+
+        if s == '':
+            return False
+
+        years = {}
+        rates = {}
+
+        xml = etree.fromstring(s)
+        entries = False
+        for entry in xml.iterfind('{*}entry'):
+            entries = True
+            properties = entry.find('{*}content').find('{*}properties')
+            date = properties.find('{*}NEW_DATE').text
+            date = date[:date.index('T')]
+            rates[date] = {}
+            for child in properties.iter():
+                m = match('^{.*}TC_(\d+)YEAR$', child.tag)
+                if m:
+                    year = m.group(1)
+                    rate = child.text
+                    if rate != None:
+                        years[year] = True
+                        rates[date][year] = rate
+
+        if not entries:
+            return False
+
+        years = years.keys()
+        years.sort(key = lambda s: float(s))
+
+        filename = self.csv_file(fetch_year)
+        out = open(filename + '.tmp', 'w')
+
+        print >>out, '# R-CMT yield curve'
+        print >>out, 'DATE,' + ','.join(years)
+        for date in sorted(rates.keys()):
+            print >>out, date + ',' + ','.join(rates[date].get(year, '') for year in years)
+
+        out.close()
+
+        rename(filename + '.tmp', filename)
+
+        return True
+
+if __name__ == '__main__':
+
+    parser = ArgumentParser()
+    parser.add_argument('-t', '--type', choices=('nominal', 'real'), required=True)
+    parser.add_argument('-d', '--directory', required=True)
+    args = parser.parse_args()
+
+    dir = args.directory
+    nominal = (args.type == 'nominal')
+
+    fetcher_factory(nominal, dir)
