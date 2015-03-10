@@ -24,9 +24,21 @@ def le(request):
 
     errors_present = False
 
-    le_cohort = ['-'] * 6
-    le_cohort_healthy = ['-'] * 6
-    le_period = ['-'] * 6
+    le_labels = [
+        '5th',
+        '10th',
+        '20th',
+        '50th',
+        '80th',
+        '90th',
+        '95th',
+        '98th',
+        '99th',
+    ]
+
+    le_cohort = ['-'] * len(le_labels)
+    le_cohort_healthy = ['-'] * len(le_labels)
+    le_period = ['-'] * len(le_labels)
 
     if request.method == 'POST':
 
@@ -53,18 +65,6 @@ later time and try your query then.'''
     else:
 
         le_form = LeForm({'sex': 'male', 'dob': 65})
-
-    le_labels = [
-        '5th',
-        '10th',
-        '20th',
-        '50th',
-        '80th',
-        '90th',
-        '95th',
-        '98th',
-        '99th',
-    ]
 
     index = 1 + le_labels.index('95th')
     le_cohort[index] = '<span style="font-weight:bold;">' + le_cohort[index] + '</span>'
