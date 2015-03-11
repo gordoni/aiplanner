@@ -797,7 +797,9 @@ class YieldCurve:
                         break
                 if yield_curve_date == None:
                     raise self.NoData
-                yield_curve_rates = tuple(float(v) for v in yield_curve_rates)
+                assert(len(yield_curve_years) == len(yield_curve_rates))
+                yield_curve_years = tuple(y for y, r in zip(yield_curve_years, yield_curve_rates) if r != '' )
+                yield_curve_rates = tuple(float(r) for r in yield_curve_rates if r != '')
 
         except IOError:
 
