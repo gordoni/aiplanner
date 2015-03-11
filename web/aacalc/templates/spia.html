@@ -46,7 +46,8 @@ quote you have already received is a good deal.
 </p>
 
 <p>
-Quotes need not be actuarially fair. Costs, profit margins, and taxes
+Quotes need not be actuarially fair. Costs including bond default
+costs, profit margins, and taxes
 all reduce the Money's Worth Ratio (MWR). On the other hand the MWR
 may increase as a result of insurance companies investing premiums in
 assets more risky than the assumed bonds.
@@ -61,6 +62,8 @@ Please correct the errors in red below:
 </p>
 {{ spia_form.non_field_errors }}
 {% endif %}
+
+<h2>Annuitants</h2>
 
 Sex: {{ spia_form.sex }}
 Age: {{ spia_form.age_years }} years {{ spia_form.age_months }} months
@@ -80,33 +83,61 @@ Age: {{ spia_form.age2_years }} years {{ spia_form.age2_months }} months
 <br />
 Payout when one annuitant is dead: {{ spia_form.joint_payout_percent }}%
 {{ spia_form.joint_payout_percent.errors }}
-<br />
-<br />
-Life expectancy:
-<br />
+
+<h2>Life expectancy</h2>
+
 {{ spia_form.table }}
 {{ spia_form.table.errors }}
 <br />
-For the annuitant life table how to adjust for contract duration:
+<div class="small">
+Annuitant life table is Society of Actuaries 2012 Individual Annuity
+Mortality Basic Table with Projection Scale G2.
+General population life table is U.S. Social Security Administration
+Actuarial Study No. 120.
+</div>
+<br />
+When using the annuitant life table how to adjust for contract duration:
 {{ spia_form.ae }}
+<span class="small">
+Adjustment based on Society of Actuaries 2005-08 Individual Payout
+Annuity Experience Report contract years actual/expected rates.
+</span>
 {{ spia_form.ae.errors }}
 <br />
-For the adjusted life table enter the additional years of life
+<br />
+When using the adjusted life table enter the additional years of life
 expected for the primary annuitant: {{ spia_form.le }}
+<span class="small">
+Adjusted life table applies a constant factor to the q<sub>x</sub>
+values of the general population life table in order to reproduce the
+specified life expectancy.
+</span>
 {{ spia_form.le.errors }}
-<br />
-<br />
+
+<h2>Interest rate</h2>
+
 Quote date (determines interest rate yield curve):
 {{ spia_form.date }}
 {{ spia_form.date.errors }}
 <br />
-Inflation adjusted SPIA (CPI-U linked): {{ spia_form.real }}
+Inflation linked SPIA (CPI-U): {{ spia_form.real }}
 {{ spia_form.real.errors }}
 <br />
-When to apply the inflation adjustment: {{ spia_form.cpi_adjust }}
+Apply the inflation adjustment: {{ spia_form.cpi_adjust }}
 {{ spia_form.cpi_adjust.errors }}
 <br />
-<br />
+<div class="small">
+Inflation linked SPIAs priced using the daily U.S. Treasury Real Yield
+Curve based on TIPS secondary market quotes.
+Nominal SPIAs priced using the U.S. Treasury High Quality Markets
+(AAA, AA, A) Corporate Bond Yield Curve.
+The nominal bond yield curve is only produced monthly with a two week
+delay, so in times of rapidly changing rates the prices for nominal
+SPIAs may not be as accurate as desired.
+</div>
+
+<h2>Payout</h2>
+
 Payout frequency: {{ spia_form.frequency }}
 {{ spia_form.frequency.errors }}
 <br />
@@ -116,8 +147,9 @@ Payouts begin on or after {{ spia_form.payout_delay_years }} years {{ spia_form.
 <br />
 Period certain of {{ spia_form.period_certain }} years from the first payout date within which full payout amounts are guaranteed.
 {{ spia_form.period_certain.errors }}
-<br />
-<br />
+
+<h2>Goal</h2>
+
 Enter any two of the following three fields and we will compute the missing field:
 <br />
 <br />

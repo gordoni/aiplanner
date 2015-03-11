@@ -428,7 +428,7 @@ class SpiaForm(forms.Form):
         max_value=100)
 
     table = forms.ChoiceField(
-        choices=(('iam', 'Comparable to the average annuitant of the same sex and age.'), ('ssa_cohort', 'Comparable to the general population of the same sex and age.'), ('adjust', 'Adjust the general population life table to match the specified life expectancy.'), ),
+        choices=(('iam', 'Life expectancy comparable to the average annuitant of the same sex and age.'), ('ssa_cohort', 'Life expectancy comparable to the general population of the same sex and age.'), ('adjust', 'Adjusted life table to match specified life expectancy.'), ),
         widget=forms.RadioSelect(renderer=VerticalRadioRenderer))
     ae = forms.ChoiceField(
         choices = (('none', 'none'), ('summary', 'apply summary actual/expected data'), ('full', 'apply age specific actual/expected data'), ))
@@ -442,7 +442,7 @@ class SpiaForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'dob_input'}))
     real = forms.BooleanField(required=False)
     cpi_adjust = forms.ChoiceField(
-        choices = (('all', 'every payout'), ('payout', 'anniversary of 1st payout'), ('calendar', 'every Jan 1st'), ))
+        choices = (('all', 'every payout'), ('payout', 'every anniversary of 1st payout'), ('calendar', 'every Jan 1st'), ))
 
     frequency = forms.ChoiceField(
         choices = (('12', 'monthly'), ('4', 'quarterly'), ('2', 'semi-annual'), ('1', 'annual'), ))
