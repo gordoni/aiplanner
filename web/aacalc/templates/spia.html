@@ -57,9 +57,9 @@ assets more risky than the assumed bonds.
 {% csrf_token %}
 
 {% if errors_present %}
-<p class="errorlist">
+<div class="errorlist">
 Please correct the errors in red below:
-</p>
+</div>
 {{ spia_form.non_field_errors }}
 {% endif %}
 
@@ -172,7 +172,7 @@ Money's Worth Ratio: {{ spia_form.mwr_percent }}%
 
 <br />
 
-<p id="results">
+<div id="results">
 {% if results.premium %}
 {% if results.fair %}
 Actuarially fair
@@ -188,12 +188,11 @@ periodic SPIA payout: {{ results.payout }}
 {% if results.mwr_percent %}
 Money's worth ratio: {{ results.mwr_percent }}%
 {% endif %}
-<br />
-<span class="small">
+<div class="small">
 First payout: {{ results.payout_date }}.
 Yield curve date: {{ results.yield_curve_date }}.
-</span>
-</p>
+</div>
+</div>
 
 {% endif %}
 
