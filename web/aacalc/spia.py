@@ -18,10 +18,11 @@
 
 from argparse import ArgumentParser
 from csv import reader
-from os.path import expanduser, join, normpath
+from datetime import date
+from os.path import expanduser, isdir, join, normpath
 from scipy.interpolate import InterpolatedUnivariateSpline
 
-datadir = '~/aacalc/opal/data/public'
+datapath = ('~/aacalc/opal/data/public', '~ubuntu/aacalc/opal/data/public')
 
 # Bonds longer than this have their remaining interest rate determined specially.
 # Prior to this the last forward rate is used to project the forward rate for real bonds, and the actual HQM data is used for nominal bonds.
@@ -774,7 +775,7 @@ class YieldCurve:
     class NoData(Exception):
         pass
 
-    def get_real(self, date_year, date):
+    def get_real(self, date_year, date_str):
 
         try:
 
@@ -789,7 +790,7 @@ class YieldCurve:
 
                 yield_curve_date = None
                 for line in csv:
-                    if line[0] <= date:
+                    if line[0] <= date_str:
                         yield_curve_date = line[0]
                         yield_curve_rates = line[1:]
                     else:
@@ -804,12 +805,12 @@ class YieldCurve:
 
         return yield_curve_years, yield_curve_rates, yield_curve_date
 
-    def get_nominal(self, date_year, date):
+    def get_nominal(self, date_year, date_str):
 
         if date_year < 1984:
             raise self.NoData
 
-        date_month = int(date.split('-')[1])
+        date_month = int(date_str.split('-')[1])
         assert(1 <= date_month <= 12)
 
         year_step = 5
@@ -859,19 +860,19 @@ class YieldCurve:
 
         return spot_years, spot_rates, spot_date
 
-    def __init__(self, interest_rate, date, interpolate_rates = True):
+    def __init__(self, interest_rate, date_str, interpolate_rates = True):
         self.interest_rate = interest_rate
-        self.date = date
+        self.date = date_str
         self.interpolate_rates = interpolate_rates  # Whether to interpolate interest rates. Set to true for compatibility with AACalc. Neglible difference.
 
-        date_year = int(date.split('-')[0])
+        date_year = int(date_str.split('-')[0])
 
         if interest_rate == 'real':
 
             try:
-                yield_curve_years, yield_curve_rates, self.yield_curve_date = self.get_real(date_year, date)
+                yield_curve_years, yield_curve_rates, self.yield_curve_date = self.get_real(date_year, date_str)
             except self.NoData:
-                yield_curve_years, yield_curve_rates, self.yield_curve_date = self.get_real(date_year - 1, date)
+                yield_curve_years, yield_curve_rates, self.yield_curve_date = self.get_real(date_year - 1, date_str)
 
             # Project returns beyond available returns data using the last forward rate.
             # Not compatible with AACalc. To begin with the underlying splines don't match.
@@ -886,18 +887,18 @@ class YieldCurve:
             for i in range(1, int(2 * max(yield_curve_years)) + 1):
                 year = i / 2.0
                 if year >= min(yield_curve_years):
-                    rate = yield_curve_2(year)
+                    rate = float(yield_curve_2(year))  # De-numpy-fy.
                 else:
-                    rate = yield_curve_1(year)
+                    rate = float(yield_curve_1(year))
                 coupon_yield_curve.append(rate / 100.0)
             spot_rates = self.coupon_bond_to_spot(coupon_yield_curve)
 
         elif interest_rate == 'nominal':
 
             try:
-                self.spot_years, spot_rates, self.yield_curve_date = self.get_nominal(date_year, date)
+                self.spot_years, spot_rates, self.yield_curve_date = self.get_nominal(date_year, date_str)
             except self.NoData:
-                self.spot_years, spot_rates, self.yield_curve_date = self.get_nominal(date_year - 1, date)
+                self.spot_years, spot_rates, self.yield_curve_date = self.get_nominal(date_year - 1, date_str)
 
         elif interest_rate == 'le':
 
@@ -966,7 +967,7 @@ class YieldCurve:
             yield_curve = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=2)
         else:
             yield_curve = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=1)
-        say = yield_curve(look_y)
+        say = float(yield_curve(look_y))  # De-numpy-fy.
         ay = (1 + say / 2) ** 2  # Convert semi-annual yields to annual yields.
         d = ay ** y
         return d * (1 - default_cost[self.interest_rate]) ** y
@@ -1084,7 +1085,8 @@ class Scenario:
         current_age2 = self.life_table2.age if self.life_table2 else None
         start_year, m, d = self.yield_curve.date.split('-')
         start_year = int(start_year)
-        start_year_offset = (int(m) - 1) / 12.0 + (int(d) - 1) / 365.0
+        start_date = date(start_year, int(m), int(d))
+        start_year_offset = (start_date.timetuple().tm_yday - 1) / (366.0 if start_year % 4 == 0 else 365.0)
         alive1 = 1.0
         alive2 = 1.0
         alive_array = [1.0]
@@ -1145,7 +1147,11 @@ class Scenario:
             price += payout_fraction / r
             i += 1
             time_since_adjust += 1.0 / self.frequency
-        return price / self.frequency / (1 - self.tax) / self.mwr
+        try:
+            price /= self.frequency * (1 - self.tax) * self.mwr
+        except ZeroDivisionError:
+            price = float('inf')
+        return price
 
 # MWR decreases 2% at age 50 and 5% at age 90 when cross from one age nearest birthday to the next.
 
@@ -1156,10 +1162,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.datadir != None:
-        datadir = args.datadir
+        datapath = (args.datadir, )
 
-datadir = normpath(expanduser(datadir))
+for datadir in datapath:
+    datadir = normpath(expanduser(datadir))
+    if isdir(datadir):
+        break
 
 if __name__ == '__main__':
 
-    print Scenario(YieldCurve('nominal', '2015-01-01'), 1.5, None, None, 0, LifeTable('iam', 'male', 65)).price()
+    print Scenario(YieldCurve('real', '2015-01-01'), 1.5, None, None, 0, LifeTable('iam', 'male', 65)).price()

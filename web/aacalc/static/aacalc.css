@@ -170,6 +170,10 @@ body{
     border-spacing: 0;
 }
 
+.small {
+    font-size: 70%;
+}
+
 .warning {
     border-style: solid;
     border-color: red;

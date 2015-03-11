@@ -14,6 +14,10 @@ class HorizontalRadioRenderer(forms.RadioSelect.renderer):
     def render(self):
         return mark_safe(u'\n'.join([u'%s\n' % w for w in self]))
 
+class VerticalRadioRenderer(forms.RadioSelect.renderer):
+    def render(self):
+        return mark_safe(u'\n<br \>\n'.join([u'%s\n' % w for w in self]))
+
 class DobOrAgeField(forms.CharField):
 
     def clean(self, v):
@@ -350,4 +354,118 @@ class LeForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=100,
+        required=False)
+
+class SpiaForm(forms.Form):
+
+    def clean_sex2(self):
+        sex2 = self.cleaned_data['sex2']
+        if sex2 == '':
+            return None
+        else:
+            return sex2
+
+    def clean_date(self):
+        for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y'):
+            try:
+                date_p = strptime(self.cleaned_data['date'], fmt)
+                date_str = strftime('%Y-%m-%d', date_p)  # Some dates convert but can't be represented as a string. eg. 06/30/1080.
+                return date_str
+            except ValueError:
+                pass
+        raise ValidationError('Invalid quote date.')
+
+    def clean(self):
+        cleaned_data = super(SpiaForm, self).clean()
+        if self._errors:
+            return cleaned_data
+        sex2 = cleaned_data.get('sex2')
+        age2_years = cleaned_data.get('age2_years')
+        age2_months = cleaned_data.get('age2_months')
+        if sex2 == None and age2_years != None or sex2 != None and age2_years == None:
+            raise ValidationError('Invalid secondary annuitant.')
+        if age2_years == None and age2_months != None:
+            raise ValidationError('Missing secondary annuitant age.')
+        if cleaned_data['table'] == 'adjust' and cleaned_data['le'] == None:
+            raise ValidationError('Missing adjusted life expectancy.')
+        premium = 0 if cleaned_data['premium'] == None else 1
+        payout = 0 if cleaned_data['payout'] == None else 1
+        mwr_percent = 0 if cleaned_data['mwr_percent'] == None else 1
+        if premium + payout + mwr_percent != 2:
+            raise ValidationError('Specify exactly two of premium, payout, and money\'s worth ratio.')
+        return cleaned_data
+
+    sex = forms.ChoiceField(
+        choices = (('male', 'male'), ('female', 'female')))
+    age_years = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=110)
+    age_months = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=11,
+        required=False)
+    sex2 = forms.ChoiceField(
+        choices = (('', 'none'), ('male', 'male'), ('female', 'female')),
+        required=False)
+    age2_years = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=110,
+        required=False)
+    age2_months = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=11,
+        required=False)
+    joint_type = forms.ChoiceField(
+        choices=(('contingent', 'Contingent. Payout reduced on death of either annuitant.'), ('survivor', 'Survivor. Payout reduced only on death of primary annuitant.'), ),
+        widget=forms.RadioSelect(renderer=VerticalRadioRenderer))
+    joint_payout_percent = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=100)
+
+    table = forms.ChoiceField(
+        choices=(('iam', 'Comparable to the average annuitant of the same sex and age.'), ('ssa_cohort', 'Comparable to the general population of the same sex and age.'), ('adjust', 'Adjust the general population life table to match the specified life expectancy.'), ),
+        widget=forms.RadioSelect(renderer=VerticalRadioRenderer))
+    ae = forms.ChoiceField(
+        choices = (('none', 'none'), ('summary', 'apply summary actual/expected data'), ('full', 'apply age specific actual/expected data'), ))
+    le = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=110,
+        required=False)
+
+    date = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'dob_input'}))
+    real = forms.BooleanField(required=False)
+    cpi_adjust = forms.ChoiceField(
+        choices = (('all', 'every payout'), ('payout', 'anniversary of 1st payout'), ('calendar', 'every Jan 1st'), ))
+
+    frequency = forms.ChoiceField(
+        choices = (('12', 'monthly'), ('4', 'quarterly'), ('2', 'semi-annual'), ('1', 'annual'), ))
+    payout_delay_years = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        required=False)
+    payout_delay_months = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0)
+    period_certain = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0)
+
+    premium = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'p_input'}),
+        min_value=0,
+        required=False)
+    payout = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'p_input'}),
+        min_value=0,
+        required=False)
+    mwr_percent = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
         required=False)

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% comment %}
+
+AACalc - Asset Allocation Calculator
+Copyright (C) 2009, 2011-2015 Gordon Irlam
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+{% endcomment %}
+
+{% block title %}What is my actuarially fair SPIA or DIA price?{% endblock %}
+
+{% block head %}
+<script>
+window.onload = function() {
+    e = document.getElementById("results");
+    if (e)
+         e.scrollIntoView();
+};
+</script>
+{% endblock %}
+
+{% block content %}
+
+<h1>What is my actuarially fair SPIA or DIA price?</h1>
+
+<p>
+This program computes actuarially fair prices for single premium
+immediate annuities (SPIAs) and deferred income annuities (DIAs).  An
+annuity is actuarially fair if the price paid for it equals the
+expected present value of the income stream it provides.  This program
+does not provide SPIA or DIA quotes, instead it helps you decide if a
+quote you have already received is a good deal.
+</p>
+
+<p>
+Quotes need not be actuarially fair. Costs, profit margins, and taxes
+all reduce the Money's Worth Ratio (MWR). On the other hand the MWR
+may increase as a result of insurance companies investing premiums in
+assets more risky than the assumed bonds.
+</p>
+
+<form  method="post">
+{% csrf_token %}
+
+{% if errors_present %}
+<p class="errorlist">
+Please correct the errors in red below:
+</p>
+{{ spia_form.non_field_errors }}
+{% endif %}
+
+Sex: {{ spia_form.sex }}
+Age: {{ spia_form.age_years }} years {{ spia_form.age_months }} months
+{{ spia_form.sex.errors }}
+{{ spia_form.age_years.errors }}
+{{ spia_form.age_months.errors }}
+<br />
+<br />
+Secondary annuitant: {{ spia_form.sex2 }}
+Age: {{ spia_form.age2_years }} years {{ spia_form.age2_months }} months
+{{ spia_form.sex2.errors }}
+{{ spia_form.age2_years.errors }}
+{{ spia_form.age2_months.errors }}
+<br />
+{{ spia_form.joint_type }}
+{{ spia_form.joint_type.errors }}
+<br />
+Payout when one annuitant is dead: {{ spia_form.joint_payout_percent }}%
+{{ spia_form.joint_payout_percent.errors }}
+<br />
+<br />
+Life expectancy:
+<br />
+{{ spia_form.table }}
+{{ spia_form.table.errors }}
+<br />
+For the annuitant life table how to adjust for contract duration:
+{{ spia_form.ae }}
+{{ spia_form.ae.errors }}
+<br />
+For the adjusted life table enter the additional years of life
+expected for the primary annuitant: {{ spia_form.le }}
+{{ spia_form.le.errors }}
+<br />
+<br />
+Quote date (determines interest rate yield curve):
+{{ spia_form.date }}
+{{ spia_form.date.errors }}
+<br />
+Inflation adjusted SPIA (CPI-U linked): {{ spia_form.real }}
+{{ spia_form.real.errors }}
+<br />
+When to apply the inflation adjustment: {{ spia_form.cpi_adjust }}
+{{ spia_form.cpi_adjust.errors }}
+<br />
+<br />
+Payout frequency: {{ spia_form.frequency }}
+{{ spia_form.frequency.errors }}
+<br />
+Payouts begin on or after {{ spia_form.payout_delay_years }} years {{ spia_form.payout_delay_months }} months from quote date.
+{{ spia_form.payout_delay_years.errors }}
+{{ spia_form.payout_delay_months.errors }}
+<br />
+Period certain of {{ spia_form.period_certain }} years from the first payout date within which full payout amounts are guaranteed.
+{{ spia_form.period_certain.errors }}
+<br />
+<br />
+Enter any two of the following three fields and we will compute the missing field:
+<br />
+<br />
+Premium: {{ spia_form.premium }}
+{{ spia_form.premium.errors }}
+<br />
+Periodic payout: {{ spia_form.payout }}
+{{ spia_form.mwr_percent.errors }}
+<br />
+Money's Worth Ratio: {{ spia_form.mwr_percent }}%
+{{ spia_form.mwr_percent.errors }}
+<br />
+<br />
+
+<div style="text-align:center;">
+<input class="button" type="submit" value="Submit" />
+</div>
+
+{% if results %}
+
+<br />
+
+<p id="results">
+{% if results.premium %}
+{% if results.fair %}
+Actuarially fair
+{% endif %}
+SPIA premium: {{ results.premium }}
+{% endif %}
+{% if results.payout %}
+{% if results.fair %}
+Actuarially fair
+{% endif %}
+periodic SPIA payout: {{ results.payout }}
+{% endif %}
+{% if results.mwr_percent %}
+Money's worth ratio: {{ results.mwr_percent }}%
+{% endif %}
+<br />
+<span class="small">
+First payout: {{ results.payout_date }}.
+Yield curve date: {{ results.yield_curve_date }}.
+</span>
+</p>
+
+{% endif %}
+
+</form>
+
+{% endblock %}
