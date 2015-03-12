@@ -336,24 +336,24 @@ class LeForm(forms.Form):
         if self._errors:
             return cleaned_data
         sex2 = cleaned_data.get('sex2')
-        dob2 = cleaned_data.get('dob2')
-        if sex2 == None and dob2 != None or sex2 != None and dob2 == None:
+        age2 = cleaned_data.get('age2')
+        if sex2 == None and age2 != None or sex2 != None and age2 == None:
             raise ValidationError('Invalid spouse/partner.')
         return cleaned_data
 
     sex = forms.ChoiceField(
         choices = (('male', 'male'), ('female', 'female')))
-    dob = forms.IntegerField(
+    age = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
-        max_value=100)
+        max_value=110)
     sex2 = forms.ChoiceField(
         choices = (('', 'none'), ('male', 'male'), ('female', 'female')),
         required=False)
-    dob2 = forms.IntegerField(
+    age2 = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
-        max_value=100,
+        max_value=110,
         required=False)
 
 class SpiaForm(forms.Form):

@@ -959,7 +959,7 @@ class YieldCurve:
 
     def discount_rate(self, y):
         if self.interest_rate == 'le':
-            return 2 if y == 0 else 1  # No credit at first payout replaced by half credit after last payout.
+            return 1
         if self.interpolate_rates:
             look_y = y
         else:
@@ -1057,7 +1057,7 @@ class Scenario:
 
     def __init__(self, yield_curve, payout_delay, premium, payout, tax, life_table1, life_table2 = None, \
                  joint_payout_fraction = 1, joint_contingent = True, period_certain = 0, \
-                 frequency = 12, annual_q = False, mwr = 1, cpi_adjust = 'calendar', percentile = None, comment = ''):
+                 frequency = 12, mwr = 1, cpi_adjust = 'calendar', percentile = None, comment = ''):
         self.yield_curve = yield_curve
         self.payout_delay = payout_delay  # Delay in months until first payout.
         self.premium = premium
@@ -1069,8 +1069,6 @@ class Scenario:
         self.joint_contingent = joint_contingent  # Reduce payout on the death of either annuitant (contingent), or only the first annuitant (survivor).
         self.period_certain = period_certain  # Guaranteed full payout period in years starting at payout_delay.
         self.frequency = frequency  # Number of payouts per year. Setting this to 1 increases the MWR by 10% at age 90.
-        self.annual_q = annual_q  # Whether to update q values for every payout, or once per year. Update annually for compatibility with AACalc.
-            # Updating every payout reduces MWR by 2% at age 90.
         self.cpi_adjust = cpi_adjust  # When to apply the cpi_adjustment for real SPIAs:
             # 'all' - at every payout.
             # 'payout' - on the anniversary of the first payout.
@@ -1079,6 +1077,11 @@ class Scenario:
         self.percentile = percentile  # Compute SPIA payout value through the percentile life expectancy, or none to compute the expected value.
         self.mwr = mwr
         self.comment = comment
+
+        # Depriciated options.
+        self.annual_q = True  # Whether to update q values for every payout, or once per year. Update annually for compatibility with AACalc.
+            # Updating at every payout is wrong, since the annuitant never gets to experience the calculated q value for the full year.
+            # Updating every payout reduces MWR by 2% at age 90.
 
     def price(self):
         price = 0
@@ -1118,6 +1121,7 @@ class Scenario:
                 joint_array.append(joint)
             i += 1
         i = 0
+        prev_payout_fraction = 1.0
         time_since_adjust = 0 if self.cpi_adjust == 'payout' else start_year_offset
         adjust_discount_rate = self.yield_curve.discount_rate(payout_delay)
         while True:
@@ -1133,12 +1137,7 @@ class Scenario:
                 joint = (1 - fract) * joint_array[index] + fract * joint_array[index + 1]
                 payout_fraction = alive + self.joint_payout_fraction * joint
             else:
-                payout_fraction = 1
-            if self.percentile is not None:
-                if payout_fraction >= 1 - self.percentile / 100.0:
-                    payout_fraction = 1.0
-                else:
-                    break
+                payout_fraction = 1.0
             r = self.yield_curve.discount_rate(y)
             if self.yield_curve.interest_rate == 'real' and self.cpi_adjust != 'all':
                 r = r * (r / adjust_discount_rate)  # Compute and apply inflation since last adjust.
@@ -1146,6 +1145,19 @@ class Scenario:
                     adjust_y = y if self.cpi_adjust == 'payout' else int(y + start_year_offset) - start_year_offset
                     adjust_discount_rate = self.yield_curve.discount_rate(adjust_y)
                     time_since_adjust -= 1
+            if self.percentile is not None:
+                target_payout_fraction = 1 - self.percentile / 100.0
+                if payout_fraction >= target_payout_fraction:
+                    prev_payout_fraction = payout_fraction
+                    payout_fraction = 1.0
+                else:
+                    price += (prev_payout_fraction - target_payout_fraction) / (prev_payout_fraction - payout_fraction) / r
+                    break
+            if i == 0 and self.yield_curve.interest_rate == 'le':
+                if self.percentile is None:
+                    payout_fraction /= 2.0  # No credit for first payout; half credit after last payout.
+                else:
+                    payout_fraction = 0  # Interpolated later.
             price += payout_fraction / r
             i += 1
             time_since_adjust += 1.0 / self.frequency
