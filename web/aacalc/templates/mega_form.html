@@ -94,11 +94,11 @@ Spouse/partner: {{ se_form.sex2 }}
 Age: {{ se_form.dob2 }}
 {{ se_form.dob2.errors }}
 <br />
-<font size="-1">
+<span class="small">
 The full range of life expectancy possibilities will be analyzed based
 on U.S. cohort actuarial longevity data for the specified age and
 gender.
-</font>
+</span>
 
 {% if se_form %}
 <h2>Financial position</h2>
@@ -120,7 +120,7 @@ Average effective nominal tax rates on dividends: {{ se_form.tax_rate_div_defaul
 <br />
 Cost basis method: {{ se_form.cost_basis_method }}
 <br />
-<font size="-1">
+<span class="small">
 The average effective tax rate is the average across the entire
 investment portfolio excluding defined benefit payouts, and it should
 be reduced to reflect the real world tax advantaged status of any
@@ -131,7 +131,7 @@ estimate of the impact of taxes is made in order to produce the
 recommended asset allocation.  The cost basis method specified is only
 used during the subsequent simulation of the recommended asset
 allocation.
-</font>
+</span>
 <br />
 <br />
 </div>
@@ -145,9 +145,9 @@ Expected annual fixed annuities payout: {{ se_form.defined_benefit_fixed_annuiti
 {{ se_form.defined_benefit_fixed_annuities.errors }}
 </div>
 <div>
-<font size="-1">
+<span class="small">
 Payments assumed to start at retirement. COLA (cost of living adjustment) assumed. No taxes get taken out.
-</font>
+</span>
 </div>
 {% if mode == 'number' %}
 {{ se_form.retirement_number }}
@@ -157,10 +157,10 @@ Payments assumed to start at retirement. COLA (cost of living adjustment) assume
 Compute my number: {{ se_form.retirement_number }}
 {{ se_form.retirement_number.errors }}
 <br />
-<font size="-1">
+<span class="small">
 If selected, the financial position you need to reach by retirement will be
 computed and the rest of this section can be skipped.
-</font>
+</span>
 <br />
 <br />
 {% endif %}
@@ -171,12 +171,12 @@ Pre-tax Traditional IRAs/401(k)s size: {{ se_form.p_traditional_iras }}
 Post-tax Roth IRAs/401(k)s size: {{ se_form.p_roth_iras }}
 {{ se_form.p_roth_iras.errors }}
 <br />
-<font size="-1">
+<span class="small">
 IRAs/401(k)s are handled very imperfectly. Their compounding tax advantaged
 status is not realized, and Traditional IRAs/401(k)s undergo an effective
 immediate reduction in size to account for tax payments due on
 withdrawal.
-</font>
+</span>
 <br />
 </div>
 <span class="advanced">Taxable retirement</span><span class="simple">Retirement</span> savings size: {{ se_form.p }}
@@ -189,13 +189,13 @@ Pre-retirement annual contribution amount (irrelevant if retired):
 Growth rate: {{ se_form.contribution_growth_pct }}%
 {{ se_form.contribution_growth_pct.errors }}
 <br />
-<font size="-1">
+<span class="small">
 Contribution are assumed to occur to taxable. Increase contribution amount slightly if to IRAs/401(k)s.
 A growth rate of 7% represents a doubling of real
 contributions every 10 years.  Remember to take into account life
 events such as promotions, paying off a mortgage, or children leaving
 home in estimating the contribution growth rate.
-</font>
+</span>
 {% endif %}
 </div>
 <h2>Financial goals</h2>
@@ -217,32 +217,32 @@ Additional desired consumption (discretionary amount): {{ se_form.utility_join_d
 <br />
 Surplus consumption (charitable expenditures): unlimited
 <br />
-<font size="-1">
+<span class="small">
 The annual consumption amounts should be in today's dollars and include
 defined benefits.
-</font>
+</span>
 <br />
 <br />
 Risk tolerance: {{ se_form.risk_tolerance }}%
 {{ se_form.risk_tolerance.errors }}
 <br />
-<font size="-1">
+<span class="small">
 How much you can tolerate a loss psychologically.
 This value is the maximum standard deviation in expected annual returns to allow.
 A value of 10% will limit you to bond heavy portfolios.
 A value of 20% will allow almost unlimited exposure to the broad stock market when it is warranted.
 A value of 30% will allow almost unlimited exposure to any of the asset classes considered here.
-</font>
+</span>
 <br />
 <div class="advanced">
 <br />
 Utilize a fixed withdrawal rate strategy: {{ se_form.vw_amount }}
 {{ se_form.vw_amount.errors }}
 <br />
-<font size="-1">
+<span class="small">
 A variable withdrawal rate strategy is typically more realistic and
 will give better performance than a fixed withdrawal strategy.
-</font>
+</span>
 <br />
 Annual retirement consumption amount: {{ se_form.withdrawal }}
 {{ se_form.withdrawal.errors }}
@@ -251,7 +251,7 @@ Annual retirement consumption amount: {{ se_form.withdrawal }}
 Leaving a bequest matters: {{ se_form.inherit }}
 {{ se_form.inherit.errors }}
 <br />
-<font size="-1">
+<span class="small">
 Leaving a bequest has a significant impact on asset allocation
 for large portfolios with fixed withdrawal rates. Without any
 plans to leave an bequest mainly bonds are recommended for large
@@ -259,7 +259,7 @@ portfolios. Once a bequest enters the
 picture, stocks become a better choice. Valuing leaving a bequest
 too highly results in stocks being recommended even for small
 portfolios.
-</font>
+</span>
 <br />
 Fraction of unsatisfied well being capable of being satisfied by being able to leave a bequest: {{ se_form.utility_dead_limit_pct }}%
 Goal is to share bequest between {{ se_form.utility_inherit_years }} people over one year, or equivalently this many years by one person.
@@ -285,7 +285,7 @@ a provider such as <a href="http://www.vanguard.com/">Vanguard</a>.
 <br />
 Asset classes to consider:
 <br />
-<font size="-1">
+<span class="small">
 Stocks and bonds are sufficient for most purposes. <span class="advanced">Care must be taken
 when interpreting the results for other asset classes because mean
 variance optimization is very sensitive to small differences between
@@ -302,142 +302,142 @@ historical record, but care needs to be exercised in interpreting this
 recommendation going forward. Caveat emptor.
 </div>
 </span>
-</font>
+</span>
 {{ se_form.class_stocks }} Stocks
-<font size="-1">
+<span class="small">
 (US large market cap; 1872-2014 available)
-</font>
+</span>
 {{ se_form.class_stocks.errors }}
 <br />
 {{ se_form.class_bonds }} Bonds
-<font size="-1">
+<span class="small">
 (US investment grade; 1872-2014 available)
-</font>
+</span>
 {{ se_form.class_bonds.errors }}
 <span class="advanced">
 <br />
 {{ se_form.class_eafe }} International
-<font size="-1">
+<span class="small">
 (developed large cap international unhedged; 1970-2014 available)
-</font>
+</span>
 {{ se_form.class_eafe.errors }}
 <br />
 {{ se_form.class_ff_bl }} Large Growth
-<font size="-1">
+<span class="small">
 (US large market cap / low book to market; 1927-2014 available)
-</font>
+</span>
 {{ se_form.class_ff_bl.errors }}
 <br />
 {{ se_form.class_ff_bm }} Large Neutral
-<font size="-1">
+<span class="small">
 (US large market cap / medium book to market; 1927-2014 available)
-</font>
+</span>
 {{ se_form.class_ff_bm.errors }}
 <br />
 {{ se_form.class_ff_bh }} Large Value
-<font size="-1">
+<span class="small">
 (US large market cap / high book to market; 1927-2014 available)
-</font>
+</span>
 {{ se_form.class_ff_bh.errors }}
 <br />
 {{ se_form.class_ff_sl }} Small Growth
-<font size="-1">
+<span class="small">
 (US small market cap / low book to market; 1927-2014 available)
-</font>
+</span>
 {{ se_form.class_ff_sl.errors }}
 <br />
 {{ se_form.class_ff_sm }} Small Neutral
-<font size="-1">
+<span class="small">
 (US small market cap / medium book to market; 1927-2014 available)
-</font>
+</span>
 {{ se_form.class_ff_sm.errors }}
 <br />
 {{ se_form.class_ff_sh }} Small Value
-<font size="-1">
+<span class="small">
 (US small market cap / high book to market; 1927-2014 available)
-</font>
+</span>
 {{ se_form.class_ff_sh.errors }}
 <br />
 {{ se_form.class_reits_e }} Real estate
-<font size="-1">
+<span class="small">
 (US equity REITs; 1972-2014 available)
-</font>
+</span>
 {{ se_form.class_reits_e.errors }}
 <br />
 {{ se_form.class_t1mo }} T-bill 1mo
-<font size="-1">
+<span class="small">
 (US 1 month T-bills; 1927-2014 available)
-</font>
+</span>
 {{ se_form.class_t1mo.errors }}
 <br />
 {{ se_form.class_t1yr }} T-bill 1yr
-<font size="-1">
+<span class="small">
 (US 1 year T-bills; 1954-2014 available)
-</font>
+</span>
 {{ se_form.class_t1yr.errors }}
 <br />
 {{ se_form.class_t10yr }} T-note 10yr
-<font size="-1">
+<span class="small">
 (US 10 year T-notes; 1872-2014 available)
-</font>
+</span>
 {{ se_form.class_t10yr.errors }}
 <br />
 {{ se_form.class_tips10yr }} TIPS 10yr
-<font size="-1">
+<span class="small">
 (Semi-synthetic US 10 year Treasury inflation protected securities; 1972-2014 available)
-</font>
+</span>
 {{ se_form.class_tips10yr.errors }}
 <br />
 {{ se_form.class_aaa }} AAA corporate bonds
-<font size="-1">
+<span class="small">
 (US long term; 1920-2014 available)
-</font>
+</span>
 {{ se_form.class_aaa.errors }}
 <br />
 {{ se_form.class_baa }} BAA corporate bonds
-<font size="-1">
+<span class="small">
 (US long term; 1920-2014 available)
-</font>
+</span>
 {{ se_form.class_baa.errors }}
 <br />
 {{ se_form.class_reits_m }} Real estate mortgages
-<font size="-1">
+<span class="small">
 (US mortgage REITs; 1972-2014 available)
-</font>
+</span>
 {{ se_form.class_reits_m.errors }}
 <br />
 {{ se_form.class_gold }} Gold
-<font size="-1">
+<span class="small">
 <span class="warning">Not recommended: until the 1970's in the US it was illegal to invest in gold making its performance difficult to project</span> (1872-2014 available)
-</font>
+</span>
 {{ se_form.class_gold.errors }}
 <br />
 {{ se_form.class_risk_free }} Risk free asset returning {{ se_form.ret_risk_free_pct }}% real
-<font size="-1">
+<span class="small">
 (zero volatility after inflation; 1872-2014 available)
-</font>
+</span>
 {{ se_form.class_risk_free.errors }}
 {{ se_form.ret_risk_free_pct.errors }}
 </span>
 <br />
 <div class="advanced">
 Historical period to analyze: {{ se_form.generate_start_year }} - {{ se_form.generate_end_year }}
-<font size="-1">
+<span class="small">
 Market data must be available.
-</font>
+</span>
 {{ se_form.generate_start_year.errors }}
 {{ se_form.generate_end_year.errors }}
 <br />
 Historical period to simulate: {{ se_form.validate_start_year }} - {{ se_form.validate_end_year }}
-<font size="-1">
+<span class="small">
 Market data must be available.
-</font>
+</span>
 {{ se_form.validate_start_year.errors }}
 {{ se_form.validate_end_year.errors }}
 <br />
-<font size="-1">
+<span class="small">
 After analyzing the historical data and producing a recommended asset allocation, a simulation is performed to see how well the recommended asset allocation performs.
-</font>
+</span>
 </div>
 <br />
 Returns for stocks: {{ se_form.ret_equity_pct }}%
@@ -447,7 +447,7 @@ Bonds: {{ se_form.ret_bonds_pct }}%
 Management fees: {{ se_form.expense_pct }}%
 {{ se_form.expense_pct.errors }}
 <br />
-<font size="-1">
+<span class="small">
 We use the historical returns record including its variance for both analysis and simulation.  However,
 we allow the historical record to be adjusted to better match
 projections for the future.  Historically, for the period 1927-2014,
@@ -460,7 +460,7 @@ Any adjustment made to stocks or bonds will result in matching
 adjustments to the other equity or fixed income classes.
 To make things realistic investment management fees should also be
 subtracted which typically range from 0.1% to 1.0% per annum.
-</font>
+</span>
 <br />
 <div class="advanced">
 <br />
@@ -469,16 +469,16 @@ Equity volatility level: {{ se_form.validate_equity_vol_adjust_pct }}%
 {{ se_form.validate_all_adjust.errors }}
 {{ se_form.validate_equity_vol_adjust_pct.errors }}
 <br />
-<font size="-1">
+<span class="small">
 After generating the recommended asset allocation, and during subsequent performance simulation, the performance of all asset classes can be downwardly adjusted, and the volatility of equity asset classes can be increased. This adjustment is made to the chosen return levels above.
-</font>
+</span>
 </div>
 <br />
 Performing a sensitivity analysis of any results is highly recommended.
 <br />
-<font size="-1">
+<span class="small">
 Ideally distinct time periods could be analyzed and simulated, but a paucity of data means adjustments to the data may be all that is available.
-</font>
+</span>
 </div>
 <h2>Well being</h2>
 <div class="simple_advanced">
@@ -492,18 +492,18 @@ Ideally distinct time periods could be analyzed and simulated, but a paucity of 
 Annual discount rate for consumption and bequest: {{ se_form.consume_discount_rate_pct }}%
 {{ se_form.consume_discount_rate_pct.errors }}
 <br />
-<font size="-1">
+<span class="small">
 It is better to consume sooner rather than later for a variety of reasons,
 and this parameter records how much better.
-</font>
+</span>
 <br />
 <br />
 Pick one of the following choices.
 <br />
-<font size="-1">
+<span class="small">
 Well being is valued using a utility function.
 The question here determines the shape of the utility function.
-</font>
+</span>
 <br />
 <table>
 <tr>
@@ -527,10 +527,10 @@ rate of {{ se_form.upside_discount_rate_pct }}%.
 {{ se_form.utility_eta_2.errors }}
 {{ se_form.upside_discount_rate_pct.errors }}
 <br />
-<font size="-1">
+<span class="small">
 Between floor and surplus spending lies desired spending, which will have
 a blended utility function value.
-</font>
+</span>
 </td>
 </tr>
 <tr>
