@@ -136,8 +136,14 @@ def spia(request):
                 price = scenario.price() * frequency
 
                 results['fair'] = (mwr == 1)
-                results['yield_curve_date'] = yield_curve.yield_curve_date
+                results['frequency'] = {
+                    12: 'monthly',
+                    4: 'quarterly',
+                    2: 'semi-annual',
+                    1: 'annual',
+                }[frequency]
                 results['payout_date'] = payout_date
+                results['yield_curve_date'] = yield_curve.yield_curve_date
                 if premium == None:
                     results['premium'] = '{:,.0f}'.format(payout * price)
                 elif payout == None:

@@ -170,6 +170,10 @@ body{
     border-spacing: 0;
 }
 
+.indent {
+    margin-left: 3em;
+}
+
 .small {
     font-size: 70%;
 }

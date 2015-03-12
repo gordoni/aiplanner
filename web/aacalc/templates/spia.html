@@ -41,8 +41,8 @@ window.onload = function() {
 </p>
 
 <p>
-This application computes actuarially fair prices for single premium
-immediate annuities (SPIAs) and deferred income annuities (DIAs).  An
+This application computes actuarially fair prices for Single Premium
+Immediate Annuities (SPIAs) and Deferred Income Annuities (DIAs).  An
 annuity is actuarially fair if the price paid for it equals the
 expected present value of the income stream it provides.  This program
 does not provide SPIA or DIA quotes, instead it helps you decide if a
@@ -50,8 +50,8 @@ quote you have already received is a good deal.
 </p>
 
 <p>
-Quotes need not be actuarially fair. Costs including bond default
-costs, profit margins, and taxes
+Quotes need not be actuarially fair. Costs including sales, marketing,
+administrative, and bond default costs, profit margins, and taxes
 all reduce the Money's Worth Ratio (MWR). On the other hand the MWR
 may increase as a result of insurance companies investing premiums in
 assets more risky than the assumed bonds.
@@ -78,6 +78,8 @@ Please correct the errors in red below:
 
 <h2>Annuitants</h2>
 
+<div class="indent">
+
 Sex: {{ spia_form.sex }}
 Age: {{ spia_form.age_years }} years {{ spia_form.age_months }} months
 {{ spia_form.sex.errors }}
@@ -97,7 +99,11 @@ Age: {{ spia_form.age2_years }} years {{ spia_form.age2_months }} months
 Payout when one annuitant is dead: {{ spia_form.joint_payout_percent }}%
 {{ spia_form.joint_payout_percent.errors }}
 
+</div>
+
 <h2>Life expectancy</h2>
+
+<div class="indent">
 
 {{ spia_form.table }}
 {{ spia_form.table.errors }}
@@ -109,34 +115,40 @@ General population life table is U.S. Social Security Administration
 Actuarial Study No. 120.
 </div>
 <br />
-When using the annuitant life table how to adjust for contract duration:
-{{ spia_form.ae }}
-<span class="small">
-Adjustment based on Society of Actuaries 2005-08 Individual Payout
-Annuity Experience Report contract years actual/expected rates.
-</span>
+When using the annuitant life table adjust for contract duration by
+applying {{ spia_form.ae }} actual/expected data.
 {{ spia_form.ae.errors }}
+<div class="small">
+Long standing annuitants have a higher mortality than recent annuitants.
+This adjustment has a significant effect at advanced ages.
+Adjustment based on Society of Actuaries 2005-08 Individual Payout
+Annuity Experience Report.
+</div>
 <br />
-<br />
-When using the adjusted life table enter the additional years of life
+When using the adjusted life table enter the additional remaining years of life
 expected for the primary annuitant: {{ spia_form.le }}
-<span class="small">
+{{ spia_form.le.errors }}
+<div class="small">
 Adjusted life table applies a constant factor to the q<sub>x</sub>
 values of the general population life table in order to reproduce the
 specified life expectancy.
-</span>
-{{ spia_form.le.errors }}
+</div>
+
+</div>
 
 <h2>Interest rate</h2>
 
-Quote date (determines interest rate yield curve):
+<div class="indent">
+
+Quote date:
 {{ spia_form.date }}
+<span class="small">Determines interest rate yield curve.</span>
 {{ spia_form.date.errors }}
 <br />
-Inflation linked SPIA (CPI-U): {{ spia_form.real }}
+Inflation indexed SPIA (CPI-U): {{ spia_form.real }}
 {{ spia_form.real.errors }}
 <br />
-Apply the inflation adjustment: {{ spia_form.cpi_adjust }}
+Apply the inflation adjustment every {{ spia_form.cpi_adjust }}
 {{ spia_form.cpi_adjust.errors }}
 <br />
 <div class="small">
@@ -149,19 +161,31 @@ delay, so in times of rapidly changing rates the prices for nominal
 SPIAs may not be as accurate as desired.
 </div>
 
+</div>
+
 <h2>Payout</h2>
+
+<div class="indent">
 
 Payout frequency: {{ spia_form.frequency }}
 {{ spia_form.frequency.errors }}
 <br />
+Period certain of {{ spia_form.period_certain }} years from first payout within which full periodic payout amounts are guaranteed.
+{{ spia_form.period_certain.errors }}
+<br />
 Payouts begin on or after {{ spia_form.payout_delay_years }} years {{ spia_form.payout_delay_months }} months from quote date.
 {{ spia_form.payout_delay_years.errors }}
 {{ spia_form.payout_delay_months.errors }}
-<br />
-Period certain of {{ spia_form.period_certain }} years from the first payout date within which full payout amounts are guaranteed.
-{{ spia_form.period_certain.errors }}
+<div class="small">
+Payout values for inflation indexed DIAs are inflation indexed as of
+the quote date.
+</div>
+
+</div>
 
 <h2>Goal</h2>
+
+<div class="indent">
 
 Enter any two of the following three fields and we will compute the missing field:
 <br />
@@ -174,7 +198,9 @@ Periodic payout: {{ spia_form.payout }}
 <br />
 Money's Worth Ratio: {{ spia_form.mwr_percent }}%
 {{ spia_form.mwr_percent.errors }}
-<br />
+
+</div>
+
 <br />
 
 <div style="text-align:center;">
@@ -188,18 +214,22 @@ Money's Worth Ratio: {{ spia_form.mwr_percent }}%
 <div id="results">
 {% if results.premium %}
 {% if results.fair %}
-Actuarially fair
+Actuarially fair premium:
+{% else %}
+Premium:
 {% endif %}
-SPIA premium: {{ results.premium }}
+{{ results.premium }}
 {% endif %}
 {% if results.payout %}
 {% if results.fair %}
-Actuarially fair
+Actuarially fair {{ results.frequency }} payout:
+{% else %}
+{{ results.frequency | capfirst }} payout:
 {% endif %}
-periodic SPIA payout: {{ results.payout }}
+{{ results.payout }}
 {% endif %}
 {% if results.mwr_percent %}
-Money's worth ratio: {{ results.mwr_percent }}%
+Money's Worth Ratio: {{ results.mwr_percent }}%
 {% endif %}
 <div class="small">
 First payout: {{ results.payout_date }}.
