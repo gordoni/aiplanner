@@ -15,6 +15,8 @@ On Ubuntu, to obtain these modules:
 
 Then to fetch the yield curves for all time:
 
+    chmod +x fetch_yield_curve
+
     mkdir -p ~/aacalc/opal/data/public/hqm
     ./fetch_yield_curve -t nominal -d ~/aacalc/opal/data/public/hqm
 
@@ -27,7 +29,9 @@ data.
 spia.py can then be run to compute an example annuity price expressed
 in terms of dollars for a one dollar per year payout:
 
-     ./spia.py -d ~/aacalc/opal/data/public
+    chmod +x spia.py
+
+    ./spia.py -d ~/aacalc/opal/data/public
 
 Full details of all the options available are contained in the spia.py
 source code.
