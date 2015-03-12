@@ -37,7 +37,7 @@ window.onload = function() {
 <h1>What is my actuarially fair SPIA or DIA price?</h1>
 
 <p>
-This program computes actuarially fair prices for single premium
+This application computes actuarially fair prices for single premium
 immediate annuities (SPIAs) and deferred income annuities (DIAs).  An
 annuity is actuarially fair if the price paid for it equals the
 expected present value of the income stream it provides.  This program
@@ -51,6 +51,15 @@ costs, profit margins, and taxes
 all reduce the Money's Worth Ratio (MWR). On the other hand the MWR
 may increase as a result of insurance companies investing premiums in
 assets more risky than the assumed bonds.
+</p>
+
+<p class="small">
+Source code to the SPIA module is made available in the hope this will
+lead to feedback and improvement. Files:
+<a href="{% url 'file' 'README.spia' %}">README.spia</a>,
+<a href="{% url 'file' 'agpl-3.0.txt' %}">agpl-3.0.txt</a>,
+<a href="{% url 'file' 'spia.py' %}">spia.py</a>, and
+<a href="{% url 'file' 'fetch_yield_curve' %}">fetch_yield_curve</a>.
 </p>
 
 <form  method="post">

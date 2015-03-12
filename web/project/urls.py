@@ -26,6 +26,7 @@ urlpatterns = patterns('',
     url(r'^calculators/spia$', 'aacalc.views.spia.spia', name='start_spia'),
     url(r'^docs/?$', RedirectView.as_view(url='/about')), # use reverse_lazy in Django 1.5+.
     url(r'^docs/(.*)$', 'aacalc.views.docs.docs', name='docs'),
+    url(r'^file/(.*)$', 'aacalc.views.file.file', name='file'),
     url(r'^sample$', 'aacalc.views.sample.sample', name='sample'),
     url(r'^healthcheck$', 'aacalc.views.healthcheck.healthcheck'),
 )

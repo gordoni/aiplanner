@@ -1,0 +1,33 @@
+spia.py is a Python module for calculating actuarially fair SPIA and
+DIA prices. This involves combining life tables with interest rate
+yield curves. The lifetables are hard coded in spia.py, while the
+interest rate data is obtained from the U.S. Treasury using the
+fetch_yield_curve script.
+
+spia.py depends on scipy for interpolation.
+
+fetch_yield_curve depends on lxml and the catdoc xls2csv program to
+obtain the nominal interest rate.
+
+On Ubuntu, to obtain these modules:
+
+    sudo apt-get install python-scipy python-lxml catdoc
+
+Then to fetch the yield curves for all time:
+
+    mkdir -p ~/aacalc/opal/data/public/hqm
+    ./fetch_yield_curve -t nominal -d ~/aacalc/opal/data/public/hqm
+
+    mkdir -p ~/aacalc/opal/data/public/rcmt
+    ./fetch_yield_curve -t real -d ~/aacalc/opal/data/public/rcmt
+
+Subsequent runs of fetch_yield_curve will only download updates to the
+data.
+
+spia.py can then be run to compute an example annuity price expressed
+in terms of dollars for a one dollar per year payout:
+
+     ./spia.py -d ~/aacalc/opal/data/public
+
+Full details of all the options available are contained in the spia.py
+source code.
