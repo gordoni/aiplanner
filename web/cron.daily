@@ -1,6 +1,11 @@
 #!/bin/sh
 
-/home/ubuntu/aacalc/web/fetch_yield_curve -t nominal -d /home/ubuntu/aacalc/opal/data/public/hqm
-/home/ubuntu/aacalc/web/fetch_yield_curve -t real -d /home/ubuntu/aacalc/opal/data/public/rcmt
+DIR=/home/ubuntu/aacalc/web
+DATADIR=/home/ubuntu/aacalc/opal/data
 
-/home/ubuntu/aacalc/web/gen_sample
+if ! $DIR/ec2-security-group-is prod-aacalc-compute; then
+    $DIR/fetch_yield_curve -t nominal -d $DATADIR/public/hqm
+    $DIR/fetch_yield_curve -t real -d $DATADIR/public/rcmt
+fi
+
+$DIR/gen_sample

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+GROUPS=`curl -f -s http://instance-data.ec2.internal/latest/meta-data/security-groups`
+
+for GROUP in $GROUPS; do
+    if [ "$GROUP" = "$1" ]; then
+        exit 0
+    fi
+done
+
+exit 1
