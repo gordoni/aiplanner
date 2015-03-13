@@ -24,6 +24,24 @@ from aacalc.spia import LifeTable, Scenario, YieldCurve
 class UnableToAdjust(Exception):
     pass
 
+def default_spia_params():
+
+    return {
+        'sex': 'male',
+        'age_years': 65,
+        'joint_type': 'contingent',
+        'joint_payout_percent': 70,
+        'table': 'iam',
+        'ae' : 'full',
+        'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
+        'real': True,
+        'cpi_adjust': 'calendar',
+        'frequency': 12,
+        'payout_delay_months' : 1,
+        'period_certain' : 0,
+        'mwr_percent': 100,
+    }
+
 def compute_q_adjust(date_str, table, sex, age, le):
     yield_curve = YieldCurve('le', date_str)
     q_lo = 0
@@ -174,21 +192,7 @@ def spia(request):
 
     else:
 
-        spia_form = SpiaForm({
-            'sex': 'male',
-            'age_years': 65,
-            'joint_type': 'contingent',
-            'joint_payout_percent': 70,
-            'table': 'iam',
-            'ae' : 'full',
-            'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
-            'real': True,
-            'cpi_adjust': 'calendar',
-            'frequency': 12,
-            'payout_delay_months' : 1,
-            'period_certain' : 0,
-            'mwr_percent': 100,
-        })
+        spia_form = SpiaForm(default_spia_params())
 
     return render(request, 'spia.html', {
         'errors_present': errors_present,

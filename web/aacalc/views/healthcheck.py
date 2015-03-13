@@ -14,34 +14,69 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from decimal import Decimal
 from datetime import datetime
+from re import DOTALL, match
 
-from aacalc.views.utils import default_params, get_le, run_response, run_dirname
+from django.http import HttpResponse
+from django.test.client import RequestFactory
+
+from aacalc.views.le import le
+from aacalc.views.spia import default_spia_params, spia
+from aacalc.views.utils import default_params, run_response
 
 def healthcheck(request):
 
     # Life expectancy.
-    scenario_dict = dict(default_params)
-    scenario_dict['calculator'] = 'le'
-    scenario_dict['sex'] = 'male'
-    scenario_dict['dob'] = 65
-    scenario_dict['retirement_year'] = 2000 # Hack.
-    scenario_dict['consume_discount_rate_pct'] = Decimal('0.0') # Don't want discounted percentiles.
-    dirname = run_dirname(request, scenario_dict, True)
-    le_cohort, le_cohort_healthy, le_period = get_le(dirname)
-    assert(17 < float(le_cohort[0]) < 20)
-    assert(21 < float(le_cohort_healthy[0]) < 24)
-    assert(17 < float(le_period[0]) < 20)
-    assert(abs(float(le_cohort[0]) - float(le_cohort[1])) < 2)
-    assert(abs(float(le_cohort_healthy[0]) - float(le_cohort_healthy[1])) < 2)
-    assert(abs(float(le_period[0]) - float(le_period[1])) < 2)
+    request_factory = RequestFactory()
+    request = request_factory.post('/calculators/le', {
+        'sex': 'male',
+        'age' : 65,
+    })
+    response = le(request)
+    page = response.content
+    cohort, cohort95 = match('^.*<table id="ssa_cohort".*?<td align="right">(.*?)</td>.*?<span.*?>(.*?)</span>.*$', page, DOTALL).groups()
+    assert(17 < float(cohort) < 20)
+    assert(31 < float(cohort95) < 35)
+    cohort_healthy, cohort_healthy95 = match('^.*<table id="iam".*?<td align="right">(.*?)</td>.*?<span.*?>(.*?)</span>.*$', page, DOTALL).groups()
+    assert(22 < float(cohort_healthy) < 25)
+    assert(34 < float(cohort_healthy95) < 40)
+    period, = match('^.*<table id="ssa_period".*?<td align="right">.*?<span.*?>(.*?)</span>.*$', page, DOTALL).groups()
+    assert(17 < float(period) < 20)
+
+    # SPIA.
+    today = datetime.utcnow().date()
+    request_factory = RequestFactory()
+    params = default_spia_params()
+
+    params['payout'] = 1000
+    request = request_factory.post('/calculators/spia', params)
+    response = spia(request)
+    page = response.content
+    premium1, premium2, yield_curve_date = match('^.*Actuarially fair premium:.*?(\d+),(\d+).*?Yield curve date: (\d\d\d\d-\d\d-\d\d).*$', page, DOTALL).groups()
+    assert(150000 < int(premium1 + premium2) < 300000)
+    quote = datetime.strptime(yield_curve_date, '%Y-%m-%d').date()
+    assert(0 <= (today - quote).days <= 8)
+
+    params['real'] = False
+    request = request_factory.post('/calculators/spia', params)
+    response = spia(request)
+    page = response.content
+    premium1, premium2, yield_curve_date = match('^.*Actuarially fair premium:.*?(\d+),(\d+).*?Yield curve date: (\d\d\d\d-\d\d).*$', page, DOTALL).groups()
+    assert(100000 < int(premium1 + premium2) < 200000)
+    quote = datetime.strptime(yield_curve_date, '%Y-%m').date()
+    assert(0 <= (today - quote).days <= 80)
 
     # Asset allocation.
     scenario_dict = dict(default_params)
-    scenario_dict['name'] = 'Healthcheck'
     scenario_dict['sex'] = 'male'
     scenario_dict['dob'] = 90
-    scenario_dict['p'] = Decimal(100000)
-    scenario_dict['retirement_year'] = datetime.utcnow().timetuple().tm_year
-    return run_response(request, scenario_dict, True)
+    scenario_dict['p'] = 100000
+    scenario_dict['retirement_year'] = 2000
+    request = request_factory.post('/calculators/aa', scenario_dict)
+    response = run_response(request, scenario_dict, True)
+    page = response.content
+    consume, = match('^.*Suggested initial annual consumption amount: (\d+).*$', page, DOTALL).groups()
+    assert(30000 < int(consume) < 50000)
+    stocks, = match('^.*Suggested initial asset allocation stocks/bonds: (\d+)/\d+.*$', page, DOTALL).groups()
+    assert(80 <= int(stocks) <= 100)
+    return HttpResponse('OK', content_type = 'text/plain')

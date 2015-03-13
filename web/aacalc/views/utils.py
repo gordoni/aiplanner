@@ -176,13 +176,6 @@ def run_dirname(request, scenario_dict, healthcheck):
     run_opal(dirname, scenario_dict)
     return dirname
 
-def get_le(dirname):
-    le_file = open(dirname + "/opal-le.csv")
-    le_map = {}
-    for line in reader(le_file):
-        le_map[line[0]] = ['%.2f' % float(le) for le in line[1:]]
-    return le_map['ssa-cohort'], le_map['iam2012-basic-period-aer2005_08'], le_map['ssa-period']
-
 def sample_scenario_dict():
     s = dict(default_params)
     s['sex'] = 'male'

@@ -82,7 +82,7 @@ Additional years of life expectancy if you are of average health (includes peopl
 chronic illnesses and terminal conditions):
 </p>
 
-<table cellpadding=1 cellspacing=0 border=1 style="margin:auto;">
+<table id="ssa_cohort" cellpadding=1 cellspacing=0 border=1 style="margin:auto;">
 <tr> <td colspan=7 align="center"> cohort mortality
 <br />
 <font size="-1">
@@ -93,12 +93,12 @@ Based on Social Security Administration Actuarial Study No. 120
 <tr> <td rowspan=2 align="center"> mean </td> <td colspan=6 align="center"> percentile </td> </tr>
 <tr>
 {% for label in le_labels %}
-<td align="center"> {{ label }} </td>
+<td align="center">{{ label }}</td>
 {% endfor %}
 </tr>
 <tr>
 {% for le in le_cohort %}
-<td align="right"> {{ le|safe }} </td>
+<td align="right">{{ le|safe }}</td>
 {% endfor %}
 </tr>
 </table>
@@ -110,7 +110,7 @@ Additional years of life expectancy if you are healthy (based on holders of
 annuities; innacurate if you are young):
 </p>
 
-<table cellpadding=1 cellspacing=0 border=1 style="margin:auto;">
+<table id="iam" cellpadding=1 cellspacing=0 border=1 style="margin:auto;">
 <tr> <td colspan=7 align="center"> healthy cohort mortality
 <br />
 <font size="-1">
@@ -123,12 +123,12 @@ and 2005-08 Individual Payout Annuity Experience Report contract years actual/ex
 <tr> <td rowspan=2 align="center"> mean </td> <td colspan=6 align="center"> percentile </td> </tr>
 <tr>
 {% for label in le_labels %}
-<td align="center"> {{ label }} </td>
+<td align="center">{{ label }}</td>
 {% endfor %}
 </tr>
 <tr>
 {% for le in le_cohort_healthy %}
-<td align="right"> {{ le|safe }} </td>
+<td align="right">{{ le|safe }}</td>
 {% endfor %}
 </tr>
 </table>
@@ -140,7 +140,7 @@ Additional years of life expectancy typically reported in official tables (for
 comparison):
 </p>
 
-<table cellpadding=1 cellspacing=0 border=1 style="margin:auto;">
+<table id="ssa_period" cellpadding=1 cellspacing=0 border=1 style="margin:auto;">
 <tr> <td colspan=7 align="center"> period mortality
 <br />
 <font size="-1">
@@ -150,7 +150,7 @@ Based on Social Security Administration Period Life Table 2010
 </tr>
 <tr> <td align="center"> mean </td> </tr>
 <tr>
-<td align="right"> {{ le_period|first|safe }} </td>
+<td align="right">{{ le_period|first|safe }}</td>
 </tr>
 </table>
 
