@@ -96,17 +96,17 @@ Retirement certainty equivalence amount:
 <br />
 Chance of failure (any consumption of {{ data.floor }} or less):
 <br />
-<img src="{{ dirurl }}/opal-rn-probability.png">
+<img src="{{ dirurl }}/opal-rn-probability.png" alt="failure probabililty">
 <br />
 <br />
 Weighted failure duration if failure occurs:
 <br />
-<img src="{{ dirurl }}/opal-rn-length.png">
+<img src="{{ dirurl }}/opal-rn-length.png" alt="failure length">
 <br />
 <br />
 Retirement certainty equivalence amount:
 <br />
-<img src="{{ dirurl }}/opal-rn-inverse-utility.png">
+<img src="{{ dirurl }}/opal-rn-inverse-utility.png" alt="certainty equivalence">
 <br />
 <br />
 {% else %}
@@ -116,7 +116,7 @@ Suggested initial annual consumption amount: {{ data.consume }}
 {% endif %}
 Suggested initial asset allocation {{ data.aa_name }}: {{ data.aa }} <a title="Computed using stochastic dynamic programming on mean-variance optimization efficient frontier. The suggested initial consumption amount and asset allocation are computed assuming market returns are independent over time. For equities this is a good first approximation, but it ignores phenomena known as volatility predictability, momentum, and reversion to the mean. For cash, the assumption is manifestly false, but the variance of real returns on cash is small. In addition mean-variance optimization assumes returns are normally distributed. Experiments where stochastic dynamic programming is performed without mean-variance optimization show this assumption has little impact on the resulting portfolio performance. Asset allocations rounded to nearest {{ data.precision }}%."><img src="/static/images/Information-icon.png" alt="[?]"></a>
 <br />
-<img src="{{ dirurl }}/opal-initial_aa.png">
+<img src="{{ dirurl }}/opal-initial_aa.png" alt="initial asset allocation">
 <br />
 Simulated risk: <a title="Monte Carlo simulation. The retirement certainty equivalence amount is the guaranteed annual amount to be received until death that would have the same well being as expected from following the recommendations here. It excludes any well being derived from leaving an inheritance. The simulated results ignore the effects of volatility predictability, momentum, and reversion to the mean. 50,000 random returns sequences are analyzed, each against the full range of longevity possibilities."><img src="/static/images/Information-icon.png" alt="[?]"></a>
 <div style="margin-left: 5em;">
@@ -145,31 +145,31 @@ Each year there is an estimated 95 percent change recommended
 consumption will lie within the indicated region:
 </font>
 <br />
-<img src="{{ dirurl }}/opal-pct-consume.png">
+<img src="{{ dirurl }}/opal-pct-consume.png" alt="consumption">
 <br />
 <font size="-1">
 Expected distribution of consumption in retirement:
 </font>
 <br />
-<img src="{{ dirurl }}/opal-distrib-consume.png">
+<img src="{{ dirurl }}/opal-distrib-consume.png" alt="consumption distribution">
 <br />
 <font size="-1">
 Cummulative distribution of consumption in retirement:
 </font>
 <br />
-<img src="{{ dirurl }}/opal-distrib-consume-cdf.png">
+<img src="{{ dirurl }}/opal-distrib-consume-cdf.png" alt="comulative consumption distribution">
 <br />
 <font size="-1">
 Annual change in consumption in retirement:
 </font>
 <br />
-<img src="{{ dirurl }}/opal-distrib-change-consume.png">
+<img src="{{ dirurl }}/opal-distrib-change-consume.png" alt="annual change in consumption">
 <br />
 <font size="-1">
 Cummulative annual change in consumption in retirement:
 </font>
 <br />
-<img src="{{ dirurl }}/opal-distrib-change-consume-cdf.png">
+<img src="{{ dirurl }}/opal-distrib-change-consume-cdf.png" alt="cummulative annual change in consumption">
 <br />
 <br />
 {% endif %}
@@ -180,7 +180,7 @@ Each year there is an estimated 95 percent change the
 investment portfolio size will lie within the indicated region:
 </font>
 <br />
-<img src="{{ dirurl }}/opal-pct-p.png">
+<img src="{{ dirurl }}/opal-pct-p.png" alt="investment portfolio size">
 <br />
 <br />
 {% endif %}
@@ -200,7 +200,7 @@ and portfolio size in accordance
 with the annual consumption color scale on the right hand side.
 </font>
 <br />
-<img src="{{ dirurl }}/opal-consume.png">
+<img src="{{ dirurl }}/opal-consume.png" alt="consumption heat map">
 <br />
 <br />
 {% endif %}
@@ -230,12 +230,12 @@ with the asset allocation color scale on the right hand side.
 </font>
 <br />
 {% if not data.retirement_number %}
-<img src="{{ dirurl }}/opal-paths-{{ aa.symbol }}.png">
+<img src="{{ dirurl }}/opal-paths-{{ aa.symbol }}.png" alt="sample asset allocation paths">
 <br />
-<img src="{{ dirurl }}/opal-pct-{{ aa.symbol }}.png">
+<img src="{{ dirurl }}/opal-pct-{{ aa.symbol }}.png" alt="percentile asset allocation">
 <br />
 {% endif %}
-<img src="{{ dirurl }}/opal-{{ aa.symbol }}.png">
+<img src="{{ dirurl }}/opal-{{ aa.symbol }}.png" alt="asset allocation heat map">
 {% endfor %}
 {% if not data.retirement_number %}
 <br />
@@ -250,13 +250,13 @@ paths that are depleted to the far right of this graph. The
 portfolio is unlikely to need to support withdrawals then.
 </font>
 <br />
-<img src="{{ dirurl }}/opal-paths-consume.png">
+<img src="{{ dirurl }}/opal-paths-consume.png" alt="sample consumption paths">
 <br />
 <font size="-1">
 Investment portfolio size paths:
 </font>
 <br />
-<img src="{{ dirurl }}/opal-paths-p.png">
+<img src="{{ dirurl }}/opal-paths-p.png" alt="percentile consumption">
 {% endif %}
 <br />
 <br />
@@ -268,13 +268,13 @@ which the recommended asset allocation choices lie.
 Risk is measured as the standard deviation in returns.
 </font>
 <br />
-<img src="{{ dirurl }}/opal-scenario-mvo-ef-1.png">
+<img src="{{ dirurl }}/opal-scenario-mvo-ef-1.png" alt="efficient frontier">
 <br />
 <font size="-1">
 The composition of the asset allocation choices used to compute the optimum portfolio.
 </font>
 <br />
-<img src="{{ dirurl }}/opal-scenario-mvo-ef-2.png">
+<img src="{{ dirurl }}/opal-scenario-mvo-ef-2.png" alt="transition map">
 <br />
 <br />
 Utility function:
@@ -283,20 +283,20 @@ Utility function:
 This records how an additional dollar of consumption was valued.
 </font>
 <br />
-<img src="{{ dirurl }}/opal-utility-slope-consume.png">
+<img src="{{ dirurl }}/opal-utility-slope-consume.png" alt="utility sloope">
 <br />
 <font size="-1">
 Absolute risk aversion for consuption.
 </font>
 <br />
-<img src="{{ dirurl }}/opal-utility-ara-consume.png">
+<img src="{{ dirurl }}/opal-utility-ara-consume.png" alt="absolute risk aversion">
 {% if data.inherit %}
 <br />
 <font size="-1">
 This records how an additional dollar of bequest was valued.
 </font>
 <br />
-<img src="{{ dirurl }}/opal-utility-slope-inherit.png">
+<img src="{{ dirurl }}/opal-utility-slope-inherit.png" alt="bequest slope">
 {% endif %}
 {% if not sample %}
 <br />
