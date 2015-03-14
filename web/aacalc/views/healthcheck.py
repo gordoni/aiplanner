@@ -34,13 +34,13 @@ def healthcheck(request):
     })
     response = le(request)
     page = response.content
-    cohort, cohort95 = match('^.*<table id="ssa_cohort".*?<td align="right">(.*?)</td>.*?<span.*?>(.*?)</span>.*$', page, DOTALL).groups()
+    cohort, cohort95 = match('^.*<table id="ssa_cohort".*?<td class="right">(.*?)</td>.*?<span.*?>(.*?)</span>.*$', page, DOTALL).groups()
     assert(17 < float(cohort) < 20)
     assert(31 < float(cohort95) < 35)
-    cohort_healthy, cohort_healthy95 = match('^.*<table id="iam".*?<td align="right">(.*?)</td>.*?<span.*?>(.*?)</span>.*$', page, DOTALL).groups()
+    cohort_healthy, cohort_healthy95 = match('^.*<table id="iam".*?<td class="right">(.*?)</td>.*?<span.*?>(.*?)</span>.*$', page, DOTALL).groups()
     assert(22 < float(cohort_healthy) < 25)
     assert(34 < float(cohort_healthy95) < 40)
-    period, = match('^.*<table id="ssa_period".*?<td align="right">.*?<span.*?>(.*?)</span>.*$', page, DOTALL).groups()
+    period, = match('^.*<table id="ssa_period".*?<td class="right">.*?<span.*?>(.*?)</span>.*$', page, DOTALL).groups()
     assert(17 < float(period) < 20)
 
     # SPIA.

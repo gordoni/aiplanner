@@ -82,23 +82,23 @@ Additional years of life expectancy if you are of average health (includes peopl
 chronic illnesses and terminal conditions):
 </p>
 
-<table id="ssa_cohort" cellpadding=1 cellspacing=0 border=1 style="margin:auto;">
-<tr> <td colspan=7 align="center"> cohort mortality
+<table id="ssa_cohort" class="table-lined">
+<tr> <td colspan=7 class="center"> cohort mortality
 <br />
-<font size="-1">
+<span class="small">
 Based on Social Security Administration Actuarial Study No. 120
-</font>
+</span>
 </td>
 </tr>
-<tr> <td rowspan=2 align="center"> mean </td> <td colspan=6 align="center"> percentile </td> </tr>
+<tr> <td rowspan=2 class="center"> mean </td> <td colspan=6 class="center"> percentile </td> </tr>
 <tr>
 {% for label in le_labels %}
-<td align="center">{{ label }}</td>
+<td class="center">{{ label }}</td>
 {% endfor %}
 </tr>
 <tr>
 {% for le in le_cohort %}
-<td align="right">{{ le|safe }}</td>
+<td class="right">{{ le|safe }}</td>
 {% endfor %}
 </tr>
 </table>
@@ -110,25 +110,25 @@ Additional years of life expectancy if you are healthy (based on holders of
 annuities; innacurate if you are young):
 </p>
 
-<table id="iam" cellpadding=1 cellspacing=0 border=1 style="margin:auto;">
-<tr> <td colspan=7 align="center"> healthy cohort mortality
+<table id="iam" class="table-lined">
+<tr> <td colspan=7 class="center"> healthy cohort mortality
 <br />
-<font size="-1">
+<span class="small">
 Based on Society of Actuaries 2012 Individual Annuity Mortality Basic Table with Projection Scale G2
 <br />
 and 2005-08 Individual Payout Annuity Experience Report contract years actual/expected rate adjustment
-</font>
+</span>
 </td>
 </tr>
-<tr> <td rowspan=2 align="center"> mean </td> <td colspan=6 align="center"> percentile </td> </tr>
+<tr> <td rowspan=2 class="center"> mean </td> <td colspan=6 class="center"> percentile </td> </tr>
 <tr>
 {% for label in le_labels %}
-<td align="center">{{ label }}</td>
+<td class="center">{{ label }}</td>
 {% endfor %}
 </tr>
 <tr>
 {% for le in le_cohort_healthy %}
-<td align="right">{{ le|safe }}</td>
+<td class="right">{{ le|safe }}</td>
 {% endfor %}
 </tr>
 </table>
@@ -140,17 +140,17 @@ Additional years of life expectancy typically reported in official tables (for
 comparison):
 </p>
 
-<table id="ssa_period" cellpadding=1 cellspacing=0 border=1 style="margin:auto;">
-<tr> <td colspan=7 align="center"> period mortality
+<table id="ssa_period" class="table-lined">
+<tr> <td colspan=7 class="center"> period mortality
 <br />
-<font size="-1">
+<span class="small">
 Based on Social Security Administration Period Life Table 2010
-</font>
+</span>
 </td>
 </tr>
-<tr> <td align="center"> mean </td> </tr>
+<tr> <td class="center"> mean </td> </tr>
 <tr>
-<td align="right">{{ le_period|first|safe }}</td>
+<td class="right">{{ le_period|first|safe }}</td>
 </tr>
 </table>
 

@@ -69,9 +69,9 @@ def le(request):
         le_form = LeForm({'sex': 'male', 'age': 65})
 
     index = 1 + le_labels.index('95th')
-    le_cohort[index] = '<span style="font-weight:bold;">' + le_cohort[index] + '</span>'
-    le_cohort_healthy[index] = '<span style="font-weight:bold;">' + le_cohort_healthy[index] + '</span>'
-    le_period[0] = '<span style="font-weight:bold;">' + le_period[0] + '</span>'
+    le_cohort[index] = '<span class="bold">' + le_cohort[index] + '</span>'
+    le_cohort_healthy[index] = '<span class="bold">' + le_cohort_healthy[index] + '</span>'
+    le_period[0] = '<span class="bold">' + le_period[0] + '</span>'
 
     return render(request, 'le.html', {
         'errors_present': errors_present,

@@ -178,9 +178,28 @@ body{
     font-size: 70%;
 }
 
+.bold {
+    font-weight: bold;
+}
+
+.right {
+    text-align: right;
+}
+
+.center {
+    text-align: center;
+}
+
 .warning {
     border-style: solid;
     border-color: red;
+}
+
+.table-lined, .table-lined td, .table-lined th {
+    border-collapse: collapse;
+    border: 1px solid black;
+    padding: 1px;
+    margin: auto;
 }
 
 .doc {
