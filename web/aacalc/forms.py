@@ -16,7 +16,7 @@ class HorizontalRadioRenderer(forms.RadioSelect.renderer):
 
 class VerticalRadioRenderer(forms.RadioSelect.renderer):
     def render(self):
-        return mark_safe(u'\n<br \>\n'.join([u'%s\n' % w for w in self]))
+        return mark_safe(u'\n<br />\n'.join([u'%s\n' % w for w in self]))
 
 class DobOrAgeField(forms.CharField):
 
