@@ -37,14 +37,14 @@ Create directories
 ------------------
 
 mkdir -p aacalc.data/{static/results,static/sample,run}
-sudo chown www-data:www-data aacalc.data/{static/results,static/sample,run}
+sudo chown www-data:www-data aacalc.data/{static/results,run}
 
 Set up and run Opal server
 --------------------------
 
 # Install upstart script to automatically run Opal server on reboot.
 sudo cp aacalc/web/opal.conf /etc/init/
-[if opalserver on remote system (must be behind firewall): edit /etc/init/opal.conf to change listen address from "-d localhost 8000" to "-d * 8000"]
+[if opalserver on remote system (must be behind firewall): edit /etc/init/opal.conf to change listen address from "-d localhost 8000" to "-d '*' 8000"]
 
 # Copy across files.
 cd aacalc/opal
@@ -78,8 +78,10 @@ cp aacalc/web/sites-available/<sample-site.conf-file> /etc/apache2/sites-availab
 <edit> /etc/apache2/sites-available/<site.conf>
 a2ensite <site>
 
-# For ssl, also need:
+# For TLS, also need:
 a2enmod ssl
+# and the appropriate TLS key files in place. E.g.:
+aacalc.data/{aacalc.com.crt,www.aacalc.com.key,gd_bundle.crt}
 
 service apache2 restart
 
@@ -127,7 +129,7 @@ place it in aacalc/opal{,.data}/private/ or remove:
 
 {{ se_form.class_eafe }} International
 <font size="-1">
-(developed large cap international unhedged; 1970-2013 available)
+(developed large cap international unhedged; 1970-2014 available)
 </font>
 {{ se_form.class_eafe.errors }}
 
