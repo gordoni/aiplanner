@@ -63,10 +63,10 @@ increase the annual retirement consumption amounts.
 {% if schemes %}
 Comparison: <a title="Monte Carlo simulation. AACalc improvement is the additional expected well being you would receive in retirement when using AACalc and the selected portfolio compared to the named asset allocation scheme using stocks and bonds only and the 4% portfolio withdrawal rule. It excludes the well being from defined benefits. It includes any well being derived from leaving an inheritance. The target date fund is for the consensus target date fund as tracked by the S&amp;P Target Date indexes and reported by iShares as of June 30, 2012 but with all equities treated as stocks, and all fixed income treated as bonds. All schemes are modified to adhere to the specified risk tolerance. 50,000 random returns sequences are analyzed for each scheme. Each sequence is compared against the full range of longevity possibilities."><img src="/static/images/Information-icon.png" alt="[?]"></a>
 <div style="margin-left: 5em;">
-<table cellpadding=0 cellspacing=0>
+<table>
 <tr> <td> </td> <td> AACalc improvement </td> </tr>
 {% for scheme in schemes %}
-<tr> <td> {{ scheme.name }} </td> <td align="right"> {{ scheme.improvement }} </td> </tr>
+<tr> <td> {{ scheme.name }} </td> <td class="right"> {{ scheme.improvement }} </td> </tr>
 {% endfor %}
 </table>
 </div>
@@ -86,11 +86,11 @@ Chance of failure (any consumption of {{ data.floor }} or less): {{ data.failure
 <br />
 If failure occurs: {{ data.failure_length }} years weighted failure duration
 <br />
-<font size="-1">
+<span class="small">
 Retirement certainty equivalence amount:
 {{ data.metric_withdrawal }}
 (this is not the amount you can safely withdraw)
-</font>
+</span>
 </div>
 {% endif %}
 <br />
@@ -124,9 +124,9 @@ Chance of failure (any consumption of {{ data.floor }} or less): {{ data.failure
 <br />
 If failure occurs: {{ data.failure_length }} years weighted failure duration
 <br />
-<font size="-1">
+<span class="small">
 Retirement certainty equivalence amount: {{ data.metric_withdrawal }} (this is not the amount you can safely withdraw)
-</font>
+</span>
 </div>
 {% endif %}
 <br />
@@ -140,34 +140,34 @@ volatility increases in the future.
 {% if not data.vw_amount %}
 Consumption:
 <br />
-<font size="-1">
+<span class="small">
 Each year there is an estimated 95 percent change recommended
 consumption will lie within the indicated region:
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-pct-consume.png" alt="consumption">
 <br />
-<font size="-1">
+<span class="small">
 Expected distribution of consumption in retirement:
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-distrib-consume.png" alt="consumption distribution">
 <br />
-<font size="-1">
+<span class="small">
 Cummulative distribution of consumption in retirement:
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-distrib-consume-cdf.png" alt="comulative consumption distribution">
 <br />
-<font size="-1">
+<span class="small">
 Annual change in consumption in retirement:
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-distrib-change-consume.png" alt="annual change in consumption">
 <br />
-<font size="-1">
+<span class="small">
 Cummulative annual change in consumption in retirement:
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-distrib-change-consume-cdf.png" alt="cummulative annual change in consumption">
 <br />
@@ -175,10 +175,10 @@ Cummulative annual change in consumption in retirement:
 {% endif %}
 Investment portfolio:
 <br />
-<font size="-1">
+<span class="small">
 Each year there is an estimated 95 percent change the
 investment portfolio size will lie within the indicated region:
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-pct-p.png" alt="investment portfolio size">
 <br />
@@ -187,7 +187,7 @@ investment portfolio size will lie within the indicated region:
 {% if not data.vw_amount %}
 Consumption map:
 <br />
-<font size="-1">
+<span class="small">
 To obtain the above performance it is necessary to annually withdraw
 from the investment portfolio to yield income which, along with defined
 benefits income, matches that specified by the consumption map.
@@ -198,7 +198,7 @@ that year on the y axis, and then use the color of the point where they
 intersect to determine the recommended annual consumption for that year
 and portfolio size in accordance
 with the annual consumption color scale on the right hand side.
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-consume.png" alt="consumption heat map">
 <br />
@@ -206,7 +206,7 @@ with the annual consumption color scale on the right hand side.
 {% endif %}
 Asset allocation:
 <br />
-<font size="-1">
+<span class="small">
 {% if not data.retirement_number %}
 Sample asset allocation paths and 95 percentile asset allocation plots are shown below.
 The asset allocation is predicted to evolve in accordance with the 95
@@ -222,12 +222,12 @@ that year on the y axis, and then use the color of the point where they
 intersect to determine the recommended asset allocation for that year
 and portfolio size in accordance
 with the asset allocation color scale on the right hand side.
-</font>
+</span>
 {% for aa in aa_symbol_names %}
 <br />
-<font size="-1">
+<span class="small">
 {{ aa.name|capfirst }}:
-</font>
+</span>
 <br />
 {% if not data.retirement_number %}
 <img src="{{ dirurl }}/opal-paths-{{ aa.symbol }}.png" alt="sample asset allocation paths">
@@ -242,19 +242,19 @@ with the asset allocation color scale on the right hand side.
 <br />
 Example paths:
 <br />
-<font size="-1">
+<span class="small">
 Consumption paths. Each line represents the possible evolution of consumption using the
 recommended asset allocation map and withdrawals. Prior to retirement consumption
 equivalent to the annual retirement consumption amount is assumed. Don't worry about
 paths that are depleted to the far right of this graph. The
 portfolio is unlikely to need to support withdrawals then.
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-paths-consume.png" alt="sample consumption paths">
 <br />
-<font size="-1">
+<span class="small">
 Investment portfolio size paths:
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-paths-p.png" alt="percentile consumption">
 {% endif %}
@@ -262,39 +262,39 @@ Investment portfolio size paths:
 <br />
 Efficient frontier:
 <br />
-<font size="-1">
+<span class="small">
 This shows the efficient frontier along
 which the recommended asset allocation choices lie.
 Risk is measured as the standard deviation in returns.
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-scenario-mvo-ef-1.png" alt="efficient frontier">
 <br />
-<font size="-1">
+<span class="small">
 The composition of the asset allocation choices used to compute the optimum portfolio.
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-scenario-mvo-ef-2.png" alt="transition map">
 <br />
 <br />
 Utility function:
 <br />
-<font size="-1">
+<span class="small">
 This records how an additional dollar of consumption was valued.
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-utility-slope-consume.png" alt="utility sloope">
 <br />
-<font size="-1">
+<span class="small">
 Absolute risk aversion for consuption.
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-utility-ara-consume.png" alt="absolute risk aversion">
 {% if data.inherit %}
 <br />
-<font size="-1">
+<span class="small">
 This records how an additional dollar of bequest was valued.
-</font>
+</span>
 <br />
 <img src="{{ dirurl }}/opal-utility-slope-inherit.png" alt="bequest slope">
 {% endif %}
