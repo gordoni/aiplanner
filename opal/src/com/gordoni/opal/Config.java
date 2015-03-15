@@ -330,18 +330,19 @@ public class Config
                 //     http://efinance.org.cn/cn/FEben/Corporate%20Default%20and%20Recovery%20Rates,1920-2010.pdf
                 //
                 //     One year upgrade/downgrade rates (1920-2010) (excluding transitions to withdrawn rating):
-                //            To:   AAA    AA      A     BAA    BA     B      CAA    CA_C   weighted net migration   migration loss
-                //           AAA     -    8.21%  0.83%  0.16%  0.03%   0       0      0              -10.47%            0.04%
-                //     From: AA    1.20%    -    7.24%  0.74%  0.17%  0.04%  0.01%  0.01%             -8.30%            0.03%
-                //           A     0.08%  2.92%    -    5.55%  0.68%  0.12%  0.03%  0.01%             -4.36%            0.02%
-                //           BAA   0.04%  0.29%  4.47%    -    5.00%  0.79%  0.13%  0.02%             -1.88%            0.01%
+                //            To:   AAA    AA      A     BAA    BA     B      CAA    CA_C   weighted net migration   migration loss (netmig x 0.38% x 8 yr LQD durat.)
+                //           AAA     -    8.21%  0.83%  0.16%  0.03%   0       0      0              -10.47%            0.32%
+                //     From: AA    1.20%    -    7.24%  0.74%  0.17%  0.04%  0.01%  0.01%             -8.30%            0.25%
+                //           A     0.08%  2.92%    -    5.55%  0.68%  0.12%  0.03%  0.01%             -4.36%            0.13%
+                //           BAA   0.04%  0.29%  4.47%    -    5.00%  0.79%  0.13%  0.02%             -1.88%            0.06%
                 //
                 //     One year credit loss rates due to default based on post default trading prices (1982-2010):
-                //           credit loss   total annual losses
-                //         AAA  0                0.04%
-                //         AA   0.01%            0.04%
-                //         A    0.04%            0.06%
-                //         BAA  0.12%            0.13%
+                //           credit loss   total annual losses    weight (LQD rating breakdown)
+                //         AAA  0                0.32%                   2%
+                //         AA   0.01%            0.26%                  12%
+                //         A    0.04%            0.17%                  51%
+                //         BAA  0.12%            0.18%                  35%
+                //         weighted average      0.19%
                 //     NB: Total annual losses are small so we don't bother to adjust AAA and BAA bond yield series.
                 //
                 // Duration correction:
@@ -352,10 +353,10 @@ public class Config
                 //
                 // Moody's corporate bond index:
                 //            25 yr arithm. real return (1927-2013)        25 yr est. am. return   9 yr est. am. return after duration correction and annual losses
-                //     AAA      3.23%                                            3.23%                                 2.51%
-                //     AA       -                                                3.67%                                 2.95%
-                //     A        -                                                4.12%                                 3.38%
-                //     BAA      4.56% diff 1.33%; roughly 0.44% per rating       4.56%                                 3.75%
+                //     AAA      3.23%                                            3.23%                                 2.23%
+                //     AA       -                                                3.67%                                 2.73%
+                //     A        -                                                4.12%                                 3.27%
+                //     BAA      4.56% diff 1.33%; roughly 0.44% per rating       4.56%                                 3.70%
                 //
                 // Fed. Flow of Funds:
                 //
@@ -367,9 +368,10 @@ public class Config
                 //   Treasury            944             641     1316 17%       2.42% GS10
                 //   Agency              121             837      607  8%      ~2.60% guess
                 //   Muni               1617             610     1971 25%       2.95% after correct for tax adv; equiv to AA corporates
-                //   Corp and foreign   2793            2001     3955 50%       3.50% 2/3 A and 1/3 BAA based on LQD
-                //   Weighted                                                   3.11% use GS10 and adjust gm value by +0.60% to get 3.11% am
+                //   Corp and foreign   2793            2001     3955 50%       3.41% 2/3 A and 1/3 BAA based on LQD
+                //   Weighted                                                   3.06% use GS10 and adjust gm value by +0.??% to get 3.06% am
                 //   Total                -              -       7849                 (adjustment value applies in the presence of a 1.1 vol. adjust)
+                //                                                                    (current adjustment is +0.60% to get 3.11% am based on wrong default estimate)
         public double ret_gs10_to_bonds_vol_adjust = 1.1; // Adjustment to apply to GS10 volatility to get bond returns indicative of the bond universe.
                 // A guess based on risk-return plots placing its risk close to but slightly less than AAA bonds, with which it shares a similar return.
                 // If risk was higher than AAA bonds, no point in holding "bonds", ignoring different correlations.

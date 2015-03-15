@@ -52,7 +52,7 @@ public class AnnuityStats
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-rcmt-params.csv"));
                 out.println("file,date");
                 String dir = hist.find_subdir("rcmt");
-                String fname = config.annuity_real_yield_curve.substring(0, config.annuity_real_yield_curve.indexOf("-"));
+                String fname = "real-" + config.annuity_real_yield_curve.substring(0, config.annuity_real_yield_curve.indexOf("-"));
                 out.println("\"" + dir + "/" + fname + ".csv\",\"" + config.annuity_real_yield_curve + "\"");
                 out.close();
         }
