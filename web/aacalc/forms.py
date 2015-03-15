@@ -440,7 +440,11 @@ class SpiaForm(forms.Form):
 
     date = forms.CharField(
         widget=forms.TextInput(attrs={'class': 'dob_input'}))
-    real = forms.BooleanField(required=False)
+    bond_type = forms.ChoiceField(
+        choices = (('real', 'inflation indexed TIPS (CPI-U)'), ('nominal', 'U.S. Treasury'), ('corporate', 'U.S. corporate'), ))
+    bond_adjust_pct = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=-99)
     cpi_adjust = forms.ChoiceField(
         choices = (('all', 'payout'), ('payout', 'anniversary of 1st payout'), ('calendar', 'January 1st'), ))
 

@@ -15,6 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from datetime import date, datetime, timedelta
+from decimal import Decimal
+
 from django.forms.util import ErrorList
 from django.shortcuts import render
 
@@ -34,7 +36,8 @@ def default_spia_params():
         'table': 'iam',
         'ae' : 'full',
         'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
-        'real': True,
+        'bond_type': 'real',
+        'bond_adjust_pct': Decimal('0.0'),
         'cpi_adjust': 'calendar',
         'frequency': 12,
         'payout_delay_months' : 1,
@@ -97,9 +100,10 @@ def spia(request):
             try:
 
                 data = spia_form.cleaned_data
-                interest_rate = 'real' if data['real'] else 'nominal'
+                interest_rate = data['bond_type']
                 date_str = data['date']
-                yield_curve = YieldCurve(interest_rate, date_str)
+                adjust = float(data['bond_adjust_pct']) / 100
+                yield_curve = YieldCurve(interest_rate, date_str, adjust = adjust)
 
                 sex = data['sex']
                 age = float(data['age_years']);

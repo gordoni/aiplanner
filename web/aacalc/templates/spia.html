@@ -140,25 +140,39 @@ specified additional remaining life expectancy.
 
 <div class="indent">
 
+Assumed bond type: {{ spia_form.bond_type }}
+{{ spia_form.bond_type.errors }}
+<div class="small">
+For inflation indexed SPIAs the assumed bond type should be inflation
+indexed TIPS. For constant payout SPIAs the assumed bond type can be
+either U.S. Treasury or U.S. corporate, depending on how you are
+likely to invest your safe assets in the absence of SPIAs.
+</div>
 Quote date:
 {{ spia_form.date }}
 <span class="small">Determines interest rate yield curve.</span>
 {{ spia_form.date.errors }}
 <br />
-Inflation indexed SPIA (CPI-U): {{ spia_form.real }}
-{{ spia_form.real.errors }}
-<br />
-Apply the inflation adjustment every {{ spia_form.cpi_adjust }}
+Apply any inflation adjustment every {{ spia_form.cpi_adjust }}
 {{ spia_form.cpi_adjust.errors }}
 <br />
 <div class="small">
-Inflation linked SPIAs priced using the daily U.S. Treasury Real Yield
-Curve based on TIPS secondary market quotes.
-Nominal SPIAs priced using the U.S. Treasury High Quality Markets
-(AAA, AA, A) Corporate Bond Yield Curve.
-The nominal bond yield curve is only produced monthly with a two week
-delay, so in times of rapidly changing rates the prices for nominal
-SPIAs may not be as accurate as desired.
+Inflation indexed and Treasury based SPIAs priced using the daily
+U.S. Treasury Yield Curves based on secondary market quotes.
+Corporate SPIAs priced using the U.S. Treasury High Quality Markets
+(AAA, AA, A) Corporate Bond Yield Curve.  The corporate bond yield
+curve is only produced monthly with a two week delay, so in times of
+rapidly changing rates the prices for corporate bonds may not be as
+accurate as desired.
+</div>
+<br />
+Adjustment to apply to bond interest rate: {{ spia_form.bond_adjust_pct }}%
+{{ spia_form.bond_adjust_pct.errors }}
+<div class="small">
+This factor enables experimentation with the effect of changes in the
+interest rate. For instance, enter a negative value like -0.2% when
+using corporate bonds to account for the effect of bond defaults. The
+value is applied across the yield curve.
 </div>
 
 </div>

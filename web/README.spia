@@ -18,7 +18,10 @@ Then to fetch the yield curves for all time:
     chmod +x fetch_yield_curve
 
     mkdir -p ~/aacalc/opal/data/public/hqm
-    ./fetch_yield_curve -t nominal -d ~/aacalc/opal/data/public/hqm
+    ./fetch_yield_curve -t corporate -d ~/aacalc/opal/data/public/hqm
+
+    mkdir -p ~/aacalc/opal/data/public/cmt
+    ./fetch_yield_curve -t nominal -d ~/aacalc/opal/data/public/cmt
 
     mkdir -p ~/aacalc/opal/data/public/rcmt
     ./fetch_yield_curve -t real -d ~/aacalc/opal/data/public/rcmt

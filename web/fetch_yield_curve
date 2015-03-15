@@ -30,7 +30,7 @@ class Fetcher:
     last_year = 2050  # Prevent runaway process in event of bug.
 
     def last_check_file(self):
-        return self.dir + '/last_check.' + ('nominal' if self.nominal else 'real')
+        return self.dir + '/last_check.' + self.bond_type
 
     def curl_cmd(self, year, last_check):
 
@@ -65,16 +65,20 @@ class Fetcher:
 
         rename(self.last_check_file() + '.tmp', self.last_check_file())
 
-def fetcher_factory(nominal, dir):
+def fetcher_factory(bond_type, dir):
 
-    if nominal:
+    if bond_type == 'corporate':
+        return CorporateFetcher(dir)
+    elif bond_type == 'nominal':
         return NominalFetcher(dir)
-    else:
+    elif bond_type == 'real':
         return RealFetcher(dir)
+    else:
+        assert(False)
 
-class NominalFetcher(Fetcher):
+class CorporateFetcher(Fetcher):
 
-    nominal = True
+    bond_type = 'corporate'
 
     start_year = 1984
     year_step = 5
@@ -119,21 +123,17 @@ class NominalFetcher(Fetcher):
 
         return True
 
-class RealFetcher(Fetcher):
+class TreasuryFetcher(Fetcher):
 
-    nominal = False
-
-    start_year = 2003
     year_step = 1
 
-    url_base = 'http://data.treasury.gov/feed.svc/DailyTreasuryRealYieldCurveRateData?$filter='
     url_args = 'year(NEW_DATE) eq %(year)d'
 
     def url(self, year):
         return self.url_base + quote(self.url_args % {'year' : year})
 
     def csv_file(self, year):
-        return self.dir + '/' + str(year) + '.csv'
+        return self.dir + '/' + self.bond_type + '-' + str(year) + '.csv'
 
     def fetch_year(self, fetch_year, last_check):
 
@@ -154,9 +154,13 @@ class RealFetcher(Fetcher):
             date = date[:date.index('T')]
             rates[date] = {}
             for child in properties.iter():
-                m = match('^{.*}TC_(\d+)YEAR$', child.tag)
+                m = match('^{.*}[BT]C_(\d+)(MONTH|YEAR)$', child.tag)
                 if m:
-                    year = m.group(1)
+                    maturity, unit = m.groups()
+                    if unit == 'MONTH':
+                        year = str(float(maturity) / 12)
+                    else:
+                        year = maturity
                     rate = child.text
                     if rate != None:
                         years[year] = True
@@ -182,14 +186,30 @@ class RealFetcher(Fetcher):
 
         return True
 
+class NominalFetcher(TreasuryFetcher):
+
+    bond_type = 'nominal'
+
+    start_year = 1990
+
+    url_base = 'http://data.treasury.gov/feed.svc/DailyTreasuryYieldCurveRateData?$filter='
+
+class RealFetcher(TreasuryFetcher):
+
+    bond_type = 'real'
+
+    start_year = 2003
+
+    url_base = 'http://data.treasury.gov/feed.svc/DailyTreasuryRealYieldCurveRateData?$filter='
+
 if __name__ == '__main__':
 
     parser = ArgumentParser()
-    parser.add_argument('-t', '--type', choices=('nominal', 'real'), required=True)
+    parser.add_argument('-t', '--type', choices=('corporate', 'nominal', 'real'), required=True)
     parser.add_argument('-d', '--directory', required=True)
     args = parser.parse_args()
 
     dir = args.directory
-    nominal = (args.type == 'nominal')
+    bond_type = args.type
 
-    fetcher_factory(nominal, dir)
+    fetcher_factory(bond_type, dir)

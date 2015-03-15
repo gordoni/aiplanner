@@ -29,12 +29,14 @@ datapath = ('~/aacalc/opal/data/public', '~ubuntu/aacalc/opal/data/public')
 long_years = {
     'real': 100,
     'nominal': 100,
+    'corporate': 100,
 }
 
 # Annual forward interest rate to earn (real rate if real) on the maturity beyond long_years.
 long_rate = {
     'real': 0.025,
     'nominal': 0.05,
+    'corporate': 0.06,
 }
 
 # Using a forward rate of 2.5% on maturities beyond 30 years reduces the MWR by 2% at age 48.
@@ -44,7 +46,8 @@ long_rate = {
 # It is here only for experimentation, to see how defaults affect things.
 default_cost = {
     'real': 0.0,
-    'nominal': 0.0, # 0.01 * 0.2,
+    'nominal': 0.0,
+    'corporate': 0.0, # 0.01 * 0.2,
         # Very rough estimate: http://en.wikipedia.org/wiki/Bond_credit_rating - 1% of once rated AAA/AA/A bonds default; creditor regains guess 80% of bonds value.
 }
 
@@ -775,11 +778,11 @@ class YieldCurve:
     class NoData(Exception):
         pass
 
-    def get_real(self, date_year, date_str):
+    def get_treasury(self, date_year, date_str):
 
         try:
 
-            with open(join(datadir, 'rcmt', str(date_year) + '.csv')) as f:
+            with open(join(datadir, 'rcmt' if self.interest_rate == 'real' else 'cmt', self.interest_rate + '-' + str(date_year) + '.csv')) as f:
 
                 csv = reader(f)
                 assert(csv.next()[0].startswith('#'))
@@ -807,7 +810,7 @@ class YieldCurve:
 
         return yield_curve_years, yield_curve_rates, yield_curve_date
 
-    def get_nominal(self, date_year, date_str):
+    def get_corporate(self, date_year, date_str):
 
         if date_year < 1984:
             raise self.NoData
@@ -862,19 +865,21 @@ class YieldCurve:
 
         return spot_years, spot_rates, spot_date
 
-    def __init__(self, interest_rate, date_str, interpolate_rates = True):
+    def __init__(self, interest_rate, date_str, adjust = 0, interpolate_rates = True):
         self.interest_rate = interest_rate
+        assert(interest_rate in ('real', 'nominal', 'corporate'))
         self.date = date_str
         self.interpolate_rates = interpolate_rates  # Whether to interpolate interest rates. Set to true for compatibility with AACalc. Neglible difference.
+        self.adjust = adjust  # Adjustment to apply to all annualized rates.
 
         date_year = int(date_str.split('-')[0])
 
-        if interest_rate == 'real':
+        if interest_rate in ('real', 'nominal'):
 
             try:
-                yield_curve_years, yield_curve_rates, self.yield_curve_date = self.get_real(date_year, date_str)
+                yield_curve_years, yield_curve_rates, self.yield_curve_date = self.get_treasury(date_year, date_str)
             except self.NoData:
-                yield_curve_years, yield_curve_rates, self.yield_curve_date = self.get_real(date_year - 1, date_str)
+                yield_curve_years, yield_curve_rates, self.yield_curve_date = self.get_treasury(date_year - 1, date_str)
 
             # Project returns beyond available returns data using the last forward rate.
             # Not compatible with AACalc. To begin with the underlying splines don't match.
@@ -895,12 +900,12 @@ class YieldCurve:
                 coupon_yield_curve.append(rate / 100.0)
             spot_rates = self.coupon_bond_to_spot(coupon_yield_curve)
 
-        elif interest_rate == 'nominal':
+        elif interest_rate == 'corporate':
 
             try:
-                self.spot_years, spot_rates, self.yield_curve_date = self.get_nominal(date_year, date_str)
+                self.spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year, date_str)
             except self.NoData:
-                self.spot_years, spot_rates, self.yield_curve_date = self.get_nominal(date_year - 1, date_str)
+                self.spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year - 1, date_str)
 
         elif interest_rate == 'le':
 
@@ -908,7 +913,9 @@ class YieldCurve:
 
             return
 
-        self.spot_yield_curve = self.project_curve(spot_rates)
+        spot_yield_curve = self.project_curve(spot_rates)
+
+        self.spot_yield_curve = tuple(r + adjust for r in spot_yield_curve)
 
     def coupon_bond_to_spot(self, rates):
         spots = []
