@@ -867,7 +867,7 @@ class YieldCurve:
 
     def __init__(self, interest_rate, date_str, adjust = 0, interpolate_rates = True):
         self.interest_rate = interest_rate
-        assert(interest_rate in ('real', 'nominal', 'corporate'))
+        assert(interest_rate in ('real', 'nominal', 'corporate', 'le'))
         self.date = date_str
         self.interpolate_rates = interpolate_rates  # Whether to interpolate interest rates. Set to true for compatibility with AACalc. Neglible difference.
         self.adjust = adjust  # Adjustment to apply to all annualized rates.
