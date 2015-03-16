@@ -82,6 +82,10 @@ To do:
 
   - Full scale optimization rather than MVO.
 
+  - Handle returns from a distribution. (Like risk_free but with a
+    mean, standard deviation, and distribution class such as
+    log_normal).
+
   - Possibly support sticky market parameters (current value depends
     on prior years value): volatily, correlations, inflation, interest
     rate, etc. Sticky volatility doesn't look all that
