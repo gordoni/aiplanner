@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 <h1>An Efficient Frontier for Non-normal Returns?</h1>
 
 <p>
-<a href="{% url 'home' %}"}>AACalc.com</a> performs MVO and then assigns points on the MVO efficient frontier to the asset allocation map. For variable withdrawals, the resulting asset allocation maps frequently display a large region of relatively constant asset allocation, transitioning to the asset class with the highest return in the region where portfolio failure seems highly likely. And in the presence of leaving a bequest, for large portfolio sizes, transitioning again to the asset class with the highest returns. These transitions are understandable. The theoretical result that asset allocations are constant only applies if the utility function has constant relative risk aversion, and the presence of Social Security or other defined benefits for low portfolio sizes this is no longer true. On the other hand when things are going very well the diminishing utility of consumption means you reach a point where the linear returns of leaving a bequest outweigh investing for future consumption. What is hard to explain is why these transitions should be abrupt, and this the concern of the rest of this note.
+<a href="{% url 'home' %}">AACalc.com</a> performs MVO and then assigns points on the MVO efficient frontier to the asset allocation map. For variable withdrawals, the resulting asset allocation maps frequently display a large region of relatively constant asset allocation, transitioning to the asset class with the highest return in the region where portfolio failure seems highly likely. And in the presence of leaving a bequest, for large portfolio sizes, transitioning again to the asset class with the highest returns. These transitions are understandable. The theoretical result that asset allocations are constant only applies if the utility function has constant relative risk aversion, and the presence of Social Security or other defined benefits for low portfolio sizes this is no longer true. On the other hand when things are going very well the diminishing utility of consumption means you reach a point where the linear returns of leaving a bequest outweigh investing for future consumption. What is hard to explain is why these transitions should be abrupt, and this the concern of the rest of this note.
 </p>
 
 <h2>Abrupt transitions</h2>
@@ -39,7 +39,7 @@ The graph below shows an abrupt lower boundary when performing asset allocation 
 </p>
 
 <div style="text-align: center;">
-<img src="/static/docs/ef_non_normal-mvo-sh.png"/>
+<img src="/static/docs/ef_non_normal-mvo-sh.png" alt="MVO small value heatmap"/>
 </div>
 
 <p>
@@ -47,7 +47,7 @@ If instead of performing MVO we perform SDP on the entire multi-dimensional asse
 </p>
 
 <div style="text-align: center;">
-<img src="/static/docs/ef_non_normal-none-sh.png"/>
+<img src="/static/docs/ef_non_normal-none-sh.png" alt="SDP small value heatmap"/>
 </div>
 
 <p>
@@ -65,7 +65,7 @@ MVO assumes returns are normally distributed, so the revelation that it is sub-o
 <h2>The frontier</h2>
 
 <p>
-We can explore what points are used when performing asset allocation by taking all the computed asset allocation points in the region 65 <= age <= 99 and $0 <= portfolio size <= $2m. We can then compute the mean and standard deviation of the returns for each asset allocation point using the historical returns sequence. And finally plot mean versus standard deviation, or asset allocation versus standard deviation on a graph.
+We can explore what points are used when performing asset allocation by taking all the computed asset allocation points in the region 65 &lt;= age &lt;= 99 and $0 &lt;= portfolio size &lt;= $2m. We can then compute the mean and standard deviation of the returns for each asset allocation point using the historical returns sequence. And finally plot mean versus standard deviation, or asset allocation versus standard deviation on a graph.
 </p>
 
 <p>
@@ -73,7 +73,7 @@ The mean return as a function of standard deviation of the points used by SDP al
 </p>
 
 <div style="text-align: center;">
-<img src="/static/docs/ef_non_normal-mean.png"/>
+<img src="/static/docs/ef_non_normal-mean.png" alt="risk return"/>
 </div>
 
 <p>
@@ -81,7 +81,7 @@ And zooming in:
 </p>
 
 <div style="text-align: center;">
-<img src="/static/docs/ef_non_normal-mean-zoom.png"/>
+<img src="/static/docs/ef_non_normal-mean-zoom.png" alt="risk return zoom"/>
 </div>
 
 <p>
@@ -93,7 +93,7 @@ The asset allocations for SDP with MVO (these points lie on the MVO efficient fr
 </p>
 
 <div style="text-align: center;">
-<img src="/static/docs/ef_non_normal-mvo-aa.png"/>
+<img src="/static/docs/ef_non_normal-mvo-aa.png" alt="MVO asset allocation"/>
 </div>
 
 <p>
@@ -105,7 +105,7 @@ The asset allocations for SDP alone (these points need not lie on any frontier):
 </p>
 
 <div style="text-align: center;">
-<img src="/static/docs/ef_non_normal-none-aa.png"/>
+<img src="/static/docs/ef_non_normal-none-aa.png" alt="SDP asset allocation"/>
 </div>
 
 <p>
@@ -119,7 +119,7 @@ We have been using a CRRA power utility of consumption function. Switching now t
 </p>
 
 <div style="text-align: center;">
-<img src="/static/docs/ef_non_normal-none-exponential-aa.png"/>
+<img src="/static/docs/ef_non_normal-none-exponential-aa.png" alt="CARA SDP asset allocation"/>
 </div>
 
 <p>
