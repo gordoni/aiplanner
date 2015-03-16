@@ -212,7 +212,12 @@ Periodic payout: {{ spia_form.payout }}
 <br />
 Money's Worth Ratio: {{ spia_form.mwr_percent }}%
 {{ spia_form.mwr_percent.errors }}
-
+<br />
+<br />
+We will also report the cost of self insuring by buying bonds to cover
+through the {{ spia_form.percentile }}th percentile of life
+expectancy.
+{{ spia_form.percentile.errors }}
 </div>
 
 <br />
@@ -249,6 +254,15 @@ Money's Worth Ratio: {{ results.mwr_percent }}%
 First payout: {{ results.payout_date }}.
 Yield curve date: {{ results.yield_curve_date }}.
 </div>
+<br />
+Cost to self insure: {{ results.self_insure }}
+{% if results.self_insure_complex %}
+<div class="small">
+Note that the definition of percentile life expectancy is complex in
+the presence of a secondary annuitant and a payout when one annuitant
+is dead of less than 100%.
+</div>
+{% endif %}
 </div>
 
 {% endif %}

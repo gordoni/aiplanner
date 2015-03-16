@@ -43,6 +43,7 @@ def default_spia_params():
         'payout_delay_months' : 1,
         'period_certain' : 0,
         'mwr_percent': 100,
+        'percentile': 95
     }
 
 def compute_q_adjust(date_str, table, sex, age, le):
@@ -150,12 +151,17 @@ def spia(request):
                     mwr = 1
                 else:
                     mwr = float(mwr_percent) / 100
+                percentile = float(data['percentile'])
 
                 scenario = Scenario(yield_curve, payout_delay, premium, payout, 0, life_table, life_table2 = life_table2, \
                     joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, period_certain = period_certain, \
                     frequency = frequency, cpi_adjust = cpi_adjust, mwr = mwr)
-
                 price = scenario.price() * frequency
+
+                self_insure_scenario = Scenario(yield_curve, payout_delay, premium, payout, 0, life_table, life_table2 = life_table2, \
+                    joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, period_certain = period_certain, \
+                    frequency = frequency, cpi_adjust = cpi_adjust, percentile = percentile)
+                self_insure_price = self_insure_scenario.price() * frequency
 
                 results['fair'] = (mwr == 1)
                 results['frequency'] = {
@@ -175,6 +181,10 @@ def spia(request):
                         results['mwr_percent'] = '{:.1f}'.format(payout * price / premium * 100)
                     except ZeroDivisionError:
                         results['mwr_percent'] = 'inf'
+                if payout == None:
+                    payout = premium / price
+                results['self_insure'] = '{:,.0f}'.format(payout * self_insure_price)
+                results['self_insure_complex'] = (life_table2 != None and joint_payout_fraction != 1)
 
             except YieldCurve.NoData:
 

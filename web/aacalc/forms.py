@@ -392,7 +392,7 @@ class SpiaForm(forms.Form):
         payout = 0 if cleaned_data['payout'] == None else 1
         mwr_percent = 0 if cleaned_data['mwr_percent'] == None else 1
         if premium + payout + mwr_percent != 2:
-            raise ValidationError('Specify exactly two of premium, payout, and money\'s worth ratio.')
+            raise ValidationError('Specify exactly two of premium, payout, and Money\'s Worth Ratio.')
         return cleaned_data
 
     sex = forms.ChoiceField(
@@ -473,3 +473,7 @@ class SpiaForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         required=False)
+    percentile = forms.DecimalField(
+        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=100)
