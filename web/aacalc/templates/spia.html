@@ -44,9 +44,10 @@ window.onload = function() {
 This application computes actuarially fair prices for Single Premium
 Immediate Annuities (SPIAs) and Deferred Income Annuities (DIAs).  An
 annuity is actuarially fair if the price paid for it equals the
-expected present value of the income stream it provides.  This program
-does not provide SPIA or DIA quotes, instead it helps you decide if a
-quote you have already received is a good deal.
+expected present value of the income stream it provides.  This
+application does not provide SPIA or DIA quotes, but it does allow you
+to ballpark such quotes, and help you decide if a quote you have
+already received is a good deal.
 </p>
 
 <p>
@@ -169,10 +170,10 @@ accurate as desired.
 Adjustment to apply to bond interest rate: {{ spia_form.bond_adjust_pct }}%
 {{ spia_form.bond_adjust_pct.errors }}
 <div class="small">
-This factor enables experimentation with the effect of changes in the
+This term enables experimentation with the effect of changes in the
 interest rate. For instance, enter a negative value like -0.2% when
 using corporate bonds to account for the effect of bond defaults. The
-value is applied across the yield curve.
+value entered is applied across the yield curve.
 </div>
 
 </div>
@@ -212,7 +213,10 @@ Periodic payout: {{ spia_form.payout }}
 <br />
 Money's Worth Ratio: {{ spia_form.mwr_percent }}%
 {{ spia_form.mwr_percent.errors }}
-<br />
+<div class="small">
+An MWR of 100% signifies an actuarially fair annuity. MWR's in the
+90-100% range are typical in the U.S. market.
+</div>
 <br />
 We will also report the cost of self insuring by buying bonds to cover
 through the {{ spia_form.percentile }}th percentile of life
