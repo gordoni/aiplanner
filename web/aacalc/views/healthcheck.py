@@ -62,7 +62,7 @@ def healthcheck(request):
     response = spia(request)
     page = response.content
     premium1, premium2, yield_curve_date = match('^.*Actuarially fair premium:.*?(\d+),(\d+).*?Yield curve date: (\d\d\d\d-\d\d-\d\d).*$', page, DOTALL).groups()
-    assert(100000 < int(premium1 + premium2) < 200000)
+    assert(100000 < int(premium1 + premium2) < 250000)
     quote = datetime.strptime(yield_curve_date, '%Y-%m-%d').date()
     assert(0 <= (today - quote).days <= 8)
 
