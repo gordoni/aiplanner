@@ -52,8 +52,9 @@ def healthcheck(request):
     request = request_factory.post('/calculators/spia', params)
     response = spia(request)
     page = response.content
-    premium1, premium2, yield_curve_date = match('^.*Actuarially fair premium:.*?(\d+),(\d+).*?Yield curve date: (\d\d\d\d-\d\d-\d\d).*$', page, DOTALL).groups()
+    premium1, premium2, yield_curve_date, cost1, cost2 = match('^.*Actuarially fair premium:.*?(\d+),(\d+).*?Yield curve date: (\d\d\d\d-\d\d-\d\d).*?Cost to self insure: (\d+),(\d+).*$', page, DOTALL).groups()
     assert(150000 < int(premium1 + premium2) < 300000)
+    assert(200000 < int(cost1 + cost2) < 400000)
     quote = datetime.strptime(yield_curve_date, '%Y-%m-%d').date()
     assert(0 <= (today - quote).days <= 8)
 
