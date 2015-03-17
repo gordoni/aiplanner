@@ -41,16 +41,6 @@ long_rate = {
 
 # Using a forward rate of 2.5% on maturities beyond 30 years reduces the MWR by 2% at age 48.
 
-# Reduction in ananual rates to cover risk of bonds defaulting (or getting downgraded and having to purchase higher quality bonds to replace them). Increases MWR.
-# This isn't usually considered when computing the MWR, instead the MWR is lower than it would be if this was considered.
-# It is here only for experimentation, to see how defaults affect things.
-default_cost = {
-    'real': 0.0,
-    'nominal': 0.0,
-    'corporate': 0.0, # 0.01 * 0.2,
-        # Very rough estimate: http://en.wikipedia.org/wiki/Bond_credit_rating - 1% of once rated AAA/AA/A bonds default; creditor regains guess 80% of bonds value.
-}
-
 iam2012_date = 2012
 
 iam2012_basic_1000_q = {
@@ -867,7 +857,8 @@ class YieldCurve:
 
     def __init__(self, interest_rate, date_str, adjust = 0, interpolate_rates = True):
         self.interest_rate = interest_rate
-        assert(interest_rate in ('real', 'nominal', 'corporate', 'le'))
+        assert(interest_rate in ('real', 'nominal', 'corporate', 'fixed', 'le'))
+        # fixed and le are very similar except le doesn't give credit for the first payout and in the presence of percentile interpolates any final payout.
         self.date = date_str
         self.interpolate_rates = interpolate_rates  # Whether to interpolate interest rates. Set to true for compatibility with AACalc. Neglible difference.
         self.adjust = adjust  # Adjustment to apply to all annualized rates.
@@ -907,7 +898,7 @@ class YieldCurve:
             except self.NoData:
                 self.spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year - 1, date_str)
 
-        elif interest_rate == 'le':
+        elif interest_rate in ('fixed', 'le'):
 
             self.yield_curve_date = 'none'
 
@@ -965,27 +956,30 @@ class YieldCurve:
         return self.forward_to_spot(forward_rates)
 
     def discount_rate(self, y):
-        if self.interest_rate == 'le':
-            return 1
-        if self.interpolate_rates:
-            look_y = y
+        if self.interest_rate == 'fixed':
+            say = self.adjust
+        elif self.interest_rate == 'le':
+            say = 0
         else:
-            look_y = round(y * 2) / 2.0
-            look_y = max(0.5, look_y)
-        if min(self.spot_years) <= look_y <= max(self.spot_years):
-            yield_curve = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=2)
-        else:
-            yield_curve = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=1)
-        say = float(yield_curve(look_y))  # De-numpy-fy.
+            if self.interpolate_rates:
+                look_y = y
+            else:
+                look_y = round(y * 2) / 2.0
+                look_y = max(0.5, look_y)
+            if min(self.spot_years) <= look_y <= max(self.spot_years):
+                yield_curve = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=2)
+            else:
+                yield_curve = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=1)
+            say = float(yield_curve(look_y))  # De-numpy-fy.
         ay = (1 + say / 2) ** 2  # Convert semi-annual yields to annual yields.
         d = ay ** y
-        return d * (1 - default_cost[self.interest_rate]) ** y
+        return d
 
 class LifeTable:
 
     def __init__(self, table, sex, age, ae = 'full', q_adjust = 1, interpolate_q = True):
         self.table = table
-        assert(table in ('iam', 'ssa_cohort', 'ssa_period', 'le'))
+        assert(table in ('iam', 'ssa_cohort', 'ssa_period'))
         self.sex = sex
         self.age = age
         self.ae = ae  # Whether and how to use the actual/expected experience report.
@@ -1047,7 +1041,7 @@ class LifeTable:
 
     def q(self, year, age, contract_age):
         cohort = year - age
-        age_nearest = (self.table in ('iam', 'ssa_cohort', 'ssa_period', 'le'))
+        age_nearest = (self.table in ('iam', 'ssa_cohort', 'ssa_period'))
         if self.interpolate_q:
             if not age_nearest:
                 age -= 0.5
