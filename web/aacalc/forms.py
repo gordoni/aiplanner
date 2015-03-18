@@ -477,3 +477,8 @@ class SpiaForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=100)
+
+    advanced_spia = forms.BooleanField(required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'advanced_button'}))
+    advanced_bonds = forms.BooleanField(required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'advanced_button'}))

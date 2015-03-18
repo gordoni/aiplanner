@@ -79,12 +79,37 @@ def first_payout(date_str, delay, frequency):
     if m > 12:
         y += 1
         m -= 12
-    end_date = date(y,m, d)
+    end_date = date(y, m, d)
 
     payout_date = end_date.strftime('%Y-%m-%d')
     payout_delay = (end_date - start_date).days / 365.25
 
     return payout_date, payout_delay
+
+def format_calcs(calcs, price, payout, mwr):
+
+    calculations = []
+    for calc in calcs:
+        calculations.append({
+            'n': calc['i'],
+            'y': '{:.3f}'.format(calc['y']),
+            'primary': '{:.6f}'.format(calc['alive']),
+            'joint': '{:.6f}'.format(calc['joint']),
+            'combined': '{:.6f}'.format(calc['combined']),
+            'combined_price': '{:,.2f}'.format(calc['payout_fraction'] * payout),
+            'discount_rate': '{:.3f}%'.format((calc['interest_rate'] - 1) * 100),
+            'fair_price': '{:,.2f}'.format(calc['fair_price'] * payout),
+        })
+
+    fair_price = sum(calc['fair_price'] for calc in calcs) * payout
+
+    try:
+        actual_price = fair_price / mwr
+        assert(abs(actual_price - price) <= 1e-6 * price)
+    except ZeroDivisionError:
+        actual_price = float('inf')
+
+    return calculations, '{:,.2f}'.format(fair_price), '{:,.2f}'.format(actual_price)
 
 def spia(request):
 
@@ -173,18 +198,23 @@ def spia(request):
                 results['payout_date'] = payout_date
                 results['yield_curve_date'] = yield_curve.yield_curve_date
                 if premium == None:
-                    results['premium'] = '{:,.0f}'.format(payout * price)
+                    premium = payout * price
+                    results['premium'] = '{:,.0f}'.format(premium)
                 elif payout == None:
-                        results['payout'] = '{:,.2f}'.format(premium / price)
+                    payout = premium / price
+                    results['payout'] = '{:,.2f}'.format(payout)
                 else:
                     try:
-                        results['mwr_percent'] = '{:.1f}'.format(payout * price / premium * 100)
+                        mwr = payout * price / premium
+                        results['mwr_percent'] = '{:.1f}'.format(mwr * 100)
                     except ZeroDivisionError:
+                        mwr = float('inf')
                         results['mwr_percent'] = 'inf'
-                if payout == None:
-                    payout = premium / price
                 results['self_insure'] = '{:,.0f}'.format(payout * self_insure_price)
                 results['self_insure_complex'] = (life_table2 != None and joint_payout_fraction != 1)
+
+                results['spia_calcs'], results['spia_fair'], results['spia_actual'] = format_calcs(scenario.calcs, premium, payout, mwr)
+                results['bond_calcs'], results['bond_fair'], _ = format_calcs(self_insure_scenario.calcs, payout * self_insure_price, payout, 1)
 
             except YieldCurve.NoData:
 

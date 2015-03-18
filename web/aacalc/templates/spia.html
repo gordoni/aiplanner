@@ -23,12 +23,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% block title %}What is my actuarially fair SPIA or DIA price?{% endblock %}
 
 {% block head %}
+<script type="text/javascript" src="/static/js/jquery-1.10.2.min.js"></script>
 <script type="text/javascript">
-window.onload = function() {
+$(document).ready(function(){
+    // Handle page reloads, button state may be remembered by browser but show/hide are not.
+    $('.advanced_button:checked').closest('.simple_advanced').find('.advanced,.simple').toggle();
+    $('.advanced_button').click(function() {
+        $(this).closest('.simple_advanced').find('.advanced,.simple').toggle();
+    });
+
     e = document.getElementById("results");
     if (e)
          e.scrollIntoView();
-};
+});
 </script>
 {% endblock %}
 
@@ -145,7 +152,7 @@ Assumed bond type: {{ spia_form.bond_type }}
 {{ spia_form.bond_type.errors }}
 <div class="small">
 For inflation indexed SPIAs the assumed bond type should be inflation
-indexed TIPS. For constant payout SPIAs the assumed bond type can be
+indexed TIPS. For constant nominal payout SPIAs the assumed bond type can be
 either U.S. Treasury or U.S. corporate, depending on how you are
 likely to invest your safe assets in the absence of SPIAs.
 </div>
@@ -235,6 +242,7 @@ expectancy.
 <br />
 
 <div id="results">
+<div class="simple_advanced">
 {% if results.premium %}
 {% if results.fair %}
 Actuarially fair premium:
@@ -256,9 +264,48 @@ Money's Worth Ratio: {{ results.mwr_percent }}%
 {% endif %}
 <div class="small">
 First payout: {{ results.payout_date }}.
+<br />
 Yield curve date: {{ results.yield_curve_date }}.
 </div>
+<div class="advanced_controller">
+Show calculations: {{ spia_form.advanced_spia }}
+{{ spia_form.advanced_spia.errors }}
+</div>
+<div class="advanced">
+<table class="table-lined small right">
+<tr>
+<th> n </th>
+<th> years </th>
+<th> primary </th>
+<th> joint </th>
+<th> combined </th>
+<th> combined price </th>
+<th> discount rate </th>
+<th> fair price </th>
+</tr>
+{% for calc in results.spia_calcs %}
+<tr>
+<td> {{ calc.n }} </td>
+<td> {{ calc.y }} </td>
+<td> {{ calc.primary }} </td>
+<td> {{ calc.joint }} </td>
+<td> {{ calc.combined }} </td>
+<td> {{ calc.combined_price }} </td>
+<td> {{ calc.discount_rate }} </td>
+<td> {{ calc.fair_price }} </td>
+</tr>
+{% endfor %}
+<tr>
+<td colspan=7> actuarially fair price </td> <th> {{ results.spia_fair }} </th>
+</tr>
+<tr>
+<td colspan=7> actual price (actuarially fair price / MWR) </td> <th> {{ results.spia_actual }} </th>
+</tr>
+</table>
+</div>
+</div>
 <br />
+<div class="simple_advanced">
 Cost to self insure: {{ results.self_insure }}
 {% if results.self_insure_complex %}
 <div class="small">
@@ -267,6 +314,40 @@ the presence of a secondary annuitant and a payout when one annuitant
 is dead of less than 100%.
 </div>
 {% endif %}
+<div class="advanced_controller">
+Show calculations: {{ spia_form.advanced_bonds }}
+{{ spia_form.advanced_bonds.errors }}
+</div>
+<div class="advanced">
+<table class="table-lined small right">
+<tr>
+<th> n </th>
+<th> years </th>
+<th> primary </th>
+<th> joint </th>
+<th> combined </th>
+<th> combined price </th>
+<th> discount rate </th>
+<th> fair price </th>
+</tr>
+{% for calc in results.bond_calcs %}
+<tr>
+<td> {{ calc.n }} </td>
+<td> {{ calc.y }} </td>
+<td> {{ calc.primary }} </td>
+<td> {{ calc.joint }} </td>
+<td> {{ calc.combined }} </td>
+<td> {{ calc.combined_price }} </td>
+<td> {{ calc.discount_rate }} </td>
+<td> {{ calc.fair_price }} </td>
+</tr>
+{% endfor %}
+<tr>
+<td colspan=7> actuarially fair price </td> <th> {{ results.bond_fair }} </th>
+</tr>
+</table>
+</div>
+</div>
 </div>
 
 {% endif %}

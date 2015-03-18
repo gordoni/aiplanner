@@ -1125,7 +1125,8 @@ class Scenario:
         payout_delay = self.payout_delay / 12.0
         i = 0
         prev_combined = 1.0
-        time_since_adjust = 0 if self.cpi_adjust == 'payout' else start_year_offset
+        time_since_adjust = 0.01 if self.cpi_adjust == 'payout' else (start_year_offset + payout_delay + 0.01) % 1
+        # 0.01 is to prevent date slop problems.
         adjust_discount = self.yield_curve.discount_rate(payout_delay) ** payout_delay
         while True:
             period = float(i) / self.frequency
@@ -1144,12 +1145,12 @@ class Scenario:
                 combined = 1.0
             r = self.yield_curve.discount_rate(y)
             if self.yield_curve.interest_rate == 'real' and self.cpi_adjust != 'all':
-                if y > 0:
-                    r *= (r ** y / adjust_discount) ** (1 / y)  # Compute and apply inflation since last adjust.
                 if time_since_adjust >= 1:
                     adjust_y = y if self.cpi_adjust == 'payout' else int(y + start_year_offset) - start_year_offset
                     adjust_discount = self.yield_curve.discount_rate(adjust_y) ** adjust_y
                     time_since_adjust -= 1
+                if y > 0:
+                    r *= (r ** y / adjust_discount) ** (1 / y)  # Compute and apply inflation since last adjust.
             if self.percentile is None:
                 if self.yield_curve.interest_rate == 'le' and i == 0:
                     payout_fraction = 0  # No credit for first payout.
@@ -1162,7 +1163,7 @@ class Scenario:
                     payout_fraction = (prev_combined - target_combined) / (prev_combined - combined)
             payout = payout_fraction / r ** y
             price += payout
-            calc = {'i': i, 'y': y, 'alive': alive, 'joint': joint, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout}
+            calc = {'i': i, 'y': y, 'alive': alive, 'joint': joint, 'combined': combined, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout}
             calcs.append(calc)
             i += 1
             prev_combined = combined
@@ -1171,7 +1172,7 @@ class Scenario:
             payout_fraction = 0.5  # Half credit after last payout.
             payout = payout_fraction / r ** y
             price += payout
-            calc = {'i': i, 'y': y, 'alive': 0.0, 'joint': 0.0, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout}
+            calc = {'i': i, 'y': y, 'alive': 0.0, 'joint': 0.0, 'combined': combined, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout}
             calcs.append(calc)
 
         try:
