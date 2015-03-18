@@ -17,8 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from argparse import ArgumentParser
+from calendar import monthrange
 from csv import reader
-from datetime import date
 from os.path import expanduser, isdir, join, normpath
 from scipy.interpolate import InterpolatedUnivariateSpline
 
@@ -1089,8 +1089,8 @@ class Scenario:
         current_age2 = self.life_table2.age if self.life_table2 else None
         start_year, m, d = self.yield_curve.date.split('-')
         start_year = int(start_year)
-        start_date = date(start_year, int(m), int(d))
-        start_year_offset = (start_date.timetuple().tm_yday - 1) / (366.0 if start_year % 4 == 0 else 365.0)
+        start_month = int(m) - 1 + (float(d) - 1) / monthrange(start_year, int(m))[1]
+        start = start_year + start_month / 12
         alive1 = 1.0
         alive2 = 1.0
         alive_array = [1.0]
@@ -1099,8 +1099,8 @@ class Scenario:
         i = 0
         while True:
             y = float(i) * update_period / self.frequency
-            q1 = self.life_table1.q(start_year + start_year_offset + y, current_age1 + y, y)
-            q2 = 1 if current_age2 is None else self.life_table2.q(start_year + start_year_offset + y, current_age2 + y, y)
+            q1 = self.life_table1.q(start + y, current_age1 + y, y)
+            q2 = 1 if current_age2 is None else self.life_table2.q(start + y, current_age2 + y, y)
             if q1 == q2 == 1:
                 break
             for _ in range(update_period):
@@ -1122,15 +1122,15 @@ class Scenario:
 
         price = 0
         calcs = []
-        payout_delay = self.payout_delay / 12.0
         i = 0
         prev_combined = 1.0
-        time_since_adjust = 0.01 if self.cpi_adjust == 'payout' else (start_year_offset + payout_delay + 0.01) % 1
-        # 0.01 is to prevent date slop problems.
-        adjust_discount = self.yield_curve.discount_rate(payout_delay) ** payout_delay
+        delay = self.payout_delay / 12.0
+        months_since_adjust = 0 if self.cpi_adjust == 'payout' else (start_month + self.payout_delay + 1e-9) % 12
+            # 1e-9: avoid floating point rounding problems when payout_delay computed for the next modal period.
+        adjust_discount = self.yield_curve.discount_rate(delay) ** delay
         while True:
             period = float(i) / self.frequency
-            y = payout_delay + period
+            y = delay + period
             index = y * self.frequency
             fract = index % 1
             index = int(index)
@@ -1145,10 +1145,10 @@ class Scenario:
                 combined = 1.0
             r = self.yield_curve.discount_rate(y)
             if self.yield_curve.interest_rate == 'real' and self.cpi_adjust != 'all':
-                if time_since_adjust >= 1:
-                    adjust_y = y if self.cpi_adjust == 'payout' else int(y + start_year_offset) - start_year_offset
+                if months_since_adjust >= 12:
+                    adjust_y = y if self.cpi_adjust == 'payout' else int(start + y) - start
                     adjust_discount = self.yield_curve.discount_rate(adjust_y) ** adjust_y
-                    time_since_adjust -= 1
+                    months_since_adjust -= 12
                 if y > 0:
                     r *= (r ** y / adjust_discount) ** (1 / y)  # Compute and apply inflation since last adjust.
             if self.percentile is None:
@@ -1167,7 +1167,7 @@ class Scenario:
             calcs.append(calc)
             i += 1
             prev_combined = combined
-            time_since_adjust += 1.0 / self.frequency
+            months_since_adjust += 12.0 / self.frequency
         if self.yield_curve.interest_rate == 'le' and self.percentile is None:
             payout_fraction = 0.5  # Half credit after last payout.
             payout = payout_fraction / r ** y

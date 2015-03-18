@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from calendar import monthrange
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
@@ -65,9 +66,12 @@ def compute_q_adjust(date_str, table, sex, age, le):
 
 def first_payout(date_str, delay, frequency):
 
-    y, m, d = date_str.split('-')
-    start_date = date(int(y), int(m), int(d))
-    end_date = start_date + timedelta(delay * 365.25)
+    start_y, start_m, start_d = date_str.split('-')
+    start_y = int(start_y)
+    start_m = int(start_m)
+    start_d = int(start_d)
+    start_date = date(start_y, start_m, start_d)
+    end_date = start_date + timedelta(delay / 12.0 * 365.25)
     y = end_date.year
     m = end_date.month
     d = end_date.day
@@ -75,14 +79,18 @@ def first_payout(date_str, delay, frequency):
         m += 1
         d = 1
     period = 12 / frequency
-    m = (m - 1 + period - 1) / period * period + 1
+    m_adjust = (m - 1 + period - 1) / period * period - (m - 1)
+    delay += m_adjust
+    m += m_adjust
     if m > 12:
         y += 1
         m -= 12
     end_date = date(y, m, d)
 
     payout_date = end_date.strftime('%Y-%m-%d')
-    payout_delay = (end_date - start_date).days / 365.25
+    payout_delay = (end_date.year - start_date.year) * 12
+    payout_delay += end_date.month - start_date.month
+    payout_delay += float(end_date.day - start_date.day) / monthrange(start_y, start_m)[1]  # Only works for end_date.day == 1.
 
     return payout_date, payout_delay
 
@@ -159,11 +167,10 @@ def spia(request):
                 joint_contingent = (data['joint_type'] == 'contingent')
                 frequency = int(data['frequency'])
                 cpi_adjust = data['cpi_adjust']
-                payout_delay = float(data['payout_delay_months']) / 12
+                payout_delay = float(data['payout_delay_months'])
                 if data['payout_delay_years']:
-                    payout_delay += float(data['payout_delay_years'])
+                    payout_delay += float(data['payout_delay_years']) * 12
                 payout_date, payout_delay = first_payout(date_str, payout_delay, frequency)
-                payout_delay *= 12
                 period_certain = data['period_certain']
                 premium = data.get('premium')
                 if premium != None:
