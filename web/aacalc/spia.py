@@ -972,8 +972,7 @@ class YieldCurve:
                 yield_curve = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=1)
             say = float(yield_curve(look_y))  # De-numpy-fy.
         ay = (1 + say / 2) ** 2  # Convert semi-annual yields to annual yields.
-        d = ay ** y
-        return d
+        return ay
 
 class LifeTable:
 
@@ -1085,8 +1084,7 @@ class Scenario:
             # Updating every payout reduces MWR by 2% at age 90.
 
     def price(self):
-        price = 0
-        payout_delay = self.payout_delay / 12.0
+
         current_age1 = self.life_table1.age
         current_age2 = self.life_table2.age if self.life_table2 else None
         start_year, m, d = self.yield_curve.date.split('-')
@@ -1121,51 +1119,66 @@ class Scenario:
                 alive_array.append(alive)
                 joint_array.append(joint)
             i += 1
+
+        price = 0
+        calcs = []
+        payout_delay = self.payout_delay / 12.0
         i = 0
-        prev_payout_fraction = 1.0
+        prev_combined = 1.0
         time_since_adjust = 0 if self.cpi_adjust == 'payout' else start_year_offset
-        adjust_discount_rate = self.yield_curve.discount_rate(payout_delay)
+        adjust_discount = self.yield_curve.discount_rate(payout_delay) ** payout_delay
         while True:
             period = float(i) / self.frequency
             y = payout_delay + period
             index = y * self.frequency
             fract = index % 1
             index = int(index)
-            if index + 1 >= len(alive_array):
+            target_combined = 1 - self.percentile / 100.0 if self.percentile is not None else -1
+            if index + 1 >= len(alive_array) or prev_combined < target_combined:
                 break
             if period >= self.period_certain:
                 alive = (1 - fract) * alive_array[index] + fract * alive_array[index + 1]
                 joint = (1 - fract) * joint_array[index] + fract * joint_array[index + 1]
-                payout_fraction = alive + self.joint_payout_fraction * joint
+                combined = alive + self.joint_payout_fraction * joint
             else:
-                payout_fraction = 1.0
+                combined = 1.0
             r = self.yield_curve.discount_rate(y)
             if self.yield_curve.interest_rate == 'real' and self.cpi_adjust != 'all':
-                r = r * (r / adjust_discount_rate)  # Compute and apply inflation since last adjust.
+                if y > 0:
+                    r *= (r ** y / adjust_discount) ** (1 / y)  # Compute and apply inflation since last adjust.
                 if time_since_adjust >= 1:
                     adjust_y = y if self.cpi_adjust == 'payout' else int(y + start_year_offset) - start_year_offset
-                    adjust_discount_rate = self.yield_curve.discount_rate(adjust_y)
+                    adjust_discount = self.yield_curve.discount_rate(adjust_y) ** adjust_y
                     time_since_adjust -= 1
-            if self.percentile is not None:
-                target_payout_fraction = 1 - self.percentile / 100.0
-                if payout_fraction >= target_payout_fraction:
-                    prev_payout_fraction = payout_fraction
+            if self.percentile is None:
+                if self.yield_curve.interest_rate == 'le' and i == 0:
+                    payout_fraction = 0  # No credit for first payout.
+                else:
+                    payout_fraction = combined
+            else:
+                if combined >= target_combined:
                     payout_fraction = 1.0
                 else:
-                    price += (prev_payout_fraction - target_payout_fraction) / (prev_payout_fraction - payout_fraction) / r
-                    break
-            if i == 0 and self.yield_curve.interest_rate == 'le':
-                if self.percentile is None:
-                    payout_fraction /= 2.0  # No credit for first payout; half credit after last payout.
-                else:
-                    payout_fraction = 0  # Interpolated later.
-            price += payout_fraction / r
+                    payout_fraction = (prev_combined - target_combined) / (prev_combined - combined)
+            payout = payout_fraction / r ** y
+            price += payout
+            calc = {'i': i, 'y': y, 'alive': alive, 'joint': joint, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout}
+            calcs.append(calc)
             i += 1
+            prev_combined = combined
             time_since_adjust += 1.0 / self.frequency
+        if self.yield_curve.interest_rate == 'le' and self.percentile is None:
+            payout_fraction = 0.5  # Half credit after last payout.
+            payout = payout_fraction / r ** y
+            price += payout
+            calc = {'i': i, 'y': y, 'alive': 0.0, 'joint': 0.0, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout}
+            calcs.append(calc)
+
         try:
             price /= self.frequency * (1 - self.tax) * self.mwr
         except ZeroDivisionError:
             price = float('inf')
+        self.calcs = calcs
         return price
 
 # MWR decreases 2% at age 50 and 5% at age 90 when cross from one age nearest birthday to the next.
