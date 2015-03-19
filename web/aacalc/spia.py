@@ -1125,8 +1125,9 @@ class Scenario:
         i = 0
         prev_combined = 1.0
         delay = self.payout_delay / 12.0
-        months_since_adjust = 0 if self.cpi_adjust == 'payout' else (start_month + self.payout_delay + 1e-9) % 12
-            # 1e-9: avoid floating point rounding problems when payout_delay computed for the next modal period.
+        first_payout = start + delay + 1e-9  # 1e-9: avoid floating point rounding problems when payout_delay computed for the next modal period.
+        months_since_adjust = 0 if self.cpi_adjust == 'payout' else (first_payout % 1) * 12
+        adjust_y = int(first_payout) - start
         adjust_discount = self.yield_curve.discount_rate(delay) ** delay
         while True:
             period = float(i) / self.frequency
@@ -1146,7 +1147,10 @@ class Scenario:
             r = self.yield_curve.discount_rate(y)
             if self.yield_curve.interest_rate == 'real' and self.cpi_adjust != 'all':
                 if months_since_adjust >= 12:
-                    adjust_y = y if self.cpi_adjust == 'payout' else int(start + y) - start
+                    if self.cpi_adjust == 'payout':
+                        adjust_y = y
+                    else:
+                        adjust_y += 1
                     adjust_discount = self.yield_curve.discount_rate(adjust_y) ** adjust_y
                     months_since_adjust -= 12
                 if y > 0:
