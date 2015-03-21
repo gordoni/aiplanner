@@ -453,6 +453,7 @@ class SpiaForm(forms.Form):
     payout_delay_years = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
+        max_value=100,
         required=False)
     payout_delay_months = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),

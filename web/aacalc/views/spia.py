@@ -17,6 +17,7 @@
 from calendar import monthrange
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from math import isnan
 
 from django.forms.util import ErrorList
 from django.shortcuts import render
@@ -113,7 +114,7 @@ def format_calcs(calcs, price, payout, mwr):
 
     try:
         actual_price = fair_price / mwr
-        assert(abs(actual_price - price) <= 1e-6 * price)
+        assert((isnan(actual_price) and isnan(fair_price)) or abs(actual_price - price) <= 1e-6 * price)
     except ZeroDivisionError:
         actual_price = float('inf')
 
@@ -208,15 +209,17 @@ def spia(request):
                     premium = payout * price
                     results['premium'] = '{:,.0f}'.format(premium)
                 elif payout == None:
-                    payout = premium / price
+                    try:
+                        payout = premium / price
+                    except ZeroDivisionError:
+                        payout = float('inf')
                     results['payout'] = '{:,.2f}'.format(payout)
                 else:
                     try:
                         mwr = payout * price / premium
-                        results['mwr_percent'] = '{:.1f}'.format(mwr * 100)
                     except ZeroDivisionError:
                         mwr = float('inf')
-                        results['mwr_percent'] = 'inf'
+                results['mwr_percent'] = '{:.1f}'.format(mwr * 100)
                 results['self_insure'] = '{:,.0f}'.format(payout * self_insure_price)
                 results['self_insure_complex'] = (life_table2 != None and joint_payout_fraction != 1)
 
