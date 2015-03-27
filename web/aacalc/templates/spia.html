@@ -20,9 +20,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {% endcomment %}
 
-{% block title %}What is my actuarially fair SPIA or DIA price?{% endblock %}
+{% block title %}Actuarially fair SPIA and DIA price calculator{% endblock %}
 
 {% block head %}
+<meta name="description" content="Compute the actuarially fair price for Single Premium Immediate Annuities and Deferred Income Annuities." /><!-- Keep content to less than 155 characters according to Wikipedia. -->
 <script type="text/javascript" src="/static/js/jquery-1.10.2.min.js"></script>
 <script type="text/javascript">
 $(document).ready(function(){
@@ -41,18 +42,18 @@ $(document).ready(function(){
 
 {% block content %}
 
-<h1>What is my actuarially fair SPIA or DIA price?</h1>
+<h1>Actuarially fair SPIA and DIA price calculator</h1>
 
 <p>
 <img style="float: right; margin-left: 10px;" width=400 height=200 src="/static/images/iStock_000019076339XSmall.jpg" alt="financial planning">
 </p>
 
 <p>
-This application computes actuarially fair prices for Single Premium
+This calculator computes actuarially fair prices for Single Premium
 Immediate Annuities (SPIAs) and Deferred Income Annuities (DIAs).  An
 annuity is actuarially fair if the price paid for it equals the
 expected present value of the income stream it provides.  This
-application does not provide SPIA or DIA quotes, but it does allow you
+calculator does not provide SPIA or DIA quotes, but it does allow you
 to ballpark such quotes, and help you decide if a quote you have
 already received is a good deal.
 </p>
