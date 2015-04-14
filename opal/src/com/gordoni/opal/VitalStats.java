@@ -477,7 +477,8 @@ public class VitalStats
                         sum_aa += avg_alive[i];
                         if (bounded_sum_avg_alive != null && i < bounded_sum_avg_alive.length)
                                 if (!config.utility_retire || i >= Math.round((config.retirement_age - config.start_age) * time_periods) + (config.book_post ? 1 : 0))
-                                        bounded_sum_aa += avg_alive[i];
+                                        if (i < avg_alive.length - 1 || config.book_post)  // Last element ignored if not book_post.
+                                                bounded_sum_aa += avg_alive[i];
                         if (sum_avg_alive_array != null)
                                 sum_avg_alive_array[i] = sum_aa;
                         if (bounded_sum_avg_alive != null && i < bounded_sum_avg_alive.length)
