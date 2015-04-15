@@ -169,7 +169,7 @@ class ScenarioBaseForm(forms.Form):
     utility_eta_2 = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
-        max_value=50)
+        max_value=8) # 10 fails due to fp rounding and inverse_utility.
     utility_ce = forms.DecimalField(
         widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=Decimal('1.02'), # 1.01 fails.
