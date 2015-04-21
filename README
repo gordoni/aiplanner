@@ -41,7 +41,14 @@ Notable features include:
   - An optional web based front end to the program.
 
   - In addition to the main asset allocation calculator, additional
-    what's "my number", and life expectancy, web based calculators.
+    web based calculators for:
+      - what's "my number"
+      - actuarial life expectancy
+      - actuarially-fair SPIA prices
+
+Demo:
+
+  - See https://www.aacalc.com/
 
 AACalc implementation:
 
@@ -105,6 +112,10 @@ To do:
 
   - Handle multiple start dates for Social Security, pensions, annuity
     income.
+
+  - Explore implications of using prospect theory to compute the
+    optimal strategy (treat previous consumption level as an extra
+    "wealth" dimension); will be slow.
 
   - Stochastic income pre-retirement; will likely be slow.
 

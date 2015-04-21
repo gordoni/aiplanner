@@ -160,6 +160,14 @@ history. E.g. most Java variables are in underscore lower case rather
 than camel case, an unusual indentation style, and increasing
 portfolio sizes being represented by decreasing bucket values.
 
+A lot of the complexity of AACalc is the result of it supporting a
+large number of experimental options which were added as it evolved.
+
+A different way of implementing and structuring AACalc would be to use
+a generic SDP package, rather than the ad hoc asset allocation only
+approach taken. Since this hasn't been done, it isn't known whether
+this would offer any advantages or disadvantages.
+
 Key files:
     AAMap.java - SDP/Monte Carlo main loop
     Config.java - list of configuration values
