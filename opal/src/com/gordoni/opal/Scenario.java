@@ -676,7 +676,7 @@ public class Scenario
         }
 
         // Dump the paths taken.
-        private void dump_paths(List<List<PathElement>> paths) throws IOException
+        private void dump_paths(List<List<PathElement>> paths, Returns returns) throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-paths.csv"));
 
@@ -701,6 +701,8 @@ public class Scenario
                                 out.print("," + f2f.format(nia));
                                 out.print("," + f2f.format(real_annuitize));
                                 out.print("," + f2f.format(nominal_annuitize));
+                                out.print("," + ((returns == null) ? "" : f4f.format(expected_return(step.aa, returns))));
+                                out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(step.aa, returns))));
                                 out.print("," + aa);
                                 out.print("\n");
                                 age_period += 1;
@@ -961,7 +963,7 @@ public class Scenario
                         tp_max = dump_pct_path(paths, "p", false);
                         consume_max = dump_pct_path(paths, "consume", false);
                         dump_pct_paths(paths);
-                        dump_paths(paths);
+                        dump_paths(paths, returns);
                         // Delta paths breaks when validate using validate dump because guaranteed_safe_aa relies on MVO tangency.
                         //dump_delta_paths(paths, 1);
                         //dump_delta_paths(paths, 5);
