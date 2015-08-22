@@ -242,6 +242,26 @@ class AAMap
                 return me;
         }
 
+        private void aa_offset(double[] aa)
+        {
+                if (config.aa_offset == null)
+                        return;
+
+                double new_sum = 0;
+                for (int a = 0; a < scenario.normal_assets; a++)
+                {
+                        double alloc = aa[a];
+                        alloc += config.aa_offset[a];
+                        alloc = Math.max(alloc, 0);
+                        alloc = Math.min(alloc, 1);
+                        aa[a] = alloc;
+                        new_sum += alloc;
+                }
+                assert(new_sum > 1e-6);
+                for (int a = 0; a < scenario.normal_assets; a++)
+                        aa[a] /= new_sum;
+        }
+
         // Simulation core.
         @SuppressWarnings("unchecked")
         protected SimulateResult simulate(double[] initial_aa, double[] bucket_p, int period, Integer num_sequences, int num_paths_record, boolean generate, Returns returns, int bucket)
@@ -283,11 +303,18 @@ class AAMap
                 if (Arrays.asList("none", "once").contains(returns.ret_shuffle))
                         assert(num_paths <= len_available);
 
+                double[] start_aa;
                 if (initial_aa == null)
                 {
                         MapElement res = lookup_interpolate(bucket_p, period);
-                        initial_aa = res.aa;
+                        start_aa = res.aa;
                 }
+                else
+                {
+                        start_aa = initial_aa.clone();
+                }
+                if (!generate)
+                        aa_offset(start_aa);
 
                 double[] aa1 = new double[scenario.all_alloc]; // Avoid object creation in main loop; slow.
                 double[] aa2 = new double[scenario.all_alloc];
@@ -362,7 +389,7 @@ class AAMap
                         double nia = (scenario.nia_index == null ? 0 : bucket_p[scenario.nia_index]);
                         double[] aa = aa1;
                         double[] free_aa = aa2;
-                        System.arraycopy(initial_aa, 0, aa, 0, scenario.all_alloc);
+                        System.arraycopy(start_aa, 0, aa, 0, scenario.all_alloc);
                         boolean retire = false;
                         double spend_retirement = Double.NaN;
                         double cpi = 1;
@@ -639,6 +666,8 @@ class AAMap
                                         if (!generate)
                                         {
                                                 // Rebalance.
+                                                if (config.aa_offset != null)
+                                                        aa_offset(me.aa);
                                                 boolean rebalance_period = new_period % Math.round(returns.time_periods / config.rebalance_time_periods) == 0;
                                                 if (!rebalance_period || config.rebalance_band_hw > 0)
                                                 {

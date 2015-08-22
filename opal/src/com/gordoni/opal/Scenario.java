@@ -1462,6 +1462,8 @@ public class Scenario
                     tp_max_estimate = config.tp_max;
                 assert(consume_max_estimate > 0);
 
+                normal_assets = asset_classes.size();
+
                 // Set up the scales.
                 scale = new Scale[start_p.length];
                 if (tp_index != null)
@@ -1506,6 +1508,11 @@ public class Scenario
                                 // Ensures able to add upside utility to floor utility without exceeding u_inf.
                 }
                 assert(!config.utility_epstein_zin || (success_mode_enum == MetricsEnum.COMBINED)); // Other success modes not Epstein-Zinized.
+                if (config.aa_offset != null)
+                {
+                        assert(config.aa_offset.length == normal_assets);
+                        assert(Math.abs(Utils.sum(config.aa_offset)) < 1e-6);
+                }
 
                 // More internal parameters.
 
@@ -1513,7 +1520,6 @@ public class Scenario
                 do_target = !config.skip_target && config.target_mode != null;
                 do_generate = !config.skip_generate || (!config.skip_validate && (config.validate == null)) || (do_target && (config.target_sdp_baseline || config.target_mode.equals("rps")));
 
-                normal_assets = asset_classes.size();
                 cpi_index = -1;
                 if (do_tax || (ria_index != null && config.tax_rate_annuity != 0) || nia_index != null)
                 {
