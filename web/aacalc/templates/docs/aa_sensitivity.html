@@ -30,9 +30,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 <p>
 Asset allocation matters, but achieving the optimal asset allocation
-probably matters less than you might think. Provided you adopt and
-stick with a high stock allocation you should do reasonably well.
+probably matters less than you might think. If you are using variable
+withdrawals then provided you adopt and stick with a high stock
+allocation you should do reasonably well.
 </p>
+
+<h2>Scenario</h2>
 
 <p>
 Consider a 65 year old male with a stochastic life span, no bequest
@@ -69,13 +72,13 @@ Suppose the individual had perfect knowledge of the distribution of
 annual returns, but not their sequencing. Then there exists an optimal
 asset allocation and consumption strategy as a function of age and
 portfolio size. Moreover, provided the returns are independent over
-time, it is possible to compute that strategy using stochastic dynamic
+time, it is possible to compute this strategy using stochastic dynamic
 programming.
 </p>
 
 <p>
 The future is discounted at a rate of 1.5% per year. Management
-expenses are 0.1%. The individual wishes to maximize expected lifetime
+expenses are assumed to be 0.1% per year. The individual wishes to maximize expected lifetime
 utility.
 </p>
 
@@ -83,7 +86,7 @@ utility.
 
 <p>
 The optimal allocation to stocks as a function of age and portfolio
-size is shown below. This graph is a heat map. The optimal allocation
+size computed using stochastic dynamic programming is shown below. This graph is a heat map. The optimal allocation
 is determined by first determining the color of the graph for a
 specified age and portfolio size, and then determining the asset
 allocation corresponding to that color using the color scale on the
@@ -136,7 +139,7 @@ shown below.
 <img src="/static/docs/aa_sensitivity-paths-stocks.png" alt="stocks paths"/>
 </div>
 
-<h2>How Much Asset Allocation Matters</h2>
+<h2>How much asset allocation matters</h2>
 
 <p>
 Following the optimal asset allocation is clearly a challenging task.
