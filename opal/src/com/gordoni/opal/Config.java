@@ -108,6 +108,7 @@ public class Config
         public List<String> asset_class_names = null;
                // Corresponding asset class names to use for MVO inputs and transition map.
         public int aa_steps = 1000; // Use 4 steps to mirror 5 choice Trinity study.
+        public boolean compute_risk_premium = false; // Compute the risk premium against cash (t1) instead of generating/targeting/validating.
         public String ef = "none";
                // Efficient frontier calculation method. "mvo", or "none" to search asset allocations.
         public double risk_tolerance = 1e12; // Maximum permitted relative standard deviation in portfolio returns when performing MVO.

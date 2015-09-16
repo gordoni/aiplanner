@@ -262,7 +262,7 @@ public class Returns implements Cloneable
                 }
 
                 List<Double> t1_returns = null;
-                if (scenario.asset_classes.contains("cash"))
+                if (scenario.asset_classes.contains("cash") || config.compute_risk_premium)
                 {
                         assert(time_periods == 1);
                         int offset = (int) Math.round((start_year - hist.t1_initial) * time_periods);
@@ -442,8 +442,13 @@ public class Returns implements Cloneable
                                 rets = ef_returns;
                         }
 
-                        returns.add(Utils.DoubleTodouble(rets));
-
+                        double[] r = Utils.DoubleTodouble(rets);
+                        if (config.compute_risk_premium)
+                        {
+                                for (int i = 0; i < r.length; i++)
+                                    r[i] -= t1_returns.get(i);
+                        }
+                        returns.add(r);
                         dividend_fract[a] = divf;
                 }
 

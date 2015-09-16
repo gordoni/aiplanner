@@ -124,6 +124,9 @@ public class ScenarioSet
                 Scenario scenario = new Scenario(this, config, hist, config.asset_classes, config.asset_class_names, config.start_ria, config.start_nia);
                 scenario.report_returns();
 
+                if (config.compute_risk_premium)
+                        return;
+
                 if (do_compare)
                         compare_scenario.run_mvo("compare"); // Helps determine max_stocks based on risk tolerance.
                 scenario.run_mvo("scenario");
