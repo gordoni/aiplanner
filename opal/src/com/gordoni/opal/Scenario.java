@@ -1060,7 +1060,7 @@ public class Scenario
                                 double gm = Utils.plus_1_geomean(returns.get(index)) - 1;
                                 double am = Utils.mean(returns.get(index));
                                 double sd = Utils.standard_deviation(returns.get(index));
-                                System.out.println("  " + asset_classes.get(index) + " " + f2f.format(gm * 100) + "% +/- " + f2f.format(sd * 100) + "% (arithmetic " + f2f.format(am * 100) + "%)");
+                                System.out.println("  " + asset_classes.get(index) + " " + f2f.format(am * 100) + "% +/- " + f2f.format(sd * 100) + "% (geometric " + f2f.format(gm * 100) + "%)");
 
                                 // System.out.println(am);
 
@@ -1088,7 +1088,7 @@ public class Scenario
                                 double gm = Utils.weighted_plus_1_geo(ac_returns.get(index), returns_generate.returns_unshuffled_probability) - 1;
                                 double am = Utils.weighted_sum(ac_returns.get(index), returns_generate.returns_unshuffled_probability);
                                 double sd = Utils.weighted_standard_deviation(ac_returns.get(index), returns_generate.returns_unshuffled_probability);
-                                System.out.println("  " + asset_classes.get(index) + " " + f2f.format(gm * 100) + "% +/- " + f2f.format(sd * 100) + "% (arithmetic " + f2f.format(am * 100) + "%)");
+                                System.out.println("  " + asset_classes.get(index) + " " + f2f.format(am * 100) + "% +/- " + f2f.format(sd * 100) + "% (geometric " + f2f.format(gm * 100) + "%)");
                         }
                         System.out.println();
                         // System.out.println(Arrays.deepToString(Utils.covariance_returns(ac_returns)));
@@ -1104,7 +1104,7 @@ public class Scenario
                                         double gm = Utils.weighted_plus_1_geo(at_return, returns_generate.returns_unshuffled_probability) - 1;
                                         double am = Utils.weighted_sum(at_return, returns_generate.returns_unshuffled_probability);
                                         double sd = Utils.weighted_standard_deviation(at_return, returns_generate.returns_unshuffled_probability);
-                                        System.out.println("  " + asset_classes.get(index) + " " + f2f.format(gm * 100) + "% +/- " + f2f.format(sd * 100) + "% (arithmetic " + f2f.format(am * 100) + "%)");
+                                        System.out.println("  " + asset_classes.get(index) + " " + f2f.format(am * 100) + "% +/- " + f2f.format(sd * 100) + "% (geometric " + f2f.format(gm * 100) + "%)");
                                 }
                                 // System.out.println(Arrays.deepToString(Utils.covariance_returns(at_returns)));
                                 System.out.println();

@@ -56,7 +56,7 @@ public class Returns implements Cloneable
 
         public double[] dividend_fract;
 
-        private List<Double> adjust_returns(List<Double> l, double ret_adjust, double vol_adjust)
+        private List<Double> adjust_returns(List<Double> l, double adjust_arith, double ret_adjust, double vol_adjust)
         {
                 double[] a = Utils.DoubleTodouble(l);
                 double plus_1_geomean = Utils.plus_1_geomean(a);
@@ -66,9 +66,9 @@ public class Returns implements Cloneable
                         // Binary search on volatility adjustment.
                         double vol_a = Utils.standard_deviation(a);
                         double[] b = new double[a.length];
-                        double low = vol_adjust;
-                        double high = vol_adjust * 2;
-                        while (high - low > 0.01)  // Finer resolution not needed as precise standard deviation is about to get messed up by the geomean adjust below.
+                        double low = vol_adjust / ret_adjust;
+                        double high = vol_adjust / ret_adjust * 2;
+                        while (high - low > 0.001)
                         {
                                 double mid = (low + high) / 2;
                                 for (int i = 0; i < a.length; i++)
@@ -77,6 +77,10 @@ public class Returns implements Cloneable
                                         else
                                                 // Inverses break mathematical cleanness, but prevent negative values.
                                                 b[i] = 1 / (1 / (1 + mean) + (1 / (1 + a[i]) - 1 / (1 + mean)) * mid) - 1;
+                                double new_plus_1_geomean = Utils.plus_1_geomean(b);
+                                double adjust = ret_adjust * plus_1_geomean / new_plus_1_geomean;
+                                for (int i = 0; i < b.length; i++)
+                                    b[i] = (1 + b[i]) * ret_adjust + adjust_arith - 1;
                                 double vol = Utils.standard_deviation(b);
                                 if (vol < vol_adjust * vol_a)
                                         low = mid;
@@ -85,11 +89,12 @@ public class Returns implements Cloneable
                         }
                         a = b;
                 }
+                else
+                {
+                        for (int i = 0; i < a.length; i++)
+                                a[i] = (1 + a[i]) * ret_adjust + adjust_arith - 1;
+                }
 
-                double new_plus_1_geomean = Utils.plus_1_geomean(a);
-                double adjust = ret_adjust * plus_1_geomean / new_plus_1_geomean;
-                for (int i = 0; i < a.length; i++)
-                        a[i] = (1 + a[i]) * adjust - 1;
                 List<Double> res = new ArrayList<Double>();
                 for (int i = 0; i < a.length; i++)
                 {
@@ -125,28 +130,58 @@ public class Returns implements Cloneable
                 assert(start + month_count <= hist.stock.size());
 
                 List<Double> stock_returns = reduce_returns(hist.stock.subList(start, start + month_count), (int) Math.round(12 / time_periods));
+                double stock_mean = Utils.mean(stock_returns);
                 double stock_geomean = Utils.plus_1_geomean(stock_returns);
+                double equity_adjust_arith = 0.0;
                 double equity_adjust = 1.0;
-                if (config.ret_equity_adjust == null)
-                        equity_adjust = (ret_equity == null) ? 1 : (Math.pow(1 + ret_equity, 1 / time_periods) / stock_geomean);
-                else
+                if (config.ret_equity_premium != null)
+                {
+                        assert(ret_equity == null);
+                        assert(config.ret_cash_arith != null);
+                        equity_adjust_arith = config.ret_equity_premium + config.ret_cash_arith - stock_mean;
+                }
+                if (ret_equity != null)
+                {
+                        assert((config.ret_equity_premium == null) && (config.ret_equity_adjust == null));
+                        equity_adjust = Math.pow(1 + ret_equity, 1 / time_periods) / stock_geomean;
+                }
+                if (config.ret_equity_adjust != null)
                 {
                         assert(ret_equity == null);
                         equity_adjust = Math.pow(1.0 + config.ret_equity_adjust, 1.0 / time_periods);
                 }
                 List<Double> equity_returns = null;
                 if (scenario.asset_classes.contains("stocks"))
-                        equity_returns = adjust_returns(stock_returns, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                    equity_returns = adjust_returns(stock_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+
+                List<Double> t1_returns = null;
+                if (scenario.asset_classes.contains("cash") || config.compute_risk_premium || (config.ret_cash_arith != null))
+                {
+                        assert(time_periods == 1);
+                        int offset = (int) Math.round((start_year - hist.t1_initial) * time_periods);
+                        assert(offset >= 0);
+                        assert(offset + count <= hist.t1.size());
+                        t1_returns = hist.t1.subList(offset, offset + count);
+                }
 
                 List<Double> bond_returns = reduce_returns(hist.bond.subList(start, start + month_count), (int) Math.round(12 / time_periods));
                 double bond_geomean = Utils.plus_1_geomean(bond_returns);
-                double gs10_to_bonds_adjust = Math.pow(1.0 + config.ret_gs10_to_bonds, 1.0 / time_periods);
+                double gs10_to_bonds_adjust_arith = config.ret_gs10_to_bonds_arith / time_periods;
+                double fixed_income_adjust_arith = 0.0;
                 double fixed_income_adjust = 1.0;
-                if (config.ret_bonds_adjust == null)
+                if (config.ret_cash_arith != null)
                 {
-                        fixed_income_adjust = (ret_bonds == null) ? 1 : (Math.pow((1 + ret_bonds), 1 / time_periods) / bond_geomean) / gs10_to_bonds_adjust;
+                        assert(ret_bonds == null);
+                        double cash_mean = Utils.mean(t1_returns);
+                        fixed_income_adjust_arith = config.ret_cash_arith - cash_mean;
                 }
-                else
+                if (ret_bonds != null)
+                {
+                        assert((config.ret_cash_arith == null) && (config.ret_bonds_adjust == null));
+                        fixed_income_adjust_arith -= gs10_to_bonds_adjust_arith;
+                        fixed_income_adjust = Math.pow((1 + ret_bonds), 1 / time_periods) / bond_geomean;
+                }
+                if (config.ret_bonds_adjust != null)
                 {
                         assert(ret_bonds == null);
                         fixed_income_adjust = Math.pow(1.0 + config.ret_bonds_adjust, 1.0 / time_periods);
@@ -154,11 +189,15 @@ public class Returns implements Cloneable
                 List<Double> fixed_income_returns = null;
                 if (scenario.asset_classes.contains("bonds"))
                 {
-                        fixed_income_returns = adjust_returns(bond_returns, fixed_income_adjust * gs10_to_bonds_adjust * adjust_management_expense * adjust_all, config.ret_gs10_to_bonds_vol_adjust);
+                        fixed_income_returns = adjust_returns(bond_returns, fixed_income_adjust_arith + gs10_to_bonds_adjust_arith, fixed_income_adjust * adjust_management_expense * adjust_all, config.ret_gs10_to_bonds_vol_adjust);
+                }
+                if (scenario.asset_classes.contains("cash") || config.compute_risk_premium)
+                {
+                        t1_returns = adjust_returns(t1_returns, fixed_income_adjust_arith, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
                 }
                 List<Double> gs10_returns = null;
                 if (scenario.asset_classes.contains("gs10"))
-                        gs10_returns = adjust_returns(bond_returns, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
+                        gs10_returns = adjust_returns(bond_returns, fixed_income_adjust_arith, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
 
                 List<Double> eafe_returns = null;
                 if (scenario.asset_classes.contains("eafe"))
@@ -168,7 +207,7 @@ public class Returns implements Cloneable
                         assert(offset >= 0);
                         assert(offset + count <= hist.eafe.size());
                         eafe_returns = hist.eafe.subList(offset, offset + count);
-                        eafe_returns = adjust_returns(eafe_returns, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                        eafe_returns = adjust_returns(eafe_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
                 }
 
                 List<Double> ff_bl_returns = null;
@@ -184,18 +223,18 @@ public class Returns implements Cloneable
                         assert(offset >= 0);
                         assert(offset + count <= hist.ff_bl.size());
                         ff_bl_returns = hist.ff_bl.subList(offset, offset + count);
-                        ff_bl_returns = adjust_returns(ff_bl_returns, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                        ff_bl_returns = adjust_returns(ff_bl_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
                         ff_bm_returns = hist.ff_bm.subList(offset, offset + count);
-                        ff_bm_returns = adjust_returns(ff_bm_returns, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                        ff_bm_returns = adjust_returns(ff_bm_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
                         ff_bh_returns = hist.ff_bh.subList(offset, offset + count);
-                        ff_bh_returns = adjust_returns(ff_bh_returns, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                        ff_bh_returns = adjust_returns(ff_bh_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
                         ff_sl_returns = hist.ff_sl.subList(offset, offset + count);
-                        ff_sl_returns = adjust_returns(ff_sl_returns, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                        ff_sl_returns = adjust_returns(ff_sl_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
                         ff_sm_returns = hist.ff_sm.subList(offset, offset + count);
-                        ff_sm_returns = adjust_returns(ff_sm_returns, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                        ff_sm_returns = adjust_returns(ff_sm_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
                         ff_sh_returns = hist.ff_sh.subList(offset, offset + count);
                         double adjust_sh = Math.pow(1 + config.ret_sh_adjust, 1.0 / time_periods);
-                        ff_sh_returns = adjust_returns(ff_sh_returns, equity_adjust * adjust_sh * adjust_management_expense * adjust_all, adjust_equity_vol);
+                        ff_sh_returns = adjust_returns(ff_sh_returns, equity_adjust_arith, equity_adjust * adjust_sh * adjust_management_expense * adjust_all, adjust_equity_vol);
                 }
 
                 List<Double> reits_equity_returns = null;
@@ -206,7 +245,7 @@ public class Returns implements Cloneable
                         assert(offset >= 0);
                         assert(offset + count <= hist.reits_equity.size());
                         reits_equity_returns = hist.reits_equity.subList(offset, offset + count);
-                        reits_equity_returns = adjust_returns(reits_equity_returns, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                        reits_equity_returns = adjust_returns(reits_equity_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
                 }
 
                 List<Double> reits_mortgage_returns = null;
@@ -217,7 +256,7 @@ public class Returns implements Cloneable
                         assert(offset >= 0);
                         assert(offset + count <= hist.reits_mortgage.size());
                         reits_mortgage_returns = hist.reits_mortgage.subList(offset, offset + count);
-                        reits_mortgage_returns = adjust_returns(reits_mortgage_returns, fixed_income_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                        reits_mortgage_returns = adjust_returns(reits_mortgage_returns, fixed_income_adjust_arith, fixed_income_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
                 }
 
                 List<Double> gs1_returns = null;
@@ -227,7 +266,7 @@ public class Returns implements Cloneable
                         assert(offset >= 0);
                         assert(offset + month_count <= hist.gs1.size());
                         gs1_returns = reduce_returns(hist.gs1.subList(offset, offset + month_count), (int) Math.round(12 / time_periods));
-                        gs1_returns = adjust_returns(gs1_returns, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
+                        gs1_returns = adjust_returns(gs1_returns, fixed_income_adjust_arith, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
                 }
 
                 List<Double> tips10_returns = null;
@@ -238,7 +277,7 @@ public class Returns implements Cloneable
                         assert(offset + month_count <= hist.tips10.size());
                         tips10_returns = reduce_returns(hist.tips10.subList(offset, offset + month_count), (int) Math.round(12 / time_periods));
                         double adjust_tips = Math.pow(1 + config.ret_tips_adjust, 1.0 / time_periods);
-                        tips10_returns = adjust_returns(tips10_returns, fixed_income_adjust * adjust_tips * adjust_management_expense * adjust_all, config.ret_tips_vol_adjust);
+                        tips10_returns = adjust_returns(tips10_returns, fixed_income_adjust_arith, fixed_income_adjust * adjust_tips * adjust_management_expense * adjust_all, config.ret_tips_vol_adjust);
                 }
 
                 List<Double> aaa_returns = null;
@@ -248,7 +287,7 @@ public class Returns implements Cloneable
                         assert(offset >= 0);
                         assert(offset + month_count <= hist.aaa.size());
                         aaa_returns = reduce_returns(hist.aaa.subList(offset, offset + month_count), (int) Math.round(12 / time_periods));
-                        aaa_returns = adjust_returns(aaa_returns, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
+                        aaa_returns = adjust_returns(aaa_returns, fixed_income_adjust_arith, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
                 }
 
                 List<Double> baa_returns = null;
@@ -258,18 +297,7 @@ public class Returns implements Cloneable
                         assert(offset >= 0);
                         assert(offset + month_count <= hist.baa.size());
                         baa_returns = reduce_returns(hist.baa.subList(offset, offset + month_count), (int) Math.round(12 / time_periods));
-                        baa_returns = adjust_returns(baa_returns, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
-                }
-
-                List<Double> t1_returns = null;
-                if (scenario.asset_classes.contains("cash") || config.compute_risk_premium)
-                {
-                        assert(time_periods == 1);
-                        int offset = (int) Math.round((start_year - hist.t1_initial) * time_periods);
-                        assert(offset >= 0);
-                        assert(offset + count <= hist.t1.size());
-                        t1_returns = hist.t1.subList(offset, offset + count);
-                        t1_returns = adjust_returns(t1_returns, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
+                        baa_returns = adjust_returns(baa_returns, fixed_income_adjust_arith, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
                 }
 
                 List<Double> gold_returns = null;
@@ -280,7 +308,7 @@ public class Returns implements Cloneable
                         assert(offset >= 0);
                         assert(offset + count <= hist.gold.size());
                         gold_returns = hist.gold.subList(offset, offset + count);
-                        gold_returns = adjust_returns(gold_returns, adjust_management_expense * adjust_all, 1);
+                        gold_returns = adjust_returns(gold_returns, 0, adjust_management_expense * adjust_all, 1);
                 }
 
                 List<Double> margin_returns = null;
@@ -294,7 +322,7 @@ public class Returns implements Cloneable
                         for (double ret : hist.t1)
                                 margin.add(ret + config.margin_premium);
                         margin_returns = margin.subList(offset, offset + count);
-                        margin_returns = adjust_returns(margin_returns, adjust_all, 1);
+                        margin_returns = adjust_returns(margin_returns, 0, adjust_all, 1);
                 }
 
                 List<Double> risk_free_returns = new ArrayList<Double>();
@@ -305,7 +333,7 @@ public class Returns implements Cloneable
                         risk_free_returns.add(risk_free_return + perturb);
                         perturb = - perturb;
                 }
-                risk_free_returns = adjust_returns(risk_free_returns, adjust_management_expense * adjust_all, 1);
+                risk_free_returns = adjust_returns(risk_free_returns, 0, adjust_management_expense * adjust_all, 1);
 
                 List<Double> cpi_returns = new ArrayList<Double>();
                 for (int year = start_year; year <= end_year; year++)
@@ -316,7 +344,7 @@ public class Returns implements Cloneable
                 }
                 double cpi_geomean = Utils.plus_1_geomean(cpi_returns);
                 double cpi_adjust = (ret_inflation == null) ? 1 : (Math.pow(1.0 + ret_inflation, 1.0 / time_periods) / cpi_geomean);
-                cpi_returns = adjust_returns(cpi_returns, cpi_adjust, 1);
+                cpi_returns = adjust_returns(cpi_returns, 0, cpi_adjust, 1);
 
                 List<Double> ef_returns = new ArrayList<Double>();
                 for (int i = 0; i < count; i++)

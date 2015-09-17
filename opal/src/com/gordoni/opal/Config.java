@@ -312,7 +312,7 @@ public class Config
         public double ret_sh_adjust = 0.0; // Small high asset class additional adjust.
         public double ret_tips_adjust = 0.0; // TIPS bond asset class additional adjustment.
         public double ret_tips_vol_adjust = 1.0; // Adjustment to apply to TIPS bond volatility.
-        public double ret_gs10_to_bonds = 0.0060; // Adjustment to apply to GS10 to get bond returns indicative of the bond universe.
+        public double ret_gs10_to_bonds_arith = 0.0069; // Arithmetic adjustment to apply to GS10 to get bond returns indicative of the bond universe.
                 // Justification:
                 //
                 // Considering the holdings of Treasury, Agency, Municipal, and Corporate bonds by households as reported in the Federal Reserve Financial Accounts
@@ -371,9 +371,8 @@ public class Config
                 //   Agency              121             837      607  8%      ~2.60% guess
                 //   Muni               1617             610     1971 25%       3.16% after correct for tax adv; equiv to AA corporates
                 //   Corp and foreign   2793            2001     3955 50%       3.46% 2/3 A and 1/3 BAA based on LQD
-                //   Weighted                                                   3.14% use GS10 and adjust gm value by +0.??% to get 3.06% am
+                //   Weighted                                                   3.14% use GS10 and adjust gm value by +0.69% to get 3.14% am
                 //   Total                -              -       7849                 (adjustment value applies in the presence of a 1.1 vol. adjust)
-                //                                                                    (current adjustment is +0.60% to get 3.11% am based on wrong default estimate)
         public double ret_gs10_to_bonds_vol_adjust = 1.1; // Adjustment to apply to GS10 volatility to get bond returns indicative of the bond universe.
                 // A guess based on risk-return plots placing its risk close to but slightly less than AAA bonds, with which it shares a similar return.
                 // If risk was higher than AAA bonds, no point in holding "bonds", ignoring different correlations.
@@ -385,6 +384,8 @@ public class Config
         public Double generate_ret_bonds = null; // None for no adjustment to bonds during generation, float for target geomean return.
         public Double validate_ret_bonds = null; // None for no adjustment to bonds during targeting and validation, float for target geomean return.
         public Double ret_bonds_adjust = null; // None for no adjustment to fixed income, float for adjust.
+        public Double ret_cash_arith = null; // None for no adjustment, or arithmetic mean to use for cash returns.
+        public Double ret_equity_premium = null; // None for no adjustment, or arithmetic mean to use for excess of stock returns over cash returns.
         public double generate_all_adjust = 0.0;  // Adjust applied to all asset classes during generation.
         public double validate_all_adjust = 0.0;  // Adjust applied to all asset classes during targeting and validation.
         public Double generate_ret_inflation = null; // None for no adjustment to inflation during generation, float for geomean value.
