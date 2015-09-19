@@ -37,6 +37,8 @@ public class Scenario
 {
         public ScenarioSet ss;
         public Config config;
+        public boolean compute_risk_premium;
+        public boolean do_validate;
         public Scale[] scale;
         public List<String> asset_classes;
         public List<String> asset_class_names;
@@ -59,6 +61,7 @@ public class Scenario
         public double tp_max_estimate;
         public double consume_max_estimate;
         public double retirement_number_max_estimate;
+        public double tp_max;
 
         public int normal_assets;
         public int stochastic_classes;
@@ -82,9 +85,14 @@ public class Scenario
         public boolean do_tax;
         private boolean do_generate;
         private boolean do_target;
-        private Returns returns_generate = null;
+        public Returns returns_generate = null;
         private Returns returns_target = null;
         private Returns returns_validate = null;
+
+        public AAMap map;
+
+        public Double equity_premium;
+        private double equity_vol_adjust;
 
         private static DecimalFormat f8 = new DecimalFormat("0.000E00");
         private static DecimalFormat f1f = new DecimalFormat("0.0");
@@ -125,8 +133,8 @@ public class Scenario
 
         public double[] guaranteed_safe_aa()
         {
-                double[] safe = new double[asset_classes.size()]; // Create new object since at least AAMapGenerate mutates the result.
-                for (int i = 0; i < safe.length; i++)
+                double[] safe = new double[all_alloc]; // Create new object since at least AAMapGenerate mutates the result.
+                for (int i = 0; i < normal_assets; i++)
                 {
                         if (config.ef.equals("none"))
                                 if (asset_classes.get(i).equals(config.safe_aa))
@@ -141,8 +149,8 @@ public class Scenario
 
         public double[] guaranteed_fail_aa()
         {
-                double[] fail = new double[asset_classes.size()]; // Create new object since at least AAMapGenerate mutates the result.
-                for (int i = 0; i < fail.length; i++)
+                double[] fail = new double[all_alloc]; // Create new object since at least AAMapGenerate mutates the result.
+                for (int i = 0; i < normal_assets; i++)
                 {
                         if (i == spend_fract_index)
                                 fail[i] = 1;
@@ -360,7 +368,7 @@ public class Scenario
                 return ara_max;
         }
 
-        private String stringify_aa(double[] aa)
+        public String stringify_aa(double[] aa)
         {
                 return stringify_aa(aa, false);
         }
@@ -420,17 +428,17 @@ public class Scenario
                 return r;
         }
 
-        private double expected_standard_deviation(double[] aa, Returns returns)
+        private double expected_standard_deviation(double[] aa, Returns returns, double[][] corr)
         {
                 double v = 0.0;
-                for (int i = 0; i < aa.length - (config.ef.equals("none") ? 0 : 1); i++)
+                for (int i = 0; i < normal_assets; i++)
                         for (int j = 0; j < normal_assets; j++)
-                                v +=  aa[i] * aa[j] * returns.sd[i] * returns.sd[j] * returns.corr[i][j];
+                                v +=  aa[i] * aa[j] * returns.sd[i] * returns.sd[j] * corr[i][j];
                 return Math.sqrt(v);
         }
 
         // Gnuplot doesn't support heatmaps with an exponential scale, so we have to fixed-grid the data.
-        private void dump_aa_linear_slice(AAMap map, Returns returns, double[] slice, String slice_suffix, double tp_max) throws IOException
+        private void dump_aa_linear_slice(AAMap map, Returns returns, double[][] corr, double[] slice, String slice_suffix, double tp_max) throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-linear" + slice_suffix + ".csv"));
 
@@ -452,7 +460,7 @@ public class Scenario
                                 out.print("," + f2f.format(curr_pf));
                                 out.print("," + f2f.format(metric_normalized));
                                 out.print("," + ((returns == null) ? "" : f4f.format(expected_return(aa, returns))));
-                                out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(aa, returns))));
+                                out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(aa, returns, corr))));
                                 // Annuitization may be greater than 100% because first_payout may contribute to consume.
                                 out.print("," + f3f.format(annuitizable > 0 ? fpb.ria_purchase(this) / annuitizable : 0));
                                 out.print("," + f2f.format(fpb.consume));
@@ -465,10 +473,10 @@ public class Scenario
                 out.close();
         }
 
-        private void dump_aa_linear(AAMap map, Returns returns, double tp_max) throws IOException
+        private void dump_aa_linear(AAMap map, Returns returns, double[][] corr, double tp_max) throws IOException
         {
-            dump_aa_linear_slice(map, returns, new double[start_p.length], "", tp_max);
-            // dump_aa_linear_slice(map, returns, new double[]{0, 10000}, "10000");
+                dump_aa_linear_slice(map, returns, corr, new double[start_p.length], "", tp_max);
+                // dump_aa_linear_slice(map, returns, corr, new double[]{0, 10000}, "10000");
         }
 
         private Double get_path_value(List<PathElement> path, int i, String what, boolean change)
@@ -676,7 +684,7 @@ public class Scenario
         }
 
         // Dump the paths taken.
-        private void dump_paths(List<List<PathElement>> paths, Returns returns) throws IOException
+    private void dump_paths(List<List<PathElement>> paths, Returns returns, double[][] corr) throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-paths.csv"));
 
@@ -702,7 +710,7 @@ public class Scenario
                                 out.print("," + f2f.format(real_annuitize));
                                 out.print("," + f2f.format(nominal_annuitize));
                                 out.print("," + ((returns == null) ? "" : f4f.format(expected_return(step.aa, returns))));
-                                out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(step.aa, returns))));
+                                out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(step.aa, returns, corr))));
                                 out.print("," + aa);
                                 out.print("\n");
                                 age_period += 1;
@@ -890,7 +898,7 @@ public class Scenario
         public void dump_gnuplot_params(double p_max, double consume_max, double annuitization_max, double consume_ara_max) throws IOException
         {
                 PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-gnuplot-params.gnuplot")));
-                out.println("paths = " + (!config.skip_validate ? 1 : 0));
+                out.println("paths = " + (do_validate ? 1 : 0));
                 out.println("retirement_number = " + (!config.skip_retirement_number ? 1 : 0));
                 out.println("bequest = " + (config.utility_dead_limit != 0 ? 1 : 0));
                 out.println("age_label = \"" + (config.sex2 == null || config.start_age == config.start_age2 ? "age" : "age of first person") + "\"");
@@ -924,7 +932,7 @@ public class Scenario
                 out.println("consume_slope_scale = " + scale);
                 out.println("consume_ara_max = " + consume_ara_max);
                 out.println("retirement_number_max = " + (config.retirement_number_max_factor * retirement_number_max_estimate));
-                List<String> ac_names = (asset_class_names == null ? asset_classes : asset_class_names);
+                List<String> ac_names = (asset_class_names == null ? asset_classes.subList(0, normal_assets) : asset_class_names);
                 StringBuilder symbols = new StringBuilder();
                 StringBuilder names = new StringBuilder();
                 for (int i = 0; i < normal_assets; i++)
@@ -950,20 +958,24 @@ public class Scenario
         // Dump and plot the data files.
         private void dump_plot(AAMap map, Metrics[] retirement_number, List<List<PathElement>> paths, Returns returns) throws IOException, InterruptedException
         {
+                double[][] corr = null;
+                if (returns != null)
+                        corr = Utils.correlation_returns(Utils.zipDoubleArray(returns.original_data).toArray(new double[0][]));
+
                 if (!config.skip_retirement_number)
                 {
                         dump_retirement_number(retirement_number);
                 }
 
-                double tp_max = tp_max_estimate;
+                tp_max = tp_max_estimate;
                 double consume_max = consume_max_estimate;
-                if (!config.skip_validate)
+                if (do_validate)
                 {
                         dump_distributions(paths);
                         tp_max = dump_pct_path(paths, "p", false);
                         consume_max = dump_pct_path(paths, "consume", false);
                         dump_pct_paths(paths);
-                        dump_paths(paths, returns);
+                        dump_paths(paths, returns, corr);
                         // Delta paths breaks when validate using validate dump because guaranteed_safe_aa relies on MVO tangency.
                         //dump_delta_paths(paths, 1);
                         //dump_delta_paths(paths, 5);
@@ -994,7 +1006,7 @@ public class Scenario
 
                 if (returns != null)
                 {
-                        dump_aa_linear(map, returns, tp_max);
+                        dump_aa_linear(map, returns, corr, tp_max);
                         //dump_average(map);
                         dump_annuity_price();
                         dump_annuity_yield_curve();
@@ -1131,6 +1143,11 @@ public class Scenario
                 System.out.println();
         }
 
+        public void run_error() throws ExecutionException, IOException
+        {
+                map = AAMap.factory(this, config.aa_strategy, returns_generate);
+        }
+
         private PathMetricsResult search_aa(Returns returns_generate, Returns returns_validate) throws ExecutionException, IOException
         {
                 if (config.aa_fixed_stocks == null)
@@ -1214,7 +1231,8 @@ public class Scenario
                 if (do_generate)
                 {
                         long start = System.currentTimeMillis();
-                        map_precise = AAMap.factory(this, config.aa_strategy, returns_generate);
+                        map = AAMap.factory(this, config.aa_strategy, returns_generate);
+                        map_precise = map;
                         MapElement fpb = map_precise.lookup_interpolate(start_p, (int) Math.round((validate_age - config.start_age) * config.generate_time_periods));
                         String metric_str;
                         double metric_normalized = metric_normalize(success_mode_enum, fpb.metric_sm, config.start_age);
@@ -1354,7 +1372,7 @@ public class Scenario
                 }
 
                 List<List<PathElement>> paths = new ArrayList<List<PathElement>>();
-                if (!config.skip_validate)
+                if (do_validate)
                 {
                         long start = System.currentTimeMillis();
                         if (!config.skip_validate_all)
@@ -1406,13 +1424,17 @@ public class Scenario
                 }
         }
 
-        public Scenario(ScenarioSet ss, Config config, HistReturns hist, List<String> asset_classes, List<String> asset_class_names, Double start_ria, Double start_nia) throws IOException, InterruptedException
+        public Scenario(ScenarioSet ss, Config config, HistReturns hist, boolean compute_risk_premium, boolean do_validate, List<String> asset_classes, List<String> asset_class_names, Double equity_premium, double equity_vol_adjust, Double start_ria, Double start_nia) throws IOException, InterruptedException
         {
                 this.ss = ss;
                 this.config = config;
                 this.hist = hist;
-                this.asset_classes = asset_classes;
+                this.compute_risk_premium = compute_risk_premium;
+                this.do_validate = do_validate;
+                this.asset_classes = new ArrayList<String>(asset_classes);
                 this.asset_class_names = asset_class_names;
+                this.equity_premium = equity_premium;
+                this.equity_vol_adjust = equity_vol_adjust;
 
                 // Internal parameters.
 
@@ -1462,7 +1484,7 @@ public class Scenario
                     tp_max_estimate = config.tp_max;
                 assert(consume_max_estimate > 0);
 
-                normal_assets = asset_classes.size();
+                normal_assets = this.asset_classes.size();
 
                 // Set up the scales.
                 scale = new Scale[start_p.length];
@@ -1493,8 +1515,8 @@ public class Scenario
                 assert(validate_age < config.start_age + ss.max_years);
                 if (config.ef.equals("none"))
                 {
-                        assert(asset_classes.contains(config.safe_aa));
-                        assert(asset_classes.contains(config.fail_aa));
+                        assert(this.asset_classes.contains(config.safe_aa));
+                        assert(this.asset_classes.contains(config.fail_aa));
                 }
                 else
                 {
@@ -1518,37 +1540,37 @@ public class Scenario
 
                 do_tax = config.tax_rate_cg != 0 || config.tax_rate_div != null || config.tax_rate_div_default != 0 || config.tax_rate_annuity != 0;
                 do_target = !config.skip_target && config.target_mode != null;
-                do_generate = !config.skip_generate || (!config.skip_validate && (config.validate == null)) || (do_target && (config.target_sdp_baseline || config.target_mode.equals("rps")));
+                do_generate = !config.skip_generate || (do_validate && (config.validate == null)) || (do_target && (config.target_sdp_baseline || config.target_mode.equals("rps")));
 
                 cpi_index = -1;
                 if (do_tax || (ria_index != null && config.tax_rate_annuity != 0) || nia_index != null)
                 {
-                        cpi_index = asset_classes.size();
-                        asset_classes.add("[cpi]");
+                        cpi_index = this.asset_classes.size();
+                        this.asset_classes.add("[cpi]");
                 }
-                stochastic_classes = asset_classes.size();
+                stochastic_classes = this.asset_classes.size();
                 ria_aa_index = -1;
                 if (ria_index != null)
                 {
                         assert(config.sex2 == null); // Calculated annuity purchase prices are for a couple which doesn't work if one party is dead.
-                        ria_aa_index = asset_classes.size();
-                        asset_classes.add("[ria]");
+                        ria_aa_index = this.asset_classes.size();
+                        this.asset_classes.add("[ria]");
                 }
                 nia_aa_index = -1;
                 if (nia_index != null)
                 {
                         assert(config.sex2 == null);
-                        nia_aa_index = asset_classes.size();
-                        asset_classes.add("[nia]");
+                        nia_aa_index = this.asset_classes.size();
+                        this.asset_classes.add("[nia]");
                 }
-                spend_fract_index = asset_classes.size();
-                asset_classes.add("[spend_fract]");
-                all_alloc = asset_classes.size();
+                spend_fract_index = this.asset_classes.size();
+                this.asset_classes.add("[spend_fract]");
+                all_alloc = this.asset_classes.size();
                 ef_index = -1;
                 if (!config.ef.equals("none"))
                 {
-                        ef_index = asset_classes.size();
-                        asset_classes.add("[ef_index]");
+                        ef_index = this.asset_classes.size();
+                        this.asset_classes.add("[ef_index]");
                 }
 
                 // Set up utility functions.
@@ -1577,13 +1599,14 @@ public class Scenario
 
                 returns_generate = null;
                 if (do_generate || do_target  || do_tax)
-                        returns_generate = new Returns(this, hist, config, config.generate_seed, false, config.generate_start_year, config.generate_end_year, config.num_sequences_generate, config.generate_time_periods, config.generate_ret_equity, config.generate_ret_bonds, config.ret_risk_free, config.generate_ret_inflation, config.management_expense, config.generate_shuffle, config.ret_reshuffle, config.generate_draw, config.ret_bootstrap_block_size, config.ret_pair, config.ret_short_block, config.generate_all_adjust, config.generate_equity_vol_adjust);
+                        returns_generate = new Returns(this, hist, config, config.generate_seed, false, config.generate_start_year, config.generate_end_year, config.num_sequences_generate, config.generate_time_periods, config.generate_ret_equity, config.generate_ret_bonds, config.ret_risk_free, config.generate_ret_inflation, config.management_expense, config.generate_shuffle, config.ret_reshuffle, config.generate_draw, config.ret_bootstrap_block_size, config.ret_pair, config.ret_short_block, config.generate_all_adjust, equity_vol_adjust * config.generate_equity_vol_adjust);
 
                 returns_target = null;
                 if (do_target)
-                        returns_target = new Returns(this, hist, config, config.target_seed, false, config.target_start_year, config.target_end_year, config.num_sequences_target, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.target_shuffle, config.ret_reshuffle, config.target_draw, config.ret_bootstrap_block_size, config.ret_pair, config.target_short_block, config.validate_all_adjust, config.validate_equity_vol_adjust);
+                        returns_target = new Returns(this, hist, config, config.target_seed, false, config.target_start_year, config.target_end_year, config.num_sequences_target, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.target_shuffle, config.ret_reshuffle, config.target_draw, config.ret_bootstrap_block_size, config.ret_pair, config.target_short_block, config.validate_all_adjust, equity_vol_adjust * config.validate_equity_vol_adjust);
 
-                returns_validate = new Returns(this, hist, config, config.validate_seed, !config.skip_retirement_number, config.validate_start_year, config.validate_end_year, config.num_sequences_validate, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.validate_shuffle, config.ret_reshuffle, config.validate_draw, config.ret_bootstrap_block_size, config.ret_pair, config.ret_short_block, config.validate_all_adjust, config.validate_equity_vol_adjust);
+                if (do_validate)
+                        returns_validate = new Returns(this, hist, config, config.validate_seed, !config.skip_retirement_number, config.validate_start_year, config.validate_end_year, config.num_sequences_validate, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.validate_shuffle, config.ret_reshuffle, config.validate_draw, config.ret_bootstrap_block_size, config.ret_pair, config.ret_short_block, config.validate_all_adjust, equity_vol_adjust * config.validate_equity_vol_adjust);
 
                 if (returns_generate != null)
                 {

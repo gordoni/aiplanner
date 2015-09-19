@@ -51,7 +51,7 @@ public class Returns implements Cloneable
         public double[] gm;
         public double[] am;
         public double[] sd;
-        public double[][] corr;
+        private double[][] corr;
         private double[][] cholesky;
 
         public double[] dividend_fract;
@@ -129,20 +129,32 @@ public class Returns implements Cloneable
                 int count = month_count / (int) Math.round(12 / time_periods);
                 assert(start + month_count <= hist.stock.size());
 
+                double cash_mean = -1;
+                List<Double> t1_returns = null;
+                if (scenario.asset_classes.contains("cash") || scenario.compute_risk_premium || (scenario.equity_premium != null) || (config.ret_cash_arith != null))
+                {
+                        assert(time_periods == 1);
+                        int offset = (int) Math.round((start_year - hist.t1_initial) * time_periods);
+                        assert(offset >= 0);
+                        assert(offset + count <= hist.t1.size());
+                        t1_returns = hist.t1.subList(offset, offset + count);
+                        cash_mean = Utils.mean(t1_returns);
+                }
+
                 List<Double> stock_returns = reduce_returns(hist.stock.subList(start, start + month_count), (int) Math.round(12 / time_periods));
                 double stock_mean = Utils.mean(stock_returns);
                 double stock_geomean = Utils.plus_1_geomean(stock_returns);
                 double equity_adjust_arith = 0.0;
                 double equity_adjust = 1.0;
-                if (config.ret_equity_premium != null)
+                if (scenario.equity_premium != null)
                 {
                         assert(ret_equity == null);
-                        assert(config.ret_cash_arith != null);
-                        equity_adjust_arith = config.ret_equity_premium + config.ret_cash_arith - stock_mean;
+                        double cash_arith = ((config.ret_cash_arith == null) ? cash_mean : config.ret_cash_arith);
+                        equity_adjust_arith = scenario.equity_premium + cash_arith - stock_mean;
                 }
                 if (ret_equity != null)
                 {
-                        assert((config.ret_equity_premium == null) && (config.ret_equity_adjust == null));
+                        assert((scenario.equity_premium == null) && (config.ret_equity_adjust == null));
                         equity_adjust = Math.pow(1 + ret_equity, 1 / time_periods) / stock_geomean;
                 }
                 if (config.ret_equity_adjust != null)
@@ -154,16 +166,6 @@ public class Returns implements Cloneable
                 if (scenario.asset_classes.contains("stocks"))
                     equity_returns = adjust_returns(stock_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
 
-                List<Double> t1_returns = null;
-                if (scenario.asset_classes.contains("cash") || config.compute_risk_premium || (config.ret_cash_arith != null))
-                {
-                        assert(time_periods == 1);
-                        int offset = (int) Math.round((start_year - hist.t1_initial) * time_periods);
-                        assert(offset >= 0);
-                        assert(offset + count <= hist.t1.size());
-                        t1_returns = hist.t1.subList(offset, offset + count);
-                }
-
                 List<Double> bond_returns = reduce_returns(hist.bond.subList(start, start + month_count), (int) Math.round(12 / time_periods));
                 double bond_geomean = Utils.plus_1_geomean(bond_returns);
                 double gs10_to_bonds_adjust_arith = config.ret_gs10_to_bonds_arith / time_periods;
@@ -172,7 +174,6 @@ public class Returns implements Cloneable
                 if (config.ret_cash_arith != null)
                 {
                         assert(ret_bonds == null);
-                        double cash_mean = Utils.mean(t1_returns);
                         fixed_income_adjust_arith = config.ret_cash_arith - cash_mean;
                 }
                 if (ret_bonds != null)
@@ -191,7 +192,7 @@ public class Returns implements Cloneable
                 {
                         fixed_income_returns = adjust_returns(bond_returns, fixed_income_adjust_arith + gs10_to_bonds_adjust_arith, fixed_income_adjust * adjust_management_expense * adjust_all, config.ret_gs10_to_bonds_vol_adjust);
                 }
-                if (scenario.asset_classes.contains("cash") || config.compute_risk_premium)
+                if (scenario.asset_classes.contains("cash") || scenario.compute_risk_premium)
                 {
                         t1_returns = adjust_returns(t1_returns, fixed_income_adjust_arith, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
                 }
@@ -346,15 +347,9 @@ public class Returns implements Cloneable
                 double cpi_adjust = (ret_inflation == null) ? 1 : (Math.pow(1.0 + ret_inflation, 1.0 / time_periods) / cpi_geomean);
                 cpi_returns = adjust_returns(cpi_returns, 0, cpi_adjust, 1);
 
-                List<Double> ef_returns = new ArrayList<Double>();
-                for (int i = 0; i < count; i++)
-                {
-                        ef_returns.add(0.0);
-                }
-
                 List<double[]> returns = new ArrayList<double[]>();
                 dividend_fract = new double[scenario.asset_classes.size()];
-                for (int a = 0; a < scenario.asset_classes.size(); a++)
+                for (int a = 0; a < dividend_fract.length; a++)
                 {
                         String asset_class = scenario.asset_classes.get(a);
 
@@ -467,11 +462,11 @@ public class Returns implements Cloneable
                         }
                         else if (Arrays.asList("[ria]", "[nia]", "[spend_fract]", "[ef_index]").contains(asset_class))
                         {
-                                rets = ef_returns;
+                                continue;
                         }
 
                         double[] r = Utils.DoubleTodouble(rets);
-                        if (config.compute_risk_premium)
+                        if (scenario.compute_risk_premium)
                         {
                                 for (int i = 0; i < r.length; i++)
                                     r[i] -= t1_returns.get(i);
@@ -492,8 +487,11 @@ public class Returns implements Cloneable
                         am[a] = Utils.mean(rets);
                         sd[a] = Utils.standard_deviation(rets);
                 }
-                corr = Utils.correlation_returns(array_returns);
-                cholesky = Utils.cholesky_decompose(corr);
+                if (!ret_shuffle.equals("none"))
+                {
+                        corr = Utils.correlation_returns(array_returns);
+                        cholesky = Utils.cholesky_decompose(corr);
+                }
 
                 returns = Utils.zipDoubleArray(returns);
                 this.original_data = returns;
@@ -705,8 +703,8 @@ public class Returns implements Cloneable
                                 if (shuffle_count % config.ret_resample == 0)
                                 {
                                         double[][] sample = draw_returns(am, sd, cholesky, len_returns);
-                                        sample_mean = new double[scenario.asset_classes.size()];
-                                        sample_std_dev = new double[scenario.asset_classes.size()];
+                                        sample_mean = new double[scenario.stochastic_classes];
+                                        sample_std_dev = new double[scenario.stochastic_classes];
                                         for (int a = 0; a < scenario.stochastic_classes; a++)
                                         {
                                                 double sum = 0;
@@ -745,7 +743,7 @@ public class Returns implements Cloneable
 
         private double[][] draw_returns(double[] mean, double[] std_dev, double[][] chol, int length)
         {
-                int aa_len = scenario.asset_classes.size();
+                int aa_len = scenario.stochastic_classes;
                 int aa_valid = scenario.stochastic_classes; // Prevent randomness change due to presence of ef index.
 
                 double[][] new_returns = new double[length][];

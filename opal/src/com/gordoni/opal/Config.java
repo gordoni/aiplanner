@@ -149,6 +149,8 @@ public class Config
         public double annuity_nominal_long_penalty = 0.0; // Amount by which to reduce rates post long_years to reflect lack of bond availability.
         public double annuity_payout_delay = 1.5; // Delay in months until first payout from a newly purchased annuity.
 
+        public int error_count = 0; // Number of scenarios to generate to produce error bars on estimates.
+
         public String safe_aa = "bonds";
                 // Which asset allocation choice to favor when choices are equal, and success is guaranteed.
                 // Irrelevant if tangency_aa is non-null.

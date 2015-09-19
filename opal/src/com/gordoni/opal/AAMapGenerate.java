@@ -587,7 +587,7 @@ public class AAMapGenerate extends AAMap
                         {
                                 // Unable to search if everywhere is infinity. Try searching again somewhere safe.
                                 double safe_aa[] = scenario.guaranteed_safe_aa();
-                                safe_aa[scenario.spend_fract_index] = 1 - step[scenario.asset_classes.size()];
+                                safe_aa[scenario.spend_fract_index] = 1 - step[scenario.spend_fract_index];
                                         // contrib_high isn't safe because it may correspond to conume_annual=0,
                                         // which if defined_benefit=public_assistance=0 yields -Inf.
                                 improve = search_hill_climb(me, dimensions, step, step_size, safe_aa, period, returns) || improve;
@@ -621,7 +621,7 @@ public class AAMapGenerate extends AAMap
                 boolean search_spend_fract = scenario.vw_strategy.equals("sdp") && (retire || config.spend_fract_all);
 
                 List<Integer> dimensions = new ArrayList<Integer>();
-                double[] step = new double[scenario.asset_classes.size() + 1];
+                double[] step = new double[scenario.all_alloc];
                 if (!search_aa)
                         ;
                 else if (config.ef.equals("none"))
