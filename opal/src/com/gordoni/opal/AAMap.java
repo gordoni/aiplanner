@@ -472,9 +472,6 @@ class AAMap
                                 double alive = vital_stats.alive[period + y + 1];
                                 double dying = vital_stats.dying[period + y];
 
-                                if (vital_stats.alive[period + y] == 0)
-                                        break;
-                                        
                                 double p_prev_inc_neg = p;
                                 double p_prev_exc_neg = p;
                                 if (p_prev_exc_neg < 0)
@@ -518,6 +515,9 @@ class AAMap
                                         amount_annual = rcr + income;
                                         rcr *= rcr_step;
                                 }
+
+                                if (y + 1 == max_periods)
+                                        break;
 
                                 double first_payout = 0;
                                 double real_annuitize = 0;
@@ -834,6 +834,9 @@ class AAMap
                                         upside_alive_discount = 0;
                                 }
                                 double floor_goal_path_elem = consume_alive_discount * floor_path_utility / returns.time_periods;
+                                // Avoid 0 * Inf = NaN.
+                                if (consume_alive_discount == 0)
+                                        floor_goal_path_elem = 0;
                                 double upside_goal_path_elem = upside_alive_discount * upside_path_utility / returns.time_periods;
                                 double join_elem = upside_alive_discount * uct_u_ujp / returns.time_periods;
                                 double consume_goal_path_elem = floor_goal_path_elem;
