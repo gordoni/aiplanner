@@ -57,7 +57,7 @@ public class ScenarioSet
 
         private static DecimalFormat f1f = new DecimalFormat("0.0");
         private static DecimalFormat f2f = new DecimalFormat("0.00");
-        private static DecimalFormat f4f = new DecimalFormat("0.0000");
+        private static DecimalFormat f3f = new DecimalFormat("0.000");
 
         public void subprocess(String cmd, String prefix) throws IOException, InterruptedException
         {
@@ -93,37 +93,42 @@ public class ScenarioSet
 
                                 MapElement me_s = scenario.map.lookup_interpolate(p, i);
 
-                                double[][] aa_array = new double[error_scenario.length][];
-                                double[] consume_array = new double[error_scenario.length];
+                                double[][] aa = new double[error_scenario.length][];
+                                double[] consume = new double[error_scenario.length];
                                 for (int e = 0; e < error_scenario.length; e++)
                                 {
                                         MapElement me = error_scenario[e].map.lookup_interpolate(p, i);
-                                        aa_array[e] = me.aa;
-                                        consume_array[e] = me.consume;
+                                        aa[e] = me.aa;
+                                        consume[e] = me.consume;
                                 }
+                                aa = Utils.zipDoubleArrayArray(aa);
 
-                                double[][] allocs = Utils.zipDoubleArrayArray(aa_array);
-                                double[] aa_error = new double[scenario.normal_assets];
-                                int low = (int) ((1 - significance) / 2 * (error_scenario.length - 1));
-                                int high = low + (int) (Math.round(significance * (error_scenario.length - 1)));
                                 for (int a = 0; a < scenario.normal_assets; a++)
                                 {
-                                        Arrays.sort(allocs[a]);
-                                        aa_error[a] = allocs[a][high] - allocs[a][low];
+                                        Arrays.sort(aa[a]);
                                 }
-                                Arrays.sort(consume_array);
-                                double consume_diff = consume_array[high] - consume_array[low];
-                                double consume_error = 0.0;
-                                if (consume_diff > 0)
-                                        consume_error = (me_s.consume == 0.0 ? 1e6 : consume_diff / me_s.consume);
+                                Arrays.sort(consume);
 
-                                String aa_str = scenario.stringify_aa(aa_error);
+                                int low = (int) ((1 - significance) / 2 * (error_scenario.length - 1));
+                                int high = low + (int) (Math.round(significance * (error_scenario.length - 1)));
+
                                 out.print(f2f.format(age));
                                 out.print("," + f2f.format(curr_pf));
-                                out.print("," + f4f.format(consume_error));
+                                out.print("," + f2f.format(me_s.consume));
+                                out.print("," + f2f.format(consume[low]));
+                                out.print("," + f2f.format(consume[high]));
                                 out.print(","); // Reserve space for ria and nia.
                                 out.print(",");
-                                out.print("," + aa_str);
+                                out.print(",");
+                                out.print(",");
+                                out.print(",");
+                                out.print(",");
+                                for (int a = 0; a < scenario.normal_assets; a++)
+                                {
+                                        out.print("," + f3f.format(me_s.aa[a]));
+                                        out.print("," + f3f.format(aa[a][low]));
+                                        out.print("," + f3f.format(aa[a][high]));
+                                }
                                 out.print("\n");
                         }
                         out.print("\n");
