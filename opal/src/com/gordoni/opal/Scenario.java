@@ -93,6 +93,8 @@ public class Scenario
 
         public Double equity_premium;
         private double equity_vol_adjust;
+        private double gamma_adjust;
+        public double q_adjust;
 
         private static DecimalFormat f8 = new DecimalFormat("0.000E00");
         private static DecimalFormat f1f = new DecimalFormat("0.0");
@@ -868,7 +870,7 @@ public class Scenario
                         String keep_experience = config.annuity_mortality_experience;
                         config.mortality_projection_method = (table.startsWith("iam2012-basic-period") ? "g2" : "rate"); // Irrelevant for cohort.
                         config.annuity_mortality_experience = (iam_aer ? "aer2005_08" : "none");
-                        stats.compute_stats(iam_aer ? "iam2012-basic-period" : table);
+                        stats.compute_stats(iam_aer ? "iam2012-basic-period" : table, 1);
                         config.mortality_projection_method = keep_method;
                         config.annuity_mortality_experience = keep_experience;
                         double le = stats.le.get(config.start_age);
@@ -880,7 +882,7 @@ public class Scenario
                         {
                                 for (; ple < stats.alive.length; ple++)
                                 {
-                                        pct_curr = 1 - stats.alive[ple];
+                                        pct_curr = 1 - stats.alive[ple] / stats.alive[0];
                                         if (pct_curr >= pct_level)
                                                 break;
                                         pct_prev = pct_curr;
@@ -1424,7 +1426,7 @@ public class Scenario
                 }
         }
 
-        public Scenario(ScenarioSet ss, Config config, HistReturns hist, boolean compute_risk_premium, boolean do_validate, List<String> asset_classes, List<String> asset_class_names, Double equity_premium, double equity_vol_adjust, Double start_ria, Double start_nia) throws IOException, InterruptedException
+        public Scenario(ScenarioSet ss, Config config, HistReturns hist, boolean compute_risk_premium, boolean do_validate, List<String> asset_classes, List<String> asset_class_names, Double equity_premium, double equity_vol_adjust, double gamma_adjust, double q_adjust, Double start_ria, Double start_nia) throws IOException, InterruptedException
         {
                 this.ss = ss;
                 this.config = config;
@@ -1435,6 +1437,8 @@ public class Scenario
                 this.asset_class_names = asset_class_names;
                 this.equity_premium = equity_premium;
                 this.equity_vol_adjust = equity_vol_adjust;
+                this.gamma_adjust = gamma_adjust;
+                this.q_adjust = q_adjust;
 
                 // Internal parameters.
 
@@ -1577,15 +1581,15 @@ public class Scenario
 
                 double consume_ref = consume_max_estimate / 2; // Somewhat arbitrary.
                 Double eta = (config.utility_epstein_zin ? (Double) config.utility_gamma : config.utility_eta);
-                Utility utility_consume_risk = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_beta, config.utility_alpha, 0, consume_ref, config.utility_ce, config.utility_ce_ratio, 2 * consume_ref, 1 / config.utility_slope_double_withdrawal, consume_ref, 1, config.public_assistance, config.public_assistance_phaseout_rate);
+                Utility utility_consume_risk = Utility.utilityFactory(config, config.utility_consume_fn, eta * gamma_adjust, config.utility_beta, config.utility_alpha, 0, consume_ref, config.utility_ce, config.utility_ce_ratio, 2 * consume_ref, 1 / config.utility_slope_double_withdrawal, consume_ref, 1, config.public_assistance, config.public_assistance_phaseout_rate);
                 eta = (config.utility_epstein_zin ? (Double) (1 / config.utility_psi) : config.utility_eta);
-                utility_consume_time = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_beta, config.utility_alpha, 0, consume_ref, config.utility_ce, config.utility_ce_ratio, 2 * consume_ref, 1 / config.utility_slope_double_withdrawal, consume_ref, 1, config.public_assistance, config.public_assistance_phaseout_rate);
+                utility_consume_time = Utility.utilityFactory(config, config.utility_consume_fn, eta * gamma_adjust, config.utility_beta, config.utility_alpha, 0, consume_ref, config.utility_ce, config.utility_ce_ratio, 2 * consume_ref, 1 / config.utility_slope_double_withdrawal, consume_ref, 1, config.public_assistance, config.public_assistance_phaseout_rate);
 
                 if (config.utility_join)
                 {
-                        Utility utility_consume_risk_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0, 0.0, 0, consume_ref, 0.0, 0, 0, 0, config.utility_join_required, config.utility_join_slope_ratio * utility_consume_risk.slope(config.utility_join_required), 0, 0);
+                        Utility utility_consume_risk_2 = Utility.utilityFactory(config, "power", config.utility_eta_2 * gamma_adjust, 0, 0.0, 0, consume_ref, 0.0, 0, 0, 0, config.utility_join_required, config.utility_join_slope_ratio * utility_consume_risk.slope(config.utility_join_required), 0, 0);
                         utility_consume_risk = Utility.joinFactory(config, config.utility_join_type, utility_consume_risk, utility_consume_risk_2, config.utility_join_required, config.utility_join_required + config.utility_join_desired);
-                        Utility utility_consume_time_2 = Utility.utilityFactory(config, "power", config.utility_eta_2, 0, 0.0, 0, consume_ref, 0.0, 0, 0, 0, config.utility_join_required, config.utility_join_slope_ratio * utility_consume_time.slope(config.utility_join_required), 0, 0);
+                        Utility utility_consume_time_2 = Utility.utilityFactory(config, "power", config.utility_eta_2 * gamma_adjust, 0, 0.0, 0, consume_ref, 0.0, 0, 0, 0, config.utility_join_required, config.utility_join_slope_ratio * utility_consume_time.slope(config.utility_join_required), 0, 0);
                         utility_consume_time = Utility.joinFactory(config, config.utility_join_type, utility_consume_time, utility_consume_time_2, config.utility_join_required, config.utility_join_required + config.utility_join_desired);
                 }
                 utility_consume = utility_consume_risk;

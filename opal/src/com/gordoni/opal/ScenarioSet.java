@@ -40,6 +40,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.apache.commons.math3.distribution.ChiSquaredDistribution;
+import org.apache.commons.math3.distribution.LogNormalDistribution;
 import org.apache.commons.math3.random.JDKRandomGenerator;
 
 public class ScenarioSet
@@ -172,9 +173,9 @@ public class ScenarioSet
                         config.applyParams(params);
 
                 generate_stats = new VitalStats(this, config, hist, config.generate_time_periods);
-                generate_stats.compute_stats(config.generate_life_table); // Compute here so we can access death.length.
+                generate_stats.compute_stats(config.generate_life_table, 1); // Compute here so we can access death.length.
                 validate_stats = new VitalStats(this, config, hist, config.validate_time_periods);
-                validate_stats.compute_stats(config.validate_life_table);
+                validate_stats.compute_stats(config.validate_life_table, 1);
                 generate_annuity_stats = new AnnuityStats(this, config, hist, generate_stats, config.generate_time_periods, config.annuity_table);
                 validate_annuity_stats = new AnnuityStats(this, config, hist, validate_stats, config.validate_time_periods, config.annuity_table);
 
@@ -190,10 +191,10 @@ public class ScenarioSet
                         assert(config.tax_rate_div == null);
                         assert(!config.ef.equals("none"));
                         List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds"));
-                        compare_scenario = new Scenario(this, config, hist, false, !config.skip_validate, asset_classes, asset_classes, config.ret_equity_premium, 1, null, null);
+                        compare_scenario = new Scenario(this, config, hist, false, !config.skip_validate, asset_classes, asset_classes, config.ret_equity_premium, 1, 1, 1, null, null);
                 }
 
-                Scenario scenario = new Scenario(this, config, hist, config.compute_risk_premium, !config.skip_validate, config.asset_classes, config.asset_class_names, config.ret_equity_premium, 1, config.start_ria, config.start_nia);
+                Scenario scenario = new Scenario(this, config, hist, config.compute_risk_premium, !config.skip_validate, config.asset_classes, config.asset_class_names, config.ret_equity_premium, 1, 1, 1, config.start_ria, config.start_nia);
                 scenario.report_returns();
 
                 if (config.compute_risk_premium)
@@ -203,7 +204,7 @@ public class ScenarioSet
                 if (config.error_count > 0)
                 {
                         List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds"));
-                        Scenario risk_premium_scenario = new Scenario(this, config, hist, true, false, asset_classes, asset_classes, config.ret_equity_premium, 1, config.start_ria, config.start_nia);
+                        Scenario risk_premium_scenario = new Scenario(this, config, hist, true, false, asset_classes, asset_classes, config.ret_equity_premium, 1, 1, 1, config.start_ria, config.start_nia);
                         List<double[]> rp_returns = Utils.zipDoubleArray(risk_premium_scenario.returns_generate.original_data);
                         double n = rp_returns.get(0).length;
                         double sample_erp_am = Utils.mean(rp_returns.get(0));
@@ -212,6 +213,12 @@ public class ScenarioSet
                         JDKRandomGenerator random = new JDKRandomGenerator();
                         random.setSeed(0);
                         ChiSquaredDistribution chi_squared = new ChiSquaredDistribution(random, n - 1);
+                        LogNormalDistribution gamma_distribution = null;
+                        if (config.gamma_vol > 0)
+                                gamma_distribution = new LogNormalDistribution(random, 0, config.gamma_vol);
+                        LogNormalDistribution q_distribution = null;
+                        if (config.q_vol > 0)
+                                q_distribution = new LogNormalDistribution(random, 0, config.q_vol);
                         for (int i = 0; i < error_scenario.length; i++)
                         {
                                 double population_erp_am = sample_erp_am;
@@ -220,7 +227,9 @@ public class ScenarioSet
                                 double erp_am = population_erp_am;
                                 double erp_sd = population_erp_sd / Math.sqrt(n);
                                 double erp = erp_am + erp_sd * random.nextGaussian();
-                                error_scenario[i] = new Scenario(this, config, hist, false, false, config.asset_classes, config.asset_class_names, erp, equity_vol_adjust, config.start_ria, config.start_nia);
+                                double gamma_adjust = ((config.gamma_vol > 0) ? gamma_distribution.sample() : 1);
+                                double q_adjust = ((config.q_vol > 0) ? q_distribution.sample() : 1);
+                                error_scenario[i] = new Scenario(this, config, hist, false, false, config.asset_classes, config.asset_class_names, erp, equity_vol_adjust, gamma_adjust, q_adjust, config.start_ria, config.start_nia);
                         }
                 }
 
@@ -244,10 +253,13 @@ public class ScenarioSet
 
                                 for (int i = 0; i < error_scenario.length; i++)
                                 {
-                                        if (config.trace)
+                                        if (config.trace || config.trace_error)
                                                 System.out.println("error scenario " + (i + 1));
+                                        generate_stats.compute_stats(config.generate_life_table, error_scenario[i].q_adjust);
                                         error_scenario[i].run_error();
                                 }
+                                generate_stats.compute_stats(config.generate_life_table, 1); // Reset to default.
+
                                 dump_error(scenario, error_scenario, "0.68", 0.68);
                                 dump_error(scenario, error_scenario, "0.95", 0.95);
 

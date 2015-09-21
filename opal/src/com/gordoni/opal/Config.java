@@ -39,6 +39,7 @@ public class Config
         public String prefix = "opal"; // Prefix to use for result files.
 
         public boolean trace = false; // Be chatty.
+        public boolean trace_error = false; // Less chatty tracing of error bar calculations.
         public boolean debug_till_end = false; // Whether to plot until the final year or display graphs only through age 99.
 
         public int tasks_generate = 100; // Break generation into this many concurrent tasks.
@@ -150,6 +151,10 @@ public class Config
         public double annuity_payout_delay = 1.5; // Delay in months until first payout from a newly purchased annuity.
 
         public int error_count = 0; // Number of scenarios to generate to produce error bars on estimates.
+        public double gamma_vol = 0.0;
+                // Scale parameter for log normally distributed multiplicative adjustment to be applied to utility eta/gamma for generating error bars.
+        public double q_vol = 0.0;
+                // Scale parameter for log normally distributed multiplicative adjustment to be applied to mortality q values for generating error bars.
 
         public String safe_aa = "bonds";
                 // Which asset allocation choice to favor when choices are equal, and success is guaranteed.

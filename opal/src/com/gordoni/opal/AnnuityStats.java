@@ -159,8 +159,8 @@ public class AnnuityStats
 
                 for (int i = 0; i < vital_stats.alive.length - 1; i++)
                 {
-                        Double[] annuitant_death = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age), config.start_age + i, true);
-                        Double[] period_death = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age) - i, config.start_age + i, true);
+                        Double[] annuitant_death = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age), config.start_age + i, true, 1);
+                        Double[] period_death = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age) - i, config.start_age + i, true, 1);
                         int annuitant_alive_len = (int) Math.round((annuitant_death.length - config.start_age) * config.annuity_time_periods) + 1;
                         double[] annuitant_alive = new double[annuitant_alive_len];
                         double[] period_alive = new double[annuitant_alive_len];

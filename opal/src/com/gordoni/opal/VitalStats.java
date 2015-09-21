@@ -29,6 +29,7 @@ public class VitalStats
 {
         public double time_periods = Double.NaN;
         public String table = null;
+        private double q_adjust;
 
         public VitalStats vital_stats1;
         public VitalStats vital_stats2;
@@ -233,7 +234,7 @@ public class VitalStats
                 return nearest;
         }
 
-        public Double[] get_q(String table, String sex, double birth_year, int age, boolean age_nearest_birthday)
+        public Double[] get_q(String table, String sex, double birth_year, int age, boolean age_nearest_birthday, double q_adjust)
         {
                 boolean age_nearest = false;
                 boolean annuity_table = false;
@@ -344,7 +345,7 @@ public class VitalStats
                         }
                 }
                 for (int i = 0; i < death_cohort.length; i++)
-                        death_cohort[i] *= Math.max(death_cohort[i] * (1 + config.mortality_load), 1);
+                        death_cohort[i] = Math.min(death_cohort[i] * (1 + config.mortality_load) * q_adjust, 1);
                 return death_cohort;
         }
 
@@ -550,22 +551,23 @@ public class VitalStats
                 pre_compute_stats(death_joint, death_len);
         }
 
-        public boolean compute_stats(String table)
+        public boolean compute_stats(String table, double q_adjust)
         {
-                if (table.equals(this.table))
+                if (table.equals(this.table) && (q_adjust == this.q_adjust))
                         return false;
 
                 this.table = table;
+                this.q_adjust = q_adjust;
 
                 double birth_year = get_birth_year(config.start_age);
-                Double[] death1 = get_q(table, config.sex, birth_year, config.start_age, false);
+                Double[] death1 = get_q(table, config.sex, birth_year, config.start_age, false, q_adjust);
                 if (config.sex2 == null)
                 {
                         pre_compute_stats(death1, death1.length);
                 }
                 else
                 {
-                        Double[] death2 = get_q(table, config.sex2, birth_year - (config.start_age2 - config.start_age), config.start_age2, false);
+                        Double[] death2 = get_q(table, config.sex2, birth_year - (config.start_age2 - config.start_age), config.start_age2, false, q_adjust);
                         joint_compute_stats(death1, death2);
                 }
 
