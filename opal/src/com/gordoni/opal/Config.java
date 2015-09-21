@@ -319,7 +319,7 @@ public class Config
         public double ret_sh_adjust = 0.0; // Small high asset class additional adjust.
         public double ret_tips_adjust = 0.0; // TIPS bond asset class additional adjustment.
         public double ret_tips_vol_adjust = 1.0; // Adjustment to apply to TIPS bond volatility.
-        public double ret_gs10_to_bonds_arith = 0.0069; // Arithmetic adjustment to apply to GS10 to get bond returns indicative of the bond universe.
+        public double ret_gs10_to_bonds_arith = 0.0072; // Arithmetic adjustment to apply to GS10 to get bond returns indicative of the bond universe.
                 // Justification:
                 //
                 // Considering the holdings of Treasury, Agency, Municipal, and Corporate bonds by households as reported in the Federal Reserve Financial Accounts
@@ -378,8 +378,8 @@ public class Config
                 //   Agency              121             837      607  8%      ~2.60% guess
                 //   Muni               1617             610     1971 25%       3.16% after correct for tax adv; equiv to AA corporates
                 //   Corp and foreign   2793            2001     3955 50%       3.46% 2/3 A and 1/3 BAA based on LQD
-                //   Weighted                                                   3.14% use GS10 and adjust gm value by +0.69% to get 3.14% am
-                //   Total                -              -       7849                 (adjustment value applies in the presence of a 1.1 vol. adjust)
+                //   Weighted                                                   3.14% use GS10 and adjust gm value by +0.72% to get 3.14% am
+                //   Total                -              -       7849
         public double ret_gs10_to_bonds_vol_adjust = 1.1; // Adjustment to apply to GS10 volatility to get bond returns indicative of the bond universe.
                 // A guess based on risk-return plots placing its risk close to but slightly less than AAA bonds, with which it shares a similar return.
                 // If risk was higher than AAA bonds, no point in holding "bonds", ignoring different correlations.

@@ -59,34 +59,34 @@ public class Returns implements Cloneable
         private List<Double> adjust_returns(List<Double> l, double adjust_arith, double ret_adjust, double vol_adjust)
         {
                 double[] a = Utils.DoubleTodouble(l);
-                double plus_1_geomean = Utils.plus_1_geomean(a);
-                double mean = Utils.sum(a) / a.length;
+                double mean = Utils.mean(a);
                 if (vol_adjust != 1)
                 {
                         // Binary search on volatility adjustment.
                         double vol_a = Utils.standard_deviation(a);
                         double[] b = new double[a.length];
-                        double low = vol_adjust / ret_adjust;
-                        double high = vol_adjust / ret_adjust * 2;
+                        double low_init = vol_adjust / ret_adjust / 2;
+                        double high_init = vol_adjust / ret_adjust * 2;
+                        double low = low_init;
+                        double high = high_init;
                         while (high - low > 0.001)
                         {
                                 double mid = (low + high) / 2;
                                 for (int i = 0; i < a.length; i++)
-                                        if (a[i] >= mean)
-                                                b[i] = mean + (a[i] - mean) * mid;
-                                        else
-                                                // Inverses break mathematical cleanness, but prevent negative values.
-                                                b[i] = 1 / (1 / (1 + mean) + (1 / (1 + a[i]) - 1 / (1 + mean)) * mid) - 1;
-                                double new_plus_1_geomean = Utils.plus_1_geomean(b);
-                                double adjust = ret_adjust * plus_1_geomean / new_plus_1_geomean;
+                                        b[i] = Math.pow(1 + a[i], mid) - 1;
+                                double new_mean = Utils.mean(b);
+                                double geo_adjust = ret_adjust;
+                                double arith_adjust = adjust_arith + mean - new_mean;
                                 for (int i = 0; i < b.length; i++)
-                                    b[i] = (1 + b[i]) * ret_adjust + adjust_arith - 1;
+                                        b[i] = (1 + b[i]) * geo_adjust + arith_adjust - 1;
                                 double vol = Utils.standard_deviation(b);
                                 if (vol < vol_adjust * vol_a)
                                         low = mid;
                                 else
                                         high = mid;
                         }
+                        assert(low != low_init);
+                        assert(high != high_init);
                         a = b;
                 }
                 else
