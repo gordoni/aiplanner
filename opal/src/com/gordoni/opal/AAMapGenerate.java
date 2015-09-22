@@ -621,7 +621,7 @@ public class AAMapGenerate extends AAMap
                 boolean search_spend_fract = scenario.vw_strategy.equals("sdp") && (retire || config.spend_fract_all);
 
                 List<Integer> dimensions = new ArrayList<Integer>();
-                double[] step = new double[scenario.all_alloc];
+                double[] step = new double[scenario.asset_classes.size()];
                 if (!search_aa)
                         ;
                 else if (config.ef.equals("none"))

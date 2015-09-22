@@ -135,7 +135,7 @@ public class Scenario
 
         public double[] guaranteed_safe_aa()
         {
-                double[] safe = new double[all_alloc]; // Create new object since at least AAMapGenerate mutates the result.
+            double[] safe = new double[asset_classes.size()]; // Create new object since at least AAMapGenerate mutates the result.
                 for (int i = 0; i < normal_assets; i++)
                 {
                         if (config.ef.equals("none"))
@@ -151,7 +151,7 @@ public class Scenario
 
         public double[] guaranteed_fail_aa()
         {
-                double[] fail = new double[all_alloc]; // Create new object since at least AAMapGenerate mutates the result.
+            double[] fail = new double[asset_classes.size()]; // Create new object since at least AAMapGenerate mutates the result.
                 for (int i = 0; i < normal_assets; i++)
                 {
                         if (i == spend_fract_index)
