@@ -221,12 +221,22 @@ public class ScenarioSet
                                 q_distribution = new LogNormalDistribution(random, 0, config.q_vol);
                         for (int i = 0; i < error_scenario.length; i++)
                         {
-                                double population_erp_am = sample_erp_am;
-                                double equity_vol_adjust = Math.sqrt((n - 1) / chi_squared.sample());
-                                double population_erp_sd = sample_erp_sd * equity_vol_adjust;
-                                double erp_am = population_erp_am;
-                                double erp_sd = population_erp_sd / Math.sqrt(n);
-                                double erp = erp_am + erp_sd * random.nextGaussian();
+                                double erp;
+                                double equity_vol_adjust;
+                                if (config.equity_premium_vol)
+                                {
+                                        double population_erp_am = sample_erp_am;
+                                        equity_vol_adjust = Math.sqrt((n - 1) / chi_squared.sample());
+                                        double population_erp_sd = sample_erp_sd * equity_vol_adjust;
+                                        double erp_am = population_erp_am;
+                                        double erp_sd = population_erp_sd / Math.sqrt(n);
+                                        erp = erp_am + erp_sd * random.nextGaussian();
+                                }
+                                else
+                                {
+                                        erp = sample_erp_am;
+                                        equity_vol_adjust = 1;
+                                }
                                 double gamma_adjust = ((config.gamma_vol > 0) ? gamma_distribution.sample() : 1);
                                 double q_adjust = ((config.q_vol > 0) ? q_distribution.sample() : 1);
                                 error_scenario[i] = new Scenario(this, config, hist, false, false, config.asset_classes, config.asset_class_names, erp, equity_vol_adjust, gamma_adjust, q_adjust, config.start_ria, config.start_nia);

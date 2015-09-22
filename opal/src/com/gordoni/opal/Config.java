@@ -151,6 +151,7 @@ public class Config
         public double annuity_payout_delay = 1.5; // Delay in months until first payout from a newly purchased annuity.
 
         public int error_count = 0; // Number of scenarios to generate to produce error bars on estimates.
+        public boolean equity_premium_vol = true; // Whether to consider the distribution of different possible population equity premiums when generating error bars.
         public double gamma_vol = 0.0;
                 // Scale parameter for log normally distributed multiplicative adjustment to be applied to utility eta/gamma for generating error bars.
         public double q_vol = 0.0;
