@@ -1581,9 +1581,13 @@ public class Scenario
 
                 double consume_ref = consume_max_estimate / 2; // Somewhat arbitrary.
                 Double eta = (config.utility_epstein_zin ? (Double) config.utility_gamma : config.utility_eta);
-                Utility utility_consume_risk = Utility.utilityFactory(config, config.utility_consume_fn, eta * gamma_adjust, config.utility_beta, config.utility_alpha, 0, consume_ref, config.utility_ce, config.utility_ce_ratio, 2 * consume_ref, 1 / config.utility_slope_double_withdrawal, consume_ref, 1, config.public_assistance, config.public_assistance_phaseout_rate);
+                if (eta != null)
+                        eta *= gamma_adjust;
+                Utility utility_consume_risk = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_beta, config.utility_alpha, 0, consume_ref, config.utility_ce, config.utility_ce_ratio, 2 * consume_ref, 1 / config.utility_slope_double_withdrawal, consume_ref, 1, config.public_assistance, config.public_assistance_phaseout_rate);
                 eta = (config.utility_epstein_zin ? (Double) (1 / config.utility_psi) : config.utility_eta);
-                utility_consume_time = Utility.utilityFactory(config, config.utility_consume_fn, eta * gamma_adjust, config.utility_beta, config.utility_alpha, 0, consume_ref, config.utility_ce, config.utility_ce_ratio, 2 * consume_ref, 1 / config.utility_slope_double_withdrawal, consume_ref, 1, config.public_assistance, config.public_assistance_phaseout_rate);
+                if (eta != null)
+                        eta *= gamma_adjust;
+                utility_consume_time = Utility.utilityFactory(config, config.utility_consume_fn, eta, config.utility_beta, config.utility_alpha, 0, consume_ref, config.utility_ce, config.utility_ce_ratio, 2 * consume_ref, 1 / config.utility_slope_double_withdrawal, consume_ref, 1, config.public_assistance, config.public_assistance_phaseout_rate);
 
                 if (config.utility_join)
                 {
