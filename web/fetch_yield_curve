@@ -175,7 +175,7 @@ class TreasuryFetcher(Fetcher):
         filename = self.csv_file(fetch_year)
         out = open(filename + '.tmp', 'w')
 
-        print >>out, '# R-CMT yield curve'
+        print >>out, '# ' + bond_type + ' CMT yield curve'
         print >>out, 'DATE,' + ','.join(years)
         for date in sorted(rates.keys()):
             print >>out, date + ',' + ','.join(rates[date].get(year, '') for year in years)
