@@ -876,18 +876,17 @@ class YieldCurve:
             # Not compatible with AACalc. To begin with the underlying splines don't match.
             self.spot_years = tuple(y / 2.0 for y in range(1, 201))
             coupon_yield_curve = []
-            yield_curve_2 = InterpolatedUnivariateSpline(yield_curve_years, yield_curve_rates, k=2)
+            yield_curve = InterpolatedUnivariateSpline(yield_curve_years, yield_curve_rates, k=2)
                 # k=3 results in a spline that may overshoot prior to the terminal value, so use k=2.
             # R's spline function with method "natural" does a good job of nicely handling out of range values by switching to linear interpolation
-            # using the slope at the nearest point.  Scipy just uses the polynominal, which is problematic, so we use linear interpolation here.
-            # This isn't quite as good as R because we use the slope between the last two points rather than the slope at the last point.
-            yield_curve_1 = InterpolatedUnivariateSpline(yield_curve_years, yield_curve_rates, k=1)
+            # using the slope at the nearest point.  Scipy just uses the polynominal, which is problematic, so we use linear interpolation there.
             for i in range(1, int(2 * max(yield_curve_years)) + 1):
                 year = i / 2.0
-                if year >= min(yield_curve_years):
-                    rate = float(yield_curve_2(year))  # De-numpy-fy.
+                if year < min(yield_curve_years):
+                    slope = float(yield_curve.derivatives(min(yield_curve_years))[1])  # De-numpy-fy.
+                    rate = yield_curve_rates[0] + slope * (year - min(yield_curve_years))
                 else:
-                    rate = float(yield_curve_1(year))
+                    rate = float(yield_curve(year))
                 coupon_yield_curve.append(rate / 100.0)
             spot_rates = self.coupon_bond_to_spot(coupon_yield_curve)
 
