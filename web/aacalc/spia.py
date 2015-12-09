@@ -20,7 +20,9 @@ from argparse import ArgumentParser
 from calendar import monthrange
 from csv import reader
 from os.path import expanduser, isdir, join, normpath
-from scipy.interpolate import InterpolatedUnivariateSpline
+
+from numpy import errstate
+from scipy.interpolate import InterpolatedUnivariateSpline, PchipInterpolator
 
 datapath = ('~/aacalc/opal/data/public', '~ubuntu/aacalc/opal/data/public')
 
@@ -876,10 +878,10 @@ class YieldCurve:
             # Not compatible with AACalc. To begin with the underlying splines don't match.
             self.spot_years = tuple(y / 2.0 for y in range(1, 201))
             coupon_yield_curve = []
-            yield_curve = InterpolatedUnivariateSpline(yield_curve_years, yield_curve_rates, k=2)
-                # k=3 results in a spline that may overshoot prior to the terminal value, so use k=2.
-            # R's spline function with method "natural" does a good job of nicely handling out of range values by switching to linear interpolation
-            # using the slope at the nearest point.  Scipy just uses the polynominal, which is problematic, so we use linear interpolation there.
+            # Suppress spurious divide by zero; needed for Ubuntu 14.04, not needed for Scipy 0.16.1.
+            with errstate(divide='ignore'):
+                yield_curve = PchipInterpolator(yield_curve_years, yield_curve_rates)
+            # For out of range values Scipy just uses the polynominal, which is problematic, so we use linear interpolation in this case.
             for i in range(1, int(2 * max(yield_curve_years)) + 1):
                 year = i / 2.0
                 if year < min(yield_curve_years):
@@ -889,6 +891,8 @@ class YieldCurve:
                     rate = float(yield_curve(year))
                 coupon_yield_curve.append(rate / 100.0)
             spot_rates = self.coupon_bond_to_spot(coupon_yield_curve)
+                # Does not match spot rates at https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/TNC-YC.aspx
+                # because the input par rates of the daily quotes used differ from the end of month quotes reported there.
 
         elif interest_rate == 'corporate':
 
@@ -908,6 +912,7 @@ class YieldCurve:
         self.spot_yield_curve = tuple(r + adjust for r in spot_yield_curve)
 
     def coupon_bond_to_spot(self, rates):
+        # See: https://en.wikipedia.org/wiki/Bootstrapping_%28finance%29
         spots = []
         discount_rate_sum = 0
         count = 0
@@ -945,10 +950,16 @@ class YieldCurve:
 
     def project_curve(self, spot_rates):
 
-        # Project returns beyond the last rate using the last forward rate and beyond long_years using long_rate as the forward rate.
+        # Project returns beyond the last rate using the average 15 year and longer forward rate (similar to Treasury methodology)
+        # and beyond long_years using long_rate as the forward rate.
         spot_yield_curve = spot_rates[:2 * long_years[self.interest_rate]]
         forward_rates = self.spot_to_forward(spot_yield_curve)
-        forward_rates.extend(forward_rates[-1:] * (len(self.spot_years) - len(forward_rates)))
+        long_forward_rates = []
+        for i in range(len(forward_rates)):
+            if self.spot_years[i] >= 15:
+                long_forward_rates.append(forward_rates[i])
+        long_forward_rate = sum(long_forward_rates) / len(long_forward_rates)
+        forward_rates.extend([long_forward_rate] * (len(self.spot_years) - len(forward_rates)))
         for i in range(len(self.spot_years)):
             if self.spot_years[i] > long_years[self.interest_rate]:
                 forward_rates[i] = long_rate[self.interest_rate]
@@ -968,7 +979,7 @@ class YieldCurve:
             if min(self.spot_years) <= look_y <= max(self.spot_years):
                 yield_curve = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=2)
             else:
-                yield_curve = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=1)
+                yield_curve = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=1)  # Linear extrapolation if out of range.
             say = float(yield_curve(look_y))  # De-numpy-fy.
         ay = (1 + say / 2) ** 2  # Convert semi-annual yields to annual yields.
         return ay
