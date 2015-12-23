@@ -1,24 +1,25 @@
 from datetime import datetime
 from decimal import Decimal
-from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.views import PasswordResetForm, SetPasswordForm
 from django.core.exceptions import ValidationError
 from django.utils.safestring import mark_safe
+from django.forms import BooleanField, CharField, CheckboxInput, ChoiceField, DecimalField, Form, HiddenInput, IntegerField, RadioSelect, TextInput
+from django.forms.formsets import formset_factory
 from time import strftime, strptime
 
 from aacalc.utils import all_asset_classes, asset_class_names, too_early_for_asset_classes, too_late_for_asset_classes
 from aacalc.views.utils import default_params
 
-class HorizontalRadioRenderer(forms.RadioSelect.renderer):
+class HorizontalRadioRenderer(RadioSelect.renderer):
     def render(self):
         return mark_safe(u'\n'.join([u'%s\n' % w for w in self]))
 
-class VerticalRadioRenderer(forms.RadioSelect.renderer):
+class VerticalRadioRenderer(RadioSelect.renderer):
     def render(self):
         return mark_safe(u'\n<br />\n'.join([u'%s\n' % w for w in self]))
 
-class DobOrAgeField(forms.CharField):
+class DobOrAgeField(CharField):
 
     def clean(self, v):
         for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y'):
@@ -46,144 +47,144 @@ class DobOrAgeField(forms.CharField):
                 return None
         raise ValidationError('Invalid age or date of birth.')
 
-class ScenarioBaseForm(forms.Form):
-    sex = forms.ChoiceField(
+class ScenarioBaseForm(Form):
+    sex = ChoiceField(
         choices = (('male', 'male'), ('female', 'female')))
     dob = DobOrAgeField(
-        widget=forms.TextInput(attrs={'class': 'dob_input'}))
-    sex2 = forms.ChoiceField(
+        widget=TextInput(attrs={'class': 'dob_input'}))
+    sex2 = ChoiceField(
         choices = (('', 'none'), ('male', 'male'), ('female', 'female')),
         required=False)
     dob2 = DobOrAgeField(
-        widget=forms.TextInput(attrs={'class': 'dob_input'}),
+        widget=TextInput(attrs={'class': 'dob_input'}),
         required=False)
-    advanced_position = forms.BooleanField(required=False,
-        widget=forms.CheckboxInput(attrs={'class': 'advanced_button'}))
-    defined_benefit_social_security = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    advanced_position = BooleanField(required=False,
+        widget=CheckboxInput(attrs={'class': 'advanced_button'}))
+    defined_benefit_social_security = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
-    defined_benefit_pensions = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    defined_benefit_pensions = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
-    defined_benefit_fixed_annuities = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    defined_benefit_fixed_annuities = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
-    tax_rate_cg_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}),
+    tax_rate_cg_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0)
-    tax_rate_div_default_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}),
+    tax_rate_div_default_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0)
-    cost_basis_method = forms.ChoiceField(
+    cost_basis_method = ChoiceField(
         choices=(('hifo', 'HIFO (highest-in first-out)'), ('avgcost', 'Average Cost'), ('fifo', 'FIFO (first-in first-out)')),
-        widget=forms.RadioSelect(renderer=HorizontalRadioRenderer))
-    advanced_goals = forms.BooleanField(required=False,
-        widget=forms.CheckboxInput(attrs={'class': 'advanced_button'}))
-    retirement_year = forms.IntegerField(
-        widget=forms.TextInput(attrs={'class': 'year_input'}),
+        widget=RadioSelect(renderer=HorizontalRadioRenderer))
+    advanced_goals = BooleanField(required=False,
+        widget=CheckboxInput(attrs={'class': 'advanced_button'}))
+    retirement_year = IntegerField(
+        widget=TextInput(attrs={'class': 'year_input'}),
         min_value=1900)
-    withdrawal = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    withdrawal = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
-    utility_join_required = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    utility_join_required = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=1)
-    utility_join_desired = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    utility_join_desired = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
-    risk_tolerance = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}))
-    vw_amount = forms.BooleanField(required=False)
-    advanced_market = forms.BooleanField(required=False,
-        widget=forms.CheckboxInput(attrs={'class': 'advanced_button'}))
-    class_stocks = forms.BooleanField(required=False)
-    class_bonds = forms.BooleanField(required=False)
-    class_eafe = forms.BooleanField(required=False)
-    class_ff_bl = forms.BooleanField(required=False)
-    class_ff_bm = forms.BooleanField(required=False)
-    class_ff_bh = forms.BooleanField(required=False)
-    class_ff_sl = forms.BooleanField(required=False)
-    class_ff_sm = forms.BooleanField(required=False)
-    class_ff_sh = forms.BooleanField(required=False)
-    class_reits_e = forms.BooleanField(required=False)
-    class_reits_m = forms.BooleanField(required=False)
-    class_baa = forms.BooleanField(required=False)
-    class_aaa = forms.BooleanField(required=False)
-    class_t10yr = forms.BooleanField(required=False)
-    class_t1yr = forms.BooleanField(required=False)
-    class_t1mo = forms.BooleanField(required=False)
-    class_tips10yr = forms.BooleanField(required=False)
-    class_gold = forms.BooleanField(required=False)
-    class_risk_free = forms.BooleanField(required=False)
-    ret_risk_free_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}))
-    generate_start_year = forms.IntegerField(
-        widget=forms.TextInput(attrs={'class': 'year_input'}))
-    generate_end_year = forms.IntegerField(
-        widget=forms.TextInput(attrs={'class': 'year_input'}))
-    validate_start_year = forms.IntegerField(
-        widget=forms.TextInput(attrs={'class': 'year_input'}))
-    validate_end_year = forms.IntegerField(
-        widget=forms.TextInput(attrs={'class': 'year_input'}))
-    ret_equity_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}))
-    ret_bonds_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}))
-    expense_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}),
+    risk_tolerance = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}))
+    vw_amount = BooleanField(required=False)
+    advanced_market = BooleanField(required=False,
+        widget=CheckboxInput(attrs={'class': 'advanced_button'}))
+    class_stocks = BooleanField(required=False)
+    class_bonds = BooleanField(required=False)
+    class_eafe = BooleanField(required=False)
+    class_ff_bl = BooleanField(required=False)
+    class_ff_bm = BooleanField(required=False)
+    class_ff_bh = BooleanField(required=False)
+    class_ff_sl = BooleanField(required=False)
+    class_ff_sm = BooleanField(required=False)
+    class_ff_sh = BooleanField(required=False)
+    class_reits_e = BooleanField(required=False)
+    class_reits_m = BooleanField(required=False)
+    class_baa = BooleanField(required=False)
+    class_aaa = BooleanField(required=False)
+    class_t10yr = BooleanField(required=False)
+    class_t1yr = BooleanField(required=False)
+    class_t1mo = BooleanField(required=False)
+    class_tips10yr = BooleanField(required=False)
+    class_gold = BooleanField(required=False)
+    class_risk_free = BooleanField(required=False)
+    ret_risk_free_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}))
+    generate_start_year = IntegerField(
+        widget=TextInput(attrs={'class': 'year_input'}))
+    generate_end_year = IntegerField(
+        widget=TextInput(attrs={'class': 'year_input'}))
+    validate_start_year = IntegerField(
+        widget=TextInput(attrs={'class': 'year_input'}))
+    validate_end_year = IntegerField(
+        widget=TextInput(attrs={'class': 'year_input'}))
+    ret_equity_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}))
+    ret_bonds_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}))
+    expense_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0)
-    neg_validate_all_adjust_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}))
-    validate_equity_vol_adjust_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}),
+    neg_validate_all_adjust_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}))
+    validate_equity_vol_adjust_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0)
-    inherit = forms.BooleanField(required=False)
-    utility_inherit_years = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    inherit = BooleanField(required=False)
+    utility_inherit_years = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0)
-    utility_dead_limit_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}),
+    utility_dead_limit_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0,
         max_value=100)
-    utility_bequest_consume = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    utility_bequest_consume = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
-    advanced_well_being = forms.BooleanField(required=False,
-        widget=forms.CheckboxInput(attrs={'class': 'advanced_button'}))
-    consume_discount_rate_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}),
+    advanced_well_being = BooleanField(required=False,
+        widget=CheckboxInput(attrs={'class': 'advanced_button'}))
+    consume_discount_rate_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0)
-    upside_discount_rate_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}),
+    upside_discount_rate_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0)
-    utility_method = forms.ChoiceField(
+    utility_method = ChoiceField(
         choices=(('floor_plus_upside', ''), ('ce', ''), ('slope', ''), ('eta', ''), ('alpha', '')))
-    utility_join_slope_ratio_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}),
+    utility_join_slope_ratio_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0,
         max_value=100)
-    utility_eta_1 = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    utility_eta_1 = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=50)
-    utility_eta_2 = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    utility_eta_2 = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=8) # 10 fails due to fp rounding and inverse_utility.
-    utility_ce = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    utility_ce = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=Decimal('1.02'), # 1.01 fails.
         max_value=Decimal('1.5'))
-    utility_slope_double_withdrawal = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    utility_slope_double_withdrawal = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=1,
         max_value=1e10) # 1e20 fails.
-    utility_eta = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    utility_eta = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=50) # 100 fails.
-    utility_alpha = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'large_numeric_input'}),
+    utility_alpha = DecimalField(
+        widget=TextInput(attrs={'class': 'large_numeric_input'}),
         min_value=0,
         max_value=100) # 1000 fails.
 
@@ -261,21 +262,21 @@ class ScenarioBaseForm(forms.Form):
         return cleaned_data
 
 class ScenarioAaForm(ScenarioBaseForm):
-    p_traditional_iras = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    p_traditional_iras = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
-    p_roth_iras = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    p_roth_iras = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
-    p = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    p = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
       # No autofocus.  Would interfere with start mega_form.
-    contribution = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    contribution = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
-    contribution_growth_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'percent_input'}))
+    contribution_growth_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}))
 
 def check_retirement_year(cleaned_data):
     dob = cleaned_data.get('dob')
@@ -309,7 +310,7 @@ class ScenarioNumberForm(ScenarioBaseForm):
         check_retirement_year(cleaned_data)
         return cleaned_data
 
-    retirement_number = forms.BooleanField(widget=forms.HiddenInput())
+    retirement_number = BooleanField(widget=HiddenInput())
 
 class ScenarioEditForm(ScenarioAaForm):
 
@@ -320,9 +321,9 @@ class ScenarioEditForm(ScenarioAaForm):
         check_retirement_year(cleaned_data)
         return cleaned_data
 
-    retirement_number = forms.BooleanField(required=False)
+    retirement_number = BooleanField(required=False)
 
-class LeForm(forms.Form):
+class LeForm(Form):
 
     def clean_sex2(self):
         sex2 = self.cleaned_data['sex2']
@@ -341,22 +342,22 @@ class LeForm(forms.Form):
             raise ValidationError('Invalid spouse/partner.')
         return cleaned_data
 
-    sex = forms.ChoiceField(
+    sex = ChoiceField(
         choices = (('male', 'male'), ('female', 'female')))
-    age = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    age = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=110)
-    sex2 = forms.ChoiceField(
+    sex2 = ChoiceField(
         choices = (('', 'none'), ('male', 'male'), ('female', 'female')),
         required=False)
-    age2 = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    age2 = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=110,
         required=False)
 
-class SpiaForm(forms.Form):
+class SpiaForm(Form):
 
     def clean_sex2(self):
         sex2 = self.cleaned_data['sex2']
@@ -395,91 +396,197 @@ class SpiaForm(forms.Form):
             raise ValidationError('Specify exactly two of premium, payout, and Money\'s Worth Ratio.')
         return cleaned_data
 
-    sex = forms.ChoiceField(
+    sex = ChoiceField(
         choices = (('male', 'male'), ('female', 'female')))
-    age_years = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    age_years = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=110)
-    age_months = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    age_months = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=11,
         required=False)
-    sex2 = forms.ChoiceField(
+    sex2 = ChoiceField(
         choices = (('', 'none'), ('male', 'male'), ('female', 'female')),
         required=False)
-    age2_years = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    age2_years = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=110,
         required=False)
-    age2_months = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    age2_months = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=11,
         required=False)
-    joint_type = forms.ChoiceField(
+    joint_type = ChoiceField(
         choices=(('contingent', 'Contingent. Payout reduced on death of either annuitant.'), ('survivor', 'Survivor. Payout reduced only on death of primary annuitant.'), ),
-        widget=forms.RadioSelect(renderer=VerticalRadioRenderer))
-    joint_payout_percent = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+        widget=RadioSelect(renderer=VerticalRadioRenderer))
+    joint_payout_percent = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=100)
 
-    table = forms.ChoiceField(
+    table = ChoiceField(
         choices=(('iam', 'Comparable to the average annuitant of the same sex and age.'), ('ssa_cohort', 'Comparable to the general population of the same sex and age.'), ('adjust', 'Adjust life table to match specified life expectancy.'), ),
-        widget=forms.RadioSelect(renderer=VerticalRadioRenderer))
-    ae = forms.ChoiceField(
+        widget=RadioSelect(renderer=VerticalRadioRenderer))
+    ae = ChoiceField(
         choices = (('none', 'no'), ('summary', 'summary'), ('full', 'age specific'), ))
-    le = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    le = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=110,
         required=False)
 
-    date = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'dob_input'}))
-    bond_type = forms.ChoiceField(
+    date = CharField(
+        widget=TextInput(attrs={'class': 'dob_input'}))
+    bond_type = ChoiceField(
         choices = (('real', 'inflation indexed TIPS (CPI-U)'), ('nominal', 'U.S. Treasury'), ('corporate', 'U.S. corporate'), ))
-    bond_adjust_pct = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    bond_adjust_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=-99)
-    cpi_adjust = forms.ChoiceField(
+    cpi_adjust = ChoiceField(
         choices = (('all', 'payout'), ('payout', 'anniversary of 1st payout'), ('calendar', 'January 1st'), ))
 
-    frequency = forms.ChoiceField(
+    frequency = ChoiceField(
         choices = (('12', 'monthly'), ('4', 'quarterly'), ('2', 'semi-annual'), ('1', 'annual'), ))
-    payout_delay_years = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    payout_delay_years = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=100,
         required=False)
-    payout_delay_months = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    payout_delay_months = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0)
-    period_certain = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    period_certain = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0)
 
-    premium = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    premium = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0,
         required=False)
-    payout = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'p_input'}),
+    payout = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0,
         required=False)
-    mwr_percent = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    mwr_percent = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         required=False)
-    percentile = forms.DecimalField(
-        widget=forms.TextInput(attrs={'class': 'small_numeric_input'}),
+    percentile = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=100)
 
-    advanced_spia = forms.BooleanField(required=False,
-        widget=forms.CheckboxInput(attrs={'class': 'advanced_button'}))
-    advanced_bonds = forms.BooleanField(required=False,
-        widget=forms.CheckboxInput(attrs={'class': 'advanced_button'}))
+    advanced_spia = BooleanField(required=False,
+        widget=CheckboxInput(attrs={'class': 'advanced_button'}))
+    advanced_bonds = BooleanField(required=False,
+        widget=CheckboxInput(attrs={'class': 'advanced_button'}))
+
+class AllocForm(Form):
+
+    def clean_sex2(self):
+        sex2 = self.cleaned_data['sex2']
+        if sex2 == '':
+            return None
+        else:
+            return sex2
+
+    def clean_date(self):
+        for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y'):
+            try:
+                date_p = strptime(self.cleaned_data['date'], fmt)
+                date_str = strftime('%Y-%m-%d', date_p)  # Some dates convert but can't be represented as a string. eg. 06/30/1080.
+                return date_str
+            except ValueError:
+                pass
+        raise ValidationError('Invalid quote date.')
+
+    def clean(self):
+        cleaned_data = super(AllocForm, self).clean()
+        if any(self.db.errors):
+            raise ValidationError('Error in defined benefits table.')
+        if self._errors:
+            return cleaned_data
+        cleaned_data['db'] = tuple(f.cleaned_data for f in self.db.forms)
+        sex2 = cleaned_data.get('sex2')
+        age2 = cleaned_data.get('age2')
+        if sex2 == None and age2 != None or sex2 != None and age2 == None:
+            raise ValidationError('Invalid spouse/partner.')
+        if sex2 == None and any((db['who'] == 'spouse' or float(db['joint_payout_pct']) != 0) and (float(db['amount']) != 0) for db in cleaned_data['db']):
+            raise ValidationError('Spousal defind benefits but no spouse present')
+        return cleaned_data
+
+    class DbForm(Form):
+        description = ChoiceField(
+            choices=(
+                ('Social Security', 'Social Security'),
+                ('Pension', 'Pension'),
+                ('Income annuity', 'Income annuity')))
+        who = ChoiceField(
+            choices = (('self', ''), ('spouse', '')),
+            widget=RadioSelect(renderer=HorizontalRadioRenderer))
+        age = DecimalField(
+            widget=TextInput(attrs={'class': 'small_numeric_input'}),
+            min_value=0,
+            max_value=110)
+        amount = DecimalField(
+            widget=TextInput(attrs={'class': 'p_input'}),
+            min_value=0)
+        inflation_indexed = BooleanField(required=False)
+        joint_type = ChoiceField(
+            choices=(('contingent', ''), ('survivor', ''), ),
+            widget=RadioSelect(renderer=HorizontalRadioRenderer))
+        joint_payout_pct = DecimalField(
+            widget=TextInput(attrs={'class': 'percent_input'}),
+            min_value=0,
+            max_value=100)
+
+    def __init__(self, data=None, *args, **kwargs):
+        super(AllocForm, self).__init__(*args, data=data, **kwargs)
+        if 'db' in data:
+            self.db = self.DbFormSet(initial=data['db'])
+        else:
+            self.db = self.DbFormSet(data)
+
+    sex = ChoiceField(
+        choices = (('male', 'male'), ('female', 'female')))
+    age = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=110)
+    sex2 = ChoiceField(
+        choices = (('', 'none'), ('male', 'male'), ('female', 'female')),
+        required=False)
+    age2 = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=110,
+        required=False)
+    DbFormSet = formset_factory(DbForm, extra=8, max_num=8)
+    p_traditional_iras = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    tax_rate_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        min_value=0,
+        max_value=100)
+    p_roth_iras = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    p = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    contribution = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    contribution_growth_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}))
+
+    date = CharField(
+        widget=TextInput(attrs={'class': 'dob_input'}))
+
+    advanced_calculations = BooleanField(required=False,
+        widget=CheckboxInput(attrs={'class': 'advanced_button'}))

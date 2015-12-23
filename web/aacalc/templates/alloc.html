@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% comment %}
+
+AACalc - Asset Allocation Calculator
+Copyright (C) 2009, 2011-2015 Gordon Irlam
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+{% endcomment %}
+
+{% block title %}Asset allocation calculator{% endblock %}
+
+{% block head %}
+<meta name="description" content="Compute appropriate asset and income annuity allocations using scientific principles. And explain how the recommendations were derived." /><!-- Keep content to less than 155 characters according to Wikipedia. -->
+<script type="text/javascript" src="/static/js/jquery-1.10.2.min.js"></script>
+<script type="text/javascript">
+$(document).ready(function(){
+    // Handle page reloads, button state may be remembered by browser but show/hide are not.
+    $('.advanced_button:checked').closest('.simple_advanced').find('.advanced,.simple').toggle();
+    $('.advanced_button').click(function() {
+        $(this).closest('.simple_advanced').find('.advanced,.simple').toggle();
+    });
+
+    e = document.getElementById("results");
+    if (e)
+         e.scrollIntoView();
+});
+</script>
+{% endblock %}
+
+{% block content %}
+
+<h1>Asset allocation calculator</h1>
+
+<p>
+<img style="float: right; margin-left: 10px;" width=400 height=200 src="/static/images/iStock_000019076339XSmall.jpg" alt="financial planning">
+</p>
+
+<p>
+This calculator computes asset and income annuity allocations using
+scientific principles. And it explains how the recommendations were
+derived.
+</p>
+
+<form  method="post">
+{% csrf_token %}
+
+{% if errors_present %}
+<div class="errorlist">
+Please correct the errors in red below:
+</div>
+{{ alloc_form.non_field_errors }}
+{% endif %}
+
+<h2>Longevity</h2>
+
+<div class="indent">
+
+Sex: {{ alloc_form.sex }}
+Age: {{ alloc_form.age }}
+{{ alloc_form.sex.errors }}
+{{ alloc_form.age.errors }}
+<br />
+Spouse/partner: {{ alloc_form.sex2 }}
+Age: {{ alloc_form.age2 }}
+{{ alloc_form.sex2.errors }}
+{{ alloc_form.age2.errors }}
+<br />
+<br />
+Calculation date: {{ alloc_form.date }}
+<span class="small">Determines interest rate yield curve.</span>
+{{ alloc_form.date.errors }}
+</div>
+
+<h2>Financial position</h2>
+
+<div class="indent">
+
+{{ alloc_form.db.management_form }}
+<table class="table-lined center">
+<tr>
+<td> </td>
+<td> Owner <br /> self/spouse </th>
+<td> Starting age </th>
+<td> Annual amount </th>
+<td> Inflation indexed </th>
+<td> Death benefit <br /> Contingent/survivor payout </th>
+</tr>
+{% for db in alloc_form.db %}
+<tr>
+<td> {{ db.description }}
+<td> {{ db.who }}
+<td> {{ db.age }}
+<td> {{ db.amount }}
+<td> {{ db.inflation_indexed }}
+<td> {{ db.joint_type }} {{ db.joint_payout_pct }}%
+</tr>
+<tr>
+<td colspan=6 class="left">
+{{ db.description.errors }}
+{{ db.who.errors }}
+{{ db.age.errors }}
+{{ db.amount.errors }}
+{{ db.inflation_indexed.errors }}
+{{ db.joint_type.errors }}
+{{ db.joint_payout_pct.errors }}
+</td>
+</tr>
+{% endfor %}
+<tr>
+<td colspan=6 class="small left">
+Starting age is starting age of the owner.
+Contingent: payout reduced on death of either party.
+Survivor: payout reduced only on death of the owner.
+</td>
+</table>
+<br />
+
+Pre-tax Traditional IRAs/401(k)s size: {{ alloc_form.p_traditional_iras }}
+Tax rate: {{ alloc_form.tax_rate_pct }}%
+{{ alloc_form.p_traditional_iras.errors }}
+{{ alloc_form.tax_rate_pct.errors }}
+<br />
+Post-tax Roth IRAs/401(k)s size: {{ alloc_form.p_roth_iras }}
+{{ alloc_form.p_roth_iras.errors }}
+<br />
+Taxable retirement savings size: {{ alloc_form.p }}
+{{ alloc_form.p.errors }}
+<br />
+<br />
+Pre-retirement annual contribution amount (irrelevant if retired):
+{{ alloc_form.contribution }}
+{{ alloc_form.contribution.errors }}
+Growth rate: {{ alloc_form.contribution_growth_pct }}%
+{{ alloc_form.contribution_growth_pct.errors }}
+<br />
+<span class="small">
+Contribution are assumed to occur to taxable. Increase contribution amount slightly if to IRAs/401(k)s.
+A growth rate of 7% represents a doubling of real
+contributions every 10 years.  Remember to take into account life
+events such as promotions, paying off a mortgage, or children leaving
+home in estimating the contribution growth rate.
+</span>
+
+</div>
+
+<br />
+
+<div style="text-align:center;">
+<input class="button" type="submit" value="Submit" />
+</div>
+
+{% if results %}
+
+<br />
+
+<div id="results">
+<div class="simple_advanced">
+<div class="small">
+Yield curve date: {{ results.yield_curve_date }}.
+</div>
+<br />
+<div class="advanced_controller">
+Show calculations: {{ alloc_form.advanced_calculations }}
+{{ alloc_form.advanced_calculations.errors }}
+</div>
+<div class="advanced">
+<table class="table-lined center">
+<tr>
+<td> </td>
+<td> Owner </td>
+<td> Net present value </td>
+</tr>
+{% for db in results.db %}
+<tr>
+<td class="left"> {{ db.description }} </td>
+<td> {{ db.who }} </td>
+<td class="right"> {{ db.npv }} </td>
+</tr>
+{% endfor %}
+<tr>
+<td class="left"> Total defined benefits </td>
+<th colspan=2 class="right"> {{ results.npv_db }} </th>
+</tr>
+<tr>
+<td class="left"> Traditional </td>
+<td colspan=2 class="right"> {{ results.npv_traditional }} </td>
+</tr>
+<tr>
+<td class="left"> Roth </td>
+<td colspan=2 class="right"> {{ results.npv_roth }} </td>
+</tr>
+<tr>
+<td class="left"> Taxable </td>
+<td colspan=2 class="right"> {{ results.npv_taxable }} </td>
+</tr>
+<tr>
+<td class="left"> Total investments </td>
+<th colspan=2 class="right"> {{ results.npv_investments }} </th>
+</tr>
+<tr>
+<td class="left"> Total NPV </td>
+<th colspan=2 class="right"> {{ results.npv }} </th>
+</tr>
+</table>
+</div>
+</div>
+</div>
+
+{% endif %}
+
+</form>
+
+{% endblock %}
