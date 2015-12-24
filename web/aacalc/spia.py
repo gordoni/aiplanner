@@ -1067,7 +1067,8 @@ class Scenario:
 
     def __init__(self, yield_curve, payout_delay, premium, payout, tax, life_table1, life_table2 = None, \
                  joint_payout_fraction = 1, joint_contingent = True, period_certain = 0, \
-                 frequency = 12, mwr = 1, cpi_adjust = 'calendar', percentile = None, comment = ''):
+                 frequency = 12, mwr = 1, cpi_adjust = 'calendar', percentile = None, \
+                 schedule = lambda y: 1, comment = ''):
         self.yield_curve = yield_curve
         self.payout_delay = payout_delay  # Delay in months until first payout.
         self.premium = premium
@@ -1086,6 +1087,8 @@ class Scenario:
         assert(cpi_adjust in ('all', 'payout', 'calendar'))
         self.percentile = percentile  # Compute SPIA payout value through the percentile life expectancy, or none to compute the expected value.
         self.mwr = mwr
+        self.schedule = schedule
+            # Function taking a year as a parameter and returning the annualized payment amount for that time period.
         self.comment = comment
 
         # Depriciated options.
@@ -1131,6 +1134,8 @@ class Scenario:
             i += 1
 
         price = 0
+        duration = 0
+        discount_single_year = 0
         calcs = []
         i = 0
         prev_combined = 1.0
@@ -1175,20 +1180,29 @@ class Scenario:
                     payout_fraction = 1.0
                 else:
                     payout_fraction = (prev_combined - target_combined) / (prev_combined - combined)
-            payout = payout_fraction / r ** y
-            price += payout
-            calc = {'i': i, 'y': y, 'alive': alive, 'joint': joint, 'combined': combined, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout}
+            payout_amount = payout_fraction * self.schedule(y)
+            payout_value = payout_amount / r ** y
+            price += payout_value
+            duration += y * payout_value
+            discount_single_year += payout_amount / r
+            calc = {'i': i, 'y': y, 'alive': alive, 'joint': joint, 'combined': combined, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout_value}
             calcs.append(calc)
             i += 1
             prev_combined = combined
             months_since_adjust += 12.0 / self.frequency
+
         if self.yield_curve.interest_rate == 'le' and self.percentile is None:
             payout_fraction = 0.5  # Half credit after last payout.
-            payout = payout_fraction / r ** y
-            price += payout
-            calc = {'i': i, 'y': y, 'alive': 0.0, 'joint': 0.0, 'combined': combined, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout}
+            payout_amount = payout_fraction * self.schedule(y)
+            payout_value = payout_amount / r ** y
+            price += payout_value
+            duration += y * payout_value
+            discount_single_year += payout_amount / r
+            calc = {'i': i, 'y': y, 'alive': 0.0, 'joint': 0.0, 'combined': combined, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout_value}
             calcs.append(calc)
 
+        self.duration = duration / price
+        self.discount_single_year = discount_single_year / self.frequency
         try:
             price /= self.frequency * (1 - self.tax) * self.mwr
         except ZeroDivisionError:

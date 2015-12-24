@@ -156,6 +156,60 @@ home in estimating the contribution growth rate.
 
 </div>
 
+<h2>Financial goals</h2>
+
+<div class="indent">
+
+Age of first person at retirement: {{ alloc_form.retirement_age }}
+{{ alloc_form.retirement_age.errors }}
+<br />
+Income required when one party deceased: {{ alloc_form.joint_income_pct }}%
+{{ alloc_form.joint_income_pct.errors }}
+<br />
+Permit recommendation of income annuities: {{ alloc_form.purchase_income_annuity }}
+{{ alloc_form.purchase_income_anuity.errors }}
+
+</div>
+
+<h2>Market parameters</h2>
+
+<div class="indent">
+
+Equity expected arithmetic real return, &mu;: {{ alloc_form.equity_ret_pct }}%
+Geometric: {{ alloc_form.equity_ret_geom_pct }}%
+Volatility, &sigma;: {{ alloc_form.equity_vol_pct }}%
+{{ alloc_form.equity_ret_pct.errors }}
+{{ alloc_form.equity_ret_geom_pct.errors }}
+{{ alloc_form.equity_vol_pct.errors }}
+<br />
+Standard error of estimate of &mu;: {{ alloc_form.equity_se_pct }}%
+{{ alloc_form.equity_se_pct.errors }}
+<br />
+Also report results {{ alloc_form.equity_range_factor }} standard error above and below &mu;.
+{{ alloc_form.equity_range_factor.errors }}
+<div class="small">
+U.S. market average values for 1927-2014 are 8.7%, 6.8%. 20%, and
+2.1%.  Going
+forward <a href="http://www.advisorperspectives.com/newsletters12/Jeremy_Siegel_Rob_Arnott_and_Other_Experts_Forecast_Equity_Returns.php">many
+experts</a> predict lower stock market returns.  For the normal
+distribution, &plusmn;1, &plusmn;2, and &plusmn;3 standard errors
+about the mean encompass 68%, 95%, and 99.7% of possible values.
+</div>
+<br />
+Management fees: {{ alloc_form.expense_pct }}%
+{{ alloc_form.expense_pct.errors }}
+
+</div>
+
+<h2>Well being</h2>
+
+<div class="indent">
+
+Coefficient of relative risk aversion, &gamma;: {{ alloc_form.gamma }}
+{{ alloc_form.gamma.errors }}
+
+</div>
+
 <br />
 
 <div style="text-align:center;">
@@ -168,15 +222,42 @@ home in estimating the contribution growth rate.
 
 <div id="results">
 <div class="simple_advanced">
+
+We recommend
+{% if results.calc.0.purchase_income_annuity != '0' %}
+purchasing an income annuity of {{ results.calc.0.purchase_iincome_annuity }} and then adopting
+{% endif %}
+a {{ results.calc.0.aa_equity_pct }}/{{ results.calc.0.aa_bonds_pct }} stock/bond asset allocation.
 <div class="small">
-Yield curve date: {{ results.yield_curve_date }}.
+This recommendation does not take into account your risk rolerance,
+and you might want to adopt a lower asset allocation if you feel you
+can not psychologically handle the volatililty associated with the
+recommended asset allocation.
 </div>
+
 <br />
+
+The proportion of stocks recommended ranged from {{ results.calc.1.aa_equity_pct }}% to {{ results.calc.2.aa_equity_pct }}%.
+
+<br />
+<br />
+
 <div class="advanced_controller">
 Show calculations: {{ alloc_form.advanced_calculations }}
 {{ alloc_form.advanced_calculations.errors }}
 </div>
+
 <div class="advanced">
+
+<h3>Common calculations</h3>
+
+Yield curve date: {{ results.yield_curve_date }}.
+
+<br />
+<br />
+
+Net present value table:
+
 <table class="table-lined center">
 <tr>
 <td> </td>
@@ -214,7 +295,78 @@ Show calculations: {{ alloc_form.advanced_calculations }}
 <td class="left"> Total NPV </td>
 <th colspan=2 class="right"> {{ results.npv }} </th>
 </tr>
+<tr>
+<td colspan=3 class="left small"> Computed from mortality table and real yield curve. </td>
+</tr>
 </table>
+
+<br />
+
+Bonds expected arithmetic real return, r: {{ results.bonds_ret_pct }}%
+Recommended Macaulay duration: {{ results.bonds_duration }} years
+<div class="small">
+Computed from mortality table and real yield curve assuming bonds are
+liability matching and also assuming level income requirements except
+when one party is deceased.
+</div>
+
+<br />
+
+{% for calc in results.calc %}
+
+<h3>{{ calc.description }}</h3>
+
+Stocks fraction of NPV, &pi; = (&mu; - r) / &sigma;<sup>2</sup>&gamma; = {{ calc.pi_pct }}%
+<div class="small">
+Computed assuming bonds are risk free using <a href="https://en.wikipedia.org/wiki/Merton's_portfolio_problem">Merton's formula</a>.
+</div>
+
+<br />
+
+Annuitization ratios for your age: Stocks {{ calc.annuitize_equity_pct }}%. Fixed income {{ calc.annuitize_fixed_pct }}%.
+<div class="small">
+The advantages of annuitizing the stock portion of a portfolio at
+advanced ages are well understood. What isn't well known is that there
+are advantages to annuitizing the bond portion of a portfolio at
+earlier ages. These ratios are the proportion of each portfolio
+holding type that we recommend be annuitized. Two things to beware. In
+the US as of 2016 the Money's Worth Ratios for deferred income
+annuities were substantially worse than those of single premium
+immediate annuities, and it might seem odd to purchase a SPIA
+pre-retirement. And these recommendations are for a &gamma; of 4, and
+different recommendations would likely apply to a different &gamma;
+value.
+</div>
+
+<br />
+
+Recommended income annuity purchase amount: {{ calc.purchase_income_annuity }}
+
+<br />
+<br />
+
+NPV recommendations:
+<table class="table-lined center">
+<tr>
+<td class="left"> Defined benefits </td>
+<td class="right"> {{ calc.alloc_db_pct }}% </td>
+</tr>
+<tr>
+<td class="left"> Stocks </td>
+<td class="right"> {{ calc.alloc_equity_pct }}% </td>
+</tr>
+<tr>
+<td class="left"> Bonds </td>
+<td class="right"> {{ calc.alloc_bonds_pct }}% </td>
+</tr>
+</table>
+
+<br />
+
+Investment stock/bond asset allocation: {{ calc.aa_equity_pct }}/{{ calc.aa_bonds_pct }}
+
+{% endfor %}
+
 </div>
 </div>
 </div>
