@@ -118,6 +118,7 @@ class Alloc:
 
             'retirement_age': 65,
             'joint_income_pct': 70,
+            'desired_income': 40000,
             'purchase_income_annuity': True,
 
             'equity_ret_pct': Decimal('6.8'),
@@ -237,7 +238,7 @@ class Alloc:
 
         return results, display
 
-    def calc(self, description, factor, data, results, bonds_ret):
+    def calc(self, description, factor, data, results, consume, bonds_ret):
 
         equity_ret = float(data['equity_ret_pct']) / 100
         equity_ret += factor * float(data['equity_se_pct']) / 100
@@ -245,7 +246,9 @@ class Alloc:
         equity_vol = float(data['equity_vol_pct']) / 100
         equity_contribution_corr = float(data['equity_contribution_corr_pct']) / 100
         cov2 = equity_vol * self.contribution_vol * equity_contribution_corr ** 2
+        stocks_index = 0
         contrib_index = 1
+        risk_free_index = 2
 
         lo = -0.5
         hi = 0.5
@@ -272,15 +275,22 @@ class Alloc:
         w_prime[contrib_index] = 0
         w_prime[contrib_index] = 1 - sum(w_prime)
 
+        try:
+            w_alloc = list(wi * min(self.desired_income / consume, 1) for wi in w)
+        except ZeroDivisionError:
+            w_alloc = list(0 for _ in w)
+        w_alloc[stocks_index] = 0
+        w_alloc[contrib_index] = w_prime[contrib_index]
+        w_alloc[stocks_index] = 1 - sum(w_alloc)
         if data['purchase_income_annuity']:
             annuitize_equity = min(max(0, (self.min_age - 50.0) / (80 - 50)), 1)
             annuitize_fixed = min(max(0, (self.min_age - 35.0) / (60 - 35)), 1)
         else:
             annuitize_equity = 0
             annuitize_fixed = 0
-        alloc_equity = min(max(0, w_prime[0] * (1 - annuitize_equity)), 1)
+        alloc_equity = min(max(0, w_alloc[stocks_index] * (1 - annuitize_equity)), 1)
         alloc_contrib = results['nv_contributions'] / results['nv']
-        alloc_bonds = min(max(0, w_prime[2] * (1 - annuitize_fixed)), 1)
+        alloc_bonds = min(max(0, w_alloc[risk_free_index] * (1 - annuitize_fixed)), 1)
         alloc_db = 1 - alloc_equity - alloc_bonds - alloc_contrib
         try:
             alloc_existing_db = results['nv_db'] / results['nv']
@@ -392,6 +402,7 @@ class Alloc:
                     self.contribution_vol = float(data['contribution_vol_pct']) / 100
                     self.pre_retirement_years = max(0, float(data['retirement_age']) - self.age)
                     self.joint_income = float(data['joint_income_pct']) / 100
+                    self.desired_income = float(data['desired_income'])
 
                     self.period_certain = 0
                     self.frequency = 12 # Makes NPV more accurate.
@@ -434,9 +445,9 @@ class Alloc:
                     else:
                         self.min_age = min(self.age, self.age2)
                     results['calc'] = (
-                        self.calc('Baseline estimate', 0, data, npv_results, bonds_ret),
-                        self.calc('Low estimate', - float(data['equity_range_factor']), data, npv_results, bonds_ret),
-                        self.calc('High estimate', float(data['equity_range_factor']), data, npv_results, bonds_ret),
+                        self.calc('Baseline estimate', 0, data, npv_results, consume, bonds_ret),
+                        self.calc('Low estimate', - float(data['equity_range_factor']), data, npv_results, consume, bonds_ret),
+                        self.calc('High estimate', float(data['equity_range_factor']), data, npv_results, consume, bonds_ret),
                     )
 
                 except self.IdenticalCovarError:

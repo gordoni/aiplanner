@@ -603,6 +603,9 @@ class AllocForm(Form):
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0,
         max_value=100)
+    desired_income = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
     purchase_income_annuity = BooleanField(required=False)
 
     equity_ret_pct = DecimalField(

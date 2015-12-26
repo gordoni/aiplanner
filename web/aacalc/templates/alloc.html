@@ -170,11 +170,17 @@ home in estimating the contribution growth rate.
 Age of primary person at retirement: {{ alloc_form.retirement_age }}
 {{ alloc_form.retirement_age.errors }}
 <br />
-Income required when one party deceased: {{ alloc_form.joint_income_pct }}%
+Relative income required when one party deceased: {{ alloc_form.joint_income_pct }}%
 {{ alloc_form.joint_income_pct.errors }}
 <br />
+Income required to have "won the game": {{ alloc_form.desired_income }}
+<div class="small">
+Assets required to support consumption above this level are allocated to stocks.
+Mathematically we should, but don't, support increasing the base stock allocation when you have won the game.
+</div>
 Permit recommendation of income annuities: {{ alloc_form.purchase_income_annuity }}
 {{ alloc_form.purchase_income_anuity.errors }}
+<br />
 <br />
 We do not support the ability to leave a specific target bequest.
 
@@ -428,8 +434,9 @@ value.
 
 <br />
 
-Adjusting for existing defined benefits and possible income annuity
-purchases produces the following recommendations:
+Adjusting for possibly having won the game, any existing defined
+benefits, and any income annuity purchases, produces the following
+recommendations:
 
 <table class="table-lined center">
 <tr>
