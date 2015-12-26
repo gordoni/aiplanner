@@ -148,30 +148,95 @@ class Alloc:
             g = 1
         return g
 
-    def stochastic_schedule(self, growth_factor, vol, years):
-        g = growth_factor * self.vol_factor(vol)
-        return tuple(g ** y for y in range(int(ceil(years))))
-
-    def schedule(self, contribution_schedule):
+    def yield_curve_schedule(self, life_table):
 
         def sched(y):
-             assert(y % 1 == 0)
-             try:
-                 return contribution_schedule[int(y)]
-             except IndexError:
-                 return 0
+            return life_table.discount_rate(y) ** y
 
         return sched
 
-    def npv_contrib(self, growth_factor):
-        contribution_schedule = self.stochastic_schedule(growth_factor, self.contribution_vol, self.pre_retirement_years)
+    def stochastic_schedule(self, schedule, vol, years):
+
+        def sched(y):
+            if y < years:
+                return schedule(y) * g ** y
+            else:
+                return 0
+
+        g = self.vol_factor(vol)
+        return sched
+
+    def npv_contrib(self, schedule):
         payout_delay = 0
+        schedule = self.stochastic_schedule(schedule, self.contribution_vol, self.pre_retirement_years)
         scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = 1, joint_contingent = True, period_certain = 0, \
-            frequency = 1, cpi_adjust = 'all', schedule = self.schedule(contribution_schedule))
+            frequency = 1, cpi_adjust = 'all', schedule = schedule)
         return self.contribution * scenario.price()
 
-    def calc(self, description, factor, data, average_age, npv_db, npv_contributions, npv):
+    def value_table(self, schedule):
+
+        nv_db = 0
+        results = {}
+        display = {}
+        display['db'] = []
+
+        for db in self.db:
+
+            amount = float(db['amount'])
+
+            if amount == 0:
+                continue
+
+            yield_curve = self.yield_curve_real if db['inflation_indexed'] else self.yield_curve_nominal
+
+            if db['who'] == 'self':
+                starting_age = self.age
+                lt1 = self.life_table
+                lt2 = self.life_table2
+            else:
+                starting_age = self.age2
+                lt1 = self.life_table2
+                lt2 = self.life_table
+
+            payout_delay = max(0, float(db['age']) - starting_age) * 12
+            joint_payout_fraction = float(db['joint_payout_pct']) / 100
+            joint_contingent = (db['joint_type'] == 'contingent')
+
+            scenario = Scenario(yield_curve, payout_delay, None, None, 0, lt1, life_table2 = lt2, \
+                joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
+                period_certain = self.period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust, \
+                schedule = schedule)
+            price = scenario.price() * amount
+            nv_db += price
+
+            display['db'].append({
+                'description': db['description'],
+                'who': db['who'],
+                'nv': '{:,.0f}'.format(price),
+            })
+
+        nv_contributions = self.npv_contrib(lambda y: schedule(y) * (1 + self.contribution_growth) ** y)
+
+        nv_traditional = self.traditional * (1 - self.tax_rate) / 100
+        nv_investments = nv_traditional + self.npv_roth + self.npv_taxable
+        nv = nv_db + nv_investments + nv_contributions
+
+        results['nv_contributions'] = nv_contributions
+        results['nv_db'] = nv_db
+        results['nv'] = nv
+
+        display['nv_db'] = '{:,.0f}'.format(nv_db)
+        display['nv_traditional'] = '{:,.0f}'.format(nv_traditional)
+        display['nv_roth'] = '{:,.0f}'.format(self.npv_roth)
+        display['nv_taxable'] = '{:,.0f}'.format(self.npv_taxable)
+        display['nv_investments'] = '{:,.0f}'.format(nv_investments)
+        display['nv_contributions'] = '{:,.0f}'.format(nv_contributions)
+        display['nv'] = '{:,.0f}'.format(nv)
+
+        return results, display
+
+    def calc(self, description, factor, data, results, bonds_ret):
 
         equity_ret = float(data['equity_ret_pct']) / 100
         equity_ret += factor * float(data['equity_se_pct']) / 100
@@ -187,10 +252,10 @@ class Alloc:
             future_growth_try = (lo + hi) / 2.0
             sigma_matrix = ((equity_vol ** 2, cov2), (cov2, self.contribution_vol ** 2))
             alpha = (equity_ret, future_growth_try)
-            w = list(self.solve_merton(gamma, sigma_matrix, alpha, self.bonds_ret))
+            w = list(self.solve_merton(gamma, sigma_matrix, alpha, bonds_ret))
             w.append(1 - sum(w))
-            discounted_contrib = self.npv_contrib((1 + self.contribution_growth) / (1 + future_growth_try))
-            npv_discounted = npv - npv_contributions + discounted_contrib
+            discounted_contrib = self.npv_contrib(lambda y: ((1 + self.contribution_growth) / (1 + future_growth_try)) ** y)
+            npv_discounted = results['nv'] - results['nv_contributions'] + discounted_contrib
             try:
                 wc_discounted = discounted_contrib / npv_discounted
             except ZeroDivisionError:
@@ -200,24 +265,24 @@ class Alloc:
             else:
                 hi = future_growth_try
         try:
-            w_prime = list(wi * npv_discounted / npv for wi in w)
+            w_prime = list(wi * npv_discounted / results['nv'] for wi in w)
         except ZeroDivisionError:
             w_prime = list(0 for _ in w)
         w_prime[contrib_index] = 0
         w_prime[contrib_index] = 1 - sum(w_prime)
 
         if data['purchase_income_annuity']:
-            annuitize_equity = min(max(0, (average_age - 50.0) / (80 - 50)), 1)
-            annuitize_fixed = min(max(0, (average_age - 35.0) / (60 - 35)), 1)
+            annuitize_equity = min(max(0, (self.min_age - 50.0) / (80 - 50)), 1)
+            annuitize_fixed = min(max(0, (self.min_age - 35.0) / (60 - 35)), 1)
         else:
             annuitize_equity = 0
             annuitize_fixed = 0
         alloc_equity = min(max(0, w_prime[0] * (1 - annuitize_equity)), 1)
-        alloc_contrib = npv_contributions / npv
+        alloc_contrib = results['nv_contributions'] / results['nv']
         alloc_bonds = min(max(0, w_prime[2] * (1 - annuitize_fixed)), 1)
         alloc_db = 1 - alloc_equity - alloc_bonds - alloc_contrib
         try:
-            alloc_existing_db = npv_db / npv
+            alloc_existing_db = results['nv_db'] / results['nv']
         except ZeroDivisionError:
             alloc_existing_db = 0
         shortfall = alloc_db - alloc_existing_db
@@ -232,7 +297,7 @@ class Alloc:
         alloc_bonds -= surplus
         alloc_equity += surplus
         alloc_new_db = alloc_db - alloc_existing_db
-        purchase_income_annuity = alloc_new_db * npv
+        purchase_income_annuity = alloc_new_db * results['nv']
         try:
             aa_equity = alloc_equity / (alloc_equity + alloc_bonds)
         except ZeroDivisionError:
@@ -300,107 +365,77 @@ class Alloc:
                     if self.yield_curve_real.yield_curve_date == self.yield_curve_nominal.yield_curve_date:
                         results['yield_curve_date'] = self.yield_curve_real.yield_curve_date;
                     else:
-                        results['yield_curve_date'] = self.yield_curve_real.yield_curve_date + ' real, ' + self.yield_curve_nominal.yield_curve_date + ' nominal';
+                        results['yield_curve_date'] = self.yield_curve_real.yield_curve_date + ' real, ' + \
+                            self.yield_curve_nominal.yield_curve_date + ' nominal';
 
                     table = 'ssa_cohort'
 
                     sex = data['sex']
-                    age = float(data['age']);
-                    self.life_table = LifeTable(table, sex, age)
+                    self.age = float(data['age'])
+                    self.life_table = LifeTable(table, sex, self.age)
 
                     sex2 = data['sex2']
                     if sex2 == None:
                         self.life_table2 = None
                     else:
-                        age2 = float(data['age2']);
-                        self.life_table2 = LifeTable(table, sex2, age2)
+                        self.age2 = float(data['age2']);
+                        self.life_table2 = LifeTable(table, sex2, self.age2)
 
-                    period_certain = 0
-                    frequency = 12  # Makes NPV more accurate.
-                    cpi_adjust = 'calendar'
-
-                    npv_db = 0
-                    results['db'] = []
-
-                    for db in data['db']:
-
-                        amount = float(db['amount'])
-
-                        if amount == 0:
-                            continue
-
-                        yield_curve = self.yield_curve_real if db['inflation_indexed'] else self.yield_curve_nominal
-
-                        if db['who'] == 'self':
-                            starting_age = age
-                            lt1 = self.life_table
-                            lt2 = self.life_table2
-                        else:
-                            starting_age = age2
-                            lt1 = self.life_table2
-                            lt2 = self.life_table
-
-                        payout_delay = max(0, float(db['age']) - starting_age) * 12
-                        joint_payout_fraction = float(db['joint_payout_pct']) / 100
-                        joint_contingent = (db['joint_type'] == 'contingent')
-
-                        scenario = Scenario(yield_curve, payout_delay, None, None, 0, lt1, life_table2 = lt2, \
-                            joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, period_certain = period_certain, \
-                            frequency = frequency, cpi_adjust = cpi_adjust)
-                        price = scenario.price() * amount
-                        npv_db += price
-
-                        results['db'].append({
-                            'description': db['description'],
-                            'who': db['who'],
-                            'npv': '{:,.0f}'.format(price),
-                        })
-
-                    self.pre_retirement_years = max(0, float(data['retirement_age']) - age)
-                    payout_delay = self.pre_retirement_years * 12
-                    joint_payout_fraction = float(data['joint_income_pct']) / 100
-                    joint_contingent = True
-
-                    scenario = Scenario(self.yield_curve_zero, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
-                        joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, period_certain = period_certain, \
-                        frequency = frequency, cpi_adjust = cpi_adjust)
-                    bonds_initial = scenario.price()
-                    scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
-                        joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, period_certain = period_certain, \
-                        frequency = frequency, cpi_adjust = cpi_adjust)
-                    scenario.price()
-                    self.bonds_ret = bonds_initial / scenario.discount_single_year - 1
-                    results['bonds_ret_pct'] = '{:.1f}'.format(self.bonds_ret * 100)
-                    bonds_duration = scenario.duration
-                    results['bonds_duration'] = '{:.1f}'.format(bonds_duration)
-
+                    self.db = data['db']
+                    self.traditional = float(data['p_traditional_iras'])
+                    self.tax_rate = float(data['tax_rate_pct']) / 100
+                    self.npv_roth = float(data['p_roth_iras'])
+                    self.npv_taxable = float(data['p'])
                     self.contribution = float(data['contribution'])
                     self.contribution_growth = float(data['contribution_growth_pct']) / 100
                     self.contribution_vol = float(data['contribution_vol_pct']) / 100
-                    npv_contributions = self.npv_contrib(1 + self.contribution_growth)
+                    self.pre_retirement_years = max(0, float(data['retirement_age']) - self.age)
+                    self.joint_income = float(data['joint_income_pct']) / 100
 
-                    npv_traditional = float(data['p_traditional_iras']) * (1 - float(data['tax_rate_pct']) / 100)
-                    npv_roth = float(data['p_roth_iras'])
-                    npv_taxable = float(data['p'])
-                    npv_investments = npv_traditional + npv_roth + npv_taxable
-                    npv = npv_db + npv_investments + npv_contributions
+                    self.period_certain = 0
+                    self.frequency = 12 # Makes NPV more accurate.
+                    self.cpi_adjust = 'calendar'
 
-                    results['npv_db'] = '{:,.0f}'.format(npv_db)
-                    results['npv_traditional'] = '{:,.0f}'.format(npv_traditional)
-                    results['npv_roth'] = '{:,.0f}'.format(npv_roth)
-                    results['npv_taxable'] = '{:,.0f}'.format(npv_taxable)
-                    results['npv_investments'] = '{:,.0f}'.format(npv_investments)
-                    results['npv_contributions'] = '{:,.0f}'.format(npv_contributions)
-                    results['npv'] = '{:,.0f}'.format(npv)
+                    npv_results, npv_display = self.value_table(schedule = self.yield_curve_schedule(self.yield_curve_zero))
+                    results['present'] = npv_display
+                    results['db'] = []
+                    for db in npv_display['db']:
+                        results['db'].append({'present': db})
+                    #for i, db in enumerate(future_display['db']):
+                    #    results['db'][i]['future'] = db
+
+                    payout_delay = self.pre_retirement_years * 12
+                    joint_payout_fraction = self.joint_income
+                    joint_contingent = True
+
+                    scenario = Scenario(self.yield_curve_zero, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
+                        joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
+                        period_certain = self.period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
+                    bonds_initial = scenario.price()
+                    scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
+                        joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
+                        period_certain = self.period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
+                    bonds_final = scenario.price()
+                    bonds_ret = bonds_initial / scenario.discount_single_year - 1
+                    bonds_duration = scenario.duration
+                    future_value = npv_results['nv'] * bonds_initial / bonds_final
+                    retirement_life_expectancy = bonds_initial
+                    consume = future_value / max(retirement_life_expectancy, 8)
+
+                    results['bonds_ret_pct'] = '{:.1f}'.format(bonds_ret * 100)
+                    results['bonds_duration'] = '{:.1f}'.format(bonds_duration)
+                    results['future_value'] = '{:,.0f}'.format(future_value)
+                    results['retirement_life_expectancy'] = '{:.1f}'.format(retirement_life_expectancy)
+                    results['consume'] = '{:,.0f}'.format(consume)
 
                     if sex2 == None:
-                        average_age = age
+                        self.min_age = self.age
                     else:
-                        average_age = (age + age2) / 2.0
+                        self.min_age = min(self.age, self.age2)
                     results['calc'] = (
-                        self.calc('Baseline estimate', 0, data, average_age, npv_db, npv_contributions, npv),
-                        self.calc('Low estimate', - float(data['equity_range_factor']), data, average_age, npv_db, npv_contributions, npv),
-                        self.calc('High estimate', float(data['equity_range_factor']), data, average_age, npv_db, npv_contributions, npv),
+                        self.calc('Baseline estimate', 0, data, npv_results, bonds_ret),
+                        self.calc('Low estimate', - float(data['equity_range_factor']), data, npv_results, bonds_ret),
+                        self.calc('High estimate', float(data['equity_range_factor']), data, npv_results, bonds_ret),
                     )
 
                 except self.IdenticalCovarError:

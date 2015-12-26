@@ -165,7 +165,7 @@ home in estimating the contribution growth rate.
 
 <div class="indent">
 
-Age of first person at retirement: {{ alloc_form.retirement_age }}
+Age of primary person at retirement: {{ alloc_form.retirement_age }}
 {{ alloc_form.retirement_age.errors }}
 <br />
 Income required when one party deceased: {{ alloc_form.joint_income_pct }}%
@@ -247,6 +247,11 @@ The proportion of stocks recommended ranged from {{ results.calc.1.aa_equity_pct
 <br />
 <br />
 
+Currently during retirement you should consume about {{ results.consume }} per year.
+
+<br />
+<br />
+
 <div class="advanced_controller">
 Show calculations: {{ alloc_form.advanced_calculations }}
 {{ alloc_form.advanced_calculations.errors }}
@@ -267,48 +272,67 @@ Net present value table:
 <tr>
 <td> </td>
 <td> Owner </td>
-<td> Net present value </td>
+<td> Net present value
+<div class="small">
+real interest rate adjusted
+</div>
+</td>
 </tr>
 {% for db in results.db %}
 <tr>
-<td class="left"> {{ db.description }} </td>
-<td> {{ db.who }} </td>
-<td class="right"> {{ db.npv }} </td>
+<td class="left"> {{ db.present.description }} </td>
+<td> {{ db.present.who }} </td>
+<td class="right"> {{ db.present.nv }} </td>
 </tr>
 {% endfor %}
 <tr>
 <td class="left"> Total defined benefits </td>
-<th colspan=2 class="right"> {{ results.npv_db }} </th>
+<th colspan=2 class="right"> {{ results.present.nv_db }} </th>
 </tr>
 <tr>
 <td class="left"> Traditional </td>
-<td colspan=2 class="right"> {{ results.npv_traditional }} </td>
+<td colspan=2 class="right"> {{ results.present.nv_traditional }} </td>
 </tr>
 <tr>
 <td class="left"> Roth </td>
-<td colspan=2 class="right"> {{ results.npv_roth }} </td>
+<td colspan=2 class="right"> {{ results.present.nv_roth }} </td>
 </tr>
 <tr>
 <td class="left"> Taxable </td>
-<td colspan=2 class="right"> {{ results.npv_taxable }} </td>
+<td colspan=2 class="right"> {{ results.present.nv_taxable }} </td>
 </tr>
 <tr>
 <td class="left"> Total investments </td>
-<th colspan=2 class="right"> {{ results.npv_investments }} </th>
+<th colspan=2 class="right"> {{ results.present.nv_investments }} </th>
 </tr>
 <tr>
 <td class="left"> Future contributions </td>
-<th colspan=2 class="right"> {{ results.npv_contributions }} </th>
+<th colspan=2 class="right"> {{ results.present.nv_contributions }} </th>
 </tr>
 <tr>
-<td class="left"> Total NPV </td>
-<th colspan=2 class="right"> {{ results.npv }} </th>
+<td class="left"> Total net present value </td>
+<th colspan=2 class="right"> {{ results.present.nv }} </th>
+</tr>
+<tr>
+<td class="left"> Future value </td>
+<td colspan=2 class="right"> {{ results.future_value }}
+<div class="small">
+not interest rate adjusted
+</div>
+</td>
 </tr>
 <tr>
 <td colspan=3 class="left small"> Computed from mortality table and real yield curve. </td>
 </tr>
 </table>
 
+<br />
+
+Retirement additional life expectancy: {{ results.retirement_life_expectancy }} years
+<br />
+Recommended annual retirement consumption amount: {{ results.consume }}
+
+<br />
 <br />
 
 Liability matching bonds expected arithmetic real return: {{ results.bonds_ret_pct }}%
