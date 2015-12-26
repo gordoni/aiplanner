@@ -988,7 +988,7 @@ class LifeTable:
 
     def __init__(self, table, sex, age, ae = 'full', q_adjust = 1, interpolate_q = True):
         self.table = table
-        assert(table in ('iam', 'ssa_cohort', 'ssa_period'))
+        assert(table in ('death_120', 'iam', 'ssa_cohort', 'ssa_period'))
         self.sex = sex
         self.age = age
         self.ae = ae  # Whether and how to use the actual/expected experience report.
@@ -1040,7 +1040,9 @@ class LifeTable:
         return ssa2010_q[self.sex][age]
 
     def q_int(self, cohort, year, age, contract_age):
-        if self.table == 'iam':
+        if self.table == 'death_120':
+            q = 0 if age < 120 else 1
+        elif self.table == 'iam':
             q = self.iam_q(year, age, contract_age)
         elif self.table == 'ssa_cohort':
             q = self.ssa_cohort_q(cohort, age)
@@ -1201,7 +1203,11 @@ class Scenario:
             calc = {'i': i, 'y': y, 'alive': 0.0, 'joint': 0.0, 'combined': combined, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout_value}
             calcs.append(calc)
 
-        self.duration = duration / price
+        try:
+            self.duration = duration / price
+        except ZeroDivisionError:
+            assert(duration == 0)
+            self.duration = 0
         self.discount_single_year = discount_single_year / self.frequency
         try:
             price /= self.frequency * (1 - self.tax) * self.mwr
