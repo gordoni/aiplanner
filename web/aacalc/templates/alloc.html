@@ -138,7 +138,9 @@ Post-tax Roth IRAs/401(k)s size: {{ alloc_form.p_roth_iras }}
 <br />
 Taxable retirement savings size: {{ alloc_form.p }}
 {{ alloc_form.p.errors }}
-<br />
+<div class="small">
+You may want to reduce this last value slightly to reflect the effects of taxation.
+</div>
 <br />
 Pre-retirement annual contribution amount (irrelevant if retired):
 {{ alloc_form.contribution }}
@@ -152,7 +154,7 @@ Correlation with equity returns: {{ alloc_form.equity_contribution_corr_pct }}%
 {{ alloc_form.equity_contribution_corr_pct.errors }}
 <br />
 <span class="small">
-Contribution are assumed to occur to taxable. Increase contribution amount slightly if to IRAs/401(k)s.
+Contribution are assumed to occur to taxable.
 A growth rate of 7% represents a doubling of real
 contributions every 10 years.  Remember to take into account life
 events such as promotions, paying off a mortgage, or children leaving
@@ -173,6 +175,8 @@ Income required when one party deceased: {{ alloc_form.joint_income_pct }}%
 <br />
 Permit recommendation of income annuities: {{ alloc_form.purchase_income_annuity }}
 {{ alloc_form.purchase_income_anuity.errors }}
+<br />
+We do not support the ability to leave a specific target bequest.
 
 </div>
 
@@ -181,10 +185,8 @@ Permit recommendation of income annuities: {{ alloc_form.purchase_income_annuity
 <div class="indent">
 
 Equity expected arithmetic real return, &mu;: {{ alloc_form.equity_ret_pct }}%
-Geometric: {{ alloc_form.equity_ret_geom_pct }}%
 Volatility: {{ alloc_form.equity_vol_pct }}%
 {{ alloc_form.equity_ret_pct.errors }}
-{{ alloc_form.equity_ret_geom_pct.errors }}
 {{ alloc_form.equity_vol_pct.errors }}
 <br />
 Standard error of estimate of &mu;: {{ alloc_form.equity_se_pct }}%
@@ -193,7 +195,7 @@ Standard error of estimate of &mu;: {{ alloc_form.equity_se_pct }}%
 Also report results {{ alloc_form.equity_range_factor }} standard error above and below &mu;.
 {{ alloc_form.equity_range_factor.errors }}
 <div class="small">
-U.S. market average values for 1927-2014 are 8.7%, 6.8%. 20%, and
+U.S. market average values for 1927-2014 are 8.7%. 20%, and
 2.1%.  Going
 forward <a href="http://www.advisorperspectives.com/newsletters12/Jeremy_Siegel_Rob_Arnott_and_Other_Experts_Forecast_Equity_Returns.php">many
 experts</a> predict lower stock market returns.  For the normal
@@ -314,10 +316,14 @@ real interest rate adjusted
 <th colspan=2 class="right"> {{ results.present.nv }} </th>
 </tr>
 <tr>
-<td class="left"> Future value </td>
+<td class="left"> Future value
+<div class="small">
+Assuming level consumption except when one party is deceased.
+</div>
+</td>
 <td colspan=2 class="right"> {{ results.future_value }}
 <div class="small">
-not interest rate adjusted
+Inflation but not interest rate adjusted.
 </div>
 </td>
 </tr>
@@ -339,14 +345,14 @@ Liability matching bonds expected arithmetic real return: {{ results.bonds_ret_p
 Macaulay duration: {{ results.bonds_duration }} years
 <div class="small">
 Computed from mortality table and real yield curve assuming level
-income requirements except when one party is deceased.
+consumption requirements except when one party is deceased.
 </div>
 
 {% for calc in results.calc %}
 
 <h3>{{ calc.description }}</h3>
 
-By trial and error we found the future contributions discount rate, d = {{ calc.future_growth_try_pct }}%
+By trial and error we determined we should assume a future contributions discount rate, d = {{ calc.future_growth_try_pct }}%
 Let's see how this works out...
 
 <br />
@@ -364,7 +370,7 @@ gives the following recommended asset allocation:
 {% endfor %}
 <tr>
 <td colspan=2 class="small">
-Computed assuming liability matching bonds are risk free using the matrix version of <a href="https://en.wikipedia.org/wiki/Merton's_portfolio_problem">Merton's formula</a>.
+Computed assuming liability matching bonds and defined benefits are risk free using the matrix version of <a href="https://en.wikipedia.org/wiki/Merton's_portfolio_problem">Merton's formula</a>.
 </td>
 </tr>
 </table>
@@ -382,13 +388,13 @@ Discounted future contributions as a proportion of revised total NPV: {{ calc.wc
 
 The percentage holdings of discounted future contributions matching
 the recommended percentage is as it should be, since we can neither
-buy nor sell them.
+buy nor sell future contributions.
 
 <br />
 <br />
 
 Adjusting the recommended asset allocation for future contributions
-not discounted gives:
+when they are not discounted gives:
 
 <table class="table-lined center">
 {% for w in calc.w_prime %}

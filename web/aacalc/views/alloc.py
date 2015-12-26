@@ -16,7 +16,7 @@
 
 from datetime import datetime, timedelta
 from decimal import Decimal
-from math import ceil, isnan, sqrt
+from math import ceil, exp, isnan, log, sqrt
 
 from django.forms.forms import NON_FIELD_ERRORS
 from django.forms.util import ErrorList
@@ -121,7 +121,6 @@ class Alloc:
             'purchase_income_annuity': True,
 
             'equity_ret_pct': Decimal('6.8'),
-            'equity_ret_geom_pct': Decimal('5.0'),
             'equity_vol_pct': Decimal('18'),
             'equity_se_pct': Decimal('2.1'),
             'equity_range_factor': 1,
@@ -141,7 +140,9 @@ class Alloc:
         # Volatility increases the expected growth rate.
         growth_samples = 1000
         percentiles = tuple((i + 0.5) / growth_samples for i in range(growth_samples))
-        g = sum(lognorm.ppf(percentiles, vol)) / len(percentiles)
+        # Convert volatility to lognormal distribution sigma parameter.
+        sigma = sqrt(log((1 + sqrt(1 + 4 * vol ** 2)) / 2.0))
+        g = sum(lognorm.ppf(percentiles, sigma)) / len(percentiles)
         g = float(g) # De-numpyfy.
         if isnan(g):
             # vol == 0.

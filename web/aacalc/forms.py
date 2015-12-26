@@ -517,8 +517,6 @@ class AllocForm(Form):
             raise ValidationError('Invalid spouse/partner.')
         if sex2 == None and any((db['who'] == 'spouse' or float(db['joint_payout_pct']) != 0) and (float(db['amount']) != 0) for db in cleaned_data['db']):
             raise ValidationError('Spousal defind benefits but no spouse present')
-        if float(cleaned_data['equity_ret_geom_pct']) > float(cleaned_data['equity_ret_pct']):
-            raise ValidationError('Equity geometric return exceeds equity arithmetic return.')
         return cleaned_data
 
     class DbForm(Form):
@@ -608,8 +606,6 @@ class AllocForm(Form):
     purchase_income_annuity = BooleanField(required=False)
 
     equity_ret_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}))
-    equity_ret_geom_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}))
     equity_vol_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
