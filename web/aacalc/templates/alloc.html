@@ -148,10 +148,13 @@ Pre-retirement annual contribution amount (irrelevant if retired):
 <br />
 Growth rate: {{ alloc_form.contribution_growth_pct }}%
 Volatility of future payments: {{ alloc_form.contribution_vol_pct }}%
-Correlation with equity returns: {{ alloc_form.equity_contribution_corr_pct }}%
 {{ alloc_form.contribution_growth_pct.errors }}
 {{ alloc_form.contribution_vol_pct.errors }}
+<br />
+Correlation with equity returns: {{ alloc_form.equity_contribution_corr_pct }}%
+Correlation with bond returns: {{ alloc_form.bonds_contribution_corr_pct }}%
 {{ alloc_form.equity_contribution_corr_pct.errors }}
+{{ alloc_form.bonds_contribution_corr_pct.errors }}
 <br />
 <span class="small">
 Contribution are assumed to occur to taxable.
@@ -190,7 +193,7 @@ We do not support the ability to leave a specific target bequest.
 
 <div class="indent">
 
-Estimate of equity arithmetic real return: {{ alloc_form.equity_ret_pct }}%
+Estimated equity arithmetic real return: {{ alloc_form.equity_ret_pct }}%
 Volatility: {{ alloc_form.equity_vol_pct }}%
 {{ alloc_form.equity_ret_pct.errors }}
 {{ alloc_form.equity_vol_pct.errors }}
@@ -201,6 +204,29 @@ Going
 forward <a href="http://www.advisorperspectives.com/newsletters12/Jeremy_Siegel_Rob_Arnott_and_Other_Experts_Forecast_Equity_Returns.php">many
 experts</a> predict lower U.S. stock market returns.
 </div>
+Estimated bonds arithmetic real return: {{ alloc_form.bonds_ret_pct }}%
+Volatility: {{ alloc_form.bonds_vol_pct }}%
+{{ alloc_form.bonds_ret_pct.errors }}
+{{ alloc_form.bonds_vol_pct.errors }}
+<div class="small">
+Estimated U.S. market average values for 1927-2014 are 3.2% and
+10%. However we are presently in a low rate environment. In 2016, 10
+year constant maturity Treasuries were projected to earn 0.4% above
+the Survey of Professional forecasters 10 year inflation rate. We
+estimate the premium of an average bond portfolio over 10 year
+constant maturity Treasuries is 0.7%.
+<br />
+<span class="bold">Using the default parameters no regular bonds will
+typically be recommended because they usually have a lower expected
+return than zero volatility inflation indexed liability matching
+bonds.</span>
+</div>
+Correlation of equity returns with bonds: {{ alloc_form.equity_bonds_corr_pct }}%
+{{ alloc_form.equity_bonds_corr_pct.errors }}
+<div class="small">
+Estimated U.S. market average value for 1927-2014 is 7%.
+</div>
+<br />
 Standard error of estimate of equity real return: {{ alloc_form.equity_se_pct }}%
 {{ alloc_form.equity_se_pct.errors }}
 <div class="small">
@@ -216,8 +242,11 @@ confidence interval for the equity return.
 {{ alloc_form.confidence.errors }}
 <br />
 <br />
-Equity management fee: {{ alloc_form.expense_pct }}%
+Equity and bond management fee: {{ alloc_form.expense_pct }}%
 {{ alloc_form.expense_pct.errors }}
+<div class="small">
+A value around 0.1% is typical for a low cost provider such as Vanguard.
+</div>
 
 </div>
 
@@ -227,6 +256,11 @@ Equity management fee: {{ alloc_form.expense_pct }}%
 
 Coefficient of relative risk aversion, &gamma;: {{ alloc_form.gamma }}
 {{ alloc_form.gamma.errors }}
+<div class="small">
+This determines how risk averse you are. A value such as 1 represents
+a very low degree of risk aversion. A value such as 5 represents a
+high degree of risk aversion.
+</div>
 
 </div>
 
@@ -361,8 +395,8 @@ Recommended annual retirement consumption amount: {{ results.consume }}
 <br />
 <br />
 
-Liability matching bonds expected arithmetic real return: {{ results.bonds_ret_pct }}%
-Macaulay duration: {{ results.bonds_duration }} years
+Inflation indexed liability matching bonds expected arithmetic real return: {{ results.lm_bonds_ret_pct }}%
+Macaulay duration: {{ results.lm_bonds_duration }} years
 <div class="small">
 Computed from mortality table and real yield curve assuming level
 consumption requirements except when one party is deceased.
@@ -448,22 +482,26 @@ value.
 
 <br />
 
-Adjusting for possibly having won the game, any existing defined
-benefits, and any income annuity purchases, produces the following
-recommendations:
+Adjusting for values outside the range 0-100%, the possibly having won
+the game, any existing defined benefits, and any income annuity
+purchases, produces the following recommendations:
 
 <table class="table-lined center">
-<tr>
-<td class="left"> Stocks </td>
-<td class="right"> {{ calc.alloc_equity_pct }}% </td>
-</tr>
 <tr>
 <td class="left"> Future contributions </td>
 <td class="right"> {{ calc.alloc_contributions_pct }}% </td>
 </tr>
 <tr>
-<td class="left"> Liability matching bonds </td>
+<td class="left"> Stocks </td>
+<td class="right"> {{ calc.alloc_equity_pct }}% </td>
+</tr>
+<tr>
+<td class="left"> Regular bonds </td>
 <td class="right"> {{ calc.alloc_bonds_pct }}% </td>
+</tr>
+<tr>
+<td class="left"> Liability matching bonds </td>
+<td class="right"> {{ calc.alloc_lm_bonds_pct }}% </td>
 </tr>
 <tr>
 <td class="left"> Existing defined benefits </td>

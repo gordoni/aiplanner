@@ -115,6 +115,7 @@ class Alloc:
             'contribution_growth_pct': 7,
             'contribution_vol_pct': 10,
             'equity_contribution_corr_pct': 0,
+            'bonds_contribution_corr_pct': 0,
 
             'retirement_age': 65,
             'joint_income_pct': 70,
@@ -123,9 +124,12 @@ class Alloc:
 
             'equity_ret_pct': Decimal('7.2'),
             'equity_vol_pct': Decimal('17'),
+            'bonds_ret_pct': Decimal('1.1'),
+            'bonds_vol_pct': Decimal('10'),
+            'equity_bonds_corr_pct': 7,
             'equity_se_pct': Decimal('1.7'),
             'confidence_pct': 80,
-            'expense_pct': Decimal('0.5'),
+            'expense_pct': Decimal('0.1'),
 
             'gamma': Decimal('4.0'),
         }
@@ -238,26 +242,37 @@ class Alloc:
 
         return results, display
 
-    def calc(self, description, factor, data, results, consume, bonds_ret):
+    def calc(self, description, factor, data, results, consume, lm_bonds_ret):
 
         expense = float(data['expense_pct']) / 100
-        equity_ret = float(data['equity_ret_pct']) / 100
-        equity_ret += factor * float(data['equity_se_pct']) / 100 - expense
+        equity_ret = float(data['equity_ret_pct']) / 100 - expense
+        equity_ret += factor * float(data['equity_se_pct']) / 100
+        bonds_ret = float(data['bonds_ret_pct']) / 100 - expense
         gamma = float(data['gamma'])
         equity_vol = float(data['equity_vol_pct']) / 100
+        bonds_vol = float(data['bonds_vol_pct']) / 100
         equity_contribution_corr = float(data['equity_contribution_corr_pct']) / 100
-        cov2 = equity_vol * self.contribution_vol * equity_contribution_corr ** 2
+        bonds_contribution_corr = float(data['bonds_contribution_corr_pct']) / 100
+        equity_bonds_corr = float(data['equity_bonds_corr_pct']) / 100
+        cov_ec2 = equity_vol * self.contribution_vol * equity_contribution_corr ** 2
+        cov_bc2 = bonds_vol * self.contribution_vol * bonds_contribution_corr ** 2
+        cov_eb2 = equity_vol * bonds_vol * equity_bonds_corr ** 2
         stocks_index = 0
-        contrib_index = 1
-        risk_free_index = 2
+        bonds_index = 1
+        contrib_index = 2
+        risk_free_index = 3
 
         lo = -0.5
         hi = 0.5
         while (hi - lo) > 0.000001:
             future_growth_try = (lo + hi) / 2.0
-            sigma_matrix = ((equity_vol ** 2, cov2), (cov2, self.contribution_vol ** 2))
-            alpha = (equity_ret, future_growth_try)
-            w = list(self.solve_merton(gamma, sigma_matrix, alpha, bonds_ret))
+            sigma_matrix = (
+                (equity_vol ** 2, cov_eb2, cov_ec2),
+                (cov_eb2, bonds_vol ** 2, cov_bc2),
+                (cov_ec2, cov_bc2, self.contribution_vol ** 2)
+            )
+            alpha = (equity_ret, bonds_ret, future_growth_try)
+            w = list(self.solve_merton(gamma, sigma_matrix, alpha, lm_bonds_ret))
             w.append(1 - sum(w))
             discounted_contrib = self.npv_contrib(lambda y: ((1 + self.contribution_growth) / (1 + future_growth_try)) ** y)
             npv_discounted = results['nv'] - results['nv_contributions'] + discounted_contrib
@@ -290,9 +305,10 @@ class Alloc:
             annuitize_equity = 0
             annuitize_fixed = 0
         alloc_equity = min(max(0, w_alloc[stocks_index] * (1 - annuitize_equity)), 1)
+        alloc_bonds = min(max(0, w_alloc[bonds_index] * (1 - annuitize_fixed)), 1)
         alloc_contrib = results['nv_contributions'] / results['nv']
-        alloc_bonds = min(max(0, w_alloc[risk_free_index] * (1 - annuitize_fixed)), 1)
-        alloc_db = 1 - alloc_equity - alloc_bonds - alloc_contrib
+        alloc_lm_bonds = min(max(0, w_alloc[risk_free_index] * (1 - annuitize_fixed)), 1)
+        alloc_db = 1 - alloc_equity - alloc_bonds - alloc_contrib - alloc_lm_bonds
         try:
             alloc_existing_db = results['nv_db'] / results['nv']
         except ZeroDivisionError:
@@ -301,7 +317,13 @@ class Alloc:
         if data['purchase_income_annuity']:
             shortfall = min(0, shortfall)
         alloc_db -= shortfall
-        alloc_bonds += shortfall
+        alloc_lm_bonds += shortfall
+        if alloc_lm_bonds < 0:
+            surplus = alloc_lm_bonds
+        else:
+            surplus = max(alloc_lm_bonds - 1, 0)
+        alloc_lm_bonds -= surplus
+        alloc_bonds += surplus
         if alloc_bonds < 0:
             surplus = alloc_bonds
         else:
@@ -311,7 +333,7 @@ class Alloc:
         alloc_new_db = alloc_db - alloc_existing_db
         purchase_income_annuity = alloc_new_db * results['nv']
         try:
-            aa_equity = alloc_equity / (alloc_equity + alloc_bonds)
+            aa_equity = alloc_equity / (alloc_equity + alloc_bonds + alloc_lm_bonds)
         except ZeroDivisionError:
             aa_equity = 1
         aa_bonds = 1 - aa_equity
@@ -320,31 +342,38 @@ class Alloc:
             'description': description,
             'future_growth_try_pct': '{:.1f}'.format(future_growth_try * 100),
             'w' : ({
-                'name': 'Stocks',
-                'alloc': '{:.0f}'.format(w[0] * 100),
-            }, {
                 'name' : 'Discounted future contributions',
-                'alloc': '{:.0f}'.format(w[1] * 100),
+                'alloc': '{:.0f}'.format(w[contrib_index] * 100),
+            }, {
+                'name': 'Stocks',
+                'alloc': '{:.0f}'.format(w[stocks_index] * 100),
+            }, {
+                'name': 'Regular bonds',
+                'alloc': '{:.0f}'.format(w[bonds_index] * 100),
             }, {
                 'name': 'Liability matching bonds and defined benefits',
-                'alloc': '{:.0f}'.format(w[2] * 100),
+                'alloc': '{:.0f}'.format(w[risk_free_index] * 100),
             }),
             'discounted_contrib': '{:,.0f}'.format(discounted_contrib),
             'wc_discounted':  '{:.0f}'.format(wc_discounted * 100),
             'w_prime' : ({
-                'name': 'Stocks',
-                'alloc': '{:.0f}'.format(w_prime[0] * 100),
-            }, {
                 'name' : 'Future contributions',
-                'alloc': '{:.0f}'.format(w_prime[1] * 100),
+                'alloc': '{:.0f}'.format(w_prime[contrib_index] * 100),
+            }, {
+                'name': 'Stocks',
+                'alloc': '{:.0f}'.format(w_prime[stocks_index] * 100),
+            }, {
+                'name': 'Regular bonds',
+                'alloc': '{:.0f}'.format(w_prime[bonds_index] * 100),
             }, {
                 'name': 'Liability matching bonds and defined benefits',
-                'alloc': '{:.0f}'.format(w_prime[2] * 100),
+                'alloc': '{:.0f}'.format(w_prime[risk_free_index] * 100),
             }),
             'annuitize_equity_pct': '{:.0f}'.format(annuitize_equity * 100),
             'annuitize_fixed_pct': '{:.0f}'.format(annuitize_fixed * 100),
             'alloc_equity_pct': '{:.0f}'.format(alloc_equity * 100),
             'alloc_bonds_pct': '{:.0f}'.format(alloc_bonds * 100),
+            'alloc_lm_bonds_pct': '{:.0f}'.format(alloc_lm_bonds * 100),
             'alloc_contributions_pct': '{:.0f}'.format(alloc_contrib * 100),
             'alloc_existing_db_pct': '{:.0f}'.format(alloc_existing_db * 100),
             'alloc_new_db_pct': '{:.0f}'.format(alloc_new_db * 100),
@@ -429,14 +458,14 @@ class Alloc:
                         joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
                         period_certain = self.period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
                     bonds_final = scenario.price()
-                    bonds_ret = bonds_initial / scenario.discount_single_year - 1
-                    bonds_duration = scenario.duration
+                    lm_bonds_ret = bonds_initial / scenario.discount_single_year - 1
+                    lm_bonds_duration = scenario.duration
                     future_value = npv_results['nv'] * bonds_initial / bonds_final
                     retirement_life_expectancy = bonds_initial
                     consume = future_value / max(retirement_life_expectancy, 8)
 
-                    results['bonds_ret_pct'] = '{:.1f}'.format(bonds_ret * 100)
-                    results['bonds_duration'] = '{:.1f}'.format(bonds_duration)
+                    results['lm_bonds_ret_pct'] = '{:.1f}'.format(lm_bonds_ret * 100)
+                    results['lm_bonds_duration'] = '{:.1f}'.format(lm_bonds_duration)
                     results['future_value'] = '{:,.0f}'.format(future_value)
                     results['retirement_life_expectancy'] = '{:.1f}'.format(retirement_life_expectancy)
                     results['consume'] = '{:,.0f}'.format(consume)
@@ -448,9 +477,9 @@ class Alloc:
                     factor = norm.ppf(0.5 + float(data['confidence_pct']) / 100 / 2)
                     factor = float(factor) # De-numpyfy.
                     results['calc'] = (
-                        self.calc('Baseline estimate', 0, data, npv_results, consume, bonds_ret),
-                        self.calc('Low estimate', - factor, data, npv_results, consume, bonds_ret),
-                        self.calc('High estimate', factor, data, npv_results, consume, bonds_ret),
+                        self.calc('Baseline estimate', 0, data, npv_results, consume, lm_bonds_ret),
+                        self.calc('Low estimate', - factor, data, npv_results, consume, lm_bonds_ret),
+                        self.calc('High estimate', factor, data, npv_results, consume, lm_bonds_ret),
                     )
 
                 except self.IdenticalCovarError:
