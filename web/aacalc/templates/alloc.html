@@ -45,7 +45,7 @@ $(document).ready(function(){
 <h1>Asset allocation calculator</h1>
 
 <p>
-<img style="float: right; margin-left: 10px;" width=400 height=200 src="/static/images/iStock_000019076339XSmall.jpg" alt="financial planning">
+<img style="float: right; margin-left: 10px;" width=400 height=200 src="/static/images/shutterstock_69970861.jpg" alt="golden egg">
 </p>
 
 <p>
@@ -53,6 +53,8 @@ This calculator computes asset and income annuity allocations using
 scientific principles. And it explains how the recommendations were
 derived.
 </p>
+
+<div style="clear: both;"></div>
 
 <form  method="post">
 {% csrf_token %}
@@ -266,7 +268,7 @@ high degree of risk aversion.
 
 <br />
 
-<div style="text-align:center;">
+<div class="center">
 <input class="button" type="submit" value="Submit" />
 </div>
 
@@ -276,6 +278,12 @@ high degree of risk aversion.
 
 <div id="results">
 <div class="simple_advanced">
+
+<img src="{{ results.dirurl }}/alloc.png" alt="allocation">
+<br />
+<img style="float: right; margin-left: 10px;" src="{{ results.dirurl }}/aa.png" alt="asset allocation">
+
+<br />
 
 We recommend
 {% if results.calc.0.purchase_income_annuity != '0' %}
@@ -308,6 +316,8 @@ Currently during retirement you should consume about {{ results.consume }} per y
 <br />
 <br />
 
+<div style="clear: both;"></div>
+
 <div class="advanced_controller">
 Show calculations: {{ alloc_form.advanced_calculations }}
 {{ alloc_form.advanced_calculations.errors }}
@@ -315,7 +325,9 @@ Show calculations: {{ alloc_form.advanced_calculations }}
 
 <div class="advanced">
 
-<h3>Common calculations</h3>
+<h2>Common calculations</h2>
+
+<div class="indent">
 
 Yield curve date: {{ results.yield_curve_date }}.
 
@@ -402,9 +414,13 @@ Computed from mortality table and real yield curve assuming level
 consumption requirements except when one party is deceased.
 </div>
 
+</div>
+
 {% for calc in results.calc %}
 
-<h3>{{ calc.description }}</h3>
+<h2>{{ calc.description }}</h2>
+
+<div class="indent">
 
 By trial and error we determined we should assume a future contributions discount rate, d = {{ calc.future_growth_try_pct }}%
 Let's see how this works out...
@@ -526,6 +542,8 @@ Recommended income annuity purchase amount: {{ calc.purchase_income_annuity }}
 <br />
 
 Investment stock/bond asset allocation: {{ calc.aa_equity_pct }}/{{ calc.aa_bonds_pct }}
+
+</div>
 
 {% endfor %}
 

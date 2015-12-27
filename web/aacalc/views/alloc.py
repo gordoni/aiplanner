@@ -17,6 +17,8 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
 from math import ceil, exp, isnan, log, sqrt
+from os import umask
+from tempfile import mkdtemp
 
 from django.forms.forms import NON_FIELD_ERRORS
 from django.forms.util import ErrorList
@@ -24,9 +26,11 @@ from django.shortcuts import render
 from numpy import array
 from numpy.linalg import inv, LinAlgError
 from scipy.stats import lognorm, norm
+from subprocess import check_call
 
 from aacalc.forms import AllocForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
+from settings import STATIC_ROOT, STATIC_URL
 
 class Alloc:
 
@@ -380,8 +384,41 @@ class Alloc:
             'purchase_income_annuity': '{:,.0f}'.format(purchase_income_annuity),
             'aa_equity_pct': '{:.0f}'.format(aa_equity * 100),
             'aa_bonds_pct': '{:.0f}'.format(aa_bonds * 100),
+            'alloc_equity': alloc_equity,
+            'alloc_bonds': alloc_bonds,
+            'alloc_lm_bonds': alloc_lm_bonds,
+            'alloc_contributions': alloc_contrib,
+            'alloc_existing_db': alloc_existing_db,
+            'alloc_new_db': alloc_new_db,
+            'aa_equity': aa_equity,
+            'aa_bonds': aa_bonds,
         }
         return result
+
+    def plot(self, result):
+        umask(0077)
+        parent = STATIC_ROOT + 'results'
+        dirname = mkdtemp(prefix='aa-', dir=parent)
+        f = open(dirname + '/alloc.csv', 'w')
+        f.write('''class,allocation
+stocks,%(alloc_equity)f
+regular bonds,%(alloc_bonds)f
+LM bonds,%(alloc_lm_bonds)f
+defined benefits,%(alloc_existing_db)f
+new annuities,%(alloc_new_db)f
+contributions,%(alloc_contributions)f
+''' % result)
+        f.close()
+        f = open(dirname + '/aa.csv', 'w')
+        f.write('''asset class,allocation
+stocks,%(aa_equity)f
+bonds,%(aa_bonds)f
+''' % result)
+        f.close()
+        cmd = __file__.replace('aacalc/views/alloc.py', 'plot.R')
+        prefix = dirname + '/'
+        check_call((cmd, '--args', prefix))
+        return dirname
 
     def alloc(self, request):
 
@@ -481,6 +518,9 @@ class Alloc:
                         self.calc('Low estimate', - factor, data, npv_results, consume, lm_bonds_ret),
                         self.calc('High estimate', factor, data, npv_results, consume, lm_bonds_ret),
                     )
+
+                    dirname = self.plot(results['calc'][0])
+                    results['dirurl'] = dirname.replace(STATIC_ROOT, STATIC_URL)
 
                 except self.IdenticalCovarError:
 
