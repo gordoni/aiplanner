@@ -310,7 +310,10 @@ class Alloc:
             annuitize_fixed = 0
         alloc_equity = min(max(0, w_alloc[stocks_index] * (1 - annuitize_equity)), 1)
         alloc_bonds = min(max(0, w_alloc[bonds_index] * (1 - annuitize_fixed)), 1)
-        alloc_contrib = results['nv_contributions'] / results['nv']
+        try:
+            alloc_contrib = results['nv_contributions'] / results['nv']
+        except:
+            alloc_contrib = 1
         alloc_lm_bonds = min(max(0, w_alloc[risk_free_index] * (1 - annuitize_fixed)), 1)
         alloc_db = 1 - alloc_equity - alloc_bonds - alloc_contrib - alloc_lm_bonds
         try:
