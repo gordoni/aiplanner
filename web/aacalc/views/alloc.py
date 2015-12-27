@@ -23,7 +23,7 @@ from django.forms.util import ErrorList
 from django.shortcuts import render
 from numpy import array
 from numpy.linalg import inv, LinAlgError
-from scipy.stats import lognorm
+from scipy.stats import lognorm, norm
 
 from aacalc.forms import AllocForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
@@ -121,10 +121,10 @@ class Alloc:
             'desired_income': 40000,
             'purchase_income_annuity': True,
 
-            'equity_ret_pct': Decimal('6.8'),
-            'equity_vol_pct': Decimal('18'),
-            'equity_se_pct': Decimal('2.1'),
-            'equity_range_factor': 1,
+            'equity_ret_pct': Decimal('7.2'),
+            'equity_vol_pct': Decimal('17'),
+            'equity_se_pct': Decimal('1.7'),
+            'confidence_pct': 80,
             'expense_pct': Decimal('0.5'),
 
             'gamma': Decimal('4.0'),
@@ -240,8 +240,9 @@ class Alloc:
 
     def calc(self, description, factor, data, results, consume, bonds_ret):
 
+        expense = float(data['expense_pct']) / 100
         equity_ret = float(data['equity_ret_pct']) / 100
-        equity_ret += factor * float(data['equity_se_pct']) / 100
+        equity_ret += factor * float(data['equity_se_pct']) / 100 - expense
         gamma = float(data['gamma'])
         equity_vol = float(data['equity_vol_pct']) / 100
         equity_contribution_corr = float(data['equity_contribution_corr_pct']) / 100
@@ -444,10 +445,12 @@ class Alloc:
                         self.min_age = self.age
                     else:
                         self.min_age = min(self.age, self.age2)
+                    factor = norm.ppf(0.5 + float(data['confidence_pct']) / 100 / 2)
+                    factor = float(factor) # De-numpyfy.
                     results['calc'] = (
                         self.calc('Baseline estimate', 0, data, npv_results, consume, bonds_ret),
-                        self.calc('Low estimate', - float(data['equity_range_factor']), data, npv_results, consume, bonds_ret),
-                        self.calc('High estimate', float(data['equity_range_factor']), data, npv_results, consume, bonds_ret),
+                        self.calc('Low estimate', - factor, data, npv_results, consume, bonds_ret),
+                        self.calc('High estimate', factor, data, npv_results, consume, bonds_ret),
                     )
 
                 except self.IdenticalCovarError:

@@ -616,9 +616,10 @@ class AllocForm(Form):
     equity_se_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0)
-    equity_range_factor = DecimalField(
-        widget=TextInput(attrs={'class': 'small_numeric_input'}),
-        min_value=0)
+    confidence_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        min_value=0,
+        max_value=99.99)
     expense_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0)

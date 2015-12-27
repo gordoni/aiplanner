@@ -190,26 +190,33 @@ We do not support the ability to leave a specific target bequest.
 
 <div class="indent">
 
-Equity expected arithmetic real return, &mu;: {{ alloc_form.equity_ret_pct }}%
+Estimate of equity arithmetic real return: {{ alloc_form.equity_ret_pct }}%
 Volatility: {{ alloc_form.equity_vol_pct }}%
 {{ alloc_form.equity_ret_pct.errors }}
 {{ alloc_form.equity_vol_pct.errors }}
-<br />
-Standard error of estimate of &mu;: {{ alloc_form.equity_se_pct }}%
-{{ alloc_form.equity_se_pct.errors }}
-<br />
-Also report results {{ alloc_form.equity_range_factor }} standard error above and below &mu;.
-{{ alloc_form.equity_range_factor.errors }}
 <div class="small">
-U.S. market average values for 1927-2014 are 8.7%. 20%, and
-2.1%.  Going
+U.S. market average values for 1927-2014 are 8.7% and 20%.
+World market average values for 1900-2000 are 7.2% and 17%.
+Going
 forward <a href="http://www.advisorperspectives.com/newsletters12/Jeremy_Siegel_Rob_Arnott_and_Other_Experts_Forecast_Equity_Returns.php">many
-experts</a> predict lower stock market returns.  For the normal
-distribution, &plusmn;1, &plusmn;2, and &plusmn;3 standard errors
-about the mean encompass 68%, 95%, and 99.7% of possible values.
+experts</a> predict lower U.S. stock market returns.
 </div>
+Standard error of estimate of equity real return: {{ alloc_form.equity_se_pct }}%
+{{ alloc_form.equity_se_pct.errors }}
+<div class="small">
+U.S. market average value for 1927-2014 is 2.1%.
+World market average value for 1900-2000 is 1.7%.
+<!--
+U.S. market average value for 1900-2000 is 2.0% stocks relative to nominal long bonds.
+World market average value for 1900-2000 is 1.4% stocks relative to nominal long bonds.
+-->
+</div>
+Also report results forming a {{ alloc_form.confidence_pct }}%
+confidence interval for the equity return.
+{{ alloc_form.confidence.errors }}
 <br />
-Management fees: {{ alloc_form.expense_pct }}%
+<br />
+Equity management fee: {{ alloc_form.expense_pct }}%
 {{ alloc_form.expense_pct.errors }}
 
 </div>
@@ -250,9 +257,16 @@ recommended asset allocation.
 
 <br />
 
-The proportion of stocks recommended ranged from {{ results.calc.1.aa_equity_pct }}% to {{ results.calc.2.aa_equity_pct }}%.
+With about {{ alloc_form.cleaned_data.confidence_pct }}% confidence
+the proportion of stocks recommended is in the range
+{{ results.calc.1.aa_equity_pct }}% to {{ results.calc.2.aa_equity_pct }}%.
+<div class="small">
+For confidence intervals in excess of about 95% the computed lower
+bound will be lower than it should be. This is because demand side
+effects mean we can be confident the return for equities exceeds that
+of bonds.
+</div>
 
-<br />
 <br />
 
 Currently during retirement you should consume about {{ results.consume }} per year.
