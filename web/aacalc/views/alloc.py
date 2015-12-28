@@ -339,7 +339,7 @@ class Alloc:
             surplus = max(alloc_bonds - 1, 0)
         alloc_bonds -= surplus
         alloc_equity += surplus
-        alloc_new_db = alloc_db - alloc_existing_db
+        alloc_new_db = max(0, alloc_db - alloc_existing_db) # Eliminate negative values from fp rounding errors.
         purchase_income_annuity = alloc_new_db * results['nv']
         try:
             aa_equity = alloc_equity / (alloc_equity + alloc_bonds + alloc_lm_bonds)
@@ -508,7 +508,7 @@ bonds,%(aa_bonds)f
                     lm_bonds_duration = scenario.duration
                     future_value = npv_results['nv'] * bonds_initial / bonds_final
                     retirement_life_expectancy = bonds_initial
-                    consume = future_value / max(retirement_life_expectancy, 8)
+                    consume = future_value / retirement_life_expectancy
 
                     results['lm_bonds_ret_pct'] = '{:.1f}'.format(lm_bonds_ret * 100)
                     results['lm_bonds_duration'] = '{:.1f}'.format(lm_bonds_duration)

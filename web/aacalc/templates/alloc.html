@@ -48,11 +48,38 @@ $(document).ready(function(){
 <img style="float: right; margin-left: 10px;" width=400 height=200 src="/static/images/shutterstock_69970861.jpg" alt="golden egg">
 </p>
 
-<p>
 This calculator computes asset and income annuity allocations using
 scientific principles. And it explains how the recommendations were
 derived.
-</p>
+
+<br />
+<br />
+
+Several things set this calculator apart:
+
+<ul>
+
+<li> It takes a balance sheet approach. Asset allocation can't be
+performed in isolation, but must be performed by taking into account
+the presence and size of Social Security, Pensions, 401(k)s, and
+income annuities, as well as any anticipated future retirement
+contributions. </li>
+
+<li> It considers as a risk free asset, a liability matching bond;
+that is an inflation indexed zero coupon bond with a duration matching
+that of anticipated retirement cash flows. Such bonds may or may not
+be available for purchase, but serve as a benchmark against which
+other asset classes are measured. </li>
+
+<li> It handles future contributions by suppposing a discount rate for
+them that gives the desired outcome that they neither need to be
+increased nor decreased. </li>
+
+<li> It optionally recommends the purchase of inflation indexed income
+annuities; that is single premium immediate annuuities or deferred
+income annuities. </li>
+
+</ul>
 
 <div style="clear: both;"></div>
 
@@ -290,7 +317,8 @@ We recommend
 {% if results.calc.0.purchase_income_annuity != '0' %}
 purchasing an income annuity of {{ results.calc.0.purchase_income_annuity }} and then adopting
 {% endif %}
-a {{ results.calc.0.aa_equity_pct }}/{{ results.calc.0.aa_bonds_pct }} stock/bond asset allocation.
+a {{ results.calc.0.aa_equity_pct }}/{{ results.calc.0.aa_bonds_pct }}
+stock/bond asset allocation across all investment assets.
 <div class="small">
 This recommendation does not take into account your risk rolerance,
 and you might want to adopt a lower asset allocation if you feel you
@@ -312,7 +340,9 @@ of bonds.
 
 <br />
 
-Currently during retirement you should consume about {{ results.consume }} per year.
+The amount you should consume during retirement varies from year to
+year. Currently it is recommended you should consume about
+{{ results.consume }} per year.
 
 <br />
 <br />
@@ -404,8 +434,12 @@ Inflation but not interest rate adjusted.
 Retirement additional life expectancy: {{ results.retirement_life_expectancy }} years
 <br />
 Recommended annual retirement consumption amount: {{ results.consume }}
+<div class="small">
+This is just a rough estimate. It takes into account the importance of
+not running out of assets for a stochastic lifespan by simply assuming
+at least 8 years of life remaining.
+</div>
 
-<br />
 <br />
 
 Inflation indexed liability matching bonds expected arithmetic real return: {{ results.lm_bonds_ret_pct }}%
