@@ -138,25 +138,24 @@ class Alloc:
             'gamma': Decimal('4.0'),
         }
 
+    def geomean(self, mean, vol):
+        # Convert mean and vol to lognormal distribution mu and sigma parameters.
+        mu = log(mean ** 2 / sqrt(vol ** 2 + mean ** 2))
+        sigma = sqrt(log(vol ** 2 / mean ** 2 + 1))
+        # Compute the middle value.
+        geomean = lognorm.ppf(0.5, sigma, scale=exp(mu))
+        geomean = float(geomean) # De-numpyfy.
+        if isnan(geomean):
+            # vol == 0.
+            geomean = mean
+        return geomean
+
     def solve_merton(self, gamma, sigma_matrix, alpha, r):
         try:
             w = inv(sigma_matrix).dot(array(alpha) - r) / gamma
         except LinAlgError:
             raise self.IdenticalCovarError
         return tuple(float(wi) for wi in w) # De-numpyfy.
-
-    def vol_factor(self, vol):
-        # Volatility increases the expected growth rate.
-        growth_samples = 1000
-        percentiles = tuple((i + 0.5) / growth_samples for i in range(growth_samples))
-        # Convert volatility to lognormal distribution sigma parameter.
-        sigma = sqrt(log((1 + sqrt(1 + 4 * vol ** 2)) / 2.0))
-        g = sum(lognorm.ppf(percentiles, sigma)) / len(percentiles)
-        g = float(g) # De-numpyfy.
-        if isnan(g):
-            # vol == 0.
-            g = 1
-        return g
 
     def yield_curve_schedule(self, life_table):
 
@@ -165,20 +164,19 @@ class Alloc:
 
         return sched
 
-    def stochastic_schedule(self, schedule, vol, years):
+    def stochastic_schedule(self, mean, vol, years):
 
         def sched(y):
             if y < years:
-                return schedule(y) * g ** y
+                return mean ** y
             else:
                 return 0
 
-        g = self.vol_factor(vol)
         return sched
 
-    def npv_contrib(self, schedule):
+    def npv_contrib(self, ret):
         payout_delay = 0
-        schedule = self.stochastic_schedule(schedule, self.contribution_vol, self.pre_retirement_years)
+        schedule = self.stochastic_schedule(1 + ret, self.contribution_vol, self.pre_retirement_years)
         scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = 1, joint_contingent = True, period_certain = 0, \
             frequency = 1, cpi_adjust = 'all', schedule = schedule)
@@ -226,7 +224,7 @@ class Alloc:
                 'nv': '{:,.0f}'.format(price),
             })
 
-        nv_contributions = self.npv_contrib(lambda y: schedule(y) * (1 + self.contribution_growth) ** y)
+        nv_contributions = self.npv_contrib(self.contribution_growth)
 
         nv_traditional = self.traditional * (1 - self.tax_rate) / 100
         nv_investments = nv_traditional + self.npv_roth + self.npv_taxable
@@ -255,6 +253,10 @@ class Alloc:
         gamma = float(data['gamma'])
         equity_vol = float(data['equity_vol_pct']) / 100
         bonds_vol = float(data['bonds_vol_pct']) / 100
+
+        equity_gm = self.geomean(1 + equity_ret, equity_vol) - 1
+        bonds_gm = self.geomean(1 + bonds_ret, bonds_vol) - 1
+
         equity_contribution_corr = float(data['equity_contribution_corr_pct']) / 100
         bonds_contribution_corr = float(data['bonds_contribution_corr_pct']) / 100
         equity_bonds_corr = float(data['equity_bonds_corr_pct']) / 100
@@ -278,7 +280,7 @@ class Alloc:
             alpha = (equity_ret, bonds_ret, future_growth_try)
             w = list(self.solve_merton(gamma, sigma_matrix, alpha, lm_bonds_ret))
             w.append(1 - sum(w))
-            discounted_contrib = self.npv_contrib(lambda y: ((1 + self.contribution_growth) / (1 + future_growth_try)) ** y)
+            discounted_contrib = self.npv_contrib((1 + self.contribution_growth) / (1 + future_growth_try) - 1)
             npv_discounted = results['nv'] - results['nv_contributions'] + discounted_contrib
             try:
                 wc_discounted = discounted_contrib / npv_discounted
@@ -347,6 +349,10 @@ class Alloc:
 
         result = {
             'description': description,
+            'equity_am_pct':'{:.1f}'.format(equity_ret * 100),
+            'bonds_am_pct':'{:.1f}'.format(bonds_ret * 100),
+            'equity_gm_pct':'{:.1f}'.format(equity_gm * 100),
+            'bonds_gm_pct':'{:.1f}'.format(bonds_gm * 100),
             'future_growth_try_pct': '{:.1f}'.format(future_growth_try * 100),
             'w' : ({
                 'name' : 'Discounted future contributions',
@@ -409,7 +415,7 @@ regular bonds,%(alloc_bonds)f
 LM bonds,%(alloc_lm_bonds)f
 defined benefits,%(alloc_existing_db)f
 new annuities,%(alloc_new_db)f
-contributions,%(alloc_contributions)f
+future contribs,%(alloc_contributions)f
 ''' % result)
         f.close()
         f = open(dirname + '/aa.csv', 'w')
