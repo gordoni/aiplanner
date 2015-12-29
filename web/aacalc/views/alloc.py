@@ -42,8 +42,10 @@ class Alloc:
         return {
             'sex': 'male',
             'age': 50,
+            'le_add': 8,
             'sex2': None,
             'age2': None,
+            'le_add2': 8,
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
 
             'db' : ({
@@ -178,7 +180,7 @@ class Alloc:
         payout_delay = 0
         schedule = self.stochastic_schedule(1 + ret, self.contribution_vol, self.pre_retirement_years)
         scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
-            joint_payout_fraction = 1, joint_contingent = True, period_certain = 0, \
+            joint_payout_fraction = 1, joint_contingent = True, period_certain = self.period_certain, \
             frequency = 1, cpi_adjust = 'all', schedule = schedule)
         return self.contribution * scenario.price()
 
@@ -226,7 +228,7 @@ class Alloc:
 
         nv_contributions = self.npv_contrib(self.contribution_growth)
 
-        nv_traditional = self.traditional * (1 - self.tax_rate) / 100
+        nv_traditional = self.traditional * (1 - self.tax_rate)
         nv_investments = nv_traditional + self.npv_roth + self.npv_taxable
         nv = nv_db + nv_investments + nv_contributions
 
@@ -326,6 +328,7 @@ class Alloc:
         if data['purchase_income_annuity']:
             shortfall = min(0, shortfall)
         alloc_db -= shortfall
+        alloc_db = max(0, alloc_db) # Eliminate negative values from fp rounding errors.
         alloc_lm_bonds += shortfall
         if alloc_lm_bonds < 0:
             surplus = alloc_lm_bonds
@@ -444,10 +447,10 @@ bonds,%(aa_bonds)f
                 try:
 
                     data = alloc_form.cleaned_data
-                    date_str = data['date']
-                    self.yield_curve_real = YieldCurve('real', date_str)
-                    self.yield_curve_nominal = YieldCurve('nominal', date_str)
-                    self.yield_curve_zero = YieldCurve('fixed', date_str)
+                    self.date_str = data['date']
+                    self.yield_curve_real = YieldCurve('real', self.date_str)
+                    self.yield_curve_nominal = YieldCurve('nominal', self.date_str)
+                    self.yield_curve_zero = YieldCurve('fixed', self.date_str)
 
                     if self.yield_curve_real.yield_curve_date == self.yield_curve_nominal.yield_curve_date:
                         results['yield_curve_date'] = self.yield_curve_real.yield_curve_date;
@@ -459,14 +462,16 @@ bonds,%(aa_bonds)f
 
                     sex = data['sex']
                     self.age = float(data['age'])
-                    self.life_table = LifeTable(table, sex, self.age)
+                    self.le_add = float(data['le_add'])
+                    self.life_table = LifeTable(table, sex, self.age, le_add = self.le_add, date_str = self.date_str)
 
                     sex2 = data['sex2']
                     if sex2 == None:
                         self.life_table2 = None
                     else:
                         self.age2 = float(data['age2']);
-                        self.life_table2 = LifeTable(table, sex2, self.age2)
+                        self.le_add2 = float(data['le_add2'])
+                        self.life_table2 = LifeTable(table, sex2, self.age2, le_add = self.le_add2, date_str = self.date_str)
 
                     self.db = data['db']
                     self.traditional = float(data['p_traditional_iras'])
@@ -480,7 +485,10 @@ bonds,%(aa_bonds)f
                     self.joint_income = float(data['joint_income_pct']) / 100
                     self.desired_income = float(data['desired_income'])
 
-                    self.period_certain = 0
+                    self.period_certain = self.pre_retirement_years
+                        # For planning purposes when computing the npv of defined benefits
+                        # and contributions we need to assume we will reach retirement.
+
                     self.frequency = 12 # Makes NPV more accurate.
                     self.cpi_adjust = 'calendar'
 
@@ -498,11 +506,11 @@ bonds,%(aa_bonds)f
 
                     scenario = Scenario(self.yield_curve_zero, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
                         joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
-                        period_certain = self.period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
+                        period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
                     bonds_initial = scenario.price()
                     scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
                         joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
-                        period_certain = self.period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
+                        period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
                     bonds_final = scenario.price()
                     lm_bonds_ret = bonds_initial / scenario.discount_single_year - 1
                     lm_bonds_duration = scenario.duration

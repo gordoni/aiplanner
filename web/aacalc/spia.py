@@ -986,7 +986,10 @@ class YieldCurve:
 
 class LifeTable:
 
-    def __init__(self, table, sex, age, ae = 'full', q_adjust = 1, interpolate_q = True):
+    class UnableToAdjust(Exception):
+        pass
+
+    def __init__(self, table, sex, age, ae = 'full', le_set = None, le_add = 0, date_str = None, interpolate_q = True):
         self.table = table
         assert(table in ('death_120', 'iam', 'ssa_cohort', 'ssa_period'))
         self.sex = sex
@@ -996,9 +999,35 @@ class LifeTable:
             # 'summary' - use all ages summary line. Use this value for compatibility with AACalc.
             # 'full' - use the full table; more accurate but report contains statistical noise. Alters values 5% at age 85.
         assert(ae in ('none', 'summary', 'full'))
-        self.q_adjust = q_adjust  # Adjustment applied to all q values.
+        self.le_set = le_set  # Multiplicatively adjust q values to make life expectancy match the specified value.
             # Used to make life expectancy match personal expected life expectancy, then use value to compute fair SPIA price.
+        self.le_add = le_add  # Then multiplicatively adjust q values to increase life expectancy by this much.
+            # Used by asset allocator to ensure plan for living longer than average because running out of money is very bad.
+        self.date_str = date_str  # Only required if le_set or le_add is used.
+            # The date to be used in computing the new q values. Needed since probably have a cohort life table.
         self.interpolate_q = interpolate_q  # Interpolation makes 0.5% difference for fractional ages. Set to false for compatibility with AACalc.
+
+        self.q_adjust = 1
+        if le_set == None and le_add == 0:
+            return
+        yield_curve = YieldCurve('le', date_str)
+        if le_set == None:
+            scenario = Scenario(yield_curve, 0, None, None, 0, self)
+            le_set = scenario.price()
+        le = le_set + le_add
+        q_lo = 0
+        q_hi = 100
+        for _ in range(50):
+            self.q_adjust = (q_lo + q_hi) / 2.0
+            scenario = Scenario(yield_curve, 0, None, None, 0, self)
+            compute_le = scenario.price()
+            if abs(le / compute_le - 1) < 1e-6:
+                return
+            if compute_le > le:
+                q_lo = self.q_adjust
+            else:
+                q_hi = self.q_adjust
+        raise self.UnableToAdjust
 
     def iam_q(self, year, age, contract_age):
         year = int(year)
@@ -1149,6 +1178,7 @@ class Scenario:
         while True:
             period = float(i) / self.frequency
             y = delay + period
+            r = self.yield_curve.discount_rate(y)
             index = y * self.frequency
             fract = index % 1
             index = int(index)
@@ -1161,7 +1191,6 @@ class Scenario:
                 combined = alive + self.joint_payout_fraction * joint
             else:
                 combined = 1.0
-            r = self.yield_curve.discount_rate(y)
             if self.yield_curve.interest_rate == 'real' and self.cpi_adjust != 'all':
                 if months_since_adjust >= 12:
                     if self.cpi_adjust == 'payout':
@@ -1200,7 +1229,7 @@ class Scenario:
             price += payout_value
             duration += y * payout_value
             discount_single_year += payout_amount / r
-            calc = {'i': i, 'y': y, 'alive': 0.0, 'joint': 0.0, 'combined': combined, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout_value}
+            calc = {'i': i, 'y': y, 'alive': 0.0, 'joint': 0.0, 'combined': 0.0, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout_value}
             calcs.append(calc)
 
         try:

@@ -25,9 +25,6 @@ from django.shortcuts import render
 from aacalc.forms import SpiaForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
 
-class UnableToAdjust(Exception):
-    pass
-
 def default_spia_params():
 
     return {
@@ -47,23 +44,6 @@ def default_spia_params():
         'mwr_percent': 100,
         'percentile': 95
     }
-
-def compute_q_adjust(date_str, table, sex, age, le):
-    yield_curve = YieldCurve('le', date_str)
-    q_lo = 0
-    q_hi = 10
-    for _ in range(50):
-        q_adjust = (q_lo + q_hi) / 2.0
-        life_table = LifeTable(table, sex, age, q_adjust = q_adjust)
-        scenario = Scenario(yield_curve, 0, None, None, 0, life_table)
-        compute_le = scenario.price()
-        if abs(le / compute_le - 1) < 1e-6:
-            return q_adjust
-        if compute_le > le:
-            q_lo = q_adjust
-        else:
-            q_hi = q_adjust
-    raise UnableToAdjust
 
 def first_payout(date_str, delay, frequency):
 
@@ -149,11 +129,11 @@ def spia(request):
                 table = data['table']
                 if table == 'adjust':
                     table = 'ssa_cohort'
-                    q_adjust = compute_q_adjust(date_str, table, sex, age, float(data['le']))
+                    le_set = float(data['le'])
                 else:
-                    q_adjust = 1
+                    le_set = None
 
-                life_table = LifeTable(table, sex, age, ae = ae, q_adjust = q_adjust)
+                life_table = LifeTable(table, sex, age, ae = ae, le_set = le_set, date_str = date_str)
 
                 sex2 = data['sex2']
                 if sex2 == None:
@@ -233,7 +213,7 @@ def spia(request):
 
                 errors_present = True
 
-            except UnableToAdjust:
+            except LifeTable.UnableToAdjust:
 
                 errors = spia_form._errors.setdefault('le', ErrorList())
                 errors.append('Unable to adjust life table to match additional life expectancy.')
