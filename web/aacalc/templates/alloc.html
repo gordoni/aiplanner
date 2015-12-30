@@ -384,7 +384,7 @@ of bonds.
 
 The amount you should consume during retirement varies from year to
 year. Currently it is recommended you should consume about
-{{ results.consume }} per year.
+{{ results.calc.0.consume }} per year.
 
 <br />
 <br />
@@ -455,17 +455,6 @@ real interest rate adjusted
 <th colspan=2 class="right"> {{ results.present.nv }} </th>
 </tr>
 <tr>
-<td class="left"> Future value
-<div class="small">
-Assuming level consumption except when one party is deceased.
-</div>
-</td>
-<td colspan=2 class="right"> {{ results.future_value }}
-<div class="small">
-Inflation but not interest rate adjusted.
-</div>
-</td>
-</tr>
 <tr>
 <td colspan=3 class="left small"> Computed from planning adjusted mortality table and real yield curve. </td>
 </tr>
@@ -473,19 +462,12 @@ Inflation but not interest rate adjusted.
 
 <br />
 
-Retirement additional life expectancy for planning purposes: {{ results.retirement_life_expectancy }} years
-<br />
-Recommended annual retirement consumption amount: {{ results.consume }}
-<div class="small">
-This is just a rough estimate. It takes into account the importance of
-not running out of assets for a stochastic lifespan by simply assuming
-at least 8 years of life remaining.
-</div>
+Retirement additional life expectancy for planning purposes: {{ results.calc.0.retirement_life_expectancy }} years
 
 <br />
 
-Inflation indexed liability matching bonds expected arithmetic real return: {{ results.lm_bonds_ret_pct }}%
-Macaulay duration: {{ results.lm_bonds_duration }} years
+Inflation indexed liability matching bonds expected arithmetic real return: {{ results.calc.0.lm_bonds_ret_pct }}%
+Macaulay duration: {{ results.calc.0.lm_bonds_duration }} years
 <div class="small">
 Computed from mortality table and real yield curve assuming level
 consumption requirements except when one party is deceased.
@@ -594,30 +576,57 @@ increase the latter.
 
 <table class="table-lined center">
 <tr>
+<td> </td>
+<td> Recommended allocation </td>
+<td> Expected return
+<div class="small">
+Inflation adjusted.
+</div>
+</td>
+</tr>
+<tr>
 <td class="left"> Future contributions </td>
 <td class="right"> {{ calc.alloc_contributions_pct }}% </td>
+<td class="right"> {{ calc.future_growth_try_pct }}% </td>
 </tr>
 <tr>
 <td class="left"> Stocks </td>
 <td class="right"> {{ calc.alloc_equity_pct }}% </td>
+<td class="right"> {{ calc.equity_ret_pct }}% </td>
 </tr>
 <tr>
 <td class="left"> Regular bonds </td>
 <td class="right"> {{ calc.alloc_bonds_pct }}% </td>
+<td class="right"> {{ calc.bonds_ret_pct }}% </td>
 </tr>
 <tr>
 <td class="left"> Liability matching bonds </td>
 <td class="right"> {{ calc.alloc_lm_bonds_pct }}% </td>
+<td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
 </tr>
 <tr>
 <td class="left"> Existing defined benefits </td>
 <td class="right"> {{ calc.alloc_existing_db_pct }}% </td>
+<td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
 </tr>
 <tr>
 <td class="left"> New income annuities </td>
 <td class="right"> {{ calc.alloc_new_db_pct }}% </td>
+<td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
+</tr>
+<tr>
+<th class="left"> Total </th>
+<th class="right"> 100% </th>
+<th class="right"> {{ calc.total_ret_pct }}% </th>
 </tr>
 </table>
+
+<br />
+
+Recommended annual retirement consumption amount: {{ calc.consume }}
+<div class="small">
+This is just a rough estimate.
+</div>
 
 {% if alloc_form.cleaned_data.purchase_income_annuity %}
 
