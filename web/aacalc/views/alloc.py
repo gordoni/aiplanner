@@ -42,10 +42,10 @@ class Alloc:
         return {
             'sex': 'male',
             'age': 50,
-            'le_add': 10,
+            'le_add': 8,
             'sex2': None,
             'age2': None,
-            'le_add2': 10,
+            'le_add2': 8,
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
 
             'db' : ({
@@ -289,7 +289,7 @@ class Alloc:
 
         lo = -0.5
         hi = 0.5
-        while (hi - lo) > 0.000001:
+        while hi - lo > 0.000001:
             future_growth_try = (lo + hi) / 2.0
             sigma_matrix = (
                 (equity_vol ** 2, cov_eb2, cov_ec2),
@@ -316,86 +316,93 @@ class Alloc:
         w_prime[contrib_index] = 0
         w_prime[contrib_index] = 1 - sum(w_prime)
 
-        #try:
-        #    w_alloc = list(wi * min(self.desired_income / consume, 1) for wi in w)
-        #except ZeroDivisionError:
-        #    w_alloc = list(0 for _ in w)
-        w_alloc = list(w) #XXX
-        w_alloc[stocks_index] = 0
-        w_alloc[contrib_index] = w_prime[contrib_index]
-        w_alloc[stocks_index] = 1 - sum(w_alloc)
-        if data['purchase_income_annuity']:
-            annuitize_equity = min(max(0, (self.min_age - 50.0) / (80 - 50)), 1)
-            annuitize_fixed = min(max(0, (self.min_age - 35.0) / (60 - 35)), 1)
-        else:
-            annuitize_equity = 0
-            annuitize_fixed = 0
-        alloc_equity = min(max(0, w_alloc[stocks_index] * (1 - annuitize_equity)), 1)
-        alloc_bonds = min(max(0, w_alloc[bonds_index] * (1 - annuitize_fixed)), 1)
-        try:
-            alloc_contrib = results['nv_contributions'] / results['nv']
-        except:
-            alloc_contrib = 1
-        alloc_lm_bonds = min(max(0, w_alloc[risk_free_index] * (1 - annuitize_fixed)), 1)
-        alloc_db = 1 - alloc_equity - alloc_bonds - alloc_contrib - alloc_lm_bonds
-        try:
-            alloc_existing_db = results['nv_db'] / results['nv']
-        except ZeroDivisionError:
-            alloc_existing_db = 0
-        shortfall = alloc_db - alloc_existing_db
-        if data['purchase_income_annuity']:
-            shortfall = min(0, shortfall)
-        alloc_db -= shortfall
-        alloc_db = max(0, alloc_db) # Eliminate negative values from fp rounding errors.
-        alloc_lm_bonds += shortfall
-        if alloc_lm_bonds < 0:
-            surplus = alloc_lm_bonds
-        else:
-            surplus = max(alloc_lm_bonds - 1, 0)
-        alloc_lm_bonds -= surplus
-        alloc_bonds += surplus
-        if alloc_bonds < 0:
-            surplus = alloc_bonds
-        else:
-            surplus = max(alloc_bonds - 1, 0)
-        alloc_bonds -= surplus
-        alloc_equity += surplus
-        alloc_new_db = max(0, alloc_db - alloc_existing_db) # Eliminate negative values from fp rounding errors.
-        purchase_income_annuity = alloc_new_db * results['nv']
-
-        try:
-            aa_equity = alloc_equity / (alloc_equity + alloc_bonds + alloc_lm_bonds)
-        except ZeroDivisionError:
-            aa_equity = 1
-        aa_bonds = 1 - aa_equity
-
-        total_ret = alloc_contrib * future_growth_try + alloc_equity * equity_ret + alloc_bonds * bonds_ret + \
-            alloc_lm_bonds * lm_bonds_ret + alloc_db * lm_bonds_ret
-        total_var = alloc_contrib ** 2 * self.contribution_vol ** 2 + \
-            alloc_equity ** 2 * equity_vol ** 2 + \
-            alloc_bonds ** 2 * bonds_vol ** 2 + \
-            2 * alloc_contrib * alloc_equity * self.contribution_vol * equity_vol + \
-            2 * alloc_contrib * alloc_bonds * self.contribution_vol * bonds_vol + \
-            2 * alloc_equity * alloc_bonds * equity_vol * bonds_vol
-        total_vol = sqrt(total_var)
-
-        periodic_ret = (1 + self.geomean(total_ret, total_vol)) ** (1 / 12.0)
         lo = 0
-        hi = 1
+        hi = 2 # First mid will be 1.
         while hi - lo > 0.000001:
-            c = (hi + lo) / 2.0
-            p = 1
-            for m in range(int(ceil((self.pre_retirement_years + retirement_life_expectancy) * 12))):
-                p *= periodic_ret
-                if m >= self.pre_retirement_years * 12:
-                    p -= c
-                if p < 0:
-                    break
-            if p < 0:
-                hi = c
+
+            mid = (hi + lo) / 2.0
+            w_alloc = list(wi * mid for wi in w)
+            w_alloc[stocks_index] = 0
+            w_alloc[contrib_index] = w_prime[contrib_index]
+            w_alloc[stocks_index] = 1 - sum(w_alloc)
+            if data['purchase_income_annuity']:
+                annuitize_equity = min(max(0, (self.min_age - 50.0) / (80 - 50)), 1)
+                annuitize_fixed = min(max(0, (self.min_age - 35.0) / (60 - 35)), 1)
             else:
-                lo = c
-        consume = c * 12 * results['nv']
+                annuitize_equity = 0
+                annuitize_fixed = 0
+            alloc_equity = min(max(0, w_alloc[stocks_index] * (1 - annuitize_equity)), 1)
+            alloc_bonds = min(max(0, w_alloc[bonds_index] * (1 - annuitize_fixed)), 1)
+            try:
+                alloc_contrib = results['nv_contributions'] / results['nv']
+            except:
+                alloc_contrib = 1
+            alloc_lm_bonds = min(max(0, w_alloc[risk_free_index] * (1 - annuitize_fixed)), 1)
+            alloc_db = 1 - alloc_equity - alloc_bonds - alloc_contrib - alloc_lm_bonds
+            try:
+                alloc_existing_db = results['nv_db'] / results['nv']
+            except ZeroDivisionError:
+                alloc_existing_db = 0
+            shortfall = alloc_db - alloc_existing_db
+            if data['purchase_income_annuity']:
+                shortfall = min(0, shortfall)
+            alloc_db -= shortfall
+            alloc_db = max(0, alloc_db) # Eliminate negative values from fp rounding errors.
+            alloc_lm_bonds += shortfall
+            if alloc_lm_bonds < 0:
+                surplus = alloc_lm_bonds
+            else:
+                surplus = max(alloc_lm_bonds - 1, 0)
+            alloc_lm_bonds -= surplus
+            alloc_bonds += surplus
+            if alloc_bonds < 0:
+                surplus = alloc_bonds
+            else:
+                surplus = max(alloc_bonds - 1, 0)
+            alloc_bonds -= surplus
+            alloc_equity += surplus
+            alloc_new_db = max(0, alloc_db - alloc_existing_db) # Eliminate negative values from fp rounding errors.
+            purchase_income_annuity = alloc_new_db * results['nv']
+
+            try:
+                aa_equity = alloc_equity / (alloc_equity + alloc_bonds + alloc_lm_bonds)
+            except ZeroDivisionError:
+                aa_equity = 1
+            aa_bonds = 1 - aa_equity
+
+            total_ret = alloc_contrib * future_growth_try + alloc_equity * equity_ret + alloc_bonds * bonds_ret + \
+                alloc_lm_bonds * lm_bonds_ret + alloc_db * lm_bonds_ret
+            total_var = alloc_contrib ** 2 * self.contribution_vol ** 2 + \
+                alloc_equity ** 2 * equity_vol ** 2 + \
+                alloc_bonds ** 2 * bonds_vol ** 2 + \
+                2 * alloc_contrib * alloc_equity * cov_ec2 + \
+                2 * alloc_contrib * alloc_bonds * cov_bc2 + \
+                2 * alloc_equity * alloc_bonds * cov_eb2
+            total_vol = sqrt(total_var)
+
+            # We should use total_var, total_vol, and gamma to compute the
+            # annual consumption amount.  Merton's Continuous Time Finance
+            # provides solutions for a single risky asset with a finite
+            # time horizon, and many asset with a infinite time horizon,
+            # but not many assets with a finite time horizon. And even if
+            # such a solution existed we would also need to factor in
+            # pre-retirement years. Instead we compute the withdrawal
+            # amount for a compounding total portfolio.
+            periodic_ret = total_ret
+            try:
+                c = periodic_ret * (1 + periodic_ret) ** (retirement_life_expectancy - 1) / \
+                    ((1 + periodic_ret) ** retirement_life_expectancy - 1)
+            except DivisionByZeroError:
+                c = 1 / retirement_life_expectancy
+            c *= (1 + periodic_ret) ** self.pre_retirement_years
+            consume = c * results['nv']
+
+            if mid * consume > self.desired_income:
+                hi = mid
+            else:
+                if mid == 1:
+                    break # Early exit for common case.
+                lo = mid
 
         result = {
             'description': description,
@@ -451,6 +458,7 @@ class Alloc:
             'bonds_ret_pct': '{:.1f}'.format(bonds_ret * 100),
             'lm_bonds_ret_pct': '{:.1f}'.format(lm_bonds_ret * 100),
             'total_ret_pct': '{:.1f}'.format(total_ret * 100),
+            'total_vol_pct': '{:.1f}'.format(total_vol * 100),
             'alloc_equity': alloc_equity,
             'alloc_bonds': alloc_bonds,
             'alloc_lm_bonds': alloc_lm_bonds,
@@ -570,10 +578,10 @@ bonds,%(aa_bonds)f
                     dirname = self.plot(results['calc'][0])
                     results['dirurl'] = dirname.replace(STATIC_ROOT, STATIC_URL)
 
-                except self.IdenticalCovarError:
+                except LifeTable.UnableToAdjust:
 
-                    errors = alloc_form._errors.setdefault(NON_FIELD_ERRORS, ErrorList())  # Simplified in Django 1.7.
-                    errors.append('Two or more rows of covariance matrix appear equal under scaling. This means asset allocation has no unique solution.')
+                    errors = alloc_form._errors.setdefault('le_add2', ErrorList())  # Simplified in Django 1.7.
+                    errors.append('Unable to adjust life table.')
 
                     errors_present = True
 
@@ -581,6 +589,13 @@ bonds,%(aa_bonds)f
 
                     errors = alloc_form._errors.setdefault('date', ErrorList())  # Simplified in Django 1.7.
                     errors.append('No interest rate data available for the specified date.')
+
+                    errors_present = True
+
+                except self.IdenticalCovarError:
+
+                    errors = alloc_form._errors.setdefault(NON_FIELD_ERRORS, ErrorList())  # Simplified in Django 1.7.
+                    errors.append('Two or more rows of covariance matrix appear equal under scaling. This means asset allocation has no unique solution.')
 
                     errors_present = True
 

@@ -619,13 +619,20 @@ Inflation adjusted.
 <th class="right"> 100% </th>
 <th class="right"> {{ calc.total_ret_pct }}% </th>
 </tr>
+<tr>
+<td colspan=2 class="left"> Total volatility </td>
+<td class="right"> {{ calc.total_vol_pct }}% </td>
+</tr>
 </table>
 
 <br />
 
 Recommended annual retirement consumption amount: {{ calc.consume }}
 <div class="small">
-This is just a rough estimate.
+This is just a rough estimate. It is the amount that can be withdrawn
+over the planned retirement period from a portfolio growing at a fixed
+rate equal to the expected total rate of return. It does not take into
+account the effects of risk aversion.
 </div>
 
 {% if alloc_form.cleaned_data.purchase_income_annuity %}
