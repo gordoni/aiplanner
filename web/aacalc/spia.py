@@ -840,7 +840,7 @@ class YieldCurve:
                             line.pop()
                         offset = min(len(line) - 1, 2 + file_year_offset * 12 + date_month - 1)
                         spot_year = file_year + (offset - 2) / 12
-                        if spot_year < date_year:
+                        if spot_year < file_year:
                             raise self.NoData
                         spot_month = (offset - 2) % 12 + 1
                         spot_date = '%d-%02d' % (spot_year, spot_month)
