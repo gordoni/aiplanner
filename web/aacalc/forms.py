@@ -516,7 +516,7 @@ class AllocForm(Form):
         if sex2 == None and age2 != None or sex2 != None and age2 == None:
             raise ValidationError('Invalid spouse/partner.')
         if sex2 == None and any((db['who'] == 'spouse' or float(db['joint_payout_pct']) != 0) and (float(db['amount']) != 0) for db in cleaned_data['db']):
-            raise ValidationError('Spousal defind benefits but no spouse present')
+            raise ValidationError('Spousal defined benefits but no spouse present')
         return cleaned_data
 
     class DbForm(Form):

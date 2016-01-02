@@ -42,10 +42,10 @@ class Alloc:
         return {
             'sex': 'male',
             'age': 50,
-            'le_add': 8,
+            'le_add': 6,
             'sex2': None,
             'age2': None,
-            'le_add2': 8,
+            'le_add2': 6,
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
 
             'db' : ({
@@ -117,7 +117,7 @@ class Alloc:
             'tax_rate_pct': 30,
             'p_roth_iras': 0,
             'p': 0,
-            'contribution': 10000,
+            'contribution': 2000,
             'contribution_growth_pct': 7,
             'contribution_vol_pct': 10,
             'equity_contribution_corr_pct': 0,
@@ -247,6 +247,38 @@ class Alloc:
 
         return results, display
 
+    def consume_factor(self, alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
+            future_growth, equity_ret, bonds_ret, lm_bonds_ret, \
+            equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2, retirement_life_expectancy):
+
+        total_ret = alloc_contrib * future_growth + alloc_equity * equity_ret + alloc_bonds * bonds_ret + \
+            alloc_lm_bonds * lm_bonds_ret + alloc_db * lm_bonds_ret
+        total_var = alloc_contrib ** 2 * self.contribution_vol ** 2 + \
+            alloc_equity ** 2 * equity_vol ** 2 + \
+            alloc_bonds ** 2 * bonds_vol ** 2 + \
+            2 * alloc_contrib * alloc_equity * cov_ec2 + \
+            2 * alloc_contrib * alloc_bonds * cov_bc2 + \
+            2 * alloc_equity * alloc_bonds * cov_eb2
+        total_vol = sqrt(total_var)
+
+        # We should use total_var, total_vol, and gamma to compute the
+        # annual consumption amount.  Merton's Continuous Time Finance
+        # provides solutions for a single risky asset with a finite
+        # time horizon, and many asset with a infinite time horizon,
+        # but not many assets with a finite time horizon. And even if
+        # such a solution existed we would also need to factor in
+        # pre-retirement years. Instead we compute the withdrawal
+        # amount for a compounding total portfolio.
+        periodic_ret = self.geomean(total_ret, total_vol)
+        try:
+            c_factor = periodic_ret * (1 + periodic_ret) ** (retirement_life_expectancy - 1) / \
+                ((1 + periodic_ret) ** retirement_life_expectancy - 1)
+        except DivisionByZeroError:
+            c_factor = 1 / retirement_life_expectancy
+        c_factor *= (1 + periodic_ret) ** self.pre_retirement_years
+
+        return c_factor, total_ret, total_vol
+
     def calc(self, description, factor, data, results):
 
         payout_delay = self.pre_retirement_years * 12
@@ -316,93 +348,68 @@ class Alloc:
         w_prime[contrib_index] = 0
         w_prime[contrib_index] = 1 - sum(w_prime)
 
-        lo = 0
-        hi = 2 # First mid will be 1.
-        while hi - lo > 0.000001:
+        if data['purchase_income_annuity']:
+            annuitize_equity = min(max(0, (self.min_age - 50.0) / (80 - 50)), 1)
+            annuitize_fixed = min(max(0, (self.min_age - 35.0) / (60 - 35)), 1)
+        else:
+            annuitize_equity = 0
+            annuitize_fixed = 0
+        alloc_equity = min(max(0, w_prime[stocks_index] * (1 - annuitize_equity)), 1)
+        alloc_bonds = min(max(0, w_prime[bonds_index] * (1 - annuitize_fixed)), 1)
+        try:
+            alloc_contrib = results['nv_contributions'] / results['nv']
+        except:
+            alloc_contrib = 1
+        alloc_lm_bonds = min(max(0, w_prime[risk_free_index] * (1 - annuitize_fixed)), 1)
+        alloc_db = 1 - alloc_equity - alloc_bonds - alloc_contrib - alloc_lm_bonds
+        try:
+            alloc_existing_db = results['nv_db'] / results['nv']
+        except ZeroDivisionError:
+            alloc_existing_db = 0
+        shortfall = alloc_db - alloc_existing_db
+        if data['purchase_income_annuity']:
+            shortfall = min(0, shortfall)
+        alloc_db -= shortfall
+        alloc_db = max(0, alloc_db) # Eliminate negative values from fp rounding errors.
+        alloc_lm_bonds += shortfall
+        if alloc_lm_bonds < 0:
+            surplus = alloc_lm_bonds
+        else:
+            surplus = max(alloc_lm_bonds - 1, 0)
+        alloc_lm_bonds -= surplus
+        alloc_bonds += surplus
+        if alloc_bonds < 0:
+            surplus = alloc_bonds
+        else:
+            surplus = max(alloc_bonds - 1, 0)
+        alloc_bonds -= surplus
+        alloc_equity += surplus
+        alloc_new_db = max(0, alloc_db - alloc_existing_db) # Eliminate negative values from fp rounding errors.
 
-            mid = (hi + lo) / 2.0
-            w_alloc = list(wi * mid for wi in w)
-            w_alloc[stocks_index] = 0
-            w_alloc[contrib_index] = w_prime[contrib_index]
-            w_alloc[stocks_index] = 1 - sum(w_alloc)
-            if data['purchase_income_annuity']:
-                annuitize_equity = min(max(0, (self.min_age - 50.0) / (80 - 50)), 1)
-                annuitize_fixed = min(max(0, (self.min_age - 35.0) / (60 - 35)), 1)
-            else:
-                annuitize_equity = 0
-                annuitize_fixed = 0
-            alloc_equity = min(max(0, w_alloc[stocks_index] * (1 - annuitize_equity)), 1)
-            alloc_bonds = min(max(0, w_alloc[bonds_index] * (1 - annuitize_fixed)), 1)
-            try:
-                alloc_contrib = results['nv_contributions'] / results['nv']
-            except:
-                alloc_contrib = 1
-            alloc_lm_bonds = min(max(0, w_alloc[risk_free_index] * (1 - annuitize_fixed)), 1)
-            alloc_db = 1 - alloc_equity - alloc_bonds - alloc_contrib - alloc_lm_bonds
-            try:
-                alloc_existing_db = results['nv_db'] / results['nv']
-            except ZeroDivisionError:
-                alloc_existing_db = 0
-            shortfall = alloc_db - alloc_existing_db
-            if data['purchase_income_annuity']:
-                shortfall = min(0, shortfall)
-            alloc_db -= shortfall
-            alloc_db = max(0, alloc_db) # Eliminate negative values from fp rounding errors.
-            alloc_lm_bonds += shortfall
-            if alloc_lm_bonds < 0:
-                surplus = alloc_lm_bonds
-            else:
-                surplus = max(alloc_lm_bonds - 1, 0)
-            alloc_lm_bonds -= surplus
-            alloc_bonds += surplus
-            if alloc_bonds < 0:
-                surplus = alloc_bonds
-            else:
-                surplus = max(alloc_bonds - 1, 0)
-            alloc_bonds -= surplus
-            alloc_equity += surplus
-            alloc_new_db = max(0, alloc_db - alloc_existing_db) # Eliminate negative values from fp rounding errors.
-            purchase_income_annuity = alloc_new_db * results['nv']
+        c_factor, total_ret, total_vol = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
+            future_growth_try, equity_ret, bonds_ret, lm_bonds_ret, \
+            equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2, retirement_life_expectancy)
+        consume = c_factor * results['nv']
 
-            try:
-                aa_equity = alloc_equity / (alloc_equity + alloc_bonds + alloc_lm_bonds)
-            except ZeroDivisionError:
-                aa_equity = 1
-            aa_bonds = 1 - aa_equity
+        if consume > self.desired_income:
+            ratio = self.desired_income / consume
+            alloc_bonds *= ratio
+            alloc_lm_bonds *= ratio
+            alloc_new_db *= ratio
+            alloc_equity = 1 - (alloc_contrib + alloc_bonds + alloc_lm_bonds + alloc_existing_db + alloc_new_db)
 
-            total_ret = alloc_contrib * future_growth_try + alloc_equity * equity_ret + alloc_bonds * bonds_ret + \
-                alloc_lm_bonds * lm_bonds_ret + alloc_db * lm_bonds_ret
-            total_var = alloc_contrib ** 2 * self.contribution_vol ** 2 + \
-                alloc_equity ** 2 * equity_vol ** 2 + \
-                alloc_bonds ** 2 * bonds_vol ** 2 + \
-                2 * alloc_contrib * alloc_equity * cov_ec2 + \
-                2 * alloc_contrib * alloc_bonds * cov_bc2 + \
-                2 * alloc_equity * alloc_bonds * cov_eb2
-            total_vol = sqrt(total_var)
+        c_factor, total_ret, total_vol = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
+            future_growth_try, equity_ret, bonds_ret, lm_bonds_ret, \
+            equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2, retirement_life_expectancy)
+        consume = c_factor * results['nv']
 
-            # We should use total_var, total_vol, and gamma to compute the
-            # annual consumption amount.  Merton's Continuous Time Finance
-            # provides solutions for a single risky asset with a finite
-            # time horizon, and many asset with a infinite time horizon,
-            # but not many assets with a finite time horizon. And even if
-            # such a solution existed we would also need to factor in
-            # pre-retirement years. Instead we compute the withdrawal
-            # amount for a compounding total portfolio.
-            periodic_ret = total_ret
-            try:
-                c = periodic_ret * (1 + periodic_ret) ** (retirement_life_expectancy - 1) / \
-                    ((1 + periodic_ret) ** retirement_life_expectancy - 1)
-            except DivisionByZeroError:
-                c = 1 / retirement_life_expectancy
-            c *= (1 + periodic_ret) ** self.pre_retirement_years
-            consume = c * results['nv']
+        try:
+            aa_equity = alloc_equity / (alloc_equity + alloc_bonds + alloc_lm_bonds)
+        except ZeroDivisionError:
+            aa_equity = 1
+        aa_bonds = 1 - aa_equity
 
-            if mid * consume > self.desired_income:
-                hi = mid
-            else:
-                if mid == 1:
-                    break # Early exit for common case.
-                lo = mid
+        purchase_income_annuity = alloc_new_db * results['nv']
 
         result = {
             'description': description,
@@ -470,6 +477,77 @@ class Alloc:
         }
         return result
 
+    def compute_results(self, data):
+
+        results = {}
+
+        self.date_str = data['date']
+        self.yield_curve_real = YieldCurve('real', self.date_str)
+        self.yield_curve_nominal = YieldCurve('nominal', self.date_str)
+        self.yield_curve_zero = YieldCurve('fixed', self.date_str)
+
+        if self.yield_curve_real.yield_curve_date == self.yield_curve_nominal.yield_curve_date:
+            results['yield_curve_date'] = self.yield_curve_real.yield_curve_date;
+        else:
+            results['yield_curve_date'] = self.yield_curve_real.yield_curve_date + ' real, ' + \
+                self.yield_curve_nominal.yield_curve_date + ' nominal';
+
+        table = 'ssa_cohort'
+
+        sex = data['sex']
+        self.age = float(data['age'])
+        self.le_add = float(data['le_add'])
+        self.life_table = LifeTable(table, sex, self.age, le_add = self.le_add, date_str = self.date_str)
+
+        sex2 = data['sex2']
+        if sex2 == None:
+            self.life_table2 = None
+        else:
+            self.age2 = float(data['age2']);
+            self.le_add2 = float(data['le_add2'])
+            self.life_table2 = LifeTable(table, sex2, self.age2, le_add = self.le_add2, date_str = self.date_str)
+
+        self.db = data['db']
+        self.traditional = float(data['p_traditional_iras'])
+        self.tax_rate = float(data['tax_rate_pct']) / 100
+        self.npv_roth = float(data['p_roth_iras'])
+        self.npv_taxable = float(data['p'])
+        self.contribution = float(data['contribution'])
+        self.contribution_growth = float(data['contribution_growth_pct']) / 100
+        self.contribution_vol = float(data['contribution_vol_pct']) / 100
+        self.pre_retirement_years = max(0, float(data['retirement_age']) - self.age)
+        self.joint_income = float(data['joint_income_pct']) / 100
+        self.desired_income = float(data['desired_income'])
+
+        self.period_certain = self.pre_retirement_years
+            # For planning purposes when computing the npv of defined benefits
+            # and contributions we need to assume we will reach retirement.
+
+        self.frequency = 12 # Makes NPV more accurate.
+        self.cpi_adjust = 'calendar'
+
+        npv_results, npv_display = self.value_table(schedule = self.yield_curve_schedule(self.yield_curve_zero))
+        results['present'] = npv_display
+        results['db'] = []
+        for db in npv_display['db']:
+            results['db'].append({'present': db})
+        #for i, db in enumerate(future_display['db']):
+        #    results['db'][i]['future'] = db
+
+        if sex2 == None:
+            self.min_age = self.age
+        else:
+            self.min_age = min(self.age, self.age2)
+        factor = norm.ppf(0.5 + float(data['confidence_pct']) / 100 / 2)
+        factor = float(factor) # De-numpyfy.
+        results['calc'] = (
+            self.calc('Baseline estimate', 0, data, npv_results),
+            self.calc('Low estimate', - factor, data, npv_results),
+            self.calc('High estimate', factor, data, npv_results),
+        )
+
+        return results
+
     def plot(self, result):
         umask(0077)
         parent = STATIC_ROOT + 'results'
@@ -510,71 +588,7 @@ bonds,%(aa_bonds)f
                 try:
 
                     data = alloc_form.cleaned_data
-                    self.date_str = data['date']
-                    self.yield_curve_real = YieldCurve('real', self.date_str)
-                    self.yield_curve_nominal = YieldCurve('nominal', self.date_str)
-                    self.yield_curve_zero = YieldCurve('fixed', self.date_str)
-
-                    if self.yield_curve_real.yield_curve_date == self.yield_curve_nominal.yield_curve_date:
-                        results['yield_curve_date'] = self.yield_curve_real.yield_curve_date;
-                    else:
-                        results['yield_curve_date'] = self.yield_curve_real.yield_curve_date + ' real, ' + \
-                            self.yield_curve_nominal.yield_curve_date + ' nominal';
-
-                    table = 'ssa_cohort'
-
-                    sex = data['sex']
-                    self.age = float(data['age'])
-                    self.le_add = float(data['le_add'])
-                    self.life_table = LifeTable(table, sex, self.age, le_add = self.le_add, date_str = self.date_str)
-
-                    sex2 = data['sex2']
-                    if sex2 == None:
-                        self.life_table2 = None
-                    else:
-                        self.age2 = float(data['age2']);
-                        self.le_add2 = float(data['le_add2'])
-                        self.life_table2 = LifeTable(table, sex2, self.age2, le_add = self.le_add2, date_str = self.date_str)
-
-                    self.db = data['db']
-                    self.traditional = float(data['p_traditional_iras'])
-                    self.tax_rate = float(data['tax_rate_pct']) / 100
-                    self.npv_roth = float(data['p_roth_iras'])
-                    self.npv_taxable = float(data['p'])
-                    self.contribution = float(data['contribution'])
-                    self.contribution_growth = float(data['contribution_growth_pct']) / 100
-                    self.contribution_vol = float(data['contribution_vol_pct']) / 100
-                    self.pre_retirement_years = max(0, float(data['retirement_age']) - self.age)
-                    self.joint_income = float(data['joint_income_pct']) / 100
-                    self.desired_income = float(data['desired_income'])
-
-                    self.period_certain = self.pre_retirement_years
-                        # For planning purposes when computing the npv of defined benefits
-                        # and contributions we need to assume we will reach retirement.
-
-                    self.frequency = 12 # Makes NPV more accurate.
-                    self.cpi_adjust = 'calendar'
-
-                    npv_results, npv_display = self.value_table(schedule = self.yield_curve_schedule(self.yield_curve_zero))
-                    results['present'] = npv_display
-                    results['db'] = []
-                    for db in npv_display['db']:
-                        results['db'].append({'present': db})
-                    #for i, db in enumerate(future_display['db']):
-                    #    results['db'][i]['future'] = db
-
-                    if sex2 == None:
-                        self.min_age = self.age
-                    else:
-                        self.min_age = min(self.age, self.age2)
-                    factor = norm.ppf(0.5 + float(data['confidence_pct']) / 100 / 2)
-                    factor = float(factor) # De-numpyfy.
-                    results['calc'] = (
-                        self.calc('Baseline estimate', 0, data, npv_results),
-                        self.calc('Low estimate', - factor, data, npv_results),
-                        self.calc('High estimate', factor, data, npv_results),
-                    )
-
+                    results = self.compute_results(data)
                     dirname = self.plot(results['calc'][0])
                     results['dirurl'] = dirname.replace(STATIC_ROOT, STATIC_URL)
 

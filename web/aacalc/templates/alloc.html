@@ -118,9 +118,10 @@ Additional years to plan for beyond life expectancy for self: {{ alloc_form.le_a
 {{ alloc_form.le_add.errors }}
 {{ alloc_form.le_add2.errors }}
 <div class="small">
-We've picked reasonable defaults, but you may change these values,
-possibly even making them negative, if you feel you are in exceptional
-good or bad health.
+You can change these values, possibly even making them negative, if
+you feel you are in exceptional good or bad health. Reasonable default
+values are 6 years, reduced by 1 year for every decade you are past
+your 60's.
 </div>
 
 </div>
@@ -238,8 +239,9 @@ Relative income required when one party deceased: {{ alloc_form.joint_income_pct
 <br />
 Income required to have "won the game": {{ alloc_form.desired_income }}
 <div class="small">
-Assets required to support consumption above this level are allocated to stocks.
-Mathematically we should, but don't, support increasing the base stock allocation when you have won the game.
+Assets required to support consumption above this level are allocated
+to stocks.  We should really allow the use of a more complex utility
+function in this case.
 </div>
 <br />
 Permit recommendation of income annuities: {{ alloc_form.purchase_income_annuity }}
