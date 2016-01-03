@@ -222,12 +222,12 @@ body{
 .doc table {
     margin: 1em auto;
     border-collapse: collapse;
+    text-align: center;
 }
 
-.doc td {
+.doc td, .doc th {
     border: 1px solid black;
     padding: 5px;
-    text-align: center;
 }
 
 .doc dt {

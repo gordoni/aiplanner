@@ -43,7 +43,7 @@ class Alloc:
             'sex': 'male',
             'age': 50,
             'le_add': 6,
-            'sex2': '',
+            'sex2': None,
             'age2': '',
             'le_add2': 6,
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
@@ -415,6 +415,8 @@ class Alloc:
             equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2, retirement_life_expectancy)
         consume = c_factor * results['nv']
 
+        alloc_equity = max(0, alloc_equity) # Eliminate negative values from fp rounding errors.
+
         try:
             aa_equity = alloc_equity / (alloc_equity + alloc_bonds + alloc_lm_bonds)
         except ZeroDivisionError:
@@ -530,6 +532,8 @@ class Alloc:
         self.pre_retirement_years = max(0, float(data['retirement_age']) - self.age)
         self.joint_income = float(data['joint_income_pct']) / 100
         self.desired_income = float(data['desired_income'])
+
+        results['pre_retirement_years'] = '{:.1f}'.format(self.pre_retirement_years)
 
         self.period_certain = self.pre_retirement_years
             # For planning purposes when computing the npv of defined benefits

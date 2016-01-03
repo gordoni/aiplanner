@@ -3,7 +3,7 @@
 {% comment %}
 
 AACalc - Asset Allocation Calculator
-Copyright (C) 2009, 2011-2015 Gordon Irlam
+Copyright (C) 2009, 2011-2016 Gordon Irlam
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -59,25 +59,26 @@ Several things set this calculator apart:
 
 <ul>
 
-<li> It takes a balance sheet approach. Asset allocation can't be
+<li> A balance sheet approach - Asset allocation can't be
 performed in isolation, but must be performed by taking into account
 the presence and size of Social Security, Pensions, 401(k)s, and
-income annuities, as well as any anticipated future retirement
-contributions. </li>
-
-<li> It considers as a risk free asset, a liability matching bond;
-that is an inflation indexed zero coupon bond with a duration matching
-that of anticipated retirement cash flows. Such bonds may or may not
-be available for purchase, but serve as a benchmark against which
-other asset classes are measured. </li>
-
-<li> It handles future contributions by suppposing a discount rate for
-them that gives the desired outcome that they neither need to be
-increased nor decreased. </li>
-
-<li> It optionally recommends the purchase of inflation indexed income
-annuities; that is single premium immediate annuuities or deferred
 income annuities. </li>
+
+<li> Future contributions are taken into consideration - Future
+contributions are handled by entering their expected annual amount,
+growth rate, and volatility. </li>
+
+<li> Liability matching bonds are recommended - Inflation indexed zero
+coupon bond with a duration matching that of anticipated retirement
+cash flows are used as the risk free asset. </li>
+
+<li> Income annuities are recommended - The asset allocator optionally
+recommends the purchase of inflation indexed income annuities; that is
+single premium immediate annuities or deferred income annuities. </li>
+
+<li> Cross validated - Recommendations have been
+<a href="{% url 'docs' 'validation' %}">cross validated</a> with a
+second asset allocator that uses stochastic dynamic programming. </li>
 
 </ul>
 
@@ -118,10 +119,10 @@ Additional years to plan for beyond life expectancy for self: {{ alloc_form.le_a
 {{ alloc_form.le_add.errors }}
 {{ alloc_form.le_add2.errors }}
 <div class="small">
-You can change these values, possibly even making them negative, if
-you feel you are in exceptional good or bad health. Reasonable default
-values are 6 years, reduced by 1 year for every decade you are past
-your 60's.
+You can change these values if you feel you are in exceptional good or
+bad health. You may even make them negative. Reasonable default values
+are 6 years, reduced by 1 year for every decade you are past your
+60's.
 </div>
 
 </div>
@@ -172,7 +173,7 @@ Defined benefits:
 {% endfor %}
 <tr>
 <td colspan=6 class="small left">
-Starting age is starting age of the owner.
+Starting age is that of the owner.
 Contingent: payout reduced on death of either party.
 Survivor: payout reduced only on death of the owner.
 </td>
@@ -200,7 +201,8 @@ Taxable retirement savings size: {{ alloc_form.p }}
 {{ alloc_form.p.errors }}
 <div class="small">
 You may want to reduce this last value slightly to reflect the effects of taxation.
-Variable annuities are not recommended, but should be handled similarly to pre-tax investments.
+Variable annuities are not recommended as an investment vehicle, but
+should be handled similarly to pre-tax investments.
 </div>
 <br />
 Pre-retirement annual contribution amount (irrelevant if retired):
@@ -218,7 +220,7 @@ Correlation with bond returns: {{ alloc_form.bonds_contribution_corr_pct }}%
 {{ alloc_form.bonds_contribution_corr_pct.errors }}
 <div class="small">
 Contribution amount is assumed to be post tax, and should consist only
-of new money invested, not the payout from any existing pre-retirement
+of new money contributed, not the payout from any existing pre-retirement
 defined benefits. A growth rate of 7% represents a doubling of real
 contributions every 10 years.  Remember to take into account life
 events such as promotions, paying off a mortgage, or children leaving
@@ -242,13 +244,14 @@ Relative income required when one party deceased: {{ alloc_form.joint_income_pct
 Income required to have "won the game": {{ alloc_form.desired_income }}
 <div class="small">
 Assets required to support consumption above this level are allocated
-to stocks.  We should really allow the use of a more complex utility
-function in this case.
+to stocks.
 </div>
 <br />
 Permit recommendation of income annuities: {{ alloc_form.purchase_income_annuity }}
 {{ alloc_form.purchase_income_anuity.errors }}
-<br />
+<div class="small">
+Income annuities only make sense if you are in good health.
+</div>
 <br />
 We do not support the ability to leave a specific target bequest.
 
@@ -280,7 +283,7 @@ Estimated U.S. market average values for 1927-2014 are 3.2% and
 year constant maturity Treasuries were projected to earn 0.4% above
 the Survey of Professional forecasters 10 year inflation rate. We
 estimate the premium of an average bond portfolio over 10 year
-constant maturity Treasuries is 0.7%.
+constant maturity Treasuries is 0.7%, making a total of 1.1%.
 <br />
 <br />
 <div class="bold">Using the default parameters no regular bonds will
@@ -313,7 +316,8 @@ confidence interval for the equity return.
 Equity and bond management fee: {{ alloc_form.expense_pct }}%
 {{ alloc_form.expense_pct.errors }}
 <div class="small">
-A value around 0.1% is typical for a low cost provider such as Vanguard.
+A value around 0.1% is typical for a low cost provider such
+as <a href="http://www.vanguard.com/">Vanguard</a>.
 </div>
 
 <br />
@@ -364,12 +368,25 @@ We recommend
 purchasing an income annuity of {{ results.calc.0.purchase_income_annuity }} and then adopting
 {% endif %}
 a {{ results.calc.0.aa_equity_pct }}/{{ results.calc.0.aa_bonds_pct }}
-stock/bond asset allocation across all investment assets.
+stock/bond asset allocation.
 <div class="small">
-This recommendation does not take into account your risk rolerance,
-and you might want to adopt a lower asset allocation if you feel you
-can not psychologically handle the volatililty associated with the
+Asset allocation is between stocks and regular bonds plus liability
+matching bonds.
+<br />
+The recommendation does not take into account your risk tolerance.
+You might want to adopt a lower asset allocation if you feel you
+can not psychologically handle the volatility associated with the
 recommended asset allocation.
+<br />
+Stock holdings should be diversified. At least 20 different
+stocks. Preferably many more. Such diversification can be obtained
+using a low cost index fund.
+<br />
+Regular bond holdings should be diversified. Again an index fund
+suffices.
+<br />
+Liability matching bonds should be inflation indexed and have a
+duration of about {{ results.calc.0.lm_bonds_duration }} years.
 </div>
 
 <br />
@@ -378,17 +395,20 @@ With about {{ alloc_form.cleaned_data.confidence_pct }}% confidence
 the proportion of stocks recommended is in the range
 {{ results.calc.1.aa_equity_pct }}% to {{ results.calc.2.aa_equity_pct }}%.
 <div class="small">
-For confidence intervals in excess of about 95% the computed lower
-bound will be lower than it should be. This is because demand side
-effects mean we can be confident the return for equities exceeds that
-of bonds.
+This range can be very large as a result of intrinsic uncertainty in
+the expected premium of equities over bonds given only roughly 100
+years of historical data and a high volatility.
+<br /> For confidence intervals in excess of about 95% the computed
+lower bound will be lower than it should be. This is because demand
+side effects mean we can be confident the return for equities exceeds
+that of bonds.
 </div>
 
 <br />
 
 The amount you should consume during retirement varies from year to
 year. Currently it is recommended
-you should consume about {{ results.calc.0.consume }} per year.
+you should consume around {{ results.calc.0.consume }} per year.
 
 <br />
 <br />
@@ -466,11 +486,12 @@ real interest rate adjusted
 
 <br />
 
-Retirement additional life expectancy for planning purposes: {{ results.calc.0.retirement_life_expectancy }} years
-
+Years until retirement: {{ results.pre_retirement_years }}
 <br />
-
-Inflation indexed liability matching bonds expected arithmetic real return: {{ results.calc.0.lm_bonds_ret_pct }}%
+Retirement additional life expectancy for planning purposes: {{ results.calc.0.retirement_life_expectancy }} years
+<br />
+Liability matching bonds expected arithmetic real return: {{ results.calc.0.lm_bonds_ret_pct }}%
+<br />
 Macaulay duration: {{ results.calc.0.lm_bonds_duration }} years
 <div class="small">
 Computed from mortality table and real yield curve assuming level
@@ -492,8 +513,8 @@ Geometric real return on equities: {{ calc.equity_gm_pct }}% Bonds: {{ calc.bond
 <br />
 <br />
 
-By trial and error we determined we should assume a future contributions discount rate, d = {{ calc.future_growth_try_pct }}%
-Let's see how this works out...
+By trial and error we determined that we should assume a future
+contributions discount rate, d = {{ calc.future_growth_try_pct }}%
 
 <br />
 <br />
@@ -515,20 +536,23 @@ Computed assuming liability matching bonds and defined benefits are risk free us
 </tr>
 </table>
 
-<br />
-
-On the other hand, the discounted value of future contributions: {{ calc.discounted_contrib }}
-
-<br />
-
-Discounted future contributions as a proportion of revised total NPV: {{ calc.wc_discounted }}%
+Don't be alarmed by negative values in the table above. We adjust for them later.
 
 <br />
 <br />
 
-The percentage holdings of discounted future contributions matching
-the recommended percentage is as it should be, since we can neither
-buy nor sell future contributions.
+Discounted value of future contributions: {{ calc.discounted_contrib }}
+
+<br />
+
+Discounted future contributions as a proportion of adjusted total NPV: {{ calc.wc_discounted }}%
+
+<br />
+<br />
+
+The percentage holdings of discounted future contributions matches the
+recommended percentage shown in the table above. This is as it should
+be, since we can neither buy nor sell future contributions.
 
 <br />
 <br />
@@ -555,11 +579,11 @@ The advantages of annuitizing the stock portion of a portfolio at
 advanced ages are well understood. What isn't well known is that there
 are advantages to annuitizing the bond portion of a portfolio at
 earlier ages. These ratios are the proportion of each portfolio
-holding type that we recommend be annuitized. Two things to beware. In
+holding type that we recommend be annuitized. There are some things to beware. In
 the US as of 2016 the Money's Worth Ratios for deferred income
 annuities were substantially worse than those of single premium
-immediate annuities, and it might seem odd to purchase a SPIA
-pre-retirement. And these recommendations are for a &gamma; of 4, and
+immediate annuities, but it might seem odd to purchase a SPIA
+pre-retirement. These recommendations are for a &gamma; of 4, and
 different recommendations would likely apply to a different &gamma;
 value.
 </div>
@@ -568,9 +592,9 @@ value.
 
 <br />
 
-Attempting to adjust for values outside the range 0-100%, the possibly having won
-the game, any existing defined benefits, and any income annuity
-purchases, produces the following recommendations.
+Attempting to adjust for values outside the range 0-100%, any existing
+defined benefits, any income annuity purchases, and the possibly
+having won the game, produces the following recommendations.
 
 <div class="small">
 We assume regular bonds are closest to liability matching bonds and
@@ -633,10 +657,9 @@ Inflation adjusted.
 
 Recommended annual retirement consumption amount: {{ calc.consume }}
 <div class="small">
-This is just a rough estimate. It is the amount that can be withdrawn
+This estimate is based on the amount that can be withdrawn
 over the planned retirement period from a portfolio growing at a fixed
-rate equal to the expected total rate of return. It does not take into
-account the effects of risk aversion.
+rate equal to the expected total rate of return.
 </div>
 
 {% if alloc_form.cleaned_data.purchase_income_annuity %}

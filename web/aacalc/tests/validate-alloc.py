@@ -39,9 +39,10 @@ tests = (
     (0.91, 43164, 41105, 'p=500k', {'p': 500000}),
     (1, 27801, 27490, 'stocks=8.7%+/-20%', {'equity_ret_pct': 8.7, 'equity_vol_pct': 20}),
     (0.88, 27212, 26901, 'bonds=3.2%+/-10%', {'bonds_ret_pct': 3, 'bonds_vol_pct': 10}),
-    (1, 32130, 26597, 'age=90, le_add=3, p=100k', {'age': 90, 'le_add': 4.5, 'p': 100000}),
-    (0.96, 36500, 37763, 'age=50, p=500k', {'age': 50, 'p': 500000, 'db': (db('self', 50, 15000), )}),
-    (1, float('nan'), 40133, 'age=50, retire=65, accumulate=3000*1.07^y', {'age': 50, 'retirement_age': 65, 'contribution': 3000, 'contribution_growth_pct': 7, 'contribution_vol_pct': 1}),
+    (1, 32127, 26596, 'age=90, le_add=3, p=100k', {'age': 90, 'le_add': 4.5, 'p': 100000}),
+    (0.91, 36455, 37848, 'age=50, p=500k', {'age': 50, 'p': 500000, 'db': (db('self', 50, 15000), )}),
+    (1, float('nan'), 40215, 'age=50, retire=65, accumulate=3000*1.07^y', {'age': 50, 'retirement_age': 65, 'contribution': 3000, 'contribution_growth_pct': 7, 'contribution_vol_pct': 1}),
+    (0.95, float('nan'), 68013, 'age=25, retire=65, accumulate=500*1.07^y', {'age': 25, 'retirement_age': 65, 'contribution': 500, 'contribution_growth_pct': 7, 'contribution_vol_pct': 1}),
     (0.82, 43583, 40436, 'desired=40k, p=500k', {'desired_income': 40000, 'p': 500000}),
     (1, 26276, 26468, 'female', {'sex': 'female'}),
     (1, 55449, 57665, 'sex2=female, p=500k', {'sex2': 'female', 'age2': 65, 'p': 500000, 'db': (db('self', 65, 15000), db('spouse', 65, 15000))}),
@@ -51,9 +52,10 @@ tests = (
     (0.53, 60936, 57208, 'p=1000k, gamma=6', {'p': 1000000, 'gamma': 6}),
     (0.68, 68327, 64719, 'p=1000k, stocks=8.7%+/-20%', {'p': 1000000, 'equity_ret_pct': 8.7, 'equity_vol_pct': 20}),
     (0.61, 68435, 65733, 'p=1000k, bonds=3.2%+/-10%', {'p': 1000000, 'bonds_ret_pct': 3.2, 'bonds_vol_pct': 10}),
-    (0.78, 77211, 60684, 'p=500k, le_add=3, age=90', {'age': 90, 'le_add': 3, 'p': 500000, }),
-    (0.65, 108004, 108980, 'p=2500k, age=50', {'age': 50, 'p': 2500000, }),
-    (0.75, float('nan'), 92364, 'p=1000k, age=50, retire=65, accumulate=3000*1.07^y', {'p': 1000000, 'age': 50, 'retirement_age': 65, 'contribution': 3000, 'contribution_growth_pct': 7, 'contribution_vol_pct': 1}),
+    (0.81, 77214, 60833, 'p=500k, age=90, le_add=3', {'age': 90, 'le_add': 3, 'p': 500000, }),
+    (0.61, 109213, 111104, 'p=2500k, age=50', {'age': 50, 'p': 2500000, }),
+    (0.70, float('nan'), 94490, 'p=1000k, age=50, retire=65, accumulate=3000*1.07^y', {'p': 1000000, 'age': 50, 'retirement_age': 65, 'contribution': 3000, 'contribution_growth_pct': 7, 'contribution_vol_pct': 1}),
+    (0.74, float('nan'), 112048, 'p=500k, age=25, retire=65, accumulate=500*1.07^y', {'p': 500000, 'age': 25, 'retirement_age': 65, 'contribution': 500, 'contribution_growth_pct': 7, 'contribution_vol_pct': 1}),
     (1, 143453, 175468, 'p=2500k, desired=40k', {'desired_income': 40000, 'p': 2500000}),
     (0.76, 63643, 61295, 'p=1000k, sex=female', {'p': 1000000, 'sex': 'female'}),
     (0.72, 142120, 142320, 'p=2500k, sex2=female', {'p': 2500000, 'sex2': 'female', 'age2': 65, 'db': (db('self', 65, 15000), db('spouse', 65, 15000))}),
@@ -68,8 +70,9 @@ for test in tests:
     params = dict(dict(default, date='2015-12-31', expense_pct=0, purchase_income_annuity=False, desired_income=1000000, \
         age=65, retirement_age=50, p=200000), **params)
     results = alloc.compute_results(params)
-    over = float(results['calc'][0]['consume'].replace(',', '')) / consume - 1
-    if not isnan(over):
-        overs.append(over)
-    print "{stocks:>4.0%} {calc[0][aa_equity]:>4.0%} {calc[1][aa_equity]:>4.0%}-{calc[2][aa_equity]:<4.0%} {consume:>7,.0f} {metric_combined:>7,.0f} {calc[0][consume]:>7} {over:>4.0%} {calc[1][consume]:>7}-{calc[2][consume]:<7} {desc}".format(stocks=stocks, consume=consume, metric_combined=metric_combined, desc=desc, over=over, **results)
+    over_aa = results['calc'][0]['aa_equity'] - stocks
+    over_consume = float(results['calc'][0]['consume'].replace(',', '')) / consume - 1
+    if not isnan(over_consume):
+        overs.append(over_consume)
+    print "{stocks:>4.0%} {calc[0][aa_equity]:>4.0%} {over_aa:>4.0%} {calc[1][aa_equity]:>4.0%}-{calc[2][aa_equity]:<4.0%} {consume:>7,.0f} {metric_combined:>7,.0f} {calc[0][consume]:>7} {over_consume:>4.0%} {calc[1][consume]:>7}-{calc[2][consume]:<7} {desc}".format(stocks=stocks, consume=consume, metric_combined=metric_combined, desc=desc, over_aa=over_aa, over_consume=over_consume, **results)
 print 'mean over-consume {:.0%}'.format(sum(overs) / len(overs))
