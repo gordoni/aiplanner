@@ -145,16 +145,18 @@ Defined benefits:
 <td> Starting age </th>
 <td> Annual amount </th>
 <td> Inflation indexed </th>
+<td> Period certain </td>
 <td> Death benefit <br /> Contingent/survivor payout </th>
 </tr>
 {% for db in alloc_form.db %}
 <tr>
-<td> {{ db.description }}
-<td> {{ db.who }}
-<td> {{ db.age }}
-<td> {{ db.amount }}
-<td> {{ db.inflation_indexed }}
-<td> {{ db.joint_type }} {{ db.joint_payout_pct }}%
+<td> {{ db.description }} </td>
+<td> {{ db.who }} </td>
+<td> {{ db.age }} </td>
+<td> {{ db.amount }} </td>
+<td> {{ db.inflation_indexed }} </td>
+<td> {{ db.period_certain }} </td>
+<td> {{ db.joint_type }} {{ db.joint_payout_pct }}% </td>
 </tr>
 <tr>
 <td colspan=6 class="left">
@@ -318,8 +320,8 @@ A value around 0.1% is typical for a low cost provider such as Vanguard.
 
 Calculation date: {{ alloc_form.date }}
 <div class="small">Determines interest rate yield curve.</span>
-{{ alloc_form.date.errors }}
 </div>
+{{ alloc_form.date.errors }}
 
 </div>
 
@@ -385,8 +387,8 @@ of bonds.
 <br />
 
 The amount you should consume during retirement varies from year to
-year. Currently it is recommended you should consume about
-{{ results.calc.0.consume }} per year.
+year. Currently it is recommended
+you should consume about {{ results.calc.0.consume }} per year.
 
 <br />
 <br />

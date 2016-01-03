@@ -153,3 +153,6 @@ TEMPLATE_CONTEXT_PROCESSORS = global_settings.TEMPLATE_CONTEXT_PROCESSORS + (
 )
 
 CSRF_FAILURE_VIEW = 'aacalc.views.csrf_failure.csrf_failure'
+
+# Top level directory containing executable scripts.
+AACALC_ROOT = '/home/ubuntu/aacalc/web'

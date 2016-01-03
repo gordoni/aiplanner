@@ -958,7 +958,10 @@ class YieldCurve:
         for i in range(len(forward_rates)):
             if self.spot_years[i] >= 15:
                 long_forward_rates.append(forward_rates[i])
-        long_forward_rate = sum(long_forward_rates) / len(long_forward_rates)
+        try:
+            long_forward_rate = sum(long_forward_rates) / len(long_forward_rates)
+        except ZeroDivisionError:
+            raise self.NoData
         forward_rates.extend([long_forward_rate] * (len(self.spot_years) - len(forward_rates)))
         for i in range(len(self.spot_years)):
             if self.spot_years[i] > long_years[self.interest_rate]:

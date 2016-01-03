@@ -30,7 +30,7 @@ from subprocess import check_call
 
 from aacalc.forms import AllocForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
-from settings import STATIC_ROOT, STATIC_URL
+from settings import AACALC_ROOT, STATIC_ROOT, STATIC_URL
 
 class Alloc:
 
@@ -43,8 +43,8 @@ class Alloc:
             'sex': 'male',
             'age': 50,
             'le_add': 6,
-            'sex2': None,
-            'age2': None,
+            'sex2': '',
+            'age2': '',
             'le_add2': 6,
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
 
@@ -54,6 +54,7 @@ class Alloc:
                 'age': 65,
                 'amount': 15000,
                 'inflation_indexed': True,
+                'period_certain': 0,
                 'joint_type': 'survivor',
                 'joint_payout_pct': 0,
             }, {
@@ -62,6 +63,7 @@ class Alloc:
                 'age': 65,
                 'amount': 0,
                 'inflation_indexed': True,
+                'period_certain': 0,
                 'joint_type': 'survivor',
                 'joint_payout_pct': 0,
             }, {
@@ -70,6 +72,7 @@ class Alloc:
                 'age': 65,
                 'amount': 0,
                 'inflation_indexed': True,
+                'period_certain': 0,
                 'joint_type': 'contingent',
                 'joint_payout_pct': 70,
             }, {
@@ -78,6 +81,7 @@ class Alloc:
                 'age': 65,
                 'amount': 0,
                 'inflation_indexed': False,
+                'period_certain': 0,
                 'joint_type': 'contingent',
                 'joint_payout_pct': 70,
             }, {
@@ -86,6 +90,7 @@ class Alloc:
                 'age': 65,
                 'amount': 0,
                 'inflation_indexed': True,
+                'period_certain': 0,
                 'joint_type': 'survivor',
                 'joint_payout_pct': 0,
             }, {
@@ -94,6 +99,7 @@ class Alloc:
                 'age': 65,
                 'amount': 0,
                 'inflation_indexed': True,
+                'period_certain': 0,
                 'joint_type': 'survivor',
                 'joint_payout_pct': 0,
             }, {
@@ -102,6 +108,7 @@ class Alloc:
                 'age': 65,
                 'amount': 0,
                 'inflation_indexed': True,
+                'period_certain': 0,
                 'joint_type': 'contingent',
                 'joint_payout_pct': 70,
             }, {
@@ -110,6 +117,7 @@ class Alloc:
                 'age': 65,
                 'amount': 0,
                 'inflation_indexed': False,
+                'period_certain': 0,
                 'joint_type': 'contingent',
                 'joint_payout_pct': 70,
             }),
@@ -209,13 +217,17 @@ class Alloc:
                 lt1 = self.life_table2
                 lt2 = self.life_table
 
-            payout_delay = max(0, float(db['age']) - starting_age) * 12
+            delay = float(db['age']) - starting_age
+            positive_delay = max(0, delay)
+            negative_delay = min(0, delay)
+            payout_delay = positive_delay * 12
+            period_certain = max(0, self.period_certain - positive_delay, float(db['period_certain']) + negative_delay)
             joint_payout_fraction = float(db['joint_payout_pct']) / 100
             joint_contingent = (db['joint_type'] == 'contingent')
 
             scenario = Scenario(yield_curve, payout_delay, None, None, 0, lt1, life_table2 = lt2, \
                 joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
-                period_certain = self.period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust, \
+                period_certain = period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust, \
                 schedule = schedule)
             price = scenario.price() * amount
             nv_db += price
@@ -395,7 +407,7 @@ class Alloc:
             ratio = self.desired_income / consume
             alloc_bonds *= ratio
             alloc_lm_bonds *= ratio
-            alloc_new_db *= ratio
+            alloc_new_db = max(0, alloc_db * ratio - alloc_existing_db)
             alloc_equity = 1 - (alloc_contrib + alloc_bonds + alloc_lm_bonds + alloc_existing_db + alloc_new_db)
 
         c_factor, total_ret, total_vol = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
@@ -568,7 +580,7 @@ stocks,%(aa_equity)f
 bonds,%(aa_bonds)f
 ''' % result)
         f.close()
-        cmd = __file__.replace('aacalc/views/alloc.py', 'plot.R')
+        cmd = AACALC_ROOT + '/plot.R'
         prefix = dirname + '/'
         check_call((cmd, '--args', prefix))
         return dirname

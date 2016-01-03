@@ -536,6 +536,9 @@ class AllocForm(Form):
             widget=TextInput(attrs={'class': 'p_input'}),
             min_value=0)
         inflation_indexed = BooleanField(required=False)
+        period_certain = DecimalField(
+            widget=TextInput(attrs={'class': 'small_numeric_input'}),
+            min_value=0)
         joint_type = ChoiceField(
             choices=(('contingent', ''), ('survivor', ''), ),
             widget=RadioSelect(renderer=HorizontalRadioRenderer))

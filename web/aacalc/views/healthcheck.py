@@ -20,6 +20,7 @@ from re import DOTALL, match
 from django.http import HttpResponse
 from django.test.client import RequestFactory
 
+from aacalc.views.alloc import Alloc, alloc
 from aacalc.views.le import le
 from aacalc.views.spia import default_spia_params, spia
 from aacalc.views.utils import default_params, run_response
@@ -75,6 +76,26 @@ def healthcheck(request):
     assert(100000 < int(premium1 + premium2) < 200000)
     quote = datetime.strptime(yield_curve_date, '%Y-%m').date()
     assert(0 <= (today - quote).days <= 80)
+
+    # Asset allocation.
+    params = Alloc().default_alloc_params()
+    params['p'] = 1000000
+    params['desired_income'] = 1000000
+    params['purchase_income_annuity'] = False
+    # No way to generate the appropriate POSTed parameter values for a formset. Set manually.
+    for i, db in enumerate(params['db']):
+        for k, v in db.iteritems():
+            params['form-%d-%s' % (i, k)] = v
+    params['form-TOTAL_FORMS'] = len(params['db'])
+    params['form-INITIAL_FORMS'] = len(params['db'])
+    params['form-MAX_NUM_FORMS'] = len(params['db'])
+    del params['db']
+    request = request_factory.post('/calculators/alloc', params)
+    response = alloc(request)
+    page = response.content
+    stocks, consume, _ = match('^.*We recommend\s+a (\d+)/\d+.*?consume about ((\d|,)+).*$', page, DOTALL).groups()
+    assert(40 < float(stocks) < 80)
+    assert(80000 < float(consume.replace(',', '')) < 110000)
 
     # Asset allocation.
     scenario_dict = dict(default_params)
