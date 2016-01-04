@@ -121,7 +121,7 @@ aer2014_actual_expected = {
         75: (None, None, 1.097, 1.217, ),
         80: (0.422, 0.823, 0.950, 1.316, ),
         85: (None, 0.631, 0.791, 1.086, ),
-        90: (None, 0.367, 1.794, 1.351, ),  # 1.793 is an outlier, might want to change it to the average value 1.137.
+        90: (None, 0.367, 1.794, 1.351, ),  # 1.794 is an outlier, might want to change it to the average value 1.137.
         95: (None, None, None, 0.931, ),
         100: (None, None, None, 1.337, ),
         'all': (0.451, 0.606, 1.137, 1.195, ),
