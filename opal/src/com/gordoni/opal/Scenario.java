@@ -862,14 +862,14 @@ public class Scenario
         private void dump_le() throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-le.csv"));
-                for (String table : Arrays.asList("ssa-cohort", "iam2012-basic-period", "iam2012-basic-period-aer2005_08", "ssa-period"))
+                for (String table : Arrays.asList("ssa-cohort", "iam2012-basic-period", "iam2012-basic-period-aer2005_08-summary", "iam2012-basic-period-aer2005_08-full", "ssa-period"))
                 {
-                        boolean iam_aer = table.equals("iam2012-basic-period-aer2005_08");
+                        boolean iam_aer = table.startsWith("iam2012-basic-period-aer2005_08");
                         VitalStats stats = new VitalStats(ss, config, hist, 1.0);
                         String keep_method = config.mortality_projection_method;
                         String keep_experience = config.annuity_mortality_experience;
                         config.mortality_projection_method = (table.startsWith("iam2012-basic-period") ? "g2" : "rate"); // Irrelevant for cohort.
-                        config.annuity_mortality_experience = (iam_aer ? "aer2005_08" : "none");
+                        config.annuity_mortality_experience = (iam_aer ? (table.endsWith("summary") ? "aer2005_08-summary" : "aer2005_08-full") : "none");
                         stats.compute_stats(iam_aer ? "iam2012-basic-period" : table, 1);
                         config.mortality_projection_method = keep_method;
                         config.annuity_mortality_experience = keep_experience;

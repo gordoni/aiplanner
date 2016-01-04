@@ -327,20 +327,28 @@ public class VitalStats
                         death_cohort = nearest_to_exact(death_cohort);
                 if (annuity_table && !config.annuity_mortality_experience.equals("none"))
                 {
-                        List<Double> aer = null;
-                        if (config.annuity_mortality_experience.equals("aer2005_08"))
-                                aer = sex.equals("male") ? hist.soa_aer2005_08_m : hist.soa_aer2005_08_f;
-                        else
-                                assert(false);
+                        Map<String, List<Double>> aer = sex.equals("male") ? hist.soa_aer2005_08_m : hist.soa_aer2005_08_f;
                         for (int i = 0; i < death_cohort.length; i++)
                         {
+                                String aer_key = null;
+                                if (config.annuity_mortality_experience.equals("aer2005_08-summary"))
+                                        aer_key = "all";
+                                else if (config.annuity_mortality_experience.equals("aer2005_08-full"))
+                                {
+                                        aer_key = Integer.toString(i);
+                                        if (!aer.containsKey(aer_key))
+                                                aer_key = "high";
+                                }
+                                else
+                                        assert(false);
+                                List<Double> aer_list = aer.get(aer_key);
                                 double contract_length = i - age;
                                 contract_length = Math.max(contract_length, 0);
-                                contract_length = Math.min(contract_length, aer.size() - 1);
+                                contract_length = Math.min(contract_length, aer_list.size() - 1);
                                 double ae_ratio;
-                                ae_ratio = aer.get((int) contract_length);
-                                if (!age_nearest && contract_length + 1 < aer.size())
-                                        ae_ratio = (ae_ratio + aer.get((int) contract_length + 1)) / 2;
+                                ae_ratio = aer_list.get((int) contract_length);
+                                if (!age_nearest && contract_length + 1 < aer_list.size())
+                                        ae_ratio = (ae_ratio + aer_list.get((int) contract_length + 1)) / 2;
                                 death_cohort[i] *= ae_ratio;
                         }
                 }

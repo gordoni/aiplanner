@@ -105,8 +105,8 @@ public class HistReturns
         public List<Double> soa_iam2012_basic_death_f = null;
         public List<Double> soa_projection_g2_m = null;
         public List<Double> soa_projection_g2_f = null;
-        public List<Double> soa_aer2005_08_m = null;
-        public List<Double> soa_aer2005_08_f = null;
+        public Map<String, List<Double>> soa_aer2005_08_m = null;
+        public Map<String, List<Double>> soa_aer2005_08_f = null;
 
         String find_subdir(String filename)
         {
@@ -524,31 +524,94 @@ public class HistReturns
                 return death;
         }
 
-        private List<Double> load_soa_aer(String filename) throws IOException
+        private Map<String, List<Double>> load_soa_aer(String filename) throws IOException
         {
                 BufferedReader in = buffered_reader(filename);
-                ArrayList<Double> a_e_list = new ArrayList<Double>();
-                int contract_years = 1;
-                double old_a_e = Double.NaN;
+                HashMap<String, List<Double>> a_e_map = new HashMap<String, List<Double>>();
                 String line = in.readLine();
+                line = in.readLine();
+                String[] years = line.split(",", -1);
+                assert(years[0].equals("years"));
+                int min_age = Integer.MAX_VALUE;
+                int max_age = Integer.MIN_VALUE;
                 while ((line = in.readLine()) != null)
                 {
                         String[] fields = line.split(",", -1);
-                        int years = Integer.parseInt(fields[0]);
-                        double a_e = Double.parseDouble(fields[1]);
-                        if (Double.isNaN(old_a_e))
-                                old_a_e = a_e;
-                        while (contract_years < years)
+                        assert(fields.length == years.length);
+                        String age = fields[0];
+                        if (!age.equals("all"))
                         {
-                                a_e_list.add(old_a_e);
-                                contract_years++;
+                                min_age = Math.min(min_age, Integer.parseInt(age));
+                                max_age = Math.max(max_age, Integer.parseInt(age));
                         }
-                        old_a_e = a_e;
+                        ArrayList<Double> a_e_list = new ArrayList<Double>();
+                        Double old_a_e = null;
+                        int contract_years = 1;
+                        for (int i = 1; i < years.length; i++)
+                        {
+                                int year = Integer.parseInt(years[i]);
+                                Double a_e;
+                                if (fields[i].equals(""))
+                                        a_e = null;
+                                else
+                                        a_e = Double.parseDouble(fields[i]);
+                                while (contract_years < year)
+                                {
+                                        a_e_list.add(old_a_e);
+                                        contract_years++;
+                                }
+                                old_a_e = a_e;
+                        }
+                        a_e_list.add(old_a_e);
+                        a_e_map.put(age, a_e_list);
                 }
-                a_e_list.add(old_a_e);
                 in.close();
 
-                return a_e_list;
+                // Fill in missing data.
+                List<Double> proto = a_e_map.get("all");
+                for (int i = 0; i < proto.size(); i++)
+                {
+                        Double prev = null;
+                        for (int age = max_age; age >= min_age; age--)
+                        {
+                                String age_str = Integer.toString(age);
+                                if (a_e_map.containsKey(age_str))
+                                {
+                                        List<Double> a_e_list = a_e_map.get(age_str);
+                                        if (a_e_list.get(i) == null)
+                                                a_e_list.set(i, prev);
+                                        else
+                                            prev = a_e_list.get(i);
+                                }
+                        }
+                        prev = null;
+                        for (int age = min_age; age <= max_age; age++)
+                        {
+                                String age_str = Integer.toString(age);
+                                if (a_e_map.containsKey(age_str))
+                                {
+                                        List<Double> a_e_list = a_e_map.get(age_str);
+                                        if (a_e_list.get(i) == null)
+                                                a_e_list.set(i, prev);
+                                        else
+                                                prev = a_e_list.get(i);
+                                }
+                        }
+                }
+
+                // Duplicate for all ages.
+                List<Double> prev = a_e_map.get(Integer.toString(min_age));
+                for (int age = 0; age <= max_age; age++)
+                {
+                        String age_str = Integer.toString(age);
+                        if (a_e_map.containsKey(age_str))
+                                prev = a_e_map.get(age_str);
+                        else
+                                a_e_map.put(age_str, prev);
+                }
+                a_e_map.put("high", prev);
+
+                return a_e_map;
         }
 
         public Map<String, double[]> real_annuity_price = new HashMap<String, double[]>();

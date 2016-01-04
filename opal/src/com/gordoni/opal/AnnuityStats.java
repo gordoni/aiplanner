@@ -82,13 +82,72 @@ public class AnnuityStats
                 in.close();
         }
 
-        private void rcmt() throws IOException, InterruptedException // R-CMT = real - constant maturity treasuries.
+        private void rcmt(int yield_curve_years) throws IOException, InterruptedException // R-CMT = real - constant maturity treasuries.
         {
                 dump_rcmt_params();
 
                 ss.subprocess("real_yield_curve.R", config.prefix);
 
                 load_rcmt();
+
+                real_yield_curve = project_curve(real_yield_curve, 15, yield_curve_years + 1); // Treasury method: project using average forward rate beyond 15 years.
+        }
+
+        private Map<Double, Double> spots_to_forwards(Map<Double, Double> spots)
+        {
+                Map<Double, Double> forwards = new HashMap<Double, Double>();
+                forwards.put(0.0, 0.0);
+                int count = 0;
+                double old_spot_rate = 0;
+                for (double maturity = 0.5; spots.containsKey(maturity); maturity += 0.5)
+                {
+                        count++;
+                        double new_spot_rate = spots.get(maturity) / 2;
+                        double forward_rate = Math.pow(1 + new_spot_rate, count) / Math.pow(1 + old_spot_rate, count - 1);
+                        forwards.put(maturity, (forward_rate - 1) * 2);
+                        old_spot_rate = new_spot_rate;
+                }
+
+                return forwards;
+        }
+
+        private Map<Double, Double> forwards_to_spots(Map<Double, Double> forwards)
+        {
+                Map<Double, Double> spots = new HashMap<Double, Double>();
+                spots.put(0.0, 0.0);
+                int count = 0;
+                double spot_rate = 1;
+                for (double maturity = 0.5; forwards.containsKey(maturity); maturity += 0.5)
+                {
+                        count++;
+                        double forward_rate = 1 + forwards.get(maturity) / 2;
+                        spot_rate = Math.pow(forward_rate * Math.pow(spot_rate, count - 1), 1.0 / count);
+                        spots.put(maturity, (spot_rate - 1) * 2);
+                }
+
+                return spots;
+        }
+
+        private Map<Double, Double> project_curve(Map<Double, Double> spots, int start_year, int yield_curve_years)
+        {
+                Map<Double, Double> forwards = spots_to_forwards(spots);
+
+                double count = 0;
+                double sum = 0;
+                double maturity = start_year;
+                for (; forwards.containsKey(maturity); maturity += 0.5)
+                {
+                        count++;
+                        sum += forwards.get(maturity);
+                }
+                double avg_rate = sum / count;
+
+                for (; maturity < yield_curve_years; maturity += 0.5)
+                {
+                        forwards.put(maturity, avg_rate);
+                }
+
+                return forwards_to_spots(forwards);
         }
 
         private Map<Double, Double> nominal_yield_curve = null;
@@ -132,7 +191,6 @@ public class AnnuityStats
         {
                 maturity = Math.round(maturity * 2) / 2.0; // Quotes are semi-annual.
                 maturity = Math.max(0, maturity);
-                maturity = Math.min(maturity, 30);
                 return Math.pow(1 + real_yield_curve.get(maturity) / 2, 2) - 1; // Treasury quotes are semi-annual values.
         }
 
@@ -249,7 +307,7 @@ public class AnnuityStats
                 this.table = table;
 
                 if (config.annuity_real_yield_curve != null)
-                        rcmt();
+                        rcmt(vital_stats.alive.length);
                 hqm();
 
                 if (config.sex2 != null)
