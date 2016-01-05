@@ -138,8 +138,8 @@ class Alloc:
 
             'equity_ret_pct': Decimal('7.2'),
             'equity_vol_pct': Decimal('17'),
-            'bonds_ret_pct': Decimal('1.1'),
-            'bonds_vol_pct': Decimal('10'),
+            'bonds_ret_pct': Decimal('0.8'),
+            'bonds_vol_pct': Decimal('4'),
             'equity_bonds_corr_pct': 7,
             'equity_se_pct': Decimal('1.7'),
             'confidence_pct': 80,
@@ -370,7 +370,7 @@ class Alloc:
         alloc_bonds = min(max(0, w_prime[bonds_index] * (1 - annuitize_fixed)), 1)
         try:
             alloc_contrib = results['nv_contributions'] / results['nv']
-        except:
+        except ZeroDivisionError:
             alloc_contrib = 1
         alloc_lm_bonds = min(max(0, w_prime[risk_free_index] * (1 - annuitize_fixed)), 1)
         alloc_db = 1 - alloc_equity - alloc_bonds - alloc_contrib - alloc_lm_bonds

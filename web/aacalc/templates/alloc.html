@@ -279,11 +279,15 @@ Volatility: {{ alloc_form.bonds_vol_pct }}%
 {{ alloc_form.bonds_vol_pct.errors }}
 <div class="small">
 Estimated U.S. market average values for 1927-2014 are 3.2% and
-10%. However we are presently in a low rate environment. In 2016, 10
-year constant maturity Treasuries were projected to earn 0.4% above
-the Survey of Professional forecasters 10 year inflation rate. We
-estimate the premium of an average bond portfolio over 10 year
-constant maturity Treasuries is 0.7%, making a total of 1.1%.
+10%. However we are presently in a low rate environment. At the end of
+2015, 10 year constant maturity Treasuries were projected to earn
+2.3%, which is 0.1% above the Survey of Professional forecasters 10
+year inflation rate of 2.2%. We estimate the premium of an average
+bond portfolio over 10 year constant maturity Treasuries is 0.7%,
+making a total return of 0.8%.  For the long term investor short term
+volatility in the price of bonds doesn't matter.  What matters is the
+volatility of nominal prices. The volatility of the CPI over the
+1927-2014 was 4%.
 <br />
 <br />
 <div class="bold">Using the default parameters no regular bonds will
@@ -313,7 +317,7 @@ confidence interval for the equity return.
 {{ alloc_form.confidence.errors }}
 <br />
 <br />
-Equity and bond management fee: {{ alloc_form.expense_pct }}%
+Equity and regular bond management fee: {{ alloc_form.expense_pct }}%
 {{ alloc_form.expense_pct.errors }}
 <div class="small">
 A value around 0.1% is typical for a low cost provider such
@@ -506,9 +510,9 @@ consumption requirements except when one party is deceased.
 
 <div class="indent">
 
-Arithmetic real return on equities: {{ calc.equity_am_pct }}% Bonds: {{ calc.bonds_am_pct }}%
+Arithmetic real return on equities: {{ calc.equity_am_pct }}% Regular bonds: {{ calc.bonds_am_pct }}%
 <br />
-Geometric real return on equities: {{ calc.equity_gm_pct }}% Bonds: {{ calc.bonds_gm_pct }}%
+Geometric real return on equities: {{ calc.equity_gm_pct }}% Regular bonds: {{ calc.bonds_gm_pct }}%
 
 <br />
 <br />
