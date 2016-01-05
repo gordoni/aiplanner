@@ -359,6 +359,9 @@ class Alloc:
             w_prime = list(0 for _ in w)
         w_prime[contrib_index] = 0
         w_prime[contrib_index] = 1 - sum(w_prime)
+        w_prime = list(max(0, wi) for wi in w_prime)
+        w_prime[risk_free_index] = 0
+        w_prime[risk_free_index] = 1 - sum(w_prime)
 
         if data['purchase_income_annuity']:
             annuitize_equity = min(max(0, (self.min_age - 50.0) / (80 - 50)), 1)
