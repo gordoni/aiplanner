@@ -461,7 +461,8 @@ public class Config
         public double couple_db = 0.5; // Portion of defined benefit income received when one member dead when not couple_unit.
         public double couple_consume = 0.7; // Fraction of consuption required when one member dead for same level of individual utility when not couple_unit.
         public String generate_life_table = "ssa-cohort"; // Life table to use for generation.
-               // 'immortal', 'cdc-period', 'ssa-period', 'iam2000-unloaded-period', 'iam2000-loaded-period', or 'iam2012-basic-period'.
+               // 'immortal', 'suicidal', 'gompertz-makeham', 'cdc-period', 'ssa-period',
+               // 'iam2000-unloaded-period', 'iam2000-loaded-period', or 'iam2012-basic-period'.
         public String validate_life_table = "ssa-cohort"; // Life table to use for validation.
         public String annuity_table = "iam2012-basic-period"; // Life table to use for synthetic annuuity pricing.
         public String mortality_projection_method = "g2"; // Method to use to convert period life tables into cohort life tables.
@@ -473,6 +474,10 @@ public class Config
                // "none" - No adjustment.
                // "aer2005_08-summary" - SOA 2005-08 Annuity Experience Report contract year length adjustment summary statistics
                // "aer2005_08-full" - SOA 2005-08 Annuity Experience Report contract year length adjustment age specific statistics
+        // Moshe Milevsky style Gompertz-Makeham law: q = alpha + exp((y - m) / b) / b
+        public double gompertz_alpha = 0.0; // Gompertz-Makeham mortality parameter.
+        public double gompertz_m = 82.3; // Gompertz-Makeham mortality parameter.
+        public double gompertz_b = 11.4; // Gompertz-Makeham mortality parameter.
         public double mortality_load = 0.0; // Loading to apply to mortality beyond that contained in table.
         public Integer years = null; // Years to run. Set to None to use the full death array length.
 

@@ -862,7 +862,7 @@ public class Scenario
         private void dump_le() throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-le.csv"));
-                for (String table : Arrays.asList("ssa-cohort", "iam2012-basic-period", "iam2012-basic-period-aer2005_08-summary", "iam2012-basic-period-aer2005_08-full", "ssa-period"))
+                for (String table : Arrays.asList("ssa-cohort", "iam2012-basic-period", "iam2012-basic-period-aer2005_08-summary", "iam2012-basic-period-aer2005_08-full", "ssa-period", "gompertz-makeham"))
                 {
                         boolean iam_aer = table.startsWith("iam2012-basic-period-aer2005_08");
                         VitalStats stats = new VitalStats(ss, config, hist, 1.0);
@@ -1070,6 +1070,8 @@ public class Scenario
                         System.out.println("Returns:");
                         List<double[]> returns = Utils.zipDoubleArray(returns_generate.original_data);
                         for (int index = 0; index < normal_assets; index++)
+                        // To report cpi:
+                        // for (int index = 0; index < stochastic_classes; index++)
                         {
                                 double gm = Utils.plus_1_geomean(returns.get(index)) - 1;
                                 double am = Utils.mean(returns.get(index));

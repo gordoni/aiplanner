@@ -251,6 +251,12 @@ public class VitalStats
                         death_cohort = suicidal;
                         death_cohort_younger = suicidal;
                 }
+                else if ("gompertz-makeham".equals(table))
+                {
+                        death_cohort = new Double[120];
+                        for (int i = 0; i < death_cohort.length; i++)
+                                death_cohort[i] = Math.max(0, config.gompertz_alpha + Math.exp((i - config.gompertz_m) / config.gompertz_b) / config.gompertz_b);
+                }
                 else if ("ssa-cohort".equals(table))
                 {
                         Map<Integer, List<Double>> ssa_cohort_death = (sex.equals("male") ? hist.ssa_cohort_death_m : hist.ssa_cohort_death_f);
