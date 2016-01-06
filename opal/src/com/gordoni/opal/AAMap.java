@@ -540,7 +540,7 @@ class AAMap
                                 }
                                 if ((scenario.ria_index != null || scenario.nia_index != null) && config.tax_rate_annuity != 0)
                                 {
-                                    assert(!(generate && scenario.nia_index == null)); // Require nia if SPIA taxation.
+                                        assert(!(generate && scenario.nia_index == null)); // Require nia if SPIA taxation.
                                         double nia_tax_credit = (real_annuitize + nominal_annuitize) * config.tax_rate_annuity / annuity_stats.annuity_le[period + y];
                                         nia += nia_tax_credit;
                                         first_payout += first_payout_fract * nia_tax_credit;

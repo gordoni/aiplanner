@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -891,21 +891,43 @@ public class AAMapGenerate extends AAMap
 
                         map[period].interpolate(true);
 
-                        if ((config.skip_dump_log || config.conserve_ram) && period + 1 < map.length)
+                        if (period + 1 < map.length)
                         {
                                 for (MapElement me : map[period + 1])
                                 {
-                                        // Now that ef_index no longer needed, delete it to save RAM.
-                                        double[] aa = new double[scenario.all_alloc];
-                                        System.arraycopy(me.aa, 0, aa, 0, aa.length);
-                                        me.aa = aa;
-                                        me.results = null;
+                                        if (config.conserve_ram || config.skip_dump_log || (config.start_age + period + 1 > config.dump_max_age) ||
+                                                (scenario.tp_index != null && me.rps[scenario.tp_index] > config.dump_max_tp) ||
+                                                (scenario.ria_index != null && me.rps[scenario.ria_index] > config.dump_max_ria) ||
+                                                (scenario.nia_index != null && me.rps[scenario.nia_index] > config.dump_max_nia))
+                                        {
+                                                // Now that ef_index no longer needed, delete it to save RAM.
+                                                double[] aa = new double[scenario.all_alloc];
+                                                System.arraycopy(me.aa, 0, aa, 0, aa.length);
+                                                me.aa = aa;
+                                                me.results = null;
+                                                me.simulate = null;
+                                        }
                                 }
                         }
 
                         double elapsed = (System.currentTimeMillis() - start) / 1000.0;
                         if (config.trace)
                                 System.out.printf(" - %.3fs\n", elapsed);
+                }
+
+                if (period_0 < period_1)
+                {
+                        for (MapElement me : map[period_0])
+                        {
+                                if ((config.start_age + period_0 > config.dump_max_age) ||
+                                        (scenario.tp_index != null && me.rps[scenario.tp_index] > config.dump_max_tp) ||
+                                        (scenario.ria_index != null && me.rps[scenario.ria_index] > config.dump_max_ria) ||
+                                        (scenario.nia_index != null && me.rps[scenario.nia_index] > config.dump_max_nia))
+                                {
+                                        me.results = null;
+                                        me.simulate = null;
+                                }
+                        }
                 }
         }
 

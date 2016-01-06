@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -64,6 +64,11 @@ public class Config
         public boolean skip_dump_le = false; // Speed up by not dumping life expectencies.
         public boolean skip_dump_log = true; // Save disk by not dumping future maps.
         public boolean skip_corr = true; // Don't report the correlation matrix.
+
+        public int dump_max_age = Integer.MAX_VALUE; // Dump this age and below.
+        public double dump_max_tp = Double.POSITIVE_INFINITY; // Dump this portfolio value and below.
+        public double dump_max_ria = 0; // Dump this real immediate anuity payout and below.
+        public double dump_max_nia = 0; // Dump this nominal immediate annuity payout and below.
 
         // Simulation specific parameters.
 

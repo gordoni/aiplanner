@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -478,7 +478,7 @@ public class Scenario
         private void dump_aa_linear(AAMap map, Returns returns, double[][] corr, double tp_max) throws IOException
         {
                 dump_aa_linear_slice(map, returns, corr, new double[start_p.length], "", tp_max);
-                // dump_aa_linear_slice(map, returns, corr, new double[]{0, 10000}, "10000");
+                //dump_aa_linear_slice(map, returns, corr, new double[]{0, 10000}, "10000", tp_max);
         }
 
         private Double get_path_value(List<PathElement> path, int i, String what, boolean change)
