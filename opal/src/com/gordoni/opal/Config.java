@@ -73,14 +73,16 @@ public class Config
         // Simulation specific parameters.
 
         public double tp_zero_factor = 0.0001; // Portfolio buckets this much of consume_max_est at portfolio 0.
-        public double annuity_zero_factor = 0.001; // Taxable immediate annuity payout buckets this much of consume_max_est appart at payout 0.
+        public double annuity_zero_factor = 0.000002; // Taxable immediate annuity payout buckets this much of consume_max_est appart at payout 0.
+               // Should be comparable to tp_annuity_factor in value after adjusting for maximal annuity price.
 
         public double scaling_factor = 1.05; // Successive portfolio buckets this much larger.
                // This can be set quite a bit higher without affecting path metrics.
                // However the map metric will start to suffer very slightly.
                // We set it low to allow validate_draw='bootstrap' bootstrap_block_size=0 generation validation.
                // Old comment (pre-spline value was 1.002): Above 1.01 aa plots start to become pixelated.
-        public double annuity_scaling_factor = 1.05; // Successive immediate annuity buckets this much larger.
+        public double annuity_scaling_factor = 1.005; // Successive immediate annuity buckets this much larger.
+               // Smaller than scaling_factor because by default we use spline-linear interpolation.
 
         public Double consume_max = null; // Estimate of maximum consumption level. Should only need to specify when debugging.
         public Double tp_max = null; // Estimate of maximum portfolio size. Should only need to specify when debugging.
