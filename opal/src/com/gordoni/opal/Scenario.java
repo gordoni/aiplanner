@@ -455,14 +455,21 @@ public class Scenario
                                 p[tp_index] = curr_pf;
                                 MapElement fpb = map.lookup_interpolate(p, i);
                                 double metric_normalized = metric_normalize(success_mode_enum, fpb.metric_sm, age);
-                                double annuitizable = fpb.spend + fpb.first_payout - fpb.consume;
+                                double annuitizable = fpb.spend - fpb.consume;
                                 double[] aa = fpb.aa.clone();
-                                if (config.aa_linear_values && annuitizable != 0)
+                                if (config.aa_linear_values)
                                 {
                                         // Adjust aa to be relative to wealth prior to the first payout. May thus sum to more than 1.
                                         // Results in cleaner looking plots.
-                                        for (int j = 0; j < normal_assets; j++)
-                                                aa[j] *= (annuitizable + fpb.first_payout) / annuitizable;
+                                        if (annuitizable != 0)
+                                        {
+                                                for (int j = 0; j < normal_assets; j++)
+                                                        aa[j] *= (annuitizable + fpb.first_payout) / annuitizable;
+                                        }
+                                }
+                                else
+                                {
+                                        annuitizable += fpb.first_payout;
                                 }
                                 String aa_str = stringify_aa(aa);
                                 out.print(f2f.format(age));
