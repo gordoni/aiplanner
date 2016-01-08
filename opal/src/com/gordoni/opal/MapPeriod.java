@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -68,6 +68,7 @@ class MapPeriod implements Iterable<MapElement>
         private Interpolator metric_interp;
         private Interpolator consume_interp;
         private Interpolator spend_interp;
+        private Interpolator first_payout_interp;
         private Interpolator[] aa_interp;
 
         public void interpolate(boolean generate)
@@ -75,6 +76,8 @@ class MapPeriod implements Iterable<MapElement>
                 metric_interp = Interpolator.factory(this, generate, Interpolator.metric_interp_index);
                 consume_interp = Interpolator.factory(this, generate, Interpolator.consume_interp_index);
                 spend_interp = Interpolator.factory(this, generate, Interpolator.spend_interp_index);
+                if (((config.start_ria != null) || (config.start_nia != null)) && config.aa_linear_values)
+                        first_payout_interp = Interpolator.factory(this, generate, Interpolator.first_payout_interp_index);
                 aa_interp = new Interpolator[scenario.all_alloc];
                 for (int i = 0; i < scenario.all_alloc; i++)
                         aa_interp[i] = Interpolator.factory(this, generate, i);
@@ -88,6 +91,8 @@ class MapPeriod implements Iterable<MapElement>
                 double metric_sm = Double.NaN;
                 double spend = Double.NaN;
                 double consume = Double.NaN;
+                double annuitize = 0;
+                double first_payout = 0;
 
                 if (!fast_path || generate)
                         metric_sm = metric_interp.value(p);
@@ -118,6 +123,8 @@ class MapPeriod implements Iterable<MapElement>
                 {
                         spend = spend_interp.value(p);
                         consume = consume_interp.value(p);
+                        if (((config.start_ria != null) || (config.start_nia != null)) && config.aa_linear_values)
+                                first_payout = first_payout_interp.value(p);
 
                         assert(spend >= 0);
                         assert(consume >= 0);
@@ -127,6 +134,7 @@ class MapPeriod implements Iterable<MapElement>
                 me.metric_sm = metric_sm;
                 me.spend = spend;
                 me.consume = consume;
+                me.first_payout = first_payout;
 
                 me.rps = p;
 

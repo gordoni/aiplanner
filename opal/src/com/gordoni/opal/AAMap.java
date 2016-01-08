@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -61,7 +61,7 @@ class AAMap
                 int[] li_bucket2 = new int[scenario.start_p.length];
                 double[] aa = new double[scenario.all_alloc];
                 Metrics metrics = new Metrics();
-                SimulateResult results = new SimulateResult(metrics, Double.NaN, Double.NaN, null, null);
+                SimulateResult results = new SimulateResult(metrics, Double.NaN, Double.NaN, Double.NaN, null, null);
                 MapElement li_me = new MapElement(null, aa, results, null, null);
 
                 return lookup_interpolate_fast(p, period, false, false, li_dbucket, li_bucket1, li_bucket2, li_me);
@@ -122,6 +122,7 @@ class AAMap
                 double[] aa = me.aa;
                 double spend = map_below.spend;
                 double consume = map_below.consume;
+                double first_payout = map_below.first_payout;
                 final boolean maintain_all = generate && !config.skip_dump_log && !config.conserve_ram;
                 Metrics metrics = me.results.metrics;
                 double metric = 0.0;
@@ -188,6 +189,7 @@ class AAMap
                                         {
                                                 spend += weight_no_extrapolate * (map_above.spend - map_below.spend);
                                                 consume += weight_no_extrapolate * (map_above.consume - map_below.consume);
+                                                first_payout += weight_no_extrapolate * (map_above.first_payout - map_below.first_payout);
                                         }
                                 }
                         }
@@ -237,6 +239,7 @@ class AAMap
                         assert(consume >= 0);
                         me.spend = spend;
                         me.consume = consume;
+                        me.first_payout = first_payout;
                 }
                 me.rps = p;
                 return me;
@@ -327,9 +330,9 @@ class AAMap
                 int[] li_bucket2 = new int[scenario.start_p.length];
                 double[] li_aa = new double[scenario.all_alloc];
                 Metrics li_metrics = new Metrics();
-                SimulateResult li_results = new SimulateResult(li_metrics, Double.NaN, Double.NaN, null, null);
-                SimulateResult li_results1 = new SimulateResult(null, Double.NaN, Double.NaN, null, null);
-                SimulateResult li_results2 = new SimulateResult(null, Double.NaN, Double.NaN, null, null);
+                SimulateResult li_results = new SimulateResult(li_metrics, Double.NaN, Double.NaN, Double.NaN, null, null);
+                SimulateResult li_results1 = new SimulateResult(null, Double.NaN, Double.NaN, Double.NaN, null, null);
+                SimulateResult li_results2 = new SimulateResult(null, Double.NaN, Double.NaN, Double.NaN, null, null);
                 MapElement li_me = new MapElement(null, li_aa, li_results, null, null);
                 MapElement li_me1 = new MapElement(null, null, li_results1, null, null);
                 MapElement li_me2 = new MapElement(null, null, li_results2, null, null);
@@ -361,6 +364,7 @@ class AAMap
                         tax = Tax.taxFactory(scenario, config.cost_basis_method);
                 double spend_annual = Double.NaN; // Amount spent on consumption and purchasing annuities.
                 double consume_annual = Double.NaN;
+                double first_payout = Double.NaN;
                 double consume_annual_key = Double.NaN;  // Cache provides 25% speedup for generate.
                 double uct_u_ujp = uc_time.utility(config.utility_join_required);
                 double floor_value = Double.NaN;
@@ -519,7 +523,7 @@ class AAMap
                                 if (y + 1 == max_periods)
                                         break;
 
-                                double first_payout = 0;
+                                first_payout = 0;
                                 double real_annuitize = 0;
                                 if (scenario.ria_index != null)
                                 {
@@ -538,10 +542,11 @@ class AAMap
                                         nia += nia_purchase;
                                         first_payout += first_payout_fract * nia_purchase;
                                 }
+                                double annuitize = real_annuitize + nominal_annuitize;
                                 if ((scenario.ria_index != null || scenario.nia_index != null) && config.tax_rate_annuity != 0)
                                 {
                                         assert(!(generate && scenario.nia_index == null)); // Require nia if SPIA taxation.
-                                        double nia_tax_credit = (real_annuitize + nominal_annuitize) * config.tax_rate_annuity / annuity_stats.annuity_le[period + y];
+                                        double nia_tax_credit = annuitize * config.tax_rate_annuity / annuity_stats.annuity_le[period + y];
                                         nia += nia_tax_credit;
                                         first_payout += first_payout_fract * nia_tax_credit;
                                         if (!generate && config.tax_annuity_credit_expire) // Can't simulate expiration of tax credit when generate.
@@ -1124,7 +1129,7 @@ class AAMap
                         metrics_str = sb.toString();
                 }
 
-                return new SimulateResult(result_metrics, spend_annual, consume_annual, paths, metrics_str);
+                return new SimulateResult(result_metrics, spend_annual, consume_annual, first_payout, paths, metrics_str);
         }
 
         // Validation.

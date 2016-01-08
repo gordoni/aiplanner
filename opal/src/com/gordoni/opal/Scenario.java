@@ -455,15 +455,21 @@ public class Scenario
                                 p[tp_index] = curr_pf;
                                 MapElement fpb = map.lookup_interpolate(p, i);
                                 double metric_normalized = metric_normalize(success_mode_enum, fpb.metric_sm, age);
-                                double[] aa = fpb.aa;
+                                double annuitizable = fpb.spend + fpb.first_payout - fpb.consume;
+                                double[] aa = fpb.aa.clone();
+                                if (config.aa_linear_values && annuitizable != 0)
+                                {
+                                        // Adjust aa to be relative to wealth prior to the first payout. May thus sum to more than 1.
+                                        // Results in cleaner looking plots.
+                                        for (int j = 0; j < normal_assets; j++)
+                                                aa[j] *= (annuitizable + fpb.first_payout) / annuitizable;
+                                }
                                 String aa_str = stringify_aa(aa);
-                                double annuitizable = fpb.spend - fpb.consume;
                                 out.print(f2f.format(age));
                                 out.print("," + f2f.format(curr_pf));
                                 out.print("," + f2f.format(metric_normalized));
                                 out.print("," + ((returns == null) ? "" : f4f.format(expected_return(aa, returns))));
                                 out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(aa, returns, corr))));
-                                // Annuitization may be greater than 100% because first_payout may contribute to consume.
                                 out.print("," + f3f.format(annuitizable > 0 ? fpb.ria_purchase(this) / annuitizable : 0));
                                 out.print("," + f2f.format(fpb.consume));
                                 out.print("," + f3f.format(annuitizable > 0 ? fpb.nia_purchase(this) / annuitizable : 0));

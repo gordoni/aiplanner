@@ -886,6 +886,7 @@ public class AAMapGenerate extends AAMap
                                 me.cache = null;
                                 me.spend = me.results.spend;
                                 me.consume = me.results.consume;
+                                me.first_payout = me.results.first_payout;
                                 me.metric_sm = me.results.metrics.get(scenario.success_mode_enum);
                         }
 

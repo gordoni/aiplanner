@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -25,6 +25,7 @@ public class SimulateResult implements Cloneable
         public Metrics metrics;
         public double spend;
         public double consume;
+        public double first_payout;
         public List<List<PathElement>> paths;
         public String metrics_str;
 
@@ -43,11 +44,12 @@ public class SimulateResult implements Cloneable
                 return res;
         }
 
-        public SimulateResult(Metrics metrics, double spend, double consume, List<List<PathElement>> paths, String metrics_str)
+    public SimulateResult(Metrics metrics, double spend, double consume, double first_payout, List<List<PathElement>> paths, String metrics_str)
         {
                 this.metrics = metrics;
                 this.spend = spend;
                 this.consume = consume;
+                this.first_payout = first_payout;
                 this.paths = paths;
                 this.metrics_str = metrics_str;
         }

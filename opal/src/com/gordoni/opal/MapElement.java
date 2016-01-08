@@ -35,6 +35,7 @@ public class MapElement implements Cloneable
         // Copy of results.* because results gets deleted to save RAM.
         public double spend;
         public double consume;
+        public double first_payout;
         public double metric_sm;
 
         public List<SearchResult> simulate;
@@ -106,6 +107,7 @@ public class MapElement implements Cloneable
                         "\n  aa: " + Arrays.toString(aa) +
                         "\n  spendable: " + spend +
                         "\n  consume: " + consume +
+                        "\n  first_payout: " + first_payout +
                         "\n  metric_sm: " + metric_sm +
                         (results == null ? "" : "\n  metrics: " + results.metrics) +
                         (sim_string == null ? "" : "\n  simulate: " + sim_string) +
