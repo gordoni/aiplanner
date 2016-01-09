@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # SPIA - Actuarially fair SPIA price calculator
-# Copyright (C) 2014, 2015 Gordon Irlam
+# Copyright (C) 2014-2016 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -992,16 +992,16 @@ class LifeTable:
     class UnableToAdjust(Exception):
         pass
 
-    def __init__(self, table, sex, age, ae = 'full', le_set = None, le_add = 0, date_str = None, interpolate_q = True):
+    def __init__(self, table, sex, age, ae = 'aer2005_08-full', le_set = None, le_add = 0, date_str = None, interpolate_q = True):
         self.table = table
-        assert(table in ('death_120', 'iam', 'ssa_cohort', 'ssa_period'))
+        assert(table in ('death_120', 'iam2012-basic', 'ssa-cohort', 'ssa-period'))
         self.sex = sex
         self.age = age
-        self.ae = ae  # Whether and how to use the actual/expected experience report.
+        self.ae = ae  # Whether and how to use the actual/expected experience report when table is iam.
             # 'none' - a/e report not used. AER increases MWR 20% at age 90, and 5% at age 80.
-            # 'summary' - use all ages summary line. Use this value for compatibility with AACalc.
-            # 'full' - use the full table; more accurate but report contains statistical noise. Alters values 5% at age 85.
-        assert(ae in ('none', 'summary', 'full'))
+            # 'aer2005_08-summary' - use all ages summary line. Use this value for compatibility with AACalc.
+            # 'aer2005_08-full' - use the full table; more accurate but report contains statistical noise. Alters values 5% at age 85.
+        assert(ae in ('none', 'aer2005_08-summary', 'aer2005_08-full'))
         self.le_set = le_set  # Multiplicatively adjust q values to make life expectancy match the specified value.
             # Used to make life expectancy match personal expected life expectancy, then use value to compute fair SPIA price.
         self.le_add = le_add  # Then multiplicatively adjust q values to increase life expectancy by this much.
@@ -1044,7 +1044,7 @@ class LifeTable:
                 c = aer2014_years.index(max(aer2014_years))
             else:
                 c = aer2014_years.index(max(cy for cy in aer2014_years if cy <= contract_year))
-            if self.ae == 'summary':
+            if self.ae == 'aer2005_08-summary':
                 ae = aer2014_actual_expected[self.sex]['all'][c]
             else:
                 age_5 = int(age / 5) * 5
@@ -1074,9 +1074,9 @@ class LifeTable:
     def q_int(self, cohort, year, age, contract_age):
         if self.table == 'death_120':
             q = 0 if age < 120 else 1
-        elif self.table == 'iam':
+        elif self.table == 'iam2012-basic':
             q = self.iam_q(year, age, contract_age)
-        elif self.table == 'ssa_cohort':
+        elif self.table == 'ssa-cohort':
             q = self.ssa_cohort_q(cohort, age)
         else:
             q = self.ssa_period_q(age)
@@ -1084,7 +1084,7 @@ class LifeTable:
 
     def q(self, year, age, contract_age):
         cohort = year - age
-        age_nearest = (self.table in ('iam', 'ssa_cohort', 'ssa_period'))
+        age_nearest = (self.table in ('iam2012-basic', 'ssa-cohort', 'ssa-period'))
         if self.interpolate_q:
             if not age_nearest:
                 age -= 0.5
@@ -1101,7 +1101,7 @@ class Scenario:
 
     def __init__(self, yield_curve, payout_delay, premium, payout, tax, life_table1, life_table2 = None, \
                  joint_payout_fraction = 1, joint_contingent = True, period_certain = 0, \
-                 frequency = 12, mwr = 1, cpi_adjust = 'calendar', percentile = None, \
+                 frequency = 12, mwr = 1, cpi_adjust = 'calendar', percentile = None, date_str = None, \
                  schedule = lambda y: 1, comment = ''):
         self.yield_curve = yield_curve
         self.payout_delay = payout_delay  # Delay in months until first payout.
@@ -1114,13 +1114,14 @@ class Scenario:
         self.joint_contingent = joint_contingent  # Reduce payout on the death of either annuitant (contingent), or only the first annuitant (survivor).
         self.period_certain = period_certain  # Guaranteed full payout period in years starting at payout_delay.
         self.frequency = frequency  # Number of payouts per year. Setting this to 1 increases the MWR by 10% at age 90.
+        self.mwr = mwr
         self.cpi_adjust = cpi_adjust  # When to apply the cpi_adjustment for real SPIAs:
             # 'all' - at every payout.
             # 'payout' - on the anniversary of the first payout.
             # 'calendar' - on January 1st.
         assert(cpi_adjust in ('all', 'payout', 'calendar'))
         self.percentile = percentile  # Compute SPIA payout value through the percentile life expectancy, or none to compute the expected value.
-        self.mwr = mwr
+        self.date = date_str  # Starting date. Default taken from yield_curve.
         self.schedule = schedule
             # Function taking a year as a parameter and returning the annualized payment amount for that time period.
         self.comment = comment
@@ -1134,7 +1135,8 @@ class Scenario:
 
         current_age1 = self.life_table1.age
         current_age2 = self.life_table2.age if self.life_table2 else None
-        start_year, m, d = self.yield_curve.date.split('-')
+        starting_date = self.date if self.date else self.yield_curve.date
+        start_year, m, d = starting_date.split('-')
         start_year = int(start_year)
         start_month = int(m) - 1 + (float(d) - 1) / monthrange(start_year, int(m))[1]
         start = start_year + start_month / 12
@@ -1266,4 +1268,4 @@ for datadir in datapath:
 
 if __name__ == '__main__':
 
-    print Scenario(YieldCurve('real', '2015-01-01'), 1.5, None, None, 0, LifeTable('iam', 'male', 65)).price()
+    print Scenario(YieldCurve('real', '2015-01-01'), 1.5, None, None, 0, LifeTable('iam2012-basic', 'male', 65)).price()

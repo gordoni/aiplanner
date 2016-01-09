@@ -58,9 +58,9 @@ def le(request):
             age = float(data['age'])
             sex2 = data['sex2']
             age2 = float(data['age2']) if data['sex2'] != None else None
-            le_cohort = get_le('ssa_cohort', date_str, sex, age, sex2, age2)
-            le_cohort_healthy = get_le('iam', date_str, sex, age, sex2, age2)
-            le_period = get_le('ssa_period', date_str, sex, age, sex2, age2)
+            le_cohort = get_le('ssa-cohort', date_str, sex, age, sex2, age2)
+            le_cohort_healthy = get_le('iam2012-basic', date_str, sex, age, sex2, age2)
+            le_period = get_le('ssa-period', date_str, sex, age, sex2, age2)
         else:
             errors_present = True
 

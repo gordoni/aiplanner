@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2015 Gordon Irlam
+# Copyright (C) 2009, 2011-2016 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -32,8 +32,8 @@ def default_spia_params():
         'age_years': 65,
         'joint_type': 'contingent',
         'joint_payout_percent': 70,
-        'table': 'iam',
-        'ae' : 'full',
+        'table': 'iam2012-basic',
+        'ae' : 'aer2005_08-full',
         'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
         'bond_type': 'real',
         'bond_adjust_pct': Decimal('0.0'),
@@ -128,7 +128,7 @@ def spia(request):
 
                 table = data['table']
                 if table == 'adjust':
-                    table = 'ssa_cohort'
+                    table = 'ssa-cohort'
                     le_set = float(data['le'])
                 else:
                     le_set = None

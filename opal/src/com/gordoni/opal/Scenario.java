@@ -85,6 +85,7 @@ public class Scenario
         public boolean do_tax;
         private boolean do_generate;
         private boolean do_target;
+        public double[] lm_bonds_returns;
         public Returns returns_generate = null;
         private Returns returns_target = null;
         private Returns returns_validate = null;
@@ -234,6 +235,81 @@ public class Scenario
                 for (int i = 0; i < normal_assets; i++)
                         new_aa[i] /= sum;
                 return new_aa;
+        }
+
+        private void dump_lmbonds_params() throws IOException
+        {
+                PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-lmbonds-params.py"));
+                out.println("{");
+                out.println("'yield_curve': {");
+                out.println("'interest_rate': 'real',");
+                out.println("'date_str': '" + config.lm_bonds_yield_curve + "',");
+                out.println("},");
+                out.println("'life_table': {");
+                assert(config.generate_life_table.equals(config.validate_life_table));
+                out.println("'table': '" + config.generate_life_table + "',");
+                out.println("'sex': '" + config.sex + "',");
+                out.println("'age': " + config.start_age + ",");
+                out.println("'ae': '" + config.annuity_mortality_experience + "',");
+                out.println("},");
+                if (config.sex2 != null)
+                {
+                        out.println("'life_table2': {");
+                        out.println("'table': '" + config.generate_life_table + "',");
+                        out.println("'sex': '" + config.sex2 + "',");
+                        out.println("'age': " + config.start_age2 + ",");
+                        out.println("'ae': '" + config.annuity_mortality_experience + "',");
+                        out.println("},");
+                }
+                else
+                {
+                        out.println("'life_table2': None,");
+                }
+                out.println("'scenario': {");
+                int payout_delay = Math.max(0, (config.retirement_age - config.start_age) * 12);
+                out.println("'payout_delay': " + payout_delay + ",");
+                out.println("'premium': None,");
+                out.println("'payout': None,");
+                out.println("'tax': 0,");
+                out.println("'joint_payout_fraction': " + config.couple_consume + ",");
+                out.println("'joint_contingent': True,");
+                out.println("'frequency': " + (int) config.lm_bonds_time_periods + ",");
+                out.println("'cpi_adjust': 'calendar',");
+                out.println("},");
+                int now = (int) (ss.generate_stats.get_birth_year(config.start_age) + config.start_age);
+                out.println("'now_year': " + now + ",");
+                out.println("'years': " + ss.max_years + ",");
+                out.println("}");
+                out.close();
+        }
+
+        private double[] load_lmbonds() throws IOException
+        {
+
+                BufferedReader in = new BufferedReader(new FileReader(new File(ss.cwd + "/" + config.prefix + "-lmbonds.csv")));
+                List<Double> rates = new ArrayList<Double>();
+                String line;
+                for (int i = 0; (line = in.readLine()) != null; i++)
+                {
+                        String[] fields = line.split(",", -1);
+                        assert(fields.length == 2);
+                        int year = Integer.parseInt(fields[0]);
+                        double rate = Double.parseDouble(fields[1]);
+                        assert(year == i);
+                        rates.add(rate + config.lm_bonds_adjust);
+                }
+                in.close();
+
+                return Utils.DoubleTodouble(rates);
+        }
+
+        private double[] lmbonds() throws IOException, InterruptedException
+        {
+                dump_lmbonds_params();
+
+                ss.subprocess("lmbonds.py", config.prefix);
+
+                return load_lmbonds();
         }
 
         private void dump_mvo_params(String s) throws IOException
@@ -875,15 +951,15 @@ public class Scenario
         private void dump_le() throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-le.csv"));
-                for (String table : Arrays.asList("ssa-cohort", "iam2012-basic-period", "iam2012-basic-period-aer2005_08-summary", "iam2012-basic-period-aer2005_08-full", "ssa-period", "gompertz-makeham"))
+                for (String table : Arrays.asList("ssa-cohort", "iam2012-basic", "iam2012-basic-aer2005_08-summary", "iam2012-basic-aer2005_08-full", "ssa-period", "gompertz-makeham"))
                 {
-                        boolean iam_aer = table.startsWith("iam2012-basic-period-aer2005_08");
+                        boolean iam_aer = table.startsWith("iam2012-basic-aer2005_08");
                         VitalStats stats = new VitalStats(ss, config, hist, 1.0);
                         String keep_method = config.mortality_projection_method;
                         String keep_experience = config.annuity_mortality_experience;
-                        config.mortality_projection_method = (table.startsWith("iam2012-basic-period") ? "g2" : "rate"); // Irrelevant for cohort.
+                        config.mortality_projection_method = (table.startsWith("iam2012-basic") ? "g2" : "rate"); // Irrelevant for cohort.
                         config.annuity_mortality_experience = (iam_aer ? (table.endsWith("summary") ? "aer2005_08-summary" : "aer2005_08-full") : "none");
-                        stats.compute_stats(iam_aer ? "iam2012-basic-period" : table, 1);
+                        stats.compute_stats(iam_aer ? "iam2012-basic" : table, 1);
                         config.mortality_projection_method = keep_method;
                         config.annuity_mortality_experience = keep_experience;
                         double le = stats.le.get(config.start_age);
@@ -1621,6 +1697,9 @@ public class Scenario
                         utility_inherit = new UtilityScale(config, utility_consume_time, 0, 1 / config.utility_inherit_years, config.utility_inherit_years * config.utility_dead_limit, - config.utility_bequest_consume);
 
                 // Set up returns.
+
+                if (asset_classes.contains("lm_bonds"))
+                        lm_bonds_returns = lmbonds();
 
                 returns_generate = null;
                 if (do_generate || do_target  || do_tax)

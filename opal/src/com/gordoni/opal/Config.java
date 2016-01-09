@@ -112,7 +112,7 @@ public class Config
         public double[] aa_offset = null; // Offset to apply during valadation to the generated asset allocation.
                 // Used to determine the implications of a 10% error in aa. More general than stock bias.
 
-        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', and 'margin'.
+        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', 'margin', and 'lm_bonds'.
                 // Seem to get quicker search time if list highest return assets first.
         public List<String> asset_class_names = null;
                // Corresponding asset class names to use for MVO inputs and transition map.
@@ -160,6 +160,10 @@ public class Config
         public int annuity_nominal_long_years = 30; // Maturity beyond which a lack of bond availability causes rates to be reduced.
         public double annuity_nominal_long_penalty = 0.0; // Amount by which to reduce rates post long_years to reflect lack of bond availability.
         public double annuity_payout_delay = 1.5; // Delay in months until first payout from a newly purchased annuity.
+
+        public String lm_bonds_yield_curve = "2014-04-15"; // Real interest rate curve to use for liability matching bonds.
+        public int lm_bonds_adjust = 0; // Additive ajustment to apply to all lm_bond returns.
+        public int lm_bonds_time_periods = 12; // Number of times per year to compute lm_bonds prices in the pricing model.
 
         public int error_count = 0; // Number of scenarios to generate to produce error bars on estimates.
         public boolean equity_premium_vol = true; // Whether to consider the distribution of different possible population equity premiums when generating error bars.
@@ -471,10 +475,10 @@ public class Config
         public double couple_db = 0.5; // Portion of defined benefit income received when one member dead when not couple_unit.
         public double couple_consume = 0.7; // Fraction of consuption required when one member dead for same level of individual utility when not couple_unit.
         public String generate_life_table = "ssa-cohort"; // Life table to use for generation.
-               // 'immortal', 'suicidal', 'gompertz-makeham', 'cdc-period', 'ssa-period',
-               // 'iam2000-unloaded-period', 'iam2000-loaded-period', or 'iam2012-basic-period'.
+               // 'immortal', 'suicidal', 'gompertz-makeham', 'ssa-cohort', 'cdc-period', 'ssa-period',
+               // 'iam2000-unloaded-period', 'iam2000-loaded-period', or 'iam2012-basic'.
         public String validate_life_table = "ssa-cohort"; // Life table to use for validation.
-        public String annuity_table = "iam2012-basic-period"; // Life table to use for synthetic annuuity pricing.
+        public String annuity_table = "iam2012-basic"; // Life table to use for synthetic annuuity pricing.
         public String mortality_projection_method = "g2"; // Method to use to convert period life tables into cohort life tables.
                // "g2" - SOA Projection Scale G2.
                // "rate" - use mortality_reduction_rate.

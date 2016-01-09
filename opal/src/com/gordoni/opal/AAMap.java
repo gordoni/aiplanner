@@ -306,6 +306,10 @@ class AAMap
                 if (Arrays.asList("none", "once").contains(returns.ret_shuffle))
                         assert(num_paths <= len_available);
 
+                boolean[] special_aa = new boolean[scenario.normal_assets];
+                for (int i = 0; i < scenario.normal_assets; i++)
+                        special_aa[i] = scenario.asset_classes.get(i).equals("lm_bonds");
+
                 double[] start_aa;
                 if (initial_aa == null)
                 {
@@ -586,7 +590,12 @@ class AAMap
                                 double p_preinvest = p;
                                 double tot_return = 0.0;
                                 for (int i = 0; i < scenario.normal_assets; i++)
-                                        tot_return += aa[i] * (1 + returns_array[index][i]);
+                                {
+                                        if (special_aa[i])
+                                                tot_return += aa[i] * (1 + scenario.lm_bonds_returns[period + y]);
+                                        else
+                                                tot_return += aa[i] * (1 + returns_array[index][i]);
+                                }
                                 ssr_terms += 1 / all_return;
                                 all_return *= tot_return;
                                 if (p >= 0)

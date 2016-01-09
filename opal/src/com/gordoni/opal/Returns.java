@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -336,6 +336,12 @@ public class Returns implements Cloneable
                 }
                 risk_free_returns = adjust_returns(risk_free_returns, 0, adjust_management_expense * adjust_all, 1);
 
+                List<Double> lm_bonds_returns = new ArrayList<Double>();
+                for (int i = 0; i < count; i++)
+                {
+                        lm_bonds_returns.add(Double.NaN);
+                }
+
                 List<Double> cpi_returns = new ArrayList<Double>();
                 for (int year = start_year; year <= end_year; year++)
                 {
@@ -449,6 +455,11 @@ public class Returns implements Cloneable
                         else if ("risk_free".equals(asset_class))
                         {
                                 rets = risk_free_returns;
+                                divf = config.dividend_fract_fixed_income;
+                        }
+                        else if ("lm_bonds".equals(asset_class))
+                        {
+                                rets = lm_bonds_returns;
                                 divf = config.dividend_fract_fixed_income;
                         }
                         else if ("gold".equals(asset_class))

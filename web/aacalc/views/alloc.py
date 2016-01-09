@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2015 Gordon Irlam
+# Copyright (C) 2009, 2011-2016 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -509,7 +509,7 @@ class Alloc:
             results['yield_curve_date'] = self.yield_curve_real.yield_curve_date + ' real, ' + \
                 self.yield_curve_nominal.yield_curve_date + ' nominal';
 
-        table = 'ssa_cohort'
+        table = 'ssa-cohort'
 
         sex = data['sex']
         self.age = float(data['age'])
