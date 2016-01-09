@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -305,7 +305,7 @@ public class VitalStats
                                 else if ("female".equals(sex))
                                         death_period = hist.soa_iam2000_loaded_death_f.toArray(new Double[0]);
                         }
-                        else if ("iam2012-basic-period".equals(table))
+                        else if ("iam2012-basic".equals(table))
                         {
                                 age_nearest = true;
                                 period_base = 2012;
