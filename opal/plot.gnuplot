@@ -609,12 +609,14 @@ set ylabel "SPIA price ($/$/year)"
 set yrange [0:*]
 set format y "%g"
 if (annuitization > 0) set output prefix . "-annuity_price.png"
-if (annuitization > 0) plot prefix . "-annuity_price.csv" using 1:2 with lines title "real actual", \
+if (annuitization > 0) plot \
   prefix . "-annuity_price.csv" using 1:3 with lines title "real modeled period", \
   prefix . "-annuity_price.csv" using 1:4 with lines title "real modeled cohort", \
   prefix . "-annuity_price.csv" using 1:5 with lines title "nominal actual", \
   prefix . "-annuity_price.csv" using 1:6 with lines title "nominal modeled period", \
   prefix . "-annuity_price.csv" using 1:7 with lines title "nominal modeled cohort"
+# Don't have any real quotes, so suppress spurious gnuplot warning.
+#prefix . "-annuity_price.csv" using 1:2 with lines title "real actual", \
 
 set xlabel "maturity (years)"
 set xrange [*:*]
