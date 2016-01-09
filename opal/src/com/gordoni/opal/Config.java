@@ -162,7 +162,7 @@ public class Config
         public double annuity_payout_delay = 1.5; // Delay in months until first payout from a newly purchased annuity.
 
         public String lm_bonds_yield_curve = "2014-04-15"; // Real interest rate curve to use for liability matching bonds.
-        public int lm_bonds_adjust = 0; // Additive ajustment to apply to all lm_bond returns.
+        public double lm_bonds_adjust = 0; // Additive ajustment to apply to all lm_bond returns.
         public int lm_bonds_time_periods = 12; // Number of times per year to compute lm_bonds prices in the pricing model.
 
         public int error_count = 0; // Number of scenarios to generate to produce error bars on estimates.
