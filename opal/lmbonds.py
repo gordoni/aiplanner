@@ -54,4 +54,6 @@ with open(prefix + '-lmbonds.csv', 'w') as f:
 
         life_table_params['age'] += 1
         if life_table2_params:
-                life_table2_params['age'] += 1
+            life_table2_params['age'] += 1
+
+        scenario_params['payout_delay'] = max(0, scenario_params['payout_delay'] - 12)
