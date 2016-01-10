@@ -167,13 +167,6 @@ class Alloc:
             raise self.IdenticalCovarError
         return tuple(float(wi) for wi in w) # De-numpyfy.
 
-    def yield_curve_schedule(self, life_table):
-
-        def sched(y):
-            return life_table.discount_rate(y) ** y
-
-        return sched
-
     def stochastic_schedule(self, mean, years = None):
 
         def sched(y):
@@ -192,7 +185,7 @@ class Alloc:
             frequency = 1, cpi_adjust = 'all', schedule = schedule)
         return self.contribution * scenario.price()
 
-    def value_table(self, schedule):
+    def value_table(self):
 
         nv_db = 0
         results = {}
@@ -227,8 +220,7 @@ class Alloc:
 
             scenario = Scenario(yield_curve, payout_delay, None, None, 0, lt1, life_table2 = lt2, \
                 joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
-                period_certain = period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust, \
-                schedule = schedule)
+                period_certain = period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
             price = scenario.price() * amount
             nv_db += price
 
@@ -297,16 +289,12 @@ class Alloc:
         joint_payout_fraction = self.joint_income
         joint_contingent = True
 
-        scenario = Scenario(self.yield_curve_zero, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
-            joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
-            period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
-        bonds_initial = scenario.price()
-        retirement_life_expectancy = bonds_initial
         scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
         scenario.price()
-        lm_bonds_ret = bonds_initial / scenario.discount_single_year - 1
+        lm_bonds_ret = scenario.annual_return
+        retirement_life_expectancy = scenario.total_payout
         lm_bonds_duration = scenario.duration
 
         expense = float(data['expense_pct']) / 100
@@ -545,7 +533,7 @@ class Alloc:
         self.frequency = 12 # Makes NPV more accurate.
         self.cpi_adjust = 'calendar'
 
-        npv_results, npv_display = self.value_table(schedule = self.yield_curve_schedule(self.yield_curve_zero))
+        npv_results, npv_display = self.value_table()
         results['present'] = npv_display
         results['db'] = []
         for db in npv_display['db']:

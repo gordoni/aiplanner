@@ -19,6 +19,7 @@
 from argparse import ArgumentParser
 from calendar import monthrange
 from csv import reader
+from math import exp
 from os.path import expanduser, isdir, join, normpath
 
 from numpy import errstate
@@ -992,9 +993,9 @@ class LifeTable:
     class UnableToAdjust(Exception):
         pass
 
-    def __init__(self, table, sex, age, ae = 'aer2005_08-full', le_set = None, le_add = 0, date_str = None, interpolate_q = True):
+    def __init__(self, table, sex, age, ae = 'aer2005_08-full', le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
         self.table = table
-        assert(table in ('death_120', 'iam2012-basic', 'ssa-cohort', 'ssa-period'))
+        assert(table in ('death_120', 'iam2012-basic', 'ssa-cohort', 'ssa-period', 'gompertz-makeham'))
         self.sex = sex
         self.age = age
         self.ae = ae  # Whether and how to use the actual/expected experience report when table is iam.
@@ -1009,6 +1010,9 @@ class LifeTable:
         self.date_str = date_str  # Only required if le_set or le_add is used.
             # The date to be used in computing the new q values. Needed since probably have a cohort life table.
         self.interpolate_q = interpolate_q  # Interpolation makes 0.5% difference for fractional ages. Set to false for compatibility with AACalc.
+        self.alpha = alpha # Gompertz-Makeham parameter.
+        self.m = m # Gompertz-Makeham parameter.
+        self.b = b # Gompertz-Makeham parameter.
 
         self.q_adjust = 1
         if le_set == None and le_add == 0:
@@ -1083,6 +1087,8 @@ class LifeTable:
         return 1 if q == 1 else min(q * self.q_adjust, 1)
 
     def q(self, year, age, contract_age):
+        if self.table == 'gompertz-makeham':
+            return max(0, min(self.alpha + exp((age - self.m) / self.b) / self.b, 1));
         cohort = year - age
         age_nearest = (self.table in ('iam2012-basic', 'ssa-cohort', 'ssa-period'))
         if self.interpolate_q:
@@ -1171,19 +1177,19 @@ class Scenario:
 
         price = 0
         duration = 0
-        discount_single_year = 0
+        annual_return = 0
+        total_payout = 0
         calcs = []
         i = 0
         prev_combined = 1.0
         delay = self.payout_delay / 12.0
         first_payout = start + delay + 1e-9  # 1e-9: avoid floating point rounding problems when payout_delay computed for the next modal period.
         months_since_adjust = 0 if self.cpi_adjust == 'payout' else (first_payout % 1) * 12
-        adjust_y = int(first_payout) - start
-        adjust_discount = self.yield_curve.discount_rate(delay) ** delay
+        r = self.yield_curve.discount_rate(delay)
+        y_eff = delay
         while True:
             period = float(i) / self.frequency
             y = delay + period
-            r = self.yield_curve.discount_rate(y)
             index = y * self.frequency
             fract = index % 1
             index = int(index)
@@ -1196,16 +1202,13 @@ class Scenario:
                 combined = alive + self.joint_payout_fraction * joint
             else:
                 combined = 1.0
-            if self.yield_curve.interest_rate == 'real' and self.cpi_adjust != 'all':
-                if months_since_adjust >= 12:
-                    if self.cpi_adjust == 'payout':
-                        adjust_y = y
-                    else:
-                        adjust_y += 1
-                    adjust_discount = self.yield_curve.discount_rate(adjust_y) ** adjust_y
-                    months_since_adjust -= 12
-                if y > 0:
-                    r *= (r ** y / adjust_discount) ** (1 / y)  # Compute and apply inflation since last adjust.
+            if self.yield_curve.interest_rate != 'real' or self.cpi_adjust == 'all':
+                r = self.yield_curve.discount_rate(y)
+                y_eff = y
+            elif months_since_adjust >= 12:
+                r = self.yield_curve.discount_rate(y)
+                y_eff = y
+                months_since_adjust -= 12
             if self.percentile is None:
                 if self.yield_curve.interest_rate == 'le' and i == 0:
                     payout_fraction = 0  # No credit for first payout.
@@ -1217,10 +1220,11 @@ class Scenario:
                 else:
                     payout_fraction = (prev_combined - target_combined) / (prev_combined - combined)
             payout_amount = payout_fraction * self.schedule(y)
-            payout_value = payout_amount / r ** y
+            payout_value = payout_amount / r ** y_eff
             price += payout_value
             duration += y * payout_value
-            discount_single_year += payout_amount / r
+            annual_return += payout_amount * r
+            total_payout += payout_amount
             calc = {'i': i, 'y': y, 'alive': alive, 'joint': joint, 'combined': combined, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout_value}
             calcs.append(calc)
             i += 1
@@ -1230,10 +1234,11 @@ class Scenario:
         if self.yield_curve.interest_rate == 'le' and self.percentile is None:
             payout_fraction = 0.5  # Half credit after last payout.
             payout_amount = payout_fraction * self.schedule(y)
-            payout_value = payout_amount / r ** y
+            payout_value = payout_amount / r ** y_eff
             price += payout_value
             duration += y * payout_value
-            discount_single_year += payout_amount / r
+            annual_return += payout_amount * r
+            total_payout += payout_amount
             calc = {'i': i, 'y': y, 'alive': 0.0, 'joint': 0.0, 'combined': 0.0, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout_value}
             calcs.append(calc)
 
@@ -1242,7 +1247,11 @@ class Scenario:
         except ZeroDivisionError:
             assert(duration == 0)
             self.duration = 0
-        self.discount_single_year = discount_single_year / self.frequency
+        try:
+            self.annual_return = annual_return / total_payout - 1
+        except ZeroDivisionError:
+            self.annual_return = 0
+        self.total_payout = total_payout / self.frequency
         try:
             price /= self.frequency * (1 - self.tax) * self.mwr
         except ZeroDivisionError:

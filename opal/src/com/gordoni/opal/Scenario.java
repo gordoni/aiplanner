@@ -251,6 +251,9 @@ public class Scenario
                 out.println("'sex': '" + config.sex + "',");
                 out.println("'age': " + config.start_age + ",");
                 out.println("'ae': '" + config.annuity_mortality_experience + "',");
+                out.println("'alpha': " + config.gompertz_alpha + ",");
+                out.println("'m': " + config.gompertz_m + ",");
+                out.println("'b': " + config.gompertz_b + ",");
                 out.println("},");
                 if (config.sex2 != null)
                 {
@@ -259,6 +262,9 @@ public class Scenario
                         out.println("'sex': '" + config.sex2 + "',");
                         out.println("'age': " + config.start_age2 + ",");
                         out.println("'ae': '" + config.annuity_mortality_experience + "',");
+                        out.println("'alpha': " + config.gompertz_alpha + ",");
+                        out.println("'m': " + config.gompertz_m + ",");
+                        out.println("'b': " + config.gompertz_b + ",");
                         out.println("},");
                 }
                 else

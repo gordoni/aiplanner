@@ -44,11 +44,9 @@ with open(prefix + '-lm_bonds.csv', 'w') as f:
         yield_curve_zero = YieldCurve(**dict(yield_curve_params, interest_rate = 'fixed'))
 
         date_str = str(params['now_year'] + year) + '-01-01'
-        scenario = Scenario(yield_curve_zero, life_table1 = life_table, life_table2 = life_table2, date_str = date_str, **scenario_params)
-        bonds_initial = scenario.price()
         scenario = Scenario(yield_curve_real, life_table1 = life_table, life_table2 = life_table2, date_str = date_str, **scenario_params)
         scenario.price()
-        lm_bonds_ret = bonds_initial / scenario.discount_single_year - 1
+        lm_bonds_ret = scenario.annual_return
         lm_bonds_duration = scenario.duration
         print >> f, "%d,%f,%f" % (year, lm_bonds_ret, lm_bonds_duration)
 
