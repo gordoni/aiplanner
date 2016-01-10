@@ -239,7 +239,7 @@ public class Scenario
 
         private void dump_lmbonds_params() throws IOException
         {
-                PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-lmbonds-params.py"));
+                PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-lm_bonds-params.py"));
                 out.println("{");
                 out.println("'yield_curve': {");
                 out.println("'interest_rate': 'real',");
@@ -286,15 +286,16 @@ public class Scenario
         private double[] load_lmbonds() throws IOException
         {
 
-                BufferedReader in = new BufferedReader(new FileReader(new File(ss.cwd + "/" + config.prefix + "-lmbonds.csv")));
+                BufferedReader in = new BufferedReader(new FileReader(new File(ss.cwd + "/" + config.prefix + "-lm_bonds.csv")));
                 List<Double> rates = new ArrayList<Double>();
                 String line;
                 for (int i = 0; (line = in.readLine()) != null; i++)
                 {
                         String[] fields = line.split(",", -1);
-                        assert(fields.length == 2);
+                        assert(fields.length == 3);
                         int year = Integer.parseInt(fields[0]);
                         double rate = Double.parseDouble(fields[1]);
+                        double duration = Double.parseDouble(fields[2]);
                         assert(year == i);
                         rates.add(rate + config.lm_bonds_adjust);
                 }

@@ -25,7 +25,7 @@ from spia import LifeTable, Scenario, YieldCurve
 
 prefix = getenv('OPAL_FILE_PREFIX', 'opal')
 
-with open(prefix + '-lmbonds-params.py') as f:
+with open(prefix + '-lm_bonds-params.py') as f:
     params = eval(f.read())
 
 life_table_params = params['life_table']
@@ -33,7 +33,7 @@ life_table2_params = params['life_table2']
 yield_curve_params = params['yield_curve']
 scenario_params = params['scenario']
 
-with open(prefix + '-lmbonds.csv', 'w') as f:
+with open(prefix + '-lm_bonds.csv', 'w') as f:
 
     for year in range(0, params['years']):
 
@@ -49,8 +49,8 @@ with open(prefix + '-lmbonds.csv', 'w') as f:
         scenario = Scenario(yield_curve_real, life_table1 = life_table, life_table2 = life_table2, date_str = date_str, **scenario_params)
         scenario.price()
         lm_bonds_ret = bonds_initial / scenario.discount_single_year - 1
-        import sys
-        print >> f, "%d,%f" % (year,lm_bonds_ret)
+        lm_bonds_duration = scenario.duration
+        print >> f, "%d,%f,%f" % (year, lm_bonds_ret, lm_bonds_duration)
 
         life_table_params['age'] += 1
         if life_table2_params:
