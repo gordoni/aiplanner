@@ -6,6 +6,6 @@ jar cf classes/opal.jar -C bin . || exit 1
 
 mkdir -p ~/aacalc.data/server
 sudo service opal stop
-tar cf - classes real_yield_curve.R mvo.R plot plot.gnuplot plot.R sit.gz data | (cd ~/aacalc.data/server; tar xf -)
+tar cf - classes lmbonds.py mvo.R plot plot.gnuplot plot.R yield_curve.R sit.gz data | (cd ~/aacalc.data/server; tar xf -)
 sudo service opal start
 sudo service apache2 reload

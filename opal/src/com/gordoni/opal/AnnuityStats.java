@@ -47,23 +47,16 @@ public class AnnuityStats
 
         private String table = null;
 
-        private void dump_rcmt_params() throws IOException
-        {
-                PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-rcmt-params.csv"));
-                out.println("file,date");
-                String dir = hist.find_subdir("rcmt");
-                String fname = "real-" + config.annuity_real_yield_curve.substring(0, config.annuity_real_yield_curve.indexOf("-"));
-                out.println("\"" + dir + "/" + fname + ".csv\",\"" + config.annuity_real_yield_curve + "\"");
-                out.close();
-        }
+        public int yield_curve_years;
 
         private Map<Double, Double> real_yield_curve = null;
+        private Map<Double, Double> nominal_treasury_yield_curve = null;
 
-        private void load_rcmt() throws IOException
+        private Map<Double, Double> load_treasury(String bond_type) throws IOException
         {
-                real_yield_curve = new HashMap<Double, Double>();
+                Map<Double, Double> yield_curve = new HashMap<Double, Double>();
 
-                BufferedReader in = new BufferedReader(new FileReader(new File(ss.cwd + "/" + config.prefix + "-rcmt.csv")));
+                BufferedReader in = new BufferedReader(new FileReader(new File(ss.cwd + "/" + config.prefix + "-yield_curve-" + bond_type + ".csv")));
                 String line = in.readLine();
                 double discount_rate_sum = 0;
                 while ((line = in.readLine()) != null)
@@ -74,23 +67,29 @@ public class AnnuityStats
                         double coupon_yield = yield / 2;
                         double discount_rate = (1 - coupon_yield * discount_rate_sum) / (1 + coupon_yield);
                         double spot_yield = years == 0 ? 0 : Math.pow(discount_rate, - 1 / (2 * years)) - 1;
-                        real_yield_curve.put(years, spot_yield * 2);
+                        yield_curve.put(years, spot_yield * 2);
                         if (years > 0)
                                 discount_rate_sum += discount_rate;
                 }
 
                 in.close();
+
+                return yield_curve;
         }
 
-        private void rcmt(int yield_curve_years) throws IOException, InterruptedException // R-CMT = real - constant maturity treasuries.
+        private Map<Double, Double> treasury(String bond_type, int yield_curve_years) throws IOException, InterruptedException
         {
-                dump_rcmt_params();
 
-                ss.subprocess("real_yield_curve.R", config.prefix);
+                String dir = hist.find_subdir(bond_type.equals("real") ? "rcmt" : "cmt"); // R-CMT = real - constant maturity treasuries.
+                String year = config.annuity_real_yield_curve.substring(0, config.annuity_real_yield_curve.indexOf("-"));
+                String fname = dir + "/" + bond_type + "-" + year + ".csv";
+                String yield_curve_date = (bond_type.equals("real") ? config.annuity_real_yield_curve : config.annuity_nominal_treasury_yield_curve);
+                String outname = ss.cwd + "/" + config.prefix + "-yield_curve-" + bond_type + ".csv";
+                ss.subprocess("yield_curve.R", config.prefix, "--args", fname, yield_curve_date, outname);
 
-                load_rcmt();
+                Map<Double, Double> yield_curve = load_treasury(bond_type);
 
-                real_yield_curve = project_curve(real_yield_curve, 15, yield_curve_years + 1); // Treasury method: project using average forward rate beyond 15 years.
+                return project_curve(yield_curve, 15, yield_curve_years); // Treasury method: project using average forward rate beyond 15 years.
         }
 
         private Map<Double, Double> spots_to_forwards(Map<Double, Double> spots)
@@ -150,11 +149,11 @@ public class AnnuityStats
                 return forwards_to_spots(forwards);
         }
 
-        private Map<Double, Double> nominal_yield_curve = null;
+        private Map<Double, Double> nominal_corporate_yield_curve = null;
 
         private void hqm()
         {
-                nominal_yield_curve = new HashMap<Double, Double>();
+                nominal_corporate_yield_curve = new HashMap<Double, Double>();
 
                 for (double maturity = 0.5; maturity <= 100.0; maturity += 0.5)
                 {
@@ -162,14 +161,14 @@ public class AnnuityStats
                         int matches = 0;
                         for (String k : hist.hqm.keySet())
                         {
-                                if (k.matches(config.annuity_nominal_yield_curve))
+                                if (k.matches(config.annuity_nominal_corporate_yield_curve))
                                 {
                                         sum_nominal_rate += hist.hqm.get(k).get(maturity);
                                         matches++;
                                 }
                         }
                         assert(matches > 0);
-                        nominal_yield_curve.put(maturity, sum_nominal_rate / matches);
+                        nominal_corporate_yield_curve.put(maturity, sum_nominal_rate / matches);
                 }
         }
 
@@ -187,19 +186,39 @@ public class AnnuityStats
                 }
         }
 
-        public double rcmt_get(double maturity)
+        public double get_rate(String bond_type, double maturity)
         {
                 maturity = Math.round(maturity * 2) / 2.0; // Quotes are semi-annual.
-                maturity = Math.max(0, maturity);
-                return Math.pow(1 + real_yield_curve.get(maturity) / 2, 2) - 1; // Treasury quotes are semi-annual values.
-        }
-
-        public double hqm_get(double maturity)
-        {
-                maturity = Math.round(maturity * 2) / 2.0;
-                maturity = Math.max(0.5, maturity);
-                maturity = Math.min(maturity, 100); // Might want to cap at 30 because longer bonds not readily available.
-                return Math.pow(1 + nominal_yield_curve.get(maturity) / 2, 2) - 1; // Treasury quotes are semi-annual values.
+                Map<Double, Double> yield_curve = null;
+                double adjust = 0;
+                if (bond_type.equals("real"))
+                {
+                        if (config.annuity_real_yield_curve == null)
+                                return config.annuity_real_rate;
+                        maturity = Math.max(0, maturity);
+                        yield_curve = real_yield_curve;
+                        adjust = config.annuity_real_yield_curve_adjust;
+                }
+                else if (bond_type.equals("nominal"))
+                {
+                        if (config.annuity_nominal_treasury_yield_curve == null)
+                                return config.annuity_nominal_rate;
+                        maturity = Math.max(0, maturity);
+                        yield_curve = nominal_treasury_yield_curve;
+                        adjust = config.annuity_nominal_treasury_yield_curve_adjust;
+                }
+                else if (bond_type.equals("corporate"))
+                {
+                        if (config.annuity_nominal_corporate_yield_curve == null)
+                                return config.annuity_nominal_rate;
+                        maturity = Math.max(0.5, maturity);
+                        maturity = Math.min(maturity, 100); // Might want to cap at 30 because longer bonds not readily available.
+                        yield_curve = nominal_corporate_yield_curve;
+                        adjust = config.annuity_nominal_corporate_yield_curve_adjust;
+                }
+                else
+                        assert(false);
+                return Math.pow(1 + yield_curve.get(maturity) / 2, 2) - 1 + adjust; // Treasury quotes are semi-annual values.
         }
 
         private void pre_compute_annuity_price(VitalStats vital_stats, double time_periods)
@@ -239,21 +258,15 @@ public class AnnuityStats
                                         break;
                                 double avg_alive = (1 - fract) * annuitant_alive[index] + fract * annuitant_alive[index + 1];
                                 double period_avg_alive = (1 - fract) * period_alive[index] + fract * period_alive[index + 1];
-                                double real_rate;
-                                if (config.annuity_real_yield_curve == null)
-                                        real_rate = config.annuity_real_rate;
-                                else
-                                        real_rate = rcmt_get(maturity) + config.annuity_real_yield_curve_adjust;
+                                double real_rate = get_rate("real", maturity);
                                 double real_tr = Math.pow(1 + real_rate, maturity);
                                 if (maturity > config.annuity_real_long_years)
                                         real_tr *= Math.pow(1 - config.annuity_real_long_penalty, maturity - config.annuity_real_long_years);
                                 ra_price += avg_alive / real_tr;
                                 period_ra_price += period_avg_alive / real_tr;
-                                double nominal_rate;
-                                if (config.annuity_nominal_yield_curve == null)
-                                        nominal_rate = config.annuity_nominal_rate;
-                                else
-                                        nominal_rate = hqm_get(maturity) + config.annuity_nominal_yield_curve_adjust;
+                                double nominal_rate = 0;
+                                if (!config.annuity_nominal_type.equals("actual"))
+                                        nominal_rate = get_rate(config.annuity_nominal_type, maturity);
                                 double nominal_tr = Math.pow(1 + nominal_rate, Math.min(maturity, config.annuity_nominal_long_years));
                                 if (maturity > config.annuity_nominal_long_years)
                                 {
@@ -291,7 +304,7 @@ public class AnnuityStats
                                 this.real_annuity_price[i] = this.synthetic_real_annuity_price[i];
                         else
                                 this.real_annuity_price[i] = this.actual_real_annuity_price[i];
-                        if (config.annuity_nominal_synthetic)
+                        if (config.annuity_nominal_type.equals("corporate"))
                                 this.nominal_annuity_price[i] = this.synthetic_nominal_annuity_price[i];
                         else
                                 this.nominal_annuity_price[i] = this.actual_nominal_annuity_price[i];
@@ -306,8 +319,13 @@ public class AnnuityStats
                 // vital_stats and time_periods only used for scaling the resulting annuity_le and annuity_price arrays.
                 this.table = table;
 
-                if (config.annuity_real_yield_curve != null)
-                        rcmt(vital_stats.alive.length);
+                this.yield_curve_years = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age), config.start_age, true, 1).length
+                        - config.start_age;
+                        // Beautiful waste. We need the annuitant life table size to know how many yield curve values to generate.
+                if (config.annuity_real_yield_curve != null) // Don't slow down by invoking R if not needed.
+                    real_yield_curve = treasury("real", this.yield_curve_years);
+                if (config.annuity_nominal_treasury_yield_curve != null)
+                        nominal_treasury_yield_curve = treasury("nominal", this.yield_curve_years);
                 hqm();
 
                 if (config.sex2 != null)

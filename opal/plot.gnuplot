@@ -619,14 +619,15 @@ if (annuitization > 0) plot \
 #prefix . "-annuity_price.csv" using 1:2 with lines title "real actual", \
 
 set xlabel "maturity (years)"
-set xrange [*:*]
+set xrange [0:30]
 set format x "%g"
 set ylabel "annual yield"
 set yrange [*:*]
 set format y "%.1f%%"
 set output prefix . "-yield_curve.png"
 plot prefix . "-yield_curve.csv" using 1:($2 * 100) with lines title "real", \
-   prefix . "-yield_curve.csv" using 1:($3 * 100) with lines title "nominal"
+   prefix . "-yield_curve.csv" using 1:($3 * 100) with lines title "nominal", \
+   prefix . "-yield_curve.csv" using 1:($4 * 100) with lines title "corporate"
 
 set xlabel "retirement number ($)"
 set xrange [0:retirement_number_max]

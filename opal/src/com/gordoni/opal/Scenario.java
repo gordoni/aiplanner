@@ -946,10 +946,10 @@ public class Scenario
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-yield_curve.csv"));
 
-                for (int i = 1; i <= 30; i++)
+                for (int i = 1; i < ss.validate_annuity_stats.yield_curve_years; i++)
                         // yield for maturity=0 is arbitrary.
                 {
-                        out.println(i + "," + (config.annuity_real_yield_curve == null ? config.annuity_real_rate : ss.validate_annuity_stats.rcmt_get(i)) + "," + (config.annuity_nominal_yield_curve == null ? config.annuity_nominal_rate : ss.validate_annuity_stats.hqm_get(i)));
+                        out.println(i + "," + ss.validate_annuity_stats.get_rate("real", i) + "," + ss.validate_annuity_stats.get_rate("nominal", i) + "," + ss.validate_annuity_stats.get_rate("corporate", i));
                 }
 
                 out.close();
@@ -1165,9 +1165,7 @@ public class Scenario
                 {
                         System.out.println("Returns:");
                         List<double[]> returns = Utils.zipDoubleArray(returns_generate.original_data);
-                        for (int index = 0; index < normal_assets; index++)
-                        // To report cpi:
-                        // for (int index = 0; index < stochastic_classes; index++)
+                        for (int index = 0; index < stochastic_classes; index++)
                         {
                                 double gm = Utils.plus_1_geomean(returns.get(index)) - 1;
                                 double am = Utils.mean(returns.get(index));
@@ -1196,7 +1194,7 @@ public class Scenario
 
                         System.out.println("Generated returns:");
                         List<double[]> ac_returns = Utils.zipDoubleArray(returns_generate.data);
-                        for (int index = 0; index < normal_assets; index++)
+                        for (int index = 0; index < stochastic_classes; index++)
                         {
                                 double gm = Utils.weighted_plus_1_geo(ac_returns.get(index), returns_generate.returns_unshuffled_probability) - 1;
                                 double am = Utils.weighted_sum(ac_returns.get(index), returns_generate.returns_unshuffled_probability);

@@ -60,10 +60,12 @@ public class ScenarioSet
         private static DecimalFormat f2f = new DecimalFormat("0.00");
         private static DecimalFormat f3f = new DecimalFormat("0.000");
 
-        public void subprocess(String cmd, String prefix) throws IOException, InterruptedException
+        public void subprocess(String cmd, String prefix, String... args) throws IOException, InterruptedException
         {
                 String real_cwd = System.getProperty("user.dir");
-                ProcessBuilder pb = new ProcessBuilder(real_cwd + "/" + cmd);
+                List<String> arguments = new ArrayList<String>(Arrays.asList(args));
+                arguments.add(0, real_cwd + "/" + cmd);
+                ProcessBuilder pb = new ProcessBuilder(arguments);
                 Map<String, String> env = pb.environment();
                 env.put("OPAL_FILE_PREFIX", cwd + "/" + prefix);
                 pb.redirectError(Redirect.INHERIT);

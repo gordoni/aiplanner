@@ -144,7 +144,7 @@ public class Config
         public double annuity_real_yield_curve_adjust = 0; // Adjustment to apply to yield curve rates.
         public int annuity_real_long_years = 30; // Maturity beyond which a lack of bond availability causes rates to be reduced.
         public double annuity_real_long_penalty = 0.0; // Amount by which to reduce rates post long_years to reflect lack of bond availability.
-        public boolean annuity_nominal_synthetic = true; // Whether to use sythetically generated nominal annuity quotes based on life table.
+        public String annuity_nominal_type = "corporate"; // Whether to use "corporate", "nominal" treasury, or "actual" quotes for the nominal SPIA yield curve.
                // Strictly speaking use of actual quotes is cheating becasue actual quotes are period quotes that don't reflect cohort mortality improvements.
                // In other words annuities are expected to become more expensive in the future.
         public String annuity_nominal_quote = "2014-04-15"; // Source for non-synthetic nominal quotes.
@@ -152,11 +152,14 @@ public class Config
         public double annuity_nominal_mwr2 = 1.0; // Money's Worth Ratio associated with synthetic nominal annuity (NPV less profit and expense) at second age.
         public double annuity_nominal_rate = 0.04; // Nominal interest rate/discount rate associated with synthetic nominal annuity.
                // Have seen values of 5 and 6% used on the web. So possibly on the low side, but gives results consistent with non-synthetic annuities.
-        public String annuity_nominal_yield_curve = "2014-Apr";
+        public String annuity_nominal_corporate_yield_curve = "2014-Apr";
                // Treasury corporate high quality market yield curve to use for synthetic annuity. May be an implicitly anchored regexp.
                // Null to use constant annuity_nominal_rate.
+        public String annuity_nominal_treasury_yield_curve = null;
+               // Null to use constant annuity_nominal_rate. Treasury nominal bond yield curve date like "2014-04-15" (invokes R).
                // Erroneously assumes the same yield curve will be present throughout time.
-        public double annuity_nominal_yield_curve_adjust = 0; // Adjustment to apply to yield curve rates.
+        public double annuity_nominal_treasury_yield_curve_adjust = 0; // Adjustment to apply to nominal Treasury yield curve rates.
+        public double annuity_nominal_corporate_yield_curve_adjust = 0; // Adjustment to apply to Corporate HQM yield curve rates.
         public int annuity_nominal_long_years = 30; // Maturity beyond which a lack of bond availability causes rates to be reduced.
         public double annuity_nominal_long_penalty = 0.0; // Amount by which to reduce rates post long_years to reflect lack of bond availability.
         public double annuity_payout_delay = 1.5; // Delay in months until first payout from a newly purchased annuity.
