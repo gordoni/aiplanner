@@ -304,7 +304,7 @@ public class AnnuityStats
                                 this.real_annuity_price[i] = this.synthetic_real_annuity_price[i];
                         else
                                 this.real_annuity_price[i] = this.actual_real_annuity_price[i];
-                        if (config.annuity_nominal_type.equals("corporate"))
+                        if (!config.annuity_nominal_type.equals("actual"))
                                 this.nominal_annuity_price[i] = this.synthetic_nominal_annuity_price[i];
                         else
                                 this.nominal_annuity_price[i] = this.actual_nominal_annuity_price[i];
