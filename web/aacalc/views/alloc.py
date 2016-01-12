@@ -137,9 +137,9 @@ class Alloc:
             'purchase_income_annuity': True,
 
             'equity_ret_pct': Decimal('7.2'),
-            'equity_vol_pct': Decimal('17'),
+            'equity_vol_pct': Decimal('17.0'),
             'bonds_ret_pct': Decimal('0.8'),
-            'bonds_vol_pct': Decimal('4'),
+            'bonds_vol_pct': Decimal('4.1'),
             'equity_bonds_corr_pct': 7,
             'equity_se_pct': Decimal('1.7'),
             'confidence_pct': 80,
