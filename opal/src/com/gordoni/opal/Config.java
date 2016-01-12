@@ -122,7 +122,7 @@ public class Config
                // Efficient frontier calculation method. "mvo", or "none" to search asset allocations.
         public double risk_tolerance = 1e12; // Maximum permitted relative standard deviation in portfolio returns when performing MVO.
 
-        public boolean aa_linear_values = false;
+        public boolean aa_report_pre = false;
                // Whether to report aa as post first payout asset values relative to pre-first payout total value or post first payout total value.
 
         public double annuity_steps = 10000; // Number of annuitization steps. Keep steps small since annuitization can't be undone.

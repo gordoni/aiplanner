@@ -124,13 +124,13 @@ class MapPeriod implements Iterable<MapElement>
                                 // Avoid constructing interpolators if not needed. Consumes RAM.
                                 spend_interp = Interpolator.factory(this, generate, Interpolator.spend_interp_index);
                                 consume_interp = Interpolator.factory(this, generate, Interpolator.consume_interp_index);
-                                if (((config.start_ria != null) || (config.start_nia != null)) && config.aa_linear_values)
+                                if ((config.start_ria != null) || (config.start_nia != null))
                                         first_payout_interp = Interpolator.factory(this, generate, Interpolator.first_payout_interp_index);
                                 generate_interpolator = generate;
                         }
                         spend = spend_interp.value(p);
                         consume = consume_interp.value(p);
-                        if (((config.start_ria != null) || (config.start_nia != null)) && config.aa_linear_values)
+                        if ((config.start_ria != null) || (config.start_nia != null))
                                 first_payout = first_payout_interp.value(p);
 
                         assert(spend >= 0);

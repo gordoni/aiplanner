@@ -536,15 +536,18 @@ public class Scenario
                                 MapElement fpb = map.lookup_interpolate(p, i);
                                 double metric_normalized = metric_normalize(success_mode_enum, fpb.metric_sm, age);
                                 double annuitizable = fpb.spend - fpb.consume;
+                                double ria_purchase = fpb.ria_purchase(this);
+                                double nia_purchase = fpb.nia_purchase(this);
+                                double annuitized = ria_purchase + nia_purchase;
                                 double[] aa = fpb.aa.clone();
-                                if (config.aa_linear_values)
+                                if (config.aa_report_pre)
                                 {
                                         // Adjust aa to be relative to wealth prior to the first payout. May thus sum to more than 1.
                                         // Results in cleaner looking plots.
-                                        if (annuitizable != 0)
+                                        if ((annuitizable - annuitized) != 0)
                                         {
                                                 for (int j = 0; j < normal_assets; j++)
-                                                        aa[j] *= (annuitizable + fpb.first_payout) / annuitizable;
+                                                        aa[j] *= (annuitizable + fpb.first_payout - annuitized) / (annuitizable - annuitized);
                                         }
                                 }
                                 else
@@ -557,9 +560,9 @@ public class Scenario
                                 out.print("," + f2f.format(metric_normalized));
                                 out.print("," + ((returns == null) ? "" : f4f.format(expected_return(aa, returns))));
                                 out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(aa, returns, corr))));
-                                out.print("," + f3f.format(annuitizable > 0 ? fpb.ria_purchase(this) / annuitizable : 0));
+                                out.print("," + f3f.format(annuitizable > 0 ? ria_purchase / annuitizable : 0));
                                 out.print("," + f2f.format(fpb.consume));
-                                out.print("," + f3f.format(annuitizable > 0 ? fpb.nia_purchase(this) / annuitizable : 0));
+                                out.print("," + f3f.format(annuitizable > 0 ? nia_purchase / annuitizable : 0));
                                 out.print("," + aa_str);
                                 out.print("\n");
                         }
