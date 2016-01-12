@@ -56,8 +56,6 @@ class AAMapDumpLoad extends AAMap
                         int[] index = new int[fb.length];
                         for (int i = 0; i < fb.length; i++)
                                 index[i] = (int) Math.round(fb[i]);
-                        if (index[scenario.tp_index] < scenario.validate_bottom_bucket || index[scenario.tp_index] > scenario.validate_top_bucket)
-                                continue;
                         for (int i = 0; i < me_index.rps.length; i++)
                         {
                                 if (i > 0)
@@ -70,11 +68,7 @@ class AAMapDumpLoad extends AAMap
                         {
                                 MapElement me = map_period.get(index);
                                 String value = null;
-                                if (map_name.equals("return"))
-                                        value = f9f.format(me.mean);
-                                else if (map_name.equals("risk"))
-                                        value = f9f.format(me.std_dev);
-                                else if (map_name.equals("spend_fract"))
+                                if (map_name.equals("spend_fract"))
                                         value = f9f.format(me.aa[scenario.spend_fract_index]);
                                 else if (map_name.equals("ria"))
                                         value = f9f.format(me.aa[scenario.ria_aa_index]);
@@ -236,7 +230,7 @@ class AAMapDumpLoad extends AAMap
                                         int pi = (int) Math.round(age_period - config.start_age * config.generate_time_periods);
                                         Double allocation = l.get(1);
                                         if (map[pi] == null)
-                                                map[pi] = new MapPeriod(scenario, false);
+                                                map[pi] = new MapPeriod(scenario);
                                         MapElement fpb = map[pi].get(bucket);
                                         if (fpb == null)
                                         {
@@ -321,22 +315,10 @@ class AAMapDumpLoad extends AAMap
 
                 if (config.skip_dump_load)
                 {
-                        map = new MapPeriod[(int) (scenario.ss.max_years * config.generate_time_periods)];
-
+                        map = map_precise.map;
                         for (int pi = 0; pi < map.length; pi++)
                         {
-                                MapPeriod mp = new MapPeriod(scenario, false);
-                                map[pi] = mp;
-                                MapPeriodIterator itr = mp.iterator();
-                                while (itr.hasNext())
-                                {
-                                        int[] v_index = itr.nextIndex();
-                                        int[] g_index = v_index.clone();
-                                        g_index[scenario.tp_index] += scenario.validate_bottom_bucket - scenario.generate_bottom_bucket;
-                                        mp.set(v_index, map_precise.map[pi].get(g_index));
-                                        itr.next();
-                                }
-                                mp.interpolate(false);
+                                map[pi].interpolate(false); // Update interpolators. May differ between generation and validation.
                         }
 
                         if (map_precise.aamap1 != null)

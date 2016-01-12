@@ -75,10 +75,7 @@ public class Scenario
         public double[] dividend_yield;
         public List<double[]> at_returns;
 
-        public int generate_bottom_bucket;      // Generate data all the way down to the floor.
-        public int generate_top_bucket; // Generate data all the way up to the ceiling.
-        public int validate_bottom_bucket;      // Report data all the way down to the validate floor.
-        public int validate_top_bucket; // Report data all the way up to the validate ceiling.
+        public double tp_high; // Generate and report data all the way up to this value.
 
         public MetricsEnum success_mode_enum;
 
@@ -1599,10 +1596,7 @@ public class Scenario
 
                 // Calculated parameters.
 
-                generate_bottom_bucket = this.scale[tp_index].pf_to_bucket(config.map_max_factor * tp_max_estimate);
-                generate_top_bucket = this.scale[tp_index].pf_to_bucket(config.pf_fail);
-                validate_bottom_bucket = this.scale[tp_index].pf_to_bucket(config.map_max_factor * tp_max_estimate);
-                validate_top_bucket = this.scale[tp_index].pf_to_bucket(0.0);
+                tp_high = config.map_max_factor * tp_max_estimate;
                 success_mode_enum = Metrics.to_enum(config.success_mode);
 
                 validate_age = (config.validate_age == null ? config.start_age : config.validate_age);

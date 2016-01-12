@@ -71,13 +71,11 @@ class MapPeriod implements Iterable<MapElement>
         private Interpolator first_payout_interp;
         private Interpolator[] aa_interp;
 
+        private boolean generate_interpolator = true;
+
         public void interpolate(boolean generate)
         {
                 metric_interp = Interpolator.factory(this, generate, Interpolator.metric_interp_index);
-                consume_interp = Interpolator.factory(this, generate, Interpolator.consume_interp_index);
-                spend_interp = Interpolator.factory(this, generate, Interpolator.spend_interp_index);
-                if (((config.start_ria != null) || (config.start_nia != null)) && config.aa_linear_values)
-                        first_payout_interp = Interpolator.factory(this, generate, Interpolator.first_payout_interp_index);
                 aa_interp = new Interpolator[scenario.all_alloc];
                 for (int i = 0; i < scenario.all_alloc; i++)
                         aa_interp[i] = Interpolator.factory(this, generate, i);
@@ -121,6 +119,15 @@ class MapPeriod implements Iterable<MapElement>
 
                 if (!fast_path)
                 {
+                        if ((spend_interp == null) || (generate_interpolator && !generate))
+                        {
+                                // Avoid constructing interpolators if not needed. Consumes RAM.
+                                spend_interp = Interpolator.factory(this, generate, Interpolator.spend_interp_index);
+                                consume_interp = Interpolator.factory(this, generate, Interpolator.consume_interp_index);
+                                if (((config.start_ria != null) || (config.start_nia != null)) && config.aa_linear_values)
+                                        first_payout_interp = Interpolator.factory(this, generate, Interpolator.first_payout_interp_index);
+                                generate_interpolator = generate;
+                        }
                         spend = spend_interp.value(p);
                         consume = consume_interp.value(p);
                         if (((config.start_ria != null) || (config.start_nia != null)) && config.aa_linear_values)
@@ -206,7 +213,7 @@ class MapPeriod implements Iterable<MapElement>
                 return it;
         }
 
-        public MapPeriod(Scenario scenario, boolean generate)
+        public MapPeriod(Scenario scenario)
         {
                 this.scenario = scenario;
                 this.config = scenario.config;
@@ -215,8 +222,8 @@ class MapPeriod implements Iterable<MapElement>
                 length = new int[scenario.start_p.length];
                 if (scenario.tp_index != null)
                 {
-                        bottom[scenario.tp_index] = (generate ? scenario.generate_bottom_bucket : scenario.validate_bottom_bucket);
-                        length[scenario.tp_index] = (generate ? scenario.generate_top_bucket : scenario.validate_top_bucket) - bottom[scenario.tp_index] + 1;
+                        bottom[scenario.tp_index] = scenario.scale[scenario.tp_index].pf_to_bucket(scenario.tp_high);
+                        length[scenario.tp_index] = scenario.scale[scenario.tp_index].pf_to_bucket(config.pf_fail) - bottom[scenario.tp_index] + 1;
                 }
                 if (scenario.ria_index != null)
                 {

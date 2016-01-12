@@ -27,9 +27,6 @@ public class MapElement implements Cloneable
 
         public double[] aa;
 
-        public double mean; // Reward.
-        public double std_dev; // Risk.
-
         public SimulateResult results;
 
         // Copy of results.* because results gets deleted to save RAM.

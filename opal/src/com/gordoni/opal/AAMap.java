@@ -1285,7 +1285,7 @@ class AAMap
 
         public TargetResult rps_target(int age, double target, Returns returns_target, boolean under_estimate) throws ExecutionException
         {
-                double high = scenario.scale[scenario.tp_index].bucket_to_pf(scenario.generate_bottom_bucket);
+                double high = scenario.tp_high;
                 double low = 0.0;
                 double high_target = Double.NaN;
                 double low_target = Double.NaN;
