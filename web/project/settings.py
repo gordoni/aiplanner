@@ -42,7 +42,7 @@ MEDIA_URL = ''
 # Don't put anything in this directory yourself; store your static files
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # Example: "/home/media/media.lawrence.com/static/"
-STATIC_ROOT = '/home/ubuntu/aacalc.data/static/'
+STATIC_ROOT = ROOT + '.data/static/'
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
@@ -153,6 +153,3 @@ TEMPLATE_CONTEXT_PROCESSORS = global_settings.TEMPLATE_CONTEXT_PROCESSORS + (
 )
 
 CSRF_FAILURE_VIEW = 'aacalc.views.csrf_failure.csrf_failure'
-
-# Top level directory containing executable scripts.
-AACALC_ROOT = '/home/ubuntu/aacalc/web'

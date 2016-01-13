@@ -3,7 +3,7 @@
 {% comment %}
 
 AACalc - Asset Allocation Calculator
-Copyright (C) 2009, 2011-2015 Gordon Irlam
+Copyright (C) 2009, 2011-2016 Gordon Irlam
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -30,92 +30,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 <dl>
 
-<dt>What is stochastic dynamic programming (SDP)?</dt>
-
-<dd>
-
-SDP is a general purpose mathematical technique that can be used to compute the optimal asset allocation (and consumption strategy) for a portfolio as a function of age and portfolio size.
-
-</dd>
-
-<dt>Why does it matters?</dt>
-
-<dd>
-
-The Monte-Carlo simulation technique only tells you how well a particular strategy performs over multiple time periods. How to decide upon the strategy, which may have age and portfolio size dependent factors, is left unsaid. Meanwhile, the Mean-variance optimization technique produces an optimal strategy (assuming normal returns), but only for a single time period. If you adjust your asset allocation each year depending on portfolio performance, mean variance optimization can not be used. What is needed is a method of producing the optimal multi-period asset allocation strategy. This is what SDP does.
-
-</dd>
-
-<dt>Why the funky name?</dt>
-
-<dd>
-
-Stochastic means dealing chance or probabilities, such as the chance of a particular return from the stock market. While dynamic programming is a branch of mathematics that solves complex problems by splitting them up into smaller ones.
-
-</dd>
-
-<dt>How does it work? (short answer)</dt>
-
-<dd>
-
-SDP works backwards in time through a process called backward induction. If you know the optimal strategy for subsequent years and portfolio sizes, computing the optimal strategy for the current year and a particular portfolio size is simply a matter of evaluating each asset allocation and consumption possibility, combining them with the known results from subsequent years, and then picking the best asset allocation and consumption possibility.
-
-</dd>
-
-<dt>How does it work? (long answer)</dt>
-
-<dd>
-
-Suppose you know you are going to die when you reach age 120. The optimal strategy for age 119 is to consume all of your wealth in that year. The well being you derive from doing so will be based on your wealth level. Now consider age 118. The optimal strategy will be to consume a fraction (probably a little less than a half) of your wealth in the current year, and invest the remainder for use in the following year. For a given portfolio size at age 118, and for each asset allocation/consumption possibility, SDP tries combining the utility values for the current year's consumption with the expected value of the aggregate utility values from the following year (which were just calculated) to produce the aggregate utility of consumption. You then choose the asset allocation/consumption possibility with the highest aggregate utility. And the process continues for age 117. SDP calculates all the way back to the optimal strategy for the starting age and portfolio size. SDP is also able to factor in the probability of being alive at each age when calculating aggregate utility.
-
-</dd>
-
 <dt>What is utility?</dt>
 
 <dd>
 
-Utility is a concept in economics that assigns a number indicating the desirability of a consumption level or sequence of consumption levels. This relationship need not be linear; consuming $20k less per year may be many times worse than consuming $10k less year. Assigning a utility of 0 to consuming less than $40k per year and a utility of 1 to consuming $40k or more would allow one to compute the optimal fixed safe withdrawal rate type strategy for a stochastic lifespan. And richer utility functions that produce optimal variable consumption strategies also possible.
-
-</dd>
-
-<dt>What is the difference between current year utility and aggregate utility?</dt>
-
-<dd>
-
-Current year utility refers to the utility of the current year's consumption. Aggregate utility refers to the utility of the current year and all subsequent years weighted by the probability of being alive.
-
-</dd>
-
-<dt>How can we make progress when future asset class returns are uncertain?</dt>
-
-<dd>
-
-Dealing with uncertainty goes to the heart of stochastic dynamic programming. Two levels of uncertainty can distinguished. First, future returns may be unknown, but come from a known or estimated distribution. Second are the unknown unknowns, in which even the distribution of future returns is unknown. The first scenario is the capable of mathematical analysis, be it SDP, Monte-Carlo simulation, or mean-variance optimization. Then second option is barren. Analysis of the first scenario involves calculating the probability of different outcomes and resulting expected values. The estimates of the returns distribution made may not be exact, and the optimal strategy for the estimated distribution, need not be optimal for the actual distribution, which is why it is important to perform a sensitivity analysis on the strategy.
-
-</dd>
-
-<dt>What does it mean to say SDP is optimal?</dt>
-
-<dd>
-
-Within the limits of computational resolution, and asset class returns coming from a specified timewise independent distribution, the strategy produced using SDP is optimal for that distribution. A strategy is optimal is there is no other strategy that has a higher expected aggregate utility of consumption.
-
-</dd>
-
-<dt>What are the limitations of SDP?</dt>
-
-<dd>
-
-The primary limitation is that asset class returns are assumed to be timewise independent. A second real world issue is the inability to fully know the distribution of future returns, but this second issue also impacts all other asset allocation methods. Lastly, SDP becomes computationally expensive when dealing with more than a few asset classes, but this can be worked around by first applying mean-variance optimization or some other technique.
-
-</dd>
-
-<dt>Why does AACalc.com recommend such large consumption to begin with?</dt>
-
-<dd>
-
-First, AACalc.com attempts to maximize the well being you derive from consumption. In the absence of a bequest motive, this means ensuring you will consume most of your wealth before you die. Second, AACalc.com discounts upside consumption, so that you get to see the results of your money while you are still alive. The rate of this discounting can be controlled by setting the upside discount rate under "Well being". If you set this to too small a value, however, you will find that AACalc.com recommends you delay peak consumption, and instead invest in stocks, until you are at quite an advanced age. You may wish to play with this setting until you find a median consumption path you are happy with.
-
+Utility is a concept in economics that assigns a number indicating the desirability of a consumption level or sequence of consumption levels. This relationship need not be linear; consuming $20k less per year may be many times worse than consuming $10k less year.
 </dd>
 
 <dt>How many years does the analysis of AACalc.com provide for?</dt>

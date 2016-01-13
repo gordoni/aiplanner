@@ -76,19 +76,27 @@ performed in isolation, but must be performed by taking into account
 the presence and size of Social Security, Pensions, 401(k)s, and
 income annuities. </li>
 
+{% if mode == 'aa' %}
 <li> Future contributions - the impact of any possible future
 contributions is handled by entering their expected annual amount,
 growth rate, and volatility. </li>
+{%endif %}
 
 <li> Liability matching bonds - inflation indexed zero
 coupon bonds with a duration matching that of anticipated retirement
 cash flows are used as the risk free asset. </li>
 
-<li> Income annuities - the asset allocator optionally
-recommends the purchase of inflation indexed income annuities, that is
-single premium immediate annuities or deferred income annuities. </li>
+<li> Income annuities - income annuitiesa are a valuable tool in the
+retirement toolbox. This caluclator optionally recommends the
+purchase of inflation indexed income annuities, that is single premium
+immediate annuities or deferred income annuities. </li>
 
-<li> Cross validated - recommendations have been
+<li> Admit what we don't know - returns from the stock market are
+unpredictable. We generate a range of results for different plausable
+scenarios. </li>
+
+<li> Cross validated - sample Merton's method recommendations produced
+by this calculator have been
 <a href="{% url 'docs' 'validation' %}">cross validated</a> with a
 second asset allocator that uses stochastic dynamic programming. </li>
 
@@ -414,7 +422,7 @@ We recommend
 {% if results.calc.0.purchase_income_annuity != '0' %}
 purchasing an income annuity of {{ results.calc.0.purchase_income_annuity }} and then adopting
 {% endif %}
-a {{ results.calc.0.aa_equity_pct }}/{{ results.calc.0.aa_bonds_pct }}
+a <!-- healthcheck_aa --> {{ results.calc.0.aa_equity_pct }}/{{ results.calc.0.aa_bonds_pct }}
 stock/bond asset allocation.
 <div class="small">
 Asset allocation is between stocks and regular bonds plus liability
@@ -458,7 +466,11 @@ that of bonds.
 
 The amount you should consume during retirement varies from year to
 year. Currently it is recommended
-you should consume around {{ results.calc.0.consume }} per year.
+you should consume around <!-- healthcheck_consume --> {{ results.calc.0.consume }} per year.
+An {{ alloc_form.cleaned_data.confidence_pct }}% confidence interval
+on this recommendation is {{ results.calc.1.consume }} to
+{{ results.calc.2.consume }}.
+
 
 <br />
 <br />

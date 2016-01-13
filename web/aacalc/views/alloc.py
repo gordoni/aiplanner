@@ -30,7 +30,7 @@ from subprocess import check_call
 
 from aacalc.forms import AllocAaForm, AllocNumberForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
-from settings import AACALC_ROOT, STATIC_ROOT, STATIC_URL
+from settings import ROOT, STATIC_ROOT, STATIC_URL
 
 class Alloc:
 
@@ -43,7 +43,7 @@ class Alloc:
             'sex': 'male',
             'age': 50,
             'le_add': 6,
-            'sex2': None,
+            'sex2': 'none',
             'age2': '',
             'le_add2': 6,
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
@@ -375,7 +375,7 @@ class Alloc:
                 annuitize_lm_bonds = 0
         else:
             annuitize_equity = 0
-            annuitize_fixed = 0
+            annuitize_bonds = 0
             alloc_lm_bonds = min(max(0, w_prime[risk_free_index]), 1)
             annuitize_lm_bonds = 0
         alloc_equity = min(max(0, w_prime[stocks_index] * (1 - annuitize_equity)), 1)
@@ -527,7 +527,7 @@ class Alloc:
         self.life_table = LifeTable(table, sex, self.age, le_add = self.le_add, date_str = self.date_str)
 
         sex2 = data['sex2']
-        if sex2 == None:
+        if sex2 == 'none':
             self.life_table2 = None
             self.min_age = self.age
         else:
@@ -627,7 +627,7 @@ stocks,%(aa_equity)f
 bonds,%(aa_bonds)f
 ''' % result)
         f.close()
-        cmd = AACALC_ROOT + '/plot.R'
+        cmd = ROOT + '/web/plot.R'
         prefix = dirname + '/'
         check_call((cmd, '--args', prefix))
         return dirname

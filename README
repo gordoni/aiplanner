@@ -1,6 +1,41 @@
-AACalc is an asset allocation and consumption planning calculator.
+AACalc comprises a pair of asset allocation and consumption planning
+calculators based on scientific principles, plus a SPIA pricing
+calulator.
 
-Notable features include:
+AACalc Alloc uses Merton's approach. It is fast, and easy to use.
+
+AACalc Opal is a research calculator. It is complex, and
+computationally demanding.
+
+The SPIA pricing calculator computes actuarially fair SPIA prices
+using up to date real, nominal, or corporate bond yield curves
+obtained from the U.S. Treasury.
+
+Notable featurss of AACalc Alloc:
+
+  - A balance sheet approach - asset allocation can't be performed in
+    isolation, but must be performed by taking into account the
+    presence and size of Social Security, Pensions, 401(k)s, and
+    income annuities.
+
+  - Future contributions - the impact of any possible future
+    contributions is handled by entering their expected annual amount,
+    growth rate, and volatility.
+
+  - Liability matching bonds - inflation indexed zero coupon bonds
+    with a duration matching that of anticipated retirement cash flows
+    are used as the risk free asset.
+
+  - Income annuities - income annuitiesa are a valuable tool in the
+    retirement toolbox. This caluclator optionally recommends the
+    purchase of inflation indexed income annuities, that is single
+    premium immediate annuities or deferred income annuities.
+
+  - Admit what we don't know - returns from the stock market are
+    unpredictable. We generate a range of results for different
+    plausable scenarios.
+
+Notable features of AACalc Opal:
 
   - A stochastic dynamic programming module to compute optimal asset
     allocation and consumption strategies assuming time-wise
@@ -29,7 +64,7 @@ Notable features include:
     and upside consumption preferences.
 
   - In addition to the standard asset classes, the ability to handle
-    real or nominal annuities.
+    liability mathing bonds, real annuties, and nominal annuities.
 
   - When handling 3 or more asset classes the ability to speed up
     performance in exchange for some loss of optimality by using mean
@@ -39,12 +74,6 @@ Notable features include:
     thanks to GNUPLOT.
 
   - An optional web based front end to the program.
-
-  - In addition to the main asset allocation calculator, additional
-    web based calculators for:
-      - what's "my number"
-      - actuarial life expectancy
-      - actuarially-fair SPIA prices
 
 Demo:
 
@@ -56,33 +85,33 @@ AACalc implementation:
     agpl-3.0.txt for details. I am experimenting with business models,
     and other licensing terms may be available.
 
-  - Runs on Ubuntu 14.04 Linux and possibly other systems. The backend
+  - Runs on Ubuntu 14.04 Linux and possibly other systems. The Opal backend
     should be readily portable to other *nix systems. Frontend should
     be readily portable to other systems running Django 1.6.
 
-  - Backend written in Java with call outs to R and GNUPLOT.
+  - Opal backend written in Java with call outs to R and GNUPLOT.
 
-  - Able to take advantage of multicore computers for performance.  On
-    a 32 core c3.8xlarge instance computing the optimal asset
-    allocation takes a few seconds in the absence of annuities, or a
-    few hours in their presence.
+  - The Opal backend is able to take advantage of multicore computers
+    for performance.  On a 20 core m4.10xlarge instance computing the
+    optimal asset allocation takes a few seconds in the absence of
+    annuities, or half an hour in their presence.
 
   - Web frontend written in Python using the Django framework.
 
-  - Backend can be either run standalone, or in a server configuration
-    talking to the frontend.
+  - Opal backend can be either run standalone, or in a server
+    configuration talking to the frontend.
 
-  - Backend capable of running in an autoscaling load balancing
+  - Opal backend capable of running in an autoscaling load balancing
     framework.
 
-  - Backend performs minimal input sanity checking; responsibility for
-    input sanity checking pushed on to frontend.
+  - Opal backend performs minimal input sanity checking;
+    responsibility for input sanity checking pushed on to frontend.
 
-  - Backend uses hill climbing to avoid exhaustive search of the
+  - Opal backend uses hill climbing to avoid exhaustive search of the
     solution space.
 
-  - Backend uses Shiller and a variety of other returns
-    datasets. Backend uses Social Security cohort mortality and a
+  - Opal backend uses Shiller and a variety of other returns datasets.
+    Opal backend and Alloc use Social Security cohort mortality and a
     variety of other mortality datasets.
 
 To do:
@@ -108,27 +137,26 @@ To do:
     interest rates can't fall much lower, so bond returns are at best
     only likely to be weakly positive.
 
-  - Take a health level input E.g. 110% that reduces death rates.
-
-  - Handle multiple start dates for Social Security, pensions, annuity
-    income.
-
   - Explore implications of using prospect theory to compute the
     optimal strategy (treat previous consumption level as an extra
     "wealth" dimension); will be slow.
 
-  - Stochastic income pre-retirement; will likely be slow.
+  - Opal handle annuities pre-retirement. Not sure what the issue is,
+    but made a note to myself to fix.
 
-  - Handle annuities pre-retirement. Not sure what the issue is, but
-    made a note to myself to fix.
+  - Alloc can be made to recommend annuities, but doing so doesn't
+    improve consumption. It should.
 
 Getting started:
 
   - It is suggested that Amazon EC2 be used for development work. A
-    Ubuntu 14.04 c3.xlarge instance works fine. The same instance can
-    be used to run the web server and the opal server. In production
-    the load can be larger, and it may be necessary to run a separate
-    web server and run multiple opal servers behind a load balancer.
+    Ubuntu 14.04 t2.nano instance works fine for Alloc. A c3.xlarge
+    instance is recommended for running Opal without annuities, or a
+    m4.10xlarge with annuities. The same instance can be used to run
+    the web server and the Opal backend server. In production the load
+    can be larger, and it may be necessary to run a separate web
+    server and run multiple Opal backend servers behind a load
+    balancer.
 
   - Obtain the sources:
 
@@ -140,6 +168,6 @@ Getting started:
         git config --global user.name "<FirstName> <LastName>"
         git config --global user.email "<user@email.com>"
 
-  - See opal/README for the Java backend.
+  - See web/README for the web based Python Django frontend.
 
-  - See web/README for the web based frontend.
+  - Optionally see opal/README for the Opal Java backend.

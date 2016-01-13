@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2015 Gordon Irlam
+# Copyright (C) 2009, 2011-2016 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -90,24 +90,25 @@ def healthcheck(request):
     params['form-INITIAL_FORMS'] = len(params['db'])
     params['form-MAX_NUM_FORMS'] = len(params['db'])
     del params['db']
-    request = request_factory.post('/calculators/alloc', params)
-    response = alloc(request)
+    request = request_factory.post('/calculators/aa', params)
+    response = alloc(request, 'aa')
     page = response.content
-    stocks, consume, _ = match('^.*We recommend\s+a (\d+)/\d+.*?consume about ((\d|,)+).*$', page, DOTALL).groups()
+    stocks, consume, _ = match('^.*<!-- healthcheck_aa --> (\d+)/\d+.*<!-- healthcheck_consume --> ((\d|,)+).*$', page, DOTALL).groups()
     assert(40 < float(stocks) < 80)
     assert(80000 < float(consume.replace(',', '')) < 110000)
 
-    # Asset allocation.
-    scenario_dict = dict(default_params)
-    scenario_dict['sex'] = 'male'
-    scenario_dict['dob'] = 90
-    scenario_dict['p'] = 100000
-    scenario_dict['retirement_year'] = 2000
-    request = request_factory.post('/calculators/aa', scenario_dict)
-    response = run_response(request, scenario_dict, True)
-    page = response.content
-    consume, = match('^.*Suggested initial annual consumption amount: (\d+).*$', page, DOTALL).groups()
-    assert(30000 < int(consume) < 50000)
-    stocks, = match('^.*Suggested initial asset allocation stocks/bonds: (\d+)/\d+.*$', page, DOTALL).groups()
-    assert(80 <= int(stocks) <= 100)
+    # # Asset allocation.
+    # scenario_dict = dict(default_params)
+    # scenario_dict['sex'] = 'male'
+    # scenario_dict['dob'] = 90
+    # scenario_dict['p'] = 100000
+    # scenario_dict['retirement_year'] = 2000
+    # request = request_factory.post('/calculators/aa', scenario_dict)
+    # response = run_response(request, scenario_dict, True)
+    # page = response.content
+    # consume, = match('^.*Suggested initial annual consumption amount: (\d+).*$', page, DOTALL).groups()
+    # assert(30000 < int(consume) < 50000)
+    # stocks, = match('^.*Suggested initial asset allocation stocks/bonds: (\d+)/\d+.*$', page, DOTALL).groups()
+    # assert(80 <= int(stocks) <= 100)
+
     return HttpResponse('OK', content_type = 'text/plain')

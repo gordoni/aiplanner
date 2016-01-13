@@ -9,4 +9,4 @@ if ! $DIR/ec2-security-group-is prod-aacalc-compute; then
     $DIR/fetch_yield_curve -t nominal -d $DATADIR/public/cmt
 fi
 
-$DIR/gen_sample
+#$DIR/gen_sample

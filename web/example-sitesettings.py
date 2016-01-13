@@ -4,6 +4,8 @@
 DEBUG = False
 TEMPLATE_DEBUG = DEBUG
 
+ROOT = '/home/ubuntu/aacalc'
+
 ADMINS = (
     ('<FirstName> <LastNmae>', '<user@email.com>'),
 )

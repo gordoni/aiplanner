@@ -503,13 +503,6 @@ class SpiaForm(Form):
 
 class AllocBaseForm(Form):
 
-    def clean_sex2(self):
-        sex2 = self.cleaned_data['sex2']
-        if sex2 == '':
-            return None
-        else:
-            return sex2
-
     def clean_date(self):
         for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y'):
             try:
@@ -529,7 +522,7 @@ class AllocBaseForm(Form):
         cleaned_data['db'] = tuple(f.cleaned_data for f in self.db.forms)
         sex2 = cleaned_data.get('sex2')
         age2 = cleaned_data.get('age2')
-        if sex2 == None and age2 != None or sex2 != None and age2 == None:
+        if sex2 == 'none' and age2 != None or sex2 != 'none' and age2 == None:
             raise ValidationError('Invalid spouse/partner.')
         if sex2 == None and any((db['who'] == 'spouse' or float(db['joint_payout_pct']) != 0) and (float(db['amount']) != 0) for db in cleaned_data['db']):
             raise ValidationError('Spousal defined benefits but no spouse present')
@@ -579,7 +572,7 @@ class AllocBaseForm(Form):
     le_add = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}))
     sex2 = ChoiceField(
-        choices = (('', 'none'), ('male', 'male'), ('female', 'female')),
+        choices = (('none', 'none'), ('male', 'male'), ('female', 'female')),
         required=False)
     age2 = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),

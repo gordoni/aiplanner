@@ -3,7 +3,7 @@
 {% comment %}
 
 AACalc - Asset Allocation Calculator
-Copyright (C) 2009, 2011-2015 Gordon Irlam
+Copyright (C) 2009, 2011-2016 Gordon Irlam
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -251,6 +251,7 @@ Actuarially fair premium:
 Premium:
 {% endif %}
 {{ results.premium }}
+<br />
 {% endif %}
 {% if results.payout %}
 {% if results.fair %}
@@ -259,6 +260,9 @@ Actuarially fair {{ results.frequency }} payout:
 {{ results.frequency | capfirst }} payout:
 {% endif %}
 {{ results.payout }}
+{% if results.mwr_percent %}
+<br />
+{% endif %}
 {% endif %}
 {% if results.mwr_percent %}
 Money's Worth Ratio: {{ results.mwr_percent }}%

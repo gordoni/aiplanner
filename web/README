@@ -1,4 +1,5 @@
-Web based frontend for the AACalc asset allocation and consumption planning calculator.
+Web based frontend for the AACalc asset allocation and consumption
+planning calculator.
 
 Source files reside in aacalc, while running instance files reside in
 aacalc.data .
@@ -12,7 +13,7 @@ major security hole.
 Obtaining additional required components
 ----------------------------------------
 
-sudo apt-get install apache2 apache2-utils libapache2-mod-wsgi python-django memcached python-memcache python-scipy python-lxml catdoc
+sudo apt-get install apache2 apache2-utils libapache2-mod-wsgi python-django r-base python-scipy python-lxml catdoc
 
 Set up hostname
 ---------------
@@ -42,6 +43,8 @@ sudo chown www-data:www-data aacalc.data/{static/results,run}
 Set up and run Opal server
 --------------------------
 
+If running a web interface to Opal (no longer recommended; use Alloc):
+
 # Install upstart script to automatically run Opal server on reboot.
 sudo cp aacalc/web/opal.conf /etc/init/
 [if opalserver on remote system (must be behind firewall): edit /etc/init/opal.conf to change listen address from "-d localhost 8000" to "-d '*' 8000"]
@@ -50,6 +53,11 @@ sudo cp aacalc/web/opal.conf /etc/init/
 cd aacalc/opal
 ./install-opal
 
+Uncomment the lines for Opal in aacalc/web/projects/urls.py .
+
+Add buttons for start_opal_aa and start_opal_number to
+aacalc/web/aacalc/templates/home.html .
+
 Set up Django
 -------------
 
@@ -57,8 +65,10 @@ Set up Django
 mkdir aacalc.data/project
 touch aacalc.data/project/__init__.py
 cp aacalc/web/example-sitesettings.py aacalc.data/project/sitesettings.py
+
 [edit] aacalc.data/project/sitesettings.py
-# Set DEBUG to True to display backtraces in the web browser (displays sensistive data).
+# Optionally set DEBUG to True to display backtraces in the web browser (displays sensistive data).
+# Set ROOT to the path to the aacalc directory (no trailing slash).
 # Set ADMINS to receive email messages.
 # Make SECRETKEY unique.
 # Edit OPAL_HOST from localhost to name of the Opal server load balancer if required.
@@ -89,12 +99,6 @@ service apache2 restart
 htpasswd -c ~/aacalc.data/aacalc.htpasswd <user>
 [password: <passwd>]
 
-Generating the sample page
---------------------------
-
-cd aacalc/web
-sudo ./gen_sample
-
 Set up cron
 -----------
 
@@ -124,8 +128,9 @@ In a web browser visit http://<site>/ .
 Final notes
 -----------
 
-The file eafe.csv is not included. You should either obtain it and
-place it in aacalc/opal{,.data}/private/ or remove:
+If using Opal, note that the file eafe.csv used by Opal is not
+included. You should either obtain it and place it in
+aacalc/opal{,.data}/private/ or remove:
 
 {{ se_form.class_eafe }} International
 <font size="-1">
