@@ -28,7 +28,7 @@ from numpy.linalg import inv, LinAlgError
 from scipy.stats import lognorm, norm
 from subprocess import check_call
 
-from aacalc.forms import AllocForm
+from aacalc.forms import AllocAaForm, AllocNumberForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
 from settings import AACALC_ROOT, STATIC_ROOT, STATIC_URL
 
@@ -308,11 +308,9 @@ class Alloc:
         equity_gm = self.geomean(1 + equity_ret, equity_vol) - 1
         bonds_gm = self.geomean(1 + bonds_ret, bonds_vol) - 1
 
-        equity_contribution_corr = float(data['equity_contribution_corr_pct']) / 100
-        bonds_contribution_corr = float(data['bonds_contribution_corr_pct']) / 100
         equity_bonds_corr = float(data['equity_bonds_corr_pct']) / 100
-        cov_ec2 = equity_vol * self.contribution_vol * equity_contribution_corr ** 2
-        cov_bc2 = bonds_vol * self.contribution_vol * bonds_contribution_corr ** 2
+        cov_ec2 = equity_vol * self.contribution_vol * self.equity_contribution_corr ** 2
+        cov_bc2 = bonds_vol * self.contribution_vol * self.bonds_contribution_corr ** 2
         cov_eb2 = equity_vol * bonds_vol * equity_bonds_corr ** 2
         stocks_index = 0
         bonds_index = 1
@@ -494,6 +492,7 @@ class Alloc:
             'lm_bonds_ret_pct': '{:.1f}'.format(lm_bonds_ret * 100),
             'total_ret_pct': '{:.1f}'.format(total_ret * 100),
             'total_vol_pct': '{:.1f}'.format(total_vol * 100),
+            'consume_value': consume,
             'alloc_equity': alloc_equity,
             'alloc_bonds': alloc_bonds,
             'alloc_lm_bonds': alloc_lm_bonds,
@@ -505,7 +504,7 @@ class Alloc:
         }
         return result
 
-    def compute_results(self, data):
+    def compute_results(self, data, mode):
 
         results = {}
 
@@ -530,20 +529,36 @@ class Alloc:
         sex2 = data['sex2']
         if sex2 == None:
             self.life_table2 = None
+            self.min_age = self.age
         else:
             self.age2 = float(data['age2']);
             self.le_add2 = float(data['le_add2'])
             self.life_table2 = LifeTable(table, sex2, self.age2, le_add = self.le_add2, date_str = self.date_str)
+            self.min_age = min(self.age, self.age2)
 
         self.db = data['db']
-        self.traditional = float(data['p_traditional_iras'])
-        self.tax_rate = float(data['tax_rate_pct']) / 100
-        self.npv_roth = float(data['p_roth_iras'])
-        self.npv_taxable = float(data['p'])
-        self.contribution = float(data['contribution'])
-        self.contribution_growth = float(data['contribution_growth_pct']) / 100
-        self.contribution_vol = float(data['contribution_vol_pct']) / 100
-        self.pre_retirement_years = max(0, float(data['retirement_age']) - self.age)
+        if mode == 'aa':
+            self.traditional = float(data['p_traditional_iras'])
+            self.tax_rate = float(data['tax_rate_pct']) / 100
+            self.npv_roth = float(data['p_roth_iras'])
+            self.npv_taxable = float(data['p'])
+            self.contribution = float(data['contribution'])
+            self.contribution_growth = float(data['contribution_growth_pct']) / 100
+            self.contribution_vol = float(data['contribution_vol_pct']) / 100
+            self.equity_contribution_corr = float(data['equity_contribution_corr_pct']) / 100
+            self.bonds_contribution_corr = float(data['bonds_contribution_corr_pct']) / 100
+        else:
+            self.traditional = 0
+            self.tax_rate = 0
+            self.npv_roth = 0
+            self.npv_taxable = 0
+            self.contribution = 0
+            self.contribution_growth = 0
+            self.contribution_vol = 0.1 # Prevent covariance matrix inverse failing.
+            self.equity_contribution_corr = 0
+            self.bonds_contribution_corr = 0
+        self.retirement_age = float(data['retirement_age'])
+        self.pre_retirement_years = max(0, self.retirement_age - self.age)
         self.joint_income = float(data['joint_income_pct']) / 100
         self.desired_income = float(data['desired_income'])
 
@@ -564,10 +579,24 @@ class Alloc:
         #for i, db in enumerate(future_display['db']):
         #    results['db'][i]['future'] = db
 
-        if sex2 == None:
-            self.min_age = self.age
-        else:
-            self.min_age = min(self.age, self.age2)
+        if mode == 'number':
+            nv = npv_results['nv']
+            low = 0
+            high = self.desired_income * (120 - self.retirement_age)
+            while high - low > 0.000001 * self.desired_income:
+                mid = (low + high) / 2.0
+                # Hack the table rather than recompute for speed.
+                npv_results['nv_taxable'] = mid
+                npv_results['nv'] = nv + mid
+                calc = self.calc(None, 0, data, npv_results)
+                if calc['consume_value'] < self.desired_income:
+                    low = mid
+                else:
+                    high = mid
+            self.npv_taxable = mid
+            npv_results, npv_display = self.value_table()
+            results['present'] = npv_display
+
         factor = norm.ppf(0.5 + float(data['confidence_pct']) / 100 / 2)
         factor = float(factor) # De-numpyfy.
         results['calc'] = (
@@ -603,7 +632,11 @@ bonds,%(aa_bonds)f
         check_call((cmd, '--args', prefix))
         return dirname
 
-    def alloc(self, request):
+    def alloc_init(self, data, mode):
+
+        return AllocAaForm(data) if mode == 'aa' else AllocNumberForm(data)
+
+    def alloc(self, request, mode):
 
         errors_present = False
 
@@ -611,14 +644,14 @@ bonds,%(aa_bonds)f
 
         if request.method == 'POST':
 
-            alloc_form = AllocForm(request.POST)
+            alloc_form = self.alloc_init(request.POST, mode)
 
             if alloc_form.is_valid():
 
                 try:
 
                     data = alloc_form.cleaned_data
-                    results = self.compute_results(data)
+                    results = self.compute_results(data, mode)
                     dirname = self.plot(results['calc'][0])
                     results['dirurl'] = dirname.replace(STATIC_ROOT, STATIC_URL)
 
@@ -649,13 +682,14 @@ bonds,%(aa_bonds)f
 
         else:
 
-            alloc_form = AllocForm(self.default_alloc_params())
+            alloc_form = self.alloc_init(self.default_alloc_params(), mode)
 
         return render(request, 'alloc.html', {
             'errors_present': errors_present,
+            'mode': mode,
             'alloc_form': alloc_form,
             'results': results,
         })
 
-def alloc(request):
-    return Alloc().alloc(request)
+def alloc(request, mode):
+    return Alloc().alloc(request, mode)

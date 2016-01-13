@@ -23,7 +23,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% block title %}Asset allocation calculator{% endblock %}
 
 {% block head %}
+{% if mode == 'aa' %}
 <meta name="description" content="Compute appropriate asset and income annuity allocations using scientific principles. And explain how the recommendations were derived." /><!-- Keep content to less than 155 characters according to Wikipedia. -->
+{% else %}
+<meta name="description" content="Compute your retirement number using scientific principles. And explain how the number was derived." />
+{% endif %}
 <script type="text/javascript" src="/static/js/jquery-1.10.2.min.js"></script>
 <script type="text/javascript">
 $(document).ready(function(){
@@ -42,15 +46,23 @@ $(document).ready(function(){
 
 {% block content %}
 
+{% if mode == 'aa' %}
 <h1>Asset allocation calculator</h1>
+{% else %}
+<h1>Retirement Number Calculator</h1>
+{% endif %}
 
 <p>
 <img style="float: right; margin-left: 10px;" width=400 height=200 src="/static/images/shutterstock_69970861.jpg" alt="golden egg">
 </p>
 
-This calculator computes asset and income annuity allocations using
-scientific principles. And it explains how the recommendations were
-derived.
+{% if mode == 'aa' %}
+This calculator computes asset allocations using scientific
+principles. And it explains how the recommendations were derived.
+{% else %}
+This calculator computes the financial position you need to be in
+for retirement. And it explains how your number was derived.
+{% endif %}
 
 <br />
 <br />
@@ -181,9 +193,12 @@ Contingent: payout reduced on death of either party.
 Survivor: payout reduced only on death of the owner.
 </td>
 </table>
-<br />
 
 </div>
+
+{% if mode == 'aa' %}
+
+<br />
 
 Defined contributions:
 
@@ -232,6 +247,8 @@ home in estimating the contribution growth rate.
 
 </div>
 
+{% endif %}
+
 </div>
 
 <h2>Financial goals</h2>
@@ -244,19 +261,23 @@ Age of primary person at retirement: {{ alloc_form.retirement_age }}
 Relative income required when one party deceased: {{ alloc_form.joint_income_pct }}%
 {{ alloc_form.joint_income_pct.errors }}
 <br />
-Income required to have "won the game": {{ alloc_form.desired_income }}
+{% if mode == 'aa' %}
+Annual consumption at which you have "won the game": {{ alloc_form.desired_income }}
 <div class="small">
 Assets required to support consumption above this level are allocated
 to stocks.
 </div>
+{% else %}
+Annual desired consumption level: {{ alloc_form.desired_income }}
+{% endif %}
 <br />
 Permit recommendation of income annuities: {{ alloc_form.purchase_income_annuity }}
 {{ alloc_form.purchase_income_anuity.errors }}
 <div class="small">
-Income annuities only make sense if you are in good health.
+Income annuities only make sense if you are in reasonable health.
 </div>
 <br />
-We do not support the ability to leave a specific target bequest.
+We do not support the ability to leave a specific bequest amount.
 
 </div>
 
@@ -354,6 +375,11 @@ high degree of risk aversion.
 
 <div class="center">
 <input class="button" type="submit" value="Submit" />
+{% if mode == 'number' %}
+<div class="small">
+takes 5 seconds
+</div>
+{% endif %}
 </div>
 
 {% if results and not errors_present %}
@@ -370,6 +396,20 @@ high degree of risk aversion.
 
 <br />
 
+{% if mode == 'number' %}
+
+To support your desired consumption level you need to have a total of
+{{ results.present.nv_taxable }} today excluding defined benefits.
+<div class="small">
+The amount you require in the future might be slighly larger. If you
+had this amount today it would be invested and growing. Or possibly
+slightly smaller in nominal dollar terms due to inflation.
+</div>
+
+<br />
+
+{% endif %}
+
 We recommend
 {% if results.calc.0.purchase_income_annuity != '0' %}
 purchasing an income annuity of {{ results.calc.0.purchase_income_annuity }} and then adopting
@@ -379,7 +419,7 @@ stock/bond asset allocation.
 <div class="small">
 Asset allocation is between stocks and regular bonds plus liability
 matching bonds. For most scenarios a stock heavy asset allocation is
-appropriate becasue defined benefits are in many ways similar to
+appropriate because defined benefits are in many ways similar to
 bonds.
 <br />
 The recommendation does not take into account your risk tolerance.
@@ -390,8 +430,8 @@ recommended asset allocation.
 Stock holdings should be diversified. At least 20 different
 stocks. Preferably many more. Such diversification can be obtained
 using a low cost index fund.
-Regular bond holdings should also be diversified. Again an index fund
-suffices.
+Regular bond holdings are nominal and should also be diversified.
+Again an index fund suffices.
 Liability matching bonds should be inflation indexed and have a
 duration of about {{ results.calc.0.lm_bonds_duration }} years.
 </div>

@@ -501,7 +501,7 @@ class SpiaForm(Form):
     advanced_bonds = BooleanField(required=False,
         widget=CheckboxInput(attrs={'class': 'advanced_button'}))
 
-class AllocForm(Form):
+class AllocBaseForm(Form):
 
     def clean_sex2(self):
         sex2 = self.cleaned_data['sex2']
@@ -521,7 +521,7 @@ class AllocForm(Form):
         raise ValidationError('Invalid quote date.')
 
     def clean(self):
-        cleaned_data = super(AllocForm, self).clean()
+        cleaned_data = super(AllocBaseForm, self).clean()
         if any(self.db.errors):
             raise ValidationError('Error in defined benefits table.')
         if self._errors:
@@ -564,7 +564,7 @@ class AllocForm(Form):
             max_value=100)
 
     def __init__(self, data=None, *args, **kwargs):
-        super(AllocForm, self).__init__(*args, data=data, **kwargs)
+        super(AllocBaseForm, self).__init__(*args, data=data, **kwargs)
         if 'db' in data:
             self.db = self.DbFormSet(initial=data['db'])
         else:
@@ -592,35 +592,6 @@ class AllocForm(Form):
         widget=TextInput(attrs={'class': 'dob_input'}))
 
     DbFormSet = formset_factory(DbForm, extra=8, max_num=8)
-    p_traditional_iras = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    tax_rate_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=0,
-        max_value=100)
-    p_roth_iras = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    p = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    contribution = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    contribution_growth_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}))
-    contribution_vol_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=1) # 0 fails.
-    equity_contribution_corr_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=-99,
-        max_value=99) # 100 fails.
-    bonds_contribution_corr_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=-99,
-        max_value=99) # 100 fails.
 
     retirement_age = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
@@ -667,3 +638,40 @@ class AllocForm(Form):
 
     advanced_calculations = BooleanField(required=False,
         widget=CheckboxInput(attrs={'class': 'advanced_button'}))
+
+class AllocAaForm(AllocBaseForm):
+
+    p_traditional_iras = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    tax_rate_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        min_value=0,
+        max_value=100)
+    p_roth_iras = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    p = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+
+    contribution = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    contribution_growth_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}))
+    contribution_vol_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        min_value=1) # 0 fails.
+    equity_contribution_corr_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        min_value=-99,
+        max_value=99) # 100 fails.
+    bonds_contribution_corr_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        min_value=-99,
+        max_value=99) # 100 fails.
+
+class AllocNumberForm(AllocBaseForm):
+
+    pass
