@@ -42,10 +42,10 @@ class Alloc:
         return {
             'sex': 'male',
             'age': 50,
-            'le_add': 6,
+            'le_add': 8,
             'sex2': 'none',
             'age2': '',
-            'le_add2': 6,
+            'le_add2': 8,
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
 
             'db' : ({
@@ -298,7 +298,7 @@ class Alloc:
         scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table_add, life_table2 = self.life_table2_add, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
-        scenario.price()
+        discounted_retirement_le = scenario.price()
         retirement_le = scenario.total_payout
         lm_bonds_ret = scenario.annual_return
         lm_bonds_duration = scenario.duration
@@ -423,7 +423,7 @@ class Alloc:
         c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
             future_growth_try, equity_ret, bonds_ret, lm_bonds_ret, \
             equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
-        consume = c_factor * results['nv']
+        consume = results['nv_db'] / discounted_retirement_le + c_factor * (results['nv'] - results['nv_db'])
 
         if consume > self.desired_income:
             ratio = self.desired_income / consume
@@ -435,7 +435,7 @@ class Alloc:
             c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
                 future_growth_try, equity_ret, bonds_ret, lm_bonds_ret, \
                 equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
-            consume = c_factor * results['nv']
+        consume = results['nv_db'] / discounted_retirement_le + c_factor * (results['nv'] - results['nv_db'])
 
         alloc_equity = max(0, alloc_equity) # Eliminate negative values from fp rounding errors.
 

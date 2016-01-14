@@ -39,7 +39,7 @@ tests = (
     (0.92, 43181, 41078, 'p=500k', {'p': 500000}),
     (1, 27804, 27487, 'stocks=8.7%+/-20%', {'equity_ret_pct': 8.7, 'equity_vol_pct': 20}),
     (0.85, 27184, 26925, 'bonds=3.2%+/-4%', {'bonds_ret_pct': 3.2, 'bonds_vol_pct': 4}),
-    (1, 32132, 26597, 'age=90, le_add=3, p=100k', {'age': 90, 'le_add': 4.5, 'p': 100000}),
+    (1, 32132, 26597, 'age=90, p=100k', {'age': 90, 'p': 100000}),
     (0.95, 36476, 37755, 'age=50, p=500k', {'age': 50, 'p': 500000, 'db': (db('self', 50, 15000), )}),
     (1, float('nan'), 40093, 'age=50, retire=65, accumulate=3000*1.07^y', {'age': 50, 'retirement_age': 65, 'contribution': 3000, 'contribution_growth_pct': 7, 'contribution_vol_pct': 1}),
     (0.97, float('nan'), 68878, 'age=25, retire=65, accumulate=500*1.07^y', {'age': 25, 'retirement_age': 65, 'contribution': 500, 'contribution_growth_pct': 7, 'contribution_vol_pct': 1}),
@@ -52,7 +52,7 @@ tests = (
     (0.54, 60699, 56835, 'p=1000k, gamma=6', {'p': 1000000, 'gamma': 6}),
     (0.69, 68232, 64490, 'p=1000k, stocks=8.7%+/-20%', {'p': 1000000, 'equity_ret_pct': 8.7, 'equity_vol_pct': 20}),
     (0.50, 69003, 67044, 'p=1000k, bonds=3.2%+/-4%', {'p': 1000000, 'bonds_ret_pct': 3.2, 'bonds_vol_pct': 4}),
-    (0.81, 77213, 60813, 'p=500k, age=90, le_add=3', {'age': 90, 'le_add': 3, 'p': 500000, }),
+    (0.81, 77213, 60813, 'p=500k, age=90', {'age': 90, 'p': 500000, }),
     (0.64, 107958, 108740, 'p=2500k, age=50', {'age': 50, 'p': 2500000, }),
     (0.72, float('nan'), 92445, 'p=1000k, age=50, retire=65, accumulate=3000*1.07^y', {'p': 1000000, 'age': 50, 'retirement_age': 65, 'contribution': 3000, 'contribution_growth_pct': 7, 'contribution_vol_pct': 1}),
     (0.76, float('nan'), 108217, 'p=500k, age=25, retire=65, accumulate=500*1.07^y', {'p': 500000, 'age': 25, 'retirement_age': 65, 'contribution': 500, 'contribution_growth_pct': 7, 'contribution_vol_pct': 1}),
@@ -69,7 +69,7 @@ for test in tests:
     default = alloc.default_alloc_params()
     params = dict(dict(default, date='2015-12-31', expense_pct=0, purchase_income_annuity=False, desired_income=1000000, \
         age=65, retirement_age=50, p=200000), **params)
-    results = alloc.compute_results(params)
+    results = alloc.compute_results(params, 'aa')
     over_aa = results['calc'][0]['aa_equity'] - stocks
     over_consume = float(results['calc'][0]['consume'].replace(',', '')) / consume - 1
     if not isnan(over_consume):
