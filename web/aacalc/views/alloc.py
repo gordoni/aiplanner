@@ -636,7 +636,7 @@ class Alloc:
 
         return results
 
-    def plot(self, result):
+    def plot(self, mode, result):
         umask(0077)
         parent = STATIC_ROOT + 'results'
         dirname = mkdtemp(prefix='aa-', dir=parent)
@@ -647,8 +647,10 @@ regular bonds,%(alloc_bonds)f
 LM bonds,%(alloc_lm_bonds)f
 defined benefits,%(alloc_existing_db)f
 new annuities,%(alloc_new_db)f
-future contribs,%(alloc_contributions)f
 ''' % result)
+        if mode == 'aa':
+            f.write('''future contribs,%(alloc_contributions)f
+''')
         f.close()
         f = open(dirname + '/aa.csv', 'w')
         f.write('''asset class,allocation
@@ -681,7 +683,7 @@ bonds,%(aa_bonds)f
 
                     data = alloc_form.cleaned_data
                     results = self.compute_results(data, mode)
-                    dirname = self.plot(results['calc'][0])
+                    dirname = self.plot(mode, results['calc'][0])
                     results['dirurl'] = dirname.replace(STATIC_ROOT, STATIC_URL)
 
                 except LifeTable.UnableToAdjust:
