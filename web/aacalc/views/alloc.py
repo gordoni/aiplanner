@@ -188,48 +188,54 @@ class Alloc:
 
     def value_table(self, taxable):
 
-        nv_db = 0
         results = {}
         display = {}
-        display['db'] = []
 
-        for db in self.db:
+        if not hasattr(self, 'value_table_cache_db'):
 
-            amount = float(db['amount'])
+            self.value_table_cache_db = []
+            self.value_table_cache_nv_db = 0
 
-            if amount == 0:
-                continue
+            for db in self.db:
 
-            yield_curve = self.yield_curve_real if db['inflation_indexed'] else self.yield_curve_nominal
+                amount = float(db['amount'])
 
-            if db['who'] == 'self':
-                starting_age = self.age
-                lt1 = self.life_table_add
-                lt2 = self.life_table2_add
-            else:
-                starting_age = self.age2
-                lt1 = self.life_table2_add
-                lt2 = self.life_table_add
+                if amount == 0:
+                    continue
 
-            delay = float(db['age']) - starting_age
-            positive_delay = max(0, delay)
-            negative_delay = min(0, delay)
-            payout_delay = positive_delay * 12
-            period_certain = max(0, self.period_certain - positive_delay, float(db['period_certain']) + negative_delay)
-            joint_payout_fraction = float(db['joint_payout_pct']) / 100
-            joint_contingent = (db['joint_type'] == 'contingent')
+                yield_curve = self.yield_curve_real if db['inflation_indexed'] else self.yield_curve_nominal
 
-            scenario = Scenario(yield_curve, payout_delay, None, None, 0, lt1, life_table2 = lt2, \
-                joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
-                period_certain = period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
-            price = scenario.price() * amount
-            nv_db += price
+                if db['who'] == 'self':
+                    starting_age = self.age
+                    lt1 = self.life_table_add
+                    lt2 = self.life_table2_add
+                else:
+                    starting_age = self.age2
+                    lt1 = self.life_table2_add
+                    lt2 = self.life_table_add
 
-            display['db'].append({
-                'description': db['description'],
-                'who': db['who'],
-                'nv': '{:,.0f}'.format(price),
-            })
+                delay = float(db['age']) - starting_age
+                positive_delay = max(0, delay)
+                negative_delay = min(0, delay)
+                payout_delay = positive_delay * 12
+                period_certain = max(0, self.period_certain - positive_delay, float(db['period_certain']) + negative_delay)
+                joint_payout_fraction = float(db['joint_payout_pct']) / 100
+                joint_contingent = (db['joint_type'] == 'contingent')
+
+                scenario = Scenario(yield_curve, payout_delay, None, None, 0, lt1, life_table2 = lt2, \
+                    joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
+                    period_certain = period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
+                price = scenario.price() * amount
+                self.value_table_cache_nv_db += price
+
+                self.value_table_cache_db.append({
+                    'description': db['description'],
+                    'who': db['who'],
+                    'nv': '{:,.0f}'.format(price),
+                })
+
+        display['db'] = self.value_table_cache_db
+        nv_db = self.value_table_cache_nv_db
 
         nv_contributions = self.npv_contrib(self.contribution_growth)
 
@@ -278,14 +284,14 @@ class Alloc:
             life_table2_partial = LifeTable(self.table, self.sex2, self.age2, le_add = (1 - alloc_db) * self.le_add2, date_str = self.date_str)
         else:
             life_table2_partial = None
-        periodic_ret = self.geomean(total_ret, total_vol)
-        schedule = self.stochastic_schedule(1 / (1.0 + periodic_ret))
+        total_geometric_ret = self.geomean(total_ret, total_vol)
+        schedule = self.stochastic_schedule(1 / (1.0 + total_geometric_ret))
         scenario = Scenario(self.yield_curve_zero, self.payout_delay, None, None, 0, life_table_partial, life_table2 = life_table2_partial, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust, schedule = schedule)
         c_factor = 1.0 / scenario.price()
 
-        return c_factor, total_ret, total_vol
+        return c_factor, total_ret, total_vol, total_geometric_ret
 
     def calc_scenario(self, mode, description, factor, data, results):
 
@@ -414,7 +420,7 @@ class Alloc:
         alloc_equity += surplus
         alloc_new_db = max(0, alloc_db - alloc_existing_db) # Eliminate negative values from fp rounding errors.
 
-        c_factor, total_ret, total_vol = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
+        c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
             future_growth_try, equity_ret, bonds_ret, lm_bonds_ret, \
             equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
         consume = c_factor * results['nv']
@@ -426,10 +432,10 @@ class Alloc:
             alloc_new_db = max(0, alloc_db * ratio - alloc_existing_db)
             alloc_equity = 1 - (alloc_contrib + alloc_bonds + alloc_lm_bonds + alloc_existing_db + alloc_new_db)
 
-        c_factor, total_ret, total_vol = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
-            future_growth_try, equity_ret, bonds_ret, lm_bonds_ret, \
-            equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
-        consume = c_factor * results['nv']
+            c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
+                future_growth_try, equity_ret, bonds_ret, lm_bonds_ret, \
+                equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
+            consume = c_factor * results['nv']
 
         alloc_equity = max(0, alloc_equity) # Eliminate negative values from fp rounding errors.
 
@@ -497,6 +503,7 @@ class Alloc:
             'lm_bonds_ret_pct': '{:.1f}'.format(lm_bonds_ret * 100),
             'total_ret_pct': '{:.1f}'.format(total_ret * 100),
             'total_vol_pct': '{:.1f}'.format(total_vol * 100),
+            'total_geometric_ret_pct': '{:.1f}'.format(total_geometric_ret * 100),
             'consume_value': consume,
             'alloc_equity': alloc_equity,
             'alloc_bonds': alloc_bonds,

@@ -758,7 +758,10 @@ Inflation adjusted.
 <tr>
 <th class="left"> Total </th>
 <th class="right"> 100% </th>
-<th class="right"> {{ calc.total_ret_pct }}% </th>
+<th class="right">
+arithmetic {{ calc.total_ret_pct }}%
+<br />
+geometric {{ calc.total_geometric_ret_pct }}% </th>
 </tr>
 <tr>
 <td colspan=2 class="left"> Total volatility </td>
@@ -772,7 +775,7 @@ Recommended annual retirement consumption amount: {{ calc.consume }}
 <div class="small">
 This estimate is based on the amount that can be withdrawn
 over the retirement period from a portfolio growing at a fixed
-rate equal to the expected total rate of return.
+rate equal to the expected total geometric rate of return.
 </div>
 
 {% if alloc_form.cleaned_data.purchase_income_annuity %}
