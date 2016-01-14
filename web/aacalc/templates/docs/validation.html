@@ -64,7 +64,7 @@ sex=male
 <br>
 sex2=none - an individual not a couple
 </br>
-le_add=6 - additional life expectancy for planning purposes
+le_add=8 - additional life expectancy for planning purposes
 <br>
 db=15k - annual Social Security
 <br>
@@ -100,36 +100,22 @@ The results of the two asset allocators are shown below:
 <table>
 <tr> <th colspan=3> stocks </th> <th colspan=3> consume </th> <th rowspan=2> parameters </th> </te>
 <tr> <th> SDP </th> <th> AACalc </th> <th> difference </th> <th> SDP </th> <th> AACalc </th> <th> difference </th></tr>
-<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  27,319 </td> <td class="right">  25,342 </td> <td class="right">  -7% </td> <td class="left"> default </td> </tr>
-<tr> <td class="right"> n.a. </td> <td class="right"> 100% </td> <td class="right"> n.a. <td class="right">  15,000 </td> <td class="right">  14,365 </td> <td class="right">  -4% </td> <td class="left"> p=0 </td> </tr>
-<tr> <td class="right">  53% </td> <td class="right">  55% </td> <td class="right">   2% <td class="right">   8,767 </td> <td class="right">  10,299 </td> <td class="right">  17% </td> <td class="left"> db=10 </td> </tr>
-<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  26,769 </td> <td class="right">  25,342 </td> <td class="right">  -5% </td> <td class="left"> gamma=2 </td> </tr>
-<tr> <td class="right">  94% </td> <td class="right">  94% </td> <td class="right">   0% <td class="right">  26,643 </td> <td class="right">  25,210 </td> <td class="right">  -5% </td> <td class="left"> gamma=6 </td> </tr>
-<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  21,242 </td> <td class="right">  19,742 </td> <td class="right">  -7% </td> <td class="left"> p=100k </td> </tr>
-<tr> <td class="right">  92% </td> <td class="right">  89% </td> <td class="right">  -3% <td class="right">  43,181 </td> <td class="right">  41,691 </td> <td class="right">  -3% </td> <td class="left"> p=500k </td> </tr>
-<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  27,804 </td> <td class="right">  26,047 </td> <td class="right">  -6% </td> <td class="left"> stocks=8.7%+/-20% </td> </tr>
-<tr> <td class="right">  85% </td> <td class="right"> 100% </td> <td class="right">  15% <td class="right">  27,184 </td> <td class="right">  25,342 </td> <td class="right">  -7% </td> <td class="left"> bonds=3.2%+/-4% </td> </tr>
-<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  32,132 </td> <td class="right">  27,947 </td> <td class="right"> -13% </td> <td class="left"> age=90, le_add=3, p=100k </td> </tr>
-<tr> <td class="right">  95% </td> <td class="right"> 100% </td> <td class="right">   5% <td class="right">  36,476 </td> <td class="right">  34,789 </td> <td class="right">  -5% </td> <td class="left"> age=50, p=500k </td> </tr>
-<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">    n.a. </td> <td class="right">  34,783 </td> <td class="right"> n.a. </td> <td class="left"> age=50, retire=65, accumulate=3000*1.07^y </td> </tr>
-<tr> <td class="right">  97% </td> <td class="right">  99% </td> <td class="right">   2% <td class="right">    n.a. </td> <td class="right">  49,161 </td> <td class="right"> n.a. </td> <td class="left"> age=25, retire=65, accumulate=500*1.07^y </td> </tr>
-<tr> <td class="right">  83% </td> <td class="right">  90% </td> <td class="right">   7% <td class="right">  43,596 </td> <td class="right">  41,716 </td> <td class="right">  -4% </td> <td class="left"> desired=40k, p=500k </td> </tr>
-<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  26,278 </td> <td class="right">  24,471 </td> <td class="right">  -7% </td> <td class="left"> female </td> </tr>
-<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  55,464 </td> <td class="right">  51,255 </td> <td class="right">  -8% </td> <td class="left"> sex2=female, p=500k </td> </tr>
-<tr> <td class="right">  77% </td> <td class="right">  72% </td> <td class="right">  -5% <td class="right">  67,040 </td> <td class="right">  67,411 </td> <td class="right">   1% </td> <td class="left"> p=1000k </td> </tr>
-<tr> <td class="right">  53% </td> <td class="right">  55% </td> <td class="right">   2% <td class="right">  43,762 </td> <td class="right">  51,450 </td> <td class="right">  18% </td> <td class="left"> p=1000k, db=10 </td> </tr>
-<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  74,092 </td> <td class="right">  70,655 </td> <td class="right">  -5% </td> <td class="left"> p=1000k, gamma=2 </td> </tr>
-<tr> <td class="right">  54% </td> <td class="right">  48% </td> <td class="right">  -6% <td class="right">  60,699 </td> <td class="right">  64,716 </td> <td class="right">   7% </td> <td class="left"> p=1000k, gamma=6 </td> </tr>
-<tr> <td class="right">  69% </td> <td class="right">  65% </td> <td class="right">  -4% <td class="right">  68,232 </td> <td class="right">  68,822 </td> <td class="right">   1% </td> <td class="left"> p=1000k, stocks=8.7%+/-20% </td> </tr>
-<tr> <td class="right">  50% </td> <td class="right">  72% </td> <td class="right">  22% <td class="right">  69,003 </td> <td class="right">  70,151 </td> <td class="right">   2% </td> <td class="left"> p=1000k, bonds=3.2%+/-4% </td> </tr>
-<tr> <td class="right">  81% </td> <td class="right">  69% </td> <td class="right"> -12% <td class="right">  77,213 </td> <td class="right">  93,146 </td> <td class="right">  21% </td> <td class="left"> p=500k, age=90, le_add=3 </td> </tr>
-<tr> <td class="right">  64% </td> <td class="right">  59% </td> <td class="right">  -5% <td class="right"> 107,958 </td> <td class="right"> 101,162 </td> <td class="right">  -6% </td> <td class="left"> p=2500k, age=50 </td> </tr>
-<tr> <td class="right">  72% </td> <td class="right">  67% </td> <td class="right">  -5% <td class="right">    n.a. </td> <td class="right">  94,457 </td> <td class="right"> n.a. </td> <td class="left"> p=1000k, age=50, retire=65, accumulate=3000*1.07^y </td> </tr>
-<tr> <td class="right">  76% </td> <td class="right">  69% </td> <td class="right">  -7% <td class="right">    n.a. </td> <td class="right">  84,599 </td> <td class="right"> n.a. </td> <td class="left"> p=500k, age=25, retire=65, accumulate=500*1.07^y </td> </tr>
-<tr> <td class="right"> 100% </td> <td class="right">  89% </td> <td class="right"> -11% <td class="right"> 143,324 </td> <td class="right"> 152,637 </td> <td class="right">   6% </td> <td class="left"> p=2500k, desired=40k </td> </tr>
-<tr> <td class="right">  77% </td> <td class="right">  74% </td> <td class="right">  -3% <td class="right">  63,619 </td> <td class="right">  63,415 </td> <td class="right">  -0% </td> <td class="left"> p=1000k, sex=female </td> </tr>
-<tr> <td class="right">  73% </td> <td class="right">  69% </td> <td class="right">  -4% <td class="right"> 141,995 </td> <td class="right"> 144,424 </td> <td class="right">   2% </td> <td class="left"> p=2500k, sex2=female </td> </tr>
-<tr> <td class="right">  64% </td> <td class="right">  62% </td> <td class="right">  -2% <td class="right"> 135,068 </td> <td class="right"> 144,571 </td> <td class="right">   7% </td> <td class="left"> p=2500k </td> </tr>
+<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  27,319 </td> <td class="right">  26,511 </td> <td class="right">  -3% </td> <td class="left"> default </td> </tr>
+<tr> <td class="right"> n.a. </td> <td class="right"> 100% </td> <td class="right"> n.a. <td class="right">  15,000 </td> <td class="right">  15,000 </td> <td class="right">   0% </td> <td class="left"> p=0 </td> </tr>
+<tr> <td class="right">  53% </td> <td class="right">  55% </td> <td class="right">   2% <td class="right">   8,767 </td> <td class="right">  10,091 </td> <td class="right">  15% </td> <td class="left"> db=10 </td> </tr>
+<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  26,769 </td> <td class="right">  26,511 </td> <td class="right">  -1% </td> <td class="left"> gamma=2 </td> </tr>
+<tr> <td class="right">  94% </td> <td class="right">  97% </td> <td class="right">   3% <td class="right">  26,643 </td> <td class="right">  26,485 </td> <td class="right">  -1% </td> <td class="left"> gamma=6 </td> </tr>
+<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  21,242 </td> <td class="right">  20,862 </td> <td class="right">  -2% </td> <td class="left"> p=100k </td> </tr>
+<tr> <td class="right">  92% </td> <td class="right">  91% </td> <td class="right">  -1% <td class="right">  43,181 </td> <td class="right">  42,997 </td> <td class="right">  -0% </td> <td class="left"> p=500k </td> </tr>
+<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  27,804 </td> <td class="right">  26,841 </td> <td class="right">  -3% </td> <td class="left"> stocks=8.7%+/-20% </td> </tr>
+<tr> <td class="right">  85% </td> <td class="right"> 100% </td> <td class="right">  15% <td class="right">  27,184 </td> <td class="right">  26,511 </td> <td class="right">  -2% </td> <td class="left"> bonds=3.2%+/-4% </td> </tr>
+<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  32,132 </td> <td class="right">  30,806 </td> <td class="right">  -4% </td> <td class="left"> age=90, p=100k </td> </tr>
+<tr> <td class="right">  95% </td> <td class="right"> 100% </td> <td class="right">   5% <td class="right">  36,476 </td> <td class="right">  34,846 </td> <td class="right">  -4% </td> <td class="left"> age=50, p=500k </td> </tr>
+<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">    n.a. </td> <td class="right">  36,047 </td> <td class="right"> n.a. </td> <td class="left"> age=50, retire=65, accumulate=3000*1.07^y </td> </tr>
+<tr> <td class="right">  97% </td> <td class="right"> 100% </td> <td class="right">   3% <td class="right">    n.a. </td> <td class="right">  49,347 </td> <td class="right"> n.a. </td> <td class="left"> age=25, retire=65, accumulate=500*1.07^y </td> </tr>
+<tr> <td class="right">  83% </td> <td class="right">  92% </td> <td class="right">   9% <td class="right">  43,596 </td> <td class="right">  43,023 </td> <td class="right">  -1% </td> <td class="left"> desired=40k, p=500k </td> </tr>
+<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  26,278 </td> <td class="right">  25,402 </td> <td class="right">  -3% </td> <td class="left"> female </td> </tr>
+<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  55,464 </td> <td class="right">  52,796 </td> <td class="right">  -5% </td> <td class="left"> sex2=female, p=500k </td> </tr>
 </table>
 
 <p>
@@ -143,9 +129,7 @@ reduced to compensate for defined benefits.
 
 <p>
 The consumption recommendations are reasonably accurate.  They lose
-accuracy when there is negligible Social Security to cushion risk, and
-at advanced ages. Advanced ages are very sensitive to the precise
-value of the le_add parameter.
+accuracy when there is negligible Social Security to cushion risk.
 </p>
 
 <p>
@@ -158,12 +142,34 @@ scenarios.
 <table>
 <tr> <th colspan=3> stocks </th> <th colspan=3> consume </th> <th rowspan=2> parameters </th> </te>
 <tr> <th> SDP </th> <th> AACalc </th> <th> difference </th> <th> SDP </th> <th> AACalc </th> <th> difference </th></tr>
+<tr> <td class="right">  77% </td> <td class="right">  73% </td> <td class="right">  -4% <td class="right">  67,040 </td> <td class="right">  68,715 </td> <td class="right">   2% </td> <td class="left"> p=1000k </td> </tr>
+<tr> <td class="right">  53% </td> <td class="right">  55% </td> <td class="right">   2% <td class="right">  43,762 </td> <td class="right">  50,403 </td> <td class="right">  15% </td> <td class="left"> p=1000k, db=10 </td> </tr>
+<tr> <td class="right"> 100% </td> <td class="right"> 100% </td> <td class="right">   0% <td class="right">  74,092 </td> <td class="right">  71,612 </td> <td class="right">  -3% </td> <td class="left"> p=1000k, gamma=2 </td> </tr>
+<tr> <td class="right">  54% </td> <td class="right">  49% </td> <td class="right">  -5% <td class="right">  60,699 </td> <td class="right">  66,204 </td> <td class="right">   9% </td> <td class="left"> p=1000k, gamma=6 </td> </tr>
+<tr> <td class="right">  69% </td> <td class="right">  65% </td> <td class="right">  -4% <td class="right">  68,232 </td> <td class="right">  70,065 </td> <td class="right">   3% </td> <td class="left"> p=1000k, stocks=8.7%+/-20% </td> </tr>
+<tr> <td class="right">  50% </td> <td class="right">  73% </td> <td class="right">  23% <td class="right">  69,003 </td> <td class="right">  71,161 </td> <td class="right">   3% </td> <td class="left"> p=1000k, bonds=3.2%+/-4% </td> </tr>
+<tr> <td class="right">  81% </td> <td class="right">  76% </td> <td class="right">  -5% <td class="right">  77,213 </td> <td class="right">  73,015 </td> <td class="right">  -5% </td> <td class="left"> p=500k, age=90 </td> </tr>
+<tr> <td class="right">  64% </td> <td class="right">  59% </td> <td class="right">  -5% <td class="right"> 107,958 </td> <td class="right"> 101,989 </td> <td class="right">  -6% </td> <td class="left"> p=2500k, age=50 </td> </tr>
+<tr> <td class="right">  72% </td> <td class="right">  68% </td> <td class="right">  -4% <td class="right">    n.a. </td> <td class="right">  95,796 </td> <td class="right"> n.a. </td> <td class="left"> p=1000k, age=50, retire=65, accumulate=3000*1.07^y </td> </tr>
+<tr> <td class="right">  76% </td> <td class="right">  70% </td> <td class="right">  -6% <td class="right">    n.a. </td> <td class="right">  85,432 </td> <td class="right"> n.a. </td> <td class="left"> p=500k, age=25, retire=65, accumulate=500*1.07^y </td> </tr>
+<tr> <td class="right"> 100% </td> <td class="right">  90% </td> <td class="right"> -10% <td class="right"> 143,324 </td> <td class="right"> 153,411 </td> <td class="right">   7% </td> <td class="left"> p=2500k, desired=40k </td> </tr>
+<tr> <td class="right">  77% </td> <td class="right">  74% </td> <td class="right">  -3% <td class="right">  63,619 </td> <td class="right">  64,470 </td> <td class="right">   1% </td> <td class="left"> p=1000k, sex=female </td> </tr>
+<tr> <td class="right">  73% </td> <td class="right">  70% </td> <td class="right">  -3% <td class="right"> 141,995 </td> <td class="right"> 145,751 </td> <td class="right">   3% </td> <td class="left"> p=2500k, sex2=female </td> </tr>
+<tr> <td class="right">  64% </td> <td class="right">  62% </td> <td class="right">  -2% <td class="right"> 135,068 </td> <td class="right"> 144,708 </td> <td class="right">   7% </td> <td class="left"> p=2500k </td> </tr>
 </table>
 
 <p>
 Again there is reasonably good agreement, with the biggest
-discrepancies being for negligible Social Security, high bond returns,
-and at advanced ages.
+discrepancies being for high bond returns, and negligible Social
+Security.
+</p>
+
+<p>
+When you have won the game, (p=2500k, desired=40k), the new asset
+allocator recommends investing only the surplus amount in stocks,
+while the old asset allocator is quite comfortable investing
+everything in stocks, and only switching to a some what more balanced
+position in the event the market swings against it.
 </p>
 
 </div>
