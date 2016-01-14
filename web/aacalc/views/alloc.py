@@ -650,7 +650,7 @@ new annuities,%(alloc_new_db)f
 ''' % result)
         if mode == 'aa':
             f.write('''future contribs,%(alloc_contributions)f
-''')
+''' % result)
         f.close()
         f = open(dirname + '/aa.csv', 'w')
         f.write('''asset class,allocation
