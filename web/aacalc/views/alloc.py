@@ -186,7 +186,7 @@ class Alloc:
             # Table used is irrelevant. Choose for speed.
         return self.contribution * scenario.price()
 
-    def value_table(self):
+    def value_table(self, taxable):
 
         nv_db = 0
         results = {}
@@ -234,18 +234,17 @@ class Alloc:
         nv_contributions = self.npv_contrib(self.contribution_growth)
 
         nv_traditional = self.traditional * (1 - self.tax_rate)
-        nv_investments = nv_traditional + self.npv_roth + self.npv_taxable
+        nv_investments = nv_traditional + self.npv_roth + taxable
         nv = nv_db + nv_investments + nv_contributions
 
         results['nv_contributions'] = nv_contributions
         results['nv_db'] = nv_db
-        results['nv_investments'] = nv_investments
         results['nv'] = nv
 
         display['nv_db'] = '{:,.0f}'.format(nv_db)
         display['nv_traditional'] = '{:,.0f}'.format(nv_traditional)
         display['nv_roth'] = '{:,.0f}'.format(self.npv_roth)
-        display['nv_taxable'] = '{:,.0f}'.format(self.npv_taxable)
+        display['nv_taxable'] = '{:,.0f}'.format(taxable)
         display['nv_investments'] = '{:,.0f}'.format(nv_investments)
         display['nv_contributions'] = '{:,.0f}'.format(nv_contributions)
         display['nv'] = '{:,.0f}'.format(nv)
@@ -285,7 +284,7 @@ class Alloc:
 
         return c_factor, total_ret, total_vol
 
-    def calc(self, description, factor, data, results):
+    def calc_scenario(self, mode, description, factor, data, results):
 
         payout_delay = self.pre_retirement_years * 12
         joint_payout_fraction = self.joint_income
@@ -325,9 +324,12 @@ class Alloc:
         contrib_index = 2
         risk_free_index = 3
 
-        lo = -0.5
-        hi = 0.5
-        while hi - lo > 0.000001:
+        if mode == 'aa':
+            lo = -0.5
+            hi = 0.5
+        else:
+            lo = hi = 0
+        for _ in range(50):
             future_growth_try = (lo + hi) / 2.0
             sigma_matrix = (
                 (equity_vol ** 2, cov_eb2, cov_ec2),
@@ -343,6 +345,8 @@ class Alloc:
                 wc_discounted = discounted_contrib / npv_discounted
             except ZeroDivisionError:
                 wc_discounted = 0
+            if hi - lo < 0.000001:
+                break
             if wc_discounted > w[contrib_index]:
                 lo = future_growth_try
             else:
@@ -512,6 +516,34 @@ class Alloc:
         }
         return result
 
+    def calc(self, mode, description, factor, data, results):
+
+        if mode == 'aa':
+
+            return self.calc_scenario(mode, description, factor, data, results)
+
+        else:
+
+            results = dict(results)
+            nv = results['nv']
+            low = 0
+            high = self.desired_income * (120 - self.retirement_age)
+            for _ in range(50):
+                mid = (low + high) / 2.0
+                # Hack the table rather than recompute for speed.
+                results['nv'] = nv + mid
+                calc_scenario = self.calc_scenario(mode, description, factor, data, results)
+                if high - low < 0.000001 * self.desired_income:
+                    break
+                if calc_scenario['consume_value'] < self.desired_income:
+                    low = mid
+                else:
+                    high = mid
+            _, npv_display = self.value_table(mid) # Recompute.
+            calc_scenario['npv_display'] = npv_display
+
+            return calc_scenario
+
     def compute_results(self, data, mode):
 
         results = {}
@@ -581,42 +613,28 @@ class Alloc:
             # For planning purposes when computing the npv of defined benefits
             # and contributions we need to assume we will reach retirement.
 
-        self.frequency = 12 # Makes NPV more accurate.
+        self.frequency = 12 # Monthly. Makes accurate, doesn't run significantly slower.
         self.cpi_adjust = 'calendar'
 
-        npv_results, npv_display = self.value_table()
-        results['present'] = npv_display
+        npv_results, npv_display = self.value_table(self.npv_taxable)
         results['db'] = []
         for db in npv_display['db']:
             results['db'].append({'present': db})
         #for i, db in enumerate(future_display['db']):
         #    results['db'][i]['future'] = db
 
-        if mode == 'number':
-            nv = npv_results['nv']
-            low = 0
-            high = self.desired_income * (120 - self.retirement_age)
-            while high - low > 0.000001 * self.desired_income:
-                mid = (low + high) / 2.0
-                # Hack the table rather than recompute for speed.
-                npv_results['nv_taxable'] = mid
-                npv_results['nv'] = nv + mid
-                calc = self.calc(None, 0, data, npv_results)
-                if calc['consume_value'] < self.desired_income:
-                    low = mid
-                else:
-                    high = mid
-            self.npv_taxable = mid
-            npv_results, npv_display = self.value_table()
-            results['present'] = npv_display
-
         factor = norm.ppf(0.5 + float(data['confidence_pct']) / 100 / 2)
         factor = float(factor) # De-numpyfy.
         results['calc'] = (
-            self.calc('Baseline estimate', 0, data, npv_results),
-            self.calc('Low estimate', - factor, data, npv_results),
-            self.calc('High estimate', factor, data, npv_results),
+            self.calc(mode, 'Baseline estimate', 0, data, npv_results),
+            self.calc(mode, 'Low returns estimate', - factor, data, npv_results),
+            self.calc(mode, 'High returns estimate', factor, data, npv_results),
         )
+
+        if mode == 'number':
+            npv_display = results['calc'][0]['npv_display'] # Use baseline scenario for common calculations display.
+
+        results['present'] = npv_display
 
         return results
 

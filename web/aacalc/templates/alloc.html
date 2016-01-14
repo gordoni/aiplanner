@@ -406,12 +406,14 @@ takes 5 seconds
 
 {% if mode == 'number' %}
 
-To support your desired consumption level you need to have a total of
-{{ results.present.nv_taxable }} today excluding defined benefits.
+For your desired consumption level you need to have a total of
+{{ results.calc.0.npv_display.nv_taxable }} today excluding defined benefits.
+An {{ alloc_form.cleaned_data.confidence_pct }}% confidence interval
+on this recommendation is {{ results.calc.2.npv_display.nv_taxable }} to
+{{ results.calc.1.npv_display.nv_taxable }}.
 <div class="small">
-The amount you require in the future might be slighly larger. If you
-had this amount today it would be invested and growing. Or possibly
-slightly smaller in nominal dollar terms due to inflation.
+The amount you would require in the future will be larger. If you had
+this amount today it would be invested and growing.
 </div>
 
 <br />
@@ -464,6 +466,8 @@ that of bonds.
 
 <br />
 
+{% if mode == 'aa' %}
+
 The amount you should consume during retirement varies from year to
 year. Currently it is recommended
 you should consume around <!-- healthcheck_consume --> {{ results.calc.0.consume }} per year.
@@ -471,9 +475,10 @@ An {{ alloc_form.cleaned_data.confidence_pct }}% confidence interval
 on this recommendation is {{ results.calc.1.consume }} to
 {{ results.calc.2.consume }}.
 
+<br />
+<br />
 
-<br />
-<br />
+{% endif %}
 
 <div style="clear: both;"></div>
 
@@ -575,6 +580,21 @@ Geometric real return on equities: {{ calc.equity_gm_pct }}% Regular bonds: {{ c
 <br />
 <br />
 
+{% if mode == 'number' %}
+
+Total portfolio value excluding defined benefits: {{ calc.npv_display.nv_investments }}
+
+<br />
+
+{% endif %}
+
+Total net present value: {{ calc.npv_display.nv }}
+
+<br />
+<br />
+
+{% if mode == 'aa' %}
+
 By trial and error we determined that we should assume a future
 contributions discount rate, d = {{ calc.future_growth_try_pct }}%
 
@@ -625,6 +645,12 @@ be, since we can neither buy nor sell future contributions.
 Adjusting the recommended asset allocation for future contributions
 when they are not discounted gives:
 
+{% else %}
+
+We calculated the folllowing asset allocations:
+
+{% endif %}
+
 <table class="table-lined center">
 {% for w in calc.w_prime %}
 <tr>
@@ -632,6 +658,14 @@ when they are not discounted gives:
 <td class="right"> {{ w.alloc }}% </td>
 </tr>
 {% endfor %}
+{% if mode == 'number' %}
+<tr>
+<td colspan=2 class="small">
+Computed assuming liability matching bonds and defined benefits are
+risk free using the matrix version
+of <a href="https://en.wikipedia.org/wiki/Merton's_portfolio_problem">Merton's formula</a>.
+</td>
+{% endif %}
 </table>
 
 {% if alloc_form.cleaned_data.purchase_income_annuity %}
@@ -644,13 +678,12 @@ Stocks {{ calc.annuitize_equity_pct }}%. Regular bonds {{ calc.annuitize_bonds_p
 The advantages of annuitizing the stock portion of a portfolio at
 advanced ages are well understood. What isn't well known is that there
 are advantages to annuitizing the bond portion of a portfolio at
-earlier ages. These ratios are the proportion of each portfolio
-holding type that we recommend be annuitized. There are some things to beware. In
+earlier ages. The ratios above are the proportion of each portfolio
+holding type that we recommend be annuitized. In
 the US as of 2016 the Money's Worth Ratios for deferred income
 annuities were substantially worse than those of single premium
 immediate annuities, but it might seem odd to purchase a SPIA
-pre-retirement. These recommendations are for a &gamma; of 4, and
-different recommendations would likely apply to a different &gamma;
+pre-retirement.
 value.
 </div>
 
@@ -724,7 +757,7 @@ Inflation adjusted.
 Recommended annual retirement consumption amount: {{ calc.consume }}
 <div class="small">
 This estimate is based on the amount that can be withdrawn
-over the planned retirement period from a portfolio growing at a fixed
+over the retirement period from a portfolio growing at a fixed
 rate equal to the expected total rate of return.
 </div>
 
