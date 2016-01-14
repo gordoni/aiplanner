@@ -253,7 +253,7 @@ class Alloc:
 
     def consume_factor(self, alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
             future_growth, equity_ret, bonds_ret, lm_bonds_ret, \
-            equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2, retirement_le, retirement_le_add):
+            equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2):
 
         total_ret = alloc_contrib * future_growth + alloc_equity * equity_ret + alloc_bonds * bonds_ret + \
             alloc_lm_bonds * lm_bonds_ret + alloc_db * lm_bonds_ret
@@ -272,35 +272,28 @@ class Alloc:
         # but not many assets with a finite time horizon. And even if
         # such a solution existed we would also need to factor in
         # pre-retirement years. Instead we compute the withdrawal
-        # amount for a compounding total portfolio.
-        le = alloc_db * retirement_le + (1 - alloc_db) * retirement_le_add
-            # Only the non-defined benefits component of wealth needs to last to le_add.
+        # amount for a fixed compounding total portfolio.
+        life_table_partial = LifeTable(self.table, self.sex, self.age, le_add = (1 - alloc_db) * self.le_add, date_str = self.date_str)
+        if self.sex2 != 'none':
+            life_table2_partial = LifeTable(self.table, self.sex2, self.age2, le_add = (1 - alloc_db) * self.le_add2, date_str = self.date_str)
+        else:
+            life_table2_partial = None
         periodic_ret = self.geomean(total_ret, total_vol)
-        try:
-            c_factor = periodic_ret * (1 + periodic_ret) ** (le - 1) / ((1 + periodic_ret) ** le - 1)
-        except DivisionByZeroError:
-            c_factor = 1 / retirement_life_expectancy
-        c_factor *= (1 + periodic_ret) ** self.pre_retirement_years
+        schedule = self.stochastic_schedule(1 / (1.0 + periodic_ret))
+        scenario = Scenario(self.yield_curve_zero, self.payout_delay, None, None, 0, life_table_partial, life_table2 = life_table2_partial, \
+            joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
+            period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust, schedule = schedule)
+        c_factor = 1.0 / scenario.price()
 
         return c_factor, total_ret, total_vol
 
     def calc_scenario(self, mode, description, factor, data, results):
 
-        payout_delay = self.pre_retirement_years * 12
-        joint_payout_fraction = self.joint_income
-        joint_contingent = True
-
-        scenario = Scenario(self.yield_curve_zero, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
-            joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
+        scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table_add, life_table2 = self.life_table2_add, \
+            joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
         scenario.price()
         retirement_le = scenario.total_payout
-
-        scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table_add, life_table2 = self.life_table2_add, \
-            joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
-            period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
-        scenario.price()
-        retirement_le_add = scenario.total_payout
         lm_bonds_ret = scenario.annual_return
         lm_bonds_duration = scenario.duration
 
@@ -423,7 +416,7 @@ class Alloc:
 
         c_factor, total_ret, total_vol = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
             future_growth_try, equity_ret, bonds_ret, lm_bonds_ret, \
-            equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2, retirement_le, retirement_le_add)
+            equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
         consume = c_factor * results['nv']
 
         if consume > self.desired_income:
@@ -435,7 +428,7 @@ class Alloc:
 
         c_factor, total_ret, total_vol = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
             future_growth_try, equity_ret, bonds_ret, lm_bonds_ret, \
-            equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2, retirement_le, retirement_le_add)
+            equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
         consume = c_factor * results['nv']
 
         alloc_equity = max(0, alloc_equity) # Eliminate negative values from fp rounding errors.
@@ -459,7 +452,7 @@ class Alloc:
             'equity_gm_pct':'{:.1f}'.format(equity_gm * 100),
             'bonds_gm_pct':'{:.1f}'.format(bonds_gm * 100),
             'future_growth_try_pct': '{:.1f}'.format(future_growth_try * 100),
-            'w' : ({
+            'w' : [{
                 'name' : 'Discounted future contributions',
                 'alloc': '{:.0f}'.format(w[contrib_index] * 100),
             }, {
@@ -471,10 +464,10 @@ class Alloc:
             }, {
                 'name': 'Liability matching bonds and defined benefits',
                 'alloc': '{:.0f}'.format(w[risk_free_index] * 100),
-            }),
+            }],
             'discounted_contrib': '{:,.0f}'.format(discounted_contrib),
             'wc_discounted':  '{:.0f}'.format(wc_discounted * 100),
-            'w_prime' : ({
+            'w_prime' : [{
                 'name' : 'Future contributions',
                 'alloc': '{:.0f}'.format(w_prime[contrib_index] * 100),
             }, {
@@ -486,7 +479,7 @@ class Alloc:
             }, {
                 'name': 'Liability matching bonds and defined benefits',
                 'alloc': '{:.0f}'.format(w_prime[risk_free_index] * 100),
-            }),
+            }],
             'annuitize_equity_pct': '{:.0f}'.format(annuitize_equity * 100),
             'annuitize_bonds_pct': '{:.0f}'.format(annuitize_bonds * 100),
             'annuitize_lm_bonds_pct': '{:.0f}'.format(annuitize_lm_bonds * 100),
@@ -514,6 +507,11 @@ class Alloc:
             'aa_equity': aa_equity,
             'aa_bonds': aa_bonds,
         }
+
+        if mode == 'number':
+            result['w'].pop(0)
+            result['w_prime'].pop(0)
+
         return result
 
     def calc(self, mode, description, factor, data, results):
@@ -526,14 +524,15 @@ class Alloc:
 
             results = dict(results)
             nv = results['nv']
+            max_portfolio = self.desired_income * (120 - self.min_age - self.pre_retirement_years)
             low = 0
-            high = self.desired_income * (120 - self.retirement_age)
+            high = max_portfolio
             for _ in range(50):
                 mid = (low + high) / 2.0
                 # Hack the table rather than recompute for speed.
                 results['nv'] = nv + mid
                 calc_scenario = self.calc_scenario(mode, description, factor, data, results)
-                if high - low < 0.000001 * self.desired_income:
+                if high - low < 0.00001 * max_portfolio:
                     break
                 if calc_scenario['consume_value'] < self.desired_income:
                     low = mid
@@ -559,26 +558,24 @@ class Alloc:
             results['yield_curve_date'] = self.yield_curve_real.yield_curve_date + ' real, ' + \
                 self.yield_curve_nominal.yield_curve_date + ' nominal';
 
-        table = 'ssa-cohort'
+        self.table = 'ssa-cohort'
 
         self.life_table_120 = LifeTable('death_120', 'male', 0)
 
-        sex = data['sex']
+        self.sex = data['sex']
         self.age = float(data['age'])
         self.le_add = float(data['le_add'])
-        self.life_table = LifeTable(table, sex, self.age)
-        self.life_table_add = LifeTable(table, sex, self.age, le_add = self.le_add, date_str = self.date_str)
+        self.life_table_add = LifeTable(self.table, self.sex, self.age, le_add = self.le_add, date_str = self.date_str)
 
-        sex2 = data['sex2']
-        if sex2 == 'none':
+        self.sex2 = data['sex2']
+        if self.sex2 == 'none':
             self.life_table2 = None
             self.life_table2_add = None
             self.min_age = self.age
         else:
             self.age2 = float(data['age2']);
             self.le_add2 = float(data['le_add2'])
-            self.life_table2 = LifeTable(table, sex2, self.age2)
-            self.life_table2_add = LifeTable(table, sex2, self.age2, le_add = self.le_add2, date_str = self.date_str)
+            self.life_table2_add = LifeTable(self.table, self.sex2, self.age2, le_add = self.le_add2, date_str = self.date_str)
             self.min_age = min(self.age, self.age2)
 
         self.db = data['db']
@@ -604,7 +601,8 @@ class Alloc:
             self.bonds_contribution_corr = 0
         self.retirement_age = float(data['retirement_age'])
         self.pre_retirement_years = max(0, self.retirement_age - self.age)
-        self.joint_income = float(data['joint_income_pct']) / 100
+        self.payout_delay = self.pre_retirement_years * 12
+        self.joint_payout_fraction = float(data['joint_income_pct']) / 100
         self.desired_income = float(data['desired_income'])
 
         results['pre_retirement_years'] = '{:.1f}'.format(self.pre_retirement_years)

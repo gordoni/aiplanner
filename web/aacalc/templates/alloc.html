@@ -385,7 +385,7 @@ high degree of risk aversion.
 <input class="button" type="submit" value="Submit" />
 {% if mode == 'number' %}
 <div class="small">
-takes 5 seconds
+takes 10 seconds
 </div>
 {% endif %}
 </div>
@@ -412,8 +412,10 @@ An {{ alloc_form.cleaned_data.confidence_pct }}% confidence interval
 on this recommendation is {{ results.calc.2.npv_display.nv_taxable }} to
 {{ results.calc.1.npv_display.nv_taxable }}.
 <div class="small">
-The amount you would require in the future will be larger. If you had
-this amount today it would be invested and growing.
+The amount you would require in the future will be larger; if you had
+this amount today it would be invested and growing. Uncertainty in
+this amount is the result of inherent uncertainty in the expected
+return of stocks compounded over time.
 </div>
 
 <br />
@@ -521,6 +523,7 @@ real interest rate adjusted
 <td class="left"> Total defined benefits </td>
 <th colspan=2 class="right"> {{ results.present.nv_db }} </th>
 </tr>
+{% if mode == 'aa' %}
 <tr>
 <td class="left"> Traditional </td>
 <td colspan=2 class="right"> {{ results.present.nv_traditional }} </td>
@@ -533,14 +536,17 @@ real interest rate adjusted
 <td class="left"> Taxable </td>
 <td colspan=2 class="right"> {{ results.present.nv_taxable }} </td>
 </tr>
+{% endif %}
 <tr>
 <td class="left"> Total investments </td>
 <th colspan=2 class="right"> {{ results.present.nv_investments }} </th>
 </tr>
+{% if mode == 'aa' %}
 <tr>
 <td class="left"> Future contributions </td>
 <th colspan=2 class="right"> {{ results.present.nv_contributions }} </th>
 </tr>
+{% endif %}
 <tr>
 <td class="left"> Total net present value </td>
 <th colspan=2 class="right"> {{ results.present.nv }} </th>
@@ -581,6 +587,12 @@ Geometric real return on equities: {{ calc.equity_gm_pct }}% Regular bonds: {{ c
 <br />
 
 {% if mode == 'number' %}
+
+We tried a number of different portfolio sizes. Here are the results
+for the portfolio size that gives the desired level of consumption:
+
+<br />
+<br />
 
 Total portfolio value excluding defined benefits: {{ calc.npv_display.nv_investments }}
 
@@ -711,11 +723,13 @@ Inflation adjusted.
 </div>
 </td>
 </tr>
+{% if mode == 'aa' %}
 <tr>
 <td class="left"> Future contributions </td>
 <td class="right"> {{ calc.alloc_contributions_pct }}% </td>
 <td class="right"> {{ calc.future_growth_try_pct }}% </td>
 </tr>
+{% endif %}
 <tr>
 <td class="left"> Stocks </td>
 <td class="right"> {{ calc.alloc_equity_pct }}% </td>

@@ -1023,12 +1023,12 @@ class LifeTable:
             le_set = scenario.price()
         le = le_set + le_add
         q_lo = 0
-        q_hi = 100
+        q_hi = 10
         for _ in range(50):
             self.q_adjust = (q_lo + q_hi) / 2.0
             scenario = Scenario(yield_curve, 0, None, None, 0, self)
             compute_le = scenario.price()
-            if abs(le / compute_le - 1) < 1e-6:
+            if abs(le / compute_le - 1) < 1e-4:
                 return
             if compute_le > le:
                 q_lo = self.q_adjust
