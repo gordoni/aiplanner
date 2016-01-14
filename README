@@ -144,9 +144,6 @@ To do:
   - Opal handle annuities pre-retirement. Not sure what the issue is,
     but made a note to myself to fix.
 
-  - Alloc can be made to recommend annuities, but doing so doesn't
-    improve consumption. It should.
-
 Getting started:
 
   - It is suggested that Amazon EC2 be used for development work. A
