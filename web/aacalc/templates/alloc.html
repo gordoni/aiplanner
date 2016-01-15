@@ -84,15 +84,15 @@ growth rate, and volatility. </li>
 
 <li> Liability matching bonds - inflation indexed zero
 coupon bonds with a duration matching that of anticipated retirement
-cash flows are used as the risk free asset. </li>
+cash flows are used as a risk free asset. </li>
 
-<li> Income annuities - income annuitiesa are a valuable tool in the
+<li> Income annuities - income annuities are a valuable tool in the
 retirement toolbox. This caluclator optionally recommends the
-purchase of inflation indexed income annuities, that is single premium
+purchase of inflation indexed income annuities, be they single premium
 immediate annuities or deferred income annuities. </li>
 
 <li> Admit what we don't know - returns from the stock market are
-unpredictable. We generate a range of results for different plausable
+intrinsically unknown. We generate a range of results for different plausable
 scenarios. </li>
 
 <li> Cross validated - sample Merton's method recommendations produced
@@ -143,7 +143,7 @@ Additional years to plan for beyond life expectancy for self: {{ alloc_form.le_a
 {{ alloc_form.le_add2.errors }}
 <div class="small">
 You can change these values if you feel you are in exceptional good or
-bad health for your age. We have selected a reasonable default value.
+bad health for your age. We have selected reasonable default values.
 </div>
 
 </div>
@@ -193,7 +193,7 @@ Defined benefits:
 </tr>
 {% endfor %}
 <tr>
-<td colspan=6 class="small left">
+<td colspan=7 class="small left">
 Starting age is that of the owner.
 Contingent: payout reduced on death of either party.
 Survivor: payout reduced only on death of the owner.
@@ -224,9 +224,11 @@ Post-tax Roth IRAs, 401(k)'s, and 403(b)'s size: {{ alloc_form.p_roth_iras }}
 Taxable retirement savings size: {{ alloc_form.p }}
 {{ alloc_form.p.errors }}
 <div class="small">
-You may want to reduce this last value slightly to reflect the effects of taxation.
-Variable annuities are not recommended as an investment vehicle, but
-should be handled similarly to pre-tax investments.
+You may want to reduce this last value slightly to reflect the effects
+of taxation.  Variable annuities are not recommended as an investment
+vehicle, but principal should be handled similarly to post-tax
+investments and earnings should be handled similarly to pre-tax
+investments.
 </div>
 <br />
 Pre-retirement annual contribution amount (irrelevant if retired):
@@ -244,7 +246,7 @@ Correlation with bond returns: {{ alloc_form.bonds_contribution_corr_pct }}%
 {{ alloc_form.bonds_contribution_corr_pct.errors }}
 <div class="small">
 Contribution amount is assumed to be post tax, and should consist only
-of new money contributed, not the payout from any existing pre-retirement
+of new money contributed to your retirement savings, not the payout from any existing pre-retirement
 defined benefits. A growth rate of 7% represents a doubling of real
 contributions every 10 years.  Remember to take into account life
 events such as promotions, paying off a mortgage, or children leaving
@@ -290,6 +292,11 @@ We do not support the ability to leave a specific bequest amount.
 <h2>Market parameters</h2>
 
 <div class="indent">
+
+You can probably leave the parameters in this section alone.
+
+<br />
+<br />
 
 Estimated equity arithmetic real return: {{ alloc_form.equity_ret_pct }}%
 Volatility: {{ alloc_form.equity_vol_pct }}%
@@ -371,8 +378,33 @@ Coefficient of relative risk aversion, &gamma;: {{ alloc_form.gamma }}
 {{ alloc_form.gamma.errors }}
 <div class="small">
 This determines how risk averse you are. A value such as 1 represents
-a very low degree of risk aversion. A value such as 5 represents a
-high degree of risk aversion.
+a low degree of risk aversion and favors stocks. A value such as 5
+represents a high degree of risk aversion and favors bonds. Risk
+aversion is not the same as risk tolerance.  Risk tolerance is about
+whether you can psychologically handle a loss in your investment
+assets. Risk aversion is about how you feel about a change in your
+annual consumption. Marginal utility of consumption, U'(C) =
+C<sup>-&gamma;</sup>. So, for &gamma;=3, when you are consuming 10%
+more, the utility of a marginal dollar is worth 110%<sup>-3</sup> =
+75% of what it was at your original consumption level.
+<table class="table-lined center">
+<tr>
+<td> &gamma; </td>
+<td> 1 </td>
+<td> 2 </td>
+<td> 3 </td>
+<td> 4 </td>
+<td> 5 </td>
+</tr>
+<tr>
+<td> Utility of a marginal dollar when consuming 10% more </td>
+<td> 91% </td>
+<td> 83% </td>
+<td> 75% </td>
+<td> 68% </td>
+<td> 62% </td>
+</tr>
+</table>
 </div>
 
 </div>
@@ -694,7 +726,6 @@ the US as of 2016 the Money's Worth Ratios for deferred income
 annuities were substantially worse than those of single premium
 immediate annuities, but it might seem odd to purchase a SPIA
 pre-retirement.
-value.
 </div>
 
 {% endif %}

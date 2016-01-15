@@ -145,7 +145,7 @@ class Alloc:
             'confidence_pct': 80,
             'expense_pct': Decimal('0.1'),
 
-            'gamma': Decimal('4.0'),
+            'gamma': Decimal('3.0'),
         }
 
     def geomean(self, mean, vol):
