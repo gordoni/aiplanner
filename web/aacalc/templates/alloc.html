@@ -152,7 +152,7 @@ bad health for your age. We have selected reasonable default values.
 
 <div class="indent">
 
-Defined benefits:
+Existing defined benefits:
 
 <br />
 <br />
@@ -206,7 +206,7 @@ Survivor: payout reduced only on death of the owner.
 
 <br />
 
-Defined contributions:
+Existing defined contributions:
 
 <br />
 <br />
@@ -236,7 +236,7 @@ Pre-retirement annual contribution amount (irrelevant if retired):
 {{ alloc_form.contribution.errors }}
 <br />
 Growth rate: {{ alloc_form.contribution_growth_pct }}%
-Volatility of future payments: {{ alloc_form.contribution_vol_pct }}%
+Annual volatility of future payments: {{ alloc_form.contribution_vol_pct }}%
 {{ alloc_form.contribution_growth_pct.errors }}
 {{ alloc_form.contribution_vol_pct.errors }}
 <br />
@@ -381,7 +381,7 @@ This determines how risk averse you are. A value such as 1 represents
 a low degree of risk aversion and favors stocks. A value such as 5
 represents a high degree of risk aversion and favors bonds. Risk
 aversion is not the same as risk tolerance.  Risk tolerance is about
-whether you can psychologically handle a loss in your investment
+how psychologically comfortable you are with losses to your investment
 assets. Risk aversion is about how you feel about a change in your
 annual consumption. Marginal utility of consumption, U'(C) =
 C<sup>-&gamma;</sup>. So, for &gamma;=3, when you are consuming 10%
@@ -502,7 +502,8 @@ that of bonds.
 
 The amount you should consume during retirement varies from year to
 year. Currently it is recommended
-you should consume around <!-- healthcheck_consume --> {{ results.calc.0.consume }} per year.
+you should consume around <!-- healthcheck_consume --> {{ results.calc.0.consume }}
+per year in retirement.
 An {{ alloc_form.cleaned_data.confidence_pct }}% confidence interval
 on this recommendation is {{ results.calc.1.consume }} to
 {{ results.calc.2.consume }}.
@@ -619,7 +620,7 @@ Geometric real return on equities: {{ calc.equity_gm_pct }}% Regular bonds: {{ c
 {% if mode == 'number' %}
 
 We tried a number of different portfolio sizes. Here are the results
-for the portfolio size that gives the desired level of consumption:
+for the portfolio size that gives close to the desired level of consumption:
 
 <br />
 <br />
@@ -752,50 +753,54 @@ increase the latter.
 Inflation adjusted.
 </div>
 </td>
+<td> Volatility </td>
 </tr>
 {% if mode == 'aa' %}
 <tr>
 <td class="left"> Future contributions </td>
 <td class="right"> {{ calc.alloc_contributions_pct }}% </td>
 <td class="right"> {{ results.present.ret_contributions }}% </td>
+<td class="right"> {{ alloc_form.cleaned_data.contribution_vol_pct | floatformat:1 }}%
 </tr>
 {% endif %}
 <tr>
 <td class="left"> Stocks </td>
 <td class="right"> {{ calc.alloc_equity_pct }}% </td>
 <td class="right"> {{ calc.equity_ret_pct }}% </td>
+<td class="right"> {{ alloc_form.cleaned_data.equity_vol_pct | floatformat:1 }}%
 </tr>
 <tr>
 <td class="left"> Regular bonds </td>
 <td class="right"> {{ calc.alloc_bonds_pct }}% </td>
 <td class="right"> {{ calc.bonds_ret_pct }}% </td>
+<td class="right"> {{ alloc_form.cleaned_data.bonds_vol_pct | floatformat:1 }}%
 </tr>
 <tr>
 <td class="left"> Liability matching bonds </td>
 <td class="right"> {{ calc.alloc_lm_bonds_pct }}% </td>
 <td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
+<td class="right"> 0.0%
 </tr>
 <tr>
 <td class="left"> Existing defined benefits </td>
 <td class="right"> {{ calc.alloc_existing_db_pct }}% </td>
 <td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
+<td class="right"> 0.0%
 </tr>
 <tr>
 <td class="left"> New income annuities </td>
 <td class="right"> {{ calc.alloc_new_db_pct }}% </td>
 <td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
+<td class="right"> 0.0%
 </tr>
 <tr>
-<th class="left"> Total </th>
-<th class="right"> 100% </th>
-<th class="right">
-arithmetic {{ calc.total_ret_pct }}%
-<br />
-geometric {{ calc.total_geometric_ret_pct }}% </th>
+<th class="left" rowspan=2> Total </th>
+<th class="right" rowspan=2> 100% </th>
+<th class="right"> arithmetic {{ calc.total_ret_pct }}% </th>
+<th class="right" rowspan=2> {{ calc.total_vol_pct }}% </th>
 </tr>
 <tr>
-<td colspan=2 class="left"> Total volatility </td>
-<td class="right"> +/-{{ calc.total_vol_pct }}% </td>
+<th class="right"> geometric {{ calc.total_geometric_ret_pct }}% </th>
 </tr>
 </table>
 
