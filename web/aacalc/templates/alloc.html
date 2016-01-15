@@ -638,7 +638,8 @@ Total net present value: {{ calc.npv_display.nv }}
 {% if mode == 'aa' %}
 
 By trial and error we determined that we should assume a future
-contributions discount rate, d = {{ calc.future_growth_try_pct }}%
+contributions discount rate relative to the real interest rate, d =
+{{ calc.future_growth_try_pct }}%
 
 <br />
 <br />
@@ -685,7 +686,7 @@ be, since we can neither buy nor sell future contributions.
 <br />
 
 Adjusting the recommended asset allocation for future contributions
-when they are not discounted gives:
+when they are discounted at the real interest rate gives:
 
 {% else %}
 
@@ -756,7 +757,7 @@ Inflation adjusted.
 <tr>
 <td class="left"> Future contributions </td>
 <td class="right"> {{ calc.alloc_contributions_pct }}% </td>
-<td class="right"> {{ calc.future_growth_try_pct }}% </td>
+<td class="right"> {{ results.present.ret_contributions }}% </td>
 </tr>
 {% endif %}
 <tr>

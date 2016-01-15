@@ -179,12 +179,14 @@ class Alloc:
 
     def npv_contrib(self, ret):
         payout_delay = 0
-        schedule = self.stochastic_schedule(1 + ret, self.pre_retirement_years)
+        schedule = self.stochastic_schedule(1 / (1.0 + ret), self.pre_retirement_years)
         scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table_120, life_table2 = self.life_table_120, \
             joint_payout_fraction = 1, joint_contingent = True, period_certain = self.period_certain, \
             frequency = 1, cpi_adjust = 'all', schedule = schedule)
             # Table used is irrelevant. Choose for speed.
-        return self.contribution * scenario.price()
+        value = self.contribution * scenario.price()
+        annual_ret = scenario.annual_return
+        return value, annual_ret
 
     def value_table(self, taxable):
 
@@ -237,13 +239,10 @@ class Alloc:
         display['db'] = self.value_table_cache_db
         nv_db = self.value_table_cache_nv_db
 
-        nv_contributions = self.npv_contrib(self.contribution_growth)
-
         nv_traditional = self.traditional * (1 - self.tax_rate)
         nv_investments = nv_traditional + self.npv_roth + taxable
-        nv = nv_db + nv_investments + nv_contributions
+        nv = nv_db + nv_investments + self.nv_contributions
 
-        results['nv_contributions'] = nv_contributions
         results['nv_db'] = nv_db
         results['nv'] = nv
 
@@ -252,8 +251,9 @@ class Alloc:
         display['nv_roth'] = '{:,.0f}'.format(self.npv_roth)
         display['nv_taxable'] = '{:,.0f}'.format(taxable)
         display['nv_investments'] = '{:,.0f}'.format(nv_investments)
-        display['nv_contributions'] = '{:,.0f}'.format(nv_contributions)
+        display['nv_contributions'] = '{:,.0f}'.format(self.nv_contributions)
         display['nv'] = '{:,.0f}'.format(nv)
+        display['ret_contributions'] = '{:.1f}'.format(self.ret_contributions * 100)
 
         return results, display
 
@@ -295,14 +295,6 @@ class Alloc:
 
     def calc_scenario(self, mode, description, factor, data, results):
 
-        scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table_add, life_table2 = self.life_table2_add, \
-            joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
-            period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
-        discounted_retirement_le = scenario.price()
-        retirement_le = scenario.total_payout
-        lm_bonds_ret = scenario.annual_return
-        lm_bonds_duration = scenario.duration
-
         expense = float(data['expense_pct']) / 100
         equity_ret = float(data['equity_ret_pct']) / 100 - expense
         equity_ret += factor * float(data['equity_se_pct']) / 100
@@ -336,10 +328,10 @@ class Alloc:
                 (cov_ec2, cov_bc2, self.contribution_vol ** 2)
             )
             alpha = (equity_ret, bonds_ret, future_growth_try)
-            w = list(self.solve_merton(gamma, sigma_matrix, alpha, lm_bonds_ret))
+            w = list(self.solve_merton(gamma, sigma_matrix, alpha, self.lm_bonds_ret))
             w.append(1 - sum(w))
-            discounted_contrib = self.npv_contrib((1 + self.contribution_growth) / (1 + future_growth_try) - 1)
-            npv_discounted = results['nv'] - results['nv_contributions'] + discounted_contrib
+            discounted_contrib, _ = self.npv_contrib((1 + self.contribution_growth) * (1 + future_growth_try) - 1)
+            npv_discounted = results['nv'] - self.nv_contributions + discounted_contrib
             try:
                 wc_discounted = discounted_contrib / npv_discounted
             except ZeroDivisionError:
@@ -392,7 +384,7 @@ class Alloc:
         alloc_equity = min(max(0, w_prime[stocks_index] * (1 - annuitize_equity)), 1)
         alloc_bonds = min(max(0, w_prime[bonds_index] * (1 - annuitize_bonds)), 1)
         try:
-            alloc_contrib = results['nv_contributions'] / results['nv']
+            alloc_contrib = self.nv_contributions / results['nv']
         except ZeroDivisionError:
             alloc_contrib = 1
         alloc_db = 1 - alloc_equity - alloc_bonds - alloc_contrib - alloc_lm_bonds
@@ -421,9 +413,9 @@ class Alloc:
         alloc_new_db = max(0, alloc_db - alloc_existing_db) # Eliminate negative values from fp rounding errors.
 
         c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
-            future_growth_try, equity_ret, bonds_ret, lm_bonds_ret, \
+            self.ret_contributions, equity_ret, bonds_ret, self.lm_bonds_ret, \
             equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
-        consume = results['nv_db'] / discounted_retirement_le + c_factor * (results['nv'] - results['nv_db'])
+        consume = results['nv_db'] / self.discounted_retirement_le + c_factor * (results['nv'] - results['nv_db'])
 
         if consume > self.desired_income:
             ratio = self.desired_income / consume
@@ -433,9 +425,9 @@ class Alloc:
             alloc_equity = 1 - (alloc_contrib + alloc_bonds + alloc_lm_bonds + alloc_existing_db + alloc_new_db)
 
             c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
-                future_growth_try, equity_ret, bonds_ret, lm_bonds_ret, \
+                self.ret_contributions, equity_ret, bonds_ret, self.lm_bonds_ret, \
                 equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
-        consume = results['nv_db'] / discounted_retirement_le + c_factor * (results['nv'] - results['nv_db'])
+        consume = results['nv_db'] / self.discounted_retirement_le + c_factor * (results['nv'] - results['nv_db'])
 
         alloc_equity = max(0, alloc_equity) # Eliminate negative values from fp rounding errors.
 
@@ -449,9 +441,9 @@ class Alloc:
 
         result = {
             'description': description,
-            'lm_bonds_ret_pct': '{:.1f}'.format(lm_bonds_ret * 100),
-            'lm_bonds_duration': '{:.1f}'.format(lm_bonds_duration),
-            'retirement_life_expectancy': '{:.1f}'.format(retirement_le),
+            'lm_bonds_ret_pct': '{:.1f}'.format(self.lm_bonds_ret * 100),
+            'lm_bonds_duration': '{:.1f}'.format(self.lm_bonds_duration),
+            'retirement_life_expectancy': '{:.1f}'.format(self.retirement_le),
             'consume': '{:,.0f}'.format(consume),
             'equity_am_pct':'{:.1f}'.format(equity_ret * 100),
             'bonds_am_pct':'{:.1f}'.format(bonds_ret * 100),
@@ -500,7 +492,7 @@ class Alloc:
             'aa_bonds_pct': '{:.0f}'.format(aa_bonds * 100),
             'equity_ret_pct': '{:.1f}'.format(equity_ret * 100),
             'bonds_ret_pct': '{:.1f}'.format(bonds_ret * 100),
-            'lm_bonds_ret_pct': '{:.1f}'.format(lm_bonds_ret * 100),
+            'lm_bonds_ret_pct': '{:.1f}'.format(self.lm_bonds_ret * 100),
             'total_ret_pct': '{:.1f}'.format(total_ret * 100),
             'total_vol_pct': '{:.1f}'.format(total_vol * 100),
             'total_geometric_ret_pct': '{:.1f}'.format(total_geometric_ret * 100),
@@ -621,12 +613,23 @@ class Alloc:
         self.frequency = 12 # Monthly. Makes accurate, doesn't run significantly slower.
         self.cpi_adjust = 'calendar'
 
+        self.nv_contributions, _ = self.npv_contrib(self.contribution_growth)
+        _, self.ret_contributions = self.npv_contrib(0)
+
         npv_results, npv_display = self.value_table(self.npv_taxable)
         results['db'] = []
         for db in npv_display['db']:
             results['db'].append({'present': db})
         #for i, db in enumerate(future_display['db']):
         #    results['db'][i]['future'] = db
+
+        scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table_add, life_table2 = self.life_table2_add, \
+            joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
+            period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
+        self.discounted_retirement_le = scenario.price()
+        self.retirement_le = scenario.total_payout
+        self.lm_bonds_ret = scenario.annual_return
+        self.lm_bonds_duration = scenario.duration
 
         factor = norm.ppf(0.5 + float(data['confidence_pct']) / 100 / 2)
         factor = float(factor) # De-numpyfy.
