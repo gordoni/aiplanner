@@ -618,7 +618,7 @@ public class AAMapGenerate extends AAMap
         {
                 boolean search_aa = config.aa_strategy.equals("sdp");
                 boolean retire = period >= (config.retirement_age - config.start_age) * returns.time_periods;
-                boolean search_spend_fract = scenario.vw_strategy.equals("sdp") && (retire || config.spend_fract_all);
+                boolean search_spend_fract = scenario.vw_strategy.equals("sdp") && retire;
 
                 List<Integer> dimensions = new ArrayList<Integer>();
                 double[] step = new double[scenario.asset_classes.size()];

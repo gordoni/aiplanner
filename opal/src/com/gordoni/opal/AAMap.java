@@ -495,14 +495,20 @@ class AAMap
                                 boolean compute_utility = !config.utility_retire || retired;
 
                                 double income = ria + nia;
-                                if (retired)
+                                if (retired || config.spend_pre_retirement)
                                 {
                                         income += current_guaranteed_income;
-                                        if (variable_withdrawals)
+                                        if (variable_withdrawals || config.spend_pre_retirement)
                                         {
-                                                // Full investment portfolio amount subject to contrib choice.
-                                                // Not so for pre-retirement, only amount beyond RCR.
+                                                // Full investment portfolio amount subject to variable spending choice.
                                                 spend_annual = p_prev_exc_neg + income;
+                                                if (config.spend_pre_retirement && !retired)
+                                                {
+                                                        spend_annual += rcr;
+                                                        rcr *= rcr_step;
+                                                }
+                                                consume_annual = spend_annual;
+                                                amount_annual = - p_prev_exc_neg;
                                         }
                                         else
                                         {
@@ -512,9 +518,9 @@ class AAMap
                                                         retire = true;
                                                 }
                                                 spend_annual = spend_retirement;
+                                                consume_annual = spend_annual;
+                                                amount_annual = income - consume_annual;
                                         }
-                                        consume_annual = spend_annual;
-                                        amount_annual = income - consume_annual;
                                 }
                                 else
                                 {
@@ -580,6 +586,11 @@ class AAMap
                                                 not_consumed = 0;
                                         consume_annual -= not_consumed;
                                         amount_annual += not_consumed;
+                                }
+                                else if (config.spend_pre_retirement)
+                                {
+                                        amount_annual += consume_annual + first_payout;
+                                        consume_annual = 0;
                                 }
                                 else
                                         amount_annual += first_payout;

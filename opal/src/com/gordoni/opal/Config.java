@@ -208,13 +208,13 @@ public class Config
         public double vw_rate = 0.03; // VPW assumed real rate of return.
         public Double vw_merton_nu = null; // Value to use for nu in the solution to Merton's portfolio problem.
         public double vw_merton_le_factor = 1.0; // Multiply life expectancy by this much for "merton".
+        public boolean spend_pre_retirement = false; // Permit spending pre-retirement. Useful for annuity purchases.
 
         public boolean book_post = false; // false to book consumption at the start of the time period when it is subtracted; true to book at the end.
                 // Use of book_post=true gets rid of an annoying uptick on first median consumption when retired, but this uptick might be valid,
                 // reflecting a greater weight placed on below median consumption values.
                 // Use of book_post=true also seems to destroy monte_carlo_validate model, or at least monte_carlo_validate generated model fails to fully validate.
                 // Use of book_post=true is also more conservative as consumption benefits only accrue if you survive the full year.
-        public boolean spend_fract_all = false; // Whether to allow consumption/contribution choice for all years or only in retirement.
         public String search = "memory"; // How to search the asset allocation / spend_fract space for each map location.
                 // "all" - exhaustive search (painfully slow)
                 // "hill" - axis based hill climbing (fast; fails on diagonal ridges causing vertical or horizontal line noise)

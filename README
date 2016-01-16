@@ -141,9 +141,6 @@ To do:
     optimal strategy (treat previous consumption level as an extra
     "wealth" dimension); will be slow.
 
-  - Opal handle annuities pre-retirement. Not sure what the issue is,
-    but made a note to myself to fix.
-
 Getting started:
 
   - It is suggested that Amazon EC2 be used for development work. A
