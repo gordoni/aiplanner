@@ -126,6 +126,7 @@ public class Config
                // Whether to report aa as post first payout asset values relative to pre-first payout total value or post first payout total value.
 
         public double annuity_steps = 10000; // Number of annuitization steps. Keep steps small since annuitization can't be undone.
+        public int annuity_age = 0; // Age at which to start considering purchasing additional annuities.
         public boolean annuity_partial = true; // Allow partial annuitization, or make annuitization a one time complete irrevocable decision.
         public double annuity_time_periods = 12; // Number of times per year to receive annuity payments in the annuity pricing model.
         public int annuity_mwr_age1 = 50; // Age for first Money's Worth Ratio value.

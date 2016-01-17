@@ -618,7 +618,10 @@ public class AAMapGenerate extends AAMap
         {
                 boolean search_aa = config.aa_strategy.equals("sdp");
                 boolean retire = period >= (config.retirement_age - config.start_age) * returns.time_periods;
+                boolean annuitize = period >= (config.annuity_age - config.start_age) * returns.time_periods;
                 boolean search_spend_fract = scenario.vw_strategy.equals("sdp") && retire;
+
+                me.aa = me.aa.clone(); // May be shared with older bucket.
 
                 List<Integer> dimensions = new ArrayList<Integer>();
                 double[] step = new double[scenario.asset_classes.size()];
@@ -645,14 +648,24 @@ public class AAMapGenerate extends AAMap
                 int ria_loc = dimensions.size();
                 if (scenario.ria_index != null)
                 {
-                        dimensions.add(scenario.ria_aa_index);
-                        step[scenario.ria_aa_index] = 1.0 / config.annuity_steps;
+                        if (annuitize)
+                        {
+                                dimensions.add(scenario.ria_aa_index);
+                                step[scenario.ria_aa_index] = 1.0 / config.annuity_steps;
+                        }
+                        else
+                                me.aa[scenario.ria_aa_index] = 0;
                 }
                 int nia_loc = dimensions.size();
                 if (scenario.nia_index != null)
                 {
-                        dimensions.add(scenario.nia_aa_index);
-                        step[scenario.nia_aa_index] = 1.0 / config.annuity_steps;
+                        if (annuitize)
+                        {
+                                dimensions.add(scenario.nia_aa_index);
+                                step[scenario.nia_aa_index] = 1.0 / config.annuity_steps;
+                        }
+                        else
+                                me.aa[scenario.nia_aa_index] = 0;
                 }
                 if (search_spend_fract)
                 {
@@ -664,7 +677,6 @@ public class AAMapGenerate extends AAMap
                         me.aa = generate_aa(config.aa_strategy, config.start_age + period / returns.time_periods, me.rps);
                 if (!search_spend_fract)
                 {
-                        me.aa = me.aa.clone(); // May be shared with older bucket.
                         me.aa[scenario.spend_fract_index] = vw_spend_fract(config.start_age + period / returns.time_periods, me.rps);
                 }
 
