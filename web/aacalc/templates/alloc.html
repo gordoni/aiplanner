@@ -87,12 +87,12 @@ coupon bonds with a duration matching that of anticipated retirement
 cash flows are used as a risk free asset. </li>
 
 <li> Income annuities - income annuities are a valuable tool in the
-retirement toolbox. This caluclator optionally recommends the
+retirement toolbox. This calculator optionally recommends the
 purchase of inflation indexed income annuities, be they single premium
 immediate annuities or deferred income annuities. </li>
 
 <li> Admit what we don't know - returns from the stock market are
-intrinsically unknown. We generate a range of results for different plausable
+intrinsically unknown. We generate a range of results for different plausible
 scenarios. </li>
 
 <li> Cross validated - sample Merton's method recommendations produced
@@ -275,7 +275,7 @@ Annual consumption at which you have "won the game": {{ alloc_form.desired_incom
 <div class="small">
 Winning the game means having consumption that meets your required and
 desired expenses.  Assets required to support consumption beyond this
-level wil be allocated to stocks.
+level will be allocated to stocks.
 </div>
 {% else %}
 Annual desired consumption level: {{ alloc_form.desired_income }}
@@ -366,7 +366,8 @@ as <a href="http://www.vanguard.com/">Vanguard</a>.
 <br />
 
 Calculation date: {{ alloc_form.date }}
-<div class="small">Determines interest rate yield curve.</div>
+<div class="small">
+Determines interest rate yield curve.
 </div>
 {{ alloc_form.date.errors }}
 
@@ -696,7 +697,7 @@ when they are discounted at the real interest rate gives:
 
 {% else %}
 
-We calculated the folllowing asset allocations:
+We calculated the following asset allocations:
 
 {% endif %}
 
