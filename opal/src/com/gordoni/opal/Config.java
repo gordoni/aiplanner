@@ -389,6 +389,10 @@ public class Config
                 //     A                3.37%
                 //     BBB              3.63%
                 //
+                // Bsed on the iShares GOVT index the average Treasury had a maturity of 7.2 years.
+                // This means it is most closely approximated by the GS7 rate.
+                // According to FRED the GS7 rate lagged the GS10 rate by 0.09% (1969-07 - 2005-12).
+                //
                 // Fed. Flow of Funds:
                 //
                 // L.214 Mutual fund shares
@@ -396,11 +400,11 @@ public class Config
                 //   Total                             11526
                 //
                 // 2013 Q4 L.100 Household  L.121 Mutual funds   Total      arithm. real return (1927-2013)
-                //   Treasury            944             641     1316 17%       2.42% GS10
+                //   Treasury            944             641     1316 17%       2.33% GS7 (GS10 2.42% - 0.09%)
                 //   Agency              121             837      607  8%      ~2.60% guess
                 //   Muni               1617             610     1971 25%       3.16% after correct for tax adv; equiv to AA corporates
                 //   Corp and foreign   2793            2001     3955 50%       3.46% 2/3 A and 1/3 BAA based on LQD
-                //   Weighted                                                   3.14% use GS10 and adjust gm value by +0.72% to get 3.14% am
+                //   Weighted                                                   3.12% use GS10 and adjust gm value by +0.72% to get 3.14% (old adjustment)
                 //   Total                -              -       7849
         public double ret_gs10_to_bonds_vol_adjust = 1.1; // Adjustment to apply to GS10 volatility to get bond returns indicative of the bond universe.
                 // A guess based on risk-return plots placing its risk close to but slightly less than AAA bonds, with which it shares a similar return.
