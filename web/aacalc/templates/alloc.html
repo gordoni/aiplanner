@@ -163,12 +163,12 @@ Existing defined benefits:
 <table class="table-lined center">
 <tr>
 <td> </td>
-<td> Owner <br /> self/spouse </th>
-<td> Starting age </th>
-<td> Annual amount </th>
-<td> Inflation indexed </th>
+<td> Owner <br /> self/spouse </td>
+<td> Starting age </td>
+<td> Annual amount </td>
+<td> Inflation indexed </td>
 <td> Period certain </td>
-<td> Death benefit <br /> Contingent/survivor payout </th>
+<td> Death benefit <br /> Contingent/survivor payout </td>
 </tr>
 {% for db in alloc_form.db %}
 <tr>
@@ -198,6 +198,7 @@ Starting age is that of the owner.
 Contingent: payout reduced on death of either party.
 Survivor: payout reduced only on death of the owner.
 </td>
+</tr>
 </table>
 
 </div>
@@ -365,7 +366,7 @@ as <a href="http://www.vanguard.com/">Vanguard</a>.
 <br />
 
 Calculation date: {{ alloc_form.date }}
-<div class="small">Determines interest rate yield curve.</span>
+<div class="small">Determines interest rate yield curve.</div>
 </div>
 {{ alloc_form.date.errors }}
 
