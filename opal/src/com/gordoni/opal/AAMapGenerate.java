@@ -636,8 +636,11 @@ public class AAMapGenerate extends AAMap
                                 search_aa_dimensions = 1;
                         for (int d = 0; d < search_aa_dimensions; d++)
                         {
-                                dimensions.add(d);
-                                step[d] = 1.0 / config.aa_steps;
+                                if (!annuitize || config.annuity_classes_supress == null || !config.annuity_classes_supress.contains(scenario.asset_classes.get(d)))
+                                {
+                                        dimensions.add(d);
+                                        step[d] = 1.0 / config.aa_steps;
+                                }
                         }
                 }
                 else

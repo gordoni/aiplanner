@@ -220,6 +220,28 @@ public class Scenario
                                         else
                                                 new_aa[i] *= 1 - delta_safe / (1 - alloc_safe);
                 }
+                if ((config.annuity_classes_supress != null) &&
+                    (config.start_age + period / config.generate_time_periods >= config.annuity_age))
+                {
+                        // This code will rarely make a difference. We exclude suppressed asset classes from the search in search_hint().
+                        double sum = 0;
+                        for (int i = 0; i < normal_assets; i++)
+                        {
+                                if (config.annuity_classes_supress.contains(asset_classes.get(i)))
+                                        new_aa[i] = 0;
+                                else
+                                    sum += Math.max(0, new_aa[i]);
+                        }
+                        if (sum == 0)
+                        {
+                                // Have to have end up with some aa. Arbitrarily pick something.
+                                for (int i = 0; i < normal_assets; i++)
+                                {
+                                        if (!config.annuity_classes_supress.contains(asset_classes.get(i)))
+                                                new_aa[i] = 1; // Will get normalized in a moment.
+                                }
+                        }
+                }
                 // Keep summed to one as exactly as possible.
                 double sum = 0;
                 for (int i = 0; i < normal_assets; i++)

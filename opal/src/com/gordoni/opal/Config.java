@@ -127,6 +127,8 @@ public class Config
 
         public double annuity_steps = 10000; // Number of annuitization steps. Keep steps small since annuitization can't be undone.
         public int annuity_age = 0; // Age at which to start considering purchasing additional annuities.
+        public List<String> annuity_classes_supress = null;
+               // List of asset classes to supress from asset allocation once reach age at which able to consider purchasing annuities.
         public boolean annuity_partial = true; // Allow partial annuitization, or make annuitization a one time complete irrevocable decision.
         public double annuity_time_periods = 12; // Number of times per year to receive annuity payments in the annuity pricing model.
         public int annuity_mwr_age1 = 50; // Age for first Money's Worth Ratio value.
