@@ -94,7 +94,7 @@ def healthcheck(request):
     response = alloc(request, 'aa')
     page = response.content
     stocks, consume, _ = match('^.*<!-- healthcheck_aa --> (\d+)/\d+.*<!-- healthcheck_consume --> ((\d|,)+).*$', page, DOTALL).groups()
-    assert(40 < float(stocks) < 80)
+    assert(60 < float(stocks) <= 100)
     assert(80000 < float(consume.replace(',', '')) < 110000)
 
     # # Asset allocation.
