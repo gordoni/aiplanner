@@ -353,36 +353,22 @@ class Alloc:
         w_prime[risk_free_index] = 1 - sum(w_prime)
 
         if data['purchase_income_annuity']:
-            annuitize_equity = min(max(0, (self.min_age - 70.0) / (90 - 70)), 1)
+            annuitize_equity = min(max(0, (self.min_age - 75.0) / (90 - 75)), 1)
             # Don't have a good handle on when to annuitize regular
             # bonds.  Results are from earlier work in which bonds
             # returned 3.1 +/- 11.9% based on historical data.  These
             # returns are unlikely to be repeated in the forseeable
             # future.
             annuitize_bonds = min(max(0, (self.min_age - 30.0) / (60 - 30)), 1)
-            # Empirically LM bond allocations seem to be more or less
-            # fixed.  Largely invariant under changes in gamma,
-            # mortality, and stock return.  They do howver increase if
-            # stock volatility increases, MWR decreases, or the real
-            # yield curve increases (unexplained).  This suggests they
-            # play a buffering role. We would annuitize everything,
-            # except we need some free fixed assets in order to be
-            # able to rebalance.  The sensitivity isn't that great
-            # what would be 18% becomes 24%, 23%, and 24% and 30% for
-            # reasonable perturbations of the above values. We use 20%
-            # as a rule of thumb value.
-            alloc_lm_bonds = max(0, min(w_prime[risk_free_index], 0.20 * (1 - min(max(0, (self.min_age - 20.0) / (70 - 20)), 1))))
-            try:
-                annuitize_lm_bonds = 1 - alloc_lm_bonds / w_prime[risk_free_index]
-            except ZeroDivisionError:
-                annuitize_lm_bonds = 0
+            annuitize_lm_bonds_age = min(max(40, 40 + (self.retirement_age - self.age + self.min_age - 50) / 2.0), 50)
+            annuitize_lm_bonds = 0 if self.min_age < annuitize_lm_bonds_age else 1
         else:
             annuitize_equity = 0
             annuitize_bonds = 0
-            alloc_lm_bonds = min(max(0, w_prime[risk_free_index]), 1)
             annuitize_lm_bonds = 0
         alloc_equity = min(max(0, w_prime[stocks_index] * (1 - annuitize_equity)), 1)
         alloc_bonds = min(max(0, w_prime[bonds_index] * (1 - annuitize_bonds)), 1)
+        alloc_lm_bonds = min(max(0, w_prime[risk_free_index] * (1 - annuitize_lm_bonds)), 1)
         try:
             alloc_contrib = self.nv_contributions / results['nv']
         except ZeroDivisionError:
