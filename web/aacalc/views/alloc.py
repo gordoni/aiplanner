@@ -32,6 +32,15 @@ from aacalc.forms import AllocAaForm, AllocNumberForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
 from settings import ROOT, STATIC_ROOT, STATIC_URL
 
+# No enums until Python 3.4.
+stocks_index = 0
+bonds_index = 1
+contrib_index = 2
+risk_free_index = 3
+existing_annuities_index = 4
+new_annuities_index = 5
+num_index = 6
+
 class Alloc:
 
     class IdenticalCovarError(Exception):
@@ -257,18 +266,17 @@ class Alloc:
 
         return results, display
 
-    def consume_factor(self, alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
-            future_growth, equity_ret, bonds_ret, lm_bonds_ret, \
-            equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2):
+    def consume_factor(self, w, rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2):
 
-        total_ret = alloc_contrib * future_growth + alloc_equity * equity_ret + alloc_bonds * bonds_ret + \
-            alloc_lm_bonds * lm_bonds_ret + alloc_db * lm_bonds_ret
-        total_var = alloc_contrib ** 2 * self.contribution_vol ** 2 + \
-            alloc_equity ** 2 * equity_vol ** 2 + \
-            alloc_bonds ** 2 * bonds_vol ** 2 + \
-            2 * alloc_contrib * alloc_equity * cov_ec2 + \
-            2 * alloc_contrib * alloc_bonds * cov_bc2 + \
-            2 * alloc_equity * alloc_bonds * cov_eb2
+        total_ret = w[contrib_index] * rets[contrib_index] + w[stocks_index] * rets[stocks_index] + w[bonds_index] * rets[bonds_index] + \
+            w[risk_free_index] * rets[risk_free_index] + w[existing_annuities_index] * rets[existing_annuities_index] + \
+            w[new_annuities_index] * rets[new_annuities_index]
+        total_var = w[contrib_index] ** 2 * self.contribution_vol ** 2 + \
+            w[stocks_index] ** 2 * equity_vol ** 2 + \
+            w[bonds_index] ** 2 * bonds_vol ** 2 + \
+            2 * w[contrib_index] * w[stocks_index] * cov_ec2 + \
+            2 * w[contrib_index] * w[bonds_index] * cov_bc2 + \
+            2 * w[stocks_index] * w[bonds_index] * cov_eb2
         total_vol = sqrt(total_var)
 
         # We should use total_var, total_vol, and gamma to compute the
@@ -279,9 +287,10 @@ class Alloc:
         # such a solution existed we would also need to factor in
         # pre-retirement years. Instead we compute the withdrawal
         # amount for a fixed compounding total portfolio.
-        life_table_partial = LifeTable(self.table, self.sex, self.age, le_add = (1 - alloc_db) * self.le_add, date_str = self.date_str)
+        unannuitized = 1 - (w[existing_annuities_index] + w[new_annuities_index])
+        life_table_partial = LifeTable(self.table, self.sex, self.age, le_add = unannuitized * self.le_add, date_str = self.date_str)
         if self.sex2 != 'none':
-            life_table2_partial = LifeTable(self.table, self.sex2, self.age2, le_add = (1 - alloc_db) * self.le_add2, date_str = self.date_str)
+            life_table2_partial = LifeTable(self.table, self.sex2, self.age2, le_add = unannuitized * self.le_add2, date_str = self.date_str)
         else:
             life_table2_partial = None
         total_geometric_ret = self.geomean(total_ret, total_vol)
@@ -293,27 +302,85 @@ class Alloc:
 
         return c_factor, total_ret, total_vol, total_geometric_ret
 
+    def fix_allocs(self, w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2):
+
+        purchase_income_annuity = any(a > 0 for a in annuitize)
+
+        w_fixed = [0] * num_index
+        w_fixed[stocks_index] = min(max(0, w_prime[stocks_index] * (1 - annuitize[stocks_index])), 1)
+        w_fixed[bonds_index] = min(max(0, w_prime[bonds_index] * (1 - annuitize[bonds_index])), 1)
+        w_fixed[risk_free_index] = min(max(0, w_prime[risk_free_index] * (1 - annuitize[risk_free_index])), 1)
+        try:
+            w_fixed[contrib_index] = self.nv_contributions / results['nv']
+        except ZeroDivisionError:
+            w_fixed[contrib_index] = 1
+
+        alloc_db = 1 - sum(w_fixed)
+        try:
+            w_fixed[existing_annuities_index] = results['nv_db'] / results['nv']
+        except ZeroDivisionError:
+            w_fixed[existing_annuities_index] = 0
+        shortfall = alloc_db - w_fixed[existing_annuities_index]
+        if purchase_income_annuity:
+            shortfall = min(0, shortfall)
+        alloc_db -= shortfall
+        alloc_db = max(0, alloc_db) # Eliminate negative values from fp rounding errors.
+        w_fixed[risk_free_index] += shortfall
+        if w_fixed[risk_free_index] < 0:
+            surplus = w_fixed[risk_free_index]
+        else:
+            surplus = max(w_fixed[risk_free_index] - 1, 0)
+        w_fixed[risk_free_index] -= surplus
+        w_fixed[bonds_index] += surplus
+        if w_fixed[bonds_index] < 0:
+            surplus = w_fixed[bonds_index]
+        else:
+            surplus = max(w_fixed[bonds_index] - 1, 0)
+        w_fixed[bonds_index] -= surplus
+        w_fixed[stocks_index] += surplus
+        w_fixed[new_annuities_index] = max(0, alloc_db - w_fixed[existing_annuities_index]) # Eliminate negative values from fp rounding errors.
+
+        c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(w_fixed, rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
+        consume = results['nv_db'] / self.discounted_retirement_le + c_factor * (results['nv'] - results['nv_db'])
+
+        if consume > self.desired_income:
+            ratio = self.desired_income / consume
+            w_fixed[bonds_index] *= ratio
+            w_fixed[risk_free_index] *= ratio
+            w_fixed[new_annuities_index] = max(0, alloc_db * ratio - w_fixed[existing_annuities_index])
+            w_fixed[stocks_index] = 0
+            w_fixed[stocks_index] = 1 - sum(w_fixed)
+
+            c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(w_fixed, rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
+        consume = results['nv_db'] / self.discounted_retirement_le + c_factor * (results['nv'] - results['nv_db'])
+
+        w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
+
+        return w_fixed, consume, total_ret, total_vol, total_geometric_ret
+
     def calc_scenario(self, mode, description, factor, data, results):
 
+        rets = [0] * num_index
         expense = float(data['expense_pct']) / 100
-        equity_ret = float(data['equity_ret_pct']) / 100 - expense
-        equity_ret += factor * float(data['equity_se_pct']) / 100
-        bonds_ret = float(data['bonds_ret_pct']) / 100 - expense
+        rets[stocks_index] = float(data['equity_ret_pct']) / 100 - expense
+        rets[stocks_index] += factor * float(data['equity_se_pct']) / 100
+        rets[bonds_index] = float(data['bonds_ret_pct']) / 100 - expense
+        rets[contrib_index] = self.ret_contributions
+        rets[risk_free_index] = self.lm_bonds_ret
+        rets[existing_annuities_index] = self.lm_bonds_ret
+        rets[new_annuities_index] = self.lm_bonds_ret
+
         gamma = float(data['gamma'])
         equity_vol = float(data['equity_vol_pct']) / 100
         bonds_vol = float(data['bonds_vol_pct']) / 100
 
-        equity_gm = self.geomean(1 + equity_ret, equity_vol) - 1
-        bonds_gm = self.geomean(1 + bonds_ret, bonds_vol) - 1
+        equity_gm = self.geomean(1 + rets[stocks_index], equity_vol) - 1
+        bonds_gm = self.geomean(1 + rets[bonds_index], bonds_vol) - 1
 
         equity_bonds_corr = float(data['equity_bonds_corr_pct']) / 100
         cov_ec2 = equity_vol * self.contribution_vol * self.equity_contribution_corr ** 2
         cov_bc2 = bonds_vol * self.contribution_vol * self.bonds_contribution_corr ** 2
         cov_eb2 = equity_vol * bonds_vol * equity_bonds_corr ** 2
-        stocks_index = 0
-        bonds_index = 1
-        contrib_index = 2
-        risk_free_index = 3
 
         if mode == 'aa':
             lo = -0.5
@@ -327,7 +394,7 @@ class Alloc:
                 (cov_eb2, bonds_vol ** 2, cov_bc2),
                 (cov_ec2, cov_bc2, self.contribution_vol ** 2)
             )
-            alpha = (equity_ret, bonds_ret, future_growth_try)
+            alpha = (rets[stocks_index], rets[bonds_index], future_growth_try)
             w = list(self.solve_merton(gamma, sigma_matrix, alpha, self.lm_bonds_ret))
             w.append(1 - sum(w))
             discounted_contrib, _ = self.npv_contrib((1 + self.contribution_growth) * (1 + future_growth_try) - 1)
@@ -352,78 +419,41 @@ class Alloc:
         w_prime[risk_free_index] = 0
         w_prime[risk_free_index] = 1 - sum(w_prime)
 
+        annuitize = [0] * num_index
+        w_fixed, consume, total_ret, total_vol, total_geometric_ret = \
+            self.fix_allocs(w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
+
         if data['purchase_income_annuity']:
-            annuitize_equity = min(max(0, (self.min_age - 75.0) / (90 - 75)), 1)
+
+            annuitize[stocks_index] = min(max(0, (self.min_age - 75.0) / (90 - 75)), 1)
             # Don't have a good handle on when to annuitize regular
             # bonds.  Results are from earlier work in which bonds
             # returned 3.1 +/- 11.9% based on historical data.  These
             # returns are unlikely to be repeated in the forseeable
             # future.
-            annuitize_bonds = min(max(0, (self.min_age - 30.0) / (60 - 30)), 1)
+            annuitize[bonds_index] = min(max(0, (self.min_age - 30.0) / (60 - 30)), 1)
             annuitize_lm_bonds_age = min(max(40, 40 + (self.retirement_age - self.age + self.min_age - 50) / 2.0), 50)
-            annuitize_lm_bonds = 0 if self.min_age < annuitize_lm_bonds_age else 1
+            annuitize[risk_free_index] = 0 if self.min_age < annuitize_lm_bonds_age else 1
+
+            w_fixed_annuitize, consume_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize = \
+                self.fix_allocs(w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
+
+            annuitize_gain = consume_annuitize - consume
+            if annuitize_gain > 0.02 * consume:
+                w_fixed, consume, total_ret, total_vol, total_geometric_ret = \
+                    w_fixed_annuitize, consume_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize
+
         else:
-            annuitize_equity = 0
-            annuitize_bonds = 0
-            annuitize_lm_bonds = 0
-        alloc_equity = min(max(0, w_prime[stocks_index] * (1 - annuitize_equity)), 1)
-        alloc_bonds = min(max(0, w_prime[bonds_index] * (1 - annuitize_bonds)), 1)
-        alloc_lm_bonds = min(max(0, w_prime[risk_free_index] * (1 - annuitize_lm_bonds)), 1)
-        try:
-            alloc_contrib = self.nv_contributions / results['nv']
-        except ZeroDivisionError:
-            alloc_contrib = 1
-        alloc_db = 1 - alloc_equity - alloc_bonds - alloc_contrib - alloc_lm_bonds
-        try:
-            alloc_existing_db = results['nv_db'] / results['nv']
-        except ZeroDivisionError:
-            alloc_existing_db = 0
-        shortfall = alloc_db - alloc_existing_db
-        if data['purchase_income_annuity']:
-            shortfall = min(0, shortfall)
-        alloc_db -= shortfall
-        alloc_db = max(0, alloc_db) # Eliminate negative values from fp rounding errors.
-        alloc_lm_bonds += shortfall
-        if alloc_lm_bonds < 0:
-            surplus = alloc_lm_bonds
-        else:
-            surplus = max(alloc_lm_bonds - 1, 0)
-        alloc_lm_bonds -= surplus
-        alloc_bonds += surplus
-        if alloc_bonds < 0:
-            surplus = alloc_bonds
-        else:
-            surplus = max(alloc_bonds - 1, 0)
-        alloc_bonds -= surplus
-        alloc_equity += surplus
-        alloc_new_db = max(0, alloc_db - alloc_existing_db) # Eliminate negative values from fp rounding errors.
 
-        c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
-            self.ret_contributions, equity_ret, bonds_ret, self.lm_bonds_ret, \
-            equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
-        consume = results['nv_db'] / self.discounted_retirement_le + c_factor * (results['nv'] - results['nv_db'])
-
-        if consume > self.desired_income:
-            ratio = self.desired_income / consume
-            alloc_bonds *= ratio
-            alloc_lm_bonds *= ratio
-            alloc_new_db = max(0, alloc_db * ratio - alloc_existing_db)
-            alloc_equity = 1 - (alloc_contrib + alloc_bonds + alloc_lm_bonds + alloc_existing_db + alloc_new_db)
-
-            c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(alloc_contrib, alloc_equity, alloc_bonds, alloc_lm_bonds, alloc_db, \
-                self.ret_contributions, equity_ret, bonds_ret, self.lm_bonds_ret, \
-                equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
-        consume = results['nv_db'] / self.discounted_retirement_le + c_factor * (results['nv'] - results['nv_db'])
-
-        alloc_equity = max(0, alloc_equity) # Eliminate negative values from fp rounding errors.
+            annuitize_gain = 0
 
         try:
-            aa_equity = alloc_equity / (alloc_equity + alloc_bonds + alloc_lm_bonds)
+            aa_equity = w_fixed[stocks_index] / (w_fixed[stocks_index] + w_fixed[bonds_index] + w_fixed[risk_free_index])
         except ZeroDivisionError:
             aa_equity = 1
         aa_bonds = 1 - aa_equity
 
-        purchase_income_annuity = alloc_new_db * results['nv']
+        purchase_income_annuity = w_fixed[new_annuities_index] * results['nv']
 
         result = {
             'description': description,
@@ -431,8 +461,8 @@ class Alloc:
             'lm_bonds_duration': '{:.1f}'.format(self.lm_bonds_duration),
             'retirement_life_expectancy': '{:.1f}'.format(self.retirement_le),
             'consume': '{:,.0f}'.format(consume),
-            'equity_am_pct':'{:.1f}'.format(equity_ret * 100),
-            'bonds_am_pct':'{:.1f}'.format(bonds_ret * 100),
+            'equity_am_pct':'{:.1f}'.format(rets[stocks_index] * 100),
+            'bonds_am_pct':'{:.1f}'.format(rets[bonds_index] * 100),
             'equity_gm_pct':'{:.1f}'.format(equity_gm * 100),
             'bonds_gm_pct':'{:.1f}'.format(bonds_gm * 100),
             'future_growth_try_pct': '{:.1f}'.format(future_growth_try * 100),
@@ -464,31 +494,27 @@ class Alloc:
                 'name': 'Liability matching bonds and defined benefits',
                 'alloc': '{:.0f}'.format(w_prime[risk_free_index] * 100),
             }],
-            'annuitize_equity_pct': '{:.0f}'.format(annuitize_equity * 100),
-            'annuitize_bonds_pct': '{:.0f}'.format(annuitize_bonds * 100),
-            'annuitize_lm_bonds_pct': '{:.0f}'.format(annuitize_lm_bonds * 100),
-            'alloc_equity_pct': '{:.0f}'.format(alloc_equity * 100),
-            'alloc_bonds_pct': '{:.0f}'.format(alloc_bonds * 100),
-            'alloc_lm_bonds_pct': '{:.0f}'.format(alloc_lm_bonds * 100),
-            'alloc_contributions_pct': '{:.0f}'.format(alloc_contrib * 100),
-            'alloc_existing_db_pct': '{:.0f}'.format(alloc_existing_db * 100),
-            'alloc_new_db_pct': '{:.0f}'.format(alloc_new_db * 100),
+            'annuitize_equity_pct': '{:.0f}'.format(annuitize[stocks_index] * 100),
+            'annuitize_bonds_pct': '{:.0f}'.format(annuitize[bonds_index] * 100),
+            'annuitize_lm_bonds_pct': '{:.0f}'.format(annuitize[risk_free_index] * 100),
+            'annuitize_gain': '{:,.0f}'.format(annuitize_gain),
+            'alloc_equity_pct': '{:.0f}'.format(w_fixed[stocks_index] * 100),
+            'alloc_bonds_pct': '{:.0f}'.format(w_fixed[bonds_index] * 100),
+            'alloc_lm_bonds_pct': '{:.0f}'.format(w_fixed[risk_free_index] * 100),
+            'alloc_contributions_pct': '{:.0f}'.format(w_fixed[contrib_index] * 100),
+            'alloc_existing_db_pct': '{:.0f}'.format(w_fixed[existing_annuities_index] * 100),
+            'alloc_new_db_pct': '{:.0f}'.format(w_fixed[new_annuities_index] * 100),
             'purchase_income_annuity': '{:,.0f}'.format(purchase_income_annuity),
             'aa_equity_pct': '{:.0f}'.format(aa_equity * 100),
             'aa_bonds_pct': '{:.0f}'.format(aa_bonds * 100),
-            'equity_ret_pct': '{:.1f}'.format(equity_ret * 100),
-            'bonds_ret_pct': '{:.1f}'.format(bonds_ret * 100),
+            'equity_ret_pct': '{:.1f}'.format(rets[stocks_index] * 100),
+            'bonds_ret_pct': '{:.1f}'.format(rets[bonds_index] * 100),
             'lm_bonds_ret_pct': '{:.1f}'.format(self.lm_bonds_ret * 100),
             'total_ret_pct': '{:.1f}'.format(total_ret * 100),
             'total_vol_pct': '{:.1f}'.format(total_vol * 100),
             'total_geometric_ret_pct': '{:.1f}'.format(total_geometric_ret * 100),
             'consume_value': consume,
-            'alloc_equity': alloc_equity,
-            'alloc_bonds': alloc_bonds,
-            'alloc_lm_bonds': alloc_lm_bonds,
-            'alloc_contributions': alloc_contrib,
-            'alloc_existing_db': alloc_existing_db,
-            'alloc_new_db': alloc_new_db,
+            'w_fixed': w_fixed,
             'aa_equity': aa_equity,
             'aa_bonds': aa_bonds,
         }
@@ -637,16 +663,14 @@ class Alloc:
         parent = STATIC_ROOT + 'results'
         dirname = mkdtemp(prefix='aa-', dir=parent)
         f = open(dirname + '/alloc.csv', 'w')
-        f.write('''class,allocation
-stocks,%(alloc_equity)f
-regular bonds,%(alloc_bonds)f
-LM bonds,%(alloc_lm_bonds)f
-defined benefits,%(alloc_existing_db)f
-new annuities,%(alloc_new_db)f
-''' % result)
+        f.write('class,allocation\n')
+        f.write('stocks,%f\n' % result['w_fixed'][stocks_index])
+        f.write('regular bonds,%f\n' % result['w_fixed'][bonds_index])
+        f.write('LM bonds,%f\n' % result['w_fixed'][risk_free_index])
+        f.write('defined benefits,%f\n' % result['w_fixed'][existing_annuities_index])
+        f.write('new annuities,%f\n' % result['w_fixed'][new_annuities_index])
         if mode == 'aa':
-            f.write('''future contribs,%(alloc_contributions)f
-''' % result)
+            f.write('future contribs,%f\n' % result['w_fixed'][contrib_index])
         f.close()
         f = open(dirname + '/aa.csv', 'w')
         f.write('''asset class,allocation

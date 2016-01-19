@@ -458,11 +458,32 @@ return of stocks compounded over time.
 
 {% endif %}
 
-We recommend
 {% if results.calc.0.purchase_income_annuity != '0' %}
-purchasing an income annuity of {{ results.calc.0.purchase_income_annuity }} and then adopting
+
+We recommend purchasing an income annuity of {{ results.calc.0.purchase_income_annuity }}.
+This is estimated to increase you annual consumption by {{ results.calc.0.annuitize_gain }}.
+<div class="small">
+The consumption recommendations made below factor in the purchase of
+this annuity.
+</div>
+
+<br />
+
+{% elif alloc_form.cleaned_data.purchase_income_annuity %}
+
+We do not recommend you purchase an income annuity at the present
+time.
+<div class="small">
+The estimated increase in annual consumption you would receive from
+doing so is {{ results.calc.0.annuitize_gain }}.
+</div>
+
+<br />
+
 {% endif %}
-a <!-- healthcheck_aa --> {{ results.calc.0.aa_equity_pct }}/{{ results.calc.0.aa_bonds_pct }}
+
+We recommend adopting a
+<!-- healthcheck_aa --> {{ results.calc.0.aa_equity_pct }}/{{ results.calc.0.aa_bonds_pct }}
 stock/bond asset allocation.
 <div class="small">
 Asset allocation is between stocks and regular bonds plus liability
@@ -718,7 +739,7 @@ of <a href="https://en.wikipedia.org/wiki/Merton's_portfolio_problem">Merton's f
 {% endif %}
 </table>
 
-{% if alloc_form.cleaned_data.purchase_income_annuity %}
+{% if calc.purchase_income_annuity != '0' %}
 
 <br />
 
@@ -821,7 +842,7 @@ over the retirement period from a portfolio growing at a fixed
 rate equal to the expected total geometric rate of return.
 </div>
 
-{% if alloc_form.cleaned_data.purchase_income_annuity %}
+{% if calc.purchase_income_annuity != '0' %}
 
 <br />
 
