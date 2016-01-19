@@ -425,7 +425,7 @@ class Alloc:
 
         if data['purchase_income_annuity']:
 
-            annuitize[stocks_index] = min(max(0, (self.min_age - 75.0) / (90 - 75)), 1)
+            annuitize[stocks_index] = min(max(0, (self.min_age - 65.0) / (90 - 65)), 1)
             # Don't have a good handle on when to annuitize regular
             # bonds.  Results are from earlier work in which bonds
             # returned 3.1 +/- 11.9% based on historical data.  These
