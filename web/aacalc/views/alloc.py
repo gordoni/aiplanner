@@ -159,14 +159,17 @@ class Alloc:
 
     def geomean(self, mean, vol):
         # Convert mean and vol to lognormal distribution mu and sigma parameters.
-        mu = log(mean ** 2 / sqrt(vol ** 2 + mean ** 2))
+        try:
+            mu = log(mean ** 2 / sqrt(vol ** 2 + mean ** 2))
+        except ZeroDivisionError:
+            return mean
         sigma = sqrt(log(vol ** 2 / mean ** 2 + 1))
         # Compute the middle value.
         geomean = lognorm.ppf(0.5, sigma, scale=exp(mu))
         geomean = float(geomean) # De-numpyfy.
         if isnan(geomean):
             # vol == 0.
-            geomean = mean
+            return mean
         return geomean
 
     def solve_merton(self, gamma, sigma_matrix, alpha, r):
@@ -266,11 +269,12 @@ class Alloc:
 
         return results, display
 
-    def consume_factor(self, w, rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2):
+    def statistics(self, w, rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2):
 
         total_ret = w[contrib_index] * rets[contrib_index] + w[stocks_index] * rets[stocks_index] + w[bonds_index] * rets[bonds_index] + \
             w[risk_free_index] * rets[risk_free_index] + w[existing_annuities_index] * rets[existing_annuities_index] + \
             w[new_annuities_index] * rets[new_annuities_index]
+
         total_var = w[contrib_index] ** 2 * self.contribution_vol ** 2 + \
             w[stocks_index] ** 2 * equity_vol ** 2 + \
             w[bonds_index] ** 2 * bonds_vol ** 2 + \
@@ -279,28 +283,41 @@ class Alloc:
             2 * w[stocks_index] * w[bonds_index] * cov_eb2
         total_vol = sqrt(total_var)
 
+        total_geometric_ret = self.geomean(total_ret, total_vol)
+
+        return total_ret, total_vol, total_geometric_ret
+
+    def consume_factor(self, ret):
+
         # We should use total_var, total_vol, and gamma to compute the
         # annual consumption amount.  Merton's Continuous Time Finance
         # provides solutions for a single risky asset with a finite
         # time horizon, and many asset with a infinite time horizon,
         # but not many assets with a finite time horizon. And even if
         # such a solution existed we would also need to factor in
-        # pre-retirement years. Instead we compute the withdrawal
-        # amount for a fixed compounding total portfolio.
-        unannuitized = 1 - (w[existing_annuities_index] + w[new_annuities_index])
-        life_table_partial = LifeTable(self.table, self.sex, self.age, le_add = unannuitized * self.le_add, date_str = self.date_str)
-        if self.sex2 != 'none':
-            life_table2_partial = LifeTable(self.table, self.sex2, self.age2, le_add = unannuitized * self.le_add2, date_str = self.date_str)
-        else:
-            life_table2_partial = None
-        total_geometric_ret = self.geomean(total_ret, total_vol)
-        schedule = self.stochastic_schedule(1 / (1.0 + total_geometric_ret))
-        scenario = Scenario(self.yield_curve_zero, self.payout_delay, None, None, 0, life_table_partial, life_table2 = life_table2_partial, \
+        # pre-retirement years.
+
+        # We compute the withdrawal amount for a fixed compounding
+        # total portfolio.
+        schedule = self.stochastic_schedule(1 / (1.0 + ret))
+        scenario = Scenario(self.yield_curve_zero, self.payout_delay, None, None, 0, self.life_table_add, life_table2 = self.life_table2_add, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust, schedule = schedule)
         c_factor = 1.0 / scenario.price()
 
-        return c_factor, total_ret, total_vol, total_geometric_ret
+        return c_factor
+
+    def non_annuitized_weights(self, w):
+
+        w = list(w)
+        w[existing_annuities_index] = 0
+        w[new_annuities_index] = 0
+        s = sum(w)
+        try:
+            return list(wi / float(s) for wi in w)
+        except:
+            return w
+
 
     def fix_allocs(self, w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2):
 
@@ -341,8 +358,11 @@ class Alloc:
         w_fixed[new_annuities_index] = max(0, alloc_db - w_fixed[existing_annuities_index]) # Eliminate negative values from fp rounding errors.
         alloc_db = w_fixed[existing_annuities_index] + w_fixed[new_annuities_index]
 
-        c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(w_fixed, rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
-        consume = results['nv'] * (alloc_db / self.discounted_retirement_le + (1 - alloc_db) * c_factor)
+        ret, vol, geometric_ret = self.statistics(self.non_annuitized_weights(w_fixed), rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
+        c_factor = self.consume_factor(geometric_ret)
+        consume = results['nv'] * (w_fixed[existing_annuities_index] / self.discounted_retirement_le_add + \
+                                   w_fixed[new_annuities_index] / self.discounted_retirement_le + \
+                                   (1 - alloc_db) * c_factor)
 
         if consume > self.desired_income:
             ratio = self.desired_income / consume
@@ -353,10 +373,15 @@ class Alloc:
             w_fixed[stocks_index] = 1 - sum(w_fixed)
             alloc_db = w_fixed[existing_annuities_index] + w_fixed[new_annuities_index]
 
-            c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(w_fixed, rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
-        consume = results['nv'] * (alloc_db / self.discounted_retirement_le + (1 - alloc_db) * c_factor)
+            ret, vol, geometric_ret = self.statistics(self.non_annuitized_weights(w_fixed), rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
+            c_factor = self.consume_factor(geometric_ret)
+            consume = results['nv'] * (w_fixed[existing_annuities_index] / self.discounted_retirement_le_add + \
+                                       w_fixed[new_annuities_index] / self.discounted_retirement_le + \
+                                       (1 - alloc_db) * c_factor)
 
         w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
+
+        total_ret, total_vol, total_geometric_ret = self.statistics(w_fixed, rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
 
         return w_fixed, consume, total_ret, total_vol, total_geometric_ret
 
@@ -442,12 +467,14 @@ class Alloc:
                 self.fix_allocs(w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
 
             annuitize_gain = consume_annuitize - consume_unannuitize
-            if annuitize_gain > 0.02 * consume:
+            annuitize_plan = annuitize_gain > 0.02 * consume
+            if annuitize_plan:
                 w_fixed, consume, total_ret, total_vol, total_geometric_ret = \
                     w_fixed_annuitize, consume_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize
 
         else:
 
+            annuitize_plan = False
             consume_annuitize = 0
             annuitize_gain = 0
 
@@ -519,6 +546,7 @@ class Alloc:
             'total_ret_pct': '{:.1f}'.format(total_ret * 100),
             'total_vol_pct': '{:.1f}'.format(total_vol * 100),
             'total_geometric_ret_pct': '{:.1f}'.format(total_geometric_ret * 100),
+            'annuitize_plan': annuitize_plan,
             'consume_value': consume,
             'w_fixed': w_fixed,
             'aa_equity': aa_equity,
@@ -581,6 +609,7 @@ class Alloc:
 
         self.sex = data['sex']
         self.age = float(data['age'])
+        self.life_table = LifeTable(self.table, self.sex, self.age)
         self.le_add = float(data['le_add'])
         self.life_table_add = LifeTable(self.table, self.sex, self.age, le_add = self.le_add, date_str = self.date_str)
 
@@ -591,6 +620,7 @@ class Alloc:
             self.min_age = self.age
         else:
             self.age2 = float(data['age2']);
+            self.life_table2 = LifeTable(self.table, self.sex2, self.age2)
             self.le_add2 = float(data['le_add2'])
             self.life_table2_add = LifeTable(self.table, self.sex2, self.age2, le_add = self.le_add2, date_str = self.date_str)
             self.min_age = min(self.age, self.age2)
@@ -641,11 +671,16 @@ class Alloc:
         #for i, db in enumerate(future_display['db']):
         #    results['db'][i]['future'] = db
 
-        scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table_add, life_table2 = self.life_table2_add, \
+        scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
         self.discounted_retirement_le = scenario.price()
         self.retirement_le = scenario.total_payout
+
+        scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table_add, life_table2 = self.life_table2_add, \
+            joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
+            period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
+        self.discounted_retirement_le_add = scenario.price()
         self.lm_bonds_ret = scenario.annual_return
         self.lm_bonds_duration = scenario.duration
 
