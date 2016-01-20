@@ -461,10 +461,12 @@ return of stocks compounded over time.
 {% if results.calc.0.purchase_income_annuity != '0' %}
 
 We recommend purchasing an income annuity of {{ results.calc.0.purchase_income_annuity }}.
-This is estimated to increase you annual consumption by {{ results.calc.0.annuitize_gain }}.
+This is estimated to increase your annual consumption by {{ results.calc.0.annuitize_gain }}
+versus never doing so.
 <div class="small">
+We are uanble to estimate the cost of delaying this decision.
 The consumption recommendations made below factor in the purchase of
-this annuity.
+this income annuity.
 </div>
 
 <br />
@@ -475,7 +477,7 @@ We do not recommend you purchase an income annuity at the present
 time.
 <div class="small">
 The estimated increase in annual consumption you would receive from
-doing so is {{ results.calc.0.annuitize_gain }}.
+doing so now versus never doing so is {{ results.calc.0.annuitize_gain }}.
 </div>
 
 <br />
@@ -835,9 +837,13 @@ Inflation adjusted.
 
 <br />
 
-Recommended annual retirement consumption amount: {{ calc.consume }}
+Recommended annual retirement consumption amount without annuitization: {{ calc.consume_unannuitize }}
+{% if alloc_form.cleaned_data.purchase_income_annuity %}
+<br/>
+Recommended annual retirement consumption amount with annuitization: {{ calc.consume_annuitize }}
+{% endif %}
 <div class="small">
-This estimate is based on the amount that can be withdrawn
+Estimate is based on the amount that can be withdrawn
 over the retirement period from a portfolio growing at a fixed
 rate equal to the expected total geometric rate of return.
 </div>

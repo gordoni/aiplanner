@@ -339,9 +339,10 @@ class Alloc:
         w_fixed[bonds_index] -= surplus
         w_fixed[stocks_index] += surplus
         w_fixed[new_annuities_index] = max(0, alloc_db - w_fixed[existing_annuities_index]) # Eliminate negative values from fp rounding errors.
+        alloc_db = w_fixed[existing_annuities_index] + w_fixed[new_annuities_index]
 
         c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(w_fixed, rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
-        consume = results['nv_db'] / self.discounted_retirement_le + c_factor * (results['nv'] - results['nv_db'])
+        consume = results['nv'] * (alloc_db / self.discounted_retirement_le + (1 - alloc_db) * c_factor)
 
         if consume > self.desired_income:
             ratio = self.desired_income / consume
@@ -350,9 +351,10 @@ class Alloc:
             w_fixed[new_annuities_index] = max(0, alloc_db * ratio - w_fixed[existing_annuities_index])
             w_fixed[stocks_index] = 0
             w_fixed[stocks_index] = 1 - sum(w_fixed)
+            alloc_db = w_fixed[existing_annuities_index] + w_fixed[new_annuities_index]
 
             c_factor, total_ret, total_vol, total_geometric_ret = self.consume_factor(w_fixed, rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
-        consume = results['nv_db'] / self.discounted_retirement_le + c_factor * (results['nv'] - results['nv_db'])
+        consume = results['nv'] * (alloc_db / self.discounted_retirement_le + (1 - alloc_db) * c_factor)
 
         w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
 
@@ -422,6 +424,7 @@ class Alloc:
         annuitize = [0] * num_index
         w_fixed, consume, total_ret, total_vol, total_geometric_ret = \
             self.fix_allocs(w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
+        consume_unannuitize = consume
 
         if data['purchase_income_annuity']:
 
@@ -438,13 +441,14 @@ class Alloc:
             w_fixed_annuitize, consume_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize = \
                 self.fix_allocs(w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
 
-            annuitize_gain = consume_annuitize - consume
+            annuitize_gain = consume_annuitize - consume_unannuitize
             if annuitize_gain > 0.02 * consume:
                 w_fixed, consume, total_ret, total_vol, total_geometric_ret = \
                     w_fixed_annuitize, consume_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize
 
         else:
 
+            consume_annuitize = 0
             annuitize_gain = 0
 
         try:
@@ -504,6 +508,8 @@ class Alloc:
             'alloc_contributions_pct': '{:.0f}'.format(w_fixed[contrib_index] * 100),
             'alloc_existing_db_pct': '{:.0f}'.format(w_fixed[existing_annuities_index] * 100),
             'alloc_new_db_pct': '{:.0f}'.format(w_fixed[new_annuities_index] * 100),
+            'consume_annuitize': '{:,.0f}'.format(consume_annuitize),
+            'consume_unannuitize': '{:,.0f}'.format(consume_unannuitize),
             'purchase_income_annuity': '{:,.0f}'.format(purchase_income_annuity),
             'aa_equity_pct': '{:.0f}'.format(aa_equity * 100),
             'aa_bonds_pct': '{:.0f}'.format(aa_bonds * 100),
