@@ -32,7 +32,7 @@ from aacalc.forms import AllocAaForm, AllocNumberForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
 from settings import ROOT, STATIC_ROOT, STATIC_URL
 
-annuitization_delay_cost = (0.0, 0.0, 0.0, 0.013, 0.017, 0.029, 0.049, 0.093, 0.221, 0.391)
+annuitization_delay_cost = (0.0, 0.0, 0.0, 0.013, 0.018, 0.029, 0.049, 0.093, 0.221, 0.391)
     # Cost of delaying anuitization by 10 years, every 10 years of age.
     # Birth year = 2015 - starting age.
 
