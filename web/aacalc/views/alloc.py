@@ -32,6 +32,10 @@ from aacalc.forms import AllocAaForm, AllocNumberForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
 from settings import ROOT, STATIC_ROOT, STATIC_URL
 
+annuitization_delay_cost = (0.0, 0.0, 0.0, 0.010, 0.017, 0.029, 0.049, 0.093, 0.221, 0.391)
+    # Cost of delaying anuitization by 10 years, every 10 years of age.
+    # Birth year = 2015 - starting age. No lm_bonds post annuitization.
+
 # No enums until Python 3.4.
 stocks_index = 0
 bonds_index = 1
@@ -467,7 +471,19 @@ class Alloc:
                 self.fix_allocs(w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
 
             annuitize_gain = consume_annuitize - consume_unannuitize
-            annuitize_plan = annuitize_gain > 0.02 * consume
+            purchase_income_annuity = results['nv'] * w_fixed_annuitize[new_annuities_index]
+
+            use_age = self.min_age - 5 # Delay cost estimates look forward for 10 years.
+            index = min(int(use_age / 10.0), len(annuitization_delay_cost))
+            next_index = min(int((use_age + 10) / 10.0), len(annuitization_delay_cost))
+            cost_low = annuitization_delay_cost[index] / 10
+            cost_high = annuitization_delay_cost[next_index] / 10
+            weight = (use_age % 10) / 10.0
+            cost = (1 - weight) * cost_low + weight * cost_high
+            delay_fraction_cost = cost * w_fixed_annuitize[new_annuities_index]
+            annuitize_delay_cost = results['nv'] * delay_fraction_cost
+
+            annuitize_plan = annuitize_gain > 0.04 * consume_unannuitize and delay_fraction_cost > 0.001
             if annuitize_plan:
                 w_fixed, consume, total_ret, total_vol, total_geometric_ret = \
                     w_fixed_annuitize, consume_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize
@@ -477,14 +493,14 @@ class Alloc:
             annuitize_plan = False
             consume_annuitize = 0
             annuitize_gain = 0
+            purchase_income_annuity = 0
+            annuitize_delay_cost = 0
 
         try:
             aa_equity = w_fixed[stocks_index] / (w_fixed[stocks_index] + w_fixed[bonds_index] + w_fixed[risk_free_index])
         except ZeroDivisionError:
             aa_equity = 1
         aa_bonds = 1 - aa_equity
-
-        purchase_income_annuity = w_fixed[new_annuities_index] * results['nv']
 
         result = {
             'description': description,
@@ -529,6 +545,7 @@ class Alloc:
             'annuitize_bonds_pct': '{:.0f}'.format(annuitize[bonds_index] * 100),
             'annuitize_lm_bonds_pct': '{:.0f}'.format(annuitize[risk_free_index] * 100),
             'annuitize_gain': '{:,.0f}'.format(annuitize_gain),
+            'annuitize_delay_cost': '{:,.0f}'.format(annuitize_delay_cost),
             'alloc_equity_pct': '{:.0f}'.format(w_fixed[stocks_index] * 100),
             'alloc_bonds_pct': '{:.0f}'.format(w_fixed[bonds_index] * 100),
             'alloc_lm_bonds_pct': '{:.0f}'.format(w_fixed[risk_free_index] * 100),

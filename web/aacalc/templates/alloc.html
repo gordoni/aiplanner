@@ -143,7 +143,8 @@ Additional years to plan for beyond life expectancy for self: {{ alloc_form.le_a
 {{ alloc_form.le_add2.errors }}
 <div class="small">
 You can change these values if you feel you are in exceptional good or
-bad health for your age. We have selected reasonable default values.
+bad health for your age. A reasonable default value is 8 years reduced
+by 1 year for every two years you are past age 80.
 </div>
 
 </div>
@@ -464,11 +465,10 @@ We recommend purchasing an income annuity of {{ results.calc.0.purchase_income_a
 This is estimated to increase your annual consumption by {{ results.calc.0.annuitize_gain }}
 versus never doing so.
 <div class="small">
-We are uanble to estimate the cost of delaying this decision. It will
-likely be small if either of you are under 50, or a substantial
-portion of your total assets will be in Social Security or other
-defined benefits. The consumption recommendations made below factor in
-the purchase of this income annuity.
+We roughly estimate the cost of delaying this purchase by one year as
+{{ results.calc.0.annuitize_delay_cost }} in aggregate consumption
+over your lifetime.  The consumption recommendations made below factor
+in the purchase of this income annuity.
 </div>
 
 <br />
@@ -477,15 +477,8 @@ the purchase of this income annuity.
 
 We do not recommend you purchase an income annuity at the present
 time.
-{% if results.calc.0.purchase_income_annuity != '0' %}
-<div class="small">
-The estimated increase in annual consumption you would receive from
-doing so now versus never doing so is {{ results.calc.0.annuitize_gain }}.
-</div>
-{% else %}
-<br />
-{% endif %}
 
+<br />
 <br />
 
 {% endif %}
@@ -858,7 +851,11 @@ rate equal to the expected total geometric rate of return.
 
 <br />
 
-Income annuity purchase amount: {{ calc.purchase_income_annuity }}
+Potential income annuity purchase amount: {{ calc.purchase_income_annuity }}
+
+<br />
+
+Estimated lifetime cost of delaying purchase of income annuity by one year: {{ calc.annuitize_delay_cost }}
 
 <br />
 
