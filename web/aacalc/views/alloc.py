@@ -32,9 +32,9 @@ from aacalc.forms import AllocAaForm, AllocNumberForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
 from settings import ROOT, STATIC_ROOT, STATIC_URL
 
-annuitization_delay_cost = (0.0, 0.0, 0.0, 0.010, 0.017, 0.029, 0.049, 0.093, 0.221, 0.391)
+annuitization_delay_cost = (0.0, 0.0, 0.0, 0.013, 0.017, 0.029, 0.049, 0.093, 0.221, 0.391)
     # Cost of delaying anuitization by 10 years, every 10 years of age.
-    # Birth year = 2015 - starting age. No lm_bonds post annuitization.
+    # Birth year = 2015 - starting age.
 
 # No enums until Python 3.4.
 stocks_index = 0
@@ -365,7 +365,7 @@ class Alloc:
         ret, vol, geometric_ret = self.statistics(self.non_annuitized_weights(w_fixed), rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
         c_factor = self.consume_factor(geometric_ret)
         consume = results['nv'] * (w_fixed[existing_annuities_index] / self.discounted_retirement_le_add + \
-                                   w_fixed[new_annuities_index] / self.discounted_retirement_le + \
+                                   w_fixed[new_annuities_index] / self.discounted_retirement_le_annuity + \
                                    (1 - alloc_db) * c_factor)
 
         if consume > self.desired_income:
@@ -380,7 +380,7 @@ class Alloc:
             ret, vol, geometric_ret = self.statistics(self.non_annuitized_weights(w_fixed), rets, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
             c_factor = self.consume_factor(geometric_ret)
             consume = results['nv'] * (w_fixed[existing_annuities_index] / self.discounted_retirement_le_add + \
-                                       w_fixed[new_annuities_index] / self.discounted_retirement_le + \
+                                       w_fixed[new_annuities_index] / self.discounted_retirement_le_annuity + \
                                        (1 - alloc_db) * c_factor)
 
         w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
@@ -621,23 +621,27 @@ class Alloc:
                 self.yield_curve_nominal.yield_curve_date + ' nominal';
 
         self.table = 'ssa-cohort'
+        self.table_annuity = 'iam2012-basic'
 
         self.life_table_120 = LifeTable('death_120', 'male', 0)
 
         self.sex = data['sex']
         self.age = float(data['age'])
         self.life_table = LifeTable(self.table, self.sex, self.age)
+        self.life_table_annuity = LifeTable(self.table_annuity, self.sex, self.age)
         self.le_add = float(data['le_add'])
         self.life_table_add = LifeTable(self.table, self.sex, self.age, le_add = self.le_add, date_str = self.date_str)
 
         self.sex2 = data['sex2']
         if self.sex2 == 'none':
             self.life_table2 = None
+            self.life_table2_annuity = None
             self.life_table2_add = None
             self.min_age = self.age
         else:
             self.age2 = float(data['age2']);
             self.life_table2 = LifeTable(self.table, self.sex2, self.age2)
+            self.life_table2_annuity = LifeTable(self.table_annuity, self.sex2, self.age2)
             self.le_add2 = float(data['le_add2'])
             self.life_table2_add = LifeTable(self.table, self.sex2, self.age2, le_add = self.le_add2, date_str = self.date_str)
             self.min_age = min(self.age, self.age2)
@@ -688,11 +692,15 @@ class Alloc:
         #for i, db in enumerate(future_display['db']):
         #    results['db'][i]['future'] = db
 
-        scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
+        scenario = Scenario(self.yield_curve_zero, self.payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
-        self.discounted_retirement_le = scenario.price()
-        self.retirement_le = scenario.total_payout
+        self.retirement_le = scenario.price()
+
+        scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table_annuity, life_table2 = self.life_table2_annuity, \
+            joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
+            period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
+        self.discounted_retirement_le_annuity = scenario.price()
 
         scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table_add, life_table2 = self.life_table2_add, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
