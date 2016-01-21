@@ -323,7 +323,7 @@ class Alloc:
             return w
 
 
-    def fix_allocs(self, w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2):
+    def fix_allocs(self, mode, w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2):
 
         purchase_income_annuity = any(a > 0 for a in annuitize)
 
@@ -368,7 +368,7 @@ class Alloc:
                                    w_fixed[new_annuities_index] / self.discounted_retirement_le_annuity + \
                                    (1 - alloc_db) * c_factor)
 
-        if consume > self.desired_income:
+        if mode == 'aa' and consume > self.desired_income:
             ratio = self.desired_income / consume
             w_fixed[bonds_index] *= ratio
             w_fixed[risk_free_index] *= ratio
@@ -416,43 +416,53 @@ class Alloc:
         if mode == 'aa':
             lo = -0.5
             hi = 0.5
-        else:
-            lo = hi = 0
-        for _ in range(50):
-            future_growth_try = (lo + hi) / 2.0
-            sigma_matrix = (
-                (equity_vol ** 2, cov_eb2, cov_ec2),
-                (cov_eb2, bonds_vol ** 2, cov_bc2),
-                (cov_ec2, cov_bc2, self.contribution_vol ** 2)
-            )
-            alpha = (rets[stocks_index], rets[bonds_index], future_growth_try)
-            w = list(self.solve_merton(gamma, sigma_matrix, alpha, self.lm_bonds_ret))
-            w.append(1 - sum(w))
-            discounted_contrib, _ = self.npv_contrib((1 + self.contribution_growth) * (1 + future_growth_try) - 1)
-            npv_discounted = results['nv'] - self.nv_contributions + discounted_contrib
+            for _ in range(50):
+                future_growth_try = (lo + hi) / 2.0
+                sigma_matrix = (
+                    (equity_vol ** 2, cov_eb2, cov_ec2),
+                    (cov_eb2, bonds_vol ** 2, cov_bc2),
+                    (cov_ec2, cov_bc2, self.contribution_vol ** 2)
+                )
+                alpha = (rets[stocks_index], rets[bonds_index], future_growth_try)
+                w = list(self.solve_merton(gamma, sigma_matrix, alpha, self.lm_bonds_ret))
+                w.append(1 - sum(w))
+                discounted_contrib, _ = self.npv_contrib((1 + self.contribution_growth) * (1 + future_growth_try) - 1)
+                npv_discounted = results['nv'] - self.nv_contributions + discounted_contrib
+                try:
+                    wc_discounted = discounted_contrib / npv_discounted
+                except ZeroDivisionError:
+                    wc_discounted = 0
+                if hi - lo < 0.000001:
+                    break
+                if wc_discounted > w[contrib_index]:
+                    lo = future_growth_try
+                else:
+                    hi = future_growth_try
             try:
-                wc_discounted = discounted_contrib / npv_discounted
+                w_prime = list(wi * npv_discounted / results['nv'] for wi in w)
             except ZeroDivisionError:
-                wc_discounted = 0
-            if hi - lo < 0.000001:
-                break
-            if wc_discounted > w[contrib_index]:
-                lo = future_growth_try
-            else:
-                hi = future_growth_try
-        try:
-            w_prime = list(wi * npv_discounted / results['nv'] for wi in w)
-        except ZeroDivisionError:
-            w_prime = list(0 for _ in w)
-        w_prime[contrib_index] = 0
-        w_prime[contrib_index] = 1 - sum(w_prime)
+                w_prime = list(0 for _ in w)
+            w_prime[contrib_index] = 0
+            w_prime[contrib_index] = 1 - sum(w_prime)
+        else:
+            future_growth_try = 0
+            discounted_contrib = 0
+            wc_discounted = 0
+            sigma_matrix = (
+                (equity_vol ** 2, cov_eb2),
+                (cov_eb2, bonds_vol ** 2),
+            )
+            alpha = (rets[stocks_index], rets[bonds_index])
+            w = list(self.solve_merton(gamma, sigma_matrix, alpha, self.lm_bonds_ret))
+            w.extend((0, 1 - sum(w)))
+            w_prime = list(w)
         w_prime = list(max(0, wi) for wi in w_prime)
         w_prime[risk_free_index] = 0
         w_prime[risk_free_index] = 1 - sum(w_prime)
 
         annuitize = [0] * num_index
         w_fixed, consume, total_ret, total_vol, total_geometric_ret = \
-            self.fix_allocs(w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
+            self.fix_allocs(mode, w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
         consume_unannuitize = consume
 
         if data['purchase_income_annuity']:
@@ -468,7 +478,7 @@ class Alloc:
             annuitize[risk_free_index] = 0 if self.min_age < annuitize_lm_bonds_age else 1
 
             w_fixed_annuitize, consume_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize = \
-                self.fix_allocs(w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
+                self.fix_allocs(mode, w_prime, rets, results, annuitize, equity_vol, bonds_vol, cov_ec2, cov_bc2, cov_eb2)
 
             annuitize_gain = consume_annuitize - consume_unannuitize
             purchase_income_annuity = results['nv'] * w_fixed_annuitize[new_annuities_index]
@@ -587,6 +597,8 @@ class Alloc:
             results = dict(results)
             nv = results['nv']
             max_portfolio = self.desired_income * (120 - self.min_age - self.pre_retirement_years)
+            found_location = None # Consume may have a discontinuity due to annuitization; be sure to return a location that meets or exceeds the requirement.
+            found_value = None
             low = 0
             high = max_portfolio
             for _ in range(50):
@@ -594,16 +606,19 @@ class Alloc:
                 # Hack the table rather than recompute for speed.
                 results['nv'] = nv + mid
                 calc_scenario = self.calc_scenario(mode, description, factor, data, results)
+                if calc_scenario['consume_value'] >= self.desired_income or not found_location:
+                    found_location = mid
+                    found_value = calc_scenario
                 if high - low < 0.00001 * max_portfolio:
                     break
                 if calc_scenario['consume_value'] < self.desired_income:
                     low = mid
                 else:
                     high = mid
-            _, npv_display = self.value_table(mid) # Recompute.
-            calc_scenario['npv_display'] = npv_display
+            _, npv_display = self.value_table(found_location) # Recompute.
+            found_value['npv_display'] = npv_display
 
-            return calc_scenario
+            return found_value
 
     def compute_results(self, data, mode):
 
