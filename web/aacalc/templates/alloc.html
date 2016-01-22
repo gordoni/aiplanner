@@ -71,10 +71,11 @@ Several things set this calculator apart:
 
 <ul>
 
-<li> A balance sheet approach - asset allocation can't be
-performed in isolation, but must be performed by taking into account
-the presence and size of Social Security, Pensions, 401(k)s, and
-income annuities. </li>
+<li> A balance sheet approach - asset allocation can't be performed in
+isolation, but must be performed by taking into account the presence
+and size of Social Security, Pensions, 401(k)s, and income
+annuities. See the <a href="{% url 'docs' 'faq' %}">FAQ</a> for more
+details.</li>
 
 {% if mode == 'aa' %}
 <li> Future contributions - the impact of any possible future
@@ -82,9 +83,12 @@ contributions is handled by entering their expected annual amount,
 growth rate, and volatility. </li>
 {%endif %}
 
-<li> Liability matching bonds - inflation indexed zero
-coupon bonds with a duration matching that of anticipated retirement
-cash flows are used as a risk free asset. </li>
+<li> A true risk free asset - liability matching bonds, that is
+inflation indexed zero coupon bonds with a duration matching that of
+anticipated retirement cash flows, not cash, are used as the true risk
+free asset. Liability matching bonds might be hard to purchase, but a
+TIPS ladder, or a TIPS bond fund of appropriate duration, is a close
+substitute. </li>
 
 <li> Income annuities - income annuities are a valuable tool in the
 retirement toolbox. This calculator optionally recommends the
@@ -191,6 +195,7 @@ Existing defined benefits:
 {{ db.period_certain.errors }}
 {{ db.joint_type.errors }}
 {{ db.joint_payout_pct.errors }}
+{{ db.non_field_errors }}
 </td>
 </tr>
 {% endfor %}
@@ -618,7 +623,7 @@ real interest rate adjusted
 </tr>
 <tr>
 <tr>
-<td colspan=3 class="left small"> Computed from planning adjusted mortality table and real yield curve. </td>
+<td colspan=3 class="left small"> Computed from planning purposes adjusted mortality table and real yield curve. </td>
 </tr>
 </table>
 

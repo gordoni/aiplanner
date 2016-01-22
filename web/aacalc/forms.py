@@ -534,11 +534,24 @@ class AllocBaseForm(Form):
         return cleaned_data
 
     class DbForm(Form):
+
+        def clean(self):
+            cleaned_data = super(AllocBaseForm.DbForm, self).clean()
+            if cleaned_data['description'] == 'Social Security':
+                if not cleaned_data['inflation_indexed']:
+                    raise ValidationError('Social Security must be inflation indexed')
+                if cleaned_data['period_certain'] != 0:
+                    raise ValidationError('Social Security period certain must be 0')
+                if cleaned_data['joint_type'] == 'contingent':
+                    raise ValidationError('Social Security death benefit must be survivor')
+            return cleaned_data
+
         description = ChoiceField(
             choices=(
                 ('Social Security', 'Social Security'),
                 ('Pension', 'Pension'),
-                ('Income annuity', 'Income annuity')))
+                ('Income annuity', 'Income annuity'),
+                ('Other', 'Other')))
         who = ChoiceField(
             choices = (('self', ''), ('spouse', '')),
             widget=RadioSelect(renderer=HorizontalRadioRenderer))
