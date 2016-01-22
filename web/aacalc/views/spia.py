@@ -129,9 +129,11 @@ def spia(request):
                 table = data['table']
                 if table == 'adjust':
                     table = 'ssa-cohort'
-                    le_set = float(data['le'])
+                    le_set = float(data['le_set'])
+                    le_set2 = float(data['le_set2'])
                 else:
                     le_set = None
+                    le_set2 = None
 
                 life_table = LifeTable(table, sex, age, ae = ae, le_set = le_set, date_str = date_str)
 
@@ -142,7 +144,7 @@ def spia(request):
                     age2 = float(data['age2_years']);
                     if data['age2_months']:
                         age2 += float(data['age2_months']) / 12
-                    life_table2 = LifeTable(table, sex2, age2, ae = ae, q_adjust = q_adjust)
+                    life_table2 = LifeTable(table, sex2, age2, ae = ae, le_set = le_set2, date_str = date_str)
 
                 joint_payout_fraction = float(data['joint_payout_percent']) / 100
                 joint_contingent = (data['joint_type'] == 'contingent')

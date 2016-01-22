@@ -135,8 +135,10 @@ Annuity Experience Report.
 </div>
 <br />
 When using the adjusted life table enter the additional remaining years of life
-expected for the primary annuitant: {{ spia_form.le }}
-{{ spia_form.le.errors }}
+expected for the primary annuitant: {{ spia_form.le_set }} secondary annuitant:
+{{ spia_form.le_set2 }}
+{{ spia_form.le_set.errors }}
+{{ spia_form.le_set2.errors }}
 <div class="small">
 Adjusted life table applies a constant factor to the q<sub>x</sub>
 values of the general population life table in order to reproduce the

@@ -403,7 +403,7 @@ class SpiaForm(Form):
             raise ValidationError('Invalid secondary annuitant.')
         if age2_years == None and age2_months != None:
             raise ValidationError('Missing secondary annuitant age.')
-        if cleaned_data['table'] == 'adjust' and cleaned_data['le'] == None:
+        if cleaned_data['table'] == 'adjust' and (cleaned_data['le_set'] == None or sex2 != None and cleaned_data['le_set2'] == None):
             raise ValidationError('Missing adjusted life expectancy.')
         premium = 0 if cleaned_data['premium'] == None else 1
         payout = 0 if cleaned_data['payout'] == None else 1
@@ -449,7 +449,12 @@ class SpiaForm(Form):
         widget=RadioSelect(renderer=VerticalRadioRenderer))
     ae = ChoiceField(
         choices = (('none', 'no'), ('aer2005_08-summary', 'summary'), ('aer2005_08-full', 'age specific'), ))
-    le = DecimalField(
+    le_set = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=110,
+        required=False)
+    le_set2 = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=110,
