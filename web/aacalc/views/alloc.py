@@ -64,7 +64,7 @@ class Alloc:
             'db' : ({
                 'description': 'Social Security',
                 'who': 'self',
-                'age': 65,
+                'age': 66,
                 'amount': 15000,
                 'inflation_indexed': True,
                 'period_certain': 0,
@@ -73,7 +73,7 @@ class Alloc:
             }, {
                 'description': 'Pension',
                 'who': 'self',
-                'age': 65,
+                'age': 66,
                 'amount': 0,
                 'inflation_indexed': True,
                 'period_certain': 0,
@@ -82,7 +82,7 @@ class Alloc:
             }, {
                 'description': 'Income annuity',
                 'who': 'self',
-                'age': 65,
+                'age': 66,
                 'amount': 0,
                 'inflation_indexed': True,
                 'period_certain': 0,
@@ -91,7 +91,7 @@ class Alloc:
             }, {
                 'description': 'Income annuity',
                 'who': 'self',
-                'age': 65,
+                'age': 66,
                 'amount': 0,
                 'inflation_indexed': False,
                 'period_certain': 0,
@@ -100,7 +100,7 @@ class Alloc:
             }, {
                 'description': 'Social Security',
                 'who': 'spouse',
-                'age': 65,
+                'age': 66,
                 'amount': 0,
                 'inflation_indexed': True,
                 'period_certain': 0,
@@ -109,7 +109,7 @@ class Alloc:
             }, {
                 'description': 'Pension',
                 'who': 'spouse',
-                'age': 65,
+                'age': 66,
                 'amount': 0,
                 'inflation_indexed': True,
                 'period_certain': 0,
@@ -118,7 +118,7 @@ class Alloc:
             }, {
                 'description': 'Income annuity',
                 'who': 'spouse',
-                'age': 65,
+                'age': 66,
                 'amount': 0,
                 'inflation_indexed': True,
                 'period_certain': 0,
@@ -127,7 +127,7 @@ class Alloc:
             }, {
                 'description': 'Income annuity',
                 'who': 'spouse',
-                'age': 65,
+                'age': 66,
                 'amount': 0,
                 'inflation_indexed': False,
                 'period_certain': 0,
@@ -144,7 +144,7 @@ class Alloc:
             'equity_contribution_corr_pct': Decimal('0.0'),
             'bonds_contribution_corr_pct': Decimal('0.0'),
 
-            'retirement_age': 65,
+            'retirement_age': 66,
             'joint_income_pct': 70,
             'desired_income': 40000,
             'purchase_income_annuity': True,
