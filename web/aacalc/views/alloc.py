@@ -62,7 +62,7 @@ class Alloc:
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
 
             'db' : ({
-                'description': 'Social Security',
+                'social_security': True,
                 'who': 'self',
                 'age': 66,
                 'amount': 15000,
@@ -71,6 +71,16 @@ class Alloc:
                 'joint_type': 'survivor',
                 'joint_payout_pct': 0,
             }, {
+                'social_security': True,
+                'who': 'spouse',
+                'age': 66,
+                'amount': 0,
+                'inflation_indexed': True,
+                'period_certain': 0,
+                'joint_type': 'survivor',
+                'joint_payout_pct': 0,
+            }, {
+                'social_security': False,
                 'description': 'Pension',
                 'who': 'self',
                 'age': 66,
@@ -80,6 +90,37 @@ class Alloc:
                 'joint_type': 'survivor',
                 'joint_payout_pct': 0,
             }, {
+                'social_security': False,
+                'description': 'Pension',
+                'who': 'self',
+                'age': 66,
+                'amount': 0,
+                'inflation_indexed': True,
+                'period_certain': 0,
+                'joint_type': 'survivor',
+                'joint_payout_pct': 0,
+            }, {
+                'social_security': False,
+                'description': 'Pension',
+                'who': 'spouse',
+                'age': 66,
+                'amount': 0,
+                'inflation_indexed': True,
+                'period_certain': 0,
+                'joint_type': 'survivor',
+                'joint_payout_pct': 0,
+            }, {
+                'social_security': False,
+                'description': 'Pension',
+                'who': 'spouse',
+                'age': 66,
+                'amount': 0,
+                'inflation_indexed': True,
+                'period_certain': 0,
+                'joint_type': 'survivor',
+                'joint_payout_pct': 0,
+            }, {
+                'social_security': False,
                 'description': 'Income annuity',
                 'who': 'self',
                 'age': 66,
@@ -89,6 +130,7 @@ class Alloc:
                 'joint_type': 'contingent',
                 'joint_payout_pct': 70,
             }, {
+                'social_security': False,
                 'description': 'Income annuity',
                 'who': 'self',
                 'age': 66,
@@ -98,24 +140,7 @@ class Alloc:
                 'joint_type': 'contingent',
                 'joint_payout_pct': 70,
             }, {
-                'description': 'Social Security',
-                'who': 'spouse',
-                'age': 66,
-                'amount': 0,
-                'inflation_indexed': True,
-                'period_certain': 0,
-                'joint_type': 'survivor',
-                'joint_payout_pct': 0,
-            }, {
-                'description': 'Pension',
-                'who': 'spouse',
-                'age': 66,
-                'amount': 0,
-                'inflation_indexed': True,
-                'period_certain': 0,
-                'joint_type': 'survivor',
-                'joint_payout_pct': 0,
-            }, {
+                'social_security': False,
                 'description': 'Income annuity',
                 'who': 'spouse',
                 'age': 66,
@@ -125,6 +150,7 @@ class Alloc:
                 'joint_type': 'contingent',
                 'joint_payout_pct': 70,
             }, {
+                'social_security': False,
                 'description': 'Income annuity',
                 'who': 'spouse',
                 'age': 66,
@@ -247,7 +273,7 @@ class Alloc:
                 self.value_table_cache_nv_db += price
 
                 self.value_table_cache_db.append({
-                    'description': db['description'],
+                    'description': db['description'] if db['description'] else 'Social Security',
                     'who': db['who'],
                     'nv': '{:,.0f}'.format(price),
                 })
@@ -609,7 +635,7 @@ class Alloc:
                 if calc_scenario['consume_value'] >= self.desired_income or not found_location:
                     found_location = mid
                     found_value = calc_scenario
-                if high - low < 0.00001 * max_portfolio:
+                if high - low < 0.000001 * max_portfolio:
                     break
                 if calc_scenario['consume_value'] < self.desired_income:
                     low = mid

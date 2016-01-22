@@ -177,7 +177,19 @@ Existing defined benefits:
 </tr>
 {% for db in alloc_form.db %}
 <tr>
-<td> {{ db.description }} </td>
+<td>
+{{ db.social_security }}
+{% if db.social_security.value == True %}
+Social Security
+{% else %}
+{% if db.social_security.value == 'True' %}
+{% comment %} Django goofyness on a bound form {% endcomment %}
+Social Security
+{% else %}
+{{ db.description }}
+{% endif %}
+{% endif %}
+</td>
 <td> {{ db.who }} </td>
 <td> {{ db.age }} </td>
 <td> {{ db.amount }} </td>
@@ -187,7 +199,14 @@ Existing defined benefits:
 </tr>
 <tr>
 <td colspan=6 class="left">
+{{ db.social_secuity.errors }}
+{% if db.social_security.value == True %}
+{% else %}
+{% if db.social_security.value == 'True' %}
+{% else %}
 {{ db.description.errors }}
+{% endif %}
+{% endif %}
 {{ db.who.errors }}
 {{ db.age.errors }}
 {{ db.amount.errors }}
@@ -201,7 +220,8 @@ Existing defined benefits:
 {% endfor %}
 <tr>
 <td colspan=7 class="small left">
-Starting age is that of the owner.
+Starting age is that of the owner. Payouts last at least as long as the owner's life.
+Period certain: the number of years for which payments are guaranteed, even if the owner dies.
 Contingent: payout reduced on death of either party.
 Survivor: payout reduced only on death of the owner.
 </td>
@@ -214,7 +234,7 @@ Survivor: payout reduced only on death of the owner.
 
 <br />
 
-Existing defined contributions:
+Existing defined contribution savings:
 
 <br />
 <br />
@@ -431,11 +451,13 @@ level.
 
 <div class="center">
 <input class="button" type="submit" value="Submit" />
+<!--
 {% if mode == 'number' %}
 <div class="small">
 takes 5 seconds
 </div>
 {% endif %}
+-->
 </div>
 
 {% if results and not errors_present %}
