@@ -188,6 +188,7 @@ Existing defined benefits:
 {{ db.age.errors }}
 {{ db.amount.errors }}
 {{ db.inflation_indexed.errors }}
+{{ db.period_certain.errors }}
 {{ db.joint_type.errors }}
 {{ db.joint_payout_pct.errors }}
 </td>
@@ -273,6 +274,7 @@ Relative income required when one party deceased: {{ alloc_form.joint_income_pct
 <br />
 {% if mode == 'aa' %}
 Annual consumption at which you have "won the game": {{ alloc_form.desired_income }}
+{{ alloc_form.desired_income.errors }}
 <div class="small">
 Winning the game means having consumption that meets your required and
 desired expenses.  Assets required to support consumption beyond this
@@ -391,9 +393,12 @@ annual consumption. Economists are divided on an appropriate value for
 &gamma;. Many think it is in the range 1 to 3. Others consider a value
 of 10 or even higher reasonable. Marginal utility of consumption,
 U'(C) = C<sup>-&gamma;</sup>. So, for &gamma;=3, when you are
-consuming 10% more, the utility of a marginal dollar is worth
+consuming 10% more than before, the utility of a marginal dollar is worth
 110%<sup>-3</sup> = 75% of what it was at your original consumption
 level.
+<div class="center">
+ The value of an additional dollar declines as you consume more.
+</div>
 <table class="table-lined center">
 <tr>
 <td> &gamma; </td>
@@ -404,7 +409,8 @@ level.
 <td> 5 </td>
 </tr>
 <tr>
-<td> Utility of a marginal dollar when consuming 10% more </td>
+<td class="left"> Value of an additional dollar when consuming 110% of C compared
+<br> to the value of an additional dollar when consuming 100% of C </td>
 <td> 91% </td>
 <td> 83% </td>
 <td> 75% </td>
