@@ -3,7 +3,7 @@
 {% comment %}
 
 AACalc - Asset Allocation Calculator
-Copyright (C) 2009, 2011-2015 Gordon Irlam
+Copyright (C) 2009, 2011-2016 Gordon Irlam
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -66,10 +66,12 @@ Please correct the errors in red below:
 {% endif %}
 
 Sex: {{ le_form.sex }}
+{{ le_form.sex.errors }}
 Age: {{ le_form.age }}
 {{ le_form.age.errors }}
 <br />
 Spouse/partner: {{ le_form.sex2 }}
+{{ le_form.sex2.errors }}
 Age: {{ le_form.age2 }}
 {{ le_form.age2.errors }}
 <br />
