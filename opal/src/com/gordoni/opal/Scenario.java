@@ -1758,7 +1758,7 @@ public class Scenario
                                         double[] aa = new double[normal_assets];
                                         aa[index] = 1;
                                         tax.initial(1, aa);
-                                        double[] rets = new double[normal_assets];
+                                        double[] rets = new double[stochastic_classes];
                                         for (int i = 0; i < at_return.length; i++)
                                         {
                                                 rets[index] = returns_generate.data.get(i)[index]; // Doing things this way avoids any lm_bonds NaN.
