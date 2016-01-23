@@ -1758,9 +1758,11 @@ public class Scenario
                                         double[] aa = new double[normal_assets];
                                         aa[index] = 1;
                                         tax.initial(1, aa);
+                                        double[] rets = new double[normal_assets];
                                         for (int i = 0; i < at_return.length; i++)
                                         {
-                                                at_return[i] -= tax.total_pending(1 + at_return[i], 1, aa, returns_generate.data.get(i));
+                                                rets[index] = returns_generate.data.get(i)[index]; // Doing things this way avoids any lm_bonds NaN.
+                                                at_return[i] -= tax.total_pending(1 + at_return[i], 1, aa, rets);
                                                         // This like most tax calculations is imperfect.
                                         }
                                 }

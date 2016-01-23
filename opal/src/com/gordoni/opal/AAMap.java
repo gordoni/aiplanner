@@ -360,6 +360,7 @@ class AAMap
                 if (!generate)
                         paths = new ArrayList<List<PathElement>>();
                 double[][] returns_array = null;
+                double[] rets = new double[scenario.stochastic_classes];
                 double[] tax_annuity_credit_expire = new double[total_periods]; // Nominal amount.
                 Tax tax = null;
                 if (generate)
@@ -457,6 +458,13 @@ class AAMap
                         int y = 0;
                         while (y < step_periods)
                         {
+                                System.arraycopy(returns_array[index], 0, rets, 0, scenario.stochastic_classes);
+                                for (int i = 0; i < scenario.normal_assets; i++)
+                                {
+                                        if (special_aa[i])
+                                                rets[i] = scenario.lm_bonds_returns[period + y];
+                                }
+
                                 double utility_weight = 1;
                                 if (!generate && monte_carlo_validate)
                                 {
@@ -602,10 +610,7 @@ class AAMap
                                 double tot_return = 0.0;
                                 for (int i = 0; i < scenario.normal_assets; i++)
                                 {
-                                        if (special_aa[i])
-                                                tot_return += aa[i] * (1 + scenario.lm_bonds_returns[period + y]);
-                                        else
-                                                tot_return += aa[i] * (1 + returns_array[index][i]);
+                                        tot_return += aa[i] * (1 + rets[i]);
                                 }
                                 ssr_terms += 1 / all_return;
                                 all_return *= tot_return;
@@ -620,7 +625,7 @@ class AAMap
                                 }
                                 if ((scenario.ria_index != null && config.tax_rate_annuity != 0) || scenario.nia_index != null)
                                 {
-                                        double cpi_delta = returns_array[index][scenario.cpi_index];
+                                        double cpi_delta = rets[scenario.cpi_index];
                                         assert(1 + cpi_delta >= 0);
                                         cpi *= 1 + cpi_delta;
                                         nia /= 1 + cpi_delta;
@@ -659,14 +664,14 @@ class AAMap
                                 {
                                         // Tax depends on our new asset allocation which depends on our portfolio size which depends on how much tax we pay.
                                         // We perform a first order estimate.
-                                        total_tax_pending = tax.total_pending(p, p_preinvest, aa, returns_array[index]);
+                                        total_tax_pending = tax.total_pending(p, p_preinvest, aa, rets);
                                         // It may be worth performing a second order estimate when generating.
                                         // Empirically though this hasn't been found to make any difference.
                                         //
                                         // if (!generate)
                                         // {
-                                        //         res = lookup_bucket(null, p - total_tax_pending, new_period, generate, returns);
-                                        //         total_tax_pending = tax.total_pending(p, p_preinvest, res.aa, returns_array[index]);
+                                        //         res = lookup_bucket(null, p - total_tax_pending, new_period, generate, rets);
+                                        //         total_tax_pending = tax.total_pending(p, p_preinvest, res.aa, rets);
                                         // }
                                 }
 
@@ -700,7 +705,7 @@ class AAMap
                                                         double new_aa_sum = 0.0;
                                                         for (int a = 0; a < scenario.normal_assets; a++)
                                                         {
-                                                                double alloc = aa[a] * (1 + returns_array[index][a]);
+                                                                double alloc = aa[a] * (1 + rets[a]);
                                                                 new_aa[a] = alloc;
                                                                 new_aa_sum += alloc;
                                                         }
@@ -725,7 +730,7 @@ class AAMap
                                                 }
                                                 if (tax_time)
                                                 {
-                                                        tax_amount = tax.tax(p, p_preinvest, aa, returns_array[index]);
+                                                        tax_amount = tax.tax(p, p_preinvest, aa, rets);
                                                         if (cost_basis_method_immediate)
                                                                 tax_amount = total_tax_pending; // Ensure generated and simulated metrics match for immediate.
                                                         p -= tax_amount;
