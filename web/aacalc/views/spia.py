@@ -126,18 +126,19 @@ def spia(request):
                     age += float(data['age_months']) / 12
                 ae = data['ae']
 
+                sex2 = data['sex2']
+
                 table = data['table']
+                le_set = None
+                le_set2 = None
                 if table == 'adjust':
                     table = 'ssa-cohort'
                     le_set = float(data['le_set'])
-                    le_set2 = float(data['le_set2'])
-                else:
-                    le_set = None
-                    le_set2 = None
+                    if sex2 != None:
+                        le_set2 = float(data['le_set2'])
 
                 life_table = LifeTable(table, sex, age, ae = ae, le_set = le_set, date_str = date_str)
 
-                sex2 = data['sex2']
                 if sex2 == None:
                     life_table2 = None
                 else:
