@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -39,9 +39,13 @@ abstract class Tax
         private double dividends = 0;
         private double tax_dividends = 0;
 
-        protected double dividend_tax(int a, double invest_final)
+        protected double dividend_tax(int a, double invest_start, double invest_final, double cpi_delta)
         {
-                double dividend = scenario.dividend_yield[a] * invest_final;
+                double dividend;
+                if (Double.isNaN(scenario.dividend_yield[a]))
+                        dividend = scenario.dividend_fract[a] * (invest_final - invest_start / cpi_delta); // LM bonds.
+                else
+                        dividend = scenario.dividend_yield[a] * invest_final;
                 dividends += dividend;
                 double tax_rate = (config.tax_rate_div == null ? config.tax_rate_div_default : config.tax_rate_div[a]);
                 tax_dividends += tax_rate * dividend;

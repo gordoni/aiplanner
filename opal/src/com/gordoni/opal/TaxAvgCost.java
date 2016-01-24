@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -79,7 +79,7 @@ class TaxAvgCost extends Tax
                         }
                         base /= cpi_delta;
                         // val *= ret;
-                        double dividend = dividend_tax(i, invest_final);
+                        double dividend = dividend_tax(i, invest_start, invest_final, cpi_delta);
                         income += dividend;
                         // val -= dividend;
                         double buy_sell_1 = target - invest_final + dividend;  // Reinvest dividend.

@@ -72,6 +72,7 @@ public class Scenario
         public int cpi_index;
         public int ef_index;
 
+        public double[] dividend_fract;
         public double[] dividend_yield;
         public List<double[]> at_returns;
 
@@ -1736,10 +1737,11 @@ public class Scenario
                 if (do_validate)
                         returns_validate = new Returns(this, hist, config, config.validate_seed, !config.skip_retirement_number, config.validate_start_year, config.validate_end_year, config.num_sequences_validate, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.validate_shuffle, config.ret_reshuffle, config.validate_draw, config.ret_bootstrap_block_size, config.ret_pair, config.ret_short_block, config.validate_all_adjust, equity_vol_adjust * config.validate_equity_vol_adjust);
 
+                dividend_fract = (config.dividend_fract == null ? (returns_generate == null ? returns_validate.dividend_fract : returns_generate.dividend_fract) : config.dividend_fract);
+
                 if (returns_generate != null)
                 {
                         dividend_yield = new double[normal_assets];
-                        double[] dividend_fract = (config.dividend_fract == null ? returns_generate.dividend_fract : config.dividend_fract);
                         List<double[]> ac_returns = Utils.zipDoubleArray(returns_generate.data);
                         for (int index = 0; index < normal_assets; index++)
                         {

@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -151,7 +151,7 @@ class TaxHifo extends Tax
                                 double nominal_gain = sell(a, - buy_sell_0, price, do_it);
                                 income += nominal_gain / new_cpi;
                         }
-                        double dividend = dividend_tax(a, invest_final);
+                        double dividend = dividend_tax(a, invest_start, invest_final, cpi_delta);
                         income += dividend;
                         double price_reduction;
                         if (invest_final == 0)

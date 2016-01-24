@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -41,7 +41,7 @@ class TaxImmediate extends Tax
                         double invest_start = prev_aa[i] * p_preinvest;
                         double invest_final = invest_start * ret;
                         income += invest_final - invest_start / cpi_delta;
-                        dividend_tax(i, invest_final);
+                        dividend_tax(i, invest_start, invest_final, cpi_delta);
                 }
                 double tax = total_tax(income, cpi_delta, false);
                 if (do_it)
