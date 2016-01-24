@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -354,6 +354,8 @@ public class Utils
                         for (int j = 0; j < i; j++)
                         {
                                 a[i][j] = correlation(returns[i], returns[j], true);
+                                if (Double.isNaN(a[i][j]))
+                                        a[i][j] = 0; // LM bonds.
                         }
                         a[i][i] = 1.0;
                 }

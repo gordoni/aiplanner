@@ -1233,7 +1233,7 @@ public class Scenario
                         {
                                 System.out.println("After tax generated returns:");
                                 List<double[]> at_rets = Utils.zipDoubleArray(at_returns);
-                                for (int index = 0; index < normal_assets; index++)
+                                for (int index = 0; index < stochastic_classes; index++)
                                 {
                                         double[] at_return = at_rets.get(index);
                                         double gm = Utils.weighted_plus_1_geo(at_return, returns_generate.returns_unshuffled_probability) - 1;
