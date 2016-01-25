@@ -221,7 +221,7 @@ class Alloc:
 
     def npv_contrib(self, ret):
         payout_delay = 0
-        schedule = self.stochastic_schedule(1 / (1.0 + ret), self.pre_retirement_years)
+        schedule = self.stochastic_schedule(1.0 + ret, self.pre_retirement_years)
         scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table_120, life_table2 = self.life_table_120, \
             joint_payout_fraction = 1, joint_contingent = True, period_certain = self.period_certain, \
             frequency = 1, cpi_adjust = 'all', schedule = schedule)
@@ -452,7 +452,7 @@ class Alloc:
                 alpha = (rets[stocks_index], rets[bonds_index], future_growth_try)
                 w = list(self.solve_merton(gamma, sigma_matrix, alpha, self.lm_bonds_ret))
                 w.append(1 - sum(w))
-                discounted_contrib, _ = self.npv_contrib((1 + self.contribution_growth) * (1 + future_growth_try) - 1)
+                discounted_contrib, _ = self.npv_contrib((1 + self.contribution_growth) / (1 + future_growth_try) - 1)
                 npv_discounted = results['nv'] - self.nv_contributions + discounted_contrib
                 try:
                     wc_discounted = discounted_contrib / npv_discounted
@@ -723,8 +723,7 @@ class Alloc:
         self.frequency = 12 # Monthly. Makes accurate, doesn't run significantly slower.
         self.cpi_adjust = 'calendar'
 
-        self.nv_contributions, _ = self.npv_contrib(self.contribution_growth)
-        _, self.ret_contributions = self.npv_contrib(0)
+        self.nv_contributions, self.ret_contributions = self.npv_contrib(self.contribution_growth)
 
         npv_results, npv_display = self.value_table(self.npv_taxable)
         results['db'] = []
