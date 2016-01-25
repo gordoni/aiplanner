@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% comment %}
+
+AACalc - Asset Allocation Calculator
+Copyright (C) 2016 Gordon Irlam
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+{% endcomment %}
+
+{% block title %}Asset Allocator Comparison{% endblock %}
+
+{% block content %}
+
+<div class="doc">
+
+<h1>Asset Allocator Comparison</h1>
+
+<p>
+I compare the results of 11 popular asset allocators freely available
+on the web.
+</p>
+
+<p>
+The scenario. A 66 year old U.S. male born in 1950. They have just
+retired and receive $15,000 a year in Social Security income.  They
+have no other income.  Their investment portfolio totals $200,000.
+They are unlikely to achieve it, but their desired income level is
+$40,000. This is all intended to be relatively realistic of the
+situation faced by many retirees. Now the part that is slightly less
+realistic. They have constant relative risk aversion of consumption
+with a coefficient of relative risk aversion which they know to be
+3. They are financially highly sophisticated, and provided it is in
+keeping with their moderate risk aversion (sensitivity to change in
+consumption), have a high risk tolerance (psychological sensitivity to
+investment portfolio loss).
+</p>
+
+<p>
+I have framed things as above because the problem is then, apart from
+adding in the expected asset class returns, fully specified. This
+means the problem has a precise mathematical solution. Moreover, the
+precise mathematical solution can be computed using a mathematical
+technique known as stochastic dynamic programming.
+</p>
+
+<p>
+Stochastic dynamic programming isn't for the faint of heart. It is
+somewhat technical and compute intensive. The answer I computed to
+this problem using stochastic dynamic programming is the retiree
+should adopt a 100% stocks, 0% fixed income portfolio. This might seem
+surprising, but what is happening is the Social Security income
+provides a stable cushion, much like bonds, that reduces the effect of
+a decline in stocks on consumption levels. My calculations using
+stochastic dynamic programming are in keeping with those of
+J.P. Morgan Funds in their
+paper <a href="https://www.jpmorganfunds.com/blobcontent/13/504/1323375360677_RI-DYNAMIC.pdf">Breaking
+the 4% Rule</a>, although they don't show results for portfolio sizes
+as "small" as $200,000, and they use a higher coefficient of relative
+risk aversion.
+</p>
+
+<p>
+Recommended asset allocations can vary significantly owing to
+uncertainty in the equity premium given the limited historical data
+and high volatility. But the above scenario has been chosen so that
+the answer computed using stochastic dynamic programming will be 100%
+stocks for a broad range of possible equity premiums.
+</p>
+
+<p>
+Wherever possible inputs were in keeping with the above scenario, and
+answers to other questions kept to their default values.
+</p>
+
+<table class="table-lined">
+
+<tr>
+<th> Who </th>
+<th> Type </th>
+<th> Stocks </th>
+</tr>
+
+<tr>
+<td> <a href="https://www.bmo.com/mybmoretirement/nearing-retirement/maximizing-your-savings/asset-allocation">Bank of Montreal</a>
+<td> risk tolerance </td>
+<td> 35% </td>
+</tr>
+
+<tr>
+<td> <a href="http://www.bankrate.com/calculators/retirement/asset-allocation.aspx">Bankrate</a>
+<td> mixed questionnaire </td>
+<td> 46% </td>
+</tr>
+
+<tr>
+<td> <a href="http://money.cnn.com/tools/assetallocwizard/assetallocwizard.html">CNN Money</a>
+<td> risk tolerance </td>
+<td> 50% </td>
+</tr>
+
+<tr>
+<td> <a href="https://www.janus.com/retail/planning/tools-and-calculators/asset-allocation-planner/quiz">Janus</a>
+<td> risk tolerance </td>
+<td> 51% </td>
+</tr>
+
+<tr>
+<td> <a href="https://nationwidefinancial.com/iApp/pub/advicetools/assetAllocationDecision.action">Nationwide</a>
+<td> risk tolerance </td>
+<td> 60% </td>
+</tr>
+
+<tr>
+<td> <a href="https://personal.vanguard.com/us/FundsInvQuestionnaire">Vanguard</a>
+<td> risk tolerance </td>
+<td> 60% </td>
+</tr>
+
+<tr>
+<td> <a href="http://finance.yahoo.com/calculator/retirement/inv01/">Yahoo finance</a>
+<td> risk tolerance </td>
+<td> 65% </td>
+</tr>
+
+<tr>
+<td> <a href="http://www.money-zine.com/calculators/investment-calculators/asset-allocation-calculator/">Money-zine</a>
+<td> mixed questionnaire </td>
+<td> 80% </td>
+</tr>
+
+<tr>
+<td> <a href="https://www.wellsfargofunds.com/wfweb/wf/education/tools/asset.jsp">Wells Fargo</a>
+<td> mixed questionnaire </td>
+<td> 80% </td>
+</tr>
+
+<tr>
+<td> <a href="https://ais4.tiaa-cref.org/asstallocguidance/nsjsp/start.do">TIAA-CREF</a>
+<td> risk tolerance </td>
+<td> 85% </td>
+</tr>
+
+<tr>
+<td> <a href="{% url 'home' %}">AACalc</a> (this website)
+<td> mathematical (Merton's method) </td>
+<td> 100% </td>
+</tr>
+
+</table>
+
+<p>
+So there you have it. Recommended allocations to stocks ranged from 35
+to 100%. Caveat emptor.
+</p>
+
+<p>
+Most calculators are basically risk attitude questionnaires. Attitude
+towards investment risk plays an important role in the asset
+allocation decision, but it is not the only factor.  As important, or
+more important, are consumption requirements, and the resources
+available to satisfy that consumption. This is part of investment
+companies thinking in terms of investment, and missing the big
+picture, which is investments are there to satisfy
+consumption. Investment companies should seek to play a role in
+informing and shaping attitudes towards investment risk based on
+consumption needs and resources, rather than purely seeing risk
+tolerance as something that is pre-ordained and needing to be
+divined. Only one website (this one) asks about Social Security income
+which is the primary source of income for most retirees, and as such
+one of the primary determinants of how much risk should be taken with
+the investment portfolio.
+</p>
+
+<p>
+We have seen how the risk tolerance approach alone can underweight
+equity requirements. The reverse is also possible. The risk tolerance
+approach by itself will put risk tolerant investors with small amounts
+of guaranteed income into aggressive investment portfolios when
+something less aggressive might be in keeping with their consumption
+risk aversion.
+</p>
+
+<p>
+An ideal solution would be to blend the risk tolerance and
+mathematical approaches. To recommend, here is the optimal
+mathematical strategy, but here is the strategy you should employ
+given your risk tolerance. Such a calculator doesn't presently exist.
+</p>
+
+<p>
+Footnote: Merton's method is different from stochastic dynamic
+programming, although the two approaches are in agreement for the
+above scenario.
+</p>
+
+</div>
+
+{% endblock %}
