@@ -616,49 +616,62 @@ Net present value table:
 real interest rate adjusted
 </div>
 </td>
+<td> Planning purposes net present value
+<div class="small">
+real interest rate adjusted
+</div>
+</td>
 </tr>
 {% for db in results.db %}
 <tr>
 <td class="left"> {{ db.present.description }} </td>
 <td> {{ db.present.who }} </td>
+<td class="right"> {{ db.actual.nv }} </td>
 <td class="right"> {{ db.present.nv }} </td>
 </tr>
 {% endfor %}
 <tr>
 <td class="left"> Total defined benefits </td>
-<th colspan=2 class="right"> {{ results.present.nv_db }} </th>
+<th colspan=2 class="right"> {{ results.actual.nv_db }} </th>
+<th class="right"> {{ results.present.nv_db }} </th>
 </tr>
 {% if mode == 'aa' %}
 <tr>
 <td class="left"> Traditional </td>
-<td colspan=2 class="right"> {{ results.present.nv_traditional }} </td>
+<td colspan=2 class="right"> {{ results.actual.nv_traditional }} </td>
+<td class="right"> {{ results.present.nv_traditional }} </td>
 </tr>
 <tr>
 <td class="left"> Roth </td>
-<td colspan=2 class="right"> {{ results.present.nv_roth }} </td>
+<td colspan=2 class="right"> {{ results.actual.nv_roth }} </td>
+<td class="right"> {{ results.present.nv_roth }} </td>
 </tr>
 <tr>
 <td class="left"> Taxable </td>
-<td colspan=2 class="right"> {{ results.present.nv_taxable }} </td>
+<td colspan=2 class="right"> {{ results.actual.nv_taxable }} </td>
+<td class="right"> {{ results.present.nv_taxable }} </td>
 </tr>
 {% endif %}
 <tr>
 <td class="left"> Total investments </td>
-<th colspan=2 class="right"> {{ results.present.nv_investments }} </th>
+<th colspan=2 class="right"> {{ results.actual.nv_investments }} </th>
+<th class="right"> {{ results.present.nv_investments }} </th>
 </tr>
 {% if mode == 'aa' %}
 <tr>
 <td class="left"> Future contributions </td>
-<th colspan=2 class="right"> {{ results.present.nv_contributions }} </th>
+<th colspan=2 class="right"> {{ results.actual.nv_contributions }} </th>
+<th class="right"> {{ results.present.nv_contributions }} </th>
 </tr>
 {% endif %}
 <tr>
 <td class="left"> Total net present value </td>
-<th colspan=2 class="right"> {{ results.present.nv }} </th>
+<th colspan=2 class="right"> {{ results.actual.nv }} </th>
+<th class="right"> {{ results.present.nv }} </th>
 </tr>
 <tr>
 <tr>
-<td colspan=3 class="left small"> Computed from planning purposes adjusted mortality table and real yield curve. </td>
+<td colspan=4 class="left small"> Computed from regular and planning purposes adjusted mortality tables and real yield curve. </td>
 </tr>
 </table>
 

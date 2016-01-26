@@ -230,56 +230,55 @@ class Alloc:
         annual_ret = scenario.annual_return
         return value, annual_ret
 
-    def value_table(self, taxable):
+    def value_table_db(self, life_table, life_table2):
+
+        table_db = []
+        nv_db = 0
+
+        for db in self.db:
+
+            amount = float(db['amount'])
+
+            if amount == 0:
+                continue
+
+            yield_curve = self.yield_curve_real if db['inflation_indexed'] else self.yield_curve_nominal
+
+            if db['who'] == 'self':
+                starting_age = self.age
+                lt1 = life_table
+                lt2 = life_table2
+            else:
+                starting_age = self.age2
+                lt1 = life_table2
+                lt2 = life_table
+
+            delay = float(db['age']) - starting_age
+            positive_delay = max(0, delay)
+            negative_delay = min(0, delay)
+            payout_delay = positive_delay * 12
+            period_certain = max(0, self.period_certain - positive_delay, float(db['period_certain']) + negative_delay)
+            joint_payout_fraction = float(db['joint_payout_pct']) / 100
+            joint_contingent = (db['joint_type'] == 'contingent')
+
+            scenario = Scenario(yield_curve, payout_delay, None, None, 0, lt1, life_table2 = lt2, \
+                joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
+                period_certain = period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
+            price = scenario.price() * amount
+            nv_db += price
+
+            table_db.append({
+                'description': db['description'] if db['description'] else 'Social Security',
+                'who': db['who'],
+                'nv': '{:,.0f}'.format(price),
+            })
+
+        return table_db, nv_db
+
+    def value_table(self, nv_db, taxable):
 
         results = {}
         display = {}
-
-        if not hasattr(self, 'value_table_cache_db'):
-
-            self.value_table_cache_db = []
-            self.value_table_cache_nv_db = 0
-
-            for db in self.db:
-
-                amount = float(db['amount'])
-
-                if amount == 0:
-                    continue
-
-                yield_curve = self.yield_curve_real if db['inflation_indexed'] else self.yield_curve_nominal
-
-                if db['who'] == 'self':
-                    starting_age = self.age
-                    lt1 = self.life_table_add
-                    lt2 = self.life_table2_add
-                else:
-                    starting_age = self.age2
-                    lt1 = self.life_table2_add
-                    lt2 = self.life_table_add
-
-                delay = float(db['age']) - starting_age
-                positive_delay = max(0, delay)
-                negative_delay = min(0, delay)
-                payout_delay = positive_delay * 12
-                period_certain = max(0, self.period_certain - positive_delay, float(db['period_certain']) + negative_delay)
-                joint_payout_fraction = float(db['joint_payout_pct']) / 100
-                joint_contingent = (db['joint_type'] == 'contingent')
-
-                scenario = Scenario(yield_curve, payout_delay, None, None, 0, lt1, life_table2 = lt2, \
-                    joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, \
-                    period_certain = period_certain, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
-                price = scenario.price() * amount
-                self.value_table_cache_nv_db += price
-
-                self.value_table_cache_db.append({
-                    'description': db['description'] if db['description'] else 'Social Security',
-                    'who': db['who'],
-                    'nv': '{:,.0f}'.format(price),
-                })
-
-        display['db'] = self.value_table_cache_db
-        nv_db = self.value_table_cache_nv_db
 
         nv_traditional = self.traditional * (1 - self.tax_rate)
         nv_investments = nv_traditional + self.npv_roth + taxable
@@ -641,7 +640,10 @@ class Alloc:
                     low = mid
                 else:
                     high = mid
-            _, npv_display = self.value_table(found_location) # Recompute.
+
+            found_value['taxable'] = found_location
+
+            _, npv_display = self.value_table(self.nv_db, found_location) # Recompute.
             found_value['npv_display'] = npv_display
 
             return found_value
@@ -725,12 +727,11 @@ class Alloc:
 
         self.nv_contributions, self.ret_contributions = self.npv_contrib(self.contribution_growth)
 
-        npv_results, npv_display = self.value_table(self.npv_taxable)
+        display_db, self.nv_db = self.value_table_db(self.life_table_add, self.life_table2_add)
+        npv_results, npv_display = self.value_table(self.nv_db, self.npv_taxable)
         results['db'] = []
-        for db in npv_display['db']:
+        for db in display_db:
             results['db'].append({'present': db})
-        #for i, db in enumerate(future_display['db']):
-        #    results['db'][i]['future'] = db
 
         scenario = Scenario(self.yield_curve_zero, self.payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
@@ -758,9 +759,16 @@ class Alloc:
         )
 
         if mode == 'number':
+            self.npv_taxable = results['calc'][0]['taxable']
             npv_display = results['calc'][0]['npv_display'] # Use baseline scenario for common calculations display.
 
         results['present'] = npv_display
+
+        actual_display_db, actual_nv_db = self.value_table_db(self.life_table, self.life_table2)
+        _, actual_npv_display = self.value_table(actual_nv_db, self.npv_taxable)
+        for i, db in enumerate(actual_display_db):
+            results['db'][i]['actual'] = db
+        results['actual'] = actual_npv_display
 
         return results
 
