@@ -351,10 +351,12 @@ forward <a href="http://www.advisorperspectives.com/newsletters12/Jeremy_Siegel_
 experts</a> predict lower U.S. stock market returns.
 </div>
 <br />
-Estimated bonds arithmetic real return: {{ alloc_form.bonds_ret_pct }}%
-Volatility: {{ alloc_form.bonds_vol_pct }}%
+Estimated regular bonds arithmetic real return: {{ alloc_form.bonds_ret_pct }}%
+Volatility: {{ alloc_form.bonds_vol_short_pct }}%
+Long-term volatility: {{ alloc_form.bonds_vol_pct }}%
 {{ alloc_form.bonds_ret_pct.errors }}
 {{ alloc_form.bonds_vol_pct.errors }}
+{{ alloc_form.bonds_vol_short_pct.errors }}
 <div class="small">
 Estimated U.S. market average values for 1927-2014 are 3.2% and
 9.6%. However we are presently in a low rate environment. At the end of
@@ -362,7 +364,7 @@ Estimated U.S. market average values for 1927-2014 are 3.2% and
 2.3%, which is 0.1% above the Survey of Professional forecasters 10
 year inflation rate of 2.2%. We estimate the premium of an average
 bond portfolio over 10 year constant maturity Treasuries is 0.7%,
-making a total return of 0.8%.  For the long term investor short term
+making a total return of 0.8%.  For the long term investor short-term
 volatility in the price of bonds doesn't matter.  What matters is the
 volatility of nominal prices. The volatility of the CPI over the
 1927-2014 was 4.1%.
@@ -370,7 +372,7 @@ volatility of nominal prices. The volatility of the CPI over the
 <br />
 <div class="bold">Using the default parameters no regular bonds will
 typically be recommended because they currently have a lower expected
-return than zero volatility inflation indexed liability matching
+return than zero long-term volatility inflation indexed liability matching
 bonds.</div>
 </div>
 <br />
@@ -378,6 +380,17 @@ Correlation of equity returns with bonds: {{ alloc_form.equity_bonds_corr_pct }}
 {{ alloc_form.equity_bonds_corr_pct.errors }}
 <div class="small">
 Estimated U.S. market average value for 1927-2014 is 7.2%.
+</div>
+<br />
+Real volatility of 10 year inflation-indexed zero coupon bonds:
+{{ alloc_form.real_vol_10yr_pct }}%
+{{ alloc_form.real_vol_10yr_pct.errors }}
+<br />
+Correlation with regular bonds: {{ alloc_form.bonds_lm_bonds_corr_short_pct }}%
+{{ alloc_form.bonds_lm_bonds_corr_short_pct.errors }}
+<div class="small">
+Synthetic historical values for 1972-2014 for coupon bonds are 4.9%
+and 28.9%. Zero coupon bonds will be similar.
 </div>
 <br />
 Standard error of estimate of equity real return: {{ alloc_form.equity_se_pct }}%
@@ -843,50 +856,68 @@ increase the latter.
 Inflation adjusted.
 </div>
 </td>
-<td> Volatility </td>
+<td> Real volatility </td>
+<td> Liability matching volatility </td>
 </tr>
 {% if mode == 'aa' %}
 <tr>
 <td class="left"> Future contributions </td>
 <td class="right"> {{ calc.alloc_contributions_pct }}% </td>
 <td class="right"> {{ results.present.ret_contributions }}% </td>
-<td class="right"> {{ alloc_form.cleaned_data.contribution_vol_pct | floatformat:1 }}%
+<td class="right"> - </td>
+<td class="right"> {{ alloc_form.cleaned_data.contribution_vol_pct | floatformat:1 }}% </td>
 </tr>
 {% endif %}
 <tr>
 <td class="left"> Stocks </td>
 <td class="right"> {{ calc.alloc_equity_pct }}% </td>
 <td class="right"> {{ calc.equity_ret_pct }}% </td>
-<td class="right"> {{ alloc_form.cleaned_data.equity_vol_pct | floatformat:1 }}%
+<td class="right"> {{ alloc_form.cleaned_data.equity_vol_pct | floatformat:1 }}% </td>
+<td class="right"> {{ alloc_form.cleaned_data.equity_vol_pct | floatformat:1 }}% </td>
 </tr>
 <tr>
 <td class="left"> Regular bonds </td>
 <td class="right"> {{ calc.alloc_bonds_pct }}% </td>
 <td class="right"> {{ calc.bonds_ret_pct }}% </td>
-<td class="right"> {{ alloc_form.cleaned_data.bonds_vol_pct | floatformat:1 }}%
+<td class="right"> {{ alloc_form.cleaned_data.bonds_vol_short_pct | floatformat:1 }}% </td>
+<td class="right"> {{ alloc_form.cleaned_data.bonds_vol_pct | floatformat:1 }}% </td>
 </tr>
 <tr>
 <td class="left"> Liability matching bonds </td>
 <td class="right"> {{ calc.alloc_lm_bonds_pct }}% </td>
 <td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
-<td class="right"> 0.0%
+<td class="right"> {{ calc.lm_bonds_vol_short_pct }}% </td>
+<td class="right"> 0.0% </td>
 </tr>
 <tr>
 <td class="left"> Existing defined benefits </td>
 <td class="right"> {{ calc.alloc_existing_db_pct }}% </td>
 <td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
-<td class="right"> 0.0%
+<td class="right"> - </td>
+<td class="right"> 0.0% </td>
 </tr>
 <tr>
 <td class="left"> New income annuities </td>
 <td class="right"> {{ calc.alloc_new_db_pct }}% </td>
 <td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
-<td class="right"> 0.0%
+<td class="right"> - </td>
+<td class="right"> 0.0% </td>
+</tr>
+<tr>
+<th class="left" rowspan=2> Investments </th>
+<th class="right" rowspan=2> {{ calc.alloc_investments_pct }}% </th>
+<th class="right"> arithmetic {{ calc.investments_ret_pct }}% </th>
+<th class="right" rowspan=2> {{ calc.investments_vol_pct }}% </th>
+<td class="right" rowspan=2> - </td>
+</tr>
+<tr>
+<th class="right"> geometric {{ calc.investments_geometric_ret_pct }}% </th>
 </tr>
 <tr>
 <th class="left" rowspan=2> Total </th>
 <th class="right" rowspan=2> 100% </th>
 <th class="right"> arithmetic {{ calc.total_ret_pct }}% </th>
+<td class="right" rowspan=2> - </td>
 <th class="right" rowspan=2> {{ calc.total_vol_pct }}% </th>
 </tr>
 <tr>
