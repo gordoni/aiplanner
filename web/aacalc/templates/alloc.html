@@ -24,9 +24,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {% block head %}
 {% if mode == 'aa' %}
-<meta name="description" content="Compute appropriate asset and income annuity allocations using scientific principles. And explain how the recommendations were derived." /><!-- Keep content to less than 155 characters according to Wikipedia. -->
+<meta name="description" content="Computes appropriate asset allocation, income annuities, and consumption using scientific principles. And explains how the recommendations were derived." /><!-- Keep content to less than 155 characters according to Wikipedia. -->
 {% else %}
-<meta name="description" content="Compute your retirement number using scientific principles. And explain how the number was derived." />
+<meta name="description" content="Computes your retirement number using scientific principles. And explains how your number was derived." />
 {% endif %}
 <script type="text/javascript" src="/static/js/jquery-1.10.2.min.js"></script>
 <script type="text/javascript">
@@ -57,7 +57,8 @@ $(document).ready(function(){
 </p>
 
 {% if mode == 'aa' %}
-This calculator computes asset allocations using scientific
+This calculator computes asset allocations, income annuitization,
+and consumption using scientific
 principles. And it explains how the recommendations were derived.
 {% else %}
 This calculator computes the financial position you need to be in
