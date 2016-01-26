@@ -601,6 +601,14 @@ on this recommendation is {{ results.calc.1.consume }} to
 
 {% endif %}
 
+The annual volatility of your investment portfolio is estimated to be
+{{ results.calc.0.investments_vol_pct }}%.  The annual volatility of
+your total portfolio, and hence your consumption, is estimated to be
+{{ results.calc.0.total_vol_pct }}%.
+
+<br />
+<br />
+
 <div style="clear: both;"></div>
 
 <div class="advanced_controller">
@@ -841,12 +849,6 @@ Adjusting for any existing defined benefits, any income annuity
 purchases, and the possibility of having won the game, produces the
 following recommendations.
 
-<div class="small">
-We assume regular bonds are closest to liability matching bonds and
-defined benefits, and reduce the former to make up for any need to
-increase the latter.
-</div>
-
 <table class="table-lined center">
 <tr>
 <td> </td>
@@ -924,6 +926,26 @@ Inflation adjusted.
 <th class="right"> geometric {{ calc.total_geometric_ret_pct }}% </th>
 </tr>
 </table>
+
+<div class="small">
+We assume regular bonds are closest to liability matching bonds and
+defined benefits, and reduce the former to make up for any need to
+increase the latter.
+<br />
+We assume existing defined benefits are predominately
+inflation-indexed.
+</div>
+
+<br />
+
+{{ calc.loss_pctl_pct }}th percentile annual real investment portfolio decline: {{ calc.investments_loss_pct }}%
+<br />
+{{ calc.loss_pctl_pct }}th percentile annual total portfolio decline: {{ calc.total_loss_pct }}%
+<div class="small">
+Computed assuming lognormally distributed returns. In reality returns
+are fat-tailed.  This should not greatly effect the results for a
+percentile value like the 10th.
+</div>
 
 <br />
 

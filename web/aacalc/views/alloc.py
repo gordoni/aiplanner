@@ -190,20 +190,22 @@ class Alloc:
             'gamma': Decimal('3.0'),
         }
 
-    def geomean(self, mean, vol):
+    def distribution_pctl(self, pctl, mean, vol):
         # Convert mean and vol to lognormal distribution mu and sigma parameters.
         try:
             mu = log(mean ** 2 / sqrt(vol ** 2 + mean ** 2))
         except ZeroDivisionError:
             return mean
         sigma = sqrt(log(vol ** 2 / mean ** 2 + 1))
-        # Compute the middle value.
-        geomean = lognorm.ppf(0.5, sigma, scale=exp(mu))
-        geomean = float(geomean) # De-numpyfy.
-        if isnan(geomean):
+        value = lognorm.ppf(pctl, sigma, scale=exp(mu))
+        value = float(value) # De-numpyfy.
+        if isnan(value):
             # vol == 0.
             return mean
-        return geomean
+        return value
+
+    def geomean(self, mean, vol):
+        return self.distribution_pctl(0.5, mean, vol)
 
     def solve_merton(self, gamma, sigma_matrix, alpha, r):
         try:
@@ -551,11 +553,15 @@ class Alloc:
             purchase_income_annuity = 0
             annuitize_delay_cost = 0
 
-        w_fixed_investments = w_fixed[stocks_index] + w_fixed[bonds_index] + w_fixed[risk_free_index]
-
         w_investments = self.non_annuitized_weights(w_fixed, no_contrib=True)
         investments_ret, investments_vol, investments_geometric_ret = self.statistics(w_investments, rets, equity_vol, bonds_vol_short, lm_bonds_vol_short, \
             cov_ec2, cov_bc2, cov_eb2, cov_bl2_short)
+
+        w_fixed_investments = w_fixed[stocks_index] + w_fixed[bonds_index] + w_fixed[risk_free_index]
+
+        loss_pctl = 0.1
+        investments_loss = 1 - self.distribution_pctl(loss_pctl, 1 + investments_geometric_ret, investments_vol)
+        total_loss = 1 - self.distribution_pctl(loss_pctl, 1 + total_geometric_ret, total_vol)
 
         try:
             aa_equity = w_fixed[stocks_index] / w_fixed_investments
@@ -628,6 +634,9 @@ class Alloc:
             'total_ret_pct': '{:.1f}'.format(total_ret * 100),
             'total_vol_pct': '{:.1f}'.format(total_vol * 100),
             'total_geometric_ret_pct': '{:.1f}'.format(total_geometric_ret * 100),
+            'loss_pctl_pct': '{:.0f}'.format(loss_pctl * 100),
+            'investments_loss_pct': '{:.1f}'.format(investments_loss * 100),
+            'total_loss_pct': '{:.1f}'.format(total_loss * 100),
             'annuitize_plan': annuitize_plan,
             'consume_value': consume,
             'w_fixed': w_fixed,
