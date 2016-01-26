@@ -63,7 +63,6 @@ class Alloc:
 
             'db' : ({
                 'social_security': True,
-                'description': 'Social Security',
                 'who': 'self',
                 'age': 66,
                 'amount': 15000,
@@ -73,7 +72,6 @@ class Alloc:
                 'joint_payout_pct': 0,
             }, {
                 'social_security': True,
-                'description': 'Social Security',
                 'who': 'spouse',
                 'age': 66,
                 'amount': 0,
