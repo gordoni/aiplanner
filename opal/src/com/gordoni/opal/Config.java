@@ -341,7 +341,10 @@ public class Config
         public double ret_sh_adjust = 0.0; // Small high asset class additional adjust.
         public double ret_tips_adjust = 0.0; // TIPS bond asset class additional adjustment.
         public double ret_tips_vol_adjust = 1.0; // Adjustment to apply to TIPS bond volatility.
-        public double ret_gs10_to_bonds_arith = 0.0072; // Arithmetic adjustment to apply to GS10 to get bond returns indicative of the bond universe.
+        public double ret_gs10_to_bonds_arith = 0.0064;
+                // Arithmetic adjustment to apply to GS10 to get bond returns indicative of the bond universe.
+                // Applies in the presence of ret_gs10_to_bonds_vol_adjust value.
+                //
                 // Justification:
                 //
                 // Considering the holdings of Treasury, Agency, Municipal, and Corporate bonds by households as reported in the Federal Reserve Financial Accounts
@@ -389,7 +392,7 @@ public class Config
                 //     A                3.37%
                 //     BBB              3.63%
                 //
-                // Bsed on the iShares GOVT index the average Treasury had a maturity of 7.2 years.
+                // Bsed on the iShares GOVT index the average Treasury had a maturity of 7.2 years (duration 5.7 years).
                 // This means it is most closely approximated by the GS7 rate.
                 // According to FRED the GS7 rate lagged the GS10 rate by 0.09% (1969-07 - 2005-12).
                 //
@@ -404,16 +407,15 @@ public class Config
                 //   Agency              121             837      607  8%      ~2.60% guess
                 //   Muni               1617             610     1971 25%       3.16% after correct for tax adv; equiv to AA corporates
                 //   Corp and foreign   2793            2001     3955 50%       3.46% 2/3 A and 1/3 BAA based on LQD
-                //   Weighted                                                   3.12% use GS10 and adjust gm value by +0.72% to get 3.14% (old adjustment)
+                //   Weighted                                                   3.12% use GS10 and adjust gm value by +0.64% to get 3.12%
                 //   Total                -              -       7849
-        public double ret_gs10_to_bonds_vol_adjust = 1.1; // Adjustment to apply to GS10 volatility to get bond returns indicative of the bond universe.
-                // A guess based on risk-return plots placing its risk close to but slightly less than AAA bonds, with which it shares a similar return.
-                // If risk was higher than AAA bonds, no point in holding "bonds", ignoring different correlations.
+        public double ret_gs10_to_bonds_vol_adjust = 1.0; // Adjustment to apply to GS10 volatility to get bond volatility indicative of the bond universe.
                 // Rough calc:
-                // Vol(0.25 GS10 + 0.25 AAA-16yrs + 0.5 BBB-16yrs). Assume volatility differences can be summed. Not really true.
-                // = 0.25 8.65% + 0.25 10.15%-1.05% + 0.5 12.20-1.05%. Because AAA reduces to GS10. Assume volatility additively reduces off BBB.
-                // = 0.5 8.14% + 0.5 (9.10% + 2.05%).
-                // = Vol(1.096 GS10).
+                // Vol(0.25 GS10 + 0.25 AAA_10yrs + 0.5 BBB_10yrs). Assume volatility differences can be summed. Not really true.
+                // = 0.25 8.73% + 0.25 10.20%-1.47% + 0.5 12.17%-1.47% Corrected for duration AAA as safe as GS10. Assume volatility additively reduces off BBB.
+                // = 9.72%
+                // Vol(bonds) = 8.64% Correcting GS10 duration @ 2.27% nominal (2015-12-31): 9.0yr -> LQD: 8.0yr.
+                // = 0.99 Vol(GS10)
         public Double generate_ret_bonds = null; // None for no adjustment to bonds during generation, float for target geomean return.
         public Double validate_ret_bonds = null; // None for no adjustment to bonds during targeting and validation, float for target geomean return.
         public Double ret_bonds_adjust = null; // None for no adjustment to fixed income, float for adjust.

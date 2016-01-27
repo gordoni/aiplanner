@@ -184,10 +184,10 @@ class Alloc:
 
             'equity_ret_pct': Decimal('7.2'),
             'equity_vol_pct': Decimal('17.0'),
-            'bonds_ret_pct': Decimal('0.8'),
-            'bonds_vol_short_pct': Decimal('9.6'),
+            'bonds_ret_pct': Decimal('0.7'),
+            'bonds_vol_short_pct': Decimal('8.7'),
             'bonds_vol_pct': Decimal('4.1'),
-            'equity_bonds_corr_pct': Decimal('7.2'),
+            'equity_bonds_corr_pct': Decimal('7.3'),
             'real_vol_10yr_pct': Decimal('4.9'),
             'bonds_lm_bonds_corr_short_pct': Decimal('28.9'),
             'equity_se_pct': Decimal('1.7'),
