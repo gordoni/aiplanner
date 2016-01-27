@@ -36,6 +36,12 @@ annuitization_delay_cost = (0.0, 0.0, 0.0, 0.013, 0.018, 0.029, 0.049, 0.093, 0.
     # Cost of delaying anuitization by 10 years, every 10 years of age.
     # Birth year = 2015 - starting age.
 
+growth_pctl = 0.42
+    # Percentile location of fixed rate of return to use in computing
+    # amount to consume. Determined empirically using stochastic
+    # dynamic programming as the reference. Don't know any other good
+    # way to approach the problem.
+
 # No enums until Python 3.4.
 stocks_index = 0
 bonds_index = 1
@@ -174,6 +180,7 @@ class Alloc:
             'joint_income_pct': 70,
             'desired_income': 40000,
             'purchase_income_annuity': True,
+            'use_lm_bonds': True,
 
             'equity_ret_pct': Decimal('7.2'),
             'equity_vol_pct': Decimal('17.0'),
@@ -395,16 +402,33 @@ class Alloc:
         w_fixed[bonds_index] -= surplus
         w_fixed[stocks_index] += surplus
         w_fixed[new_annuities_index] = max(0, alloc_db - w_fixed[existing_annuities_index]) # Eliminate negative values from fp rounding errors.
-        alloc_db = w_fixed[existing_annuities_index] + w_fixed[new_annuities_index]
 
-        ret, vol, geometric_ret = self.statistics(self.non_annuitized_weights(w_fixed), rets, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2)
-        c_factor = self.consume_factor(geometric_ret)
-        consume = results['nv'] * (w_fixed[existing_annuities_index] / self.discounted_retirement_le_add + \
-                                   w_fixed[new_annuities_index] / self.discounted_retirement_le_annuity + \
-                                   (1 - alloc_db) * c_factor)
+        w_keep = list(w_fixed)
 
-        if mode == 'aa' and consume > self.desired_income:
+        for count in range(2):
+
+            w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
+
+            if not self.use_lm_bonds:
+                w_fixed[bonds_index] += w_fixed[risk_free_index]
+                w_fixed[risk_free_index] = 0
+
+            alloc_db = w_fixed[existing_annuities_index] + w_fixed[new_annuities_index]
+
+            ret, vol, geometric_ret = self.statistics(self.non_annuitized_weights(w_fixed), rets, equity_vol, bonds_vol, lm_bonds_vol, \
+                cov_ec2, cov_bc2, cov_eb2, cov_bl2)
+            growth_rate = self.distribution_pctl(growth_pctl, 1 + ret, vol) - 1
+            c_factor = self.consume_factor(growth_rate)
+            consume = results['nv'] * (w_fixed[existing_annuities_index] / self.discounted_retirement_le_add + \
+                                       w_fixed[new_annuities_index] / self.discounted_retirement_le_annuity + \
+                                       (1 - alloc_db) * c_factor)
+
+            if count == 1 or mode == 'number' or consume <= self.desired_income:
+                break
+
             ratio = self.desired_income / consume
+
+            w_fixed = list(w_keep)
             w_fixed[bonds_index] *= ratio
             w_risk_free_all = w_fixed[risk_free_index] + alloc_db
             w_risk_free_new = max(0, w_risk_free_all * ratio - w_fixed[existing_annuities_index])
@@ -413,16 +437,6 @@ class Alloc:
             w_fixed[risk_free_index] = w_risk_free_new - w_fixed[new_annuities_index]
             w_fixed[stocks_index] = 0
             w_fixed[stocks_index] = 1 - sum(w_fixed)
-            alloc_db = w_fixed[existing_annuities_index] + w_fixed[new_annuities_index]
-
-            ret, vol, geometric_ret = self.statistics(self.non_annuitized_weights(w_fixed), rets, equity_vol, bonds_vol, lm_bonds_vol, \
-                cov_ec2, cov_bc2, cov_eb2, cov_bl2)
-            c_factor = self.consume_factor(geometric_ret)
-            consume = results['nv'] * (w_fixed[existing_annuities_index] / self.discounted_retirement_le_add + \
-                                       w_fixed[new_annuities_index] / self.discounted_retirement_le_annuity + \
-                                       (1 - alloc_db) * c_factor)
-
-        w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
 
         total_ret, total_vol, total_geometric_ret = self.statistics(w_fixed, rets, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2)
 
@@ -560,8 +574,8 @@ class Alloc:
         w_fixed_investments = w_fixed[stocks_index] + w_fixed[bonds_index] + w_fixed[risk_free_index]
 
         loss_pctl = 0.1
-        investments_loss = 1 - self.distribution_pctl(loss_pctl, 1 + investments_geometric_ret, investments_vol)
-        total_loss = 1 - self.distribution_pctl(loss_pctl, 1 + total_geometric_ret, total_vol)
+        investments_loss = 1 - self.distribution_pctl(loss_pctl, 1 + investments_ret, investments_vol)
+        total_loss = 1 - self.distribution_pctl(loss_pctl, 1 + total_ret, total_vol)
 
         try:
             aa_equity = w_fixed[stocks_index] / w_fixed_investments
@@ -754,6 +768,7 @@ class Alloc:
         self.payout_delay = self.pre_retirement_years * 12
         self.joint_payout_fraction = float(data['joint_income_pct']) / 100
         self.desired_income = float(data['desired_income'])
+        self.use_lm_bonds = data['use_lm_bonds']
 
         results['pre_retirement_years'] = '{:.1f}'.format(self.pre_retirement_years)
 

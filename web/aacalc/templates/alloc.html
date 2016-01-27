@@ -320,6 +320,16 @@ level will be allocated to stocks.
 Annual desired consumption level: {{ alloc_form.desired_income }}
 {% endif %}
 <br />
+Use liability matching bonds: {{ alloc_form.use_lm_bonds }}
+{{ alloc_form.use_lm_bonds.errors }}
+<div class="small">
+Inflation-indexed liability matching bonds are a valuable retirement
+planning tool. However the short term volatility of long duration
+liability matching bonds may make them unattractive to investors with
+a low risk tolerance. If liability matching bonds are not used we
+naively replace them with regular bonds.
+</div>
+<br />
 Permit recommendation of income annuities: {{ alloc_form.purchase_income_annuity }}
 {{ alloc_form.purchase_income_anuity.errors }}
 <div class="small">
@@ -846,7 +856,8 @@ pre-retirement.
 <br />
 
 Adjusting for any existing defined benefits, any income annuity
-purchases, and the possibility of having won the game, produces the
+purchases, the substitution of regular bonds for liability matching
+bonds, and the possibility of having won the game, produces the
 following recommendations.
 
 <table class="table-lined center">
@@ -957,7 +968,7 @@ Recommended annual retirement consumption amount with annuitization: {{ calc.con
 <div class="small">
 Estimate is based on the amount that can be withdrawn
 over the retirement period from a portfolio growing at a fixed
-rate equal to the expected total geometric rate of return.
+rate.
 </div>
 
 {% if alloc_form.cleaned_data.purchase_income_annuity %}

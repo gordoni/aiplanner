@@ -626,6 +626,7 @@ class AllocBaseForm(Form):
         widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
     purchase_income_annuity = BooleanField(required=False)
+    use_lm_bonds = BooleanField(required=False)
 
     equity_ret_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}))
