@@ -667,6 +667,9 @@ class AllocBaseForm(Form):
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=50)
+    risk_tolerance_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        min_value=0)
 
     advanced_calculations = BooleanField(required=False,
         widget=CheckboxInput(attrs={'class': 'advanced_button'}))

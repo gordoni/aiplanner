@@ -195,6 +195,7 @@ class Alloc:
             'expense_pct': Decimal('0.1'),
 
             'gamma': Decimal('3.0'),
+            'risk_tolerance_pct': Decimal('15.0'),
         }
 
     def distribution_pctl(self, pctl, mean, vol):
@@ -331,6 +332,14 @@ class Alloc:
 
         return total_ret, total_vol, total_geometric_ret
 
+    def investment_statistics(self, w, rets, equity_vol, cov_ec2, cov_bc2, cov_eb2):
+
+        cov_bl2_short = self.bonds_vol_short * self.lm_bonds_vol_short * self.bonds_lm_bonds_corr_short ** 2
+
+        w_investments = self.non_annuitized_weights(w, no_contrib=True)
+
+        return self.statistics(w_investments, rets, equity_vol, self.bonds_vol_short, self.lm_bonds_vol_short, cov_ec2, cov_bc2, cov_eb2, cov_bl2_short)
+
     def consume_factor(self, ret):
 
         # We should use total_var, total_vol, and gamma to compute the
@@ -364,6 +373,61 @@ class Alloc:
         except:
             return [0] * len(w)
 
+
+    def risk_limit(self, use_lm_bonds, w_init, rets, results, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2):
+        # Ideally would scale back using mean-variance optimization, but given the limited number of asset classes, this is good enough.
+
+        found_loss = None
+        low = -1
+        high = 1
+        for _ in range(50):
+
+            if high - low < 0.0001:
+                break
+
+            mid = (high + low) / 2.0
+
+            w = list(w_init)
+            adjust = mid * w[stocks_index]
+            w[stocks_index] -= adjust
+            w[risk_free_index] += adjust
+
+            if not use_lm_bonds:
+                w[bonds_index] += w[risk_free_index]
+                w[risk_free_index] = 0
+
+            investments_ret, investments_vol, investments_geometric_ret = self.investment_statistics(w, rets, equity_vol, cov_ec2, cov_bc2, cov_eb2)
+
+            loss_pctl = 0.1
+            investments_loss = 1 - self.distribution_pctl(loss_pctl, 1 + investments_ret, investments_vol)
+
+            if investments_loss <= self.risk_tolerance:
+
+                found_loss = investments_loss
+                found_w = w
+
+                if mid == 0:
+                    break
+
+                high = mid
+
+            else:
+
+                low = mid
+
+        if found_loss != None:
+            investments_loss = found_loss
+            w = found_w
+
+        ret, vol, geometric_ret = self.statistics(self.non_annuitized_weights(w), rets, equity_vol, bonds_vol, lm_bonds_vol, \
+            cov_ec2, cov_bc2, cov_eb2, cov_bl2)
+        growth_rate = self.distribution_pctl(growth_pctl, 1 + ret, vol) - 1
+        c_factor = self.consume_factor(growth_rate)
+        consume = results['nv'] * (w[existing_annuities_index] / self.discounted_retirement_le_add + \
+                                   w[new_annuities_index] / self.discounted_retirement_le_annuity + \
+                                   (1 - (w[existing_annuities_index] + w[new_annuities_index])) * c_factor)
+
+        return w, consume, investments_loss
 
     def fix_allocs(self, mode, w_prime, rets, results, annuitize, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2):
 
@@ -402,41 +466,34 @@ class Alloc:
         w_fixed[bonds_index] -= surplus
         w_fixed[stocks_index] += surplus
         w_fixed[new_annuities_index] = max(0, alloc_db - w_fixed[existing_annuities_index]) # Eliminate negative values from fp rounding errors.
-
-        w_keep = list(w_fixed)
+        w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
 
         for count in range(2):
 
-            w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
+            w_try = list(w_fixed)
+            w_fixed, consume, loss = self.risk_limit(False, w_try, rets, results, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2)
 
-            if not self.use_lm_bonds:
-                w_fixed[bonds_index] += w_fixed[risk_free_index]
-                w_fixed[risk_free_index] = 0
-
-            alloc_db = w_fixed[existing_annuities_index] + w_fixed[new_annuities_index]
-
-            ret, vol, geometric_ret = self.statistics(self.non_annuitized_weights(w_fixed), rets, equity_vol, bonds_vol, lm_bonds_vol, \
-                cov_ec2, cov_bc2, cov_eb2, cov_bl2)
-            growth_rate = self.distribution_pctl(growth_pctl, 1 + ret, vol) - 1
-            c_factor = self.consume_factor(growth_rate)
-            consume = results['nv'] * (w_fixed[existing_annuities_index] / self.discounted_retirement_le_add + \
-                                       w_fixed[new_annuities_index] / self.discounted_retirement_le_annuity + \
-                                       (1 - alloc_db) * c_factor)
+            if self.use_lm_bonds:
+                w_fixed_lm, consume_lm, loss_lm = self.risk_limit(True, w_try, rets, results, equity_vol, bonds_vol, lm_bonds_vol, \
+                    cov_ec2, cov_bc2, cov_eb2, cov_bl2)
+                if consume_lm >= consume and (loss_lm <= self.risk_tolerance or loss_lm <= loss):
+                    w_fixed, consume, loss = w_fixed_lm, consume_lm, loss_lm
 
             if count == 1 or mode == 'number' or consume <= self.desired_income:
                 break
 
             ratio = self.desired_income / consume
 
-            w_fixed = list(w_keep)
+            w_fixed = list(w_try)
             w_fixed[bonds_index] *= ratio
-            w_risk_free_all = w_fixed[risk_free_index] + alloc_db
+            w_risk_free_all = w_fixed[risk_free_index] + w_fixed[existing_annuities_index] + w_fixed[new_annuities_index]
             w_risk_free_new = max(0, w_risk_free_all * ratio - w_fixed[existing_annuities_index])
             w_annuitize = max(0, w_risk_free_all * annuitize[risk_free_index] - w_fixed[existing_annuities_index])
             w_fixed[new_annuities_index] = min(w_risk_free_new, w_annuitize)
             w_fixed[risk_free_index] = w_risk_free_new - w_fixed[new_annuities_index]
             w_fixed[stocks_index] = 0
             w_fixed[stocks_index] = 1 - sum(w_fixed)
+            w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
 
         total_ret, total_vol, total_geometric_ret = self.statistics(w_fixed, rets, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2)
 
@@ -456,12 +513,8 @@ class Alloc:
 
         gamma = float(data['gamma'])
         equity_vol = float(data['equity_vol_pct']) / 100
-        bonds_vol_short = float(data['bonds_vol_short_pct']) / 100
         bonds_vol = float(data['bonds_vol_pct']) / 100
-        real_vol = float(data['real_vol_10yr_pct']) / 100
         lm_bonds_vol = 0
-        modified_duration = self.lm_bonds_duration / (1 + self.lm_bonds_ret)
-        lm_bonds_vol_short = modified_duration / 10.0 * real_vol
 
         equity_gm = self.geomean(1 + rets[stocks_index], equity_vol) - 1
         bonds_gm = self.geomean(1 + rets[bonds_index], bonds_vol) - 1
@@ -471,8 +524,6 @@ class Alloc:
         cov_bc2 = bonds_vol * self.contribution_vol * self.bonds_contribution_corr ** 2
         cov_eb2 = equity_vol * bonds_vol * equity_bonds_corr ** 2
         cov_bl2 = 0
-        bonds_lm_bonds_corr_short = float(data['bonds_lm_bonds_corr_short_pct']) / 100
-        cov_bl2_short = bonds_vol_short * lm_bonds_vol_short * bonds_lm_bonds_corr_short ** 2
 
         if mode == 'aa':
             lo = -0.5
@@ -570,9 +621,7 @@ class Alloc:
             purchase_income_annuity = 0
             annuitize_delay_cost = 0
 
-        w_investments = self.non_annuitized_weights(w_fixed, no_contrib=True)
-        investments_ret, investments_vol, investments_geometric_ret = self.statistics(w_investments, rets, equity_vol, bonds_vol_short, lm_bonds_vol_short, \
-            cov_ec2, cov_bc2, cov_eb2, cov_bl2_short)
+        investments_ret, investments_vol, investments_geometric_ret = self.investment_statistics(w_fixed, rets, equity_vol, cov_ec2, cov_bc2, cov_eb2)
 
         w_fixed_investments = w_fixed[stocks_index] + w_fixed[bonds_index] + w_fixed[risk_free_index]
 
@@ -644,7 +693,7 @@ class Alloc:
             'aa_bonds_pct': '{:.0f}'.format(aa_bonds * 100),
             'equity_ret_pct': '{:.1f}'.format(rets[stocks_index] * 100),
             'bonds_ret_pct': '{:.1f}'.format(rets[bonds_index] * 100),
-            'lm_bonds_vol_short_pct': '{:.1f}'.format(lm_bonds_vol_short * 100),
+            'lm_bonds_vol_short_pct': '{:.1f}'.format(self.lm_bonds_vol_short * 100),
             'investments_ret_pct': '{:.1f}'.format(investments_ret * 100),
             'investments_vol_pct': '{:.1f}'.format(investments_vol * 100),
             'investments_geometric_ret_pct': '{:.1f}'.format(investments_geometric_ret * 100),
@@ -772,6 +821,9 @@ class Alloc:
         self.joint_payout_fraction = float(data['joint_income_pct']) / 100
         self.desired_income = float(data['desired_income'])
         self.use_lm_bonds = data['use_lm_bonds']
+        self.bonds_vol_short = float(data['bonds_vol_short_pct']) / 100
+        self.bonds_lm_bonds_corr_short = float(data['bonds_lm_bonds_corr_short_pct']) / 100
+        self.risk_tolerance = float(data['risk_tolerance_pct']) / 100
 
         results['pre_retirement_years'] = '{:.1f}'.format(self.pre_retirement_years)
 
@@ -806,6 +858,10 @@ class Alloc:
         self.discounted_retirement_le_add = scenario.price()
         self.lm_bonds_ret = scenario.annual_return
         self.lm_bonds_duration = scenario.duration
+
+        self.real_vol = float(data['real_vol_10yr_pct']) / 100
+        modified_duration = self.lm_bonds_duration / (1 + self.lm_bonds_ret)
+        self.lm_bonds_vol_short = modified_duration / 10.0 * self.real_vol
 
         factor = norm.ppf(0.5 + float(data['confidence_pct']) / 100 / 2)
         factor = float(factor) # De-numpyfy.
