@@ -442,7 +442,7 @@ class Alloc:
 
         return w_fixed, consume, total_ret, total_vol, total_geometric_ret
 
-    def calc_scenario(self, mode, description, factor, data, results):
+    def calc_scenario(self, mode, description, factor, data, results, force_annuitize):
 
         rets = [0] * num_index
         expense = float(data['expense_pct']) / 100
@@ -554,7 +554,10 @@ class Alloc:
             delay_fraction_cost = cost * w_fixed_annuitize[new_annuities_index]
             annuitize_delay_cost = results['nv'] * delay_fraction_cost
 
-            annuitize_plan = annuitize_gain > 0.04 * consume_unannuitize and delay_fraction_cost > 0.001
+            if force_annuitize == None:
+                annuitize_plan = annuitize_gain > 0.04 * consume_unannuitize and delay_fraction_cost > 0.001
+            else:
+                annuitize_plan = force_annuitize
             if annuitize_plan:
                 w_fixed, consume, total_ret, total_vol, total_geometric_ret = \
                     w_fixed_annuitize, consume_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize
@@ -664,11 +667,11 @@ class Alloc:
 
         return result
 
-    def calc(self, mode, description, factor, data, results):
+    def calc(self, mode, description, factor, data, results, force_annuitize):
 
         if mode == 'aa':
 
-            return self.calc_scenario(mode, description, factor, data, results)
+            return self.calc_scenario(mode, description, factor, data, results, force_annuitize)
 
         else:
 
@@ -683,7 +686,7 @@ class Alloc:
                 mid = (low + high) / 2.0
                 # Hack the table rather than recompute for speed.
                 results['nv'] = nv + mid
-                calc_scenario = self.calc_scenario(mode, description, factor, data, results)
+                calc_scenario = self.calc_scenario(mode, description, factor, data, results, force_annuitize)
                 if calc_scenario['consume_value'] >= self.desired_income or not found_location:
                     found_location = mid
                     found_value = calc_scenario
@@ -806,11 +809,10 @@ class Alloc:
 
         factor = norm.ppf(0.5 + float(data['confidence_pct']) / 100 / 2)
         factor = float(factor) # De-numpyfy.
-        results['calc'] = (
-            self.calc(mode, 'Baseline estimate', 0, data, npv_results),
-            self.calc(mode, 'Low returns estimate', - factor, data, npv_results),
-            self.calc(mode, 'High returns estimate', factor, data, npv_results),
-        )
+        baseline = self.calc(mode, 'Baseline estimate', 0, data, npv_results, None)
+        low = self.calc(mode, 'Low returns estimate', - factor, data, npv_results, baseline['annuitize_plan'])
+        high = self.calc(mode, 'High returns estimate', factor, data, npv_results, baseline['annuitize_plan'])
+        results['calc'] = (baseline, low, high)
 
         if mode == 'number':
             self.npv_taxable = results['calc'][0]['taxable']
