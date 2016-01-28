@@ -144,22 +144,6 @@ Age: {{ alloc_form.age2 }}
 {{ alloc_form.sex2.errors }}
 {{ alloc_form.age2.errors }}
 
-<br />
-<br />
-
-It is risky to plan on living to just your average life
-expectancy. For planning purposes you need to plan on living longer
-than that just to be safe.
-<br />
-Additional years to plan for beyond life expectancy for self: {{ alloc_form.le_add }} Spouse: {{ alloc_form.le_add2 }}
-{{ alloc_form.le_add.errors }}
-{{ alloc_form.le_add2.errors }}
-<div class="small">
-You can change these values if you feel you are in exceptional good or
-bad health for your age. A reasonable default value is 8 years reduced
-by 1 year for every two years you are past age 80.
-</div>
-
 </div>
 
 <h2>Financial position</h2>
@@ -716,62 +700,49 @@ Net present value table:
 real interest rate adjusted
 </div>
 </td>
-<td> Planning purposes net present value
-<div class="small">
-real interest rate adjusted
-</div>
-</td>
 </tr>
 {% for db in results.db %}
 <tr>
 <td class="left"> {{ db.present.description }} </td>
 <td> {{ db.present.who }} </td>
-<td class="right"> {{ db.actual.nv }} </td>
 <td class="right"> {{ db.present.nv }} </td>
 </tr>
 {% endfor %}
 <tr>
 <td class="left"> Total defined benefits </td>
-<th colspan=2 class="right"> {{ results.actual.nv_db }} </th>
-<th class="right"> {{ results.present.nv_db }} </th>
+<th colspan=2 class="right"> {{ results.present.nv_db }} </th>
 </tr>
 {% if mode == 'aa' %}
 <tr>
 <td class="left"> Traditional </td>
-<td colspan=2 class="right"> {{ results.actual.nv_traditional }} </td>
-<td class="right"> {{ results.present.nv_traditional }} </td>
+<td colspan=2 class="right"> {{ results.present.nv_traditional }} </td>
 </tr>
 <tr>
 <td class="left"> Roth </td>
-<td colspan=2 class="right"> {{ results.actual.nv_roth }} </td>
-<td class="right"> {{ results.present.nv_roth }} </td>
+<td colspan=2 class="right"> {{ results.present.nv_roth }} </td>
 </tr>
 <tr>
 <td class="left"> Taxable </td>
-<td colspan=2 class="right"> {{ results.actual.nv_taxable }} </td>
-<td class="right"> {{ results.present.nv_taxable }} </td>
+<td colspan=2 class="right"> {{ results.present.nv_taxable }} </td>
 </tr>
 {% endif %}
 <tr>
 <td class="left"> Total investments </td>
-<th colspan=2 class="right"> {{ results.actual.nv_investments }} </th>
-<th class="right"> {{ results.present.nv_investments }} </th>
+<th colspan=2 class="right"> {{ results.present.nv_investments }} </th>
 </tr>
 {% if mode == 'aa' %}
 <tr>
 <td class="left"> Future contributions </td>
-<th colspan=2 class="right"> {{ results.actual.nv_contributions }} </th>
-<th class="right"> {{ results.present.nv_contributions }} </th>
+<th colspan=2 class="right"> {{ results.present.nv_contributions }} </th>
 </tr>
 {% endif %}
 <tr>
 <td class="left"> Total net present value </td>
-<th colspan=2 class="right"> {{ results.actual.nv }} </th>
-<th class="right"> {{ results.present.nv }} </th>
+<th colspan=2 class="right"> {{ results.present.nv }} </th>
 </tr>
 <tr>
 <tr>
-<td colspan=4 class="left small"> Computed from regular and planning purposes adjusted mortality tables and real yield curve. </td>
+<td colspan=4 class="left small"> Computed from mortality table and real yield curve. </td>
 </tr>
 </table>
 
@@ -1034,9 +1005,7 @@ Recommended annual retirement consumption amount without annuitization: {{ calc.
 Recommended annual retirement consumption amount with annuitization: {{ calc.consume_annuitize }}
 {% endif %}
 <div class="small">
-Estimate is based on the amount that can be withdrawn
-over the retirement period from a portfolio growing at a fixed
-rate.
+Estimate based on rules of thumb that break down at advanced ages.
 </div>
 
 {% if alloc_form.cleaned_data.purchase_income_annuity %}

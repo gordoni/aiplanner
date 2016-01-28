@@ -36,11 +36,15 @@ annuitization_delay_cost = (0.0, 0.0, 0.0, 0.013, 0.018, 0.029, 0.049, 0.093, 0.
     # Cost of delaying anuitization by 10 years, every 10 years of age.
     # Birth year = 2015 - starting age.
 
-growth_pctl = 0.42
+# Next two parameters determined to give good results empirically
+# using stochastic dynamic programming as the reference. Don't know
+# any other good way to approach the problem.
+consume_pctl = 97
+    # Percentile age up to which to use in computing amount to
+    # consume.
+growth_pctl_no_db = 45
     # Percentile location of fixed rate of return to use in computing
-    # amount to consume. Determined empirically using stochastic
-    # dynamic programming as the reference. Don't know any other good
-    # way to approach the problem.
+    # amount to consume in absence of defined benefits.
 
 # No enums until Python 3.4.
 stocks_index = 0
@@ -61,10 +65,8 @@ class Alloc:
         return {
             'sex': 'male',
             'age': 50,
-            'le_add': 8,
             'sex2': 'none',
             'age2': '',
-            'le_add2': 8,
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
 
             'db' : ({
@@ -353,9 +355,9 @@ class Alloc:
         # We compute the withdrawal amount for a fixed compounding
         # total portfolio.
         schedule = self.stochastic_schedule(1 / (1.0 + ret))
-        scenario = Scenario(self.yield_curve_zero, self.payout_delay, None, None, 0, self.life_table_add, life_table2 = self.life_table2_add, \
+        scenario = Scenario(self.yield_curve_zero, self.payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
-            period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust, schedule = schedule)
+            period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust, percentile = consume_pctl, schedule = schedule)
         c_factor = 1.0 / scenario.price()
 
         return c_factor
@@ -421,11 +423,14 @@ class Alloc:
 
         ret, vol, geometric_ret = self.statistics(self.non_annuitized_weights(w), rets, equity_vol, bonds_vol, lm_bonds_vol, \
             cov_ec2, cov_bc2, cov_eb2, cov_bl2)
+        alloc_db = w[existing_annuities_index] + w[new_annuities_index]
+        growth_pctl = (1 - alloc_db) * growth_pctl_no_db / 100.0 + alloc_db * 0.5
+            # The greater the defined benefits cushion the greater the growth rate that can be assumed for non-defined benefits.
         growth_rate = self.distribution_pctl(growth_pctl, 1 + ret, vol) - 1
         c_factor = self.consume_factor(growth_rate)
-        consume = results['nv'] * (w[existing_annuities_index] / self.discounted_retirement_le_add + \
+        consume = results['nv'] * (w[existing_annuities_index] / self.discounted_retirement_le + \
                                    w[new_annuities_index] / self.discounted_retirement_le_annuity + \
-                                   (1 - (w[existing_annuities_index] + w[new_annuities_index])) * c_factor)
+                                   (1 - alloc_db) * c_factor)
 
         return w, consume, investments_loss
 
@@ -776,22 +781,17 @@ class Alloc:
         self.sex = data['sex']
         self.age = float(data['age'])
         self.life_table = LifeTable(self.table, self.sex, self.age)
-        self.life_table_annuity = LifeTable(self.table_annuity, self.sex, self.age)
-        self.le_add = float(data['le_add'])
-        self.life_table_add = LifeTable(self.table, self.sex, self.age, le_add = self.le_add, date_str = self.date_str)
+        self.life_table_annuity = LifeTable(self.table_annuity, self.sex, self.age, ae = 'aer2005_08-summary')
 
         self.sex2 = data['sex2']
         if self.sex2 == 'none':
             self.life_table2 = None
             self.life_table2_annuity = None
-            self.life_table2_add = None
             self.min_age = self.age
         else:
             self.age2 = float(data['age2']);
             self.life_table2 = LifeTable(self.table, self.sex2, self.age2)
-            self.life_table2_annuity = LifeTable(self.table_annuity, self.sex2, self.age2)
-            self.le_add2 = float(data['le_add2'])
-            self.life_table2_add = LifeTable(self.table, self.sex2, self.age2, le_add = self.le_add2, date_str = self.date_str)
+            self.life_table2_annuity = LifeTable(self.table_annuity, self.sex2, self.age2, ae = 'aer2005_08-summary')
             self.min_age = min(self.age, self.age2)
 
         self.db = data['db']
@@ -836,7 +836,7 @@ class Alloc:
 
         self.nv_contributions, self.ret_contributions = self.npv_contrib(self.contribution_growth)
 
-        display_db, self.nv_db = self.value_table_db(self.life_table_add, self.life_table2_add)
+        display_db, self.nv_db = self.value_table_db(self.life_table, self.life_table2)
         npv_results, npv_display = self.value_table(self.nv_db, self.npv_taxable)
         results['db'] = []
         for db in display_db:
@@ -852,10 +852,10 @@ class Alloc:
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
         self.discounted_retirement_le_annuity = scenario.price()
 
-        scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table_add, life_table2 = self.life_table2_add, \
+        scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
-        self.discounted_retirement_le_add = scenario.price()
+        self.discounted_retirement_le = scenario.price()
         self.lm_bonds_ret = scenario.annual_return
         self.lm_bonds_duration = scenario.duration
 
@@ -876,11 +876,11 @@ class Alloc:
 
         results['present'] = npv_display
 
-        actual_display_db, actual_nv_db = self.value_table_db(self.life_table, self.life_table2)
-        _, actual_npv_display = self.value_table(actual_nv_db, self.npv_taxable)
-        for i, db in enumerate(actual_display_db):
-            results['db'][i]['actual'] = db
-        results['actual'] = actual_npv_display
+        #actual_display_db, actual_nv_db = self.value_table_db(self.life_table, self.life_table2)
+        #_, actual_npv_display = self.value_table(actual_nv_db, self.npv_taxable)
+        #for i, db in enumerate(actual_display_db):
+        #    results['db'][i]['actual'] = db
+        #results['actual'] = actual_npv_display
 
         return results
 
@@ -931,13 +931,6 @@ bonds,%(aa_bonds)f
                     results = self.compute_results(data, mode)
                     dirname = self.plot(mode, results['calc'][0])
                     results['dirurl'] = dirname.replace(STATIC_ROOT, STATIC_URL)
-
-                except LifeTable.UnableToAdjust:
-
-                    errors = alloc_form._errors.setdefault('le_add2', ErrorList())  # Simplified in Django 1.7.
-                    errors.append('Unable to adjust life table.')
-
-                    errors_present = True
 
                 except YieldCurve.NoData:
 

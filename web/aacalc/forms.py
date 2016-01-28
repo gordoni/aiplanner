@@ -597,8 +597,6 @@ class AllocBaseForm(Form):
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=110)
-    le_add = DecimalField(
-        widget=TextInput(attrs={'class': 'small_numeric_input'}))
     sex2 = ChoiceField(
         choices = (('none', 'none'), ('male', 'male'), ('female', 'female')),
         required=False)
@@ -607,8 +605,6 @@ class AllocBaseForm(Form):
         min_value=0,
         max_value=110,
         required=False)
-    le_add2 = DecimalField(
-        widget=TextInput(attrs={'class': 'small_numeric_input'}))
     date = CharField(
         widget=TextInput(attrs={'class': 'dob_input'}))
 
