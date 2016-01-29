@@ -42,7 +42,7 @@ annuitization_delay_cost = (0.0, 0.0, 0.0, 0.013, 0.018, 0.029, 0.049, 0.093, 0.
 consume_pctl = 97
     # Percentile age up to which to use in computing amount to
     # consume.
-growth_pctl_no_db = 45
+growth_pctl_no_db = 43
     # Percentile location of fixed rate of return to use in computing
     # amount to consume in absence of defined benefits.
 
@@ -786,7 +786,7 @@ class Alloc:
 
         self.sex = data['sex']
         self.age = float(data['age'])
-        self.le_set = None if data['le_set'] == None else float(data['le_set']) - self.age
+        self.le_set = float(data['le_set']) - self.age if data['le_set'] else None
         self.life_table = LifeTable(self.table, self.sex, self.age, le_set = self.le_set, date_str = self.date_str)
         self.life_table_annuity = LifeTable(self.table_annuity, self.sex, self.age, ae = 'aer2005_08-summary')
 
@@ -797,7 +797,7 @@ class Alloc:
             self.min_age = self.age
         else:
             self.age2 = float(data['age2']);
-            self.le_set2 = None if data['le_set2'] == None else float(data['le_set2']) - self.age2
+            self.le_set2 = float(data['le_set2']) - self.age2 if data['le_set2'] else None
             self.life_table2 = LifeTable(self.table, self.sex2, self.age2, le_set = self.le_set2, date_str = self.date_str)
             self.life_table2_annuity = LifeTable(self.table_annuity, self.sex2, self.age2, ae = 'aer2005_08-summary')
             self.min_age = min(self.age, self.age2)
