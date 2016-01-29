@@ -32,6 +32,11 @@ from aacalc.forms import AllocAaForm, AllocNumberForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
 from settings import ROOT, STATIC_ROOT, STATIC_URL
 
+# Stock market returns are fat tailed.
+# For 1927-2014 we empirically observed the 10th percentile stock return corresponding to the 6th percentile of the lognormal distribution.
+loss_pctl = 0.1
+loss_pctl_fat_tail = 0.06
+
 annuitization_delay_cost = (0.0, 0.0, 0.0, 0.013, 0.018, 0.029, 0.049, 0.093, 0.221, 0.391)
     # Cost of delaying anuitization by 10 years, every 10 years of age.
     # Birth year = 2015 - starting age.
@@ -402,10 +407,13 @@ class Alloc:
 
             investments_ret, investments_vol, investments_geometric_ret = self.investment_statistics(w, rets, equity_vol, cov_ec2, cov_bc2, cov_eb2)
 
-            loss_pctl = 0.1
-            investments_loss = 1 - self.distribution_pctl(loss_pctl, 1 + investments_ret, investments_vol)
+            investments_loss = 1 - self.distribution_pctl(loss_pctl_fat_tail, 1 + investments_ret, investments_vol)
 
-            if investments_loss <= self.risk_tolerance:
+            if found_loss == None:
+                found_loss = investments_loss
+                found_w = w
+
+            if investments_loss <= self.risk_tolerance or self.risk_tolerance < investments_loss < found_loss:
 
                 found_loss = investments_loss
                 found_w = w
@@ -419,9 +427,8 @@ class Alloc:
 
                 low = mid
 
-        if found_loss != None:
-            investments_loss = found_loss
-            w = found_w
+        investments_loss = found_loss
+        w = found_w
 
         ret, vol, geometric_ret = self.statistics(self.non_annuitized_weights(w), rets, equity_vol, bonds_vol, lm_bonds_vol, \
             cov_ec2, cov_bc2, cov_eb2, cov_bl2)
@@ -639,10 +646,6 @@ class Alloc:
 
         w_fixed_investments = w_fixed[stocks_index] + w_fixed[bonds_index] + w_fixed[risk_free_index]
 
-        # Stock market returns are fat tailed.
-        # For 1927-2014 we empirically observed the 10th percentile stock return corresponding to the 6th percentile of the lognormal distribution.
-        loss_pctl = 0.1
-        loss_pctl_fat_tail = 0.06
         investments_loss = 1 - self.distribution_pctl(loss_pctl_fat_tail, 1 + investments_ret, investments_vol)
         total_loss = 1 - self.distribution_pctl(loss_pctl_fat_tail, 1 + total_ret, total_vol)
 
