@@ -32,10 +32,12 @@ from aacalc.forms import AllocAaForm, AllocNumberForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
 from settings import ROOT, STATIC_ROOT, STATIC_URL
 
-# Stock market returns are fat tailed.
+# Deleterious stock market returns are fat-tailed.
 # For 1927-2014 we empirically observed the 10th percentile stock return corresponding to the 6th percentile of the lognormal distribution.
 loss_pctl = 0.1
 loss_pctl_fat_tail = 0.06
+# Deleterious bond market returns appear, if anything, the opposite of fat-tailed.
+# We could try to weight this in, but don't. It is acceptable to over-report the odds of deleterious outcomes.
 
 annuitization_delay_cost = (0.0, 0.0, 0.0, 0.013, 0.018, 0.029, 0.049, 0.093, 0.221, 0.391)
     # Cost of delaying anuitization by 10 years, every 10 years of age.
@@ -204,7 +206,7 @@ class Alloc:
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
 
             'gamma': Decimal('3.0'),
-            'risk_tolerance_pct': Decimal('15.0'),
+            'risk_tolerance_pct': Decimal('20.0'),
         }
 
     def distribution_pctl(self, pctl, mean, vol):
