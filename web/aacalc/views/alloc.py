@@ -636,9 +636,12 @@ class Alloc:
 
         w_fixed_investments = w_fixed[stocks_index] + w_fixed[bonds_index] + w_fixed[risk_free_index]
 
+        # Stock market returns are fat tailed.
+        # For 1927-2014 we empirically observed the 10th percentile stock return corresponding to the 6th percentile of the lognormal distribution.
         loss_pctl = 0.1
-        investments_loss = 1 - self.distribution_pctl(loss_pctl, 1 + investments_ret, investments_vol)
-        total_loss = 1 - self.distribution_pctl(loss_pctl, 1 + total_ret, total_vol)
+        loss_pctl_fat_tail = 0.06
+        investments_loss = 1 - self.distribution_pctl(loss_pctl_fat_tail, 1 + investments_ret, investments_vol)
+        total_loss = 1 - self.distribution_pctl(loss_pctl_fat_tail, 1 + total_ret, total_vol)
 
         try:
             aa_equity = w_fixed[stocks_index] / w_fixed_investments
