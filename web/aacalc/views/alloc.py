@@ -67,7 +67,8 @@ class Alloc:
             'age': 50,
             'sex2': 'none',
             'age2': '',
-            'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
+            'le_set': '',
+            'le_set2': '',
 
             'db' : ({
                 'social_security': True,
@@ -195,6 +196,7 @@ class Alloc:
             'equity_se_pct': Decimal('1.7'),
             'confidence_pct': 80,
             'expense_pct': Decimal('0.1'),
+            'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
 
             'gamma': Decimal('3.0'),
             'risk_tolerance_pct': Decimal('15.0'),
@@ -530,7 +532,7 @@ class Alloc:
         cov_eb2 = equity_vol * bonds_vol * equity_bonds_corr ** 2
         cov_bl2 = 0
 
-        if mode == 'aa':
+        if mode == 'aa' and self.contribution_vol > 0: # Avoid contribution_vol == 0 as covariance matrix inverse fails becasue matrix is singular.
             lo = -0.5
             hi = 0.5
             for _ in range(50):
@@ -563,15 +565,19 @@ class Alloc:
             w_prime[contrib_index] = 1 - sum(w_prime)
         else:
             future_growth_try = 0
-            discounted_contrib = 0
-            wc_discounted = 0
+            discounted_contrib, _ = self.npv_contrib(self.contribution_growth)
+            try:
+                wc_discounted = discounted_contrib / results['nv']
+            except ZeroDivisionError:
+                wc_discounted = 0
             sigma_matrix = (
                 (equity_vol ** 2, cov_eb2),
                 (cov_eb2, bonds_vol ** 2),
             )
             alpha = (rets[stocks_index], rets[bonds_index])
             w = list(self.solve_merton(gamma, sigma_matrix, alpha, self.lm_bonds_ret))
-            w.extend((0, 1 - sum(w)))
+            w.append(wc_discounted)
+            w.append(1 - sum(w))
             w_prime = list(w)
         w_prime = list(max(0, wi) for wi in w_prime)
         w_prime[risk_free_index] = 0
@@ -780,7 +786,8 @@ class Alloc:
 
         self.sex = data['sex']
         self.age = float(data['age'])
-        self.life_table = LifeTable(self.table, self.sex, self.age)
+        self.le_set = None if data['le_set'] == None else float(data['le_set']) - self.age
+        self.life_table = LifeTable(self.table, self.sex, self.age, le_set = self.le_set, date_str = self.date_str)
         self.life_table_annuity = LifeTable(self.table_annuity, self.sex, self.age, ae = 'aer2005_08-summary')
 
         self.sex2 = data['sex2']
@@ -790,7 +797,8 @@ class Alloc:
             self.min_age = self.age
         else:
             self.age2 = float(data['age2']);
-            self.life_table2 = LifeTable(self.table, self.sex2, self.age2)
+            self.le_set2 = None if data['le_set2'] == None else float(data['le_set2']) - self.age2
+            self.life_table2 = LifeTable(self.table, self.sex2, self.age2, le_set = self.le_set2, date_str = self.date_str)
             self.life_table2_annuity = LifeTable(self.table_annuity, self.sex2, self.age2, ae = 'aer2005_08-summary')
             self.min_age = min(self.age, self.age2)
 
@@ -812,7 +820,7 @@ class Alloc:
             self.npv_taxable = 0
             self.contribution = 0
             self.contribution_growth = 0
-            self.contribution_vol = 0.1 # Prevent covariance matrix inverse failing.
+            self.contribution_vol = 0
             self.equity_contribution_corr = 0
             self.bonds_contribution_corr = 0
         self.retirement_age = float(data['retirement_age'])
@@ -931,6 +939,13 @@ bonds,%(aa_bonds)f
                     results = self.compute_results(data, mode)
                     dirname = self.plot(mode, results['calc'][0])
                     results['dirurl'] = dirname.replace(STATIC_ROOT, STATIC_URL)
+
+                except LifeTable.UnableToAdjust:
+
+                    errors = alloc_form._errors.setdefault('le_set2', ErrorList())  # Simplified in Django 1.7.
+                    errors.append('Unable to adjust life table.')
+
+                    errors_present = True
 
                 except YieldCurve.NoData:
 

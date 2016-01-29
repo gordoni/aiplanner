@@ -144,6 +144,18 @@ Age: {{ alloc_form.age2 }}
 {{ alloc_form.sex2.errors }}
 {{ alloc_form.age2.errors }}
 
+<br />
+<br />
+
+Life expectancy for self (if known): {{ alloc_form.le_set }} Spouse: {{ alloc_form.le_set2 }}
+{{ alloc_form.le_set.errors }}
+{{ alloc_form.le_set2.errors }}
+<div class="small">
+Enter your total life expectancy if known, or leave blank to have your
+life expectancy computed using U.S. Social Security Administration
+data.
+</div>
+
 </div>
 
 <h2>Financial position</h2>
@@ -213,7 +225,10 @@ Social Security
 {% endfor %}
 <tr>
 <td colspan=7 class="small left">
-Starting age is that of the owner. Payouts last at least as long as the owner's life.
+Starting age is that of the owner. Annual amount is in current inflation-adjusted
+after tax dollars, not future dollars. For income annuities, which become fully
+taxable after a certain age, enter the expected average after tax amount.
+Payouts last at least as long as the owner's life.
 Period certain: the number of years for which payments are guaranteed, even if the owner dies.
 Contingent: payout reduced on death of either party.
 Survivor: payout reduced only on death of the owner.
@@ -239,7 +254,7 @@ Tax rate: {{ alloc_form.tax_rate_pct }}%
 {{ alloc_form.p_traditional_iras.errors }}
 {{ alloc_form.tax_rate_pct.errors }}
 <br />
-Post-tax Roth IRAs, 401(k)'s, and 403(b)'s size: {{ alloc_form.p_roth_iras }}
+After tax Roth IRAs, 401(k)'s, and 403(b)'s size: {{ alloc_form.p_roth_iras }}
 {{ alloc_form.p_roth_iras.errors }}
 <br />
 Taxable retirement savings size: {{ alloc_form.p }}
@@ -247,17 +262,19 @@ Taxable retirement savings size: {{ alloc_form.p }}
 <div class="small">
 You may want to reduce this last value slightly to reflect the effects
 of taxation.  Variable annuities are not recommended as an investment
-vehicle, but principal should be handled similarly to post-tax
-investments and earnings should be handled similarly to pre-tax
-investments.
+vehicle, but during the accumulation phase principal spent purchasing
+variable annuities should be handled similarly to after tax investments
+and earnings on variable annuities should be handled similarly to
+pre-tax investments. During the payout phase variable annuities are
+best listed, albeit imprecisely, under defined benefits.
 </div>
 <br />
 Pre-retirement annual contribution amount (irrelevant if retired):
 {{ alloc_form.contribution }}
 {{ alloc_form.contribution.errors }}
 <br />
-Growth rate: {{ alloc_form.contribution_growth_pct }}%
-Annual volatility of future payments: {{ alloc_form.contribution_vol_pct }}%
+Real growth rate: {{ alloc_form.contribution_growth_pct }}%
+Annual volatility of future contributions: {{ alloc_form.contribution_vol_pct }}%
 {{ alloc_form.contribution_growth_pct.errors }}
 {{ alloc_form.contribution_vol_pct.errors }}
 <br />
@@ -266,7 +283,7 @@ Correlation with bond returns: {{ alloc_form.bonds_contribution_corr_pct }}%
 {{ alloc_form.equity_contribution_corr_pct.errors }}
 {{ alloc_form.bonds_contribution_corr_pct.errors }}
 <div class="small">
-Contribution amount is assumed to be post tax, and should consist only
+Contribution amount is assumed to be after tax, and should consist only
 of new money contributed to your retirement savings, not the payout from any existing pre-retirement
 defined benefits. A growth rate of 7% represents a doubling of real
 contributions every 10 years.  Remember to take into account life
@@ -291,12 +308,13 @@ Relative income required when one party deceased: {{ alloc_form.joint_income_pct
 {{ alloc_form.joint_income_pct.errors }}
 <br />
 {% if mode == 'aa' %}
-Annual consumption at which you have "won the game": {{ alloc_form.desired_income }}
+Annual retirement consumption at which you have "won the game": {{ alloc_form.desired_income }}
 {{ alloc_form.desired_income.errors }}
 <div class="small">
-Winning the game means having consumption that meets your required and
-desired expenses.  Assets required to support consumption beyond this
-level will be allocated to stocks.
+Winning the game means having retirement consumption that meets your
+required and desired expenses.  Assets required to support consumption
+beyond this level will be allocated to stocks. Retirement consumption
+should be expressed in current inflation-indexed dollars.
 </div>
 {% else %}
 Annual desired consumption level: {{ alloc_form.desired_income }}
@@ -580,17 +598,28 @@ return of stocks compounded over time.
 
 {% if results.calc.0.annuitize_plan %}
 
-We recommend purchasing an income annuity of {{ results.calc.0.purchase_income_annuity }}.
+We recommend purchasing a
+{% if alloc_form.cleaned_data.age < alloc_form.cleaned_data.retirement_age %}
+deferred income annuity
+{% else %}
+single premium immediate annuity
+{% endif %}
+of {{ results.calc.0.purchase_income_annuity }}.
 This is estimated to increase your annual consumption by {{ results.calc.0.annuitize_gain }}
 versus never doing so.
 <div class="small">
 We roughly estimate the cost of delaying this purchase by one year as
 {{ results.calc.0.annuitize_delay_cost }} in aggregate consumption
-over your lifetime.  We recommend the income annuity, be it a single
-premium immediate annuity or a deferred income annuity, be inflation
-indexed. Do not purchase a variable annuity. The consumption
-recommendations made below factor
-in the purchase of this income annuity.
+over your lifetime.  We recommend the income annuity be inflation
+indexed. Do not purchase a variable annuity.
+{% if alloc_form.cleaned_data.age < alloc_form.cleaned_data.retirement_age %}
+In the U.S. as of 2016 the Money's Worth Ratios for deferred income
+annuities were substantially worse than those of single premium
+immediate annuities, so shop wisely. If you are close to retirement it
+might even make sense to purchase a single premium immediate annuity.
+{% endif %}
+The consumption recommendations made below factor in the purchase of
+this income annuity.
 </div>
 
 <br />
@@ -714,11 +743,11 @@ real interest rate adjusted
 </tr>
 {% if mode == 'aa' %}
 <tr>
-<td class="left"> Traditional </td>
+<td class="left"> Pre-tax traditional </td>
 <td colspan=2 class="right"> {{ results.present.nv_traditional }} </td>
 </tr>
 <tr>
-<td class="left"> Roth </td>
+<td class="left"> After tax Roth </td>
 <td colspan=2 class="right"> {{ results.present.nv_roth }} </td>
 </tr>
 <tr>
@@ -883,11 +912,7 @@ are advantages to annuitizing the fixed income portion of a portfolio
 at earlier ages. For details see
 <a href="{% url 'docs' 'when_to_annuitize' %}">When to Annuitize</a>.
 The ratios above are the proportion of each portfolio
-holding type that we recommend be annuitized. In
-the US as of 2016 the Money's Worth Ratios for deferred income
-annuities were substantially worse than those of single premium
-immediate annuities, but it might seem odd to purchase a SPIA
-pre-retirement.
+holding type that we recommend be annuitized.
 </div>
 
 {% endif %}

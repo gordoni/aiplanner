@@ -529,6 +529,9 @@ class AllocBaseForm(Form):
         age2 = cleaned_data.get('age2')
         if sex2 == 'none' and age2 != None or sex2 != 'none' and age2 == None:
             raise ValidationError('Invalid spouse/partner.')
+        le_set2 = cleaned_data.get('le_set2')
+        if sex2 == 'none' and le_set2 != None:
+            raise ValidationError('Life expectancy specified for non-existant spouse.')
         if sex2 == 'none' and any((db['who'] == 'spouse' or float(db['joint_payout_pct']) != 0) and (float(db['amount']) != 0) for db in cleaned_data['db']):
             raise ValidationError('Spousal defined benefits but no spouse present')
         return cleaned_data
@@ -605,8 +608,16 @@ class AllocBaseForm(Form):
         min_value=0,
         max_value=110,
         required=False)
-    date = CharField(
-        widget=TextInput(attrs={'class': 'dob_input'}))
+    le_set = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=110,
+        required=False)
+    le_set2 = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=110,
+        required=False)
 
     DbFormSet = formset_factory(DbForm, extra=8, max_num=8)
 
@@ -658,6 +669,8 @@ class AllocBaseForm(Form):
     expense_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0)
+    date = CharField(
+        widget=TextInput(attrs={'class': 'dob_input'}))
 
     gamma = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
@@ -693,7 +706,7 @@ class AllocAaForm(AllocBaseForm):
         widget=TextInput(attrs={'class': 'percent_input'}))
     contribution_vol_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=1) # 0 fails.
+        min_value=0)
     equity_contribution_corr_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=-99,
