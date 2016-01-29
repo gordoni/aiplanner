@@ -993,7 +993,7 @@ class LifeTable:
     class UnableToAdjust(Exception):
         pass
 
-    def __init__(self, table, sex, age, ae = 'aer2005_08-full', le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
+    def __init__(self, table, sex, age, ae = 'aer2005_08-summary', le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
         self.table = table
         assert(table in ('death_120', 'iam2012-basic', 'ssa-cohort', 'ssa-period', 'gompertz-makeham'))
         self.sex = sex
@@ -1001,7 +1001,7 @@ class LifeTable:
         self.ae = ae  # Whether and how to use the actual/expected experience report when table is iam.
             # 'none' - a/e report not used. AER increases MWR 20% at age 90, and 5% at age 80.
             # 'aer2005_08-summary' - use all ages summary line. Use this value for compatibility with AACalc.
-            # 'aer2005_08-full' - use the full table; more accurate but report contains statistical noise. Alters values 5% at age 85.
+            # 'aer2005_08-full' - use the full table; may be more accurate but report contains statistical noise. Alters values 5% at age 85.
         assert(ae in ('none', 'aer2005_08-summary', 'aer2005_08-full'))
         self.le_set = le_set  # Multiplicatively adjust q values to make life expectancy match the specified value.
             # Used to make life expectancy match personal expected life expectancy, then use value to compute fair SPIA price.

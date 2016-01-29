@@ -430,8 +430,11 @@ class Alloc:
             # The greater the defined benefits cushion the greater the growth rate that can be assumed for non-defined benefits.
         growth_rate = self.distribution_pctl(growth_pctl, 1 + ret, vol) - 1
         c_factor = self.consume_factor(growth_rate)
+        mwr = 1.0
+            # Observed real MWRs were in this range for ages 40-80. At age 85 it was 9% lower when using aer2005-08-summary.
+            # No adjustment for state taxes, but we impose a minimum required total portfolio gain of 4% later.
         consume = results['nv'] * (w[existing_annuities_index] / self.discounted_retirement_le + \
-                                   w[new_annuities_index] / self.discounted_retirement_le_annuity + \
+                                   w[new_annuities_index] * mwr / self.discounted_retirement_le_annuity + \
                                    (1 - alloc_db) * c_factor)
 
         return w, consume, investments_loss
