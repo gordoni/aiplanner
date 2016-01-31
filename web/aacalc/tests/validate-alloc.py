@@ -66,7 +66,7 @@ for test in tests:
     stocks, consume, metric_combined, desc, params = test
     alloc = Alloc()
     default = alloc.default_alloc_params()
-    params = dict(dict(default, date='2015-12-31', expense_pct=0, purchase_income_annuity=False, desired_income=1000000, \
+    params = dict(dict(default, date='2015-12-31', expense_pct=0, purchase_income_annuity=False, \
                        contribution_vol_pct=1, \
                        equity_ret_pct=7.2, equity_vol_pct=17.0, \
                        bonds_ret_pct=0.8, bonds_vol_pct=4.0, equity_bonds_corr_pct=7.0, \

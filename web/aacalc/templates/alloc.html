@@ -308,16 +308,33 @@ Relative income required when one party deceased: {{ alloc_form.joint_income_pct
 {{ alloc_form.joint_income_pct.errors }}
 <br />
 {% if mode == 'aa' %}
+Annual retirement consumption at which you have "lost the game": {{ alloc_form.required_income }}
+{{ alloc_form.required_income.errors }}
+<div class="small">
+Losing the game means having an unbearably low level of consumption.
+Safe assets are allocated to try and ensure consumption never falls
+below this level. Retirement consumption should be expressed in
+current inflation-indexed dollars. Normally you don't need to specify
+a value here as the right thing to do will be determined based on your
+risk aversion which is specified later.
+</div>
 Annual retirement consumption at which you have "won the game": {{ alloc_form.desired_income }}
 {{ alloc_form.desired_income.errors }}
 <div class="small">
 Winning the game means having retirement consumption that meets your
 required and desired expenses.  Assets required to support consumption
 beyond this level will be allocated to stocks. Retirement consumption
-should be expressed in current inflation-indexed dollars.
+should be expressed in current inflation-indexed dollars. Normally you
+don't need to specify a value here as the right thing to do will be
+determined based on your risk aversion which is specified later.
 </div>
 {% else %}
-Annual desired consumption level: {{ alloc_form.desired_income }}
+Annual desired retirement consumption level: {{ alloc_form.desired_income }}
+{{ alloc_form.desired_income.errors }}
+<div class="small">
+Retirement consumption should be expressed in current
+inflation-indexed dollars.
+</div>
 {% endif %}
 <br />
 Use liability matching bonds: {{ alloc_form.use_lm_bonds }}
@@ -914,7 +931,7 @@ holding type that we recommend be annuitized.
 
 Adjusting for any existing defined benefits, any income annuity
 purchases, the substitution of regular bonds for liability matching
-bonds, and the possibility of having won the game, produces the
+bonds, and the possibility of winning or losing the game, produces the
 following recommendations.
 
 <table class="table-lined center">

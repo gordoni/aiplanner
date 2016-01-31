@@ -90,6 +90,9 @@ def healthcheck(request):
     params['form-INITIAL_FORMS'] = len(params['db'])
     params['form-MAX_NUM_FORMS'] = len(params['db'])
     del params['db']
+    for k, v in params.iteritems():
+        if v == None:
+            params[k] = ''
     request = request_factory.post('/calculators/aa', params)
     response = alloc(request, 'aa')
     page = response.content

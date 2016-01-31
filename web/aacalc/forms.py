@@ -534,6 +534,10 @@ class AllocBaseForm(Form):
             raise ValidationError('Life expectancy specified for non-existant spouse.')
         if sex2 == 'none' and any((db['who'] == 'spouse' or float(db['joint_payout_pct']) != 0) and (float(db['amount']) != 0) for db in cleaned_data['db']):
             raise ValidationError('Spousal defined benefits but no spouse present')
+        required_income = cleaned_data.get('required_income')
+        desired_income = cleaned_data.get('desired_income')
+        if required_income != None and desired_income != None and required_income > desired_income:
+            raise ValidationError('Required consumption exceeds desired consumption.')
         return cleaned_data
 
     class DbForm(Form):
@@ -629,9 +633,14 @@ class AllocBaseForm(Form):
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0,
         max_value=100)
+    required_income = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0,
+        required=False)
     desired_income = DecimalField(
         widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
+        min_value=0,
+        required=False)
     purchase_income_annuity = BooleanField(required=False)
     use_lm_bonds = BooleanField(required=False)
 
@@ -717,5 +726,12 @@ class AllocAaForm(AllocBaseForm):
         max_value=99) # 100 fails.
 
 class AllocNumberForm(AllocBaseForm):
+
+    def clean(self):
+        cleaned_data = super(AllocNumberForm, self).clean()
+        desired_income = cleaned_data.get('desired_income')
+        if desired_income == None:
+            raise ValidationError('No desired consumption level specified.')
+        return cleaned_data
 
     pass

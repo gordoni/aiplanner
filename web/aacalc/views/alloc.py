@@ -32,6 +32,10 @@ from aacalc.forms import AllocAaForm, AllocNumberForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
 from settings import ROOT, STATIC_ROOT, STATIC_URL
 
+mwr = 1.0
+    # Observed real MWRs were in this range for ages 40-80. At age 85 it was 9% lower when using aer2005-08-summary.
+    # No adjustment for state taxes, but we impose a minimum required total portfolio gain of 4% later.
+
 # Deleterious stock market returns are fat-tailed.
 # For 1927-2014 we empirically observed the 10th percentile stock return corresponding to the 6th percentile of the lognormal distribution.
 loss_pctl = 0.1
@@ -73,9 +77,9 @@ class Alloc:
             'sex': 'male',
             'age': 50,
             'sex2': 'none',
-            'age2': '',
-            'le_set': '',
-            'le_set2': '',
+            'age2': None,
+            'le_set': None,
+            'le_set2': None,
 
             'db' : ({
                 'social_security': True,
@@ -188,7 +192,8 @@ class Alloc:
 
             'retirement_age': 66,
             'joint_income_pct': 70,
-            'desired_income': 40000,
+            'required_income': None,
+            'desired_income': None,
             'purchase_income_annuity': True,
             'use_lm_bonds': True,
 
@@ -439,9 +444,6 @@ class Alloc:
             # The greater the defined benefits cushion the greater the growth rate that can be assumed for non-defined benefits.
         growth_rate = self.distribution_pctl(growth_pctl, 1 + ret, vol) - 1
         c_factor = self.consume_factor(growth_rate)
-        mwr = 1.0
-            # Observed real MWRs were in this range for ages 40-80. At age 85 it was 9% lower when using aer2005-08-summary.
-            # No adjustment for state taxes, but we impose a minimum required total portfolio gain of 4% later.
         consume = results['nv'] * (w[existing_annuities_index] / self.discounted_retirement_le + \
                                    w[new_annuities_index] * mwr / self.discounted_retirement_le_annuity + \
                                    (1 - alloc_db) * c_factor)
@@ -466,25 +468,29 @@ class Alloc:
             w_fixed[existing_annuities_index] = results['nv_db'] / results['nv']
         except ZeroDivisionError:
             w_fixed[existing_annuities_index] = 0
-        shortfall = alloc_db - w_fixed[existing_annuities_index]
+        if self.required_income != None:
+            try:
+                required_risk_free = self.discounted_retirement_le_annuity / mwr * \
+                    (self.required_income / results['nv'] - w_fixed[existing_annuities_index] / self.discounted_retirement_le)
+            except ZeroDivisionError:
+                required_risk_free = 0
+        else:
+            required_risk_free = 0
+        target_alloc_db = w_fixed[existing_annuities_index]
         if purchase_income_annuity:
-            shortfall = min(0, shortfall)
-        alloc_db -= shortfall
-        alloc_db = max(0, alloc_db) # Eliminate negative values from fp rounding errors.
-        w_fixed[risk_free_index] += shortfall
-        if w_fixed[risk_free_index] < 0:
-            surplus = w_fixed[risk_free_index]
-        else:
-            surplus = max(w_fixed[risk_free_index] - 1, 0)
-        w_fixed[risk_free_index] -= surplus
-        w_fixed[bonds_index] += surplus
-        if w_fixed[bonds_index] < 0:
-            surplus = w_fixed[bonds_index]
-        else:
-            surplus = max(w_fixed[bonds_index] - 1, 0)
-        w_fixed[bonds_index] -= surplus
-        w_fixed[stocks_index] += surplus
+            target_alloc_db = max(target_alloc_db, required_risk_free, alloc_db)
+        surplus = alloc_db - target_alloc_db
+        alloc_db = target_alloc_db
+        w_fixed[risk_free_index] += surplus
         w_fixed[new_annuities_index] = max(0, alloc_db - w_fixed[existing_annuities_index]) # Eliminate negative values from fp rounding errors.
+        target_risk_free = min(max(0, w_fixed[risk_free_index], required_risk_free - alloc_db), 1)
+        surplus = w_fixed[risk_free_index] - target_risk_free
+        w_fixed[risk_free_index] = target_risk_free
+        w_fixed[bonds_index] += surplus
+        target_bonds = min(max(0, w_fixed[bonds_index]), 1)
+        surplus = w_fixed[bonds_index] - target_bonds
+        w_fixed[bonds_index] = target_bonds
+        w_fixed[stocks_index] += surplus
         w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
 
         for count in range(2):
@@ -498,7 +504,7 @@ class Alloc:
                 if consume_lm >= consume and (loss_lm <= self.risk_tolerance or loss_lm <= loss):
                     w_fixed, consume, loss = w_fixed_lm, consume_lm, loss_lm
 
-            if count == 1 or mode == 'number' or consume <= self.desired_income:
+            if count == 1 or mode == 'number' or self.desired_income == None or consume <= self.desired_income:
                 break
 
             ratio = self.desired_income / consume
@@ -506,13 +512,16 @@ class Alloc:
             w_fixed = list(w_try)
             w_fixed[bonds_index] *= ratio
             w_risk_free_all = w_fixed[risk_free_index] + w_fixed[existing_annuities_index] + w_fixed[new_annuities_index]
-            w_risk_free_new = max(0, w_risk_free_all * ratio - w_fixed[existing_annuities_index])
+            w_risk_free_new = max(0, max(w_risk_free_all * ratio, required_risk_free) - w_fixed[existing_annuities_index])
             w_annuitize = max(0, w_risk_free_all * annuitize[risk_free_index] - w_fixed[existing_annuities_index])
             w_fixed[new_annuities_index] = min(w_risk_free_new, w_annuitize)
             w_fixed[risk_free_index] = w_risk_free_new - w_fixed[new_annuities_index]
             w_fixed[stocks_index] = 0
             w_fixed[stocks_index] = 1 - sum(w_fixed)
             w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
+
+        assert(all(w >= 0) for w in w_fixed)
+        assert(abs(sum(w_fixed) - 1) < 1e-15)
 
         total_ret, total_vol, total_geometric_ret = self.statistics(w_fixed, rets, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2)
 
@@ -838,7 +847,8 @@ class Alloc:
         self.pre_retirement_years = max(0, self.retirement_age - self.age)
         self.payout_delay = self.pre_retirement_years * 12
         self.joint_payout_fraction = float(data['joint_income_pct']) / 100
-        self.desired_income = float(data['desired_income'])
+        self.required_income = None if data['required_income'] == None else float(data['required_income'])
+        self.desired_income = None if data['desired_income'] == None else float(data['desired_income'])
         self.use_lm_bonds = data['use_lm_bonds']
         self.bonds_vol_short = float(data['bonds_vol_short_pct']) / 100
         self.bonds_lm_bonds_corr_short = float(data['bonds_lm_bonds_corr_short_pct']) / 100
