@@ -913,10 +913,11 @@ class Alloc:
 
         return results
 
-    def plot(self, mode, result):
+    def plot(self, mode, result, healthcheck):
         umask(0077)
         parent = STATIC_ROOT + 'results'
-        dirname = mkdtemp(prefix='aa-', dir=parent)
+        prefix = 'healthcheck-' if healthcheck else 'aa-'
+        dirname = mkdtemp(prefix=prefix, dir=parent)
         f = open(dirname + '/alloc.csv', 'w')
         f.write('class,allocation\n')
         f.write('stocks,%f\n' % result['w_fixed'][stocks_index])
@@ -942,7 +943,7 @@ bonds,%(aa_bonds)f
 
         return AllocAaForm(data) if mode == 'aa' else AllocNumberForm(data)
 
-    def alloc(self, request, mode):
+    def alloc(self, request, mode, healthcheck):
 
         errors_present = False
 
@@ -958,7 +959,7 @@ bonds,%(aa_bonds)f
 
                     data = alloc_form.cleaned_data
                     results = self.compute_results(data, mode)
-                    dirname = self.plot(mode, results['calc'][0])
+                    dirname = self.plot(mode, results['calc'][0], healthcheck)
                     results['dirurl'] = dirname.replace(STATIC_ROOT, STATIC_URL)
 
                 except LifeTable.UnableToAdjust:
@@ -997,5 +998,5 @@ bonds,%(aa_bonds)f
             'results': results,
         })
 
-def alloc(request, mode):
-    return Alloc().alloc(request, mode)
+def alloc(request, mode, healthcheck=False):
+    return Alloc().alloc(request, mode, healthcheck)

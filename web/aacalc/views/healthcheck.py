@@ -94,7 +94,7 @@ def healthcheck(request):
         if v == None:
             params[k] = ''
     request = request_factory.post('/calculators/aa', params)
-    response = alloc(request, 'aa')
+    response = alloc(request, 'aa', healthcheck=True)
     page = response.content
     stocks, consume, _ = match('^.*<!-- healthcheck_aa --> (\d+)/\d+.*<!-- healthcheck_consume --> ((\d|,)+).*$', page, DOTALL).groups()
     assert(60 < float(stocks) <= 100)
