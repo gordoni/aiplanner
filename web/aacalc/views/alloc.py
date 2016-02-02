@@ -470,21 +470,23 @@ class Alloc:
             w_fixed[existing_annuities_index] = 0
         if self.required_income != None:
             try:
-                required_risk_free = self.discounted_retirement_le_annuity / mwr * \
+                required_safe = self.discounted_retirement_le_annuity / mwr * \
                     (self.required_income / results['nv'] - w_fixed[existing_annuities_index] / self.discounted_retirement_le)
             except ZeroDivisionError:
-                required_risk_free = 0
+                required_safe = 0
+            required_safe += w_fixed[existing_annuities_index]
+            required_safe = min(max(0, required_safe), 1)
         else:
-            required_risk_free = 0
-        required_risk_free = min(required_risk_free, 1)
-        target_alloc_db = w_fixed[existing_annuities_index]
+            required_safe = 0
         if purchase_income_annuity:
-            target_alloc_db = max(target_alloc_db, required_risk_free, alloc_db)
+            target_alloc_db = max(w_fixed[existing_annuities_index], required_safe, alloc_db)
+        else:
+            target_alloc_db = w_fixed[existing_annuities_index]
         surplus = alloc_db - target_alloc_db
         alloc_db = target_alloc_db
         w_fixed[risk_free_index] += surplus
         w_fixed[new_annuities_index] = max(0, alloc_db - w_fixed[existing_annuities_index]) # Eliminate negative values from fp rounding errors.
-        target_risk_free = min(max(0, w_fixed[risk_free_index], required_risk_free - alloc_db), 1)
+        target_risk_free = min(max(0, w_fixed[risk_free_index], required_safe - alloc_db), 1)
         surplus = w_fixed[risk_free_index] - target_risk_free
         w_fixed[risk_free_index] = target_risk_free
         w_fixed[bonds_index] += surplus
@@ -513,7 +515,7 @@ class Alloc:
             w_fixed = list(w_try)
             w_fixed[bonds_index] *= ratio
             w_risk_free_all = w_fixed[risk_free_index] + w_fixed[existing_annuities_index] + w_fixed[new_annuities_index]
-            w_risk_free_new = max(0, max(w_risk_free_all * ratio, required_risk_free) - w_fixed[existing_annuities_index])
+            w_risk_free_new = max(0, max(w_risk_free_all * ratio, required_safe) - w_fixed[existing_annuities_index])
             w_annuitize = max(0, w_risk_free_all * annuitize[risk_free_index] - w_fixed[existing_annuities_index])
             w_fixed[new_annuities_index] = min(w_risk_free_new, w_annuitize)
             w_fixed[risk_free_index] = w_risk_free_new - w_fixed[new_annuities_index]
@@ -521,7 +523,7 @@ class Alloc:
             w_fixed[stocks_index] = 1 - sum(w_fixed)
             w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
 
-        assert(all(w >= 0) for w in w_fixed)
+        assert(all(w >= 0 for w in w_fixed))
         assert(abs(sum(w_fixed) - 1) < 1e-15)
 
         total_ret, total_vol, total_geometric_ret = self.statistics(w_fixed, rets, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2)
