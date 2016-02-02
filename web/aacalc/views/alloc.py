@@ -476,6 +476,7 @@ class Alloc:
                 required_risk_free = 0
         else:
             required_risk_free = 0
+        required_risk_free = min(required_risk_free, 1)
         target_alloc_db = w_fixed[existing_annuities_index]
         if purchase_income_annuity:
             target_alloc_db = max(target_alloc_db, required_risk_free, alloc_db)
