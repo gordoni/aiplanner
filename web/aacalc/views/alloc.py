@@ -475,7 +475,7 @@ class Alloc:
             except ZeroDivisionError:
                 required_safe = 0
             required_safe += w_fixed[existing_annuities_index]
-            required_safe = min(max(0, required_safe), 1)
+            required_safe = min(max(0, required_safe), 1 - w_fixed[contrib_index])
         else:
             required_safe = 0
         if purchase_income_annuity:
