@@ -651,9 +651,6 @@ class AllocBaseForm(Form):
         min_value=1) # 0 fails.
     bonds_ret_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}))
-    bonds_vol_short_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=0)
     bonds_vol_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=1) # 0 fails.

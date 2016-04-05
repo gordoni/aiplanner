@@ -200,8 +200,7 @@ class Alloc:
             'equity_ret_pct': Decimal('7.2'),
             'equity_vol_pct': Decimal('17.0'),
             'bonds_ret_pct': Decimal('0.7'),
-            'bonds_vol_short_pct': Decimal('8.7'),
-            'bonds_vol_pct': Decimal('4.1'),
+            'bonds_vol_pct': Decimal('8.7'),
             'equity_bonds_corr_pct': Decimal('7.3'),
             'real_vol_10yr_pct': Decimal('4.9'),
             'bonds_lm_bonds_corr_short_pct': Decimal('28.9'),
@@ -853,7 +852,7 @@ class Alloc:
         self.required_income = None if data['required_income'] == None else float(data['required_income'])
         self.desired_income = None if data['desired_income'] == None else float(data['desired_income'])
         self.use_lm_bonds = data['use_lm_bonds']
-        self.bonds_vol_short = float(data['bonds_vol_short_pct']) / 100
+        self.bonds_vol_short = float(data['bonds_vol_pct']) / 100
         self.bonds_lm_bonds_corr_short = float(data['bonds_lm_bonds_corr_short_pct']) / 100
         self.risk_tolerance = float(data['risk_tolerance_pct']) / 100
 
