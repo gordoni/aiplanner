@@ -147,7 +147,7 @@ Age: {{ alloc_form.age2 }}
 <br />
 <br />
 
-Total life expectancy for self (if known): {{ alloc_form.le_set }} Spouse: {{ alloc_form.le_set2 }}
+Total life expectancy for self (if known) <a title="Enter total life expectancy (age at death) for self, and spouse if relevant. We use the Social Security AS 120 cohort life tables for males and females as a base and then applies an adjustment factor to the probability of death values so that the adjusted table life expectancies match the specified total life expectancy. If these fields are left blank, life expectancy will be based on U.S. Social Security projections for the U.S. general population for the specified sex."><img src="/static/images/Information-icon.png" alt="[?]"></a>: {{ alloc_form.le_set }} Spouse: {{ alloc_form.le_set2 }}
 {{ alloc_form.le_set.errors }}
 {{ alloc_form.le_set2.errors }}
 <div class="small">
@@ -161,6 +161,12 @@ data.
 <h2>Financial position</h2>
 
 <div class="indent">
+
+<div class="small">
+This section highlights the balance sheet nature of the approach used. Any asset can essentially be thought of as a series of future cash flows that may be certain or uncertain to some degree. This is true not only of the future cash flows from stocks and bonds, but also such items as future Social Security or pension payments as well as future contributions to retirement savings.
+</div>
+
+<br />
 
 Existing defined benefits:
 
@@ -312,11 +318,17 @@ Annual retirement consumption at which you have "lost the game": {{ alloc_form.r
 {{ alloc_form.required_income.errors }}
 <div class="small">
 Losing the game means having an unbearably low level of consumption.
-Safe assets are allocated to try and ensure consumption never falls
-below this level. Retirement consumption should be expressed in
+Safe assets (liability matching bonds or possibly income annuities) are allocated to try and ensure consumption never falls
+below this level. If the user does not have enough safe assets to
+insure the needed consumption level, the program will first reduce
+regular bond holdings and substitute safe assets, and then if that
+proves insufficient stock holdings will be reduced. Retirement
+consumption should be expressed in
 current inflation-indexed dollars. Normally you don't need to specify
 a value here as the right thing to do will be determined based on your
-risk aversion which is specified later.
+risk aversion which is specified later. Specifying a value here will
+potentially override the impact of the risk aversion coefficient and
+directly dictate the asset allocation.
 </div>
 Annual retirement consumption at which you have "won the game": {{ alloc_form.desired_income }}
 {{ alloc_form.desired_income.errors }}
@@ -327,6 +339,8 @@ beyond this level will be allocated to stocks. Retirement consumption
 should be expressed in current inflation-indexed dollars. Normally you
 don't need to specify a value here as the right thing to do will be
 determined based on your risk aversion which is specified later.
+Specifying a value here will potentially override the impact of the
+risk aversion coefficient and directly dictate the asset allocation.
 </div>
 {% else %}
 Annual desired retirement consumption level: {{ alloc_form.desired_income }}
@@ -337,7 +351,9 @@ inflation-indexed dollars.
 </div>
 {% endif %}
 <br />
-Use liability matching bonds: {{ alloc_form.use_lm_bonds }}
+Use liability matching bonds <a title="It is useful to note the differences between regular bonds and liability matching bonds. Liability matching bonds reflect the current real yield curve, so there is no option to change the return assumption for such bonds. Liability matching bonds are typically long duration because they are intended to match long-term liabilities (future retirement withdrawals), and therefore such bonds may exhibit significant short-term volatility, making them unattractive to investors with a low risk tolerance. Note that this is an issue dealing with risk tolerance and not risk aversion -- two concepts explained later.
+
+Regular bonds allow input flexibility for both return and volatility. For example, for a user with low risk tolerance, it may make sense to utilize short-term regular bonds as an asset class to keep volatility down. This can be accomplished by adjusting the default return and volatility parameters downward to reflect expectations for shorter-term bonds."><img src="/static/images/Information-icon.png" alt="[?]"></a>: {{ alloc_form.use_lm_bonds }}
 {{ alloc_form.use_lm_bonds.errors }}
 <div class="small">
 Inflation-indexed liability matching bonds are a valuable retirement
@@ -347,7 +363,11 @@ a low risk tolerance. If liability matching bonds are not used we
 naively replace them with regular bonds.
 </div>
 <br />
-Permit recommendation of income annuities: {{ alloc_form.purchase_income_annuity }}
+Permit recommendation of income annuities <a title="Unlike investing in stocks and bonds, the purchase of income annuities requires an irreversible commitment. Therefore the program does not recommend annuity purchase unless there is both a clear advantage of increased consumption and a clear advantage for purchasing “now” versus waiting a year. 
+
+Annuitization is evaluated as a second separate pass over the input data, and is only recommended if the expected consumption amount is at least 4% higher than without annuitizing, and the estimated lifetime cost of delaying the decision by one year is more than 0.1% of the potential income annuity purchase amount.
+
+These are the rules for what annuitization looks like: Stocks get annuitized linearly from age 65 to 90, regular bonds get annuitized linearly from 30 to 60, and liability matching bonds get 100% annuitized if the user is older than a specific age between 40 and 50 (depending on retirement age between 50 and 70), otherwise they get 0%. The choice of ages reflects rough judgement about returns from stocks and bonds versus annuity returns including mortality credits."><img src="/static/images/Information-icon.png" alt="[?]"></a>: {{ alloc_form.purchase_income_annuity }}
 {{ alloc_form.purchase_income_anuity.errors }}
 <div class="small">
 Income annuities only make sense if you are in reasonable health.
@@ -415,7 +435,7 @@ Synthetic historical values for 1972-2014 for coupon bonds are 4.9%
 and 28.9%. Zero coupon bonds will be similar.
 </div>
 <br />
-Standard error of estimate of equity real return: {{ alloc_form.equity_se_pct }}%
+Standard error of estimate of equity real return <a title="This parameter recognizes the uncertainty associated with the estimated equity arithmetic real return. Virtually all financial planning software programs make the artificial assumption that the future average equity return is known with certainty. This program recognizes additional uncertainty about equity returns -- not only do year-to-year equity returns fluctuate around the mean value, but the mean value itself is only an estimate that involves uncertainty. Incorporating this additional uncertainty provides more appropriate recognition of the risks involved in equity investing."><img src="/static/images/Information-icon.png" alt="[?]"></a>: {{ alloc_form.equity_se_pct }}%
 {{ alloc_form.equity_se_pct.errors }}
 <div class="small">
 U.S. market average value for 1927-2014 is 2.1%.
