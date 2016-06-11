@@ -774,6 +774,8 @@ public class AAMapGenerate extends AAMap
         {
                 super(scenario, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income);
 
+                pre_compute_vw(returns);
+
                 map = new MapPeriod[(int) (scenario.ss.max_years * returns.time_periods)];
 
                 List<Callable<Integer>> tasks = new ArrayList<Callable<Integer>>();
@@ -988,41 +990,110 @@ public class AAMapGenerate extends AAMap
                 le = Math.max(le, config.vw_le_min);
                 double life_pct = Math.min(1 / le, 1);
 
-                double pct;
+                double fixed_le = config.vw_years - (age - config.retirement_age);
+
+                double pct = 0;
                 if (scenario.vw_strategy.equals("merton"))
                 {
-                        if (config.vw_merton_nu == 0)
+                        assert(config.generate_time_periods == 1);
+                        if (fixed_le <= 0)
                         {
-                                pct = life_pct;
+                                pct = 1;
+                        }
+                        else if (config.vw_merton_nu == 0)
+                        {
+                                pct = 1 / fixed_le;
                         }
                         else
                         {
-                                double merton_le = le * config.vw_merton_le_factor;
-                                pct = config.vw_merton_nu * (1 + income * merton_le / wealth) / (1 - Math.exp(- config.vw_merton_nu * merton_le));
-                                        // Is it appropriate to use a fixed le when le is variable?
-                                        // Should really discount future income.
-                                pct -= inc_pct;
+                                pct = config.vw_merton_nu / (1 - Math.exp(- config.vw_merton_nu * fixed_le));
                         }
                 }
                 else if (scenario.vw_strategy.equals("vpw"))
                 {
                         assert(config.generate_time_periods == 1);
-                        if (age - config.retirement_age >= config.vw_years)
+                        if (fixed_le <= 0)
                                 pct = 1;
                         else
-                                pct = config.vw_rate * Math.pow(1 + config.vw_rate, config.vw_years - (age - config.retirement_age) - 1) / (Math.pow(1 + config.vw_rate, config.vw_years - (age - config.retirement_age)) - 1);
+                        {
+                                if (config.vw_rate == 0)
+                                        pct = 1 / fixed_le;
+                                else
+                                        pct = config.vw_rate * Math.pow(1 + config.vw_rate, fixed_le - 1) / (Math.pow(1 + config.vw_rate, fixed_le) - 1);
+                        }
+                }
+                else if (scenario.vw_strategy.equals("flra") || scenario.vw_strategy.equals("slra"))
+                {
+                        pct = vw_slra[period];
                 }
                 else
                         pct = scenario.vw_percent;
+                assert(pct >= 0);
+                pct = Math.min(pct, 1);
 
                 if (scenario.vw_strategy.equals("amount") || scenario.vw_strategy.equals("retirement_amount"))
                         return 0;
-                else if (scenario.vw_strategy.equals("percentage") || scenario.vw_strategy.equals("merton") || scenario.vw_strategy.equals("vpw"))
-                        return Math.min(pct + inc_pct, 1);
+                else if (scenario.vw_strategy.equals("percentage") || scenario.vw_strategy.equals("merton") || scenario.vw_strategy.equals("vpw") || scenario.vw_strategy.equals("flra") || scenario.vw_strategy.equals("slra"))
+                        return Math.min(pct * (1 - inc_pct) + inc_pct, 1);
                 else if (scenario.vw_strategy.equals("rmd") || scenario.vw_strategy.equals("life") || scenario.vw_strategy.equals("discounted_life"))
-                        return Math.min(life_pct + inc_pct, 1);
+                        return Math.min(life_pct * (1 - inc_pct) + inc_pct, 1);
                 else
                         assert(false);
                 return Double.NaN;
+        }
+
+        double avg_utility(double consume, double future_ce, double current_alive, double future_alive, Returns returns)
+        {
+                if (current_alive == 0)
+                        return consume;
+                double u = current_alive * uc_time.utility(consume);
+                if (future_alive > 0)
+                    u += future_alive * uc_time.utility((1 - consume + config.vw_rate / returns.time_periods) * future_ce);
+                return u / (current_alive + future_alive);
+        }
+
+        double vw_slra[];
+
+        void pre_compute_vw(Returns returns)
+        {
+                VitalStats generate_stats = scenario.ss.generate_stats;
+                vw_slra = new double[(int) (scenario.ss.max_years * returns.time_periods)];
+
+                double future_ce = 1;
+                for (int period = vw_slra.length - 1; period >= 0; period--)
+                {
+                        double current_alive;
+                        double future_alive;
+                        if (scenario.vw_strategy.equals("flra"))
+                        {
+                                int le = (int) Math.round(config.vw_years * returns.time_periods) - period;
+                                current_alive = ((le > 0) ? 1 : 0);
+                                future_alive = Math.max(le - 1, 0);
+                        }
+                        else
+                        {
+                                current_alive = generate_stats.alive[period];
+                                future_alive = generate_stats.sum_avg_alive[period + 1];
+                        }
+                        // Golden segment search on consume fraction for maximum averaged utility.
+                        double a = 0;
+                        double b = 1;
+                        double gr = (Math.sqrt(5.0) - 1) / 2;
+                        for (int i = 0; i < 50; i++)
+                        {
+                                double c = b - gr * (b - a);
+                                double d = a + gr * (b - a);
+                                if (avg_utility(c, future_ce, current_alive, future_alive, returns) > avg_utility(d, future_ce, current_alive, future_alive, returns))
+                                        b = d;
+                                else
+                                        a = c;
+                        }
+                        double consume = (a + b) / 2;
+                        vw_slra[period] = consume;
+                        if (current_alive > 0)
+                            future_ce = uc_time.inverse_utility(avg_utility(consume, future_ce, current_alive, future_alive, returns));
+                        else
+                                future_ce = 1;
+                }
         }
 }

@@ -204,13 +204,14 @@ public class Config
                 // "merton" for consumption according to solution to Merton's portfolio problem; uses then current life expectancy and doesn't discount future income
                 // Requires vw_merton_nu be set.
                 // "vpw" for even consumption at some assumed real rate of return (Bogleheads Variable Percentage Withdrawal scheme).
+                // "flra" for fixed life with risk aversion.
+                // "slra" for stochastic life with risk aversion.
         public Double vw_percentage = 0.04; // Withdrawal percentage to use for strategies retirement_amount and percentage. Null to search.
         public double vw_percentage_steps = 1000; // Search delta to use when searching for best vw_percentage.
         public double vw_le_min = 0; // Minimum allowed life expectancy for life and discounted_life.
-        public int vw_years = 30; // VPW payout years.
-        public double vw_rate = 0.03; // VPW assumed real rate of return.
+        public int vw_years = 30; // FLRA, VPW, and Merton payout years.
+        public double vw_rate = 0.03; // FLRA, SLRA, VPW assumed real rate of return.
         public Double vw_merton_nu = null; // Value to use for nu in the solution to Merton's portfolio problem.
-        public double vw_merton_le_factor = 1.0; // Multiply life expectancy by this much for "merton".
         public boolean spend_pre_retirement = false; // Permit spending pre-retirement. Useful for annuity purchases.
 
         public boolean book_post = false; // false to book consumption at the start of the time period when it is subtracted; true to book at the end.
