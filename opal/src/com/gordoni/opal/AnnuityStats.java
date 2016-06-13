@@ -236,8 +236,8 @@ public class AnnuityStats
 
                 for (int i = 0; i < vital_stats.alive.length - 1; i++)
                 {
-                        Double[] annuitant_death = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age), config.start_age + i, true, 1);
-                        Double[] period_death = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age) - i, config.start_age + i, true, 1);
+                        Double[] annuitant_death = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age), 0, config.start_age + i, true, 1);
+                        Double[] period_death = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age) - i, 0, config.start_age + i, true, 1);
                         int annuitant_alive_len = (int) Math.round((annuitant_death.length - config.start_age) * config.annuity_time_periods) + 1;
                         double[] annuitant_alive = new double[annuitant_alive_len];
                         double[] period_alive = new double[annuitant_alive_len];
@@ -319,7 +319,7 @@ public class AnnuityStats
                 // vital_stats and time_periods only used for scaling the resulting annuity_le and annuity_price arrays.
                 this.table = table;
 
-                this.yield_curve_years = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age), config.start_age, true, 1).length
+                this.yield_curve_years = vital_stats.get_q(table, config.sex, vital_stats.get_birth_year(config.start_age), 0, config.start_age, true, 1).length
                         - config.start_age;
                         // Beautiful waste. We need the annuitant life table size to know how many yield curve values to generate.
                 if (config.annuity_real_yield_curve != null) // Don't slow down by invoking R if not needed.

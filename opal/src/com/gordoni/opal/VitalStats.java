@@ -234,7 +234,7 @@ public class VitalStats
                 return nearest;
         }
 
-        public Double[] get_q(String table, String sex, double birth_year, int age, boolean age_nearest_birthday, double q_adjust)
+        public Double[] get_q(String table, String sex, double birth_year, double le_add, int age, boolean age_nearest_birthday, double q_adjust)
         {
                 boolean age_nearest = false;
                 boolean annuity_table = false;
@@ -358,8 +358,36 @@ public class VitalStats
                                 death_cohort[i] *= ae_ratio;
                         }
                 }
+
                 for (int i = 0; i < death_cohort.length; i++)
                         death_cohort[i] = Math.min(death_cohort[i] * (1 + config.mortality_load) * q_adjust, 1);
+
+                if (le_add != 0)
+                {
+                        double le_target = life_expectancy(death_cohort, age) + le_add;
+                        double lo = 0;
+                        double hi = 10;
+                        Double[] death_add = null;
+                        int i;
+                        for (i = 0; i < 50; i++)
+                        {
+                                double adjust = (lo + hi) / 2;
+                                death_add = death_cohort.clone();
+                                for (int j = age; j < death_add.length; j++)
+                                        death_add[j] = Math.min(death_add[j] * adjust, 1);
+                                double le_found = life_expectancy(death_add, age);
+                                if (Math.abs(le_found - le_target) < 1e-6)
+                                        break;
+                                if (le_found < le_target)
+                                        hi = adjust;
+                                else
+                                        lo = adjust;
+                        }
+                        if (i == 50)
+                                assert(false); // Failed to adjust.
+                        death_cohort = death_add;
+                }
+
                 return death_cohort;
         }
 
@@ -400,26 +428,29 @@ public class VitalStats
                 return couple;
         }
 
+        private double life_expectancy(Double q[], int age)
+        {
+                double expectancy = 0.0;
+                double alive = 1.0;
+                for (int y = age; y < q.length; y++)
+                {
+                        alive *= 1.0 - q[y];
+                        expectancy += alive;
+                }
+                return expectancy + 0.5; // Die at random in last year.
+        }
+
         // NB: sum_avg_alive[i+1] / alive[i] + 0.5 = le.get(start_age + i) when time_periods==1 and consume_discount_rate==0.
         private void pre_compute_life_expectancy()
         {
                 this.le = new ArrayList<Double>();
-                int limit = death.length;
-                for (int s = 0; s < limit; s++)
+                for (int s = 0; s < config.start_age; s++)
                 {
-                        double expectancy = 0.0;
-                        double alive = 1.0;
-                        int i = 0;
-                        int y = s + i;
-                        while (y < limit)
-                        {
-                                if (y >= config.start_age)
-                                        alive *= 1.0 - death[y];
-                                expectancy += alive;
-                                i += 1;
-                                y = s + i;
-                        }
-                        this.le.add(expectancy + 0.5); // Die at random in last year.
+                        this.le.add((config.start_age - s) + life_expectancy(death, config.start_age));
+                }
+                for (int s = config.start_age; s < death.length; s++)
+                {
+                        this.le.add(life_expectancy(death, s));
                 }
         }
 
@@ -574,14 +605,14 @@ public class VitalStats
                 this.q_adjust = q_adjust;
 
                 double birth_year = get_birth_year(config.start_age);
-                Double[] death1 = get_q(table, config.sex, birth_year, config.start_age, false, q_adjust);
+                Double[] death1 = get_q(table, config.sex, birth_year, config.le_add, config.start_age, false, q_adjust);
                 if (config.sex2 == null)
                 {
                         pre_compute_stats(death1, death1.length);
                 }
                 else
                 {
-                        Double[] death2 = get_q(table, config.sex2, birth_year - (config.start_age2 - config.start_age), config.start_age2, false, q_adjust);
+                        Double[] death2 = get_q(table, config.sex2, birth_year - (config.start_age2 - config.start_age), config.le_add2, config.start_age2, false, q_adjust);
                         joint_compute_stats(death1, death2);
                 }
 
