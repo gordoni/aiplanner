@@ -13,7 +13,7 @@ major security hole.
 Obtaining additional required components
 ----------------------------------------
 
-sudo apt-get install apache2 apache2-utils libapache2-mod-wsgi python-django r-base python-scipy python-lxml catdoc
+sudo apt-get install apache2 apache2-utils libapache2-mod-wsgi python-django python-memcache memcached r-base python-scipy python-lxml catdoc
 
 Set up hostname
 ---------------
@@ -27,9 +27,7 @@ sudo bash
 echo  <unqualified-hostname> > /etc/hostname
 hostname -F /etc/hostname
 [edit] /etc/hosts
-[add: 127.0.0.1 <unqualified-hostname> <qualified-hostname> ]
-# Unqualified hostname needed to prevent sudo warnings.
-# Fully qualified resolvable hostname needed to prevent warning when Apache starts.
+add: 127.0.0.1 <unqualified-hostname> <qualified-hostname>
 echo 'supersede domain-name "<domain-name>";' >> /etc/dhcp/dhclient.conf
 # Not sure how to get dhclient.conf re-read and resolv.conf re-written.  Not to worry, it will get picked up when we reboot.
 reboot
@@ -39,6 +37,12 @@ Create directories
 
 mkdir -p aacalc.data/{static/results,static/sample,run}
 sudo chown www-data:www-data aacalc.data/{static/results,run}
+
+Initialize the interest rate data
+---------------------------------
+
+mkdir -p aacalc/opal/data/public/{hqm,rcmt,cmt}
+aacalc/web/cron.daily
 
 Set up and run Opal server
 --------------------------
@@ -70,6 +74,7 @@ cp aacalc/web/example-sitesettings.py aacalc.data/project/sitesettings.py
 # Optionally set DEBUG to True to display backtraces in the web browser (displays sensistive data).
 # Set ROOT to the path to the aacalc directory (no trailing slash).
 # Set ADMINS to receive email messages.
+# Set ALLOWED_HOSTS to the web server hostname (or a suffix thereof). Can set to empty list if DEBUG is True.
 # Make SECRETKEY unique.
 # Edit OPAL_HOST from localhost to name of the Opal server load balancer if required.
 
@@ -82,7 +87,7 @@ Set up Apache
 sudo bash
 a2dissite 000-default
 # Select appropriate site.conf.
-# dev1.aacalc.com and dev2.aacalc.com contain sample development Apache conf files.
+# dev.aacalc.com is a sample development Apache conf file.
 cp aacalc/web/sites-available/<sample-site.conf-file> /etc/apache2/sites-available/<site.conf>
 # Edit site.conf appropriately.
 <edit> /etc/apache2/sites-available/<site.conf>
@@ -109,7 +114,8 @@ sudo crontab -e
 Set up mailer
 -------------
 
-# Only needed for production to email crash reports.
+# Needed to email crash reports.
+# If you set DEBUG to False in aacalc.data/project/sitesettings.py you will need to install a mailer so you can debug any problems.
 
 apt-get install exim4
 sudo dpkg-reconfigure exim4-config
