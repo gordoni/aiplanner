@@ -1,6 +1,8 @@
 import os
 import sys
 
+from django.core.wsgi import get_wsgi_application
+
 path = '/home/ubuntu/aacalc/web'
 if path not in sys.path:
     sys.path.append(path)
@@ -11,5 +13,4 @@ if path not in sys.path:
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
-import django.core.handlers.wsgi
-application = django.core.handlers.wsgi.WSGIHandler()
+application = get_wsgi_application()

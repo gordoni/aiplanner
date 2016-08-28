@@ -886,7 +886,11 @@ class YieldCurve:
             for i in range(1, int(2 * max(yield_curve_years)) + 1):
                 year = i / 2.0
                 if year < min(yield_curve_years):
-                    slope = float(yield_curve.derivatives(min(yield_curve_years))[1])  # De-numpy-fy.
+                    try:
+                        slope = yield_curve(min(yield_curve_years), 1)
+                    except TypeError:
+                        slope = yield_curve.derivative(min(yield_curve_years)) # Ubuntu 14.04 (SciPy 0.13.3) and earlier.
+                    slope = float(slope)  # De-numpy-fy.
                     rate = yield_curve_rates[0] + slope * (year - min(yield_curve_years))
                 else:
                     rate = float(yield_curve(year))

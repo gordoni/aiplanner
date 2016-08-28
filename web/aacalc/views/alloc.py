@@ -21,7 +21,7 @@ from os import umask
 from tempfile import mkdtemp
 
 from django.forms.forms import NON_FIELD_ERRORS
-from django.forms.util import ErrorList
+from django.forms.utils import ErrorList
 from django.shortcuts import render
 from numpy import array
 from numpy.linalg import inv, LinAlgError

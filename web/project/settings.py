@@ -116,7 +116,7 @@ LOGGING = {
     'handlers': {
         'mail_admins': {
             'level': 'ERROR',
-            'class': 'django.utils.log.AdminEmailHandler'
+            'class': 'logging.StreamHandler'if DEBUG else 'django.utils.log.AdminEmailHandler'
         }
     },
     'loggers': {
@@ -128,16 +128,8 @@ LOGGING = {
     }
 }
 
-ALLOWED_HOSTS = [
-    '.aacalc.com',
-]
-
 DEFAULT_FROM_EMAIL = 'noreply@aacalc.com'
 
-# Django 1.2:
-CACHE_BACKEND = 'memcached://127.0.0.1:11211/'
-
-# Django 1.3+:
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',

@@ -19,7 +19,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from math import isnan
 
-from django.forms.util import ErrorList
+from django.forms.utils import ErrorList
 from django.shortcuts import render
 
 from aacalc.forms import SpiaForm

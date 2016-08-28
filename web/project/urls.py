@@ -1,4 +1,5 @@
 from django.conf.urls import patterns, include, url
+from django.core.urlresolvers import reverse_lazy
 from django.views.generic import RedirectView
 
 # Uncomment the next two lines to enable the admin:
@@ -26,7 +27,7 @@ urlpatterns = patterns('',
     url(r'^calculators/number$', 'aacalc.views.alloc.alloc', {'mode': 'number'}, name='start_number'),
     url(r'^calculators/le$', 'aacalc.views.le.le', name='start_le'),
     url(r'^calculators/spia$', 'aacalc.views.spia.spia', name='start_spia'),
-    url(r'^docs/?$', RedirectView.as_view(url='/about')), # use reverse_lazy in Django 1.5+.
+    url(r'^docs/?$', RedirectView.as_view(url=reverse_lazy('aacalc.views.about.about'), permanent=False)),
     url(r'^docs/(.*)$', 'aacalc.views.docs.docs', name='docs'),
     url(r'^file/(.*)$', 'aacalc.views.file.file', name='file'),
     #url(r'^sample$', 'aacalc.views.sample.sample', name='sample'),

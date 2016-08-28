@@ -524,7 +524,7 @@ class AllocBaseForm(Form):
             raise ValidationError('Error in defined benefits table.')
         if self._errors:
             return cleaned_data
-        cleaned_data['db'] = tuple(f.cleaned_data for f in self.db.forms)
+        cleaned_data['db'] = self.db.cleaned_data if self.db.is_bound else self.db.initial
         sex2 = cleaned_data.get('sex2')
         age2 = cleaned_data.get('age2')
         if sex2 == 'none' and age2 != None or sex2 != 'none' and age2 == None:
