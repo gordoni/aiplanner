@@ -238,6 +238,17 @@ public class Returns implements Cloneable
                         ff_sh_returns = adjust_returns(ff_sh_returns, equity_adjust_arith, equity_adjust * adjust_sh * adjust_management_expense * adjust_all, adjust_equity_vol);
                 }
 
+                List<Double> nasdaq_returns = null;
+                if (scenario.asset_classes.contains("nasdaq"))
+                {
+                        assert(time_periods == 1);
+                        int offset = (int) Math.round((start_year - hist.nasdaq_initial) * time_periods);
+                        assert(offset >= 0);
+                        assert(offset + count <= hist.nasdaq.size());
+                        nasdaq_returns = hist.nasdaq.subList(offset, offset + count);
+                        nasdaq_returns = adjust_returns(nasdaq_returns, equity_adjust_arith + config.ret_nasdaq_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                }
+
                 List<Double> reits_equity_returns = null;
                 if (scenario.asset_classes.contains("equity_reits"))
                 {
@@ -412,6 +423,11 @@ public class Returns implements Cloneable
                                 rets = ff_sh_returns;
                                 divf = config.dividend_fract_equity;
                         }
+                        else if ("nasdaq".equals(asset_class))
+                        {
+                                rets = nasdaq_returns;
+                                divf = config.dividend_fract_equity;
+                        }
                         else if ("equity_reits".equals(asset_class))
                         {
                                 rets = reits_equity_returns;
@@ -480,7 +496,12 @@ public class Returns implements Cloneable
                         if (scenario.compute_risk_premium)
                         {
                                 for (int i = 0; i < r.length; i++)
-                                    r[i] -= t1_returns.get(i);
+                                        r[i] -= t1_returns.get(i);
+                        }
+                        else if (!config.inflation_adjust_returns)
+                        {
+                                for (int i = 0; i < r.length; i++)
+                                    r[i] = (1 + r[i]) * (1 + cpi_returns.get(i)) - 1;
                         }
                         returns.add(r);
                         dividend_fract[a] = divf;

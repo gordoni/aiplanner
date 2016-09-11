@@ -55,6 +55,9 @@ public class HistReturns
         /// Fama/French Benchmark Portfolios data from http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html#Benchmarks
         public Integer ff_initial = null;
 
+        // NASDAQ Composite (sans dividends).
+        public Integer nasdaq_initial = 1971;
+
         // Real Estate Investment Trusts.
         public Integer reit_initial = 1972;
 
@@ -84,6 +87,7 @@ public class HistReturns
         public List<Double> ff_sl = new ArrayList<Double>();
         public List<Double> ff_sm = new ArrayList<Double>();
         public List<Double> ff_sh = new ArrayList<Double>();
+        public List<Double> nasdaq = new ArrayList<Double>();
         public List<Double> reits_equity = new ArrayList<Double>();
         public List<Double> reits_mortgage = new ArrayList<Double>();
         public List<Double> gold = new ArrayList<Double>();
@@ -296,6 +300,8 @@ public class HistReturns
                         }
                 }
                 in.close();
+                if (price_level)
+                        initial++;
                 return Math.max(initial, initial_year);
         }
 
@@ -799,6 +805,7 @@ public class HistReturns
 
                 eafe_initial = load_returns("eafe.csv", eafe_initial, eafe, false);
                 ff_initial = load_ff("6_Portfolios_2x3.txt");
+                nasdaq_initial = load_returns("nasdaq-composite.csv", nasdaq_initial, nasdaq, true);
                 reit_initial = load_returns("reit-all_equity.csv", reit_initial, reits_equity, false);
                 reit_initial = load_returns("reit-mortgage.csv", reit_initial, reits_mortgage, false);
                 gs1_initial = load_fred_interest_rate("GS1", gs1, 1, 2, true);

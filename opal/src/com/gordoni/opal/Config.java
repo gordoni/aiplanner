@@ -118,6 +118,7 @@ public class Config
                // Corresponding asset class names to use for MVO inputs and transition map.
         public int aa_steps = 1000; // Use 4 steps to mirror 5 choice Trinity study.
         public boolean compute_risk_premium = false; // Compute the risk premium against cash (t1) instead of generating/targeting/validating.
+        public boolean inflation_adjust_returns = true; // Adjust returns for the impact of inflation.
         public String ef = "none";
                // Efficient frontier calculation method. "mvo", or "none" to search asset allocations.
         public double risk_tolerance = 1e12; // Maximum permitted relative standard deviation in portfolio returns when performing MVO.
@@ -340,6 +341,7 @@ public class Config
         public Double validate_ret_equity = null; // None for no adjustment to equities during targeting and validation, float for stocks target geomean return.
         public Double ret_equity_adjust = null; // None for no adjustment to equities, float for adjust.
         public double ret_sh_adjust = 0.0; // Small high asset class additional adjust.
+        public double ret_nasdaq_adjust_arith = 0.0; // Adjustment to apply to nasdaq asset class to compensate for lack of dividends in index.
         public double ret_tips_adjust = 0.0; // TIPS bond asset class additional adjustment.
         public double ret_tips_vol_adjust = 1.0; // Adjustment to apply to TIPS bond volatility.
         public double ret_gs10_to_bonds_arith = 0.0064;
