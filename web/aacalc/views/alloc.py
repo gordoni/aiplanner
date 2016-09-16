@@ -199,7 +199,7 @@ class Alloc:
 
             'equity_ret_pct': Decimal('7.2'),
             'equity_vol_pct': Decimal('17.0'),
-            'bonds_ret_pct': Decimal('0.7'),
+            'bonds_ret_pct': Decimal('0.0'),
             'bonds_vol_pct': Decimal('8.7'),
             'equity_bonds_corr_pct': Decimal('7.3'),
             'real_vol_10yr_pct': Decimal('4.9'),
