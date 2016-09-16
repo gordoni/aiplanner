@@ -186,7 +186,7 @@ class Alloc:
             'p': 0,
             'contribution': 2000,
             'contribution_growth_pct': Decimal('7.0'),
-            'contribution_vol_pct': Decimal('10.0'),
+            'contribution_vol_pct': Decimal('20.0'),
             'equity_contribution_corr_pct': Decimal('0.0'),
             'bonds_contribution_corr_pct': Decimal('0.0'),
 
