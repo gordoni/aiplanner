@@ -749,11 +749,11 @@ class Alloc:
 
         return result
 
-    def calc(self, mode, description, factor, data, results, force_annuitize):
+    def calc(self, mode, description, factor, data, results, display, force_annuitize):
 
         if mode == 'aa':
 
-            return self.calc_scenario(mode, description, factor, data, results, force_annuitize)
+            calc_result = self.calc_scenario(mode, description, factor, data, results, force_annuitize)
 
         else:
 
@@ -781,10 +781,13 @@ class Alloc:
 
             found_value['taxable'] = found_location
 
-            _, npv_display = self.value_table(self.nv_db, found_location) # Recompute.
-            found_value['npv_display'] = npv_display
+            _, display = self.value_table(self.nv_db, found_location) # Recompute.
 
-            return found_value
+            calc_result = found_value
+
+        calc_result['npv_display'] = display
+
+        return calc_result
 
     def compute_results(self, data, mode):
 
@@ -896,9 +899,9 @@ class Alloc:
 
         factor = norm.ppf(0.5 + float(data['confidence_pct']) / 100 / 2)
         factor = float(factor) # De-numpyfy.
-        baseline = self.calc(mode, 'Baseline estimate', 0, data, npv_results, None)
-        low = self.calc(mode, 'Low returns estimate', - factor, data, npv_results, baseline['annuitize_plan'])
-        high = self.calc(mode, 'High returns estimate', factor, data, npv_results, baseline['annuitize_plan'])
+        baseline = self.calc(mode, 'Baseline estimate', 0, data, npv_results, npv_display, None)
+        low = self.calc(mode, 'Low returns estimate', - factor, data, npv_results, npv_display, baseline['annuitize_plan'])
+        high = self.calc(mode, 'High returns estimate', factor, data, npv_results, npv_display, baseline['annuitize_plan'])
         results['calc'] = (baseline, low, high)
 
         if mode == 'number':
