@@ -63,6 +63,7 @@ public class Config
         public boolean skip_dump_load = true; // Speed up by not dumping and loading asset allocation.
         public boolean skip_dump_le = false; // Speed up by not dumping life expectencies.
         public boolean skip_dump_log = true; // Save disk by not dumping future maps.
+        public boolean skip_cov = true; // Don't report the covariance matrix.
         public boolean skip_corr = true; // Don't report the correlation matrix.
 
         public int dump_max_age = Integer.MAX_VALUE; // Dump this age and below.

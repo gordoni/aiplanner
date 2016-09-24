@@ -1210,7 +1210,8 @@ public class Scenario
                                 // }
                                 // System.err.println((config.generate_start_year + minloc) + " " + (minval - 1));
                         }
-                        // System.out.println(Arrays.deepToString(Utils.covariance_returns(returns)));
+                        if (!config.skip_cov)
+                                System.out.println("  Covariance: " + Arrays.deepToString(Utils.covariance_returns(returns)));
                         if (!config.skip_corr)
                                 System.out.println("  Correlations: " + Arrays.deepToString(Utils.correlation_returns(returns.toArray(new double[0][]))));
                         System.out.println();
@@ -1224,7 +1225,8 @@ public class Scenario
                                 double sd = Utils.weighted_standard_deviation(ac_returns.get(index), returns_generate.returns_unshuffled_probability);
                                 System.out.println("  " + asset_classes.get(index) + " " + f2f.format(am * 100) + "% +/- " + f2f.format(sd * 100) + "% (geometric " + f2f.format(gm * 100) + "%)");
                         }
-                        // System.out.println(Arrays.deepToString(Utils.covariance_returns(ac_returns)));
+                        if (!config.skip_cov)
+                                System.out.println("  Covariance: " + Arrays.deepToString(Utils.covariance_returns(ac_returns)));
                         if (!config.skip_corr)
                                 System.out.println("  Correlations: " + Arrays.deepToString(Utils.correlation_returns(ac_returns.toArray(new double[0][]))));
                         System.out.println();
