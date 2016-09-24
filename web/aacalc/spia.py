@@ -778,9 +778,9 @@ class YieldCurve:
             with open(join(datadir, 'rcmt' if self.interest_rate == 'real' else 'cmt', self.interest_rate + '-' + str(date_year) + '.csv')) as f:
 
                 csv = reader(f)
-                assert(csv.next()[0].startswith('#'))
+                assert(next(csv)[0].startswith('#'))
 
-                yield_curve_years = csv.next()
+                yield_curve_years = next(csv)
                 yield_curve_years.pop(0)
                 yield_curve_years = tuple(float(v) for v in yield_curve_years)
 
@@ -821,15 +821,15 @@ class YieldCurve:
             with open(join(datadir, 'hqm', file_name + '.csv')) as f:
 
                 csv = reader(f)
-                line = csv.next()
-                line = csv.next()
-                line = csv.next()
+                line = next(csv)
+                line = next(csv)
+                line = next(csv)
                 if ''.join(line) == '':  # catdoc xls2csv ommits this line for reasons unknown.
-                    line = csv.next()
+                    line = next(csv)
                 years = tuple(int(year) for year in line if year != '')
                 assert(years[file_year_offset] == date_year)
-                line = csv.next()
-                line = csv.next()
+                line = next(csv)
+                line = next(csv)
                 maturity = 0
                 spot_years = []
                 spot_rates = []
@@ -1281,4 +1281,4 @@ for datadir in datapath:
 
 if __name__ == '__main__':
 
-    print Scenario(YieldCurve('real', '2015-01-01'), 1.5, None, None, 0, LifeTable('iam2012-basic', 'male', 65)).price()
+    print(Scenario(YieldCurve('real', '2015-01-01'), 1.5, None, None, 0, LifeTable('iam2012-basic', 'male', 65)).price())
