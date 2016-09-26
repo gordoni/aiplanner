@@ -812,7 +812,7 @@ class YieldCurve:
         assert(1 <= date_month <= 12)
 
         year_step = 5
-        file_year = 1984 + (date_year - 1984) / year_step * year_step
+        file_year = 1984 + int((date_year - 1984) / year_step) * year_step
         file_year_offset = (date_year - 1984) % year_step
         file_name = 'hqm_%(start)02d_%(end)02d' % {'start' : file_year % 100, 'end' : (file_year + year_step - 1) % 100}
 
