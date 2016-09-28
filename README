@@ -137,6 +137,10 @@ To do:
     interest rates can't fall much lower, so bond returns are at best
     only likely to be weakly positive.
 
+  - Make lm_bonds asset class responsive to changes in the real
+    interest rate. Requires real interest rate be a dimension like
+    investment portfolio wealth and spia payouts.
+
   - Explore implications of using prospect theory to compute the
     optimal strategy (treat previous consumption level as an extra
     "wealth" dimension); will be slow.
