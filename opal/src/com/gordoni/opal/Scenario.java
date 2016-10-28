@@ -788,7 +788,8 @@ public class Scenario
                         double high = vals[(int) ((1 - pctl) * values)];
                         if (high > max_pctl)
                                 max_pctl = high;
-                        out.println(f2f.format(age_period / config.generate_time_periods) + "," + f4f.format(median) + "," + f4f.format(low) + "," + f4f.format(high));
+                        double mean = Utils.mean(vals);
+                        out.println(f2f.format(age_period / config.generate_time_periods) + "," + f4f.format(median) + "," + f4f.format(low) + "," + f4f.format(high) + "," + f4f.format(mean));
                         age_period++;
                 }
                 out.close();

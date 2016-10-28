@@ -359,7 +359,9 @@ if (paths) set output prefix . "-paths-p.png"
 if (paths) plot prefix . "-paths.csv" using 1:2 with lines title "Sample portfolio size paths"
 
 if (paths) set output prefix . "-pct-p.png"
-if (paths) plot prefix . "-pct-p.csv" using 1:2:3:4 with errorlines title "95 percent portfolio size"
+if (paths) plot \
+  prefix . "-pct-p.csv" using 1:2:3:4 with errorlines title "95 percent portfolio size", \
+  prefix . "-pct-p.csv" using 1:5 with errorlines title "mean portfolio size"
 
 set ylabel "annual consumption ($)"
 set yrange [0:consume]
@@ -367,7 +369,9 @@ if (paths) set output prefix . "-paths-consume.png"
 if (paths) plot prefix . "-paths.csv" using 1:3 with lines title "Sample consumption paths"
 
 if (paths) set output prefix . "-pct-consume.png"
-if (paths) plot prefix . "-pct-consume.csv" using 1:2:3:4 with errorlines title "95 percent consumption"
+if (paths) plot \
+  prefix . "-pct-consume.csv" using 1:2:3:4 with errorlines title "95 percent consumption", \
+  prefix . "-pct-consume.csv" using 1:5 with errorlines title "mean consumption"
 
 set ylabel "annual payout ($)"
 set yrange [0:annuity_payout]
