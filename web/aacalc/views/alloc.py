@@ -565,8 +565,21 @@ class Alloc:
                     (cov_eb2, bonds_vol ** 2, cov_bc2),
                     (cov_ec2, cov_bc2, self.contribution_vol ** 2)
                 )
-                alpha = (rets[stocks_index], rets[bonds_index], future_growth_try)
-                w = list(self.solve_merton(gamma, sigma_matrix, alpha, self.lm_bonds_ret))
+                # Merton's alpha and r are instantaneous expected rates of return.
+                #
+                # Comparing:
+                #
+                #    MERTON: Merton's Lifetime Portfolio Selection Under Uncertainty
+                #    GBM: https://en.wikipedia.org/wiki/Geometric_Brownian_motion
+                #    LND: https://en.wikipedia.org/wiki/Log-normal_distribution
+                #
+                # alphaMERTON = muGBM = muLND + sigmaLND ** 2 / 2 = log(1 + mean(annual_return_rate))
+                #
+                # This last equality being derived from the definitions of mu and sigma in LND in terms of m and v.
+                #
+                # Can thus convert mean annual rates to instantaneous expected rates by taking logs.
+                alpha = (log(1 + rets[stocks_index]), log(1 + rets[bonds_index]), log(1 + future_growth_try))
+                w = list(self.solve_merton(gamma, sigma_matrix, alpha, log(1 + self.lm_bonds_ret)))
                 w.append(1 - sum(w))
                 discounted_contrib, _ = self.npv_contrib((1 + self.contribution_growth) / (1 + future_growth_try) - 1)
                 npv_discounted = results['nv'] - self.nv_contributions + discounted_contrib
@@ -597,8 +610,8 @@ class Alloc:
                 (equity_vol ** 2, cov_eb2),
                 (cov_eb2, bonds_vol ** 2),
             )
-            alpha = (rets[stocks_index], rets[bonds_index])
-            w = list(self.solve_merton(gamma, sigma_matrix, alpha, self.lm_bonds_ret))
+            alpha = (log(1 + rets[stocks_index]), log(1 + rets[bonds_index]))
+            w = list(self.solve_merton(gamma, sigma_matrix, alpha, log(1 + self.lm_bonds_ret)))
             w.append(wc_discounted)
             w.append(1 - sum(w))
             w_prime = list(w)
