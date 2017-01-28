@@ -74,7 +74,8 @@ cp aacalc/web/example-sitesettings.py aacalc.data/project/sitesettings.py
 # Optionally set DEBUG to True to display backtraces in the web browser (displays sensistive data).
 # Set ROOT to the path to the aacalc directory (no trailing slash).
 # Set ADMINS to receive email messages.
-# Set ALLOWED_HOSTS to the web server hostname (or a suffix thereof). Can set to empty list if DEBUG is True.
+# Set ALLOWED_HOSTS to a list containing the web server hostname (or a suffix thereof).
+#     Can set to [ '*' ] but the Django docs suggest this may have security implications.
 # Make SECRETKEY unique.
 # Edit OPAL_HOST from localhost to name of the Opal server load balancer if required.
 
