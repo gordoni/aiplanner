@@ -3,7 +3,7 @@
 {% comment %}
 
 AACalc - Asset Allocation Calculator
-Copyright (C) 2009, 2011-2016 Gordon Irlam
+Copyright (C) 2009, 2011-2017 Gordon Irlam
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -397,24 +397,26 @@ forward <a href="http://www.advisorperspectives.com/newsletters12/Jeremy_Siegel_
 experts</a> predict lower U.S. stock market returns.
 </div>
 <br />
-Estimated regular bonds arithmetic real return: {{ alloc_form.bonds_ret_pct }}%
-Volatility: {{ alloc_form.bonds_vol_pct }}%
-{{ alloc_form.bonds_ret_pct.errors }}
+Estimated regular bonds premium over 10 year Treasury: {{ alloc_form.bonds_premium_pct }}%
+{{ alloc_form.bonds_premium_pct.errors }}
+<br />
+Estimated regular bonds real volatility: {{ alloc_form.bonds_vol_pct }}%
 {{ alloc_form.bonds_vol_pct.errors }}
+<br />
+Proejcted long-term inflation rate: {{ alloc_form.inflation_pct }}%
+{{ alloc_form.inflation_pct.errors }}
 <div class="small">
-Estimated U.S. market average values for 1927-2014 are 3.2% and
-8.7%. However we are presently in a low rate environment. On
-2016-08-09, 10 year constant maturity Treasuries were projected to earn
-1.6%, which is 0.6% below the Survey of Professional forecasters 10
-year inflation rate of 2.2%. We estimate the premium of an average
-bond portfolio over 10 year constant maturity Treasuries is 0.6%,
-making a total return of 0.0%.
+Estimated premium of an average bond portfolio over 10 year constant
+maturity Treasuries is 0.6%.  Estimated U.S. bond market average real
+volatility for 1927-2014 was 8.7%. Survey of Professional Forecasters
+2016Q4 10 year inflation rate was 2.2%.
 <br />
 <br />
-<div class="bold">Using the default parameters no regular bonds will
-typically be recommended because they currently have a lower expected
-return than zero long-term volatility inflation indexed liability matching
-bonds.</div>
+<div class="bold">
+Using the default parameters no regular bonds may be recommended. This
+will occur if regular bonds have a lower expected return than zero
+long-term volatility inflation indexed liability matching bonds.
+</div>
 </div>
 <br />
 Correlation of equity returns with bonds: {{ alloc_form.equity_bonds_corr_pct }}%

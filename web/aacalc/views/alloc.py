@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2016 Gordon Irlam
+# Copyright (C) 2009, 2011-2017 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -199,8 +199,9 @@ class Alloc:
 
             'equity_ret_pct': Decimal('7.2'),
             'equity_vol_pct': Decimal('17.0'),
-            'bonds_ret_pct': Decimal('0.0'),
+            'bonds_premium_pct': Decimal('0.6'),
             'bonds_vol_pct': Decimal('8.7'),
+            'inflation_pct': Decimal('2.2'),
             'equity_bonds_corr_pct': Decimal('7.3'),
             'real_vol_10yr_pct': Decimal('4.9'),
             'bonds_lm_bonds_corr_short_pct': Decimal('28.9'),
@@ -535,7 +536,8 @@ class Alloc:
         expense = float(data['expense_pct']) / 100
         rets[stocks_index] = float(data['equity_ret_pct']) / 100 - expense
         rets[stocks_index] += factor * float(data['equity_se_pct']) / 100
-        rets[bonds_index] = float(data['bonds_ret_pct']) / 100 - expense
+        rets[bonds_index] = self.yield_curve_nominal.discount_rate(10) - 1 + float(data['bonds_premium_pct']) / 100 \
+            - float(data['inflation_pct']) / 100 - expense
         rets[contrib_index] = self.ret_contributions
         rets[risk_free_index] = self.lm_bonds_ret
         rets[existing_annuities_index] = self.lm_bonds_ret

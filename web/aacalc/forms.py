@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2016 Gordon Irlam
+# Copyright (C) 2009, 2011-2017 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -649,11 +649,13 @@ class AllocBaseForm(Form):
     equity_vol_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=1) # 0 fails.
-    bonds_ret_pct = DecimalField(
+    bonds_premium_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}))
     bonds_vol_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=1) # 0 fails.
+    inflation_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}))
     equity_bonds_corr_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=-99,
