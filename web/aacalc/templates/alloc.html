@@ -82,8 +82,8 @@ Several things set this calculator apart:
 
 <li> A balance sheet approach - asset allocation can't be performed in
 isolation, but must be performed by taking into account the presence
-and size of Social Security, Pensions, 401(k)'s, and income
-annuities. See the <a href="{% url 'docs' 'faq' %}">FAQ</a> for more
+and size of Social Security, Pensions, 401(k)'s, income annuities, and
+home equity. See the <a href="{% url 'docs' 'faq' %}">FAQ</a> for more
 details.</li>
 
 {% if mode == 'aa' %}
@@ -104,9 +104,13 @@ retirement toolbox. This calculator optionally recommends the
 purchase of inflation indexed income annuities, be they single premium
 immediate annuities or deferred income annuities. </li>
 
+<li> Home equity - home equity is the largest asset class for many
+individuals.  It is thus important to consider the appropriate role of
+home equity in the retirement planning process. </li>
+
 <li> Admit what we don't know - returns from the stock market are
-intrinsically unknown. We generate a range of results for different plausible
-scenarios. </li>
+intrinsically unknown. We generate a range of results for different
+plausible scenarios. </li>
 
 <li> Cross validated - sample Merton's method recommendations produced
 by this calculator have been
@@ -231,6 +235,7 @@ Social Security
 {% endfor %}
 <tr>
 <td colspan=7 class="small left">
+Reverse mortgage is for a reverse mortgage providing a fixed annual income (tenure) only.
 Starting age is that of the owner. Annual amount is in current inflation-adjusted
 after tax dollars, not future dollars. For income annuities, which become fully
 taxable after a certain age, enter the expected average after tax amount.
@@ -279,7 +284,7 @@ Pre-retirement annual contribution amount after tax (irrelevant if retired):
 {{ alloc_form.contribution.errors }}
 <br />
 Real growth rate: {{ alloc_form.contribution_growth_pct }}%
-Annual volatility of future contributions: {{ alloc_form.contribution_vol_pct }}%
+Annual volatility: {{ alloc_form.contribution_vol_pct }}%
 {{ alloc_form.contribution_growth_pct.errors }}
 {{ alloc_form.contribution_vol_pct.errors }}
 <br />
@@ -288,17 +293,51 @@ Correlation with bond returns: {{ alloc_form.bonds_contribution_corr_pct }}%
 {{ alloc_form.equity_contribution_corr_pct.errors }}
 {{ alloc_form.bonds_contribution_corr_pct.errors }}
 <div class="small">
-Contribution amount should consist only
-of new money contributed to your retirement savings, not the payout from any existing pre-retirement
-defined benefits. A growth rate of 7% represents a doubling of real
-contributions every 10 years.  Remember to take into account life
-events such as promotions, paying off a mortgage, or children leaving
-home in estimating the contribution growth rate.
+Contributions and mortgage payments (below) are combined on the
+assumption that once the mortgage is paid off the additional funds
+will go towards retirement savings. Contribution amount should consist
+only of new money contributed to your retirement savings, not the
+payout from any existing pre-retirement defined benefits. A growth
+rate of 5% represents a doubling every 14 years.
+Remember to take into account life events such as promotions, or
+children leaving home in estimating the growth rate.
 </div>
 
 </div>
 
 {% endif %}
+
+<br />
+
+Other assets and liabilities:
+
+<br />
+<br />
+
+<div class="indent">
+
+Home appraised value: {{ alloc_form.home }}
+{{ alloc_form.home.errors }}
+<br />
+Mortgage balance: {{ alloc_form.mortgage }}
+Annual payment: {{ alloc_form.mortgage_payment }}
+Fixed APR: {{ alloc_form.mortgage_rate_pct }}%
+{{ alloc_form.mortgage.errors }}
+{{ alloc_form.mortgage_payment.errors }}
+{{ alloc_form.mortgage_rate_pct.errors }}
+<br />
+Existing reverse mortgage: {{ alloc_form.have_rm }}
+<div class="indent">
+Unused available credit line: {{ alloc_form.rm_loc }}
+</div>
+{{ alloc_form.rm_have.errors }}
+{{ alloc_form.rm_loc.errors }}
+<div class="small">
+Mortgage balance should include the mortgage balance of any existing
+reverse mortgage.
+</div>
+
+</div>
 
 </div>
 
@@ -372,6 +411,64 @@ These are the rules for what annuitization looks like: Stocks get annuitized lin
 Income annuities only make sense if you are in reasonable health.
 </div>
 <br />
+Permit recommendation of a variable rate reverse mortgage:
+{{ alloc_form.use_rm }}
+{{ alloc_form.use_rm.errors }}
+<div class="indent">
+<br />
+Reverse mortgage lender's margin: {{ alloc_form.rm_margin_pct }}%
+{{ alloc_form.rm_margin_pct.errors }}
+<br />
+Reverse mortgage origination fee and closing costs:
+{{ alloc_form.rm_cost }}
+{{ alloc_form.rm_cost.errors }}
+<div class="small">
+The values used above are merely intended to get you started. If you
+are serious about taking out a reverse mortgage you should set these
+values based on actual quotes.
+</div>
+<br />
+For a HECM style reverse mortgage you should leave the following
+parameters alone.
+<br />
+<br />
+Required age (of younger spouse) when plan to take reverse mortgage:
+{{ alloc_form.rm_age }}
+{{ alloc_form.rm_age.errors }}
+<br />
+Age limit for computing tenure duration:
+{{ alloc_form.rm_tenure_limit }}
+{{ alloc_form.rm_tenure_limit.errors }}
+<br />
+Minimum tenure duration:
+{{ alloc_form.rm_tenure_duration }}
+{{ alloc_form.rm_tenure_duration.errors }}
+<br />
+Maximum home value eligible for a reverse mortgage:
+{{ alloc_form.rm_eligible }}
+{{ alloc_form.rm_eligible.errors }}
+<br />
+Principal limit factor (blank to use 2014 HECM table):
+{{ alloc_form.rm_plf }}
+{{ alloc_form.rm_plf.errors }}
+<br />
+Interest rate (blank to use 10-year constant maturity Treasuries):
+{{ alloc_form.rm_interest_rate_pct }}%
+{{ alloc_form.rm_interest_rate_pct.errors }}
+<br />
+Initial mortgage insurance premium:
+{{ alloc_form.rm_insurance_initial_pct }}%
+Ongoing premium:
+{{ alloc_form.rm_insurance_annual_pct }}%
+{{ alloc_form.rm_insurance_initial_pct.errors }}
+{{ alloc_form.rm_insurance_annual_pct.errors }}
+<div class="small">
+For a HECM reverse mortgage the interest rate should be the 10-year
+constant maturity Treasury or 10-year LIBOR rate.  This is true even
+though you have a monthly or annually adjusting reverse mortgage.
+</div>
+</div>
+<br />
 We do not support the ability to leave a specific bequest amount.
 
 </div>
@@ -403,7 +500,7 @@ Estimated regular bonds premium over 10 year Treasury: {{ alloc_form.bonds_premi
 Estimated regular bonds real volatility: {{ alloc_form.bonds_vol_pct }}%
 {{ alloc_form.bonds_vol_pct.errors }}
 <br />
-Proejcted long-term inflation rate: {{ alloc_form.inflation_pct }}%
+Projected long-term inflation rate: {{ alloc_form.inflation_pct }}%
 {{ alloc_form.inflation_pct.errors }}
 <div class="small">
 Estimated premium of an average bond portfolio over 10 year constant
@@ -629,6 +726,21 @@ return of stocks compounded over time.
 
 {% endif %}
 
+{% if alloc_form.cleaned_data.mortgage > 0 %}
+
+{% if alloc_form.cleaned_data.p > 0 %}
+
+Caution: You have both taxable retirement savings and a mortgage. We
+recommend using the taxable savings to pay off the mortgage, although
+the results we provide here assume you elect not to do so.
+
+<br />
+<br />
+
+{% endif %}
+
+{% endif %}
+
 {% if results.calc.0.annuitize_plan %}
 
 We recommend purchasing a
@@ -657,6 +769,41 @@ this income annuity.
 
 We do not recommend you purchase an income annuity at the present
 time.
+
+<br />
+<br />
+
+{% endif %}
+
+{% if results.present.using_reverse_mortgage %}
+
+We recommend purchasing a reverse mortgage at age
+{{ results.present.rm_purchase_age }}.
+
+{% if results.present.rm_credit_line %}
+
+We recommend allowing a line of credit to grow on the reverse mortgage
+until age {{ results.present.credit_line_age }}, and then fully
+utilizing the line of credit.
+
+{% else %}
+
+We recommend the reverse mortgage periodic payout tenure option.
+
+{% endif %}
+
+<div class="small">
+Many retirees use home equity as a last resort to pay for long term
+care.  In taking a reverse mortgage you should make sure you either
+have long term care insurance, or that you still have sufficient
+assets to pay for your long term care needs.
+</div>
+
+<br />
+
+{% elif alloc_form.cleaned_data.use_rm %}
+
+We do not recommend a reverse mortgage.
 
 <br />
 <br />
@@ -704,7 +851,7 @@ that of bonds.
 The amount you should consume during retirement varies from year to
 year. Currently it is recommended
 you should consume around <!-- healthcheck_consume --> {{ results.calc.0.consume }}
-after tax per year in retirement.
+after tax and after mortgage payments per year in retirement.
 An {{ alloc_form.cleaned_data.confidence_pct }}% confidence interval
 on this recommendation is {{ results.calc.1.consume }} to
 {{ results.calc.2.consume }}.
@@ -713,6 +860,13 @@ on this recommendation is {{ results.calc.1.consume }} to
 <br />
 
 {% endif %}
+
+Caution: We have not performed a cash flow analysis to determine if
+you will always have the liquid assets you need, when you need them,
+in order to fund the above consumption.
+
+<br />
+<br />
 
 The annual volatility of your investment portfolio is estimated to be
 {{ results.calc.0.investments_vol_pct }}%.  The annual volatility of
@@ -781,6 +935,44 @@ real interest rate adjusted
 <td class="left"> Total investments </td>
 <th colspan=2 class="right"> {{ results.present.nv_investments }} </th>
 </tr>
+<tr>
+<td class="left"> Home </td>
+<td colspan=2 class="right"> {{ results.present.nv_home }} </td>
+</tr>
+<tr>
+<td class="left">
+Mortgage
+<div class="small">
+Paid off in {{ results.present.mortgage_payoff_years }} years.
+</div>
+</td>
+<td colspan=2 class="right"> {{ results.present.nv_mortgage }} </td>
+</tr>
+<tr>
+<td class="left"> Home equity </td>
+<td colspan=2 class="right"> {{ results.present.nv_home_equity }} </td>
+</tr>
+<tr>
+<td class="left">
+Reverse mortgage credit line of {{ results.present.credit_line }}
+<div class="small">
+Utilized at age {{ results.present.credit_line_age }}.
+</div>
+</td>
+<td colspan=2 class="right"> {{ results.present.nv_credit_line }} </td>
+</tr>
+<tr>
+<td class="left"> Reverse mortgage annual tenure of {{ results.present.tenure }} </td>
+<td colspan=2 class="right"> {{ results.present.nv_tenure }} </td>
+</tr>
+<tr>
+<td class="left"> Available home equity </td>
+<td colspan=2 class="right"> {{ results.present.nv_available_home }} </td>
+</tr>
+<tr>
+<td class="left"> Utilized home equity </td>
+<th colspan=2 class="right"> {{ results.present.nv_utilized_home }} </th>
+</tr>
 {% if mode == 'aa' %}
 <tr>
 <td class="left"> Future contributions </td>
@@ -793,7 +985,12 @@ real interest rate adjusted
 </tr>
 <tr>
 <tr>
-<td colspan=4 class="left small"> Computed from mortality table and real yield curve. </td>
+<td colspan=4 class="left small">
+Computed from mortality table and real yield curve.
+<br />
+Future contributions includes mortgage payments and is first applied
+to the mortgage balance.
+</td>
 </tr>
 </table>
 
@@ -942,7 +1139,7 @@ holding type that we recommend be annuitized.
 <br />
 
 Adjusting for any existing defined benefits, any income annuity
-purchases, the substitution of regular bonds for liability matching
+purchases, home equity, the substitution of regular bonds for liability matching
 bonds, and the possibility of winning or losing the game, produces the
 following recommendations.
 
@@ -1003,6 +1200,13 @@ Inflation adjusted.
 <td class="right"> 0.0% </td>
 </tr>
 <tr>
+<td class="left"> Available home equity </td>
+<td class="right"> {{ calc.alloc_home_equity_pct }}% </td>
+<td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
+<td class="right"> - </td>
+<td class="right"> 0.0% </td>
+</tr>
+<tr>
 <th class="left" rowspan=2> Investments </th>
 <th class="right" rowspan=2> {{ calc.alloc_investments_pct }}% </th>
 <th class="right"> arithmetic {{ calc.investments_ret_pct }}% </th>
@@ -1014,7 +1218,7 @@ Inflation adjusted.
 </tr>
 <tr>
 <th class="left" rowspan=2> Total </th>
-<th class="right" rowspan=2> 100% </th>
+<th class="right" rowspan=2> {{ calc.alloc_total_pct }}% </th>
 <th class="right"> arithmetic {{ calc.total_ret_pct }}% </th>
 <td class="right" rowspan=2> - </td>
 <th class="right" rowspan=2> {{ calc.total_vol_pct }}% </th>

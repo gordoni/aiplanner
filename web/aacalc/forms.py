@@ -532,8 +532,16 @@ class AllocBaseForm(Form):
         le_set2 = cleaned_data.get('le_set2')
         if sex2 == 'none' and le_set2 != None:
             raise ValidationError('Life expectancy specified for non-existant spouse.')
-        if sex2 == 'none' and any((db['who'] == 'spouse' or float(db['joint_payout_pct']) != 0) and (float(db['amount']) != 0) for db in cleaned_data['db']):
+        if sex2 == 'none' and any((db['who'] == 'spouse') and (float(db['amount']) != 0) for db in cleaned_data['db']):
             raise ValidationError('Spousal defined benefits but no spouse present')
+        mortgage = cleaned_data.get('mortgage')
+        mortgage_payment = cleaned_data.get('mortgage_payment')
+        if mortgage > 0 and mortgage_payment == 0:
+            raise ValidationError('Mortgage specified but no mortgage payment.')
+        have_rm = cleaned_data.get('have_rm')
+        rm_loc = cleaned_data.get('rm_loc')
+        if rm_loc > 0 and not have_rm:
+            raise ValidationError('Reverse mortgage credit line specified but no reverse mortgage.')
         required_income = cleaned_data.get('required_income')
         desired_income = cleaned_data.get('desired_income')
         if required_income != None and desired_income != None and required_income > desired_income:
@@ -567,6 +575,7 @@ class AllocBaseForm(Form):
             choices=(
                 ('Pension', 'Pension'),
                 ('Income annuity', 'Income annuity'),
+                ('Reverse mortgage', 'Reverse mortgage'),
                 ('Other', 'Other')),
             required=False)
         who = ChoiceField(
@@ -625,6 +634,23 @@ class AllocBaseForm(Form):
 
     DbFormSet = formset_factory(DbForm, extra=8, max_num=8)
 
+    home = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    mortgage = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    mortgage_payment = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    mortgage_rate_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        min_value=0)
+    have_rm = BooleanField(required=False)
+    rm_loc = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+
     retirement_age = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
@@ -643,6 +669,41 @@ class AllocBaseForm(Form):
         required=False)
     purchase_income_annuity = BooleanField(required=False)
     use_lm_bonds = BooleanField(required=False)
+    use_rm = BooleanField(required=False)
+    rm_plf = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=1,
+        required=False)
+    rm_interest_rate_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        required=False)
+    rm_margin_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        min_value=0)
+    rm_insurance_initial_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        min_value=0)
+    rm_insurance_annual_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        min_value=0)
+    rm_cost = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    rm_age = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=110)
+    rm_tenure_limit = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=110)
+    rm_tenure_duration = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=1)
+    rm_eligible = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
 
     equity_ret_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}))

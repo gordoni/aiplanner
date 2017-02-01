@@ -1169,7 +1169,6 @@ class Scenario:
                     alive = alive1  # Logically not needed, but provides for precise floating point compatibility with AACalc.
                     joint = 0
                 else:
-                    alive = 1 - (1 - alive1) * (1 - alive2)
                     alive = alive1
                     joint = alive2 * (1 - alive1)
                     if self.joint_contingent:

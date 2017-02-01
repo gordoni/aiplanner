@@ -44,6 +44,14 @@ Initialize the interest rate data
 mkdir -p aacalc/opal/data/public/{hqm,rcmt,cmt}
 aacalc/web/cron.daily
 
+Obtain additional required components
+-------------------------------------
+
+# Obtain the HECM revere mortgage principal limit factors:
+cd aacalc/opal
+curl http://www.gordoni.com/aacalc-data.tar.gz | tar -zxf -
+cd ../..
+
 Set up and run Opal server
 --------------------------
 
