@@ -415,7 +415,7 @@ class Alloc:
                 # http://www.myhecm.com/hecm-calculator-step-1-n might use 0.5%
                 # https://retirementresearcher.com/reverse-mortgage-calculator/ uses 1.25%.
                 # http://www.reversemortgage.org/About/Reverse-Mortgage-Calculator uses 1.25%.
-                # So I too use 1.25%.
+                # And rm_insurance_annual defaults to 1.25%.
             compounding = 1 + compounding_rate
             # discounted_sum = sum(1.0 / increase_rate ** i for i in range(duration + 1)) but needs to work for floating point duration.
             discounted_sum = (compounding ** (duration + 1) - 1) / ((compounding - 1) * compounding ** duration)
@@ -432,10 +432,10 @@ class Alloc:
             max_credit_year = delay + round(x) # Round so that Scenario with frequency = 1 hits schedule.
             increase_rate_annual = increase_rate ** 12
             schedule = self.schedule_range(increase_rate_annual, max_credit_year, max_credit_year + 1e-9)
-            scenario = Scenario(self.yield_curve_zero, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
+            scenario = Scenario(self.yield_curve_nominal, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
                 joint_payout_fraction = 1, joint_contingent = True,
                 period_certain = period_certain, frequency = 1, schedule = schedule)
-            pre_rm_discount = (increase_rate_annual * self.yield_curve_nominal.discount_rate(delay)) ** delay
+            pre_rm_discount = increase_rate_annual ** delay
 
             return scenario.price() / pre_rm_discount * credit_line
 
@@ -455,11 +455,13 @@ class Alloc:
         if self.use_rm:
             nv_rm = max(nv_credit_line, nv_tenure) - mortgage_payoff
             using_reverse_mortgage = nv_rm - nv_available_home > 10 / (100.0 - 10) * nv
+            rm_tenure = nv_tenure > nv_credit_line
             nv_available_home = nv_rm
             if using_reverse_mortgage:
                 nv_utilized_home = nv_rm
         else:
             using_reverse_mortgage = False
+            rm_tenure = False
 
         nv += nv_available_home
 
@@ -467,6 +469,7 @@ class Alloc:
         results['nv_mortgage'] = nv_mortgage
         results['nv_available_home'] = nv_available_home
         results['nv'] = nv
+        results['credit_line_age'] = credit_line_age
 
         display['nv_db'] = '{:,.0f}'.format(nv_db)
         display['nv_traditional'] = '{:,.0f}'.format(nv_traditional)
@@ -488,24 +491,24 @@ class Alloc:
         display['nv'] = '{:,.0f}'.format(nv)
         display['ret_contributions'] = '{:.1f}'.format(self.ret_contributions * 100)
         display['using_reverse_mortgage'] = using_reverse_mortgage
+        display['rm_tenure'] = rm_tenure
         display['rm_purchase_age'] = '{:.0f}'.format(rm_purchase_age)
-        display['rm_credit_line'] = rm_credit_line
 
         return results, display
 
-    def statistics(self, w, rets, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2):
+    def statistics(self, w, rets, bonds_vol, lm_bonds_vol, cov_bl2):
 
         total_ret = w[contrib_index] * rets[contrib_index] + w[stocks_index] * rets[stocks_index] + w[bonds_index] * rets[bonds_index] + \
             w[risk_free_index] * rets[risk_free_index] + w[existing_annuities_index] * rets[existing_annuities_index] + \
             w[new_annuities_index] * rets[new_annuities_index] + w[home_equity_index] * rets[home_equity_index]
 
         total_var = w[contrib_index] ** 2 * self.contribution_vol ** 2 + \
-            w[stocks_index] ** 2 * equity_vol ** 2 + \
+            w[stocks_index] ** 2 * self.equity_vol ** 2 + \
             w[bonds_index] ** 2 * bonds_vol ** 2 + \
             w[risk_free_index] ** 2 * lm_bonds_vol ** 2 + \
-            2 * w[contrib_index] * w[stocks_index] * cov_ec2 + \
-            2 * w[contrib_index] * w[bonds_index] * cov_bc2 + \
-            2 * w[stocks_index] * w[bonds_index] * cov_eb2 + \
+            2 * w[contrib_index] * w[stocks_index] * self.cov_ec2 + \
+            2 * w[contrib_index] * w[bonds_index] * self.cov_bc2 + \
+            2 * w[stocks_index] * w[bonds_index] * self.cov_eb2 + \
             2 * w[bonds_index] * w[risk_free_index] * cov_bl2
             # risk_free covariance assumed zero against other asset classes.
         total_vol = sqrt(total_var)
@@ -514,27 +517,26 @@ class Alloc:
 
         return total_ret, total_vol, total_geometric_ret
 
-    def non_annuitized_weights(self, w, no_contrib=False):
+    def portfolio_statistics(self, w, rets):
+
+        return self.statistics(w, rets, self.bonds_vol, self.lm_bonds_vol, self.cov_bl2)
+
+    def drop_weights(self, w, indices):
 
         w = list(w)
-        if no_contrib:
-            w[contrib_index] = 0
-            w[home_equity_index] = 0
-        w[existing_annuities_index] = 0
-        w[new_annuities_index] = 0
+        for i in indices:
+            w[i] = 0
         s = sum(w)
         try:
             return list(wi / float(s) for wi in w)
         except:
             return [0] * len(w)
 
-    def investment_statistics(self, w, rets, equity_vol, cov_ec2, cov_bc2, cov_eb2):
+    def investment_statistics(self, w, rets):
 
-        cov_bl2_short = self.bonds_vol_short * self.lm_bonds_vol_short * self.bonds_lm_bonds_corr_short ** 2
+        w_investments = self.drop_weights(w, [contrib_index, home_equity_index, existing_annuities_index, new_annuities_index])
 
-        w_investments = self.non_annuitized_weights(w, no_contrib=True)
-
-        return self.statistics(w_investments, rets, equity_vol, self.bonds_vol_short, self.lm_bonds_vol_short, cov_ec2, cov_bc2, cov_eb2, cov_bl2_short)
+        return self.statistics(w_investments, rets, self.bonds_vol_short, self.lm_bonds_vol_short, self.cov_bl2_short)
 
     def consume_factor(self, ret):
 
@@ -556,7 +558,20 @@ class Alloc:
 
         return c_factor
 
-    def risk_limit(self, use_lm_bonds, w_init, rets, results, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2):
+    def calc_consume(self, w, nv, ret, vol, results):
+
+        alloc_db = w[existing_annuities_index] + w[new_annuities_index]
+        growth_pctl = (1 - alloc_db) * growth_pctl_no_db / 100.0 + alloc_db * 0.5
+            # The greater the defined benefits cushion the greater the growth rate that can be assumed for non-defined benefits.
+        growth_rate = self.distribution_pctl(growth_pctl, 1 + ret, vol) - 1
+        c_factor = self.consume_factor(growth_rate)
+        consume = nv * (w[existing_annuities_index] / self.discounted_retirement_le + \
+                        w[new_annuities_index] * mwr / self.discounted_retirement_le_annuity + \
+                        (1 - alloc_db) * c_factor)
+
+        return consume
+
+    def risk_limit(self, use_lm_bonds, w_init, rets, results):
         # Ideally would scale back using mean-variance optimization, but given the limited number of asset classes, this is good enough.
 
         found_loss = None
@@ -578,7 +593,7 @@ class Alloc:
                 w[bonds_index] += w[risk_free_index]
                 w[risk_free_index] = 0
 
-            investments_ret, investments_vol, investments_geometric_ret = self.investment_statistics(w, rets, equity_vol, cov_ec2, cov_bc2, cov_eb2)
+            investments_ret, investments_vol, investments_geometric_ret = self.investment_statistics(w, rets)
 
             investments_loss = 1 - self.distribution_pctl(loss_pctl_fat_tail, 1 + investments_ret, investments_vol)
 
@@ -603,20 +618,14 @@ class Alloc:
         investments_loss = found_loss
         w = found_w
 
-        ret, vol, geometric_ret = self.statistics(self.non_annuitized_weights(w), rets, equity_vol, bonds_vol, lm_bonds_vol, \
-            cov_ec2, cov_bc2, cov_eb2, cov_bl2)
-        alloc_db = w[existing_annuities_index] + w[new_annuities_index]
-        growth_pctl = (1 - alloc_db) * growth_pctl_no_db / 100.0 + alloc_db * 0.5
-            # The greater the defined benefits cushion the greater the growth rate that can be assumed for non-defined benefits.
-        growth_rate = self.distribution_pctl(growth_pctl, 1 + ret, vol) - 1
-        c_factor = self.consume_factor(growth_rate)
-        consume = results['nv'] * (w[existing_annuities_index] / self.discounted_retirement_le + \
-                                   w[new_annuities_index] * mwr / self.discounted_retirement_le_annuity + \
-                                   (1 - alloc_db) * c_factor)
+        ret, vol, geometric_ret = self.portfolio_statistics(self.drop_weights(w, [existing_annuities_index, new_annuities_index]), rets)
+
+        nv = results['nv']
+        consume = self.calc_consume(w, nv, ret, vol, results)
 
         return w, consume, investments_loss
 
-    def fix_allocs(self, mode, w_prime, rets, results, annuitize, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2):
+    def fix_allocs(self, mode, w_prime, rets, results, annuitize):
 
         purchase_income_annuity = any(a > 0 for a in annuitize)
 
@@ -624,6 +633,7 @@ class Alloc:
         w_fixed[stocks_index] = min(max(0, w_prime[stocks_index] * (1 - annuitize[stocks_index])), 1)
         w_fixed[bonds_index] = min(max(0, w_prime[bonds_index] * (1 - annuitize[bonds_index])), 1)
         w_fixed[risk_free_index] = min(max(0, w_prime[risk_free_index] * (1 - annuitize[risk_free_index])), 1)
+
         try:
             w_fixed[contrib_index] = self.nv_contributions / abs(results['nv'])
         except ZeroDivisionError:
@@ -633,9 +643,10 @@ class Alloc:
             alloc_db = 1 - sum(w_fixed)
         else:
             alloc_db = -1 - sum(w_fixed)
+        rm_drawdown = results['credit_line_age'] <= self.age
         try:
             w_fixed[existing_annuities_index] = results['nv_db'] / abs(results['nv'])
-            w_fixed[home_equity_index] = results['nv_available_home'] / abs(results['nv'])
+            w_fixed[home_equity_index] = 0 if rm_drawdown else results['nv_available_home'] / abs(results['nv'])
         except ZeroDivisionError:
             w_fixed[existing_annuities_index] = 0
             w_fixed[home_equity_index] = 0
@@ -670,11 +681,10 @@ class Alloc:
         for count in range(2):
 
             w_try = list(w_fixed)
-            w_fixed, consume, loss = self.risk_limit(False, w_try, rets, results, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2)
+            w_fixed, consume, loss = self.risk_limit(False, w_try, rets, results)
 
             if self.use_lm_bonds:
-                w_fixed_lm, consume_lm, loss_lm = self.risk_limit(True, w_try, rets, results, equity_vol, bonds_vol, lm_bonds_vol, \
-                    cov_ec2, cov_bc2, cov_eb2, cov_bl2)
+                w_fixed_lm, consume_lm, loss_lm = self.risk_limit(True, w_try, rets, results)
                 if abs(consume_lm) >= abs(consume) and (loss_lm <= self.risk_tolerance or loss_lm <= loss):
                     w_fixed, consume, loss = w_fixed_lm, consume_lm, loss_lm
 
@@ -698,7 +708,7 @@ class Alloc:
         assert(all(w_fixed[i] >= 0 or i == home_equity_index for i in range(num_index)))
         assert(abs(abs(sum(w_fixed)) - 1) < 1e-15)
 
-        total_ret, total_vol, total_geometric_ret = self.statistics(w_fixed, rets, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2)
+        total_ret, total_vol, total_geometric_ret = self.portfolio_statistics(w_fixed, rets)
 
         return w_fixed, consume, total_ret, total_vol, total_geometric_ret
 
@@ -716,19 +726,8 @@ class Alloc:
         rets[new_annuities_index] = self.lm_bonds_ret
         rets[home_equity_index] = self.lm_bonds_ret
 
-        gamma = float(data['gamma'])
-        equity_vol = float(data['equity_vol_pct']) / 100
-        bonds_vol = float(data['bonds_vol_pct']) / 100
-        lm_bonds_vol = 0
-
-        equity_gm = self.geomean(1 + rets[stocks_index], equity_vol) - 1
-        bonds_gm = self.geomean(1 + rets[bonds_index], bonds_vol) - 1
-
-        equity_bonds_corr = float(data['equity_bonds_corr_pct']) / 100
-        cov_ec2 = equity_vol * self.contribution_vol * self.equity_contribution_corr ** 2
-        cov_bc2 = bonds_vol * self.contribution_vol * self.bonds_contribution_corr ** 2
-        cov_eb2 = equity_vol * bonds_vol * equity_bonds_corr ** 2
-        cov_bl2 = 0
+        equity_gm = self.geomean(1 + rets[stocks_index], self.equity_vol) - 1
+        bonds_gm = self.geomean(1 + rets[bonds_index], self.bonds_vol) - 1
 
         if mode == 'aa' and self.contribution_vol > 0: # Avoid contribution_vol == 0 as covariance matrix inverse fails becasue matrix is singular.
             lo = -0.5
@@ -736,9 +735,9 @@ class Alloc:
             for _ in range(50):
                 future_growth_try = (lo + hi) / 2.0
                 sigma_matrix = (
-                    (equity_vol ** 2, cov_eb2, cov_ec2),
-                    (cov_eb2, bonds_vol ** 2, cov_bc2),
-                    (cov_ec2, cov_bc2, self.contribution_vol ** 2)
+                    (self.equity_vol ** 2, self.cov_eb2, self.cov_ec2),
+                    (self.cov_eb2, self.bonds_vol ** 2, self.cov_bc2),
+                    (self.cov_ec2, self.cov_bc2, self.contribution_vol ** 2)
                 )
                 # Merton's alpha and r are instantaneous expected rates of return.
                 #
@@ -754,7 +753,7 @@ class Alloc:
                 #
                 # Can thus convert mean annual rates to instantaneous expected rates by taking logs.
                 alpha = (log(1 + rets[stocks_index]), log(1 + rets[bonds_index]), log(1 + future_growth_try))
-                w = list(self.solve_merton(gamma, sigma_matrix, alpha, log(1 + self.lm_bonds_ret)))
+                w = list(self.solve_merton(self.gamma, sigma_matrix, alpha, log(1 + self.lm_bonds_ret)))
                 w.append(1 - sum(w))
                 discounted_contrib, _ = self.npv_contrib((1 + self.contribution_growth) / (1 + future_growth_try) - 1)
                 npv_discounted = results['nv'] - self.nv_contributions + discounted_contrib
@@ -782,8 +781,8 @@ class Alloc:
             except ZeroDivisionError:
                 wc_discounted = 0
             sigma_matrix = (
-                (equity_vol ** 2, cov_eb2),
-                (cov_eb2, bonds_vol ** 2),
+                (self.equity_vol ** 2, self.cov_eb2),
+                (self.cov_eb2, self.bonds_vol ** 2),
             )
             alpha = (log(1 + rets[stocks_index]), log(1 + rets[bonds_index]))
             w = list(self.solve_merton(gamma, sigma_matrix, alpha, log(1 + self.lm_bonds_ret)))
@@ -795,11 +794,10 @@ class Alloc:
         w_prime[risk_free_index] = 1 - sum(w_prime)
 
         annuitize = [0] * num_index
-        w_fixed, consume, total_ret, total_vol, total_geometric_ret = \
-            self.fix_allocs(mode, w_prime, rets, results, annuitize, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2)
+        w_fixed, consume, total_ret, total_vol, total_geometric_ret = self.fix_allocs(mode, w_prime, rets, results, annuitize)
         consume_unannuitize = consume
 
-        if data['purchase_income_annuity']:
+        if self.purchase_income_annuity:
 
             annuitize[stocks_index] = min(max(0, (self.min_age - 65.0) / (90 - 65)), 1)
             # Don't have a good handle on when to annuitize regular
@@ -812,7 +810,7 @@ class Alloc:
             annuitize[risk_free_index] = 0 if self.min_age < annuitize_lm_bonds_age else 1
 
             w_fixed_annuitize, consume_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize = \
-                self.fix_allocs(mode, w_prime, rets, results, annuitize, equity_vol, bonds_vol, lm_bonds_vol, cov_ec2, cov_bc2, cov_eb2, cov_bl2)
+                self.fix_allocs(mode, w_prime, rets, results, annuitize)
 
             annuitize_gain = consume_annuitize - consume_unannuitize
             purchase_income_annuity = abs(results['nv']) * w_fixed_annuitize[new_annuities_index]
@@ -843,7 +841,7 @@ class Alloc:
             purchase_income_annuity = 0
             annuitize_delay_cost = 0
 
-        investments_ret, investments_vol, investments_geometric_ret = self.investment_statistics(w_fixed, rets, equity_vol, cov_ec2, cov_bc2, cov_eb2)
+        investments_ret, investments_vol, investments_geometric_ret = self.investment_statistics(w_fixed, rets)
 
         w_fixed_investments = w_fixed[stocks_index] + w_fixed[bonds_index] + w_fixed[risk_free_index]
         w_total = sum(w_fixed)
@@ -1053,6 +1051,7 @@ class Alloc:
         self.mortgage_payment = float(data['mortgage_payment'])
         self.mortgage_rate = float(data['mortgage_rate_pct']) / 100
         self.rm_loc = float(data['rm_loc'])
+        self.purchase_income_annuity = data['purchase_income_annuity']
         self.have_rm = data['have_rm']
         self.use_rm = data['use_rm']
         self.rm_plf = None if data['rm_plf'] == None else float(data['rm_plf'])
@@ -1113,6 +1112,18 @@ class Alloc:
         self.real_vol = float(data['real_vol_10yr_pct']) / 100
         modified_duration = self.lm_bonds_duration / (1 + self.lm_bonds_ret)
         self.lm_bonds_vol_short = modified_duration / 10.0 * self.real_vol
+
+        self.gamma = float(data['gamma'])
+        self.equity_vol = float(data['equity_vol_pct']) / 100
+        self.bonds_vol = float(data['bonds_vol_pct']) / 100
+        self.lm_bonds_vol = 0
+
+        self.equity_bonds_corr = float(data['equity_bonds_corr_pct']) / 100
+        self.cov_ec2 = self.equity_vol * self.contribution_vol * self.equity_contribution_corr ** 2
+        self.cov_bc2 = self.bonds_vol * self.contribution_vol * self.bonds_contribution_corr ** 2
+        self.cov_eb2 = self.equity_vol * self.bonds_vol * self.equity_bonds_corr ** 2
+        self.cov_bl2 = 0
+        self.cov_bl2_short = self.bonds_vol_short * self.lm_bonds_vol_short * self.bonds_lm_bonds_corr_short ** 2
 
         factor = norm.ppf(0.5 + float(data['confidence_pct']) / 100 / 2)
         factor = float(factor) # De-numpyfy.

@@ -38,19 +38,19 @@ Create directories
 mkdir -p aacalc.data/{static/results,static/sample,run}
 sudo chown www-data:www-data aacalc.data/{static/results,run}
 
-Initialize the interest rate data
----------------------------------
-
-mkdir -p aacalc/opal/data/public/{hqm,rcmt,cmt}
-aacalc/web/cron.daily
-
-Obtain additional required components
--------------------------------------
+Obtain the required data files
+------------------------------
 
 # Obtain the HECM revere mortgage principal limit factors:
 cd aacalc/opal
 curl http://www.gordoni.com/aacalc-data.tar.gz | tar -zxf -
 cd ../..
+
+Update the interest rate data
+-----------------------------
+
+mkdir -p aacalc/opal/data/public/{hqm,rcmt,cmt}
+aacalc/web/cron.daily
 
 Set up and run Opal server
 --------------------------

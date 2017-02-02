@@ -419,7 +419,7 @@ Permit recommendation of a variable rate reverse mortgage:
 Reverse mortgage lender's margin: {{ alloc_form.rm_margin_pct }}%
 {{ alloc_form.rm_margin_pct.errors }}
 <br />
-Reverse mortgage origination fee and closing costs:
+Reverse mortgage origination fee and closing costs (excluding MIP):
 {{ alloc_form.rm_cost }}
 {{ alloc_form.rm_cost.errors }}
 <div class="small">
@@ -464,8 +464,8 @@ Ongoing premium:
 {{ alloc_form.rm_insurance_annual_pct.errors }}
 <div class="small">
 For a HECM reverse mortgage the interest rate should be the 10-year
-constant maturity Treasury or 10-year LIBOR rate.  This is true even
-though you have a monthly or annually adjusting reverse mortgage.
+constant maturity Treasury or 10-year LIBOR swap rate.  This is true
+even though you have a monthly or annually adjusting reverse mortgage.
 </div>
 </div>
 <br />
@@ -741,6 +741,41 @@ the results we provide here assume you elect not to do so.
 
 {% endif %}
 
+{% if results.present.using_reverse_mortgage %}
+
+We recommend purchasing a reverse mortgage at age
+{{ results.present.rm_purchase_age }}. We recommend allowing a line of
+credit to grow on the reverse mortgage until age
+{{ results.present.credit_line_age }},
+
+{% if results.present.rm_tenure %}
+
+and then taking the reverse mortgage periodic payout tenure option.
+
+{% else %}
+
+and then fully utilizing the line of credit.
+
+{% endif %}
+
+<div class="small">
+Many retirees use home equity as a last resort to pay for long term
+care.  In taking a reverse mortgage you should make sure you either
+have long term care insurance, or that you still have sufficient
+assets to pay for your long term care needs.
+</div>
+
+<br />
+
+{% elif alloc_form.cleaned_data.use_rm %}
+
+We do not recommend a reverse mortgage.
+
+<br />
+<br />
+
+{% endif %}
+
 {% if results.calc.0.annuitize_plan %}
 
 We recommend purchasing a
@@ -769,41 +804,6 @@ this income annuity.
 
 We do not recommend you purchase an income annuity at the present
 time.
-
-<br />
-<br />
-
-{% endif %}
-
-{% if results.present.using_reverse_mortgage %}
-
-We recommend purchasing a reverse mortgage at age
-{{ results.present.rm_purchase_age }}.
-
-{% if results.present.rm_credit_line %}
-
-We recommend allowing a line of credit to grow on the reverse mortgage
-until age {{ results.present.credit_line_age }}, and then fully
-utilizing the line of credit.
-
-{% else %}
-
-We recommend the reverse mortgage periodic payout tenure option.
-
-{% endif %}
-
-<div class="small">
-Many retirees use home equity as a last resort to pay for long term
-care.  In taking a reverse mortgage you should make sure you either
-have long term care insurance, or that you still have sufficient
-assets to pay for your long term care needs.
-</div>
-
-<br />
-
-{% elif alloc_form.cleaned_data.use_rm %}
-
-We do not recommend a reverse mortgage.
 
 <br />
 <br />
