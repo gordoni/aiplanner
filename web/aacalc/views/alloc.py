@@ -395,7 +395,8 @@ class Alloc:
         nv_investments = nv_traditional + self.npv_roth + taxable
 
         try:
-            mortgage_payoff_years = - log(1 - self.mortgage * self.mortgage_rate / self.mortgage_payment) / log(1 + self.mortgage_rate)
+            mortgage_payoff_years = 0 - log(1 - self.mortgage * self.mortgage_rate / self.mortgage_payment) / log(1 + self.mortgage_rate)
+                # If simply negate, get "-0" when log ... == 0.
         except ZeroDivisionError:
             mortgage_payoff_years = 0 if self.mortgage == 0 else float('inf')
         except ValueError:
