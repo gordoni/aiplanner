@@ -414,7 +414,7 @@ class Alloc:
         if self.have_rm:
 
             delay = 0
-            mortgage_payoff = 0
+            mortgage_payoff = nv_mortgage
             credit_line = self.rm_loc
             credit_line_initial = self.rm_loc
             tenure = 0
@@ -501,7 +501,7 @@ class Alloc:
         nv_utilized_home = nv_available_home
         if self.use_rm and credit_line > 0:
             nv_rm = max(nv_credit_line, nv_tenure) - mortgage_payoff
-            using_reverse_mortgage = nv_rm - nv_available_home > 10 / (100.0 - 10) * nv
+            using_reverse_mortgage = self.have_rm or nv_rm - nv_available_home > 10 / (100.0 - 10) * nv
             rm_tenure = nv_tenure > nv_credit_line
             nv_available_home = nv_rm
             if using_reverse_mortgage:
