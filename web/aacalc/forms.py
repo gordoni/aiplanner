@@ -536,9 +536,9 @@ class AllocBaseForm(Form):
             raise ValidationError('Spousal defined benefits but no spouse present')
         mortgage = cleaned_data.get('mortgage')
         mortgage_payment = cleaned_data.get('mortgage_payment')
-        if mortgage > 0 and mortgage_payment == 0:
-            raise ValidationError('Mortgage specified but no mortgage payment.')
         have_rm = cleaned_data.get('have_rm')
+        if mortgage > 0 and mortgage_payment == 0 and not have_rm:
+            raise ValidationError('Mortgage specified but no mortgage payment.')
         rm_loc = cleaned_data.get('rm_loc')
         if rm_loc > 0 and not have_rm:
             raise ValidationError('Reverse mortgage credit line specified but no reverse mortgage.')

@@ -334,7 +334,7 @@ Unused available credit line: {{ alloc_form.rm_loc }}
 {{ alloc_form.rm_loc.errors }}
 <div class="small">
 Mortgage balance should include the mortgage balance of any existing
-reverse mortgage.
+reverse mortgage, in which case the APR value used is irrelevant.
 </div>
 
 </div>
@@ -743,10 +743,15 @@ the results we provide here assume you elect not to do so.
 
 {% if results.present.using_reverse_mortgage %}
 
+{% if not alloc_form.cleaned_data.have_rm %}
+
 We recommend purchasing a reverse mortgage at age
-{{ results.present.rm_purchase_age }}. We recommend allowing a line of
-credit to grow on the reverse mortgage until age
-{{ results.present.credit_line_age }},
+{{ results.present.rm_purchase_age }}.
+
+{% endif %}
+
+We recommend allowing a line of credit to build up on the reverse
+mortgage until age {{ results.present.credit_line_age }},
 
 {% if results.present.rm_tenure %}
 
@@ -967,7 +972,9 @@ Utilized at age {{ results.present.credit_line_age }}.
 <td colspan=2 class="right"> {{ results.present.nv_tenure }} </td>
 </tr>
 <tr>
-<td class="left"> Available home equity </td>
+<td class="left">
+Available home equity after mortgage cost
+</td>
 <td colspan=2 class="right"> {{ results.present.nv_available_home }} </td>
 </tr>
 <tr>

@@ -397,7 +397,7 @@ class Alloc:
         try:
             mortgage_payoff_years = - log(1 - self.mortgage * self.mortgage_rate / self.mortgage_payment) / log(1 + self.mortgage_rate)
         except ZeroDivisionError:
-            mortgage_payoff_years = 0
+            mortgage_payoff_years = 0 if self.mortgage == 0 else float('inf')
         except ValueError:
             mortgage_payoff_years = float('inf')
         payout_delay = 0
