@@ -452,7 +452,7 @@ Principal limit factor (blank to use 2014 HECM table):
 {{ alloc_form.rm_plf }}
 {{ alloc_form.rm_plf.errors }}
 <br />
-Interest rate (blank to use 10-year constant maturity Treasuries):
+Interest rate (blank to use projected 10-year constant maturity Treasuries):
 {{ alloc_form.rm_interest_rate_pct }}%
 {{ alloc_form.rm_interest_rate_pct.errors }}
 <br />
@@ -956,6 +956,7 @@ Paid off in {{ results.present.mortgage_payoff_years }} years.
 <td class="left">
 Reverse mortgage credit line of {{ results.present.credit_line }}
 <div class="small">
+Obtained at age {{ results.present.rm_purchase_age }}.
 Utilized at age {{ results.present.credit_line_age }}.
 </div>
 </td>

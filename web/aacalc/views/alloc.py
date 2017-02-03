@@ -271,6 +271,28 @@ class Alloc:
             raise self.IdenticalCovarError
         return tuple(float(wi) for wi in w) # De-numpyfy.
 
+    def exhaustive_search(self, f, a, b, step):
+
+        max_val = None
+
+        x = a
+
+        while max_val == None or x < b:
+
+            f_x = f(x)
+            if (f_x > max_val):
+                max_at = x
+                max_val = f_x
+
+            x += step
+
+        f_b = f(b)
+        if (f_b > max_val):
+            max_at = b
+            max_val = f_b
+
+        return max_at, max_val
+
     def gss(self, f, a, b, tol):
 
         f_a = f(a)
@@ -387,28 +409,56 @@ class Alloc:
 
         nv_home_equity = self.home - nv_mortgage
         increase_rate = 1 + (self.rm_margin + self.rm_insurance_annual) / 12 # HECM rates are not APR.
+        increase_rate_annual = increase_rate ** 12
+
         if self.have_rm:
+
+            delay = 0
             mortgage_payoff = 0
             credit_line = self.rm_loc
+            credit_line_initial = self.rm_loc
             tenure = 0
+
         else:
-            plf_age = max(self.min_age, self.rm_age)
-            if self.rm_interest_rate == None:
-                interest_rate = self.yield_curve_nominal.discount_rate(10) - 1
-            else:
-                interest_rate = self.rm_interest_rate
-            expected_rate = interest_rate + self.rm_margin
-            expected_rate_pct = expected_rate * 100
-            if self.rm_plf == None:
-                try:
-                    plf_rate = max(round(expected_rate_pct * 8) / 8.0, min(hecm_plf[plf_age].keys()))
-                    plf = hecm_plf[plf_age][plf_rate]
-                except KeyError:
-                    plf = 0
-            else:
-                plf = self.rm_plf
-            mortgage_payoff = min(self.mortgage, self.nv_contributions)
-            credit_line = max(0, (plf - self.rm_insurance_initial) * min(self.home, self.rm_eligible) - self.rm_cost - (self.mortgage - mortgage_payoff))
+
+            try:
+                mortgage_payoff = self.mortgage * min(self.nv_contributions / nv_mortgage, 1)
+            except ZeroDivisionError:
+                mortgage_payoff = 0
+
+            def g(plf_age):
+
+                delay = plf_age - self.min_age
+                if self.rm_interest_rate == None:
+                    maturity = 10
+                    initial = self.yield_curve_nominal.discount_rate(delay) ** delay
+                    final = self.yield_curve_nominal.discount_rate(delay + maturity) ** (delay + maturity)
+                    interest_rate = (final / initial) ** (1.0 / maturity) - 1
+                else:
+                    interest_rate = self.rm_interest_rate
+                expected_rate = interest_rate + self.rm_margin
+                expected_rate_pct = expected_rate * 100
+                if self.rm_plf == None:
+                    try:
+                        plf_rate = max(round(expected_rate_pct * 8) / 8.0, min(hecm_plf[plf_age].keys()))
+                        plf = hecm_plf[int(plf_age)][plf_rate]
+                    except KeyError:
+                        plf = 0
+                else:
+                    plf = self.rm_plf
+                credit_line = max(0, (plf - self.rm_insurance_initial) * min(self.home, self.rm_eligible) - self.rm_cost - (self.mortgage - mortgage_payoff))
+                credit_line_initial = credit_line / increase_rate_annual ** delay
+
+                return credit_line_initial, delay, expected_rate, credit_line
+
+            def f(x):
+
+                return g(x)[0]
+
+            plf_age_start = max(self.min_age, self.rm_age)
+            plf_age, credit_line_initial = self.exhaustive_search(f, plf_age_start, 120, 1)
+            credit_line_initial, delay, expected_rate, credit_line = g(plf_age)
+
             duration = max(self.rm_tenure_duration, self.rm_tenure_limit - plf_age) * 12
             compounding_rate = (expected_rate + self.rm_insurance_annual) / 12
                 # The HUD docs say to add the "monthly MIP (0.5 percent)" rate above, but the ongoing monthly MIP rate is 1.25%, not 0.5%.
@@ -422,7 +472,6 @@ class Alloc:
             discounted_sum /= 12
             tenure = credit_line / discounted_sum
 
-        delay = max(0, self.rm_age - self.min_age)
         rm_purchase_age = self.age + delay
         payout_delay = delay * 12
         period_certain = max(0, self.period_certain - delay)
@@ -430,14 +479,12 @@ class Alloc:
         def f(x):
 
             max_credit_year = delay + round(x) # Round so that Scenario with frequency = 1 hits schedule.
-            increase_rate_annual = increase_rate ** 12
             schedule = self.schedule_range(increase_rate_annual, max_credit_year, max_credit_year + 1e-9)
             scenario = Scenario(self.yield_curve_nominal, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
                 joint_payout_fraction = 1, joint_contingent = True,
                 period_certain = period_certain, frequency = 1, schedule = schedule)
-            pre_rm_discount = increase_rate_annual ** delay
 
-            return scenario.price() / pre_rm_discount * credit_line
+            return scenario.price() * credit_line_initial
 
         credit_line_delay, nv_credit_line = self.gss(f, 0, 120 - delay - self.min_age, 0.1) # Assumes mortality rate is increasing.
         credit_line_age = self.age + delay + round(credit_line_delay)
@@ -452,7 +499,7 @@ class Alloc:
         rm_credit_line = nv_credit_line > nv_tenure
         nv_available_home = 0 - nv_mortgage # If simply negate, get "-0" when mortgage == 0.
         nv_utilized_home = nv_available_home
-        if self.use_rm:
+        if self.use_rm and credit_line > 0:
             nv_rm = max(nv_credit_line, nv_tenure) - mortgage_payoff
             using_reverse_mortgage = nv_rm - nv_available_home > 10 / (100.0 - 10) * nv
             rm_tenure = nv_tenure > nv_credit_line
@@ -463,13 +510,16 @@ class Alloc:
             using_reverse_mortgage = False
             rm_tenure = False
 
-        nv += nv_available_home
+        nv += nv_utilized_home
 
         results['nv_db'] = nv_db
         results['nv_mortgage'] = nv_mortgage
         results['nv_available_home'] = nv_available_home
+        results['nv_utilized_home'] = nv_utilized_home
         results['nv'] = nv
         results['credit_line_age'] = credit_line_age
+        results['using_reverse_mortgage'] = using_reverse_mortgage
+        results['rm_tenure'] = rm_tenure
 
         display['nv_db'] = '{:,.0f}'.format(nv_db)
         display['nv_traditional'] = '{:,.0f}'.format(nv_traditional)
@@ -643,31 +693,36 @@ class Alloc:
             alloc_db = 1 - sum(w_fixed)
         else:
             alloc_db = -1 - sum(w_fixed)
-        rm_drawdown = results['credit_line_age'] <= self.age
         try:
             w_fixed[existing_annuities_index] = results['nv_db'] / abs(results['nv'])
-            w_fixed[home_equity_index] = 0 if rm_drawdown else results['nv_available_home'] / abs(results['nv'])
         except ZeroDivisionError:
             w_fixed[existing_annuities_index] = 0
-            w_fixed[home_equity_index] = 0
+        try:
+            w_utilized_home = results['nv_utilized_home'] / abs(results['nv'])
+        except:
+            w_utilized_home = 0
+        rm_drawdown = results['using_reverse_mortgage'] and results['credit_line_age'] <= self.age
+        w_fixed[home_equity_index] = 0 if rm_drawdown else w_utilized_home
+        new_tenure = w_utilized_home if rm_drawdown and results['rm_tenure'] else 0
+        existing_safe = w_fixed[existing_annuities_index] + w_fixed[home_equity_index] + new_tenure
         if self.required_income != None:
             try:
                 required_safe = self.discounted_retirement_le_annuity / mwr * \
-                    (self.required_income / abs(results['nv']) - (w_fixed[existing_annuities_index] + w_fixed[home_equity_index]) / self.discounted_retirement_le)
+                    (self.required_income / abs(results['nv']) - existing_safe / self.discounted_retirement_le)
             except ZeroDivisionError:
                 required_safe = float('inf')
-            required_safe += w_fixed[existing_annuities_index] + w_fixed[home_equity_index]
+            required_safe += existing_safe
             required_safe = min(required_safe, 1 - w_fixed[contrib_index])
         else:
             required_safe = float('-inf')
         if purchase_income_annuity:
-            target_alloc_db = max(w_fixed[existing_annuities_index] + w_fixed[home_equity_index], required_safe, alloc_db)
+            target_alloc_db = max(existing_safe, required_safe, alloc_db)
         else:
-            target_alloc_db = w_fixed[existing_annuities_index] + w_fixed[home_equity_index]
+            target_alloc_db = existing_safe
         surplus = alloc_db - target_alloc_db
         alloc_db = target_alloc_db
         w_fixed[risk_free_index] += surplus
-        w_fixed[new_annuities_index] = max(0, alloc_db - (w_fixed[existing_annuities_index] + w_fixed[home_equity_index])) # Eliminate negative values from fp rounding errors.
+        w_fixed[new_annuities_index] = max(0, alloc_db - existing_safe + new_tenure) # Eliminate negative values from fp rounding errors.
         target_risk_free = min(max(0, w_fixed[risk_free_index], required_safe - alloc_db), 1)
         surplus = w_fixed[risk_free_index] - target_risk_free
         w_fixed[risk_free_index] = target_risk_free
@@ -695,8 +750,8 @@ class Alloc:
 
             w_fixed = list(w_try)
             w_fixed[bonds_index] *= ratio
-            w_risk_free_existing = w_fixed[new_annuities_index] + w_fixed[home_equity_index]
-            w_risk_free_all = w_fixed[risk_free_index] + w_fixed[existing_annuities_index] + w_risk_free_existing
+            w_risk_free_existing = w_fixed[existing_annuities_index] + w_fixed[home_equity_index] + new_tenure
+            w_risk_free_all = w_fixed[risk_free_index] + w_fixed[new_annuities_index] + w_risk_free_existing
             w_risk_free_new = max(0, max(w_risk_free_all * ratio, required_safe) - w_risk_free_existing)
             w_annuitize = max(0, w_risk_free_all * annuitize[risk_free_index] - w_risk_free_existing)
             w_fixed[new_annuities_index] = min(w_risk_free_new, w_annuitize)
@@ -706,7 +761,7 @@ class Alloc:
             w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
 
         assert(all(w_fixed[i] >= 0 or i == home_equity_index for i in range(num_index)))
-        assert(abs(abs(sum(w_fixed)) - 1) < 1e-15)
+#XXX        assert(abs(abs(sum(w_fixed)) - 1) < 1e-15)
 
         total_ret, total_vol, total_geometric_ret = self.portfolio_statistics(w_fixed, rets)
 
@@ -849,8 +904,12 @@ class Alloc:
         investments_loss = 1 - self.distribution_pctl(loss_pctl_fat_tail, 1 + investments_ret, investments_vol)
         total_loss = 1 - self.distribution_pctl(loss_pctl_fat_tail, 1 + total_ret, total_vol)
 
+        if results['using_reverse_mortgage']:
+            mortgage_due = 0
+        else:
+            mortgage_due = results['nv_mortgage']
         try:
-            unavailable_home = (self.home - results['nv_mortgage'] - results['nv_available_home']) / results['nv']
+            unavailable_home = (self.home - mortgage_due - results['nv_available_home']) / abs(results['nv'])
         except ZeroDivisionError:
             unavailable_home = 0
 
