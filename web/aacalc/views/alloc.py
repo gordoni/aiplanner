@@ -841,7 +841,7 @@ class Alloc:
                 (self.cov_eb2, self.bonds_vol ** 2),
             )
             alpha = (log(1 + rets[stocks_index]), log(1 + rets[bonds_index]))
-            w = list(self.solve_merton(gamma, sigma_matrix, alpha, log(1 + self.lm_bonds_ret)))
+            w = list(self.solve_merton(self.gamma, sigma_matrix, alpha, log(1 + self.lm_bonds_ret)))
             w.append(wc_discounted)
             w.append(1 - sum(w))
             w_prime = list(w)
