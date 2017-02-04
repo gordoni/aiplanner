@@ -443,7 +443,6 @@ class Alloc:
             delay = 0
             mortgage_payoff = nv_mortgage
             credit_line = self.rm_loc
-            credit_line_initial = self.rm_loc
             tenure = 0
 
         else:
@@ -474,15 +473,12 @@ class Alloc:
                 else:
                     plf = self.rm_plf
 
-                def credit(home):
-
-                    return max(0, (plf - self.rm_insurance_initial) * min(home, self.rm_eligible) - self.rm_cost - (self.mortgage - mortgage_payoff))
-
-                credit_line = credit(self.home)
+                factor = plf - self.rm_insurance_initial
+                credit_line = max(0, factor * min(self.home, self.rm_eligible) - self.rm_cost - (self.mortgage - mortgage_payoff))
+                credit_line_vol = factor * self.home_vol if self.home < self.rm_eligible else 0
                 credit_line_initial = credit_line / increase_rate_annual ** delay
-                credit_line_inc = credit(self.home + 1e-3)
 
-                return credit_line_initial, delay, expected_rate, credit_line, credit_line_inc
+                return credit_line_initial, delay, expected_rate, credit_line, credit_line_vol
 
             def f(x):
 
@@ -490,7 +486,7 @@ class Alloc:
 
             plf_age_start = max(self.min_age, self.rm_age)
             plf_age, credit_line_initial = self.exhaustive_search(f, plf_age_start, 120, 1)
-            credit_line_initial, delay, expected_rate, credit_line, credit_line_inc = g(plf_age)
+            credit_line_initial, delay, expected_rate, credit_line, credit_line_vol = g(plf_age)
 
             duration = max(self.rm_tenure_duration, self.rm_tenure_limit - plf_age) * 12
             compounding_rate = (expected_rate + self.rm_insurance_annual) / 12
@@ -504,9 +500,11 @@ class Alloc:
             discounted_sum = (compounding ** (duration + 1) - 1) / ((compounding - 1) * compounding ** duration)
             discounted_sum /= 12
             tenure = credit_line / discounted_sum
+            tenure_vol = credit_line_vol / discounted_sum
 
         if delay == 0:
-            credit_line_inc = credit_line
+            credit_line_vol = 0
+            tenure_vol = 0
         rm_purchase_age = self.age + delay
         payout_delay = delay * 12
         period_certain = max(0, self.period_certain - delay)
@@ -519,15 +517,19 @@ class Alloc:
                 joint_payout_fraction = 1, joint_contingent = True,
                 period_certain = period_certain, frequency = 1, schedule = schedule)
 
-            return scenario.price() * credit_line_initial
+            return scenario.price() / increase_rate_annual ** delay
 
-        credit_line_delay, nv_credit_line = self.gss(f, 0, 120 - delay - self.min_age, 0.1) # Assumes mortality rate is increasing.
+        credit_line_delay, nv_credit_line_factor = self.gss(f, 0, 120 - delay - self.min_age, 0.1) # Assumes mortality rate is increasing.
+        nv_credit_line = nv_credit_line_factor * credit_line
+        nv_credit_line_vol = nv_credit_line_factor * credit_line_vol
         credit_line_age = self.age + delay + round(credit_line_delay)
 
         scenario = Scenario(self.yield_curve_nominal, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = 1, joint_contingent = True,
             period_certain = period_certain, frequency = self.frequency)
-        nv_tenure = scenario.price() * tenure
+        nv_tenure_factor = scenario.price()
+        nv_tenure = nv_tenure_factor * tenure
+        nv_tenure_vol = nv_tenure_factor * tenure_vol
 
         nv = nv_db + nv_investments + self.nv_contributions
 
@@ -537,14 +539,18 @@ class Alloc:
         home_equity_vol = 0
         if self.use_rm and credit_line > 0:
             rm_tenure = nv_tenure > nv_credit_line
-            nv_best_option = max(nv_credit_line, nv_tenure)
-            nv_rm = nv_best_option - mortgage_payoff
-            nv_rm_inc = credit_line_inc / credit_line * nv_best_option - mortgage_payoff
+            if rm_tenure:
+                nv_rm = nv_tenure
+                nv_rm_vol = nv_tenure_vol
+            else:
+                nv_rm = nv_credit_line
+                nv_rm_vol = nv_credit_line_vol
+            nv_rm -= mortgage_payoff
             using_reverse_mortgage = self.have_rm or nv_rm - nv_available_home > 10 / (100.0 - 10) * nv
             nv_available_home = nv_rm
             if using_reverse_mortgage:
                 nv_utilized_home = nv_rm
-                home_equity_vol = self.home_vol * (nv_rm_inc - nv_rm) / 1e-3
+                home_equity_vol = nv_rm_vol
         else:
             using_reverse_mortgage = False
             rm_tenure = False

@@ -766,16 +766,28 @@ We recommend purchasing a reverse mortgage at age
 
 {% endif %}
 
-We recommend allowing a line of credit to build up on the reverse
-mortgage until age {{ results.present.credit_line_age }},
+{% if alloc_form.cleaned_data.have_rm %}
 
-{% if results.present.rm_tenure %}
+We recommend immediately
 
-and then taking the reverse mortgage periodic payout tenure option.
+{% elif results.present.rm_purchase_age == results.present.credit_line_age %}
+
+We then recommend immediately
 
 {% else %}
 
-and then fully utilizing the line of credit.
+We recommend allowing a line of credit to build up on the reverse
+mortgage until age {{ results.present.credit_line_age }}, and then
+
+{% endif %}
+
+{% if results.present.rm_tenure %}
+
+taking the reverse mortgage periodic payout tenure option.
+
+{% else %}
+
+fully utilizing the reverse mortgage line of credit.
 
 {% endif %}
 
