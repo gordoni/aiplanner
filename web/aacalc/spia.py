@@ -997,11 +997,13 @@ class LifeTable:
     class UnableToAdjust(Exception):
         pass
 
-    def __init__(self, table, sex, age, ae = 'aer2005_08-summary', le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
+    def __init__(self, table, sex, age, death_age = float('inf'), ae = 'aer2005_08-summary',
+                 le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
         self.table = table
-        assert(table in ('death_120', 'iam2012-basic', 'ssa-cohort', 'ssa-period', 'gompertz-makeham'))
+        assert(table in ('live', 'iam2012-basic', 'ssa-cohort', 'ssa-period', 'gompertz-makeham'))
         self.sex = sex
         self.age = age
+        self.death_age = death_age  # Force death at this age.
         self.ae = ae  # Whether and how to use the actual/expected experience report when table is iam.
             # 'none' - a/e report not used. AER increases MWR 20% at age 90, and 5% at age 80.
             # 'aer2005_08-summary' - use all ages summary line. Use this value for compatibility with AACalc.
@@ -1080,8 +1082,8 @@ class LifeTable:
         return ssa2010_q[self.sex][age]
 
     def q_int(self, cohort, year, age, contract_age):
-        if self.table == 'death_120':
-            q = 0 if age < 120 else 1
+        if self.table == 'live':
+            q = 0
         elif self.table == 'iam2012-basic':
             q = self.iam_q(year, age, contract_age)
         elif self.table == 'ssa-cohort':
@@ -1091,6 +1093,8 @@ class LifeTable:
         return 1 if q == 1 else min(q * self.q_adjust, 1)
 
     def q(self, year, age, contract_age):
+        if age >= self.death_age:
+            return 1
         if self.table == 'gompertz-makeham':
             return max(0, min(self.alpha + exp((age - self.m) / self.b) / self.b, 1));
         cohort = year - age

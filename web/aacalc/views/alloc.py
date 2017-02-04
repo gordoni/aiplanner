@@ -201,18 +201,21 @@ class Alloc:
             'p_roth_iras': 0,
             'p': 0,
             'contribution': 2000,
+            'contribution_reduction': 0,
             'mortgage_payment': 0,
             'contribution_growth_pct': Decimal('5.0'),
             'contribution_vol_pct': Decimal('20.0'),
             'equity_contribution_corr_pct': Decimal('0.0'),
             'bonds_contribution_corr_pct': Decimal('0.0'),
             'home': 0,
+            'home_vol_pct': Decimal('5.0'),
             'mortgage': 0,
             'mortgage_rate_pct': Decimal('5.0'),
             'rm_have': False,
             'rm_loc': 0,
 
             'retirement_age': 66,
+            'retirement_age2': None,
             'joint_income_pct': 70,
             'required_income': None,
             'desired_income': None,
@@ -331,14 +334,37 @@ class Alloc:
         return sched
 
     def npv_contrib(self, ret):
+
         payout_delay = 0
-        schedule = self.schedule_range(1.0 + ret, 0, self.pre_retirement_years)
-        scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table_120, life_table2 = self.life_table_120, \
-            joint_payout_fraction = 1, joint_contingent = True, period_certain = self.period_certain, \
+
+        # Restrict size of life table rather than using period_certain for speed.
+        life_table = LifeTable('live', 'male', 0, death_age = self.pre_retirement_years)
+
+        scenario = Scenario(self.yield_curve_nominal, payout_delay, None, None, 0, life_table,
+            frequency = 1)
+        value1 = self.mortgage_payment * scenario.price()
+        annual_ret1 = scenario.annual_return - self.inflation
+
+        schedule = self.schedule_range(1.0 + ret)
+
+        scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, life_table,
             frequency = 1, cpi_adjust = 'all', schedule = schedule)
-            # Table used is irrelevant. Choose for speed.
-        value = (self.contribution + self.mortgage_payment) * scenario.price()
-        annual_ret = scenario.annual_return
+        value2 = (self.contribution - self.contribution_reduction) * scenario.price()
+        annual_ret2 = scenario.annual_return
+
+        life_table = LifeTable('live', 'male', 0, death_age = self.pre_retirement_years_full_contrib)
+
+        scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, life_table,
+            frequency = 1, cpi_adjust = 'all', schedule = schedule)
+        value3 = self.contribution_reduction * scenario.price()
+        annual_ret3 = scenario.annual_return
+
+        value = value1 + value2 + value3
+        try:
+            annual_ret = (value1 * annual_ret1 + value2 * annual_ret2 + value3 * annual_ret3) / value
+        except ZeroDivisionError:
+            annual_ret = 0
+
         return value, annual_ret
 
     def value_table_db(self):
@@ -447,10 +473,16 @@ class Alloc:
                         plf = 0
                 else:
                     plf = self.rm_plf
-                credit_line = max(0, (plf - self.rm_insurance_initial) * min(self.home, self.rm_eligible) - self.rm_cost - (self.mortgage - mortgage_payoff))
-                credit_line_initial = credit_line / increase_rate_annual ** delay
 
-                return credit_line_initial, delay, expected_rate, credit_line
+                def credit(home):
+
+                    return max(0, (plf - self.rm_insurance_initial) * min(home, self.rm_eligible) - self.rm_cost - (self.mortgage - mortgage_payoff))
+
+                credit_line = credit(self.home)
+                credit_line_initial = credit_line / increase_rate_annual ** delay
+                credit_line_inc = credit(self.home + 1e-3)
+
+                return credit_line_initial, delay, expected_rate, credit_line, credit_line_inc
 
             def f(x):
 
@@ -458,7 +490,7 @@ class Alloc:
 
             plf_age_start = max(self.min_age, self.rm_age)
             plf_age, credit_line_initial = self.exhaustive_search(f, plf_age_start, 120, 1)
-            credit_line_initial, delay, expected_rate, credit_line = g(plf_age)
+            credit_line_initial, delay, expected_rate, credit_line, credit_line_inc = g(plf_age)
 
             duration = max(self.rm_tenure_duration, self.rm_tenure_limit - plf_age) * 12
             compounding_rate = (expected_rate + self.rm_insurance_annual) / 12
@@ -473,6 +505,8 @@ class Alloc:
             discounted_sum /= 12
             tenure = credit_line / discounted_sum
 
+        if delay == 0:
+            credit_line_inc = credit_line
         rm_purchase_age = self.age + delay
         payout_delay = delay * 12
         period_certain = max(0, self.period_certain - delay)
@@ -500,13 +534,17 @@ class Alloc:
         rm_credit_line = nv_credit_line > nv_tenure
         nv_available_home = 0 - nv_mortgage # If simply negate, get "-0" when mortgage == 0.
         nv_utilized_home = nv_available_home
+        home_equity_vol = 0
         if self.use_rm and credit_line > 0:
-            nv_rm = max(nv_credit_line, nv_tenure) - mortgage_payoff
-            using_reverse_mortgage = self.have_rm or nv_rm - nv_available_home > 10 / (100.0 - 10) * nv
             rm_tenure = nv_tenure > nv_credit_line
+            nv_best_option = max(nv_credit_line, nv_tenure)
+            nv_rm = nv_best_option - mortgage_payoff
+            nv_rm_inc = credit_line_inc / credit_line * nv_best_option - mortgage_payoff
+            using_reverse_mortgage = self.have_rm or nv_rm - nv_available_home > 10 / (100.0 - 10) * nv
             nv_available_home = nv_rm
             if using_reverse_mortgage:
                 nv_utilized_home = nv_rm
+                home_equity_vol = self.home_vol * (nv_rm_inc - nv_rm) / 1e-3
         else:
             using_reverse_mortgage = False
             rm_tenure = False
@@ -521,6 +559,7 @@ class Alloc:
         results['credit_line_age'] = credit_line_age
         results['using_reverse_mortgage'] = using_reverse_mortgage
         results['rm_tenure'] = rm_tenure
+        results['home_equity_vol'] = home_equity_vol
 
         display['nv_db'] = '{:,.0f}'.format(nv_db)
         display['nv_traditional'] = '{:,.0f}'.format(nv_traditional)
@@ -557,11 +596,12 @@ class Alloc:
             w[stocks_index] ** 2 * self.equity_vol ** 2 + \
             w[bonds_index] ** 2 * bonds_vol ** 2 + \
             w[risk_free_index] ** 2 * lm_bonds_vol ** 2 + \
+            w[home_equity_index] ** 2 * self.home_equity_vol ** 2 + \
             2 * w[contrib_index] * w[stocks_index] * self.cov_ec2 + \
             2 * w[contrib_index] * w[bonds_index] * self.cov_bc2 + \
             2 * w[stocks_index] * w[bonds_index] * self.cov_eb2 + \
             2 * w[bonds_index] * w[risk_free_index] * cov_bl2
-            # risk_free covariance assumed zero against other asset classes.
+            # risk_free and home_equity covariances assumed zero against other asset classes.
         total_vol = sqrt(total_var)
 
         total_geometric_ret = self.geomean(1 + total_ret, total_vol) - 1
@@ -761,8 +801,8 @@ class Alloc:
             w_fixed[stocks_index] = 1 - sum(w_fixed)
             w_fixed[stocks_index] = max(0, w_fixed[stocks_index]) # Eliminate negative values from fp rounding errors.
 
-        assert(all(w_fixed[i] >= 0 or i == home_equity_index for i in range(num_index)))
-#XXX        assert(abs(abs(sum(w_fixed)) - 1) < 1e-15)
+        assert(all(w_fixed[i] >= 0 or i in (contrib_index, home_equity_index) for i in range(num_index)))
+        assert(abs(abs(sum(w_fixed)) - 1) < 1e-15)
 
         total_ret, total_vol, total_geometric_ret = self.portfolio_statistics(w_fixed, rets)
 
@@ -774,8 +814,7 @@ class Alloc:
         expense = float(data['expense_pct']) / 100
         rets[stocks_index] = float(data['equity_ret_pct']) / 100 - expense
         rets[stocks_index] += factor * float(data['equity_se_pct']) / 100
-        rets[bonds_index] = self.yield_curve_nominal.discount_rate(10) - 1 + float(data['bonds_premium_pct']) / 100 \
-            - float(data['inflation_pct']) / 100 - expense
+        rets[bonds_index] = self.yield_curve_nominal.discount_rate(10) - 1 + float(data['bonds_premium_pct']) / 100 - self.inflation - expense
         rets[contrib_index] = self.ret_contributions
         rets[risk_free_index] = self.lm_bonds_ret
         rets[existing_annuities_index] = self.lm_bonds_ret
@@ -862,7 +901,7 @@ class Alloc:
             # returns are unlikely to be repeated in the forseeable
             # future.
             annuitize[bonds_index] = min(max(0, (self.min_age - 30.0) / (60 - 30)), 1)
-            annuitize_lm_bonds_age = min(max(40, 40 + (self.retirement_age - self.age + self.min_age - 50) / 2.0), 50)
+            annuitize_lm_bonds_age = min(max(40, 40 + (self.min_age + self.pre_retirement_years - 50) / 2.0), 50)
             annuitize[risk_free_index] = 0 if self.min_age < annuitize_lm_bonds_age else 1
 
             w_fixed_annuitize, consume_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize = \
@@ -981,6 +1020,7 @@ class Alloc:
             'equity_ret_pct': '{:.1f}'.format(rets[stocks_index] * 100),
             'bonds_ret_pct': '{:.1f}'.format(rets[bonds_index] * 100),
             'lm_bonds_vol_short_pct': '{:.1f}'.format(self.lm_bonds_vol_short * 100),
+            'home_equity_vol_pct': '{:.1f}'.format(self.home_equity_vol * 100),
             'investments_ret_pct': '{:.1f}'.format(investments_ret * 100),
             'investments_vol_pct': '{:.1f}'.format(investments_vol * 100),
             'investments_geometric_ret_pct': '{:.1f}'.format(investments_geometric_ret * 100),
@@ -1065,8 +1105,6 @@ class Alloc:
         self.table = 'ssa-cohort'
         self.table_annuity = 'iam2012-basic'
 
-        self.life_table_120 = LifeTable('death_120', 'male', 0)
-
         self.sex = data['sex']
         self.age = float(data['age'])
         self.le_set = float(data['le_set']) - self.age if data['le_set'] else None
@@ -1092,6 +1130,7 @@ class Alloc:
             self.npv_roth = float(data['p_roth_iras'])
             self.npv_taxable = float(data['p'])
             self.contribution = float(data['contribution'])
+            self.contribution_reduction = float(data['contribution_reduction'])
             self.contribution_growth = float(data['contribution_growth_pct']) / 100
             self.contribution_vol = float(data['contribution_vol_pct']) / 100
             self.equity_contribution_corr = float(data['equity_contribution_corr_pct']) / 100
@@ -1102,11 +1141,13 @@ class Alloc:
             self.npv_roth = 0
             self.npv_taxable = 0
             self.contribution = 0
+            self.contribution_reduction = 0
             self.contribution_growth = 0
             self.contribution_vol = 0
             self.equity_contribution_corr = 0
             self.bonds_contribution_corr = 0
         self.home = float(data['home'])
+        self.home_vol = float(data['home_vol_pct']) / 100
         self.mortgage = float(data['mortgage'])
         self.mortgage_payment = float(data['mortgage_payment'])
         self.mortgage_rate = float(data['mortgage_rate_pct']) / 100
@@ -1122,7 +1163,14 @@ class Alloc:
         self.rm_tenure_duration = float(data['rm_tenure_duration'])
         self.rm_eligible = float(data['rm_eligible'])
         self.retirement_age = float(data['retirement_age'])
-        self.pre_retirement_years = max(0, self.retirement_age - self.age)
+        self.retirement_age2 = None if data['retirement_age2'] == None else float(data['retirement_age2'])
+        pre_retirement_years1 = max(0, self.retirement_age - self.age)
+        if self.retirement_age2 != None:
+            pre_retirement_years2 = max(0, self.retirement_age2 - self.age2)
+        else:
+            pre_retirement_years2 = pre_retirement_years1
+        self.pre_retirement_years = max(pre_retirement_years1, pre_retirement_years2)
+        self.pre_retirement_years_full_contrib = min(pre_retirement_years1, pre_retirement_years2)
         self.payout_delay = self.pre_retirement_years * 12
         self.joint_payout_fraction = float(data['joint_income_pct']) / 100
         self.required_income = None if data['required_income'] == None else float(data['required_income'])
@@ -1134,6 +1182,7 @@ class Alloc:
         self.rm_margin = float(data['rm_margin_pct']) / 100
         self.rm_insurance_initial = float(data['rm_insurance_initial_pct']) / 100
         self.rm_insurance_annual = float(data['rm_insurance_annual_pct']) / 100
+        self.inflation = float(data['inflation_pct']) / 100
 
         results['pre_retirement_years'] = '{:.1f}'.format(self.pre_retirement_years)
 
@@ -1151,6 +1200,8 @@ class Alloc:
         results['db'] = []
         for db in display_db:
             results['db'].append({'present': db})
+
+        self.home_equity_vol = npv_results['home_equity_vol']
 
         scenario = Scenario(self.yield_curve_zero, self.payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \

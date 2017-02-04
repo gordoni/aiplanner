@@ -527,6 +527,7 @@ class AllocBaseForm(Form):
         cleaned_data['db'] = self.db.cleaned_data if self.db.is_bound else self.db.initial
         sex2 = cleaned_data.get('sex2')
         age2 = cleaned_data.get('age2')
+        retirement_age2 = cleaned_data.get('retirement_age2')
         if sex2 == 'none' and age2 != None or sex2 != 'none' and age2 == None:
             raise ValidationError('Invalid spouse/partner.')
         le_set2 = cleaned_data.get('le_set2')
@@ -534,6 +535,8 @@ class AllocBaseForm(Form):
             raise ValidationError('Life expectancy specified for non-existant spouse.')
         if sex2 == 'none' and any((db['who'] == 'spouse') and (float(db['amount']) != 0) for db in cleaned_data['db']):
             raise ValidationError('Spousal defined benefits but no spouse present')
+        if sex2 == 'none' and retirement_age2 != None:
+            raise ValidationError('Retirement age specified for non-existant spouse.')
         mortgage = cleaned_data.get('mortgage')
         mortgage_payment = cleaned_data.get('mortgage_payment')
         have_rm = cleaned_data.get('have_rm')
@@ -637,6 +640,9 @@ class AllocBaseForm(Form):
     home = DecimalField(
         widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
+    home_vol_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        min_value=0)
     mortgage = DecimalField(
         widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
@@ -655,6 +661,11 @@ class AllocBaseForm(Form):
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=110)
+    retirement_age2 = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=110,
+        required=False)
     joint_income_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0,
@@ -769,6 +780,9 @@ class AllocAaForm(AllocBaseForm):
         min_value=0)
 
     contribution = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+    contribution_reduction = DecimalField(
         widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
     contribution_growth_pct = DecimalField(

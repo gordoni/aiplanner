@@ -283,6 +283,10 @@ Pre-retirement annual contribution amount after tax (irrelevant if retired):
 {{ alloc_form.contribution }}
 {{ alloc_form.contribution.errors }}
 <br />
+Reduction in contribution amount when only one spouse is working:
+{{ alloc_form.contribution_reduction }}
+{{ alloc_form.contribution_reduction.errors }}
+<br />
 Real growth rate: {{ alloc_form.contribution_growth_pct }}%
 Annual volatility: {{ alloc_form.contribution_vol_pct }}%
 {{ alloc_form.contribution_growth_pct.errors }}
@@ -297,7 +301,11 @@ Contributions and mortgage payments (below) are combined on the
 assumption that once the mortgage is paid off the additional funds
 will go towards retirement savings. Contribution amount should consist
 only of new money contributed to your retirement savings, not the
-payout from any existing pre-retirement defined benefits. A growth
+payout from any existing pre-retirement defined benefits. Reduction
+when only one spouse is working will normally equal the after tax
+income of the retired spouse, should be expressed prior to applying
+any growth rate, and can exceed the contribution amount if drawdown is
+then occuring. A growth
 rate of 5% represents a doubling every 14 years.
 Remember to take into account life events such as promotions, or
 children leaving home in estimating the growth rate.
@@ -318,6 +326,8 @@ Other assets and liabilities:
 
 Home appraised value: {{ alloc_form.home }}
 {{ alloc_form.home.errors }}
+Real volatility: {{ alloc_form.home_vol_pct }}%
+{{ alloc_form.home_vol_pct.errors }}
 <br />
 Mortgage balance: {{ alloc_form.mortgage }}
 Annual payment: {{ alloc_form.mortgage_payment }}
@@ -346,8 +356,12 @@ zero and the APR value used is irrelevant.
 
 <div class="indent">
 
-Age of primary person at retirement: {{ alloc_form.retirement_age }}
+Age of primary person at their retirement: {{ alloc_form.retirement_age }}
 {{ alloc_form.retirement_age.errors }}
+<br />
+Age of spouse at their retirement (blank if both retire at the same time):
+{{ alloc_form.retirement_age2 }}
+{{ alloc_form.retirement_age2.errors }}
 <br />
 Relative income required when one party deceased: {{ alloc_form.joint_income_pct }}%
 {{ alloc_form.joint_income_pct.errors }}
@@ -858,7 +872,7 @@ that of bonds.
 The amount you should consume during retirement varies from year to
 year. Currently it is recommended
 you should consume around <!-- healthcheck_consume --> {{ results.calc.0.consume }}
-after tax and after mortgage payments per year in retirement.
+after tax and after mortgage payments per year when fully retired.
 An {{ alloc_form.cleaned_data.confidence_pct }}% confidence interval
 on this recommendation is {{ results.calc.1.consume }} to
 {{ results.calc.2.consume }}.
@@ -877,7 +891,7 @@ in order to fund the above consumption.
 
 The annual volatility of your investment portfolio is estimated to be
 {{ results.calc.0.investments_vol_pct }}%.  The annual volatility of
-your total portfolio, and hence your consumption, is estimated to be
+your total portfolio, and hence your recommended consumption, is estimated to be
 {{ results.calc.0.total_vol_pct }}%.
 
 <br />
@@ -1210,11 +1224,11 @@ Inflation adjusted.
 <td class="right"> 0.0% </td>
 </tr>
 <tr>
-<td class="left"> Available home equity </td>
+<td class="left"> Utilizable home equity </td>
 <td class="right"> {{ calc.alloc_home_equity_pct }}% </td>
 <td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
 <td class="right"> - </td>
-<td class="right"> 0.0% </td>
+<td class="right"> {{ calc.home_equity_vol_pct }}% </td>
 </tr>
 <tr>
 <th class="left" rowspan=2> Investments </th>
@@ -1241,8 +1255,11 @@ Inflation adjusted.
 <div class="small">
 We assume regular bonds are closest to liability matching bonds and
 defined benefits, and reduce the former to make up for any need to
-increase the latter. We assume existing defined benefits are
-predominately inflation-indexed.
+increase the latter. We assume home equity is not correlated with any
+of the other asset classes. We assume the liability matching
+volatility of future nominal amounts, or the volatility of the
+inflation rate, is zero. In doing so we note that volatility is a poor
+measure of the risk associated with inflation.
 </div>
 
 <br />
