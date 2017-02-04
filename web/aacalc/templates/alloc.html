@@ -325,8 +325,10 @@ Other assets and liabilities:
 <div class="indent">
 
 Home appraised value: {{ alloc_form.home }}
+Real growth: {{ alloc_form.home_ret_pct }}%
+Volatility: {{ alloc_form.home_vol_pct }}%
 {{ alloc_form.home.errors }}
-Real volatility: {{ alloc_form.home_vol_pct }}%
+{{ alloc_form.home_ret_pct.errors }}
 {{ alloc_form.home_vol_pct.errors }}
 <br />
 Mortgage balance: {{ alloc_form.mortgage }}
@@ -802,7 +804,7 @@ assets to pay for your long term care needs.
 
 {% elif alloc_form.cleaned_data.use_rm %}
 
-We do not recommend a reverse mortgage.
+We do not recommend using a reverse mortgage.
 
 <br />
 <br />
@@ -977,13 +979,10 @@ real interest rate adjusted
 Mortgage
 <div class="small">
 Paid off in {{ results.present.mortgage_payoff_years }} years.
+Cost {{ results.present.nv_mortgage_payoff }}.
 </div>
 </td>
 <td colspan=2 class="right"> {{ results.present.nv_mortgage }} </td>
-</tr>
-<tr>
-<td class="left"> Home equity </td>
-<td colspan=2 class="right"> {{ results.present.nv_home_equity }} </td>
 </tr>
 <tr>
 <td class="left">
@@ -1001,7 +1000,7 @@ Utilized at age {{ results.present.credit_line_age }}.
 </tr>
 <tr>
 <td class="left">
-Available home equity after mortgage cost
+Available home equity after mortgage payoff
 </td>
 <td colspan=2 class="right"> {{ results.present.nv_available_home }} </td>
 </tr>
@@ -1025,7 +1024,7 @@ Available home equity after mortgage cost
 Computed from mortality table and real yield curve.
 <br />
 Future contributions includes mortgage payments and is first applied
-to the mortgage balance.
+to the mortgage.
 </td>
 </tr>
 </table>

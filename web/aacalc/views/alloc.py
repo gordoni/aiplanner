@@ -208,6 +208,7 @@ class Alloc:
             'equity_contribution_corr_pct': Decimal('0.0'),
             'bonds_contribution_corr_pct': Decimal('0.0'),
             'home': 0,
+            'home_ret_pct': Decimal('1.0'),
             'home_vol_pct': Decimal('5.0'),
             'mortgage': 0,
             'mortgage_rate_pct': Decimal('5.0'),
@@ -345,6 +346,8 @@ class Alloc:
         value1 = self.mortgage_payment * scenario.price()
         annual_ret1 = scenario.annual_return - self.inflation
 
+        # Assume both spouses make it to retirement.
+
         schedule = self.schedule_range(1.0 + ret)
 
         scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, life_table,
@@ -427,28 +430,52 @@ class Alloc:
             mortgage_payoff_years = 0 if self.mortgage == 0 else float('inf')
         except ValueError:
             mortgage_payoff_years = float('inf')
+
         payout_delay = 0
+
         schedule = self.schedule_range(1, 0, mortgage_payoff_years)
+
         scenario = Scenario(self.yield_curve_nominal, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = 1, joint_contingent = True,
-                            period_certain = 0, frequency = self.frequency, schedule = schedule)
+            period_certain = 0, frequency = self.frequency, schedule = schedule)
         nv_mortgage = scenario.price() * self.mortgage_payment
 
-        nv_home_equity = self.home - nv_mortgage
+        scenario = Scenario(self.yield_curve_nominal, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
+            period_certain = mortgage_payoff_years, frequency = self.frequency, schedule = schedule)
+        nv_mortgage_payoff = scenario.price() * self.mortgage_payment
+
         increase_rate = 1 + (self.rm_margin + self.rm_insurance_annual) / 12 # HECM rates are not APR.
         increase_rate_annual = increase_rate ** 12
 
+        scenario = Scenario(self.yield_curve_nominal, 0, None, None, 0, self.life_table, life_table2 = self.life_table2, \
+            joint_payout_fraction = 1, joint_contingent = True,
+            period_certain = self.period_certain, frequency = 1)
+        scenario.price()
+
+        def npv_credit_line_factor(delay, credit_line_delay):
+
+            try:
+                calc = scenario.calcs[int(round(delay + credit_line_delay))]
+            except IndexError:
+                calc = {'fair_price': 0}
+            nv_credit_factor = calc['fair_price'] * increase_rate_annual ** credit_line_delay
+
+            return nv_credit_factor
+
         if self.have_rm:
 
-            delay = 0
             mortgage_payoff = nv_mortgage
+            delay = 0
             credit_line = self.rm_loc
+            credit_line_delay, factor = self.exhaustive_search(lambda x: npv_credit_line_factor(delay, x), 0, 120 - delay - self.min_age, 1)
+            nv_credit_line = factor * self.rm_loc
             tenure = 0
+            nv_tenure = 0
 
         else:
 
             try:
-                mortgage_payoff = self.mortgage * min(self.nv_contributions / nv_mortgage, 1)
+                mortgage_payoff = self.mortgage * min(self.nv_contributions / nv_mortgage_payoff, 1)
             except ZeroDivisionError:
                 mortgage_payoff = 0
 
@@ -474,19 +501,23 @@ class Alloc:
                     plf = self.rm_plf
 
                 factor = plf - self.rm_insurance_initial
-                credit_line = max(0, factor * min(self.home, self.rm_eligible) - self.rm_cost - (self.mortgage - mortgage_payoff))
+                home_value = self.home * ((1 + self.home_ret) * (1 + self.inflation)) ** delay
+                credit_line = max(0, factor * min(home_value, self.rm_eligible) - self.rm_cost - (self.mortgage - mortgage_payoff))
                 credit_line_vol = factor * self.home_vol if self.home < self.rm_eligible else 0
-                credit_line_initial = credit_line / increase_rate_annual ** delay
 
-                return credit_line_initial, delay, expected_rate, credit_line, credit_line_vol
+                credit_line_delay, factor = self.exhaustive_search(lambda x: npv_credit_line_factor(delay, x), 0, 120 - delay - self.min_age, 1)
+                nv_credit_line = factor * credit_line
+                credit_line_vol *= factor
+
+                return nv_credit_line, delay, credit_line_delay, expected_rate, credit_line, credit_line_vol
 
             def f(x):
 
                 return g(x)[0]
 
-            plf_age_start = max(self.min_age, self.rm_age)
+            plf_age_start = self.min_age + max(0, ceil(self.rm_age - self.min_age))
             plf_age, credit_line_initial = self.exhaustive_search(f, plf_age_start, 120, 1)
-            credit_line_initial, delay, expected_rate, credit_line, credit_line_vol = g(plf_age)
+            nv_credit_line, delay, credit_line_delay, expected_rate, credit_line, credit_line_vol = g(plf_age)
 
             duration = max(self.rm_tenure_duration, self.rm_tenure_limit - plf_age) * 12
             compounding_rate = (expected_rate + self.rm_insurance_annual) / 12
@@ -502,34 +533,21 @@ class Alloc:
             tenure = credit_line / discounted_sum
             tenure_vol = credit_line_vol / discounted_sum
 
+            # Bug: we don't compute the optimal age for tenure.
+            payout_delay = delay * 12
+            period_certain = max(0, self.period_certain - delay)
+            scenario = Scenario(self.yield_curve_nominal, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
+                joint_payout_fraction = 1, joint_contingent = True,
+                period_certain = period_certain, frequency = self.frequency)
+            nv_tenure_factor = scenario.price()
+            nv_tenure = nv_tenure_factor * tenure
+            tenure_vol *= nv_tenure_factor
+
         if delay == 0:
             credit_line_vol = 0
             tenure_vol = 0
         rm_purchase_age = self.age + delay
-        payout_delay = delay * 12
-        period_certain = max(0, self.period_certain - delay)
-
-        def f(x):
-
-            max_credit_year = delay + round(x) # Round so that Scenario with frequency = 1 hits schedule.
-            schedule = self.schedule_range(increase_rate_annual, max_credit_year, max_credit_year + 1e-9)
-            scenario = Scenario(self.yield_curve_nominal, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
-                joint_payout_fraction = 1, joint_contingent = True,
-                period_certain = period_certain, frequency = 1, schedule = schedule)
-
-            return scenario.price() / increase_rate_annual ** delay
-
-        credit_line_delay, nv_credit_line_factor = self.gss(f, 0, 120 - delay - self.min_age, 0.1) # Assumes mortality rate is increasing.
-        nv_credit_line = nv_credit_line_factor * credit_line
-        nv_credit_line_vol = nv_credit_line_factor * credit_line_vol
-        credit_line_age = self.age + delay + round(credit_line_delay)
-
-        scenario = Scenario(self.yield_curve_nominal, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
-            joint_payout_fraction = 1, joint_contingent = True,
-            period_certain = period_certain, frequency = self.frequency)
-        nv_tenure_factor = scenario.price()
-        nv_tenure = nv_tenure_factor * tenure
-        nv_tenure_vol = nv_tenure_factor * tenure_vol
+        credit_line_age = self.age + delay + credit_line_delay
 
         nv = nv_db + nv_investments + self.nv_contributions
 
@@ -541,10 +559,10 @@ class Alloc:
             rm_tenure = nv_tenure > nv_credit_line
             if rm_tenure:
                 nv_rm = nv_tenure
-                nv_rm_vol = nv_tenure_vol
+                nv_rm_vol = tenure_vol
             else:
                 nv_rm = nv_credit_line
-                nv_rm_vol = nv_credit_line_vol
+                nv_rm_vol = credit_line_vol
             nv_rm -= mortgage_payoff
             using_reverse_mortgage = self.have_rm or nv_rm - nv_available_home > 10 / (100.0 - 10) * nv
             nv_available_home = nv_rm
@@ -558,7 +576,7 @@ class Alloc:
         nv += nv_utilized_home
 
         results['nv_db'] = nv_db
-        results['nv_mortgage'] = nv_mortgage
+        results['nv_mortgage_payoff'] = nv_mortgage_payoff
         results['nv_available_home'] = nv_available_home
         results['nv_utilized_home'] = nv_utilized_home
         results['nv'] = nv
@@ -574,8 +592,8 @@ class Alloc:
         display['nv_investments'] = '{:,.0f}'.format(nv_investments)
         display['nv_home'] = '{:,.0f}'.format(self.home)
         display['nv_mortgage'] = '{:,.0f}'.format(0 - nv_mortgage) # If simply negate, get "-0" when mortgage == 0.
+        display['nv_mortgage_payoff'] = '{:,.0f}'.format(nv_mortgage_payoff)
         display['mortgage_payoff_years'] = '{:.0f}'.format(mortgage_payoff_years)
-        display['nv_home_equity'] = '{:,.0f}'.format(nv_home_equity)
         display['credit_line'] = '{:,.0f}'.format(credit_line)
         display['nv_credit_line'] = '{:,.0f}'.format(nv_credit_line)
         display['credit_line_age'] = '{:.0f}'.format(credit_line_age)
@@ -812,7 +830,7 @@ class Alloc:
 
         total_ret, total_vol, total_geometric_ret = self.portfolio_statistics(w_fixed, rets)
 
-        return w_fixed, consume, total_ret, total_vol, total_geometric_ret
+        return w_fixed, consume, new_tenure, total_ret, total_vol, total_geometric_ret
 
     def calc_scenario(self, mode, description, factor, data, results, force_annuitize):
 
@@ -895,7 +913,7 @@ class Alloc:
         w_prime[risk_free_index] = 1 - sum(w_prime)
 
         annuitize = [0] * num_index
-        w_fixed, consume, total_ret, total_vol, total_geometric_ret = self.fix_allocs(mode, w_prime, rets, results, annuitize)
+        w_fixed, consume, new_tenure, total_ret, total_vol, total_geometric_ret = self.fix_allocs(mode, w_prime, rets, results, annuitize)
         consume_unannuitize = consume
 
         if self.purchase_income_annuity:
@@ -910,11 +928,11 @@ class Alloc:
             annuitize_lm_bonds_age = min(max(40, 40 + (self.min_age + self.pre_retirement_years - 50) / 2.0), 50)
             annuitize[risk_free_index] = 0 if self.min_age < annuitize_lm_bonds_age else 1
 
-            w_fixed_annuitize, consume_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize = \
+            w_fixed_annuitize, consume_annuitize, new_tenure_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize = \
                 self.fix_allocs(mode, w_prime, rets, results, annuitize)
 
             annuitize_gain = consume_annuitize - consume_unannuitize
-            purchase_income_annuity = abs(results['nv']) * w_fixed_annuitize[new_annuities_index]
+            purchase_income_annuity = abs(results['nv']) * (w_fixed_annuitize[new_annuities_index] - new_tenure_annuitize)
 
             use_age = self.min_age - 5 # Delay cost estimates look forward for 10 years.
             index = min(int(use_age / 10.0), len(annuitization_delay_cost))
@@ -931,8 +949,8 @@ class Alloc:
             else:
                 annuitize_plan = force_annuitize
             if annuitize_plan:
-                w_fixed, consume, total_ret, total_vol, total_geometric_ret = \
-                    w_fixed_annuitize, consume_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize
+                w_fixed, consume, new_tenure, total_ret, total_vol, total_geometric_ret = \
+                    w_fixed_annuitize, consume_annuitize, new_tenure_annuitize, total_ret_annuitize, total_vol_annuitize, total_geometric_ret_annuitize
 
         else:
 
@@ -953,7 +971,7 @@ class Alloc:
         if results['using_reverse_mortgage']:
             mortgage_due = 0
         else:
-            mortgage_due = results['nv_mortgage']
+            mortgage_due = results['nv_mortgage_payoff']
         try:
             unavailable_home = (self.home - mortgage_due - results['nv_available_home']) / abs(results['nv'])
         except ZeroDivisionError:
@@ -1153,6 +1171,7 @@ class Alloc:
             self.equity_contribution_corr = 0
             self.bonds_contribution_corr = 0
         self.home = float(data['home'])
+        self.home_ret = float(data['home_ret_pct']) / 100
         self.home_vol = float(data['home_vol_pct']) / 100
         self.mortgage = float(data['mortgage'])
         self.mortgage_payment = float(data['mortgage_payment'])

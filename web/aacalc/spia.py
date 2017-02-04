@@ -1206,9 +1206,10 @@ class Scenario:
             if period >= self.period_certain:
                 alive = (1 - fract) * alive_array[index] + fract * alive_array[index + 1]
                 joint = (1 - fract) * joint_array[index] + fract * joint_array[index + 1]
-                combined = alive + self.joint_payout_fraction * joint
             else:
-                combined = 1.0
+                alive = 1.0
+                joint = 0.0
+            combined = alive + self.joint_payout_fraction * joint
             if self.yield_curve.interest_rate != 'real' or self.cpi_adjust == 'all':
                 r = self.yield_curve.discount_rate(y)
                 y_eff = y

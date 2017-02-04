@@ -640,6 +640,8 @@ class AllocBaseForm(Form):
     home = DecimalField(
         widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
+    home_ret_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}))
     home_vol_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0)
