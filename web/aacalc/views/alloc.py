@@ -501,9 +501,10 @@ class Alloc:
                     plf = self.rm_plf
 
                 factor = plf - self.rm_insurance_initial
-                home_value = self.home * ((1 + self.home_ret) * (1 + self.inflation)) ** delay
+                home_value_factor = ((1 + self.home_ret) * (1 + self.inflation)) ** delay
+                home_value = home_value_factor * self.home
                 credit_line = max(0, factor * min(home_value, self.rm_eligible) - self.rm_cost - (self.mortgage - mortgage_payoff))
-                credit_line_vol = factor * self.home_vol if self.home < self.rm_eligible else 0
+                credit_line_vol = factor * home_value * self.home_vol if home_value < self.rm_eligible else 0
 
                 credit_line_delay, factor = self.exhaustive_search(lambda x: npv_credit_line_factor(delay, x), 0, 120 - delay - self.min_age, 1)
                 nv_credit_line = factor * credit_line
@@ -564,6 +565,7 @@ class Alloc:
                 nv_rm = nv_credit_line
                 nv_rm_vol = credit_line_vol
             nv_rm -= mortgage_payoff
+            nv_rm_vol /= nv_rm
             using_reverse_mortgage = self.have_rm or nv_rm - nv_available_home > 10 / (100.0 - 10) * nv
             nv_available_home = nv_rm
             if using_reverse_mortgage:
