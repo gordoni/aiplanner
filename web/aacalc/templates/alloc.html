@@ -761,37 +761,47 @@ the results we provide here assume you elect not to do so.
 
 {% if results.present.using_reverse_mortgage %}
 
-{% if not alloc_form.cleaned_data.have_rm %}
+  {% if not alloc_form.cleaned_data.have_rm %}
 
-We recommend purchasing a reverse mortgage at age
-{{ results.present.rm_purchase_age }}.
+    We recommend purchasing a reverse mortgage at age
 
-{% endif %}
+    {% if results.present.rm_tenure %}
 
-{% if alloc_form.cleaned_data.have_rm %}
+      {{ results.present.tenure_age }}.
 
-We recommend immediately
+    {% else %}
 
-{% elif results.present.rm_purchase_age == results.present.credit_line_age %}
+      {{ results.present.rm_purchase_age }}.
 
-We then recommend immediately
+    {% endif %}
 
-{% else %}
+  {% endif %}
 
-We recommend allowing a line of credit to build up on the reverse
-mortgage until age {{ results.present.credit_line_age }}, and then
+  {% if results.present.rm_tenure %}
 
-{% endif %}
+    We then recommend immediately taking the reverse mortgage periodic
+    payout tenure option.
 
-{% if results.present.rm_tenure %}
+  {% else %}
 
-taking the reverse mortgage periodic payout tenure option.
+    {% if alloc_form.cleaned_data.have_rm %}
 
-{% else %}
+      We recommend immediately
 
-fully utilizing the reverse mortgage line of credit.
+    {% elif results.present.rm_purchase_age == results.present.credit_line_age %}
 
-{% endif %}
+      We then recommend immediately
+
+    {% else %}
+
+      We recommend allowing a line of credit to build up on the reverse
+      mortgage until age {{ results.present.credit_line_age }}, and then
+
+    {% endif %}
+
+    fully utilizing the reverse mortgage line of credit.
+
+  {% endif %}
 
 <div class="small">
 Many retirees use home equity as a last resort to pay for long term
@@ -995,7 +1005,12 @@ Utilized at age {{ results.present.credit_line_age }}.
 <td colspan=2 class="right"> {{ results.present.nv_credit_line }} </td>
 </tr>
 <tr>
-<td class="left"> Reverse mortgage annual tenure of {{ results.present.tenure }} </td>
+<td class="left">
+Reverse mortgage annual tenure of {{ results.present.tenure }}
+<div class="small">
+Obtained at age {{ results.present.tenure_age }}.
+</div>
+ </td>
 <td colspan=2 class="right"> {{ results.present.nv_tenure }} </td>
 </tr>
 <tr>

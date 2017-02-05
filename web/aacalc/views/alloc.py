@@ -447,15 +447,15 @@ class Alloc:
         increase_rate = 1 + (self.rm_margin + self.rm_insurance_annual) / 12 # HECM rates are not APR.
         increase_rate_annual = increase_rate ** 12
 
-        scenario = Scenario(self.yield_curve_nominal, 0, None, None, 0, self.life_table, life_table2 = self.life_table2, \
+        nominal_scenario = Scenario(self.yield_curve_nominal, 0, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = 1, joint_contingent = True,
-            period_certain = self.period_certain, frequency = 1)
-        scenario.price()
+            period_certain = self.period_certain, frequency = 12)
+        nominal_scenario.price()
 
-        def npv_credit_line_factor(delay, credit_line_delay):
+        def npv_credit_factor(delay, credit_line_delay):
 
             try:
-                calc = scenario.calcs[int(round(delay + credit_line_delay))]
+                calc = nominal_scenario.calcs[int(round((delay + credit_line_delay) * 12))]
             except IndexError:
                 calc = {'fair_price': 0}
             nv_credit_factor = calc['fair_price'] * increase_rate_annual ** credit_line_delay
@@ -467,8 +467,9 @@ class Alloc:
             mortgage_payoff = nv_mortgage
             delay = 0
             credit_line = self.rm_loc
-            credit_line_delay, factor = self.exhaustive_search(lambda x: npv_credit_line_factor(delay, x), 0, 120 - delay - self.min_age, 1)
+            credit_line_delay, factor = self.exhaustive_search(lambda x: npv_credit_factor(delay, x), 0, 120 - delay - self.min_age, 1)
             nv_credit_line = factor * self.rm_loc
+            delay_tenure = 0
             tenure = 0
             nv_tenure = 0
 
@@ -479,7 +480,7 @@ class Alloc:
             except ZeroDivisionError:
                 mortgage_payoff = 0
 
-            def g(plf_age):
+            def lookup_credit_line(plf_age):
 
                 delay = plf_age - self.min_age
                 if self.rm_interest_rate == None:
@@ -492,9 +493,10 @@ class Alloc:
                 expected_rate = interest_rate + self.rm_margin
                 expected_rate_pct = expected_rate * 100
                 if self.rm_plf == None:
+                    age = min(int(plf_age), max(hecm_plf.keys()))
                     try:
-                        plf_rate = max(round(expected_rate_pct * 8) / 8.0, min(hecm_plf[plf_age].keys()))
-                        plf = hecm_plf[int(plf_age)][plf_rate]
+                        rate = max(round(expected_rate_pct * 8) / 8.0, min(hecm_plf[age].keys()))
+                        plf = hecm_plf[age][rate]
                     except KeyError:
                         plf = 0
                 else:
@@ -506,21 +508,21 @@ class Alloc:
                 credit_line = max(0, factor * min(home_value, self.rm_eligible) - self.rm_cost - (self.mortgage - mortgage_payoff))
                 credit_line_vol = factor * home_value * self.home_vol if home_value < self.rm_eligible else 0
 
-                credit_line_delay, factor = self.exhaustive_search(lambda x: npv_credit_line_factor(delay, x), 0, 120 - delay - self.min_age, 1)
+                return delay, expected_rate, credit_line, credit_line_vol
+
+            def f(plf_age):
+
+                delay, expected_rate, credit_line, credit_line_vol = lookup_credit_line(plf_age)
+                credit_line_delay, factor = self.exhaustive_search(lambda x: npv_credit_factor(delay, x), 0, 120 - delay - self.min_age, 1)
                 nv_credit_line = factor * credit_line
                 credit_line_vol *= factor
 
                 return nv_credit_line, delay, credit_line_delay, expected_rate, credit_line, credit_line_vol
 
-            def f(x):
-
-                return g(x)[0]
-
             plf_age_start = self.min_age + max(0, ceil(self.rm_age - self.min_age))
-            plf_age, credit_line_initial = self.exhaustive_search(f, plf_age_start, 120, 1)
-            nv_credit_line, delay, credit_line_delay, expected_rate, credit_line, credit_line_vol = g(plf_age)
+            plf_age, credit_line_initial = self.exhaustive_search(lambda x: f(x)[0], plf_age_start, 120, 1)
+            nv_credit_line, delay, credit_line_delay, expected_rate, credit_line, credit_line_vol = f(plf_age)
 
-            duration = max(self.rm_tenure_duration, self.rm_tenure_limit - plf_age) * 12
             compounding_rate = (expected_rate + self.rm_insurance_annual) / 12
                 # The HUD docs say to add the "monthly MIP (0.5 percent)" rate above, but the ongoing monthly MIP rate is 1.25%, not 0.5%.
                 # http://www.myhecm.com/hecm-calculator-step-1-n might use 0.5%
@@ -528,27 +530,48 @@ class Alloc:
                 # http://www.reversemortgage.org/About/Reverse-Mortgage-Calculator uses 1.25%.
                 # And rm_insurance_annual defaults to 1.25%.
             compounding = 1 + compounding_rate
-            # discounted_sum = sum(1.0 / increase_rate ** i for i in range(duration + 1)) but needs to work for floating point duration.
-            discounted_sum = (compounding ** (duration + 1) - 1) / ((compounding - 1) * compounding ** duration)
-            discounted_sum /= 12
-            tenure = credit_line / discounted_sum
-            tenure_vol = credit_line_vol / discounted_sum
+            discounted_sum = 0
+            compounded = 1
+            try_nv_tenure_factor = 0
+            for plf_age_monthly in range(int(self.rm_tenure_duration * 12) + 1):
+                discounted_sum += compounded
+                compounded /= compounding
 
-            # Bug: we don't compute the optimal age for tenure.
-            payout_delay = delay * 12
-            period_certain = max(0, self.period_certain - delay)
-            scenario = Scenario(self.yield_curve_nominal, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
-                joint_payout_fraction = 1, joint_contingent = True,
-                period_certain = period_certain, frequency = self.frequency)
-            nv_tenure_factor = scenario.price()
-            nv_tenure = nv_tenure_factor * tenure
-            tenure_vol *= nv_tenure_factor
+            tenure = 0
+            nv_tenure = 0
+            delay_tenure = 0
+            plf_age_start = max(self.min_age, self.rm_age)
+            for plf_age_monthly in range(int(round(self.min_age * 12)) + len(nominal_scenario.calcs) - 1, int(ceil(plf_age_start * 12)) - 1, -1):
+
+                plf_age = plf_age_monthly / 12.0
+
+                if plf_age < self.rm_tenure_limit - self.rm_tenure_duration:
+
+                    discounted_sum += compounded
+                    compounded /= compounding
+
+                try_delay, try_expected_rate, try_credit_line, try_credit_line_vol = lookup_credit_line(plf_age)
+                discounted_sum_annual = discounted_sum / 12.0
+                try_tenure = try_credit_line / discounted_sum_annual
+                try_tenure_vol = try_credit_line_vol / discounted_sum_annual
+                try_nv_tenure_factor += npv_credit_factor(try_delay, 0) / 12.0
+
+                try_nv_tenure = try_nv_tenure_factor * try_tenure
+                try_tenure_vol *= try_nv_tenure_factor
+
+                if try_nv_tenure > nv_tenure:
+                    delay_tenure = try_delay
+                    tenure = try_tenure
+                    tenure_vol = try_tenure_vol
+                    nv_tenure = try_nv_tenure
 
         if delay == 0:
             credit_line_vol = 0
+        if delay_tenure == 0:
             tenure_vol = 0
         rm_purchase_age = self.age + delay
         credit_line_age = self.age + delay + credit_line_delay
+        tenure_age = self.age + delay_tenure
 
         nv = nv_db + nv_investments + self.nv_contributions
 
@@ -556,7 +579,7 @@ class Alloc:
         nv_available_home = 0 - nv_mortgage # If simply negate, get "-0" when mortgage == 0.
         nv_utilized_home = nv_available_home
         home_equity_vol = 0
-        if self.use_rm and credit_line > 0:
+        if self.use_rm and max(nv_tenure, nv_credit_line) > 0:
             rm_tenure = nv_tenure > nv_credit_line
             if rm_tenure:
                 nv_rm = nv_tenure
@@ -601,6 +624,7 @@ class Alloc:
         display['credit_line_age'] = '{:.0f}'.format(credit_line_age)
         display['tenure'] = '{:,.0f}'.format(tenure)
         display['nv_tenure'] = '{:,.0f}'.format(nv_tenure)
+        display['tenure_age'] = '{:.0f}'.format(tenure_age)
         display['nv_available_home'] = '{:,.0f}'.format(nv_available_home)
         display['nv_utilized_home'] = '{:,.0f}'.format(nv_utilized_home)
         display['nv_contributions'] = '{:,.0f}'.format(self.nv_contributions)
@@ -937,7 +961,7 @@ class Alloc:
             purchase_income_annuity = abs(results['nv']) * (w_fixed_annuitize[new_annuities_index] - new_tenure_annuitize)
 
             use_age = self.min_age - 5 # Delay cost estimates look forward for 10 years.
-            index = min(int(use_age / 10.0), len(annuitization_delay_cost))
+            index = min(int(use_age / 10.0), len(annuitization_delay_cost) - 1)
             next_index = min(int((use_age + 10) / 10.0), len(annuitization_delay_cost) - 1)
             cost_low = annuitization_delay_cost[index] / 10
             cost_high = annuitization_delay_cost[next_index] / 10
