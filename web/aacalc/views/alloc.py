@@ -246,6 +246,7 @@ class Alloc:
             'rm_insurance_initial_pct': Decimal('0.50'),
             'rm_insurance_annual_pct': Decimal('1.25'),
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
+            'real_rate_pct': None,
 
             'gamma': Decimal('3.0'),
             'risk_tolerance_pct': Decimal('20.0'),
@@ -1142,8 +1143,14 @@ class Alloc:
         results = {}
 
         self.date_str = data['date']
-        self.yield_curve_real = YieldCurve('real', self.date_str)
-        self.yield_curve_nominal = YieldCurve('nominal', self.date_str)
+        self.real_rate = None if data['real_rate_pct'] == None else float(data['real_rate_pct']) / 100
+        self.inflation = float(data['inflation_pct']) / 100
+        if self.real_rate == None:
+            self.yield_curve_real = YieldCurve('real', self.date_str)
+            self.yield_curve_nominal = YieldCurve('nominal', self.date_str)
+        else:
+            self.yield_curve_real = YieldCurve('fixed', self.date_str, adjust = self.real_rate)
+            self.yield_curve_nominal = YieldCurve('fixed', self.date_str, adjust = self.real_rate + self.inflation)
         self.yield_curve_zero = YieldCurve('fixed', self.date_str)
 
         if self.yield_curve_real.yield_curve_date == self.yield_curve_nominal.yield_curve_date:
@@ -1233,7 +1240,6 @@ class Alloc:
         self.rm_margin = float(data['rm_margin_pct']) / 100
         self.rm_insurance_initial = float(data['rm_insurance_initial_pct']) / 100
         self.rm_insurance_annual = float(data['rm_insurance_annual_pct']) / 100
-        self.inflation = float(data['inflation_pct']) / 100
 
         results['pre_retirement_years'] = '{:.1f}'.format(self.pre_retirement_years)
 

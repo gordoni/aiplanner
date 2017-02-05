@@ -753,6 +753,9 @@ class AllocBaseForm(Form):
         min_value=0)
     date = CharField(
         widget=TextInput(attrs={'class': 'dob_input'}))
+    real_rate_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}),
+        required = False)
 
     gamma = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),

@@ -575,11 +575,17 @@ as <a href="http://www.vanguard.com/">Vanguard</a>.
 
 <br />
 
-Calculation date: {{ alloc_form.date }}
-<div class="small">
-Determines interest rate yield curve.
-</div>
+Real interest rate: {{ alloc_form.real_rate_pct }}%
+{{ alloc_form.real_rate_pct.errors }}
+<br />
+Yield curve date: {{ alloc_form.date }}
 {{ alloc_form.date.errors }}
+<div class="small">
+Fixed interest rates can be specified, or if left blank the Treasury
+yield curves for the specified date will be used. When a fixed real
+rate is used a fixed nominal rate is formed by combing the fixed real
+rate, the projected inflation rate, and the regular bonds premium.
+</div>
 
 </div>
 
