@@ -338,17 +338,17 @@ class Alloc:
 
         payout_delay = 0
 
+        schedule = self.schedule_range(1.0 + ret)
+
         # Restrict size of life table rather than using period_certain for speed.
         life_table = LifeTable('live', 'male', 0, death_age = self.pre_retirement_years)
 
         scenario = Scenario(self.yield_curve_nominal, payout_delay, None, None, 0, life_table,
-            frequency = 1)
+            frequency = 1, schedule = schedule)
         value1 = self.mortgage_payment * scenario.price()
         annual_ret1 = scenario.annual_return - self.inflation
 
         # Assume both spouses make it to retirement.
-
-        schedule = self.schedule_range(1.0 + ret)
 
         scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, life_table,
             frequency = 1, cpi_adjust = 'all', schedule = schedule)
