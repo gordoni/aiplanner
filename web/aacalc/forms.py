@@ -659,10 +659,6 @@ class AllocBaseForm(Form):
         widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0)
 
-    retirement_age = DecimalField(
-        widget=TextInput(attrs={'class': 'small_numeric_input'}),
-        min_value=0,
-        max_value=110)
     retirement_age2 = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
@@ -672,7 +668,7 @@ class AllocBaseForm(Form):
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0,
         max_value=100)
-    required_income = DecimalField(
+    needed_income = DecimalField(
         widget=TextInput(attrs={'class': 'p_input'}),
         min_value=0,
         required=False)
@@ -768,7 +764,7 @@ class AllocBaseForm(Form):
     advanced_calculations = BooleanField(required=False,
         widget=CheckboxInput(attrs={'class': 'advanced_button'}))
 
-class AllocAaForm(AllocBaseForm):
+class AllocContribForm(AllocBaseForm):
 
     p_traditional_iras = DecimalField(
         widget=TextInput(attrs={'class': 'p_input'}),
@@ -804,13 +800,27 @@ class AllocAaForm(AllocBaseForm):
         min_value=-99,
         max_value=99) # 100 fails.
 
-class AllocNumberForm(AllocBaseForm):
+class AllocRetirementForm(AllocBaseForm):
 
-    def clean(self):
-        cleaned_data = super(AllocNumberForm, self).clean()
-        desired_income = cleaned_data.get('desired_income')
-        if desired_income == None:
-            raise ValidationError('No desired consumption level specified.')
-        return cleaned_data
+    retirement_age = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        max_value=110)
+
+class AllocIncomeForm(AllocBaseForm):
+
+    required_income = DecimalField(
+        widget=TextInput(attrs={'class': 'p_input'}),
+        min_value=0)
+
+class AllocAaForm(AllocContribForm, AllocRetirementForm):
+
+    pass
+
+class AllocNumberForm(AllocRetirementForm, AllocIncomeForm):
+
+    pass
+
+class AllocRetireForm(AllocContribForm, AllocIncomeForm):
 
     pass

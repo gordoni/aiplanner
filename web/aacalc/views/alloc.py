@@ -30,7 +30,7 @@ from os.path import expanduser, isdir, join, normpath
 from scipy.stats import lognorm, norm
 from subprocess import check_call
 
-from aacalc.forms import AllocAaForm, AllocNumberForm
+from aacalc.forms import AllocAaForm, AllocNumberForm, AllocRetireForm
 from aacalc.spia import LifeTable, Scenario, YieldCurve
 from settings import ROOT, STATIC_ROOT, STATIC_URL
 
@@ -218,8 +218,9 @@ class Alloc:
             'retirement_age': 66,
             'retirement_age2': None,
             'joint_income_pct': 70,
-            'required_income': None,
+            'needed_income': None,
             'desired_income': None,
+            'required_income': 20000,
             'purchase_income_annuity': True,
             'use_lm_bonds': True,
             'use_rm': True,
@@ -398,7 +399,9 @@ class Alloc:
             positive_delay = max(0, delay)
             negative_delay = min(0, delay)
             payout_delay = positive_delay * 12
-            period_certain = max(0, self.period_certain - positive_delay, float(db['period_certain']) + negative_delay)
+            period_certain = max(0, self.pre_retirement_years - positive_delay, float(db['period_certain']) + negative_delay)
+                # For planning purposes when computing the npv of defined benefits and contributions we need to assume we will reach retirement.
+
             joint_payout_fraction = float(db['joint_payout_pct']) / 100
             joint_contingent = (db['joint_type'] == 'contingent')
 
@@ -450,7 +453,7 @@ class Alloc:
 
         nominal_scenario = Scenario(self.yield_curve_nominal, 0, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = 1, joint_contingent = True,
-            period_certain = self.period_certain, frequency = 12)
+            period_certain = self.pre_retirement_years, frequency = 12)
         nominal_scenario.price()
 
         def npv_credit_factor(delay, credit_line_delay):
@@ -691,13 +694,12 @@ class Alloc:
 
         # We compute the withdrawal amount for a fixed compounding
         # total portfolio.
+        payout_delay = self.pre_retirement_years * 12
         schedule = self.schedule_range(1 / (1.0 + ret))
-        scenario = Scenario(self.yield_curve_zero, self.payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
+        scenario = Scenario(self.yield_curve_zero, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust, percentile = consume_pctl, schedule = schedule)
-        c_factor = 1.0 / scenario.price()
-
-        return c_factor
+        return scenario.price()
 
     def calc_consume(self, w, nv, ret, vol, results):
 
@@ -706,9 +708,12 @@ class Alloc:
             # The greater the defined benefits cushion the greater the growth rate that can be assumed for non-defined benefits.
         growth_rate = self.distribution_pctl(growth_pctl, 1 + ret, vol) - 1
         c_factor = self.consume_factor(growth_rate)
-        consume = nv * (w[existing_annuities_index] / self.discounted_retirement_le + \
-                        w[new_annuities_index] * mwr / self.discounted_retirement_le_annuity + \
-                        (1 - alloc_db) * c_factor)
+        try:
+            consume = nv * (w[existing_annuities_index] / self.discounted_retirement_le + \
+                            w[new_annuities_index] * mwr / self.discounted_retirement_le_annuity + \
+                            (1 - alloc_db) / c_factor)
+        except ZeroDivisionError:
+            consume = 0 if nv == 0 else float('inf')
 
         return consume
 
@@ -796,7 +801,7 @@ class Alloc:
         w_fixed[home_equity_index] = 0 if rm_drawdown else w_utilized_home
         new_tenure = w_utilized_home if rm_drawdown and results['rm_tenure'] else 0
         existing_safe = w_fixed[existing_annuities_index] + w_fixed[home_equity_index] + new_tenure
-        if self.required_income != None:
+        if self.needed_income != None:
             try:
                 required_safe = self.discounted_retirement_le_annuity / mwr * \
                     (self.required_income / abs(results['nv']) - existing_safe / self.discounted_retirement_le)
@@ -834,7 +839,7 @@ class Alloc:
                 if abs(consume_lm) >= abs(consume) and (loss_lm <= self.risk_tolerance or loss_lm <= loss):
                     w_fixed, consume, loss = w_fixed_lm, consume_lm, loss_lm
 
-            if count == 1 or mode == 'number' or self.desired_income == None or consume <= self.desired_income:
+            if count == 1 or mode != 'aa' or self.desired_income == None or consume <= self.desired_income:
                 break
 
             ratio = self.desired_income / consume
@@ -1007,7 +1012,7 @@ class Alloc:
         w_total_all = w_total + unused_home + unavailable_home
 
         recommend = []
-        if mode == 'aa':
+        if mode != 'number':
             recommend.append({
                 'name': 'Future contributions',
                 'npv': '{:,.0f}'.format(w_fixed[contrib_index] * results['nv']),
@@ -1163,17 +1168,16 @@ class Alloc:
 
         return result
 
-    def calc(self, mode, description, factor, data, results, display, force_annuitize):
+    def calc(self, mode, description, factor, data, results, npv_results, npv_display, force_annuitize):
 
         if mode == 'aa':
 
-            calc_result = self.calc_scenario(mode, description, factor, data, results, force_annuitize)
+            calc_result = self.calc_scenario(mode, description, factor, data, npv_results, force_annuitize)
 
-        else:
+        elif mode == 'number':
 
-            results = dict(results)
-            nv = results['nv']
-            max_portfolio = self.desired_income * (120 - self.min_age - self.pre_retirement_years)
+            nv = npv_results['nv']
+            max_portfolio = self.required_income * (120 - self.min_age - self.pre_retirement_years)
             found_location = None # Consume may have a discontinuity due to annuitization; be sure to return a location that meets or exceeds the requirement.
             found_value = None
             low = 0
@@ -1184,29 +1188,51 @@ class Alloc:
                 else:
                     mid = (low + high) / 2.0
                 # Hack the table rather than recompute for speed.
-                results['nv'] = nv + mid
-                calc_scenario = self.calc_scenario(mode, description, factor, data, results, force_annuitize)
-                if calc_scenario['consume_value'] >= self.desired_income or not found_location:
+                npv_results['nv'] = nv + mid
+
+                calc_scenario = self.calc_scenario(mode, description, factor, data, npv_results, force_annuitize)
+                if calc_scenario['consume_value'] >= self.required_income or not found_location:
                     found_location = mid
                     found_value = calc_scenario
                 if high - low < 0.000001 * max_portfolio:
                     break
-                if calc_scenario['consume_value'] < self.desired_income:
+                if calc_scenario['consume_value'] < self.required_income:
                     low = mid
                 else:
                     high = mid
 
             found_value['taxable'] = found_location
 
-            _, display = self.value_table(self.nv_db, found_location) # Recompute.
+            _, npv_display = self.value_table(self.nv_db, found_location) # Recompute.
 
             calc_result = found_value
 
-        calc_result['npv_display'] = display
+        else:
 
-        return calc_result
+            lo = ceil(float(data['age'])) - 1
+            hi = 120
+            while True:
+                mid = int(ceil((lo + hi) / 2.0))
+                data['retirement_age'] = str(mid)
+                new_results, npv_results, npv_display = self.setup_calc(data, mode) # Need to re-setup each time.
+                calc_result = self.calc_scenario(mode, description, factor, data, npv_results, force_annuitize)
+                if mid == hi:
+                    break
+                if calc_result['consume_value'] >= float(data['required_income']):
+                    hi = mid
+                else:
+                    lo = mid
 
-    def compute_results(self, data, mode):
+            retirement_age = float('inf') if mid == 120 else mid
+            calc_result['retirement_age'] = '{:.0f}'.format(retirement_age)
+            if factor == 0:
+                results = new_results
+
+        calc_result['npv_display'] = npv_display
+
+        return results, calc_result
+
+    def setup_calc(self, data, mode):
 
         results = {}
 
@@ -1249,7 +1275,7 @@ class Alloc:
             self.min_age = min(self.age, self.age2)
 
         self.db = data['db']
-        if mode == 'aa':
+        if mode != 'number':
             self.traditional = float(data['p_traditional_iras'])
             self.tax_rate = float(data['tax_rate_pct']) / 100
             self.npv_roth = float(data['p_roth_iras'])
@@ -1271,6 +1297,8 @@ class Alloc:
             self.contribution_vol = 0
             self.equity_contribution_corr = 0
             self.bonds_contribution_corr = 0
+        if mode != 'aa':
+            self.required_income = float(data['required_income'])
         self.home = float(data['home'])
         self.home_ret = float(data['home_ret_pct']) / 100
         self.home_vol = float(data['home_vol_pct']) / 100
@@ -1297,9 +1325,8 @@ class Alloc:
             pre_retirement_years2 = pre_retirement_years1
         self.pre_retirement_years = max(pre_retirement_years1, pre_retirement_years2)
         self.pre_retirement_years_full_contrib = min(pre_retirement_years1, pre_retirement_years2)
-        self.payout_delay = self.pre_retirement_years * 12
         self.joint_payout_fraction = float(data['joint_income_pct']) / 100
-        self.required_income = None if data['required_income'] == None else float(data['required_income'])
+        self.needed_income = None if data['needed_income'] == None else float(data['needed_income'])
         self.desired_income = None if data['desired_income'] == None else float(data['desired_income'])
         self.use_lm_bonds = data['use_lm_bonds']
         self.bonds_vol_short = float(data['bonds_vol_pct']) / 100
@@ -1310,10 +1337,6 @@ class Alloc:
         self.rm_insurance_annual = float(data['rm_insurance_annual_pct']) / 100
 
         results['pre_retirement_years'] = '{:.1f}'.format(self.pre_retirement_years)
-
-        self.period_certain = self.pre_retirement_years
-            # For planning purposes when computing the npv of defined benefits
-            # and contributions we need to assume we will reach retirement.
 
         self.frequency = 12 # Monthly. Makes accurate, doesn't run significantly slower.
         self.cpi_adjust = 'calendar'
@@ -1328,17 +1351,18 @@ class Alloc:
 
         self.home_equity_vol = npv_results['home_equity_vol']
 
-        scenario = Scenario(self.yield_curve_zero, self.payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
+        payout_delay = self.pre_retirement_years * 12
+        scenario = Scenario(self.yield_curve_zero, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
         self.retirement_le = scenario.price()
 
-        scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table_annuity, life_table2 = self.life_table2_annuity, \
+        scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table_annuity, life_table2 = self.life_table2_annuity, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
         self.discounted_retirement_le_annuity = scenario.price()
 
-        scenario = Scenario(self.yield_curve_real, self.payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
+        scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = self.joint_payout_fraction, joint_contingent = True, \
             period_certain = 0, frequency = self.frequency, cpi_adjust = self.cpi_adjust)
         self.discounted_retirement_le = scenario.price()
@@ -1361,24 +1385,29 @@ class Alloc:
         self.cov_bl2 = 0
         self.cov_bl2_short = self.bonds_vol_short * self.lm_bonds_vol_short * self.bonds_lm_bonds_corr_short ** 2
 
-        factor = norm.ppf(0.5 + float(data['confidence_pct']) / 100 / 2)
+        return results, npv_results, npv_display
+
+    def calc_results(self, mode, data, results, npv_results, npv_display):
+
+        confidence = float(data['confidence_pct']) / 100
+        factor = norm.ppf(0.5 + confidence / 2)
         factor = float(factor) # De-numpyfy.
-        baseline = self.calc(mode, 'Baseline estimate', 0, data, npv_results, npv_display, None)
-        low = self.calc(mode, 'Low returns estimate', - factor, data, npv_results, npv_display, baseline['annuitize_plan'])
-        high = self.calc(mode, 'High returns estimate', factor, data, npv_results, npv_display, baseline['annuitize_plan'])
+        results, baseline = self.calc(mode, 'Baseline estimate', 0, data, results, npv_results, npv_display, None)
+        _, low = self.calc(mode, 'Low returns estimate', - factor, data, results, npv_results, npv_display, baseline['annuitize_plan'])
+        _, high = self.calc(mode, 'High returns estimate', factor, data, results, npv_results, npv_display, baseline['annuitize_plan'])
         results['calc'] = (baseline, low, high)
+        results['present'] = results['calc'][0]['npv_display'] # Use baseline scenario for common calculations display.
 
-        if mode == 'number':
-            self.npv_taxable = results['calc'][0]['taxable']
-            npv_display = results['calc'][0]['npv_display'] # Use baseline scenario for common calculations display.
+        return results
 
-        results['present'] = npv_display
+    def compute_results(self, data, mode):
 
-        #actual_display_db, actual_nv_db = self.value_table_db(self.life_table, self.life_table2)
-        #_, actual_npv_display = self.value_table(actual_nv_db, self.npv_taxable)
-        #for i, db in enumerate(actual_display_db):
-        #    results['db'][i]['actual'] = db
-        #results['actual'] = actual_npv_display
+        if mode == 'retire':
+            results = npv_results = npv_display = None
+        else:
+            results, npv_results, npv_display = self.setup_calc(data, mode)
+
+        results = self.calc_results(mode, data, results, npv_results, npv_display)
 
         return results
 
@@ -1396,7 +1425,7 @@ class Alloc:
         f.write('LM bonds,%f\n' % result['w_fixed'][risk_free_index])
         f.write('defined benefits,%f\n' % result['w_fixed'][existing_annuities_index])
         f.write('new annuities,%f\n' % result['w_fixed'][new_annuities_index])
-        if mode == 'aa':
+        if mode != 'number':
             f.write('future contribs,%f\n' % result['w_fixed'][contrib_index])
         f.close()
         f = open(dirname + '/aa.csv', 'w')
@@ -1412,7 +1441,12 @@ bonds,%(aa_bonds)f
 
     def alloc_init(self, data, mode):
 
-        return AllocAaForm(data) if mode == 'aa' else AllocNumberForm(data)
+        if mode == 'aa':
+            return AllocAaForm(data)
+        elif mode == 'number':
+            return AllocNumberForm(data)
+        else:
+            return AllocRetireForm(data)
 
     def alloc(self, request, mode, healthcheck):
 

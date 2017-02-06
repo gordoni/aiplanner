@@ -24,9 +24,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {% block head %}
 {% if mode == 'aa' %}
-<meta name="description" content="Computes appropriate asset allocation, income annuities, and consumption using scientific principles. And explains how the recommendations were derived." /><!-- Keep content to less than 155 characters according to Wikipedia. -->
-{% else %}
+<meta name="description" content="Computes asset allocation, income annuitization, and consumption using scientific principles. And explains how the recommendations were derived." /><!-- Keep content to less than 155 characters according to Wikipedia. -->
+{% elif mode == 'number' %}
 <meta name="description" content="Computes your retirement number using scientific principles. And explains how your number was derived." />
+{% else %}
+<meta name="description" content="Using scientific principles computes the age you can expect to retire. And explains how the results were derived." />
 {% endif %}
 <script type="text/javascript" src="/static/js/jquery-1.10.2.min.js"></script>
 <script type="text/javascript">
@@ -48,6 +50,8 @@ $(document).ready(function(){
 
 {% if mode == 'aa' %}
 <h1>Asset allocation calculator</h1>
+{% elif mode == 'number' %}
+<h1>Retirement Age Calculator</h1>
 {% else %}
 <h1>Retirement Number Calculator</h1>
 {% endif %}
@@ -58,11 +62,16 @@ $(document).ready(function(){
 
 {% if mode == 'aa' %}
 This calculator computes asset allocations, income annuitization,
-and consumption using scientific
+reverse mortgages, and consumption using scientific
 principles. And it explains how the recommendations were derived.
+{% elif mode == 'number' %}
+This calculator computes the financial position you need to be in for
+retirement using scientific principles. And it explains how your
+number was derived.
 {% else %}
-This calculator computes the financial position you need to be in
-for retirement. And it explains how your number was derived.
+Using scientific principles this calculator computes the age at which
+your pre-retirment contributions should be sufficient to meet your
+retirement needs. And it explains how the results were derived.
 {% endif %}
 
 <br />
@@ -86,7 +95,7 @@ and size of Social Security, Pensions, 401(k)'s, income annuities, and
 home equity. See the <a href="{% url 'docs' 'faq' %}">FAQ</a> for more
 details.</li>
 
-{% if mode == 'aa' %}
+{% if mode != 'number' %}
 <li> Future contributions - the impact of any possible future
 contributions is handled by entering their expected annual amount,
 growth rate, and volatility. </li>
@@ -249,7 +258,7 @@ Survivor: payout reduced only on death of the owner.
 
 </div>
 
-{% if mode == 'aa' %}
+{% if mode != 'number' %}
 
 <br />
 
@@ -358,10 +367,12 @@ zero and the APR value used is irrelevant.
 
 <div class="indent">
 
+{% if mode != 'retire' %}
 Age of primary person at their retirement: {{ alloc_form.retirement_age }}
 {{ alloc_form.retirement_age.errors }}
 <br />
-Age of spouse at their retirement (blank if both retire at the same time):
+{% endif %}
+Age of spouse at their retirement (blank to retire at the same time as you):
 {{ alloc_form.retirement_age2 }}
 {{ alloc_form.retirement_age2.errors }}
 <br />
@@ -369,8 +380,8 @@ Relative income required when one party deceased: {{ alloc_form.joint_income_pct
 {{ alloc_form.joint_income_pct.errors }}
 <br />
 {% if mode == 'aa' %}
-Annual retirement consumption at which you have "lost the game": {{ alloc_form.required_income }}
-{{ alloc_form.required_income.errors }}
+Annual retirement consumption at which you have "lost the game": {{ alloc_form.needed_income }}
+{{ alloc_form.needed_income.errors }}
 <div class="small">
 Losing the game means having an unbearably low level of consumption.
 Safe assets (liability matching bonds or possibly income annuities) are allocated to try and ensure consumption never falls
@@ -398,8 +409,8 @@ Specifying a value here will potentially override the impact of the
 risk aversion coefficient and directly dictate the asset allocation.
 </div>
 {% else %}
-Annual desired retirement consumption level: {{ alloc_form.desired_income }}
-{{ alloc_form.desired_income.errors }}
+Annual desired retirement consumption level: {{ alloc_form.required_income }}
+{{ alloc_form.required_income.errors }}
 <div class="small">
 Retirement consumption should be expressed in current
 inflation-indexed dollars.
@@ -709,13 +720,11 @@ parameters to be indicative of shorter-term bonds.
 
 <div class="center">
 <input class="button" type="submit" value="Submit" />
-<!--
-{% if mode == 'number' %}
+{% if mode == 'retire' %}
 <div class="small">
 takes 5 seconds
 </div>
 {% endif %}
--->
 </div>
 
 {% if results and not errors_present %}
@@ -783,6 +792,18 @@ return of stocks compounded over time.
 
 <br />
 
+{% elif mode == 'retire' %}
+For your desired consumption level you should be able to retire at age
+{{ results.calc.0.retirement_age }}.  An
+{{ alloc_form.cleaned_data.confidence_pct }}% confidence interval on
+this recommendation is {{ results.calc.2.retirement_age }} to
+{{ results.calc.1.retirement_age }}.
+<div class="small">
+Uncertainty in this age is the result of inherent uncertainty in the
+expected return of stocks compounded over time.
+</div>
+
+<br />
 {% endif %}
 
 {% if alloc_form.cleaned_data.mortgage > 0 %}
@@ -1003,7 +1024,7 @@ real interest rate adjusted
 <td class="left"> Total defined benefits </td>
 <th colspan=2 class="right"> {{ results.present.nv_db }} </th>
 </tr>
-{% if mode == 'aa' %}
+{% if mode != 'number' %}
 <tr>
 <td class="left"> Pre-tax traditional </td>
 <td colspan=2 class="right"> {{ results.present.nv_traditional }} </td>
@@ -1064,7 +1085,7 @@ Available home equity after mortgage payoff
 <td class="left"> Home equity to be used </td>
 <th colspan=2 class="right"> {{ results.present.nv_utilized_home }} </th>
 </tr>
-{% if mode == 'aa' %}
+{% if mode != 'number' %}
 <tr>
 <td class="left"> Future contributions </td>
 <th colspan=2 class="right"> {{ results.present.nv_contributions }} </th>
@@ -1126,6 +1147,19 @@ Total portfolio value excluding defined benefits: {{ calc.npv_display.nv_investm
 
 <br />
 
+{% elif mode == 'retire' %}
+
+We tried a number of different retirement ages. Here are the results
+for the first retirement age that meets the desired level of
+consumption:
+
+<br />
+<br />
+
+Retirement age: {{ calc.retirement_age }}
+
+<br />
+
 {% endif %}
 
 Total net present value: {{ calc.npv_display.nv }}
@@ -1133,7 +1167,7 @@ Total net present value: {{ calc.npv_display.nv }}
 <br />
 <br />
 
-{% if mode == 'aa' %}
+{% if mode != 'number' %}
 
 By trial and error we determined that we should assume a future
 contributions discount rate relative to the real interest rate, d =
@@ -1159,7 +1193,7 @@ equity are risk free using the matrix
 <br />
 version
 of <a href="https://en.wikipedia.org/wiki/Merton's_portfolio_problem">Merton's
-formula</a>.  The returns and volatility of home equity may differ
+formula</a>. The returns and volatility of home equity may differ
 somewhat from this assumption.
 </td>
 </tr>
@@ -1208,9 +1242,13 @@ We calculated the following asset allocations:
 {% if mode == 'number' %}
 <tr>
 <td colspan=2 class="small">
-Computed assuming liability matching bonds and defined benefits are
-risk free using the matrix version
-of <a href="https://en.wikipedia.org/wiki/Merton's_portfolio_problem">Merton's formula</a>.
+Computed assuming liability matching bonds, defined benefits, and home
+equity are risk free using the matrix
+<br />
+version
+of <a href="https://en.wikipedia.org/wiki/Merton's_portfolio_problem">Merton's
+formula</a>. The returns and volatility of home equity may differ
+somewhat from this assumption.
 </td>
 {% endif %}
 </table>

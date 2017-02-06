@@ -916,6 +916,9 @@ class YieldCurve:
 
         self.spot_yield_curve = tuple(r + adjust for r in spot_yield_curve)
 
+        self.spot_years_min = min(self.spot_years)
+        self.spot_years_max = max(self.spot_years)
+
         self.yield_curve_in_range = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=2)
         self.yield_curve_out_range = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=1)  # Linear extrapolation if out of range.
 
@@ -987,7 +990,7 @@ class YieldCurve:
             else:
                 look_y = round(y * 2) / 2.0
                 look_y = max(0.5, look_y)
-            if min(self.spot_years) <= look_y <= max(self.spot_years):
+            if self.spot_years_min <= self.spot_years_max:
                 yield_curve = self.yield_curve_in_range
             else:
                 yield_curve = self.yield_curve_out_range
