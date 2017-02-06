@@ -335,11 +335,11 @@ class Alloc:
 
         return sched
 
-    def npv_contrib(self, ret):
+    def npv_contrib(self, d):
 
         payout_delay = 0
 
-        schedule = self.schedule_range(1.0 + ret)
+        schedule = self.schedule_range((1 + self.contribution_growth) / (1.0 + d))
 
         # Restrict size of life table rather than using period_certain for speed.
         life_table = LifeTable('live', 'male', 0, death_age = self.pre_retirement_years)
@@ -901,7 +901,7 @@ class Alloc:
                 alpha = (log(1 + rets[stocks_index]), log(1 + rets[bonds_index]), log(1 + future_growth_try))
                 w = list(self.solve_merton(self.gamma, sigma_matrix, alpha, log(1 + self.lm_bonds_ret)))
                 w.append(1 - sum(w))
-                discounted_contrib, _ = self.npv_contrib((1 + self.contribution_growth) / (1 + future_growth_try) - 1)
+                discounted_contrib, _ = self.npv_contrib(future_growth_try)
                 npv_discounted = results['nv'] - self.nv_contributions + discounted_contrib
                 try:
                     wc_discounted = discounted_contrib / npv_discounted
@@ -921,7 +921,7 @@ class Alloc:
             w_prime[contrib_index] = 1 - sum(w_prime)
         else:
             future_growth_try = 0
-            discounted_contrib, _ = self.npv_contrib(self.contribution_growth)
+            discounted_contrib, _ = self.npv_contrib(future_growth_try)
             try:
                 wc_discounted = discounted_contrib / results['nv']
             except ZeroDivisionError:
@@ -1250,7 +1250,7 @@ class Alloc:
         self.frequency = 12 # Monthly. Makes accurate, doesn't run significantly slower.
         self.cpi_adjust = 'calendar'
 
-        self.nv_contributions, self.ret_contributions = self.npv_contrib(self.contribution_growth)
+        self.nv_contributions, self.ret_contributions = self.npv_contrib(0)
 
         display_db, self.nv_db = self.value_table_db()
         npv_results, npv_display = self.value_table(self.nv_db, self.npv_taxable)

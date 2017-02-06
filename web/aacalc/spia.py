@@ -916,6 +916,9 @@ class YieldCurve:
 
         self.spot_yield_curve = tuple(r + adjust for r in spot_yield_curve)
 
+        self.yield_curve_in_range = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=2)
+        self.yield_curve_out_range = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=1)  # Linear extrapolation if out of range.
+
     def coupon_bond_to_spot(self, rates):
         # See: https://en.wikipedia.org/wiki/Bootstrapping_%28finance%29
         spots = []
@@ -985,9 +988,9 @@ class YieldCurve:
                 look_y = round(y * 2) / 2.0
                 look_y = max(0.5, look_y)
             if min(self.spot_years) <= look_y <= max(self.spot_years):
-                yield_curve = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=2)
+                yield_curve = self.yield_curve_in_range
             else:
-                yield_curve = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=1)  # Linear extrapolation if out of range.
+                yield_curve = self.yield_curve_out_range
             say = float(yield_curve(look_y))  # De-numpy-fy.
         ay = (1 + say / 2) ** 2  # Convert semi-annual yields to annual yields.
         return ay
