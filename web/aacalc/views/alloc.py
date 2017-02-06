@@ -630,7 +630,6 @@ class Alloc:
         display['nv_utilized_home'] = '{:,.0f}'.format(nv_utilized_home)
         display['nv_contributions'] = '{:,.0f}'.format(self.nv_contributions)
         display['nv'] = '{:,.0f}'.format(nv)
-        display['ret_contributions'] = '{:.1f}'.format(self.ret_contributions * 100)
         display['using_reverse_mortgage'] = using_reverse_mortgage
         display['rm_tenure'] = rm_tenure
         display['rm_purchase_age'] = '{:.0f}'.format(rm_purchase_age)
@@ -1000,9 +999,87 @@ class Alloc:
         else:
             mortgage_due = results['nv_mortgage_payoff']
         try:
+            unused_home = (results['nv_available_home'] - results['nv_utilized_home']) / abs(results['nv'])
             unavailable_home = (self.home - mortgage_due - results['nv_available_home']) / abs(results['nv'])
         except ZeroDivisionError:
+            unused_home = 0
             unavailable_home = 0
+        w_total_all = w_total + unused_home + unavailable_home
+
+        recommend = []
+        if mode == 'aa':
+            recommend.append({
+                'name': 'Future contributions',
+                'npv': '{:,.0f}'.format(w_fixed[contrib_index] * results['nv']),
+                'alloc': '{:.0f}'.format(w_fixed[contrib_index] * 100),
+                'ret': '{:.1f}'.format(self.ret_contributions * 100),
+                'vol': None,
+                'lm_vol': '{:.1f}'.format(self.contribution_vol * 100),
+            })
+        recommend.append({
+            'name': 'Stocks',
+            'npv': '{:,.0f}'.format(w_fixed[stocks_index] * results['nv']),
+            'alloc': '{:.0f}'.format(w_fixed[stocks_index] * 100),
+            'ret': '{:.1f}'.format(rets[stocks_index] * 100),
+            'vol': '{:.1f}'.format(self.equity_vol * 100),
+            'lm_vol': '{:.1f}'.format(self.equity_vol * 100),
+        })
+        recommend.append({
+            'name': 'Regular bonds',
+            'npv': '{:,.0f}'.format(w_fixed[bonds_index] * results['nv']),
+            'alloc': '{:.0f}'.format(w_fixed[bonds_index] * 100),
+            'ret': '{:.1f}'.format(rets[bonds_index] * 100),
+            'vol': '{:.1f}'.format(self.bonds_vol * 100),
+            'lm_vol': '{:.1f}'.format(self.bonds_vol * 100),
+        })
+        recommend.append({
+            'name': 'Liability matching bonds',
+            'npv': '{:,.0f}'.format(w_fixed[risk_free_index] * results['nv']),
+            'alloc': '{:.0f}'.format(w_fixed[risk_free_index] * 100),
+            'ret': '{:.1f}'.format(self.lm_bonds_ret * 100),
+            'vol': '{:.1f}'.format(self.lm_bonds_vol_short * 100),
+            'lm_vol': '{:.1f}'.format(0),
+        })
+        recommend.append({
+            'name': 'Existing defined benefits',
+            'npv': '{:,.0f}'.format(w_fixed[existing_annuities_index] * results['nv']),
+            'alloc': '{:.0f}'.format(w_fixed[existing_annuities_index] * 100),
+            'ret': '{:.1f}'.format(self.lm_bonds_ret * 100),
+            'vol': None,
+            'lm_vol': '{:.1f}'.format(0),
+        })
+        recommend.append({
+            'name': 'New income annuities',
+            'npv': '{:,.0f}'.format(w_fixed[new_annuities_index] * results['nv']),
+            'alloc': '{:.0f}'.format(w_fixed[new_annuities_index] * 100),
+            'ret': '{:.1f}'.format(self.lm_bonds_ret * 100),
+            'vol': None,
+            'lm_vol': '{:.1f}'.format(0),
+        })
+        recommend.append({
+            'name': 'Home equity to be used',
+            'npv': '{:,.0f}'.format(w_fixed[home_equity_index] * results['nv']),
+            'alloc': '{:.0f}'.format(w_fixed[home_equity_index] * 100),
+            'ret': '{:.1f}'.format(self.lm_bonds_ret * 100),
+            'vol': None,
+            'lm_vol': '{:.1f}'.format(self.home_equity_vol * 100),
+        })
+        recommend.append({
+            'name': 'Available home equity not used',
+            'npv': '{:,.0f}'.format(unused_home * results['nv']),
+            'alloc': None,
+            'ret': None,
+            'vol': None,
+            'lm_vol': None,
+        })
+        recommend.append({
+            'name': 'Unavailable home equity',
+            'npv': '{:,.0f}'.format(unavailable_home * results['nv']),
+            'alloc': None,
+            'ret': None,
+            'vol': None,
+            'lm_vol': None,
+        })
 
         try:
             aa_equity = w_fixed[stocks_index] / w_fixed_investments
@@ -1054,13 +1131,8 @@ class Alloc:
             'annuitize_lm_bonds_pct': '{:.0f}'.format(annuitize[risk_free_index] * 100),
             'annuitize_gain': '{:,.0f}'.format(annuitize_gain),
             'annuitize_delay_cost': '{:,.0f}'.format(annuitize_delay_cost),
-            'alloc_equity_pct': '{:.0f}'.format(w_fixed[stocks_index] * 100),
-            'alloc_bonds_pct': '{:.0f}'.format(w_fixed[bonds_index] * 100),
-            'alloc_lm_bonds_pct': '{:.0f}'.format(w_fixed[risk_free_index] * 100),
-            'alloc_contributions_pct': '{:.0f}'.format(w_fixed[contrib_index] * 100),
-            'alloc_existing_db_pct': '{:.0f}'.format(w_fixed[existing_annuities_index] * 100),
-            'alloc_new_db_pct': '{:.0f}'.format(w_fixed[new_annuities_index] * 100),
-            'alloc_home_equity_pct': '{:.0f}'.format(w_fixed[home_equity_index] * 100),
+            'recommend': recommend,
+            'npv_total_all': '{:,.0f}'.format(w_total_all * results['nv']),
             'alloc_investments_pct': '{:.0f}'.format(w_fixed_investments * 100),
             'alloc_total_pct': '{:.0f}'.format(w_total * 100),
             'consume_annuitize': '{:,.0f}'.format(consume_annuitize),
@@ -1068,10 +1140,6 @@ class Alloc:
             'purchase_income_annuity': '{:,.0f}'.format(purchase_income_annuity),
             'aa_equity_pct': '{:.0f}'.format(aa_equity * 100),
             'aa_bonds_pct': '{:.0f}'.format(aa_bonds * 100),
-            'equity_ret_pct': '{:.1f}'.format(rets[stocks_index] * 100),
-            'bonds_ret_pct': '{:.1f}'.format(rets[bonds_index] * 100),
-            'lm_bonds_vol_short_pct': '{:.1f}'.format(self.lm_bonds_vol_short * 100),
-            'home_equity_vol_pct': '{:.1f}'.format(self.home_equity_vol * 100),
             'investments_ret_pct': '{:.1f}'.format(investments_ret * 100),
             'investments_vol_pct': '{:.1f}'.format(investments_vol * 100),
             'investments_geometric_ret_pct': '{:.1f}'.format(investments_geometric_ret * 100),

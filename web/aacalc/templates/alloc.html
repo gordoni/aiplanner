@@ -726,9 +726,44 @@ takes 5 seconds
 
 <div class="simple_advanced">
 
+<div class="center">
+
 <img src="{{ results.dirurl }}/alloc.png" alt="allocation">
+
 <br />
-<img style="float: right; margin-left: 10px;" src="{{ results.dirurl }}/aa.png" alt="asset allocation">
+<br />
+
+<table style="margin: auto;">
+
+<tr>
+<td width=50% vertical-align="middle">
+<img src="{{ results.dirurl }}/aa.png" alt="asset allocation">
+</td>
+
+<br />
+
+<td width=50%>
+<table class="table-lined">
+{% for r in results.calc.0.recommend %}
+<tr>
+<td class="left"> {{ r.name }} </td>
+<td class="right"> {% if r.npv == None %} - {% else %} {{ r.npv }} {% endif %} </td>
+<td class="right"> {% if r.alloc == None %} - {% else %} {{ r.alloc }}% {% endif %} </td>
+</tr>
+{% endfor %}
+<tr>
+<th align="left"> Total </th>
+<th align="right"> {{ results.calc.0.npv_total_all }} </th>
+<th align="right"> {{ results.calc.0.alloc_total_pct }}% </th>
+</tr>
+</table>
+</td>
+
+</tr>
+
+</table>
+
+</div>
 
 <br />
 
@@ -1026,7 +1061,7 @@ Available home equity after mortgage payoff
 <td colspan=2 class="right"> {{ results.present.nv_available_home }} </td>
 </tr>
 <tr>
-<td class="left"> Utilized home equity </td>
+<td class="left"> Home equity to be used </td>
 <th colspan=2 class="right"> {{ results.present.nv_utilized_home }} </th>
 </tr>
 {% if mode == 'aa' %}
@@ -1217,57 +1252,15 @@ Inflation adjusted.
 <td> Real volatility </td>
 <td> Liability matching volatility </td>
 </tr>
-{% if mode == 'aa' %}
+{% for r in calc.recommend %}
 <tr>
-<td class="left"> Future contributions </td>
-<td class="right"> {{ calc.alloc_contributions_pct }}% </td>
-<td class="right"> {{ results.present.ret_contributions }}% </td>
-<td class="right"> - </td>
-<td class="right"> {{ alloc_form.cleaned_data.contribution_vol_pct | floatformat:1 }}% </td>
+<td class="left"> {{ r.name }} </td>
+<td class="right"> {% if r.alloc == None %} - {% else %} {{ r.alloc }}% {% endif %} </td>
+<td class="right"> {% if r.ret == None %} - {% else %} {{ r.ret }}% {% endif %} </td>
+<td class="right"> {% if r.vol == None %} - {% else %} {{ r.vol }}% {% endif %} </td>
+<td class="right"> {% if r.lm_vol == None %} - {% else %} {{ r.lm_vol }}% {% endif %} </td>
 </tr>
-{% endif %}
-<tr>
-<td class="left"> Stocks </td>
-<td class="right"> {{ calc.alloc_equity_pct }}% </td>
-<td class="right"> {{ calc.equity_ret_pct }}% </td>
-<td class="right"> {{ alloc_form.cleaned_data.equity_vol_pct | floatformat:1 }}% </td>
-<td class="right"> {{ alloc_form.cleaned_data.equity_vol_pct | floatformat:1 }}% </td>
-</tr>
-<tr>
-<td class="left"> Regular bonds </td>
-<td class="right"> {{ calc.alloc_bonds_pct }}% </td>
-<td class="right"> {{ calc.bonds_ret_pct }}% </td>
-<td class="right"> {{ alloc_form.cleaned_data.bonds_vol_pct | floatformat:1 }}% </td>
-<td class="right"> {{ alloc_form.cleaned_data.bonds_vol_pct | floatformat:1 }}% </td>
-</tr>
-<tr>
-<td class="left"> Liability matching bonds </td>
-<td class="right"> {{ calc.alloc_lm_bonds_pct }}% </td>
-<td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
-<td class="right"> {{ calc.lm_bonds_vol_short_pct }}% </td>
-<td class="right"> 0.0% </td>
-</tr>
-<tr>
-<td class="left"> Existing defined benefits </td>
-<td class="right"> {{ calc.alloc_existing_db_pct }}% </td>
-<td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
-<td class="right"> - </td>
-<td class="right"> 0.0% </td>
-</tr>
-<tr>
-<td class="left"> New income annuities </td>
-<td class="right"> {{ calc.alloc_new_db_pct }}% </td>
-<td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
-<td class="right"> - </td>
-<td class="right"> 0.0% </td>
-</tr>
-<tr>
-<td class="left"> Utilizable home equity </td>
-<td class="right"> {{ calc.alloc_home_equity_pct }}% </td>
-<td class="right"> {{ calc.lm_bonds_ret_pct }}% </td>
-<td class="right"> - </td>
-<td class="right"> {{ calc.home_equity_vol_pct }}% </td>
-</tr>
+{% endfor %}
 <tr>
 <th class="left" rowspan=2> Investments </th>
 <th class="right" rowspan=2> {{ calc.alloc_investments_pct }}% </th>
