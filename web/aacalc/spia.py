@@ -771,39 +771,85 @@ class YieldCurve:
     class NoData(Exception):
         pass
 
-    def get_treasury(self, date_year, date_str):
+    def get_treasury(self, date_str, date_str_low):
 
+        date_year_str = date_str.split('-')[0]
+        special = False
         try:
+            date_year = int(date_year_str)
+        except ValueError:
+            special = True
+            date_year = 0
 
-            with open(join(datadir, 'rcmt' if self.interest_rate == 'real' else 'cmt', self.interest_rate + '-' + str(date_year) + '.csv')) as f:
+        if date_str_low:
+            date_year_low = int(date_str_low.split('-')[0])
+        else:
+            date_year_low = date_year - 1
 
-                csv = reader(f)
-                assert(next(csv)[0].startswith('#'))
+        yield_curve_date = []
+        yield_curve_years = []
+        yield_curve_rates = []
+        for year in range(date_year, date_year_low - 1, -1):
 
-                yield_curve_years = next(csv)
-                yield_curve_years.pop(0)
-                yield_curve_years = tuple(float(v) for v in yield_curve_years)
+            year_str = date_year_str if special else str(year)
 
-                yield_curve_date = None
-                for line in csv:
-                    if line[0] <= date_str:
-                        yield_curve_date = line[0]
-                        yield_curve_rates = line[1:]
-                    else:
-                        break
-                if yield_curve_date == None:
-                    raise self.NoData
-                assert(len(yield_curve_years) == len(yield_curve_rates))
-                yield_curve_years = tuple(y for y, r in zip(yield_curve_years, yield_curve_rates) if r != '' )
-                yield_curve_rates = tuple(float(r) for r in yield_curve_rates if r != '')
+            try:
 
-        except IOError:
+                with open(join(datadir, 'rcmt' if self.interest_rate == 'real' else 'cmt', self.interest_rate + '-' + year_str + '.csv')) as f:
 
+                    csv = reader(f)
+                    assert(next(csv)[0].startswith('#'))
+
+                    years = next(csv)
+                    years.pop(0)
+                    years = tuple(float(v) for v in years)
+
+                    date = []
+                    rates = []
+                    for line in csv:
+                        d = line[0]
+                        rate = line[1:]
+                        if special:
+                            match = d == date_str
+                        else:
+                            match = date_str_low <= d <= date_str
+                        if match:
+                            if not date_str_low:
+                                date = []
+                                rates = []
+                            assert(len(years) == len(rate))
+                            if not all(r == '' for r in rate):
+                                date.append(d)
+                                rates.append(rate)
+                        elif not date_str_low:
+                            break
+
+                yield_curve_date.extend(date)
+                for rate in rates:
+                    yield_curve_years.append(tuple(y for y, r in zip(years, rate) if r != ''))
+                    yield_curve_rates.append(tuple(float(r) for r in rate if r != ''))
+
+                if not date_str_low and yield_curve_date:
+                    break
+
+            except IOError:
+
+                pass
+
+        if len(yield_curve_date) == 0:
             raise self.NoData
+        elif len(yield_curve_date) == 1:
+            yield_curve_date_str = yield_curve_date[0]
+        else:
+            yield_curve_date_str = date_str_low + ' - ' + date_str
 
-        return yield_curve_years, yield_curve_rates, yield_curve_date
+        assert(len(yield_curve_date) == len(yield_curve_years) == len(yield_curve_rates))
 
-    def get_corporate(self, date_year, date_str):
+        return yield_curve_years, yield_curve_rates, yield_curve_date_str
+
+    def get_corporate(self, date_year, date_str, date_str_low):
+
+        assert(date_str_low == None) # Not yet implemented.
 
         if date_year < 1984:
             raise self.NoData
@@ -856,55 +902,62 @@ class YieldCurve:
 
             raise self.NoData
 
-        return spot_years, spot_rates, spot_date
+        return [spot_years], [spot_rates], spot_date
 
-    def __init__(self, interest_rate, date_str, adjust = 0, interpolate_rates = True):
+    def __init__(self, interest_rate, date_str, date_str_low = None, adjust = 0, interpolate_rates = True):
         self.interest_rate = interest_rate
         assert(interest_rate in ('real', 'nominal', 'corporate', 'fixed', 'le'))
         # fixed and le are very similar except le doesn't give credit for the first payout and in the presence of percentile interpolates any final payout.
         self.date = date_str
+        self.date_str_low = date_str_low  # Compute average of all spot curves from date_str_low to date_str.
         self.interpolate_rates = interpolate_rates  # Whether to interpolate interest rates. Set to true for compatibility with AACalc. Neglible difference.
         self.adjust = adjust  # Adjustment to apply to all annualized rates.
 
-        date_year = int(date_str.split('-')[0])
-
         if interest_rate in ('real', 'nominal'):
 
-            try:
-                yield_curve_years, yield_curve_rates, self.yield_curve_date = self.get_treasury(date_year, date_str)
-            except self.NoData:
-                yield_curve_years, yield_curve_rates, self.yield_curve_date = self.get_treasury(date_year - 1, date_str)
+            yield_curve_years, yield_curve_rates, self.yield_curve_date = self.get_treasury(date_str, date_str_low)
 
-            # Project returns beyond available returns data using the last forward rate.
-            # Not compatible with AACalc. To begin with the underlying splines don't match.
+            spot_rates = []
+            for yield_curve_year, yield_curve_rate in zip(yield_curve_years, yield_curve_rates):
+
+                # Project returns beyond available returns data using the last forward rate.
+                # Not compatible with AACalc. To begin with the underlying splines don't match.
+                coupon_yield_curve = []
+                # Suppress spurious divide by zero; needed for Ubuntu 14.04, not needed for Scipy 0.16.1.
+                with errstate(divide='ignore'):
+                    yield_curve = PchipInterpolator(yield_curve_year, yield_curve_rate)
+                        # PchipInterpolator was refactored in Scipy 0.14 (Ubuntu 16.04) and the interpolation curves are not compatible.
+                        # This means SPIA prices will differ between Ubuntu 14.04 and Ubuntu 16.04.
+
+                # For out of range values Scipy just uses the polynominal, which is problematic, so we use linear interpolation in this case.
+                for i in range(1, int(2 * max(yield_curve_year)) + 1):
+                    year = i / 2.0
+                    if year < min(yield_curve_year):
+                        try:
+                            slope = yield_curve(min(yield_curve_year), 1)
+                        except TypeError:
+                            slope = yield_curve.derivative(min(yield_curve_year)) # Ubuntu 14.04 (SciPy 0.13.3) and earlier.
+                        slope = float(slope)  # De-numpy-fy.
+                        rate = yield_curve_rate[0] + slope * (year - min(yield_curve_year))
+                    else:
+                        rate = float(yield_curve(year))
+                    coupon_yield_curve.append(rate / 100.0)
+
+                spot_rate = self.par_to_spot(coupon_yield_curve)
+                    # Does not match spot rates at https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/TNC-YC.aspx
+                    # because the input par rates of the daily quotes used differ from the end of month quotes reported there.
+                spot_rates.append(spot_rate)
+
             self.spot_years = tuple(y / 2.0 for y in range(1, 201))
-            coupon_yield_curve = []
-            # Suppress spurious divide by zero; needed for Ubuntu 14.04, not needed for Scipy 0.16.1.
-            with errstate(divide='ignore'):
-                yield_curve = PchipInterpolator(yield_curve_years, yield_curve_rates)
-            # For out of range values Scipy just uses the polynominal, which is problematic, so we use linear interpolation in this case.
-            for i in range(1, int(2 * max(yield_curve_years)) + 1):
-                year = i / 2.0
-                if year < min(yield_curve_years):
-                    try:
-                        slope = yield_curve(min(yield_curve_years), 1)
-                    except TypeError:
-                        slope = yield_curve.derivative(min(yield_curve_years)) # Ubuntu 14.04 (SciPy 0.13.3) and earlier.
-                    slope = float(slope)  # De-numpy-fy.
-                    rate = yield_curve_rates[0] + slope * (year - min(yield_curve_years))
-                else:
-                    rate = float(yield_curve(year))
-                coupon_yield_curve.append(rate / 100.0)
-            spot_rates = self.coupon_bond_to_spot(coupon_yield_curve)
-                # Does not match spot rates at https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/TNC-YC.aspx
-                # because the input par rates of the daily quotes used differ from the end of month quotes reported there.
 
         elif interest_rate == 'corporate':
 
+            date_year = int(date_str.split('-')[0])
+
             try:
-                self.spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year, date_str)
+                self.spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year, date_str, date_str_low)
             except self.NoData:
-                self.spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year - 1, date_str)
+                self.spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year - 1, date_str, date_str_low)
 
         elif interest_rate in ('fixed', 'le'):
 
@@ -912,7 +965,8 @@ class YieldCurve:
 
             return
 
-        spot_yield_curve = self.project_curve(spot_rates)
+        spot_yield_curves = tuple(self.project_curve(spot_rate) for spot_rate in spot_rates)
+        spot_yield_curve = tuple(sum(rates) / len(rates) for rates in zip(*spot_yield_curves))
 
         self.spot_yield_curve = tuple(r + adjust for r in spot_yield_curve)
 
@@ -922,7 +976,7 @@ class YieldCurve:
         self.yield_curve_in_range = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=2)
         self.yield_curve_out_range = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=1)  # Linear extrapolation if out of range.
 
-    def coupon_bond_to_spot(self, rates):
+    def par_to_spot(self, rates):
         # See: https://en.wikipedia.org/wiki/Bootstrapping_%28finance%29
         spots = []
         discount_rate_sum = 0
@@ -935,6 +989,16 @@ class YieldCurve:
             spots.append(spot_yield * 2)
             discount_rate_sum += discount_rate
         return spots
+
+    def spot_to_par(self, rates):
+        pars = []
+        count = 0
+        coupons = 0
+        for spot, forward in zip(rates, self.spot_to_forward(rates)):
+            count += 1
+            coupons = 1 + coupons * (1 + forward / 2)
+            pars.append(((1 + spot / 2) ** count - 1) / coupons * 2)
+        return pars
 
     def spot_to_forward(self, rates):
         forwards = []
