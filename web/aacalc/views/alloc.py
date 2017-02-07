@@ -419,6 +419,15 @@ class Alloc:
 
         return table_db, nv_db
 
+    def lookup_long_premium(self, maturity):
+
+        try:
+            return self.long_premium_cache[maturity]
+        except KeyError:
+            long_premium = yield_curve_long_premium.discount_rate(maturity)
+            self.long_premium_cache[maturity] = long_premium
+            return long_premium
+
     def value_table(self, nv_db, taxable):
 
         results = {}
@@ -458,11 +467,13 @@ class Alloc:
 
         def npv_credit_factor(delay, credit_line_delay):
 
+            total_delay = delay + credit_line_delay
             try:
-                calc = nominal_scenario.calcs[int(round((delay + credit_line_delay) * 12))]
+                calc = nominal_scenario.calcs[int(round(total_delay * 12))]
             except IndexError:
                 calc = {'fair_price': 0}
-            nv_credit_factor = calc['fair_price'] * increase_rate_annual ** credit_line_delay
+            increase_factor = (increase_rate_annual / self.lookup_long_premium(credit_line_delay)) ** credit_line_delay
+            nv_credit_factor = calc['fair_price'] * increase_factor
 
             return nv_credit_factor
 
@@ -1402,6 +1413,8 @@ class Alloc:
 
     def compute_results(self, data, mode):
 
+        self.long_premium_cache = {}
+
         if mode == 'retire':
             results = npv_results = npv_display = None
         else:
@@ -1506,9 +1519,9 @@ bonds,%(aa_bonds)f
 def alloc(request, mode, healthcheck=False):
     return Alloc().alloc(request, mode, healthcheck)
 
-hecm_plf = {}
-
 def load_hecm():
+
+    hecm_plf = {}
 
     for datadir in datapath:
         datadir = normpath(expanduser(datadir))
@@ -1530,4 +1543,28 @@ def load_hecm():
                     plf = float(line[i + 1])
                     hecm_plf[age][rate] = plf
 
-load_hecm()
+    return hecm_plf
+
+def load_yield_curve_special():
+
+    start = '1990-01-01'
+    end = '2016-12-31'
+
+    name = 'special-average-' + start + '-' + end
+
+    y = YieldCurve('nominal', name)
+
+    maturity = 1
+    discount_rate = y.discount_rate(maturity)
+
+    forwards = y.spot_to_forward(y.spot_yield_curve)
+    forwards = (((1 + r / 2) / discount_rate ** 0.5 - 1) * 2 for r in forwards)
+    spots = y.forward_to_spot(forwards)
+
+    y.set_yield_curve(y.spot_years, spots)
+
+    return y
+
+hecm_plf = load_hecm()
+
+yield_curve_long_premium = load_yield_curve_special()

@@ -904,6 +904,26 @@ class YieldCurve:
 
         return [spot_years], [spot_rates], spot_date
 
+    def project_curve(self, spot_years, spot_rates):
+
+        # Project returns beyond the last rate using the average 15 year and longer forward rate (similar to Treasury methodology)
+        # and beyond long_years using long_rate as the forward rate.
+        spot_yield_curve = spot_rates[:2 * long_years[self.interest_rate]]
+        forward_rates = self.spot_to_forward(spot_yield_curve)
+        long_forward_rates = []
+        for i in range(len(forward_rates)):
+            if spot_years[i] >= 15:
+                long_forward_rates.append(forward_rates[i])
+        try:
+            long_forward_rate = sum(long_forward_rates) / len(long_forward_rates)
+        except ZeroDivisionError:
+            raise self.NoData
+        forward_rates.extend([long_forward_rate] * (len(spot_years) - len(forward_rates)))
+        for i in range(len(spot_years)):
+            if spot_years[i] > long_years[self.interest_rate]:
+                forward_rates[i] = long_rate[self.interest_rate]
+        return self.forward_to_spot(forward_rates)
+
     def __init__(self, interest_rate, date_str, date_str_low = None, adjust = 0, interpolate_rates = True):
         self.interest_rate = interest_rate
         assert(interest_rate in ('real', 'nominal', 'corporate', 'fixed', 'le'))
@@ -948,16 +968,16 @@ class YieldCurve:
                     # because the input par rates of the daily quotes used differ from the end of month quotes reported there.
                 spot_rates.append(spot_rate)
 
-            self.spot_years = tuple(y / 2.0 for y in range(1, 201))
+            spot_years = tuple(y / 2.0 for y in range(1, 201))
 
         elif interest_rate == 'corporate':
 
             date_year = int(date_str.split('-')[0])
 
             try:
-                self.spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year, date_str, date_str_low)
+                spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year, date_str, date_str_low)
             except self.NoData:
-                self.spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year - 1, date_str, date_str_low)
+                spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year - 1, date_str, date_str_low)
 
         elif interest_rate in ('fixed', 'le'):
 
@@ -965,16 +985,23 @@ class YieldCurve:
 
             return
 
-        spot_yield_curves = tuple(self.project_curve(spot_rate) for spot_rate in spot_rates)
+        spot_yield_curves = tuple(self.project_curve(spot_years, spot_rate) for spot_rate in spot_rates)
         spot_yield_curve = tuple(sum(rates) / len(rates) for rates in zip(*spot_yield_curves))
 
-        self.spot_yield_curve = tuple(r + adjust for r in spot_yield_curve)
+        spot_yield_curve = tuple(r + adjust for r in spot_yield_curve)
 
-        self.spot_years_min = min(self.spot_years)
-        self.spot_years_max = max(self.spot_years)
+        self.set_yield_curve(spot_years, spot_yield_curve)
 
-        self.yield_curve_in_range = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=2)
-        self.yield_curve_out_range = InterpolatedUnivariateSpline(self.spot_years, self.spot_yield_curve, k=1)  # Linear extrapolation if out of range.
+    def set_yield_curve(self, spot_years, spot_yield_curve):
+
+        self.spot_years = spot_years
+        self.spot_years_min = min(spot_years)
+        self.spot_years_max = max(spot_years)
+
+        self.spot_yield_curve = spot_yield_curve
+
+        self.yield_curve_in_range = InterpolatedUnivariateSpline(spot_years, spot_yield_curve, k=2)
+        self.yield_curve_out_range = InterpolatedUnivariateSpline(spot_years, spot_yield_curve, k=1)  # Linear extrapolation if out of range.
 
     def par_to_spot(self, rates):
         # See: https://en.wikipedia.org/wiki/Bootstrapping_%28finance%29
@@ -1022,26 +1049,6 @@ class YieldCurve:
             spot_rate = (forward_rate * spot_rate ** (count - 1)) ** (1.0 / count)
             spots.append((spot_rate - 1) * 2)
         return spots
-
-    def project_curve(self, spot_rates):
-
-        # Project returns beyond the last rate using the average 15 year and longer forward rate (similar to Treasury methodology)
-        # and beyond long_years using long_rate as the forward rate.
-        spot_yield_curve = spot_rates[:2 * long_years[self.interest_rate]]
-        forward_rates = self.spot_to_forward(spot_yield_curve)
-        long_forward_rates = []
-        for i in range(len(forward_rates)):
-            if self.spot_years[i] >= 15:
-                long_forward_rates.append(forward_rates[i])
-        try:
-            long_forward_rate = sum(long_forward_rates) / len(long_forward_rates)
-        except ZeroDivisionError:
-            raise self.NoData
-        forward_rates.extend([long_forward_rate] * (len(self.spot_years) - len(forward_rates)))
-        for i in range(len(self.spot_years)):
-            if self.spot_years[i] > long_years[self.interest_rate]:
-                forward_rates[i] = long_rate[self.interest_rate]
-        return self.forward_to_spot(forward_rates)
 
     def discount_rate(self, y):
         if self.interest_rate == 'fixed':
