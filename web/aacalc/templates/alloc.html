@@ -455,6 +455,14 @@ The values used above are merely intended to get you started. If you
 are serious about taking out a reverse mortgage you should set these
 values based on actual quotes.
 </div>
+Expected premium of adjustable rate over 1-year CMT rates:
+{{ alloc_form.rm_interest_rate_premium_pct }}%
+{{ alloc_form.rm_interest_rate_premium_pct.errors }}
+<div class="small">
+Average values for 1989-2015 are -0.2% for adjustable 1-month CMT,
+0.0% for 1-year CMT, 0.1% for 1-month LIBOR, and 0.6% for 12-month
+LIBOR rates.
+</div>
 <br />
 For a HECM style reverse mortgage you should leave the following
 parameters alone.
@@ -476,11 +484,15 @@ Maximum home value eligible for a reverse mortgage:
 {{ alloc_form.rm_eligible }}
 {{ alloc_form.rm_eligible.errors }}
 <br />
+Delay in years until obtain reverse mortgage (blank to optimize):
+{{ alloc_form.rm_delay }}
+{{ alloc_form.rm_delay.errors }}
+<br />
 Principal limit factor (blank to use 2014 HECM table):
 {{ alloc_form.rm_plf }}
 {{ alloc_form.rm_plf.errors }}
 <br />
-Interest rate (blank to use projected 10-year constant maturity Treasuries):
+Expected average interest rate (blank to use projected 10-year CMT):
 {{ alloc_form.rm_interest_rate_pct }}%
 {{ alloc_form.rm_interest_rate_pct.errors }}
 <br />
@@ -491,7 +503,7 @@ Ongoing premium:
 {{ alloc_form.rm_insurance_initial_pct.errors }}
 {{ alloc_form.rm_insurance_annual_pct.errors }}
 <div class="small">
-For a HECM reverse mortgage the interest rate should be the 10-year
+For a HECM reverse mortgage the index interest rate should be the 10-year
 constant maturity Treasury or 10-year LIBOR swap rate.  This is true
 even though you will have a monthly or annually adjusting reverse
 mortgage.

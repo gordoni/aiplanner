@@ -77,6 +77,9 @@ class Alloc:
     class IdenticalCovarError(Exception):
         pass
 
+    class RMTooYoung(Exception):
+        pass
+
     def default_alloc_params(self):
 
         return {
@@ -225,6 +228,8 @@ class Alloc:
             'use_lm_bonds': True,
             'use_rm': True,
             'rm_plf': None,
+            'rm_interest_rate_premium_pct': Decimal('0.60'),
+            'rm_delay': None,
             'rm_interest_rate_pct': None,
             'rm_cost': 10000,
             'rm_age': 62,
@@ -243,7 +248,7 @@ class Alloc:
             'equity_se_pct': Decimal('1.7'),
             'confidence_pct': 80,
             'expense_pct': Decimal('0.1'),
-            'rm_margin_pct': Decimal('2.00'),
+            'rm_margin_pct': Decimal('2.50'),
             'rm_insurance_initial_pct': Decimal('0.50'),
             'rm_insurance_annual_pct': Decimal('1.25'),
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
@@ -419,14 +424,23 @@ class Alloc:
 
         return table_db, nv_db
 
-    def lookup_long_premium(self, maturity):
+    def lookup_yield_curve_nominal(self, maturity):
 
         try:
-            return self.long_premium_cache[maturity]
+            return self.yield_curve_nominal_cache[maturity]
         except KeyError:
-            long_premium = yield_curve_long_premium.discount_rate(maturity)
-            self.long_premium_cache[maturity] = long_premium
-            return long_premium
+            discount_rate = self.yield_curve_nominal.discount_rate(maturity)
+            self.yield_curve_nominal_cache[maturity] = discount_rate
+            return discount_rate
+
+    def lookup_yield_curve_nominal_average(self, maturity):
+
+        try:
+            return self.yield_curve_nominal_average_cache[maturity]
+        except KeyError:
+            discount_rate = yield_curve_nominal_average.discount_rate(maturity)
+            self.yield_curve_nominal_average_cache[maturity] = discount_rate
+            return discount_rate
 
     def value_table(self, nv_db, taxable):
 
@@ -457,7 +471,8 @@ class Alloc:
             period_certain = mortgage_payoff_years, frequency = self.frequency, schedule = schedule)
         nv_mortgage_payoff = scenario.price() * self.mortgage_payment
 
-        increase_rate = 1 + (self.rm_margin + self.rm_insurance_annual) / 12 # HECM rates are not APR.
+        # HECM rates are not APR.
+        increase_rate = 1 + (self.rm_margin + self.rm_insurance_annual + self.lookup_yield_curve_nominal_average(1) - 1 + self.rm_interest_rate_premium) / 12
         increase_rate_annual = increase_rate ** 12
 
         nominal_scenario = Scenario(self.yield_curve_nominal, 0, None, None, 0, self.life_table, life_table2 = self.life_table2, \
@@ -472,7 +487,9 @@ class Alloc:
                 calc = nominal_scenario.calcs[int(round(total_delay * 12))]
             except IndexError:
                 calc = {'fair_price': 0}
-            increase_factor = (increase_rate_annual / self.lookup_long_premium(credit_line_delay)) ** credit_line_delay
+            increase_factor = (self.lookup_yield_curve_nominal(total_delay) / self.lookup_yield_curve_nominal_average(total_delay)) ** total_delay \
+                              / (self.lookup_yield_curve_nominal(delay) / self.lookup_yield_curve_nominal_average(delay)) ** delay \
+                              * increase_rate_annual ** credit_line_delay
             nv_credit_factor = calc['fair_price'] * increase_factor
 
             return nv_credit_factor
@@ -534,8 +551,13 @@ class Alloc:
 
                 return nv_credit_line, delay, credit_line_delay, expected_rate, credit_line, credit_line_vol
 
-            plf_age_start = self.min_age + max(0, ceil(self.rm_age - self.min_age))
-            plf_age, credit_line_initial = self.exhaustive_search(lambda x: f(x)[0], plf_age_start, 120, 1)
+            if self.rm_delay == None:
+                plf_age_start = self.min_age + max(0, ceil(self.rm_age - self.min_age))
+                plf_age, nv_credit_line = self.exhaustive_search(lambda x: f(x)[0], plf_age_start, 120, 1)
+            else:
+                plf_age = self.min_age + self.rm_delay
+                if plf_age < self.rm_age:
+                    raise self.RMTooYoung
             nv_credit_line, delay, credit_line_delay, expected_rate, credit_line, credit_line_vol = f(plf_age)
 
             compounding_rate = (expected_rate + self.rm_insurance_annual) / 12
@@ -555,7 +577,8 @@ class Alloc:
             tenure = 0
             nv_tenure = 0
             delay_tenure = 0
-            plf_age_start = max(self.min_age, self.rm_age)
+            rm_delay = 0 if self.rm_delay == None else self.rm_delay
+            plf_age_start = max(self.min_age + rm_delay, self.rm_age)
             for plf_age_monthly in range(int(round(self.min_age * 12)) + len(nominal_scenario.calcs) - 1, int(ceil(plf_age_start * 12)) - 1, -1):
 
                 plf_age = plf_age_monthly / 12.0
@@ -1247,6 +1270,9 @@ class Alloc:
 
         results = {}
 
+        self.yield_curve_nominal_average_cache = {}
+        self.yield_curve_nominal_cache = {}
+
         self.date_str = data['date']
         self.real_rate = None if data['real_rate_pct'] == None else float(data['real_rate_pct']) / 100
         self.inflation = float(data['inflation_pct']) / 100
@@ -1320,7 +1346,9 @@ class Alloc:
         self.purchase_income_annuity = data['purchase_income_annuity']
         self.have_rm = data['have_rm']
         self.use_rm = data['use_rm']
+        self.rm_delay = None if data['rm_delay'] == None else float(data['rm_delay'])
         self.rm_plf = None if data['rm_plf'] == None else float(data['rm_plf'])
+        self.rm_interest_rate_premium = float(data['rm_interest_rate_premium_pct']) / 100
         self.rm_interest_rate = None if data['rm_interest_rate_pct'] == None else float(data['rm_interest_rate_pct']) / 100
         self.rm_cost = float(data['rm_cost'])
         self.rm_age = float(data['rm_age'])
@@ -1413,8 +1441,6 @@ class Alloc:
 
     def compute_results(self, data, mode):
 
-        self.long_premium_cache = {}
-
         if mode == 'retire':
             results = npv_results = npv_display = None
         else:
@@ -1482,23 +1508,22 @@ bonds,%(aa_bonds)f
 
                 except LifeTable.UnableToAdjust:
 
-                    errors = alloc_form._errors.setdefault('le_set2', ErrorList())  # Simplified in Django 1.7.
-                    errors.append('Unable to adjust life table.')
-
+                    alloc_form.add_error('le_set2', 'Unable to adjust life table.')
                     errors_present = True
 
                 except YieldCurve.NoData:
 
-                    errors = alloc_form._errors.setdefault('date', ErrorList())  # Simplified in Django 1.7.
-                    errors.append('No interest rate data available for the specified date.')
-
+                    alloc_form.add_error('date', 'No interest rate data available for the specified date.')
                     errors_present = True
 
                 except self.IdenticalCovarError:
 
-                    errors = alloc_form._errors.setdefault(NON_FIELD_ERRORS, ErrorList())  # Simplified in Django 1.7.
-                    errors.append('Two or more rows of covariance matrix appear equal under scaling. This means asset allocation has no unique solution.')
+                    alloc_form.add_error(None, 'Two or more rows of covariance matrix appear equal under scaling. This means asset allocation has no unique solution.')
+                    errors_present = True
 
+                except self.RMTooYoung:
+
+                    alloc_form.add_error('rm_delay', 'Too young for a reverse mortgage')
                     errors_present = True
 
             else:
@@ -1552,19 +1577,8 @@ def load_yield_curve_special():
 
     name = 'special-average-' + start + '-' + end
 
-    y = YieldCurve('nominal', name)
-
-    maturity = 1
-    discount_rate = y.discount_rate(maturity)
-
-    forwards = y.spot_to_forward(y.spot_yield_curve)
-    forwards = (((1 + r / 2) / discount_rate ** 0.5 - 1) * 2 for r in forwards)
-    spots = y.forward_to_spot(forwards)
-
-    y.set_yield_curve(y.spot_years, spots)
-
-    return y
+    return YieldCurve('nominal', name)
 
 hecm_plf = load_hecm()
 
-yield_curve_long_premium = load_yield_curve_special()
+yield_curve_nominal_average = load_yield_curve_special()

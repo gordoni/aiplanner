@@ -679,11 +679,17 @@ class AllocBaseForm(Form):
     purchase_income_annuity = BooleanField(required=False)
     use_lm_bonds = BooleanField(required=False)
     use_rm = BooleanField(required=False)
+    rm_delay = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=0,
+        required=False)
     rm_plf = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
         max_value=1,
         required=False)
+    rm_interest_rate_premium_pct = DecimalField(
+        widget=TextInput(attrs={'class': 'percent_input'}))
     rm_interest_rate_pct = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
         required=False)
