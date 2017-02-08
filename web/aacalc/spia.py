@@ -951,9 +951,9 @@ class YieldCurve:
                         # PchipInterpolator was refactored in Scipy 0.14 (Ubuntu 16.04) and the interpolation curves are not compatible.
                         # This means SPIA prices will differ between Ubuntu 14.04 and Ubuntu 16.04.
 
-                # For out of range values Scipy just uses the polynominal, which is problematic, so we use linear interpolation in this case.
                 for i in range(1, int(2 * max(yield_curve_year)) + 1):
                     year = i / 2.0
+                    # For out of range values Scipy just uses the polynominal, which is problematic, so we use linear interpolation in this case.
                     if year < min(yield_curve_year):
                         try:
                             slope = yield_curve(min(yield_curve_year), 1)
@@ -970,8 +970,6 @@ class YieldCurve:
                     # because the input par rates of the daily quotes used differ from the end of month quotes reported there.
                 spot_rates.append(spot_rate)
 
-            spot_years = tuple(y / 2.0 for y in range(1, 201))
-
         elif interest_rate == 'corporate':
 
             date_year = int(date_str.split('-')[0])
@@ -986,6 +984,8 @@ class YieldCurve:
             self.yield_curve_date = 'none'
 
             return
+
+        spot_years = tuple(y / 2.0 for y in range(1, 201))
 
         spot_yield_curves = tuple(self.project_curve(spot_years, spot_rate) for spot_rate in spot_rates)
         spot_yield_curve = tuple(sum(rates) / len(rates) for rates in zip(*spot_yield_curves))
