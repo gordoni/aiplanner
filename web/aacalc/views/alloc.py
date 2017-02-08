@@ -438,7 +438,10 @@ class Alloc:
         try:
             return self.yield_curve_nominal_average_cache[maturity]
         except KeyError:
-            discount_rate = yield_curve_nominal_average.discount_rate(maturity)
+            if self.real_rate == None:
+                discount_rate = yield_curve_nominal_average.discount_rate(maturity)
+            else:
+                discount_rate = self.yield_curve_nominal.discount_rate(maturity)
             self.yield_curve_nominal_average_cache[maturity] = discount_rate
             return discount_rate
 
