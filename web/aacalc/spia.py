@@ -812,7 +812,9 @@ class YieldCurve:
                         if special:
                             match = d == date_str
                         else:
-                            match = date_str_low <= d <= date_str
+                            match = d <= date_str
+                            if date_str_low:
+                                match = match and date_str_low <= d
                         if match:
                             if not date_str_low:
                                 date = []
