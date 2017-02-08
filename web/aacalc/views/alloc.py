@@ -486,7 +486,7 @@ class Alloc:
             try:
                 calc = nominal_scenario.calcs[int(round(total_delay * 12))]
             except IndexError:
-                calc = {'fair_price': 0}
+                return 0
             increase_factor = (self.lookup_yield_curve_nominal(total_delay) / self.lookup_yield_curve_nominal_average(total_delay)) ** total_delay \
                               / (self.lookup_yield_curve_nominal(delay) / self.lookup_yield_curve_nominal_average(delay)) ** delay \
                               * increase_rate_annual ** credit_line_delay
@@ -534,11 +534,18 @@ class Alloc:
                 else:
                     plf = self.rm_plf
 
-                factor = plf - self.rm_insurance_initial
-                home_value_factor = ((1 + self.home_ret) * (1 + self.inflation)) ** delay
-                home_value = home_value_factor * self.home
-                credit_line = max(0, factor * min(home_value, self.rm_eligible) - self.rm_cost - (self.mortgage - mortgage_payoff))
-                credit_line_vol = factor * home_value * self.home_vol if home_value < self.rm_eligible else 0
+                if plf == 0:
+
+                    credit_line = 0
+                    credit_line_vol = 0
+
+                else:
+
+                    factor = plf - self.rm_insurance_initial
+                    home_value_factor = ((1 + self.home_ret) * (1 + self.inflation)) ** delay
+                    home_value = home_value_factor * self.home
+                    credit_line = max(0, factor * min(home_value, self.rm_eligible) - self.rm_cost - (self.mortgage - mortgage_payoff))
+                    credit_line_vol = factor * home_value * self.home_vol if home_value < self.rm_eligible else 0
 
                 return delay, expected_rate, credit_line, credit_line_vol
 
@@ -588,20 +595,22 @@ class Alloc:
                     discounted_sum += compounded
                     compounded /= compounding
 
-                try_delay, try_expected_rate, try_credit_line, try_credit_line_vol = lookup_credit_line(plf_age)
-                discounted_sum_annual = discounted_sum / 12.0
-                try_tenure = try_credit_line / discounted_sum_annual
-                try_tenure_vol = try_credit_line_vol / discounted_sum_annual
-                try_nv_tenure_factor += npv_credit_factor(try_delay, 0) / 12.0
+                if plf_age_monthly % 12 == 0:
 
-                try_nv_tenure = try_nv_tenure_factor * try_tenure
-                try_tenure_vol *= try_nv_tenure_factor
+                    try_delay, try_expected_rate, try_credit_line, try_credit_line_vol = lookup_credit_line(plf_age)
+                    discounted_sum_annual = discounted_sum / 12.0
+                    try_tenure = try_credit_line / discounted_sum_annual
+                    try_tenure_vol = try_credit_line_vol / discounted_sum_annual
+                    try_nv_tenure_factor += npv_credit_factor(try_delay, 0) / 12.0
 
-                if try_nv_tenure > nv_tenure:
-                    delay_tenure = try_delay
-                    tenure = try_tenure
-                    tenure_vol = try_tenure_vol
-                    nv_tenure = try_nv_tenure
+                    try_nv_tenure = try_nv_tenure_factor * try_tenure
+                    try_tenure_vol *= try_nv_tenure_factor
+
+                    if try_nv_tenure > nv_tenure:
+                        delay_tenure = try_delay
+                        tenure = try_tenure
+                        tenure_vol = try_tenure_vol
+                        nv_tenure = try_nv_tenure
 
         if delay == 0:
             credit_line_vol = 0
