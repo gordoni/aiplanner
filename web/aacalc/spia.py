@@ -1054,9 +1054,9 @@ class YieldCurve:
 
     def discount_rate(self, y):
         if self.interest_rate == 'fixed':
-            say = self.adjust
+            ay = 1 + self.adjust
         elif self.interest_rate == 'le':
-            say = 0
+            ay = 1
         else:
             if self.interpolate_rates:
                 look_y = y
@@ -1068,7 +1068,7 @@ class YieldCurve:
             else:
                 yield_curve = self.yield_curve_out_range
             say = float(yield_curve(look_y))  # De-numpy-fy.
-        ay = (1 + say / 2) ** 2  # Convert semi-annual yields to annual yields.
+            ay = (1 + say / 2) ** 2  # Convert semi-annual yields to annual yields.
         return ay
 
 class LifeTable:
