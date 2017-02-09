@@ -925,15 +925,18 @@ class Alloc:
         equity_gm = self.geomean(1 + rets[stocks_index], self.equity_vol) - 1
         bonds_gm = self.geomean(1 + rets[bonds_index], self.bonds_vol) - 1
 
-        if mode == 'aa' and self.contribution_vol > 0: # Avoid contribution_vol == 0 as covariance matrix inverse fails becasue matrix is singular.
+        if mode == 'aa' and self.nv_contributions != 0 and self.contribution_vol > 0:
+            # Avoid contribution_vol == 0 as covariance matrix inverse fails becasue matrix is singular.
             lo = -0.5
             hi = 0.5
             for _ in range(50):
                 future_growth_try = (lo + hi) / 2.0
+                discounted_contrib, _ = self.npv_contrib(future_growth_try)
+                contrib_ratio = discounted_contrib / self.nv_contributions
                 sigma_matrix = (
-                    (self.equity_vol ** 2, self.cov_eb2, self.cov_ec2),
-                    (self.cov_eb2, self.bonds_vol ** 2, self.cov_bc2),
-                    (self.cov_ec2, self.cov_bc2, self.contribution_vol ** 2)
+                    (self.equity_vol ** 2, self.cov_eb2, contrib_ratio * self.cov_ec2),
+                    (self.cov_eb2, self.bonds_vol ** 2, contrib_ratio * self.cov_bc2),
+                    (contrib_ratio * self.cov_ec2, contrib_ratio * self.cov_bc2, (contrib_ratio * self.contribution_vol) ** 2)
                 )
                 # Merton's alpha and r are instantaneous expected rates of return.
                 #
@@ -951,7 +954,6 @@ class Alloc:
                 alpha = (log(1 + rets[stocks_index]), log(1 + rets[bonds_index]), log(1 + future_growth_try))
                 w = list(self.solve_merton(self.gamma, sigma_matrix, alpha, log(1 + self.lm_bonds_ret)))
                 w.append(1 - sum(w))
-                discounted_contrib, _ = self.npv_contrib(future_growth_try)
                 npv_discounted = results['nv'] - self.nv_contributions + discounted_contrib
                 try:
                     wc_discounted = discounted_contrib / npv_discounted
@@ -963,15 +965,16 @@ class Alloc:
                     lo = future_growth_try
                 else:
                     hi = future_growth_try
+            wc = w[contrib_index]
             try:
-                w_prime = list(wi * npv_discounted / results['nv'] for wi in w)
+                w_prime = list(wi * (1 - self.nv_contributions / results['nv']) / (1 - wc) for wi in w)
             except ZeroDivisionError:
                 w_prime = list(0 for _ in w)
             w_prime[contrib_index] = 0
             w_prime[contrib_index] = 1 - sum(w_prime)
         else:
             future_growth_try = 0
-            discounted_contrib, _ = self.npv_contrib(future_growth_try)
+            discounted_contrib = self.nv_contributions
             try:
                 wc_discounted = discounted_contrib / results['nv']
             except ZeroDivisionError:
