@@ -113,7 +113,7 @@ public class Config
         public double[] aa_offset = null; // Offset to apply during valadation to the generated asset allocation.
                 // Used to determine the implications of a 10% error in aa. More general than stock bias.
 
-        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', 'margin', and 'lm_bonds'.
+        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', 'risk_free2', 'margin', and 'lm_bonds'.
                 // Seem to get quicker search time if list highest return assets first.
         public List<String> asset_class_names = null;
                // Corresponding asset class names to use for MVO inputs and transition map.
@@ -187,6 +187,7 @@ public class Config
                 // Which asset allocation choice to favor when choices are equal, and failure is guaranteed.
                 // Irrelevant if tangency_aa is non-null.
         public double ret_risk_free = 0.0; // Real return for risk-free asset class.
+        public double ret_risk_free2 = 0.0; // Real return for second risk-free asset class.
         public double ret_borrow = 0.0; // Annual cost rate when portfolio is negative. Also annual cost for cost metric.
         public double min_safe_aa = 0.0; // Minimum safe_aa holding fraction.
         public double min_safe_abs = 0.0; // Minimum safe_aa holding plus annuity values.

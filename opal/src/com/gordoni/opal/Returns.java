@@ -347,6 +347,14 @@ public class Returns implements Cloneable
                 }
                 risk_free_returns = adjust_returns(risk_free_returns, 0, adjust_management_expense * adjust_all, 1);
 
+                List<Double> risk_free2_returns = new ArrayList<Double>();
+                double risk_free2_return = (Math.pow(1.0 + config.ret_risk_free2, 1.0 / time_periods) - 1.0);
+                for (int i = 0; i < count; i++)
+                {
+                        risk_free2_returns.add(risk_free2_return);
+                }
+                risk_free2_returns = adjust_returns(risk_free2_returns, 0, adjust_management_expense * adjust_all, 1);
+
                 List<Double> lm_bonds_returns = new ArrayList<Double>();
                 for (int i = 0; i < count; i++)
                 {
@@ -471,6 +479,11 @@ public class Returns implements Cloneable
                         else if ("risk_free".equals(asset_class))
                         {
                                 rets = risk_free_returns;
+                                divf = config.dividend_fract_fixed_income;
+                        }
+                        else if ("risk_free2".equals(asset_class))
+                        {
+                                rets = risk_free2_returns;
                                 divf = config.dividend_fract_fixed_income;
                         }
                         else if ("lm_bonds".equals(asset_class))
