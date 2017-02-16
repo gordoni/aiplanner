@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2016 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -36,17 +36,21 @@ public class AAMapGenerate extends AAMap
         {
                 double[] p = scenario.bucketToP(bucket);
 
-                double[] aa;
+                double[] aa = null;
                 int pi = period;
+                boolean safe_search = true;
                 if (pi + 1 < map.length && !config.search.equals("all"))
                 {
                         MapElement older = map[pi + 1].get(bucket);
                         aa = older.aa;
+                        safe_search = (aa[scenario.spend_fract_index] == 1); // Avoid getting stuck by using aa when aa used didn't matter.
                 }
-                else
+                if (safe_search)
                 {
-                        aa = scenario.guaranteed_fail_aa();
+                        aa = scenario.guaranteed_safe_aa();
+                        aa[scenario.spend_fract_index] = 0;
                 }
+                aa = make_safe_aa(aa, p, period);
 
                 List<SearchResult> simulate_results = null;
                 if (!config.skip_dump_log && !config.conserve_ram)
@@ -59,8 +63,8 @@ public class AAMapGenerate extends AAMap
 
         public double search_difference(SimulateResult a, SimulateResult b)
         {
-                double val_a = a.metrics.get(scenario.success_mode_enum);
-                double val_b = b.metrics.get(scenario.success_mode_enum);
+                double val_a = (a != null ? a.metrics.get(scenario.success_mode_enum) : Double.NEGATIVE_INFINITY);
+                double val_b = (b != null ? b.metrics.get(scenario.success_mode_enum) : Double.NEGATIVE_INFINITY);
                 double diff = (val_a == val_b) ? 0 : val_a - val_b; // Yield zero rather than NaN if both infinite.
                 if (scenario.success_mode_enum == MetricsEnum.COST)
                         return - diff;
@@ -94,7 +98,13 @@ public class AAMapGenerate extends AAMap
                 String note;
                 if (results == null)
                 {
-                    results = simulate(aa, p, period, config.num_sequences_generate, 0, true, returns, 0);
+                        results = simulate(aa, p, period, config.num_sequences_generate, 0, true, false, returns, 0);
+                        if ((config.map_headroom != null) && (results.metrics.get(scenario.success_mode_enum) != Double.NEGATIVE_INFINITY))
+                        {
+                                SimulateResult pessimal_results = simulate(aa, p, period, config.num_sequences_generate, 0, true, true, returns, 0);
+                                if (pessimal_results.metrics.get(scenario.success_mode_enum) == Double.NEGATIVE_INFINITY)
+                                        results = pessimal_results;
+                        }
                         me.cache.put(key, results);
                         note = results.metrics_str;
                 }
@@ -111,7 +121,7 @@ public class AAMapGenerate extends AAMap
 
         private double[] inc_dec_aa(double[] aa, int a, double inc, double[] p, int period)
         {
-                if (a == scenario.spend_fract_index || a == scenario.ria_aa_index || a == scenario.nia_aa_index)
+                if ((a != -1) && (a == scenario.spend_fract_index || a == scenario.ria_aa_index || a == scenario.nia_aa_index))
                 {
                         double[] new_aa = aa.clone();
                         double alloc = new_aa[a];
@@ -155,6 +165,12 @@ public class AAMapGenerate extends AAMap
                 }
         }
 
+        private double[] make_safe_aa(double[] aa, double[] p, int period)
+        {
+                // inc_dec_aa() with increment of zero will force respecting of min_safe.
+                return inc_dec_aa(aa, -1, 0, p, period);
+        }
+
         private void search_all(MapElement me, List<Integer> dimensions, double[] step, int d_index, double[] current_aa, int period, Returns returns)
         {
             double[] p = me.rps;
@@ -167,8 +183,8 @@ public class AAMapGenerate extends AAMap
             if (d_index == dimensions.size())
             {
                     // Don't cache results because we don't have the memory to store a large number of results.
-                    SimulateResult results = simulate(current_aa, p, period, config.num_sequences_generate, 0, true, returns, 0);
-                    if ((me.results == null) || (search_difference(results, me.results) > 0))
+                    SimulateResult results = simulate(current_aa, p, period, config.num_sequences_generate, 0, true, false, returns, 0);
+                    if (search_difference(results, me.results) > 0)
                     {
                             me.aa = current_aa;
                             me.results = results;
@@ -268,10 +284,8 @@ public class AAMapGenerate extends AAMap
                                         double[] try_aa = best.aa;
                                         try_aa = inc_dec_aa(best.aa, d, perturb * stepper[d], p, period);
                                         SimulateResult results = search_simulate_cache(me, try_aa, p, period, returns);
-                                        double diff = Double.NaN;
-                                        if (best_results != null)
-                                                diff = search_difference(results, best_results);
-                                        if (best_results == null || diff > 0)
+                                        double diff = search_difference(results, best_results);
+                                        if (diff > 0)
                                         {
                                                 best_aa = try_aa;
                                                 best_results = results;
@@ -418,10 +432,7 @@ public class AAMapGenerate extends AAMap
                         double[] gradient = gradient(me, best.aa, dimensions, step, stepper, p, period, returns);
                         double[] try_aa = perturb_aa(best.aa, gradient, dimensions, p, period);
                         SimulateResult results = search_simulate_cache(me, try_aa, p, period, returns);
-                        double diff = Double.NaN;
-                        if (best.results != null)
-                                diff = search_difference(results, best.results);
-                        boolean better = (best.results == null || diff > 0);
+                        boolean better = (search_difference(results, best.results) > 0);
                         if (better)
                         {
                                 improved = true;
@@ -470,6 +481,8 @@ public class AAMapGenerate extends AAMap
                 MapElement best = me;
                 double[] p = me.rps;
                 boolean improved = false;
+                if (best.results == null)
+                        best.results = search_simulate_cache(me, best.aa, p, period, returns);
                 if (aa != null)
                 {
                         if (distance(dimensions, step, aa, me.aa) < 1.0)
@@ -525,7 +538,8 @@ public class AAMapGenerate extends AAMap
                                 }
                                 double[] try_aa = perturb_aa(best.aa, v, dimensions, p, period);
                                 SimulateResult results = search_simulate_cache(me, try_aa, p, period, returns);
-                                if (prev_results == null || search_difference(results, prev_results) > 0)
+                                double diff = search_difference(results, prev_results);
+                                if (diff > 0)
                                 {
                                         improved = true;
                                         best.aa = try_aa;
@@ -583,15 +597,6 @@ public class AAMapGenerate extends AAMap
                 {
                         double step_size = 1;
                         boolean improve = search_hill_climb(me, dimensions, step, step_size, aa, period, returns);
-                        if (dimensions.contains(scenario.spend_fract_index) && Double.isInfinite(me.results.metrics.get(scenario.success_mode_enum)))
-                        {
-                                // Unable to search if everywhere is infinity. Try searching again somewhere safe.
-                                double safe_aa[] = scenario.guaranteed_safe_aa();
-                                safe_aa[scenario.spend_fract_index] = 1 - step[scenario.spend_fract_index];
-                                        // contrib_high isn't safe because it may correspond to conume_annual=0,
-                                        // which if defined_benefit=public_assistance=0 yields -Inf.
-                                improve = search_hill_climb(me, dimensions, step, step_size, safe_aa, period, returns) || improve;
-                        }
                         return improve;
                 }
                 else if (config.search.equals("gradient"))
@@ -787,7 +792,7 @@ public class AAMapGenerate extends AAMap
                         if (config.trace)
                                 System.out.print("period " + period);
                         long start = System.currentTimeMillis();
-                        final MapPeriod mp = new MapPeriod(scenario);
+                        final MapPeriod mp = new MapPeriod(scenario, period);
                         map[period] = mp;
                         final int fperiod = period;
 
@@ -832,22 +837,29 @@ public class AAMapGenerate extends AAMap
                                                                         next_check++;
                                                                         int[] start_bucket = fcheck_list.get(start).bucket;
                                                                         while (next_check < fcheck_list.size() &&
-                                                                                Arrays.equals(fcheck_list.get(next_check).bucket, start_bucket))
+                                                                                (Arrays.equals(fcheck_list.get(next_check).bucket, start_bucket)
+                                                                                 || ((next_check - start) * config.bucket_groups_per_task * config.tasks_generate) < mp.total_length))
                                                                         {
+                                                                                // We process all checks for a given bucket in order to ensure runs are deterministic.
                                                                                 next_check++;
                                                                         }
                                                                         end = next_check;
                                                                 }
-                                                                // We process all checks for a given bucket in order to ensure runs are deterministic.
                                                                 for (int elem = start; elem < end; elem++)
                                                                 {
                                                                         SearchBucket check = fcheck_list.get(elem);
                                                                         MapElement me = mp.get(check.bucket);
-                                                                        // Make sure aa is valid if min_safe_le is in effect.
                                                                         double[] aa = check.aa;
                                                                         if (aa != null)
-                                                                                aa = inc_dec_aa(aa, 0, 0, me.rps, fperiod);
+                                                                                aa = make_safe_aa(aa, me.rps, fperiod);
                                                                         boolean improve = search_hint(me, aa, fperiod, local_returns);
+                                                                        // Perhaps we have only searched where were the metric was -Inf. If so try somewhere safe.
+                                                                        if ((aa == null) && !improve)
+                                                                        {
+                                                                                aa = make_safe_aa(scenario.guaranteed_safe_aa(), me.rps, fperiod);
+                                                                                aa[scenario.spend_fract_index] = 0;
+                                                                                improve = search_hint(me, aa, fperiod, local_returns);
+                                                                        }
                                                                         // Get a 50% speedup due to early deletion of cache. Otherwise cache too big for CPU cache.
                                                                         me.cache = null;
                                                                         if (improve && config.search_neighbour)
@@ -879,7 +891,7 @@ public class AAMapGenerate extends AAMap
                                 invoke_all(tasks);
                                 tasks.clear();
 
-                                check_list = new_check_list;
+                                check_list = new_check_list; // Should really sort to prevent multiple tasks simultaneously running the same bucket.
                         }
 
                         for (MapElement me : map[period])
@@ -890,14 +902,19 @@ public class AAMapGenerate extends AAMap
                                         me.aa = inc_dec_aa(me.aa, scenario.asset_classes.indexOf("stocks"), config.stock_bias, me.rps, 0);
                                 }
 
-                                if (me.aa[scenario.spend_fract_index] == 1)
+                                if (me.results.metrics.get(scenario.success_mode_enum) == Double.NEGATIVE_INFINITY)
                                 {
-                                        // Make map look nice when values to use are indeterminite.
-                                        double[] gf = scenario.guaranteed_fail_aa();
+                                        // Make map look consistent when values to use are indeterminite.
+                                        // Also ensures period - 1 has reasonable hints to start from.
+                                        double[] gs = scenario.guaranteed_safe_aa();
+                                        // Make sure aa is valid if min_safe is in effect.
+                                        gs = make_safe_aa(gs, me.rps, period);
                                         for (int i = 0; i < scenario.normal_assets; i++)
-                                                me.aa[i] = gf[i];
+                                                me.aa[i] = gs[i];
+                                        me.aa[scenario.spend_fract_index] = 0;
                                         if (!config.ef.equals("none"))
-                                                me.aa[scenario.ef_index] = gf[scenario.ef_index];
+                                                me.aa[scenario.ef_index] = gs[scenario.ef_index];
+                                        me.results = search_simulate_cache(me, me.aa, me.rps, period, returns);
                                 }
 
                                 me.cache = null;

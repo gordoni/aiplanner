@@ -30,8 +30,11 @@ class MapPeriod implements Iterable<MapElement>
 {
         public Scenario scenario;
         public Config config;
+        public int period;
 
         private MapElement[] mp;
+
+        public int total_length;
 
         public int[] bottom;
         public int[] length;
@@ -98,23 +101,31 @@ class MapPeriod implements Iterable<MapElement>
                 if (!fast_path || !generate)
                 {
                         for (int i = 0; i < scenario.all_alloc; i++)
-                                if (i != scenario.cpi_index)
-                                        aa[i] = aa_interp[i].value(p);
+                                aa[i] = aa_interp[i].value(p);
                         // Keep bounded and summed to one as exactly as possible.
+                        boolean in_range = true;
                         double sum = 0;
-                        for (int a = 0; a < scenario.all_alloc; a++)
+                        for (int i = 0; i < scenario.normal_assets; i++)
                         {
-                                double alloc = aa[a];
+                                if (!((config.min_aa < aa[i]) && (aa[i] < config.max_aa)))
+                                        in_range = false;
+                                sum += aa[i];
+                        }
+                        if (Math.abs(sum - 1) > 1e-9 * Math.max(Math.abs(config.min_aa), Math.abs(config.max_aa)))
+                        {
+                                in_range = false;
+                        }
+                        if (!in_range)
+                                aa = scenario.inc_dec_aa_raw(aa, -1, 0, p, period);
+                        for (int i = scenario.normal_assets; i < scenario.all_alloc; i++)
+                        {
+                                double alloc = aa[i];
                                 if (alloc <= 0)
-                                        alloc = 0;
+                                        alloc = 1;
                                 if (alloc > 1)
                                         alloc = 1;
-                                aa[a] = alloc;
-                                if (a < scenario.normal_assets)
-                                        sum += alloc;
+                                aa[i] = alloc;
                         }
-                        for (int a = 0; a < scenario.normal_assets; a++)
-                              aa[a] /= sum;
                 }
 
                 if (!fast_path)
@@ -130,11 +141,21 @@ class MapPeriod implements Iterable<MapElement>
                         }
                         spend = spend_interp.value(p);
                         consume = consume_interp.value(p);
+                        //if (-1e-12 * scenario.consume_max_estimate < consume && consume < 0)
+                        //        consume = 0;
                         if ((config.start_ria != null) || (config.start_nia != null))
                                 first_payout = first_payout_interp.value(p);
 
-                        assert(spend >= 0);
-                        assert(consume >= 0);
+                        if (spend < 0)
+                        {
+                                System.err.println("lookup_interpolate(): negative interpolated spend: " + spend);
+                                assert(false);
+                        }
+                        if (consume < 0)
+                        {
+                                System.err.println("lookup_interpolate(): negative interpolated consume: " + consume);
+                                assert(false);
+                        }
                 }
 
                 me.results.metrics.metrics[scenario.success_mode_enum.ordinal()] = metric_sm; // Needed by maintain_all.
@@ -213,10 +234,11 @@ class MapPeriod implements Iterable<MapElement>
                 return it;
         }
 
-        public MapPeriod(Scenario scenario)
+        public MapPeriod(Scenario scenario, int period)
         {
                 this.scenario = scenario;
                 this.config = scenario.config;
+                this.period = period;
 
                 bottom = new int[scenario.start_p.length];
                 length = new int[scenario.start_p.length];
@@ -247,7 +269,8 @@ class MapPeriod implements Iterable<MapElement>
                 int len = 1;
                 for (int i = 0; i < length.length; i++)
                         len *= length[i];
-                mp = new MapElement[len];
+                total_length = len;
+                mp = new MapElement[total_length];
 
                 //tp_stride = 1;
                 //for (int i = scenario.tp_index + 1; i < length.length; i++)

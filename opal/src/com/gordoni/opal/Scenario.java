@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2016 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -88,6 +88,8 @@ public class Scenario
         private Returns returns_target = null;
         private Returns returns_validate = null;
 
+        private int safe_aa_index = -1;
+
         public AAMap map;
 
         public Double equity_premium;
@@ -134,126 +136,164 @@ public class Scenario
 
         public double[] guaranteed_safe_aa()
         {
-            double[] safe = new double[asset_classes.size()]; // Create new object since at least AAMapGenerate mutates the result.
+                double[] safe = new double[asset_classes.size()]; // Create new object since at least AAMapGenerate mutates the result.
                 for (int i = 0; i < normal_assets; i++)
                 {
                         if (config.ef.equals("none"))
-                                if (asset_classes.get(i).equals(config.safe_aa))
-                                        safe[i] = 1.0;
+                                if (i == safe_aa_index)
+                                        safe[i] = 1;
                                 else
-                                        safe[i] = 0.0;
+                                        safe[i] = 0;
                         else
                                 safe[i] = aa_ef.get(0)[i];
                 }
                 return safe;
         }
 
-        public double[] guaranteed_fail_aa()
-        {
-            double[] fail = new double[asset_classes.size()]; // Create new object since at least AAMapGenerate mutates the result.
-                for (int i = 0; i < normal_assets; i++)
-                {
-                        if (i == spend_fract_index)
-                                fail[i] = 1;
-                        else if (config.ef.equals("none"))
-                        {
-                                if (asset_classes.get(i).equals(config.fail_aa))
-                                        fail[i] = 1.0 + config.max_borrow;
-                                else if (asset_classes.get(i).equals(config.borrow_aa))
-                                        fail[i] = - config.max_borrow;
-                                else
-                                        fail[i] = 0.0;
-                        }
-                        else
-                                fail[i] = aa_ef.get(aa_ef.size() - 1)[i];
-                }
-                return fail;
-        }
+        // public double[] guaranteed_fail_aa()
+        // {
+        //     double max_val = Math.min(config.max_aa, 1 - config.min_aa) - config.max_borrow;
+        //     double[] fail = new double[asset_classes.size()]; // Create new object since at least AAMapGenerate mutates the result.
+        //         for (int i = 0; i < normal_assets; i++)
+        //         {
+        //                 if (i == spend_fract_index)
+        //                         fail[i] = 1;
+        //                 else if (config.ef.equals("none"))
+        //                 {
+        //                         if (asset_classes.get(i).equals(config.fail_aa))
+        //                                 fail[i] = max_val + config.max_borrow;
+        //                         else if (i == safe_aa_index)
+        //                                 fail[i] = 1 - max_val;
+        //                         else
+        //                                 fail[i] = 0.0;
+        //                         if (asset_classes.get(i).equals(config.borrow_aa))
+        //                                 fail[i] = - config.max_borrow;
+        //                 }
+        //                 else
+        //                         fail[i] = aa_ef.get(aa_ef.size() - 1)[i];
+        //         }
+        //         return fail;
+        // }
 
         public double[] inc_dec_aa_raw(double[] aa, int a, double inc, double[] p, int period)
         {
                 double[] new_aa = aa.clone();
                 double delta = inc;
-                double alloc = new_aa[a];
-                double min = (asset_classes.get(a).equals(config.borrow_aa) ? - config.max_borrow : 0.0);
-                double max = (asset_classes.get(a).equals(config.borrow_only_aa) ? 0.0 : 1.0 + config.max_borrow);
-                delta = Math.min(delta, max - alloc);
-                delta = Math.max(delta, min - alloc);
-                for (int i = 0; i < normal_assets; i++)
-                        if (i == a)
-                                new_aa[i] += delta;
-                        else
-                                // Scale back proportionally.
-                                if (1 - alloc < 1e-12)
-                                        new_aa[i] = - delta / (normal_assets - 1);
-                                else
-                                        new_aa[i] *= 1 - delta / (1 - alloc);
-                if ((config.min_safe_aa != 0 || config.min_safe_abs != 0 || config.min_safe_le != 0) &&
+                double a_borrow = asset_classes.indexOf(config.borrow_aa);
+                double a_borrow_only = asset_classes.indexOf(config.borrow_only_aa);
+                int a_safe = asset_classes.indexOf(config.safe_aa);
+
+                double min_safe_aa = Double.NEGATIVE_INFINITY;
+                double max_safe_aa = Double.POSITIVE_INFINITY;
+                if ((config.min_safe_aa != Double.NEGATIVE_INFINITY || config.min_safe_abs != Double.NEGATIVE_INFINITY || config.min_safe_abs != Double.POSITIVE_INFINITY || config.min_safe_le != Double.NEGATIVE_INFINITY) &&
                     (config.start_age + period / config.generate_time_periods < config.min_safe_until_age))
                 {
-                        // Not entirely satisfying to fully or partially decrement asset class when it was requested that it be incremented,
-                        // but this is the simplest approach and it shouldn't affect the underlying asset allocation machinery.
-                        int a_safe = asset_classes.indexOf(config.safe_aa);
-                        double alloc_safe = new_aa[a_safe];
                         double have_safe = 0;
                         if (ria_index != null)
                                 have_safe += p[ria_index] * ss.generate_annuity_stats.real_annuity_price[period];
                         if (nia_index != null)
                                 have_safe += p[nia_index] * ss.generate_annuity_stats.nominal_annuity_price[period];
-                        double min_safe_aa;
-                        if (p[tp_index] == 0)
-                                min_safe_aa = 1;
-                        else
+                        if (p[tp_index] != 0)
                         {
                                 double min_safe_le = config.min_safe_le * (ss.generate_stats.raw_sum_avg_alive[period] / ss.generate_stats.raw_alive[period]);
                                 min_safe_aa = (Math.max(config.min_safe_abs, min_safe_le) - have_safe) / p[tp_index];
                                 min_safe_aa = Math.max(min_safe_aa, config.min_safe_aa);
-                                min_safe_aa = Math.max(0, min_safe_aa);
-                                min_safe_aa = Math.min(1, min_safe_aa);
+                                max_safe_aa = (config.max_safe_abs - have_safe) / p[tp_index];
+                                assert(min_safe_aa <= max_safe_aa);
                         }
-                        double delta_safe = Math.max(0, min_safe_aa - alloc_safe);
-                        for (int i = 0; i < normal_assets; i++)
-                                if (i == a_safe)
-                                        new_aa[i] += delta_safe;
-                                else
-                                        if (1 - alloc_safe < 1e-12)
-                                                new_aa[i] = - delta_safe / (normal_assets - 1);
-                                        else
-                                                new_aa[i] *= 1 - delta_safe / (1 - alloc_safe);
                 }
-                if ((config.annuity_classes_supress != null) &&
-                    (config.start_age + period / config.generate_time_periods >= config.annuity_age))
+
+                boolean supress_classes = (config.annuity_classes_supress != null) && (config.start_age + period / config.generate_time_periods >= config.annuity_age);
+                double min = ((a != -1) && (a == a_borrow) ? - config.max_borrow : config.min_aa);
+                double max = ((a != -1) && (a == a_borrow_only) ? 0.0 : config.max_aa + config.max_borrow);
+
+                if (a != -1)
                 {
-                        // This code will rarely make a difference. We exclude suppressed asset classes from the search in search_hint().
-                        double sum = 0;
-                        for (int i = 0; i < normal_assets; i++)
+                        new_aa[a] += delta;
+                        if (supress_classes && config.annuity_classes_supress.contains(asset_classes.get(a)))
                         {
-                                if (config.annuity_classes_supress.contains(asset_classes.get(i)))
-                                        new_aa[i] = 0;
-                                else
-                                    sum += Math.max(0, new_aa[i]);
+                                delta -= new_aa[a];
+                                new_aa[a] = 0;
                         }
-                        if (sum == 0)
+                        double my_min = min;
+                        double my_max = max;
+                        if (a == a_safe)
                         {
-                                // Have to have end up with some aa. Arbitrarily pick something.
-                                for (int i = 0; i < normal_assets; i++)
-                                {
-                                        if (!config.annuity_classes_supress.contains(asset_classes.get(i)))
-                                                new_aa[i] = 1; // Will get normalized in a moment.
-                                }
+                                my_min = Math.max(min, Math.min(min_safe_aa, max));
+                                my_max = Math.max(min, Math.min(max_safe_aa, max));
+                        }
+                        double over = new_aa[a] - my_max;
+                        if (over > 0)
+                        {
+                                new_aa[a] = my_max;
+                                delta -= over;
+                        }
+                        double under = new_aa[a] - my_min;
+                        if (under < 0)
+                        {
+                                new_aa[a] = my_min;
+                                delta -= under;
                         }
                 }
-                // Keep summed to one as exactly as possible.
+                double carry = 0;
+                for (int count = 0; count < 2; count++)
+                {
+                        double sum = 0;
+                        // Want to distribute carry across safest assets (listed last) first.
+                        for (int i = normal_assets - 1; (i >= 0) && ((count == 0) || (carry != 0)); i--)
+                        {
+                                if ((i != a) || (count > 0))
+                                {
+                                        new_aa[i] += carry - delta / (normal_assets - 1);
+                                        carry = 0;
+                                        if (supress_classes && config.annuity_classes_supress.contains(asset_classes.get(a)))
+                                        {
+                                                carry += new_aa[i];
+                                                new_aa[i] = 0;
+                                        }
+                                }
+                                double my_min = min;
+                                double my_max = max;
+                                if (i == a_safe)
+                                {
+                                        my_min = Math.max(min, Math.min(min_safe_aa, max));
+                                        my_max = Math.max(min, Math.min(max_safe_aa, max));
+                                }
+                                double over = new_aa[i] - my_max;
+                                if (over > 0)
+                                {
+                                        new_aa[i] = my_max;
+                                        carry += over;
+                                }
+                                double under = new_aa[i] - my_min;
+                                if (under < 0)
+                                {
+                                        new_aa[i] = my_min;
+                                        carry += under;
+                                }
+                                sum += new_aa[i];
+                        }
+                        carry = 1 - sum; // Code needs to work even when input doesn't sum to 1, such as from interp.
+                        delta = 0;
+                }
+
+                // Confirm summed to one.
+                boolean fail = false;
+                double precision = Math.max(Math.abs(config.min_aa), Math.abs(config.max_aa));
                 double sum = 0;
                 for (int i = 0; i < normal_assets; i++)
                 {
-                        assert(new_aa[i] > -1e12);
-                        if (new_aa[i] <= 0)
-                                new_aa[i] = 0;
+                        fail = fail || (new_aa[i] - config.min_aa < -1e-12 * precision);
+                        fail = fail || (config.max_aa - new_aa[i] < -1e-12 * precision);
                         sum += new_aa[i];
                 }
-                for (int i = 0; i < normal_assets; i++)
-                        new_aa[i] /= sum;
+                fail = fail || (Math.abs(sum - 1) > 1e-12 * precision);
+                if (fail)
+                {
+                        System.err.println("inc_dec_aa_raw(" + Arrays.toString(aa) + ", "  + a + " , " + inc + ", " + Arrays.toString(p) + ", " + period + ") failed: " + Arrays.toString(new_aa));
+                        assert(false);
+                }
+
                 return new_aa;
         }
 
@@ -633,6 +673,8 @@ public class Scenario
                                 return elem.consume_annual;
                         else if (what.equals("inherit"))
                                 return elem.p;
+                        else if (elem.aa == null)
+                                return null; // Final element.
                         else
                                 return elem.aa[asset_classes.indexOf(what)];
                 }
@@ -766,7 +808,7 @@ public class Scenario
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-pct-" + (change ? "change-" : "") + what + ".csv"));
 
-                double max_pctl = Double.NEGATIVE_INFINITY;
+                double max_pctl = Double.NaN;
                 double age_period = validate_age * config.generate_time_periods;
                 for (int i = 0; ; i++)
                 {
@@ -786,7 +828,7 @@ public class Scenario
                         double low = vals[(int) (pctl * values)];
                         double median = vals[(int) (0.5 * values)];
                         double high = vals[(int) ((1 - pctl) * values)];
-                        if (high > max_pctl)
+                        if (Double.isNaN(max_pctl) || (high > max_pctl))
                                 max_pctl = high;
                         double mean = Utils.mean(vals);
                         out.println(f2f.format(age_period / config.generate_time_periods) + "," + f4f.format(median) + "," + f4f.format(low) + "," + f4f.format(high) + "," + f4f.format(mean));
@@ -823,7 +865,8 @@ public class Scenario
                                 double nia = step.nia;
                                 double real_annuitize = step.real_annuitize;
                                 double nominal_annuitize = step.nominal_annuitize;
-                                String aa = stringify_aa(step.aa);
+                                double[] step_aa = (step.aa == null) ? guaranteed_safe_aa() : step.aa; // Last path element aa may be null.
+                                String aa = stringify_aa(step_aa);
                                 out.print(f2f.format(age_period / config.generate_time_periods));
                                 out.print("," + f2f.format(p));
                                 out.print("," + (Double.isNaN(consume_annual) ? "" : f2f.format(consume_annual)));
@@ -831,8 +874,8 @@ public class Scenario
                                 out.print("," + f2f.format(nia));
                                 out.print("," + f2f.format(real_annuitize));
                                 out.print("," + f2f.format(nominal_annuitize));
-                                out.print("," + ((returns == null) ? "" : f4f.format(expected_return(step.aa, returns))));
-                                out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(step.aa, returns, corr))));
+                                out.print("," + ((returns == null) ? "" : f4f.format(expected_return(step_aa, returns))));
+                                out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(step_aa, returns, corr))));
                                 out.print("," + aa);
                                 out.print("\n");
                                 age_period += 1;
@@ -916,43 +959,6 @@ public class Scenario
                         }
                 out.close();
         }
-
-        // // Only useful if invariant over portfolio size.
-        // private void dump_average(AAMap map) throws IOException
-        // {
-        //      PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-average.csv"));
-
-        //      for (int period = 0; period < map.map.length; period++)
-        //      {
-        //              double age = config.start_age + period / config.generate_time_periods;
-        //              double ria = 0;
-        //              double nia = 0;
-        //              double[] aa = new double[normal_assets];
-        //              for (int step = 1; step <= config.gnuplot_steps; step++)
-        //                      // step = 0 results in division by zero.
-        //              {
-        //                      double curr_pf = step * config.pf_gnuplot / config.gnuplot_steps;
-        //                      double[] p = new double[start_p.length];
-        //                      p[tp_index] = curr_pf;
-        //                      MapElement fpb = map.lookup_interpolate(p, period);
-        //                      double ria_purchase = fpb.ria_purchase(this);
-        //                      double nia_purchase = fpb.nia_purchase(this);
-        //                      //double spend = fpb.spend;
-        //                      //ria += ria_purchase / spend;
-        //                      //nia += nia_purchase / spend;
-        //                      ria += ria_purchase / curr_pf;
-        //                      nia += nia_purchase / curr_pf;
-        //                      for (int a = 0; a < aa.length; a++)
-        //                              aa[a] += fpb.aa[a];
-        //              }
-        //              ria /= config.gnuplot_steps;
-        //              nia /= config.gnuplot_steps;
-        //              for (int a = 0; a < aa.length; a++)
-        //                      aa[a] /= config.gnuplot_steps;
-        //              out.println(f2f.format(age) + "," + f3f.format(ria) + "," + f3f.format(nia) + "," + stringify_aa(aa));
-        //      }
-        //      out.close();
-        // }
 
         private void dump_annuity_price() throws IOException
         {
@@ -1074,7 +1080,8 @@ public class Scenario
 
         private void plot() throws IOException, InterruptedException
         {
-                ss.subprocess("plot", config.prefix);
+                if (!config.skip_plot)
+                        ss.subprocess("plot", config.prefix);
         }
 
         // Dump and plot the data files.
@@ -1095,7 +1102,10 @@ public class Scenario
                 {
                         dump_distributions(paths);
                         tp_max = dump_pct_path(paths, "p", false);
-                        consume_max = dump_pct_path(paths, "consume", false);
+                        double consume_max_path = dump_pct_path(paths, "consume", false);
+                        if (!Double.isNaN(consume_max_path))
+                                // NaN when debugging final period alone.
+                                consume_max = consume_max_path;
                         dump_pct_paths(paths);
                         dump_paths(paths, returns, corr);
                         // Delta paths breaks when validate using validate dump because guaranteed_safe_aa relies on MVO tangency.
@@ -1550,6 +1560,21 @@ public class Scenario
                 }
         }
 
+        private int compute_safe_aa(Returns returns)
+        {
+                double min_vol = Double.POSITIVE_INFINITY;
+                int min_location = -1;
+
+                for (int i = normal_assets - 1; i >= 0; i--)
+                         if (returns.sd[i] < min_vol)
+                         {
+                                 min_vol = returns.sd[i];
+                                 min_location = i;
+                         }
+
+                return min_location;
+        }
+
         public Scenario(ScenarioSet ss, Config config, HistReturns hist, boolean compute_risk_premium, boolean do_validate, List<String> asset_classes, List<String> asset_class_names, Double equity_premium, double equity_vol_adjust, double gamma_adjust, double q_adjust, Double start_ria, Double start_nia) throws IOException, InterruptedException
         {
                 this.ss = ss;
@@ -1640,14 +1665,12 @@ public class Scenario
                 assert(validate_age < config.start_age + ss.max_years);
                 if (config.ef.equals("none"))
                 {
-                        assert(this.asset_classes.contains(config.safe_aa));
-                        assert(this.asset_classes.contains(config.fail_aa));
+                        assert((config.safe_aa == null) || this.asset_classes.contains(config.safe_aa));
                 }
                 else
                 {
                         assert(!config.search.equals("memory"));
                 }
-                assert(config.max_borrow == 0.0 || !config.borrow_aa.equals(config.fail_aa));
                 assert(config.validate_time_periods >= config.rebalance_time_periods);
                 if (config.utility_join)
                 {
@@ -1731,7 +1754,10 @@ public class Scenario
 
                 returns_generate = null;
                 if (do_generate || do_target  || do_tax)
+                {
                         returns_generate = new Returns(this, hist, config, config.generate_seed, false, config.generate_start_year, config.generate_end_year, config.num_sequences_generate, config.generate_time_periods, config.generate_ret_equity, config.generate_ret_bonds, config.ret_risk_free, config.generate_ret_inflation, config.management_expense, config.generate_shuffle, config.ret_reshuffle, config.generate_draw, config.ret_bootstrap_block_size, config.ret_pair, config.ret_short_block, config.generate_all_adjust, equity_vol_adjust * config.generate_equity_vol_adjust);
+                        safe_aa_index = compute_safe_aa(returns_generate);
+                }
 
                 returns_target = null;
                 if (do_target)

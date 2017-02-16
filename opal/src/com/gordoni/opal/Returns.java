@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2016 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -24,6 +24,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
+import org.apache.commons.math3.distribution.LogNormalDistribution;
+
 public class Returns implements Cloneable
 {
         private Scenario scenario;
@@ -34,6 +36,9 @@ public class Returns implements Cloneable
         public double[][] returns_unshuffled;
         public double[] returns_unshuffled_probability;
         private double[][][][] returns_cache;
+
+        public double[] pessimal;
+        public double[] optimal;
 
         private Random random;
         private int ret_seed;
@@ -123,7 +128,6 @@ public class Returns implements Cloneable
                 double adjust_equity_vol = equity_vol_adjust;
 
                 int start = (int) Math.round((start_year - hist.initial_year) * 12);
-                assert(start >= 0);
                 int month_count = (end_year == null) ? (hist.stock.size() - start) : (int) ((end_year - start_year + 1) * 12);
                 assert(month_count % Math.round(12 / time_periods) == 0);
                 int count = month_count / (int) Math.round(12 / time_periods);
@@ -141,9 +145,17 @@ public class Returns implements Cloneable
                         cash_mean = Utils.mean(t1_returns);
                 }
 
-                List<Double> stock_returns = reduce_returns(hist.stock.subList(start, start + month_count), (int) Math.round(12 / time_periods));
-                double stock_mean = Utils.mean(stock_returns);
-                double stock_geomean = Utils.plus_1_geomean(stock_returns);
+                List<Double> stock_returns = null;
+                double stock_mean = 0;
+                double stock_geomean = 1;
+                if (start >= 0)
+                {
+                        stock_returns = reduce_returns(hist.stock.subList(start, start + month_count), (int) Math.round(12 / time_periods));
+                        stock_mean = Utils.mean(stock_returns);
+                        stock_geomean = Utils.plus_1_geomean(stock_returns);
+                }
+                else
+                        System.out.println("Warning: stock/bond/cpi returns unavailable.");
                 double equity_adjust_arith = 0.0;
                 double equity_adjust = 1.0;
                 if (scenario.equity_premium != null)
@@ -164,10 +176,14 @@ public class Returns implements Cloneable
                 }
                 List<Double> equity_returns = null;
                 if (scenario.asset_classes.contains("stocks"))
-                    equity_returns = adjust_returns(stock_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                       equity_returns = adjust_returns(stock_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
 
-                List<Double> bond_returns = reduce_returns(hist.bond.subList(start, start + month_count), (int) Math.round(12 / time_periods));
-                double bond_geomean = Utils.plus_1_geomean(bond_returns);
+                List<Double> bond_returns = null;
+                if (start >= 0)
+                        bond_returns = reduce_returns(hist.bond.subList(start, start + month_count), (int) Math.round(12 / time_periods));
+                double bond_geomean = 1;
+                if (start >= 0)
+                        Utils.plus_1_geomean(bond_returns);
                 double gs10_to_bonds_adjust_arith = config.ret_gs10_to_bonds_arith / time_periods;
                 double fixed_income_adjust_arith = 0.0;
                 double fixed_income_adjust = 1.0;
@@ -355,22 +371,29 @@ public class Returns implements Cloneable
                 }
                 risk_free2_returns = adjust_returns(risk_free2_returns, 0, adjust_management_expense * adjust_all, 1);
 
+                List<Double> synthetic_returns = new ArrayList<Double>();
+                synthetic_returns = log_normal_ppf(count, config.synthetic_ret, config.synthetic_vol);
+
                 List<Double> lm_bonds_returns = new ArrayList<Double>();
                 for (int i = 0; i < count; i++)
                 {
                         lm_bonds_returns.add(Double.NaN);
                 }
 
-                List<Double> cpi_returns = new ArrayList<Double>();
-                for (int year = start_year; year <= end_year; year++)
+                List<Double> cpi_returns = null;
+                if (start >= 0)
                 {
-                        int i = (year - hist.initial_year) * 12 + 12;
-                        double cpi_d = hist.cpi_index.get(i) / hist.cpi_index.get(i - 12);
-                        cpi_returns.add(cpi_d - 1.0);
+                        cpi_returns = new ArrayList<Double>();
+                        for (int year = start_year; year <= end_year; year++)
+                        {
+                                int i = (year - hist.initial_year) * 12 + 12;
+                                double cpi_d = hist.cpi_index.get(i) / hist.cpi_index.get(i - 12);
+                                cpi_returns.add(cpi_d - 1.0);
+                        }
+                        double cpi_geomean = Utils.plus_1_geomean(cpi_returns);
+                        double cpi_adjust = (ret_inflation == null) ? 1 : (Math.pow(1.0 + ret_inflation, 1.0 / time_periods) / cpi_geomean);
+                        cpi_returns = adjust_returns(cpi_returns, 0, cpi_adjust, 1);
                 }
-                double cpi_geomean = Utils.plus_1_geomean(cpi_returns);
-                double cpi_adjust = (ret_inflation == null) ? 1 : (Math.pow(1.0 + ret_inflation, 1.0 / time_periods) / cpi_geomean);
-                cpi_returns = adjust_returns(cpi_returns, 0, cpi_adjust, 1);
 
                 List<double[]> returns = new ArrayList<double[]>();
                 dividend_fract = new double[scenario.asset_classes.size()];
@@ -486,6 +509,11 @@ public class Returns implements Cloneable
                                 rets = risk_free2_returns;
                                 divf = config.dividend_fract_fixed_income;
                         }
+                        else if ("synthetic".equals(asset_class))
+                        {
+                                rets = synthetic_returns;
+                                divf = 0;
+                        }
                         else if ("lm_bonds".equals(asset_class))
                         {
                                 rets = lm_bonds_returns;
@@ -545,11 +573,13 @@ public class Returns implements Cloneable
                         num_sequences = 1;
 
                 this.data = returns;
+                if (config.map_headroom != null)
+                        compute_pessimal_returns(returns);
                 random = new Random(ret_seed);
                 shuffle_adjust = new double[scenario.normal_assets];
                 for (int a = 0; a < shuffle_adjust.length; a++)
                         shuffle_adjust[a] = 1;
-                if (!ret_shuffle.equals("none") && !draw.equals("bootstrap") && !draw.equals("shuffle") && config.ret_geomean_keep)
+                if (!ret_shuffle.equals("none") && !draw.equals("bootstrap") && !draw.equals("shuffle") && !draw.equals("log_normal_ppf") && config.ret_geomean_keep)
                 {
                         // Calculate scaling necessary to preserve geometric mean; it might get messed up by the draw.
                         // The draw concerns itself with preserving the arithmetic mean (which matters less), the standard deviation, and the correlations.
@@ -615,6 +645,57 @@ public class Returns implements Cloneable
         public void setSeed(long i)
         {
                 random.setSeed(i);
+        }
+
+        private List<Double> log_normal_ppf(int len, double am, double sd)
+        {
+                am += 1;
+                double gm = am / Math.sqrt(1 + Math.pow(sd / am, 2));
+                double mu = Math.log(gm);
+                double sigma = Math.sqrt(Math.log(1 + Math.pow(sd / am, 2)));
+                LogNormalDistribution distrib = null;
+                if (sigma != 0)
+                        distrib = new LogNormalDistribution(mu, sigma);
+                List<Double> rets = new ArrayList<Double>();
+                for (int i = 0; i < len; i++)
+                {
+                        if (sigma == 0)
+                                rets.add(gm - 1);
+                        else
+                                rets.add(distrib.inverseCumulativeProbability((i + 0.5) / len) - 1);
+                }
+
+                Collections.shuffle(rets);
+                return rets;
+        }
+
+        private void compute_pessimal_returns(List<double[]> data)
+        {
+                List<double[]> returns = Utils.zipDoubleArray(data);
+
+                pessimal = new double[returns.size()];
+                optimal = new double[returns.size()];
+                for (int i = 0; i < returns.size(); i++)
+                {
+                        double[] rets = returns.get(i);
+                        double am = Utils.mean(rets);
+                        double sd = Utils.standard_deviation(rets);
+                        am += 1;
+                        double gm = am / Math.sqrt(1 + Math.pow(sd / am, 2));
+                        double mu = Math.log(gm);
+                        double sigma = Math.sqrt(Math.log(1 + Math.pow(sd / am, 2)));
+                        if (sigma == 0)
+                        {
+                                pessimal[i] = gm - 1;
+                                optimal[i] = gm - 1;
+                        }
+                        else
+                        {
+                                LogNormalDistribution distrib = new LogNormalDistribution(mu, sigma);
+                                pessimal[i] = distrib.inverseCumulativeProbability(config.map_headroom) - 1;
+                                optimal[i] = distrib.inverseCumulativeProbability(1 - config.map_headroom) - 1;
+                        }
+                }
         }
 
         private int shuffle_count = 0;
@@ -777,6 +858,21 @@ public class Returns implements Cloneable
                         for (int y = 0; y < new_returns.length; y++)
                                 for (int a = 0; a < scenario.normal_assets; a++)
                                         new_returns[y][a] = (1 + new_returns[y][a]) * shuffle_adjust[a] - 1;
+                }
+                else if (draw.equals("log_normal_ppf"))
+                {
+                        // Could drastically cut down number of samples required if could use weights, but don't know how to combine weights with multiple asset classes.
+                        List<double[]> asset_class_returns = Utils.zipDoubleArray(returns);
+                        for (int asset_class = 0; asset_class < asset_class_returns.size(); asset_class++)
+                        {
+                                double[] rets = asset_class_returns.get(asset_class);
+                                double am = Utils.mean(rets);
+                                double sd = Utils.standard_deviation(rets);
+                                List<Double> lognormal_rets = log_normal_ppf(rets.length, am, sd);
+                                asset_class_returns.set(asset_class, Utils.DoubleTodouble(lognormal_rets));
+                        }
+                        List<double[]> log_normal_returns = Utils.zipDoubleArray(asset_class_returns);
+                        new_returns = log_normal_returns.toArray(new double[log_normal_returns.size()][]);
                 }
                 else
                         assert(false);

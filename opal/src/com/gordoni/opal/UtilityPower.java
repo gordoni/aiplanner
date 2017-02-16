@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -33,13 +33,11 @@ public class UtilityPower extends Utility
 
         public double utility(double c)
         {
-                // if (c < 0)
-                // {
-                //         if (config.trace)
-                //          System.out.println("Negative consumption.");
-                //         return Double.NEGATIVE_INFINITY; // Helpful when generating negative buckets.
-                // }
-                assert(c >= 0);
+                if (c < 0)
+                {
+                        System.out.println("utility(" + c + ") negative consumption");
+                        assert(false);
+                }
                 if (c * public_assistance_phaseout_rate < public_assistance)
                         c = public_assistance + c * (1 - public_assistance_phaseout_rate);
                 if (eta == 1)
@@ -50,7 +48,6 @@ public class UtilityPower extends Utility
 
         public double inverse_utility(double u)
         {
-                assert((eta <= 1) || ((zero + u) <= 0));
                 double c;
                 if (scale == 0)
                 {
@@ -60,11 +57,12 @@ public class UtilityPower extends Utility
                 else if (eta == 1)
                         c = offset + Math.exp((zero + u) / scale);
                 else
+                {
+                        if (zero + u >= 0)
+                                return Double.POSITIVE_INFINITY; // Extrapolation may overshoot.
                         c = offset + Math.pow((zero + u) * (1 - eta) / scale, 1 / (1 - eta));
-                //if (Math.abs(c) < 1e-15 * scenario.consume_max_estimate)
-                //        // Floating point rounding error.
-                //        // Treat it nicely because we want utility_donate.inverse_utility(0)=0, otherwise we run into problems when donation is disabled.
-                //        c = 0;
+                }
+
                 if (c * public_assistance_phaseout_rate < public_assistance)
                         return (c - public_assistance) / (1 - public_assistance_phaseout_rate);
                 else

@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2016 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -31,7 +31,7 @@ public class AAMapStatic extends AAMap
                 for (int pi = 0; pi < map.length; pi++)
                 {
                         double age = (double) (pi + config.start_age * config.generate_time_periods) / config.generate_time_periods;
-                        map[pi] = new MapPeriod(scenario);
+                        map[pi] = new MapPeriod(scenario, pi);
                         for (int bi = 0; bi < map[pi].length[scenario.tp_index]; bi++)
                         {
                                 int[] bucket = new int[scenario.start_p.length];

@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2016 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -18,8 +18,11 @@
 
 package com.gordoni.opal;
 
+import java.util.Arrays;
+
 abstract class Interpolator
 {
+
         // What to interpolate:
         public static final int metric_interp_index = -1;
         public static final int spend_interp_index = -2;
@@ -54,10 +57,8 @@ abstract class Interpolator
                 Scenario scenario = mp.scenario;
                 Config config = scenario.config;
 
-                if (mp.config.interpolation_linear)
-                        return null;
                 if (mp.length.length == 1)
-                        return new UniInterpolator(mp, what);
+                    return new UniInterpolator(mp, what, config.interpolation_extrapolate);
                 else if (mp.length.length == 2)
                 {
                         if (!generate && !config.interpolation_validate)

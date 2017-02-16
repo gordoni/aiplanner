@@ -181,10 +181,15 @@ the metric during Monte Carlo simulation.
 
 So doing:
 
-    -e ret_resample=None -e "validate_draw='bootstrap'" -e ret_bootstrap_block_size=1
+    -e ret_resample=None -e "validate_draw='bootstrap'" -e ret_bootstrap_block_size=1 -e map_headroom=null
 
 then the generated metric should match the combined simulation metric,
 to the limit of the finite num_sequences_generate sample size.
+
+If you get all zeros as the result, you may need to play with
+map_headroom, setting to to a value so that a small amount of wealth
+is left for terminal ages, but not so much that the results are
+appreciably altered.
 
 When doing this you need to ensure there are no taxes because only an
 approximate solution is generated in the presence of taxes.

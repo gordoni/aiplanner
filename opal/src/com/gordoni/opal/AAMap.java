@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2016 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -56,193 +56,12 @@ class AAMap
 
         public MapElement lookup_interpolate(double[] p, int period)
         {
-                double[] li_dbucket = new double[scenario.start_p.length];
-                int[] li_bucket1 = new int[scenario.start_p.length];
-                int[] li_bucket2 = new int[scenario.start_p.length];
                 double[] aa = new double[scenario.all_alloc];
                 Metrics metrics = new Metrics();
                 SimulateResult results = new SimulateResult(metrics, Double.NaN, Double.NaN, Double.NaN, null, null);
                 MapElement li_me = new MapElement(null, aa, results, null, null);
 
-                return lookup_interpolate_fast(p, period, false, false, li_dbucket, li_bucket1, li_bucket2, li_me);
-        }
-
-        private MapElement lookup_interpolate_fast(double[] p, int period, boolean fast_path, boolean generate, double[] li_dbucket, int[] li_bucket1, int[] li_bucket2, MapElement li_me)
-        {
-                MapPeriod next_map = map[period];
-
-                if (!config.interpolation_linear)
-                    return next_map.lookup_interpolate(p, fast_path, generate, li_me);
-
-                MapElement me = li_me;
-                double[] bucket_f = scenario.pToFractionalBucket(p, li_dbucket);
-                int[] below = li_bucket1;
-                int[] above = li_bucket2;
-                for (int i = 0; i < bucket_f.length; i++)
-                {
-                        below[i] = (int) Math.floor(bucket_f[i]);
-                        if (below[i] < next_map.bottom[i])
-                        {
-                                above[i] = next_map.bottom[i];
-                                below[i] = next_map.bottom[i]; // + (generate ? 1 : 0); // Extrapolation problematic for annuities.
-                        }
-                        else if (below[i] + 1 > next_map.bottom[i] + next_map.length[i] - 1)
-                        {
-                                above[i] = next_map.bottom[i] + next_map.length[i] - 1; // Don't extrapolate below zero.
-                                below[i] = next_map.bottom[i] + next_map.length[i] - 1;
-                        }
-                        else
-                        {
-                                above[i] = below[i] + 1;
-                        }
-                        if (generate && !config.generate_interpolate)
-                                // Use below for generation.
-                                // When we used to interpolate generation we ran into problems with variable withdrawals and zero public_assistance.
-                                // It would cause a minimum risk wedge for low portfolio sizes as -Infinity consume utilities back up.
-                                // Lack of interpolation results in a lot of map noise.
-                                above[i] = below[i];
-                        else if (!generate && !config.validate_interpolate)
-                                // Use above for validation.
-                                // When we used to interpolate validation we ran into problems with variable withdrawals and zero public_assistance.
-                                // It would cause a few paths to go to zero at age 110 or so, resulting in a utility and path metric of -infinity.
-                                // We don't run into problems any more. Not sure why.
-                                // Can still run into problems in the presence of taxes.
-                                below[i] = above[i];
-                        else if (bucket_f[i] - below[i] > 0.5 && above[i] != next_map.bottom[i] + next_map.length[0] - 1)
-                        {
-                                // Swap above and below so below now contains the closest bucket.
-                                // This will allow us to get the most accurate extrapolations, since the distance we have to extrapolate over is less.
-                                // We don't swap if above is zero, because there might be a negative infinity utility.
-                                int tmp = below[i];
-                                below[i] = above[i];
-                                above[i] = tmp;
-                        }
-                }
-                MapElement map_below = next_map.get(below);
-                double[] aa = me.aa;
-                double spend = map_below.spend;
-                double consume = map_below.consume;
-                double first_payout = map_below.first_payout;
-                final boolean maintain_all = generate && !config.skip_dump_log && !config.conserve_ram;
-                Metrics metrics = me.results.metrics;
-                double metric = 0.0;
-                if (!fast_path || generate)
-                {
-                        metric = map_below.metric_sm;
-                        if (maintain_all)
-                        {
-                                metrics = map_below.results.metrics.clone();
-                                me.results.metrics = metrics;
-                        }
-                }
-                if (!fast_path || !generate)
-                {
-                        System.arraycopy(map_below.aa, 0, aa, 0, aa.length);
-                }
-                for (int i = 0; i < bucket_f.length; i++)
-                {
-                        if (above[i] != below[i])
-                        {
-                                // Interpolate one dimension at a time.
-                                int tmp = below[i];
-                                below[i] = above[i];
-                                MapElement map_above = next_map.get(below);
-                                below[i] = tmp;
-                                //double weight = bucket_f[i] - below[i]; // Interpolate in bucket space.
-                                double weight = (p[i] - map_below.rps[i]) / (map_above.rps[i] - map_below.rps[i]); // Interpolate in p space. Extrapolate high values.
-                                if (!fast_path || generate)
-                                {
-                                        double weight_extrapolate = weight;
-                                        // Interpolate, but avoid -Infinity * 0 = NaN and -Infinity + -Infinity * -ve = NaN.
-                                        double delta = map_above.metric_sm;
-                                        if (!Double.isInfinite(delta))
-                                        {
-                                                delta -= map_below.metric_sm;
-                                                if (weight_extrapolate != 0 && !Double.isInfinite(metric))
-                                                        metric += weight_extrapolate * delta;
-                                        }
-                                        if (maintain_all)
-                                        {
-                                                Metrics metrics_below = map_below.results.metrics;
-                                                Metrics metrics_above = map_above.results.metrics;
-                                                for (MetricsEnum m : MetricsEnum.values())
-                                                {
-                                                        delta = metrics_above.get(m);
-                                                        if (!Double.isInfinite(delta))
-                                                        {
-                                                                delta -= metrics_below.get(m);
-                                                                double met = metrics.get(m);
-                                                                if (weight_extrapolate != 0 && !Double.isInfinite(met))
-                                                                        metrics.set(m, met + weight_extrapolate * delta);
-                                                        }
-                                                }
-                                        }
-                                }
-                                if (!fast_path || !generate)
-                                {
-                                        double weight_no_extrapolate = weight;
-                                        weight_no_extrapolate = Math.max(weight_no_extrapolate, 0);
-                                        weight_no_extrapolate = Math.min(weight_no_extrapolate, 1);
-                                        for (int a = 0; a < scenario.all_alloc; a++)
-                                                aa[a] += weight_no_extrapolate * (map_above.aa[a] - map_below.aa[a]);
-                                        if (!fast_path)
-                                        {
-                                                spend += weight_no_extrapolate * (map_above.spend - map_below.spend);
-                                                consume += weight_no_extrapolate * (map_above.consume - map_below.consume);
-                                                first_payout += weight_no_extrapolate * (map_above.first_payout - map_below.first_payout);
-                                        }
-                                }
-                        }
-                }
-                if (!fast_path || generate)
-                {
-                        if (scenario.success_mode_enum == MetricsEnum.TW || scenario.success_mode_enum == MetricsEnum.NTW)
-                        {
-                                if (metric > 1)
-                                        // Over extrapolated.
-                                        metric = 1;
-                                if (metric <= 0)
-                                        metric = 0;
-                        }
-                        me.metric_sm = metric;
-                        if (maintain_all)
-                        {
-                                for (MetricsEnum m : new MetricsEnum[] {MetricsEnum.TW, MetricsEnum.NTW})
-                                {
-                                        double met = metrics.get(m);
-                                        if (met > 1)
-                                                met = 1;
-                                        if (met <= 0)
-                                                met = 0;
-                                        metrics.set(m, met);
-                                }
-                        }
-                }
-                if (!fast_path || !generate)
-                {
-                        // Keep bounded and summed to one as exactly as possible.
-                        double sum = 0;
-                        for (int a = 0; a < scenario.all_alloc; a++)
-                        {
-                                double alloc = aa[a];
-                                if (alloc <= 0)
-                                        alloc = 0;
-                                if (alloc > 1)
-                                        alloc = 1;
-                                aa[a] = alloc;
-                                if (a < scenario.normal_assets)
-                                        sum += alloc;
-                        }
-                        for (int a = 0; a < scenario.normal_assets; a++)
-                              aa[a] /= sum;
-                        assert(spend >= 0);
-                        assert(consume >= 0);
-                        me.spend = spend;
-                        me.consume = consume;
-                        me.first_payout = first_payout;
-                }
-                me.rps = p;
-                return me;
+                return map[period].lookup_interpolate(p, false, false, li_me);
         }
 
         private void aa_offset(double[] aa)
@@ -255,8 +74,8 @@ class AAMap
                 {
                         double alloc = aa[a];
                         alloc += config.aa_offset[a];
-                        alloc = Math.max(alloc, 0);
-                        alloc = Math.min(alloc, 1);
+                        alloc = Math.max(alloc, config.min_aa);
+                        alloc = Math.min(alloc, config.max_aa);
                         aa[a] = alloc;
                         new_sum += alloc;
                 }
@@ -267,7 +86,7 @@ class AAMap
 
         // Simulation core.
         @SuppressWarnings("unchecked")
-        protected SimulateResult simulate(double[] initial_aa, double[] bucket_p, int period, Integer num_sequences, int num_paths_record, boolean generate, Returns returns, int bucket)
+        protected SimulateResult simulate(double[] initial_aa, double[] bucket_p, int period, Integer num_sequences, int num_paths_record, boolean generate, boolean pessimal, Returns returns, int bucket)
         {
                 final int book_post = (config.book_post ? 1 : 0);
                 final boolean cost_basis_method_immediate = config.cost_basis_method.equals("immediate");
@@ -291,7 +110,9 @@ class AAMap
                         return_periods = step_periods;
 
                 int len_available;
-                if (returns.short_block)
+                if (pessimal)
+                        len_available = 1;
+                else if (returns.short_block)
                         len_available = returns.data.size();
                 else
                         len_available = returns.data.size() - step_periods + 1;
@@ -307,8 +128,13 @@ class AAMap
                         assert(num_paths <= len_available);
 
                 boolean[] special_aa = new boolean[scenario.normal_assets];
+                boolean has_special = false;
                 for (int i = 0; i < scenario.normal_assets; i++)
+                {
                         special_aa[i] = scenario.asset_classes.get(i).equals("lm_bonds");
+                        if (special_aa[i])
+                                has_special = true;
+                }
 
                 double[] start_aa;
                 if (initial_aa == null)
@@ -329,9 +155,6 @@ class AAMap
                 double[] li_p = new double[scenario.start_p.length];
                 double[] li_p1 = new double[scenario.start_p.length];
                 double[] li_p2 = new double[scenario.start_p.length];
-                double[] li_dbucket = new double[scenario.start_p.length];
-                int[] li_bucket1 = new int[scenario.start_p.length];
-                int[] li_bucket2 = new int[scenario.start_p.length];
                 double[] li_aa = new double[scenario.all_alloc];
                 Metrics li_metrics = new Metrics();
                 SimulateResult li_results = new SimulateResult(li_metrics, Double.NaN, Double.NaN, Double.NaN, null, null);
@@ -458,12 +281,27 @@ class AAMap
                         int y = 0;
                         while (y < step_periods)
                         {
-                                System.arraycopy(returns_array[index], 0, rets, 0, scenario.stochastic_classes);
-                                for (int i = 0; i < scenario.normal_assets; i++)
+                                if (pessimal)
                                 {
-                                        if (special_aa[i])
-                                                rets[i] = scenario.lm_bonds_returns[period + y];
+                                        for (int i = 0; i < scenario.normal_assets; i++)
+                                        {
+                                            if (aa[i] >= 0)
+                                                    rets[i] = returns.pessimal[i];
+                                            else
+                                                    rets[i] = returns.optimal[i];
+                                        }
                                 }
+                                else if (has_special)
+                                {
+                                        System.arraycopy(returns_array[index], 0, rets, 0, scenario.stochastic_classes);
+                                        for (int i = 0; i < scenario.normal_assets; i++)
+                                        {
+                                                if (special_aa[i])
+                                                        rets[i] = scenario.lm_bonds_returns[period + y];
+                                        }
+                                }
+                                else
+                                        rets = returns_array[index];
 
                                 double utility_weight = 1;
                                 if (!generate && monte_carlo_validate)
@@ -527,19 +365,19 @@ class AAMap
                                                 }
                                                 spend_annual = spend_retirement;
                                                 consume_annual = spend_annual;
-                                                amount_annual = income - consume_annual;
+                                                amount_annual = consume_annual;
                                         }
                                 }
                                 else
                                 {
                                         spend_annual = config.floor;
                                         consume_annual = spend_annual + 1e-15 * scenario.consume_max_estimate; // Want to be solvent.
-                                        amount_annual = rcr + income;
+                                        amount_annual = rcr;
                                         rcr *= rcr_step;
                                 }
 
-                                if (y + 1 == max_periods)
-                                        break;
+                                //if (y + 1 == max_periods)
+                                //        break;
 
                                 first_payout = 0;
                                 double real_annuitize = 0;
@@ -604,7 +442,9 @@ class AAMap
                                         amount_annual += first_payout;
                                 double target_consume_annual = consume_annual;
 
-                                p += amount_annual / returns.time_periods;
+                                p += income / returns.time_periods;
+                                p += amount_annual / returns.time_periods; // Done separately to avoid fp rounding making p negtaive.
+                                amount_annual += income;
 
                                 double p_preinvest = p;
                                 double tot_return = 0.0;
@@ -634,27 +474,12 @@ class AAMap
                                 if (!config.negative_p && p < 0.0)
                                 {
                                         consume_annual += p * returns.time_periods;
-                                        // We used to truncate negative consume_annual values, but this is problematic.
-                                        // It caused donate above to sometimes occur for rps scenario.consume_max_estimate for period 0.
-                                        // Truncation would cause different buckets at and just above rps 0 to have the same consume and combined metric.
-                                        // Then in the prior year just above withdrawal we would access these sub-buckets causing a comparison in which
-                                        // submetrics would make the low contrib values preferable, but it would then fail to do so.
-                                        // A non-zero ret_borrow could trigger this to occur. If this is desired some other solution will then be needed.
                                         if (-1e-12 * scenario.consume_max_estimate < consume_annual && consume_annual < 0)
                                                 consume_annual = 0; // Rounding error.
-                                }
-                                if (consume_annual < 0 && p_prev_inc_neg < 0)
-                                        consume_annual = 0;
-                                assert(consume_annual >= 0);
-                                if (!config.negative_p && p < 0.0)
-                                {
                                         p = 0;
                                 }
-
-                                // For consistency between single-step and multi-step results could do the following.
-                                // But inconsitency is good, it indicates pf_guaranteed should be increased.
-                                // if p > self.pf_guaranteed:
-                                //   p = self.pf_guaranteed
+                                //if (consume_annual < 0 && p_prev_inc_neg < 0)
+                                //        consume_annual = 0;
 
                                 int new_period = period + y + 1;
                                 boolean tax_time = scenario.do_tax && (returns.time_periods < 1 || new_period % Math.round(returns.time_periods) == 0);
@@ -691,7 +516,7 @@ class AAMap
                                                 li_p[scenario.nia_index] = nia;
 
                                         li_me.aa = free_aa;
-                                        me = aamap.lookup_interpolate_fast(li_p, fperiod, true, generate, li_dbucket, li_bucket1, li_bucket2, li_me);
+                                        me = aamap.map[fperiod].lookup_interpolate(li_p, true, generate, li_me);
 
                                         if (!generate)
                                         {
@@ -780,18 +605,20 @@ class AAMap
                                         solvent_always = 0;
                                 double floor_path_utility = 0.0;
                                 double upside_path_utility = 0.0;
-                                // Interpolate when we can to ensure a smooth transition rate in metrics (across periods? over aa/contrib search space?)
-                                // as consume_annual falls below target_consume_annual.
-                                // Without this we get horizontal lines for low RPS asset allocations with fixed withdrawals.
-                                double consume_solvent;
-                                if (target_consume_annual == current_guaranteed_income)
-                                        consume_solvent = 1;
-                                else
-                                        // We somewhat arbitrarily set the zero consumption level to guaranteed_icome and interpolate based on the distance from that.
-                                        // This is better than using 0, and then computing utility(0) on a power utility function.
-                                        consume_solvent = (consume_annual - current_guaranteed_income) / (target_consume_annual - current_guaranteed_income);
+                                // // Interpolate when we can to ensure a smooth transition rate in metrics (across periods? over aa/contrib search space?)
+                                // // as consume_annual falls below target_consume_annual.
+                                // // Without this we get horizontal lines for low RPS asset allocations with fixed withdrawals.
+                                // double consume_solvent;
+                                // if (target_consume_annual == current_guaranteed_income)
+                                //         consume_solvent = 1;
+                                // else
+                                //         // We somewhat arbitrarily set the zero consumption level to guaranteed_icome and interpolate based on the distance from that.
+                                //         // This is better than using 0, and then computing utility(0) on a power utility function.
+                                //         consume_solvent = (consume_annual - current_guaranteed_income) / (target_consume_annual - current_guaranteed_income);
+                                double consume_solvent = 1.0;
                                 if (consume_solvent != 0.0)
                                 {
+                                        // Avoid recomputing utility when generate.
                                         if (target_consume_annual != consume_annual_key)
                                         {
                                                 consume_annual_key = target_consume_annual;
@@ -818,26 +645,28 @@ class AAMap
                                         floor_path_utility += consume_solvent * floor_utility;
                                         upside_path_utility += consume_solvent * upside_utility;
                                 }
-                                if (consume_solvent != 1.0)
-                                {
-                                        double floor;
-                                        double upside;
-                                        if (config.utility_join)
-                                        {
-                                                floor = Math.min(current_guaranteed_income, config.utility_join_required);
-                                                upside = current_guaranteed_income - floor;
-                                        }
-                                        else
-                                        {
-                                                floor = current_guaranteed_income;
-                                                upside = 0;
-                                        }
-                                        double floor_utility = aamap.uc_time.utility(floor);
-                                        double upside_utility = aamap.uc_time.utility(config.utility_join_required + upside);
-                                        floor_path_utility += (1.0 - consume_solvent) * floor_utility;
-                                        upside_path_utility += (1.0 - consume_solvent) * upside_utility;
-                                }
+                                //if (consume_solvent != 1.0)
+                                // {
+                                //         double floor;
+                                //         double upside;
+                                //         if (config.utility_join)
+                                //         {
+                                //                 floor = Math.min(current_guaranteed_income, config.utility_join_required);
+                                //                 upside = current_guaranteed_income - floor;
+                                //         }
+                                //         else
+                                //         {
+                                //                 floor = current_guaranteed_income;
+                                //                 upside = 0;
+                                //         }
+                                //         double floor_utility = aamap.uc_time.utility(floor);
+                                //         double upside_utility = aamap.uc_time.utility(config.utility_join_required + upside);
+                                //         floor_path_utility += (1.0 - consume_solvent) * floor_utility;
+                                //         upside_path_utility += (1.0 - consume_solvent) * upside_utility;
+                                // }
                                 double consume_path_utility = floor_path_utility;
+                                if (config.negative_p && p_post_inc_neg < 0)
+                                        floor_path_utility = Double.NEGATIVE_INFINITY; // Will propagate through the system.
                                 if (config.utility_join)
                                         consume_path_utility += upside_path_utility - uct_u_ujp;
                                 double path_consume;
@@ -997,8 +826,8 @@ class AAMap
                                                 li_p1[scenario.nia_index] *= config.couple_annuity1;
                                                 li_p2[scenario.nia_index] *= 1 - config.couple_annuity1;
                                         }
-                                        MapElement me1 = aamap1.lookup_interpolate_fast(li_p1, fperiod, true, generate, li_dbucket, li_bucket1, li_bucket2, li_me1);
-                                        MapElement me2 = aamap2.lookup_interpolate_fast(li_p2, fperiod, true, generate, li_dbucket, li_bucket1, li_bucket2, li_me2);
+                                        MapElement me1 = aamap1.map[fperiod].lookup_interpolate(li_p1, true, generate, li_me1);
+                                        MapElement me2 = aamap2.map[fperiod].lookup_interpolate(li_p2, true, generate, li_me2);
 
                                         double alive1 = vital_stats.vital_stats1.raw_alive[period + 1] == 0 ? 0 : vital_stats.vital_stats1.raw_alive[period + 1] / vital_stats.vital_stats1.raw_alive[period];
                                         double alive2 = vital_stats.vital_stats2.raw_alive[period + 1] == 0 ? 0 : vital_stats.vital_stats2.raw_alive[period + 1] / vital_stats.vital_stats2.raw_alive[period];
@@ -1019,7 +848,7 @@ class AAMap
                         if (s < num_paths_record)
                         {
                                 // 8% speedup by not recording path if know it is not needed
-                                //path.add(new PathElement(null, p, Double.NaN, ria, nia, Double.NaN, Double.NaN, Double.NaN, 0));
+                                path.add(new PathElement(null, p, Double.NaN, ria, nia, Double.NaN, Double.NaN, Double.NaN, 0));
                                         // Ignore any pending taxes associated with p, mainly because they are difficult to compute.
                                 paths.add(path);
                         }
@@ -1160,7 +989,7 @@ class AAMap
         // Validation.
         private SimulateResult simulate_paths(int period, Integer num_sequences, int num_paths_record, double[] p, Returns returns, int bucket)
         {
-                SimulateResult res = simulate(null, p, period, num_sequences, num_paths_record, false, returns, bucket);
+                SimulateResult res = simulate(null, p, period, num_sequences, num_paths_record, false, false, returns, bucket);
                 return res;
         }
 

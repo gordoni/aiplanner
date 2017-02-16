@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2016 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -43,6 +43,7 @@ public class Config
         public boolean debug_till_end = false; // Whether to plot until the final year or display graphs only through age 99.
 
         public int tasks_generate = 100; // Break generation into this many concurrent tasks.
+        public int bucket_groups_per_task = 1; // Process this many buckets at a time.
         public int tasks_validate = 500; // Break validation into this many concurrent tasks.
                 // Changing this value will alter the results due to different random number generators being used for each task.
         public int workers = Runtime.getRuntime().availableProcessors(); // Number of worker threads to use.
@@ -62,6 +63,7 @@ public class Config
         public boolean skip_sample_cholesky = true; // Speedup simulation by using the returns Cholesky matrix for the trial sample Cholesky matrix.
         public boolean skip_dump_load = true; // Speed up by not dumping and loading asset allocation.
         public boolean skip_dump_le = false; // Speed up by not dumping life expectencies.
+        public boolean skip_plot = false; // For debugging a single period run, don't plot the data, as it would fail.
         public boolean skip_dump_log = true; // Save disk by not dumping future maps.
         public boolean skip_cov = true; // Don't report the covariance matrix.
         public boolean skip_corr = true; // Don't report the correlation matrix.
@@ -113,10 +115,12 @@ public class Config
         public double[] aa_offset = null; // Offset to apply during valadation to the generated asset allocation.
                 // Used to determine the implications of a 10% error in aa. More general than stock bias.
 
-        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', 'risk_free2', 'margin', and 'lm_bonds'.
+        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', 'risk_free2', 'synthetic', 'margin', and 'lm_bonds'.
                 // Seem to get quicker search time if list highest return assets first.
         public List<String> asset_class_names = null;
                // Corresponding asset class names to use for MVO inputs and transition map.
+        public double synthetic_ret = 0.07; // Synthetic asset class return.
+        public double synthetic_vol = 0.17; // Synthetic asset class volatility.
         public int aa_steps = 1000; // Use 4 steps to mirror 5 choice Trinity study.
         public boolean compute_risk_premium = false; // Compute the risk premium against cash (t1) instead of generating/targeting/validating.
         public boolean inflation_adjust_returns = true; // Adjust returns for the impact of inflation.
@@ -180,18 +184,14 @@ public class Config
         public double q_vol = 0.0;
                 // Scale parameter for log normally distributed multiplicative adjustment to be applied to mortality q values for generating error bars.
 
-        public String safe_aa = "bonds";
-                // Which asset allocation choice to favor when choices are equal, and success is guaranteed.
-                // Irrelevant if tangency_aa is non-null.
-        public String fail_aa = "stocks";
-                // Which asset allocation choice to favor when choices are equal, and failure is guaranteed.
-                // Irrelevant if tangency_aa is non-null.
+        public String safe_aa = null; // Asset class that has holding size constraints.
         public double ret_risk_free = 0.0; // Real return for risk-free asset class.
         public double ret_risk_free2 = 0.0; // Real return for second risk-free asset class.
         public double ret_borrow = 0.0; // Annual cost rate when portfolio is negative. Also annual cost for cost metric.
-        public double min_safe_aa = 0.0; // Minimum safe_aa holding fraction.
-        public double min_safe_abs = 0.0; // Minimum safe_aa holding plus annuity values.
-        public double min_safe_le = 0.0; // Minimum safe_aa holding plus annuity values divided by then life expectancy.
+        public double min_safe_aa = Double.NEGATIVE_INFINITY; // Minimum safe_aa holding fraction.
+        public double min_safe_abs = Double.NEGATIVE_INFINITY; // Minimum safe_aa holding plus annuity values.
+        public double max_safe_abs = Double.POSITIVE_INFINITY; // Maximum safe_aa holding plus annuity values.
+        public double min_safe_le = Double.NEGATIVE_INFINITY; // Minimum safe_aa holding plus annuity values divided by then life expectancy.
         public double min_safe_until_age = 999; // Don't enforce min_safe constraints at or beyond this age.
 
         public int spend_steps = 10000; // Number of portfolio expenditure steps.
@@ -242,10 +242,10 @@ public class Config
                 // 41 for 30 years, or 1 / 51 for 20 years, or in general 1 / the number of samples.
                 // This appears to be the case.
 
-        public boolean interpolation_linear = false; // Use old linear interpolation code; any number of p dimensions.
         public boolean interpolation_validate = true; // Perform interpolation on validation.
                 // Want to disable for non-partial annuitization, otherwise decision to annuitize could get interpolated.
                 // Results in nia_aa and spend_fract indexes around 0.5 instead of both close to 0 or 1, which causes a consumption spike.
+        public boolean interpolation_extrapolate = true; // Whether to extrapolate or bound out of range values for interpolators that support extrapolation.
         public String interpolation1 = "spline"; // How to interpolate non-grid 1 dimensional p values.
                 // "linear" - linear interpolation using math3 library. For debugging.
                 // "spline" - cubic spline interpolation.
@@ -256,7 +256,15 @@ public class Config
         public String interpolation3 = "spline"; // How to interpolate non-grid 3 dimensional p values.
                 // "spline" - cubic spline interpolation.
 
-        public boolean negative_p = false; // Allow negative portfolio values versus utilized reduced consumption when p near zero.
+        public boolean negative_p = true; // Allow negative portfolio values to result in zero consumption which turns into negative infinities versus utilized reduced consumption when p near zero.
+                // At some point delete negetive_p = false code path.
+        public Double map_headroom = 1e-9; // Amount of headroom to leave in computing optimal solution to alow for interpolation inaccuracies.
+                // Map is computed so that the probability of a lognormally distributed return exceeding expectations and producing a -Inf result is less than headroom.
+                // Headroom is only useful near terminal returns when any final wealth is being withdrawn, and a small perturbation will cause wealth to go negative.
+                // Set this too large relative to num_sequences validate and an -Inf result wiill cause validation metrics of zero.
+                // Set this too small and the maps metrics will be less than the optimal solution.
+                // Set this to null to disable headroom calculations.
+                // Most likely need to play with this parameter when the generation and validation returns don't match.
         public double consume_discount_rate = 0.0; // Discount rate to apply to consumption.
                 // Should probably exceed maximum after tax asset class return, otherwise a winning strategy can be to invest everything in the maximum asset class.
         public double upside_discount_rate = 0.0; // Discount rate to apply to consumption above utility_join_1.
@@ -284,11 +292,7 @@ public class Config
         public double utility_slope_double_withdrawal = 16; // Change in utility for a dollar of consumption at withdrawal relative to 2 * withdrawal.
                // Excludes assistance reduction.
         public double defined_benefit = 0.0; // Defined benefit plans in retirement annual amount.
-        public double public_assistance = 0.1; // Consumption level at which public assistance kicks in, in dollars.
-               // Assuming power utility set defined_benefit and public_assistance to 0 to avoid low portfolio size maximum return "wedge artifact".
-               // Then get a minimum return wegde artifact as interpolated -Infinity consumption utilities back up.
-               // Can either use a smaller tp_zero_factor, use an infinitesimal value for public_assistance, or generate_interpolate=false.
-               // But in this last case need to run at a much higher scale to avoid noise.
+        public double public_assistance = 0.0; // Consumption level at which public assistance kicks in, in dollars.
         public double public_assistance_phaseout_rate = 0.0; // Public assistance is reduced at this rate for each dollar of consumption
         public double utility_eta_2 = 3; // Consumption power utility second utility_join eta parameter.
         public double utility_join_required = 1e12; // Floor plus upside separation point. Consumption utility_join start of join.
@@ -457,6 +461,8 @@ public class Config
         public String borrow_aa = "margin"; // Asset class to borrow against.
         public String borrow_only_aa = "margin"; // Don't allow positive investing in margin returns.
         public double max_borrow = 0.0; // Maximum amount borrowed relative to total net assets to provide leverage.  May be greater than 1.0.
+        public double min_aa = 0.0; // Minimum allowed allocation for non borrow_aa asset class.
+        public double max_aa = 1.0; // Maximum allowed allocation for non borrow_only_aa asset class excluding any additional borrowed amount.
         public String generate_shuffle = "none"; // How to shuffle the returns.
                 // 'none' - The return sequence will be used exactly as received.
                 // 'once' - A single shuffled set of returns will be used.
@@ -476,7 +482,7 @@ public class Config
                 // Setting this to null means we produce the draw directly from the underlying return statistics.
                 // Setting this to a value greater than 1, we find we need to increase num_sequences to get the same accuracy,
                 // and cost of increasing num_sequences more than offsets the performance savings.
-        public boolean ret_geomean_keep = true; // Whether to destroy arithmetic means and standard deviations in order to preserve geometric means when drawing.
+        public boolean ret_geomean_keep = false; // Whether to destroy arithmetic means and standard deviations in order to preserve geometric means when drawing.
         public int ret_geomean_keep_count = 20000; // Number of returns sequences to use to callibrate geometric mean preservation.
         public int ret_bootstrap_block_size = 20; // Size of blocks in years to use when drawing returns using bootstrap.
         public boolean ret_pair = true; // When shuffling whether to keep stock and bond returns for a given year together or treat them independently.

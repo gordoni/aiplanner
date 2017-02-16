@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -230,7 +230,7 @@ class AAMapDumpLoad extends AAMap
                                         int pi = (int) Math.round(age_period - config.start_age * config.generate_time_periods);
                                         Double allocation = l.get(1);
                                         if (map[pi] == null)
-                                                map[pi] = new MapPeriod(scenario);
+                                                map[pi] = new MapPeriod(scenario, pi);
                                         MapElement fpb = map[pi].get(bucket);
                                         if (fpb == null)
                                         {
