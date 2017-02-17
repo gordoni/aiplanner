@@ -79,11 +79,12 @@ public class Config
         public double annuity_zero_factor = 0.000002; // Taxable immediate annuity payout buckets this much of consume_max_est appart at payout 0.
                // Should be comparable to tp_annuity_factor in value after adjusting for maximal annuity price.
 
-        public double scaling_factor = 1.05; // Successive portfolio buckets this much larger.
-               // This can be set quite a bit higher without affecting path metrics.
-               // However the map metric will start to suffer very slightly.
-               // We set it low to allow validate_draw='bootstrap' bootstrap_block_size=0 generation validation.
-               // Old comment (pre-spline value was 1.002): Above 1.01 aa plots start to become pixelated.
+        public double scaling_factor = 1.2; // Successive portfolio buckets this much larger.
+               // This can be set quite a bit higher without affecting map metrics.
+               // However the path metric will start to suffer.
+               // We set it low to allow validate_draw='bootstrap' bootstrap_block_size=0 map_headroom=null generation validation.
+               // Old comment: pre-interpolate_ce value was 1.05.
+               // Very old comment: pre-spline value was 1.002; above 1.01 aa plots start to become pixelated.
         public double annuity_scaling_factor = 1.005; // Successive immediate annuity buckets this much larger.
                // Smaller than scaling_factor because by default we use spline-linear interpolation.
 
@@ -246,6 +247,7 @@ public class Config
                 // Want to disable for non-partial annuitization, otherwise decision to annuitize could get interpolated.
                 // Results in nia_aa and spend_fract indexes around 0.5 instead of both close to 0 or 1, which causes a consumption spike.
         public boolean interpolation_extrapolate = true; // Whether to extrapolate or bound out of range values for interpolators that support extrapolation.
+        public boolean interpolation_ce = true; // For utility metric whether to interpolate in utililty or consumption space.
         public String interpolation1 = "spline"; // How to interpolate non-grid 1 dimensional p values.
                 // "linear" - linear interpolation using math3 library. For debugging.
                 // "spline" - cubic spline interpolation.
@@ -304,6 +306,9 @@ public class Config
         public Double utility_bequest_consume = null; // Value inheritance at this consumption amount.
         public int utility_steps = 1000;  // Utility cache steps.
                 // Cutoff at utility_cutoff. For utility_eta == 2.0, utility_cutoff linear units are equal in size to all utility above utility_cutoff.
+        public boolean assume_ce_linear = false; // Assume certainty equivalent is a linear function of portfolio size.
+                // Provides a major speedup by computing certainty equivalence at just a few portfolio sizes and extrapolating.
+                // Can only be used for power utility without utility_join and no min/max safe constraints.
         public double rebalance_band_hw = 0.0; // During validation and non-single step generation rebalance everything if an asset class is this far or greater from its target value.
 
         public double map_max_factor = 8; // Multiple of tp_max_estimate at which to generate maps.

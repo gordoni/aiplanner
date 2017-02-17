@@ -31,7 +31,7 @@ public class AAMapStatic extends AAMap
                 for (int pi = 0; pi < map.length; pi++)
                 {
                         double age = (double) (pi + config.start_age * config.generate_time_periods) / config.generate_time_periods;
-                        map[pi] = new MapPeriod(scenario, pi);
+                        map[pi] = new MapPeriod(this, pi);
                         for (int bi = 0; bi < map[pi].length[scenario.tp_index]; bi++)
                         {
                                 int[] bucket = new int[scenario.start_p.length];

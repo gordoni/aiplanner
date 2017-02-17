@@ -22,16 +22,23 @@ import java.util.Arrays;
 
 abstract class Interpolator
 {
+        Config config;
+        Scenario scenario;
+        MapPeriod mp;
 
         // What to interpolate:
         public static final int metric_interp_index = -1;
-        public static final int spend_interp_index = -2;
-        public static final int consume_interp_index = -3;
-        public static final int first_payout_interp_index = -4;
+        public static final int ce_interp_index = -2;
+        public static final int spend_interp_index = -3;
+        public static final int consume_interp_index = -4;
+        public static final int first_payout_interp_index = -5;
         // 0..normal_assets-1 - asset class allocation fractions
         // ria_aa_index - ria purchase fraction
         // nia_aa_index - nia purchase fraction
         // spend_fract_index - spend fraction
+        int what;
+
+        double divisor;
 
         protected double getWhat(MapElement me, int what)
         {
@@ -39,6 +46,12 @@ abstract class Interpolator
                         return me.aa[what];
                 else if (what == metric_interp_index)
                         return me.metric_sm;
+                else if (what == ce_interp_index)
+                        {
+                                double utility = me.metric_sm * divisor;
+                                double ce = mp.map.uc_time.inverse_utility(utility);
+                                return ce;
+                        }
                 else if (what == spend_interp_index)
                         return me.spend;
                 else if (what == consume_interp_index)
@@ -52,13 +65,22 @@ abstract class Interpolator
 
         abstract double value(double[] p);
 
+        public Interpolator(MapPeriod mp, int what)
+        {
+                this.config = mp.scenario.config;
+                this.scenario = mp.scenario;
+                this.mp = mp;
+                this.what = what;
+
+                this.divisor = scenario.ss.generate_stats.metric_divisor(scenario.success_mode_enum, mp.age);
+        }
+
         public static Interpolator factory(MapPeriod mp, boolean generate, int what)
         {
-                Scenario scenario = mp.scenario;
-                Config config = scenario.config;
+                Config config = mp.scenario.config;
 
                 if (mp.length.length == 1)
-                    return new UniInterpolator(mp, what, config.interpolation_extrapolate);
+                    return new UniInterpolator(mp, what);
                 else if (mp.length.length == 2)
                 {
                         if (!generate && !config.interpolation_validate)

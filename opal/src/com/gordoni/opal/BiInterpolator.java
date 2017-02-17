@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -26,8 +26,6 @@ import org.apache.commons.math3.analysis.interpolation.BivariateGridInterpolator
 
 class BiInterpolator extends Interpolator
 {
-        MapPeriod mp;
-
         double xval[];
         double yval[];
         double fval[][];
@@ -73,10 +71,7 @@ class BiInterpolator extends Interpolator
 
         public BiInterpolator(MapPeriod mp, int what)
         {
-                this.mp = mp;
-
-                Scenario scenario = mp.scenario;
-                Config config = scenario.config;
+                super(mp, what);
 
                 xval = new double[mp.length[0]];
                 for (int i = 0; i < xval.length; i++)

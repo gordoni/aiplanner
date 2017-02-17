@@ -28,10 +28,6 @@ import org.apache.commons.math3.analysis.interpolation.UnivariateInterpolator;
 
 class UniInterpolator extends Interpolator
 {
-        MapPeriod mp;
-        int what;
-        boolean extrapolate;
-
         double before = 0;
         double after = 0;
         double xval[];
@@ -73,7 +69,7 @@ class UniInterpolator extends Interpolator
                 {
                         v = after;
                 }
-                else if (extrapolate)
+                else if (config.interpolation_extrapolate)
                 {
                         // We don't extrapolate oversize metric values as this would cause the metrics to appear larger than they actually are.
                         // This would result in upwardly sloping utility as a function of portfolio size plots.
@@ -89,11 +85,9 @@ class UniInterpolator extends Interpolator
                 return v;
         }
 
-        public UniInterpolator(MapPeriod mp, int what, boolean extrapolate)
+        public UniInterpolator(MapPeriod mp, int what)
         {
-                this.mp = mp;
-                this.what = what;
-                this.extrapolate = extrapolate;
+                super(mp, what);
 
                 Scenario scenario = mp.scenario;
                 Config config = scenario.config;

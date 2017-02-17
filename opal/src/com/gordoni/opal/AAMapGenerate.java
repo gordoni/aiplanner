@@ -792,7 +792,7 @@ public class AAMapGenerate extends AAMap
                         if (config.trace)
                                 System.out.print("period " + period);
                         long start = System.currentTimeMillis();
-                        final MapPeriod mp = new MapPeriod(scenario, period);
+                        final MapPeriod mp = new MapPeriod(this, period);
                         map[period] = mp;
                         final int fperiod = period;
 

@@ -47,6 +47,7 @@ public class Scenario
         public Double fixed_stocks;
         public Double vw_percent;
         public String vw_strategy;
+        public boolean interpolation_ce;
         public Utility utility_consume;
         public Utility utility_consume_time;
         public Utility utility_inherit;
@@ -1642,7 +1643,12 @@ public class Scenario
                 // Set up the scales.
                 scale = new Scale[start_p.length];
                 if (tp_index != null)
+                {
+                    if (config.assume_ce_linear)
+                        scale[tp_index] = Scale.scaleFactory(consume_max_estimate / config.scaling_factor, config.scaling_factor);
+                    else
                         scale[tp_index] = Scale.scaleFactory(config.tp_zero_factor * consume_max_estimate, config.scaling_factor);
+                }
                 if (ria_index != null)
                         scale[ria_index] = Scale.scaleFactory(config.annuity_zero_factor * consume_max_estimate, config.annuity_scaling_factor);
                 if (nia_index != null)
@@ -1652,6 +1658,7 @@ public class Scenario
 
                 tp_high = config.map_max_factor * tp_max_estimate;
                 success_mode_enum = Metrics.to_enum(config.success_mode);
+                interpolation_ce = config.interpolation_ce && (success_mode_enum == MetricsEnum.COMBINED);
 
                 validate_age = (config.validate_age == null ? config.start_age : config.validate_age);
                 assert(validate_age >= config.start_age);
@@ -1683,6 +1690,7 @@ public class Scenario
                         assert(config.aa_offset.length == normal_assets);
                         assert(Math.abs(Utils.sum(config.aa_offset)) < 1e-6);
                 }
+                assert(!config.assume_ce_linear || (config.utility_consume_fn.equals("power") && !config.utility_join && (config.public_assistance == 0)));
 
                 // More internal parameters.
 

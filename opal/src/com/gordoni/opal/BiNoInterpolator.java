@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,8 +22,6 @@ import java.util.Arrays;
 
 class BiNoInterpolator extends Interpolator
 {
-        MapPeriod mp;
-
         double xval[];
         double yval[];
         double fval[][];
@@ -48,10 +46,7 @@ class BiNoInterpolator extends Interpolator
 
         public BiNoInterpolator(MapPeriod mp, int what)
         {
-                this.mp = mp;
-
-                Scenario scenario = mp.scenario;
-                Config config = scenario.config;
+                super(mp, what);
 
                 xval = new double[mp.length[0]];
                 for (int i = 0; i < xval.length; i++)

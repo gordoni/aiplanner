@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -26,7 +26,6 @@ import org.apache.commons.math3.analysis.interpolation.UnivariateInterpolator;
 
 class LSInterpolator extends Interpolator
 {
-        MapPeriod mp;
         boolean linear_spline;
 
         double xval[];
@@ -87,7 +86,8 @@ class LSInterpolator extends Interpolator
 
         public LSInterpolator(MapPeriod mp, int what, boolean linear_spline)
         {
-                this.mp = mp;
+                super(mp, what);
+
                 this.linear_spline = linear_spline;
 
                 Scenario scenario = mp.scenario;

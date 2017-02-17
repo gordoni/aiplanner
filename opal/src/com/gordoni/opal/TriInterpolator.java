@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -26,8 +26,6 @@ import org.apache.commons.math3.analysis.interpolation.TrivariateGridInterpolato
 
 class TriInterpolator extends Interpolator
 {
-        MapPeriod mp;
-
         double xval[];
         double yval[];
         double zval[];
@@ -100,7 +98,7 @@ class TriInterpolator extends Interpolator
 
         public TriInterpolator(MapPeriod mp, int what)
         {
-                this.mp = mp;
+                super(mp, what);
 
                 Scenario scenario = mp.scenario;
                 Config config = scenario.config;

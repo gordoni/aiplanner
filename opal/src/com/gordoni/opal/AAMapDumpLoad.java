@@ -230,7 +230,7 @@ class AAMapDumpLoad extends AAMap
                                         int pi = (int) Math.round(age_period - config.start_age * config.generate_time_periods);
                                         Double allocation = l.get(1);
                                         if (map[pi] == null)
-                                                map[pi] = new MapPeriod(scenario, pi);
+                                                map[pi] = new MapPeriod(this, pi);
                                         MapElement fpb = map[pi].get(bucket);
                                         if (fpb == null)
                                         {

@@ -28,9 +28,11 @@ interface MapPeriodIterator<T> extends Iterator<T>
 
 class MapPeriod implements Iterable<MapElement>
 {
-        public Scenario scenario;
         public Config config;
+        public Scenario scenario;
+        public AAMap map;
         public int period;
+        public double age;
 
         private MapElement[] mp;
 
@@ -69,6 +71,7 @@ class MapPeriod implements Iterable<MapElement>
         }
 
         private Interpolator metric_interp;
+        private Interpolator ce_interp;
         private Interpolator consume_interp;
         private Interpolator spend_interp;
         private Interpolator first_payout_interp;
@@ -78,7 +81,10 @@ class MapPeriod implements Iterable<MapElement>
 
         public void interpolate(boolean generate)
         {
-                metric_interp = Interpolator.factory(this, generate, Interpolator.metric_interp_index);
+                if (scenario.interpolation_ce)
+                        ce_interp = Interpolator.factory(this, generate, Interpolator.ce_interp_index);
+                else
+                        metric_interp = Interpolator.factory(this, generate, Interpolator.metric_interp_index);
                 aa_interp = new Interpolator[scenario.all_alloc];
                 for (int i = 0; i < scenario.all_alloc; i++)
                         aa_interp[i] = Interpolator.factory(this, generate, i);
@@ -96,8 +102,16 @@ class MapPeriod implements Iterable<MapElement>
                 double first_payout = 0;
 
                 if (!fast_path || generate)
-                        metric_sm = metric_interp.value(p);
-
+                {
+                        if (scenario.interpolation_ce)
+                        {
+                                double ce = ce_interp.value(p);
+                                double utility = map.uc_time.utility(ce);
+                                metric_sm = utility / ce_interp.divisor;
+                        }
+                        else
+                                metric_sm = metric_interp.value(p);
+                }
                 if (!fast_path || !generate)
                 {
                         for (int i = 0; i < scenario.all_alloc; i++)
@@ -234,11 +248,13 @@ class MapPeriod implements Iterable<MapElement>
                 return it;
         }
 
-        public MapPeriod(Scenario scenario, int period)
+        public MapPeriod(AAMap map, int period)
         {
-                this.scenario = scenario;
-                this.config = scenario.config;
+                this.config = map.config;
+                this.scenario = map.scenario;
+                this.map = map;
                 this.period = period;
+                this.age = config.start_age + period / config.generate_time_periods;
 
                 bottom = new int[scenario.start_p.length];
                 length = new int[scenario.start_p.length];
