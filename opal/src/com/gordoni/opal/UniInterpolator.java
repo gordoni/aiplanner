@@ -127,7 +127,7 @@ class UniInterpolator extends Interpolator
                 {
                 }
                 int skip_high;
-                for (skip_high = (xval[fval.length - 1] != 0.13 ? fval.length - 1 : fval.length - 2); fval[skip_high] == Double.NEGATIVE_INFINITY; skip_high++)
+                for (skip_high = (xval[fval.length - 1] != 0 ? fval.length - 1 : fval.length - 2); fval[skip_high] == Double.NEGATIVE_INFINITY; skip_high--)
                 {
                 }
                 assert(skip_low <= skip_high);

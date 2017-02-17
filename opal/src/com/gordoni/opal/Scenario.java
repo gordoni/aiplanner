@@ -207,8 +207,12 @@ public class Scenario
                 boolean supress_classes = (config.annuity_classes_supress != null) && (config.start_age + period / config.generate_time_periods >= config.annuity_age);
                 double min = ((a != -1) && (a == a_borrow) ? - config.max_borrow : config.min_aa);
                 double max = ((a != -1) && (a == a_borrow_only) ? 0.0 : config.max_aa + config.max_borrow);
+                min = Math.max(min, 1 - max * (normal_assets - 1));
+                max = Math.min(max, 1 - min * (normal_assets - 1));
 
-                if (a != -1)
+                if (a == -1)
+                        assert(delta == 0);
+                else
                 {
                         new_aa[a] += delta;
                         if (supress_classes && config.annuity_classes_supress.contains(asset_classes.get(a)))
