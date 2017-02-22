@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -31,7 +31,6 @@ public class MapElement implements Cloneable
 
         // Copy of results.* because results gets deleted to save RAM.
         public double spend;
-        public double consume;
         public double first_payout;
         public double metric_sm;
 
@@ -89,6 +88,11 @@ public class MapElement implements Cloneable
                 return nia_purchase;
         }
 
+        public double consumable(Scenario scenario)
+        {
+                return spend - ria_purchase(scenario) - nia_purchase(scenario) + first_payout;
+        }
+
         public String toString()
         {
                 String sim_string = null;
@@ -103,7 +107,6 @@ public class MapElement implements Cloneable
                         "\n  rps: " + Arrays.toString(rps) +
                         "\n  aa: " + Arrays.toString(aa) +
                         "\n  spendable: " + spend +
-                        "\n  consume: " + consume +
                         "\n  first_payout: " + first_payout +
                         "\n  metric_sm: " + metric_sm +
                         (results == null ? "" : "\n  metrics: " + results.metrics) +

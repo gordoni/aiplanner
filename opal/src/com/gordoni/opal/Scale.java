@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,21 +20,19 @@ package com.gordoni.opal;
 
 public abstract class Scale
 {
-        protected double zero_buffer_size;
+        public int first_bucket;
+        public int num_buckets;
 
-        public Scale(double zero_buffer_size)
+        protected double zero_bucket_size;
+
+        public Scale(double zero_bucket_size)
         {
-                this.zero_buffer_size = zero_buffer_size;
+                this.zero_bucket_size = zero_bucket_size;
         }
 
         public abstract double bucket_to_pf(int bucket);
 
         public abstract double pf_to_fractional_bucket(double pf);
-
-        public int pf_to_bucket(double pf)
-        {
-                return pf_to_bucket(pf, "up");
-        }
 
         public int pf_to_bucket(double pf, String dir)
         {
@@ -47,12 +45,13 @@ public abstract class Scale
                         return (int) Math.floor(fractional_bucket + 0.5);
         }
 
-        public static Scale scaleFactory(double zero_bucket_size, double scaling_factor)
+        public static Scale scaleFactory(double zero_bucket_size, double min_value, double max_value, boolean has_zero, double scaling_factor, boolean sparse)
         {
-                if (scaling_factor == 1.0)
-                        // Runs 15% faster by taking advantage of this special case.
-                        return new Linear_pf_scale(zero_bucket_size);
+                if (sparse)
+                        return new Sparse_scale(zero_bucket_size, max_value);
+                else if (scaling_factor == 1.0)
+                        return new Linear_pf_scale(zero_bucket_size, min_value, max_value);
                 else
-                        return new Exp_offset_scale(zero_bucket_size, scaling_factor);
+                        return new Exp_offset_scale(zero_bucket_size, min_value, max_value, has_zero, scaling_factor);
         }
 }

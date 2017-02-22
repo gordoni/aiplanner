@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -102,7 +102,7 @@ public class ScenarioSet
                                 {
                                         MapElement me = error_scenario[e].map.lookup_interpolate(p, i);
                                         aa[e] = me.aa;
-                                        consume[e] = me.consume;
+                                        consume[e] = me.aa[scenario.consume_index];
                                 }
                                 aa = Utils.zipDoubleArrayArray(aa);
 
@@ -117,7 +117,7 @@ public class ScenarioSet
 
                                 out.print(f2f.format(age));
                                 out.print("," + f2f.format(curr_pf));
-                                out.print("," + f2f.format(me_s.consume));
+                                out.print("," + f2f.format(me_s.aa[scenario.consume_index]));
                                 out.print("," + f2f.format(consume[low]));
                                 out.print("," + f2f.format(consume[high]));
                                 out.print(","); // Reserve space for ria and nia.

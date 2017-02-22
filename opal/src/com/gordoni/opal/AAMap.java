@@ -195,8 +195,8 @@ class AAMap
                 double first_payout = Double.NaN;
                 double consume_annual_key = Double.NaN;  // Cache provides 25% speedup for generate.
                 double uct_u_ujp = uc_time.utility(config.utility_join_required);
-                double floor_value = Double.NaN;
-                double upside_value = Double.NaN;
+                double floor_utility = Double.NaN;
+                double upside_utility = Double.NaN;
                 //double consume_utility = 0.0;
                 double divisor_saa = 0;
                 double divisor_bsaa = 0;
@@ -234,6 +234,7 @@ class AAMap
                         double ssr_terms = 0;
                         double all_return = 1;
                         double returns_probability = 0.0;
+                        boolean feasible = true;
                         double p_post_inc_neg = p;
                         double solvent_always = 1;
                         double tw_goal_path = 0.0;
@@ -281,28 +282,6 @@ class AAMap
                         int y = 0;
                         while (y < step_periods)
                         {
-                                if (pessimal)
-                                {
-                                        for (int i = 0; i < scenario.normal_assets; i++)
-                                        {
-                                            if (aa[i] >= 0)
-                                                    rets[i] = returns.pessimal[i];
-                                            else
-                                                    rets[i] = returns.optimal[i];
-                                        }
-                                }
-                                else if (has_special)
-                                {
-                                        System.arraycopy(returns_array[index], 0, rets, 0, scenario.stochastic_classes);
-                                        for (int i = 0; i < scenario.normal_assets; i++)
-                                        {
-                                                if (special_aa[i])
-                                                        rets[i] = scenario.lm_bonds_returns[period + y];
-                                        }
-                                }
-                                else
-                                        rets = returns_array[index];
-
                                 double utility_weight = 1;
                                 if (!generate && monte_carlo_validate)
                                 {
@@ -333,28 +312,26 @@ class AAMap
                                 double ria_prev = ria;
                                 double nia_prev = nia;
 
-                                if (period + y < config.cw_schedule.length)
-                                        p += config.cw_schedule[period + y];
-
                                 double amount_annual; // Contribution/withdrawal amount.
                                 boolean retired = period + y >= (config.retirement_age - config.start_age) * returns.time_periods;
                                 boolean compute_utility = !config.utility_retire || retired;
 
                                 double income = ria + nia;
+                                if (period + y < config.cw_schedule.length)
+                                        income += config.cw_schedule[period + y];
                                 if (retired || config.spend_pre_retirement)
                                 {
                                         income += current_guaranteed_income;
                                         if (variable_withdrawals || config.spend_pre_retirement)
                                         {
                                                 // Full investment portfolio amount subject to variable spending choice.
-                                                spend_annual = p_prev_exc_neg + income;
+                                                spend_annual = p + income;
                                                 if (config.spend_pre_retirement && !retired)
                                                 {
                                                         spend_annual += rcr;
                                                         rcr *= rcr_step;
                                                 }
-                                                consume_annual = spend_annual;
-                                                amount_annual = - p_prev_exc_neg;
+                                                amount_annual = - spend_annual;
                                         }
                                         else
                                         {
@@ -364,21 +341,17 @@ class AAMap
                                                         retire = true;
                                                 }
                                                 spend_annual = spend_retirement;
-                                                consume_annual = spend_annual;
-                                                amount_annual = consume_annual;
+                                                amount_annual = - spend_annual;
                                         }
                                 }
                                 else
                                 {
                                         spend_annual = config.floor;
-                                        consume_annual = spend_annual + 1e-15 * scenario.consume_max_estimate; // Want to be solvent.
                                         amount_annual = rcr;
                                         rcr *= rcr_step;
                                 }
 
-                                //if (y + 1 == max_periods)
-                                //        break;
-
+                                consume_annual = spend_annual;
                                 first_payout = 0;
                                 double real_annuitize = 0;
                                 if (scenario.ria_index != null)
@@ -418,16 +391,7 @@ class AAMap
                                         consume_annual += first_payout;
                                         double not_consumed;
                                         if (config.annuity_partial || (ria == 0 && nia == 0))
-                                                not_consumed = consume_annual * (1 - aa[scenario.spend_fract_index]);
-                                        // Disabled code may be undesireable since breaks smoothness of aa[spend_fract_index].
-                                        // This may cause problems when interpolate.
-                                        // Even with consume_annual in place of spend_fract code is not needed since first_payout is typically
-                                        // a partial payout.
-                                        //else if (ria_prev == 0 && nia_prev == 0)
-                                        //        // Allow extra year to complete initial annuitization.
-                                        //        // This prevents a bump in consumption from having to consume full first_payout,
-                                        //        // and not being able to re-annuitize a small part of it.
-                                        //        not_consumed = first_payout * (1 - aa[scenario.spend_fract_index]);
+                                                not_consumed = consume_annual - aa[scenario.consume_index];
                                         else
                                                 not_consumed = 0;
                                         consume_annual -= not_consumed;
@@ -440,13 +404,47 @@ class AAMap
                                 }
                                 else
                                         amount_annual += first_payout;
-                                double target_consume_annual = consume_annual;
 
+                                // Recieve income before investing.
                                 p += income / returns.time_periods;
-                                p += amount_annual / returns.time_periods; // Done separately to avoid fp rounding making p negtaive.
+
+                                p += amount_annual / returns.time_periods; // Done separtely to avoid fp imprecision.
                                 amount_annual += income;
 
-                                double p_preinvest = p;
+                                if (!generate && variable_withdrawals && (y == max_periods - 1))
+                                {
+                                        // Consume/unconsume any rounding errors from interpolation.
+                                        // Rounding errors can be large as a result of the very large asset allocations when allocatable assets is close to zero.
+                                        consume_annual += p;
+                                        amount_annual -= p;
+                                        p = 0;
+                                }
+
+                                // Invest after computing consumption, so that the reported consumption amount is a constant.
+                                double p_pre_invest = p;
+
+                                if (pessimal)
+                                {
+                                        for (int i = 0; i < scenario.normal_assets; i++)
+                                        {
+                                            if ((aa[i] >= 0) == (p >= 0))
+                                                    rets[i] = returns.pessimal[i];
+                                            else
+                                                    rets[i] = returns.optimal[i];
+                                        }
+                                }
+                                else if (has_special)
+                                {
+                                        System.arraycopy(returns_array[index], 0, rets, 0, scenario.stochastic_classes);
+                                        for (int i = 0; i < scenario.normal_assets; i++)
+                                        {
+                                                if (special_aa[i])
+                                                        rets[i] = scenario.lm_bonds_returns[period + y];
+                                        }
+                                }
+                                else
+                                        rets = returns_array[index];
+
                                 double tot_return = 0.0;
                                 for (int i = 0; i < scenario.normal_assets; i++)
                                 {
@@ -454,15 +452,13 @@ class AAMap
                                 }
                                 ssr_terms += 1 / all_return;
                                 all_return *= tot_return;
-                                if (p >= 0)
-                                {
-                                        // Invest.
-                                        p *= tot_return;
-                                }
-                                else
-                                {
-                                        p *= (1.0 + config.ret_borrow);
-                                }
+
+                                p *= tot_return;
+                                double p_post_invest = p;
+
+                                p_post_inc_neg = p;
+
+                                int new_period = period + y + 1;
                                 if ((scenario.ria_index != null && config.tax_rate_annuity != 0) || scenario.nia_index != null)
                                 {
                                         double cpi_delta = rets[scenario.cpi_index];
@@ -470,18 +466,7 @@ class AAMap
                                         cpi *= 1 + cpi_delta;
                                         nia /= 1 + cpi_delta;
                                 }
-                                p_post_inc_neg = p;
-                                if (!config.negative_p && p < 0.0)
-                                {
-                                        consume_annual += p * returns.time_periods;
-                                        if (-1e-12 * scenario.consume_max_estimate < consume_annual && consume_annual < 0)
-                                                consume_annual = 0; // Rounding error.
-                                        p = 0;
-                                }
-                                //if (consume_annual < 0 && p_prev_inc_neg < 0)
-                                //        consume_annual = 0;
 
-                                int new_period = period + y + 1;
                                 boolean tax_time = scenario.do_tax && (returns.time_periods < 1 || new_period % Math.round(returns.time_periods) == 0);
                                 double total_tax_pending = 0;
                                 double tax_amount = 0;
@@ -489,14 +474,14 @@ class AAMap
                                 {
                                         // Tax depends on our new asset allocation which depends on our portfolio size which depends on how much tax we pay.
                                         // We perform a first order estimate.
-                                        total_tax_pending = tax.total_pending(p, p_preinvest, aa, rets);
+                                        total_tax_pending = tax.total_pending(p_post_invest, p_pre_invest, aa, rets);
                                         // It may be worth performing a second order estimate when generating.
                                         // Empirically though this hasn't been found to make any difference.
                                         //
                                         // if (!generate)
                                         // {
                                         //         res = lookup_bucket(null, p - total_tax_pending, new_period, generate, rets);
-                                        //         total_tax_pending = tax.total_pending(p, p_preinvest, res.aa, rets);
+                                        //         total_tax_pending = tax.total_pending(p_post_invest, p_pre_invest, res.aa, rets);
                                         // }
                                 }
 
@@ -555,14 +540,10 @@ class AAMap
                                                 }
                                                 if (tax_time)
                                                 {
-                                                        tax_amount = tax.tax(p, p_preinvest, aa, rets);
+                                                        tax_amount = tax.tax(p_post_invest, p_pre_invest, aa, rets);
                                                         if (cost_basis_method_immediate)
                                                                 tax_amount = total_tax_pending; // Ensure generated and simulated metrics match for immediate.
                                                         p -= tax_amount;
-                                                        if (!config.negative_p && p < 0.0)
-                                                        {
-                                                                p = 0;
-                                                        }
                                                 }
                                         }
                                 }
@@ -605,23 +586,12 @@ class AAMap
                                         solvent_always = 0;
                                 double floor_path_utility = 0.0;
                                 double upside_path_utility = 0.0;
-                                // // Interpolate when we can to ensure a smooth transition rate in metrics (across periods? over aa/contrib search space?)
-                                // // as consume_annual falls below target_consume_annual.
-                                // // Without this we get horizontal lines for low RPS asset allocations with fixed withdrawals.
-                                // double consume_solvent;
-                                // if (target_consume_annual == current_guaranteed_income)
-                                //         consume_solvent = 1;
-                                // else
-                                //         // We somewhat arbitrarily set the zero consumption level to guaranteed_icome and interpolate based on the distance from that.
-                                //         // This is better than using 0, and then computing utility(0) on a power utility function.
-                                //         consume_solvent = (consume_annual - current_guaranteed_income) / (target_consume_annual - current_guaranteed_income);
-                                double consume_solvent = 1.0;
-                                if (consume_solvent != 0.0)
+                                if ((consume_annual >= 0) && ((p_post_inc_neg >= 0) || (config.negative_p) && (y + 1 < max_periods)))
                                 {
                                         // Avoid recomputing utility when generate.
-                                        if (target_consume_annual != consume_annual_key)
+                                        if (consume_annual != consume_annual_key)
                                         {
-                                                consume_annual_key = target_consume_annual;
+                                                consume_annual_key = consume_annual;
                                                 double floor;
                                                 double upside;
                                                 if (config.utility_join)
@@ -634,47 +604,20 @@ class AAMap
                                                         floor = consume_annual_key;
                                                         upside = 0;
                                                 }
-                                                floor_value = aamap.uc_time.utility(floor);
+                                                floor_utility = aamap.uc_time.utility(floor);
                                                 if (upside == 0)
-                                                        upside_value = uct_u_ujp;
+                                                        upside_utility = uct_u_ujp;
                                                 else
-                                                        upside_value = aamap.uc_time.utility(config.utility_join_required + upside);
+                                                        upside_utility = aamap.uc_time.utility(config.utility_join_required + upside);
                                         }
-                                        double floor_utility = floor_value;
-                                        double upside_utility = upside_value;
-                                        floor_path_utility += consume_solvent * floor_utility;
-                                        upside_path_utility += consume_solvent * upside_utility;
                                 }
-                                //if (consume_solvent != 1.0)
-                                // {
-                                //         double floor;
-                                //         double upside;
-                                //         if (config.utility_join)
-                                //         {
-                                //                 floor = Math.min(current_guaranteed_income, config.utility_join_required);
-                                //                 upside = current_guaranteed_income - floor;
-                                //         }
-                                //         else
-                                //         {
-                                //                 floor = current_guaranteed_income;
-                                //                 upside = 0;
-                                //         }
-                                //         double floor_utility = aamap.uc_time.utility(floor);
-                                //         double upside_utility = aamap.uc_time.utility(config.utility_join_required + upside);
-                                //         floor_path_utility += (1.0 - consume_solvent) * floor_utility;
-                                //         upside_path_utility += (1.0 - consume_solvent) * upside_utility;
-                                // }
+                                else
+                                        floor_utility = Double.NEGATIVE_INFINITY; // Infeasible. Will propagate through the system.
+                                floor_path_utility += floor_utility;
+                                upside_path_utility += upside_utility;
                                 double consume_path_utility = floor_path_utility;
-                                if (config.negative_p && p_post_inc_neg < 0)
-                                        floor_path_utility = Double.NEGATIVE_INFINITY; // Will propagate through the system.
                                 if (config.utility_join)
                                         consume_path_utility += upside_path_utility - uct_u_ujp;
-                                double path_consume;
-                                if (consume_solvent == 1.0)
-                                        path_consume = consume_annual;
-                                else
-                                        path_consume = aamap.uc_time.inverse_utility(consume_path_utility);
-                                                // Ensure consume and jpmorgan metrics match when gamma = 1/psi.
                                 double upside_alive_discount;
                                 if (generate && aamap1 != null)
                                 {
@@ -765,7 +708,7 @@ class AAMap
                                 // Record path.
                                 if (s < num_paths_record)
                                 {
-                                        path.add(new PathElement(aa_prev, p_prev_inc_neg, path_consume, ria_prev, nia_prev, real_annuitize, nominal_annuitize, tax_amount, path_element_weight));
+                                        path.add(new PathElement(aa_prev, p_prev_inc_neg, consume_annual, ria_prev, nia_prev, real_annuitize, nominal_annuitize, tax_amount, path_element_weight));
                                 }
                                 free_aa = aa_prev;
 

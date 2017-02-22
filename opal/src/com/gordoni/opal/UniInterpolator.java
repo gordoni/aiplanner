@@ -33,12 +33,20 @@ class UniInterpolator extends Interpolator
         double xval[];
         double fval[];
 
+        boolean bilinear = false;
+        double xintercept;
+        double slope;
         PolynomialSplineFunction f;
         UnivariateFunction s;
 
         public double value(double[] p)
         {
                 double x_init = p[0];
+                if (bilinear)
+                {
+                        double f = fval[1] + (x_init - xval[1]) * slope;
+                        return f;
+                }
                 double xmin = xval[0];
                 double xmax = xval[xval.length - 1];
                 boolean in_range = xmin <= x_init && x_init <= xmax;
@@ -72,9 +80,9 @@ class UniInterpolator extends Interpolator
                 else if (config.interpolation_extrapolate)
                 {
                         // We don't extrapolate oversize metric values as this would cause the metrics to appear larger than they actually are.
-                        // This would result in upwardly sloping utility as a function of portfolio size plots.
-                        // We don't extrapolate oversize asset allocations (or spend/purchases) as they could become seriously wrong.
-                        if ((x < x_init) && (this.what != metric_interp_index) && !(this.what >= 0))
+                        // This would result in upwardly sloping certainty equivalence as a function of portfolio size plots.
+                        if (((x < x_init) && (what != metric_interp_index)) ||
+                            (x_init < x))
                         {
                                 // Extrapolate based on end point derivative.
                                 double slope = s.value(x);
@@ -105,44 +113,47 @@ class UniInterpolator extends Interpolator
                         int xindex = (fval.length - 1) - (bucket[0] - mp.bottom[0]);
                         double val = getWhat(me, what);
                         // Spline blows up into NaNs if it contains infinities.
-                        // This can occur for utility metrics, which we set to -Infinity when consume <= 0.
-                        // We want to continue to interpolate the other splines as the aa values may still reflect min_safe constraints.
-                        if ((what != metric_interp_index) || (getWhat(me, what) != Double.NEGATIVE_INFINITY))
+                        // This can occur for utility metrics, which we set to -Infinity when consume = 0.
+                        // We want to continue to interpolate the aa splines as the aa values may reflect min_safe constraints.
+                        if ((0 <= what && what < scenario.normal_assets) || (getWhat(me, scenario.consume_index) != 0))
                         {
                                 fval[xindex] = val;
                         }
                         else
                         {
-                                fval[xindex] = Double.NEGATIVE_INFINITY;
-                                if (what == metric_interp_index) // Currently always true.
-                                        if ((xindex <= 1) && (xval[xindex] != 0))
+                                if (what == metric_interp_index)
+                                        if (fval[xindex] == Double.NEGATIVE_INFINITY)
                                                 before = Double.NEGATIVE_INFINITY;
-                                        else if ((xindex >= xval.length - 2) && (xval[xindex] != 0))
-                                                after = Double.NEGATIVE_INFINITY;
+                                fval[xindex] = Double.NEGATIVE_INFINITY;
                         }
                 }
 
                 int skip_low;
-                for (skip_low = (xval[0] != 0 ? 0 : 1); fval[skip_low] == Double.NEGATIVE_INFINITY; skip_low++)
+                for (skip_low = 0; fval[skip_low] == Double.NEGATIVE_INFINITY; skip_low++)
                 {
                 }
-                int skip_high;
-                for (skip_high = (xval[fval.length - 1] != 0 ? fval.length - 1 : fval.length - 2); fval[skip_high] == Double.NEGATIVE_INFINITY; skip_high--)
-                {
-                }
-                assert(skip_low <= skip_high);
-                xval = Arrays.copyOfRange(xval, skip_low, skip_high + 1);
-                fval = Arrays.copyOfRange(fval, skip_low, skip_high + 1);
+                assert(skip_low < fval.length);
+                xval = Arrays.copyOfRange(xval, skip_low, fval.length);
+                fval = Arrays.copyOfRange(fval, skip_low, fval.length);
 
-                if (config.interpolation1.equals("linear"))
+                if (config.assume_ce_linear)
+                {
+                        bilinear = true;
+                        assert(what != metric_interp_index);
+                        assert(xval.length == 2);
+                        slope = (fval[1] - fval[0]) / (xval[1] - xval[0]);
+                }
+                else if (config.interpolation1.equals("linear"))
                 {
                         LinearInterpolator interpolator = new LinearInterpolator();
                         this.f = interpolator.interpolate(xval, fval);
+                        this.s = this.f.derivative();
                 }
                 else if (config.interpolation1.equals("spline"))
                 {
                         SplineInterpolator interpolator = new SplineInterpolator();
                         this.f = interpolator.interpolate(xval, fval);
+                        this.s = this.f.derivative();
                 }
                 else
                 {
@@ -150,6 +161,6 @@ class UniInterpolator extends Interpolator
                         return;
                 }
 
-                this.s = this.f.derivative();
+                return;
         }
 }

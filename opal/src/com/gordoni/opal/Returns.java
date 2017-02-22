@@ -528,7 +528,7 @@ public class Returns implements Cloneable
                         {
                                 rets = cpi_returns;
                         }
-                        else if (Arrays.asList("[ria]", "[nia]", "[spend_fract]", "[ef_index]").contains(asset_class))
+                        else if (Arrays.asList("[consume]", "[ria]", "[nia]", "[ef_index]").contains(asset_class))
                         {
                                 continue;
                         }
@@ -694,6 +694,7 @@ public class Returns implements Cloneable
                                 LogNormalDistribution distrib = new LogNormalDistribution(mu, sigma);
                                 pessimal[i] = distrib.inverseCumulativeProbability(config.map_headroom) - 1;
                                 optimal[i] = distrib.inverseCumulativeProbability(1 - config.map_headroom) - 1;
+                                assert(pessimal[i] != -1); // Insufficient fp precisiion.
                         }
                 }
         }

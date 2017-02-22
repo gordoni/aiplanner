@@ -35,7 +35,7 @@ public class UtilityPower extends Utility
         {
                 if (c < 0)
                 {
-                        System.out.println("utility(" + c + ") negative consumption");
+                        System.out.println("utility(" + c + "): negative consumption");
                         assert(false);
                 }
                 if (c * public_assistance_phaseout_rate < public_assistance)

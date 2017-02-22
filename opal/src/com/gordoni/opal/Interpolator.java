@@ -30,19 +30,22 @@ abstract class Interpolator
         public static final int metric_interp_index = -1;
         public static final int ce_interp_index = -2;
         public static final int spend_interp_index = -3;
-        public static final int consume_interp_index = -4;
-        public static final int first_payout_interp_index = -5;
+        public static final int first_payout_interp_index = -4;
         // 0..normal_assets-1 - asset class allocation fractions
         // ria_aa_index - ria purchase fraction
         // nia_aa_index - nia purchase fraction
-        // spend_fract_index - spend fraction
+        // consume_index - consume amount
         int what;
 
         double divisor;
 
         protected double getWhat(MapElement me, int what)
         {
-                if (what >= 0)
+                if (0 <= what && what < scenario.normal_assets)
+                        // Smoother interpolation in absolute rather than aa space.
+                        // Important for sparse interpolation.
+                        return me.aa[what] * (me.consumable(scenario) - me.aa[scenario.consume_index]);
+                else if (what >= scenario.normal_assets)
                         return me.aa[what];
                 else if (what == metric_interp_index)
                         return me.metric_sm;
@@ -54,8 +57,6 @@ abstract class Interpolator
                         }
                 else if (what == spend_interp_index)
                         return me.spend;
-                else if (what == consume_interp_index)
-                        return me.consume;
                 else if (what == first_payout_interp_index)
                         return me.first_payout;
 

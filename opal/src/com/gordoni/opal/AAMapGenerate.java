@@ -38,17 +38,25 @@ public class AAMapGenerate extends AAMap
 
                 double[] aa = null;
                 int pi = period;
-                boolean safe_search = true;
-                if (pi + 1 < map.length && !config.search.equals("all"))
-                {
-                        MapElement older = map[pi + 1].get(bucket);
-                        aa = older.aa;
-                        safe_search = (aa[scenario.spend_fract_index] == 1); // Avoid getting stuck by using aa when aa used didn't matter.
-                }
+                boolean safe_search = false;
+                if (!config.search.equals("all"))
+                        if (pi + 1 < map.length)
+                        {
+                                MapElement older = map[pi + 1].get(bucket);
+                                aa = older.aa;
+                                safe_search = (aa[scenario.consume_index] == older.consumable(scenario)); // Avoid getting stuck by using aa when aa used didn't matter.
+                        }
+                        else
+                        {
+                                aa = scenario.guaranteed_safe_aa();
+                                aa[scenario.consume_index] = p[scenario.tp_index]; // Shortcut to full value with guaranteed income.
+                        }
+                else
+                        safe_search = true;
                 if (safe_search)
                 {
                         aa = scenario.guaranteed_safe_aa();
-                        aa[scenario.spend_fract_index] = 0;
+                        aa[scenario.consume_index] = 0;
                 }
                 aa = make_safe_aa(aa, p, period);
 
@@ -88,7 +96,7 @@ public class AAMapGenerate extends AAMap
                 }
                 else
                 {
-                        key = aa[scenario.ef_index] + "," + aa[scenario.spend_fract_index];
+                        key = aa[scenario.ef_index] + "," + aa[scenario.consume_index];
                 }
 
                 if (me.cache == null)
@@ -121,15 +129,18 @@ public class AAMapGenerate extends AAMap
 
         private double[] inc_dec_aa(double[] aa, int a, double inc, double[] p, int period)
         {
-                if ((a != -1) && (a == scenario.spend_fract_index || a == scenario.ria_aa_index || a == scenario.nia_aa_index))
+                if ((a != -1) && (a == scenario.consume_index || a == scenario.ria_aa_index || a == scenario.nia_aa_index))
                 {
                         double[] new_aa = aa.clone();
                         double alloc = new_aa[a];
                         alloc += inc;
                         if (alloc <= 0)
                                 alloc = 0;
-                        if (alloc > 1)
-                                alloc = 1;
+                        if (a != scenario.consume_index)
+                        {
+                                if (alloc > 1)
+                                        alloc = 1;
+                        }
                         new_aa[a] = alloc;
 
                         return new_aa;
@@ -624,7 +635,7 @@ public class AAMapGenerate extends AAMap
                 boolean search_aa = config.aa_strategy.equals("sdp");
                 boolean retire = period >= (config.retirement_age - config.start_age) * returns.time_periods;
                 boolean annuitize = period >= (config.annuity_age - config.start_age) * returns.time_periods;
-                boolean search_spend_fract = scenario.vw_strategy.equals("sdp") && retire;
+                boolean search_consume = scenario.vw_strategy.equals("sdp") && retire;
 
                 me.aa = me.aa.clone(); // May be shared with older bucket.
 
@@ -675,17 +686,17 @@ public class AAMapGenerate extends AAMap
                         else
                                 me.aa[scenario.nia_aa_index] = 0;
                 }
-                if (search_spend_fract)
+                if (search_consume)
                 {
-                        dimensions.add(scenario.spend_fract_index); // Contrib/consume.
-                        step[scenario.spend_fract_index] = 1.0 / config.spend_steps;
+                        dimensions.add(scenario.consume_index); // Contrib/consume.
+                        step[scenario.consume_index] = Math.max(Math.abs(me.rps[scenario.tp_index]), 1e-2 * scenario.consume_max_estimate) / config.spend_steps;
                 }
 
                 if (!search_aa)
                         me.aa = generate_aa(config.aa_strategy, config.start_age + period / returns.time_periods, me.rps);
-                if (!search_spend_fract)
+                if (!search_consume)
                 {
-                        me.aa[scenario.spend_fract_index] = vw_spend_fract(config.start_age + period / returns.time_periods, me.rps);
+                        me.aa[scenario.consume_index] = vw_spend_fract(config.start_age + period / returns.time_periods, me.rps) * me.rps[scenario.tp_index];
                 }
 
                 if (dimensions.size() == 0)
@@ -857,7 +868,7 @@ public class AAMapGenerate extends AAMap
                                                                         if ((aa == null) && !improve)
                                                                         {
                                                                                 aa = make_safe_aa(scenario.guaranteed_safe_aa(), me.rps, fperiod);
-                                                                                aa[scenario.spend_fract_index] = 0;
+                                                                                aa[scenario.consume_index] = 0;
                                                                                 improve = search_hint(me, aa, fperiod, local_returns);
                                                                         }
                                                                         // Get a 50% speedup due to early deletion of cache. Otherwise cache too big for CPU cache.
@@ -911,7 +922,7 @@ public class AAMapGenerate extends AAMap
                                         gs = make_safe_aa(gs, me.rps, period);
                                         for (int i = 0; i < scenario.normal_assets; i++)
                                                 me.aa[i] = gs[i];
-                                        me.aa[scenario.spend_fract_index] = 0;
+                                        me.aa[scenario.consume_index] = 0;
                                         if (!config.ef.equals("none"))
                                                 me.aa[scenario.ef_index] = gs[scenario.ef_index];
                                         me.results = search_simulate_cache(me, me.aa, me.rps, period, returns);
@@ -919,7 +930,6 @@ public class AAMapGenerate extends AAMap
 
                                 me.cache = null;
                                 me.spend = me.results.spend;
-                                me.consume = me.results.consume;
                                 me.first_payout = me.results.first_payout;
                                 me.metric_sm = me.results.metrics.get(scenario.success_mode_enum);
                         }

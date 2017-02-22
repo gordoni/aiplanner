@@ -68,8 +68,8 @@ class AAMapDumpLoad extends AAMap
                         {
                                 MapElement me = map_period.get(index);
                                 String value = null;
-                                if (map_name.equals("spend_fract"))
-                                        value = f9f.format(me.aa[scenario.spend_fract_index]);
+                                if (map_name.equals("consume"))
+                                        value = f9f.format(me.aa[scenario.consume_index]);
                                 else if (map_name.equals("ria"))
                                         value = f9f.format(me.aa[scenario.ria_aa_index]);
                                 else if (map_name.equals("nia"))
@@ -157,8 +157,8 @@ class AAMapDumpLoad extends AAMap
                                 double age_period = l.get(0);
                                 Double value = l.get(1);
                                 MapElement me = map[(int) Math.round(age_period - config.start_age * config.generate_time_periods)].get(bucket);
-                                if (what.equals("spend_fract"))
-                                        me.aa[scenario.spend_fract_index] = value;
+                                if (what.equals("consume"))
+                                        me.aa[scenario.consume_index] = value;
                                 else if (what.equals("ria"))
                                         me.aa[scenario.ria_aa_index] = value;
                                 else if (what.equals("nia"))
@@ -299,11 +299,11 @@ class AAMapDumpLoad extends AAMap
                 }
 
                 if (!scenario.vw_strategy.equals("amount"))
-                        load_extra(map, aa_file_prefix, "spend_fract");
+                        load_extra(map, aa_file_prefix, "consume");
                 if (scenario.ria_index != null)
-                    load_extra(map, aa_file_prefix, "ria");
+                        load_extra(map, aa_file_prefix, "ria");
                 if (scenario.nia_index != null)
-                    load_extra(map, aa_file_prefix, "nia");
+                        load_extra(map, aa_file_prefix, "nia");
         }
 
         public AAMapDumpLoad(Scenario scenario, AAMap map_precise, VitalStats validate_stats) throws IOException
@@ -348,7 +348,7 @@ class AAMapDumpLoad extends AAMap
                 // dump_map(map_precise, "risk");
                 // dump_map(map_precise, "return");
                 if (!scenario.vw_strategy.equals("amount"))
-                        dump_map(map_precise, "spend_fract");
+                        dump_map(map_precise, "consume");
                 if (scenario.ria_index != null)
                         dump_map(map_precise, "ria");
                 if (scenario.nia_index != null)

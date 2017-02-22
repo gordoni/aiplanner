@@ -18,22 +18,31 @@
 
 package com.gordoni.opal;
 
-public class Linear_pf_scale extends Scale
+public class Sparse_scale extends Scale
 {
-        public Linear_pf_scale(double zero_bucket_size, double min_value, double max_value)
+        private double low;
+        private double high;
+
+        public Sparse_scale(double zero_bucket_size, double max_value)
         {
                 super(zero_bucket_size);
-                this.first_bucket = pf_to_bucket(max_value, "up");
-                this.num_buckets = pf_to_bucket(min_value, "down") - this.first_bucket + 1;
+                this.low = max_value / 100;
+                this.high = max_value;
+                this.first_bucket = 0;
+                this.num_buckets = 2;
         }
 
         public double bucket_to_pf(int bucket)
         {
-                return - bucket * zero_bucket_size;
+                if (bucket == 0)
+                        return high;
+                else
+                        return low;
         }
 
         public double pf_to_fractional_bucket(double pf)
         {
-                return - pf / zero_bucket_size;
+                assert(false);
+                return -1;
         }
 }

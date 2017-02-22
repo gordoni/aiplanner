@@ -72,7 +72,6 @@ class MapPeriod implements Iterable<MapElement>
 
         private Interpolator metric_interp;
         private Interpolator ce_interp;
-        private Interpolator consume_interp;
         private Interpolator spend_interp;
         private Interpolator first_payout_interp;
         private Interpolator[] aa_interp;
@@ -81,19 +80,20 @@ class MapPeriod implements Iterable<MapElement>
 
         public void interpolate(boolean generate)
         {
-                if (scenario.interpolation_ce)
-                        ce_interp = Interpolator.factory(this, generate, Interpolator.ce_interp_index);
-                else
-                        metric_interp = Interpolator.factory(this, generate, Interpolator.metric_interp_index);
+                if (generate)
+                        if (scenario.interpolation_ce)
+                                ce_interp = Interpolator.factory(this, generate, Interpolator.ce_interp_index);
+                        else
+                                metric_interp = Interpolator.factory(this, generate, Interpolator.metric_interp_index);
                 aa_interp = new Interpolator[scenario.all_alloc];
-                for (int i = 0; i < scenario.all_alloc; i++)
+                for (int i = 1; i < scenario.all_alloc; i++)
                         aa_interp[i] = Interpolator.factory(this, generate, i);
+                spend_interp = Interpolator.factory(this, generate, Interpolator.spend_interp_index);
         }
 
         public MapElement lookup_interpolate(double[] p, boolean fast_path, boolean generate, MapElement li_me)
         {
                 MapElement me = li_me;
-                double[] aa = li_me.aa;
 
                 double metric_sm = Double.NaN;
                 double spend = Double.NaN;
@@ -106,7 +106,11 @@ class MapPeriod implements Iterable<MapElement>
                         if (scenario.interpolation_ce)
                         {
                                 double ce = ce_interp.value(p);
-                                double utility = map.uc_time.utility(ce);
+                                double utility;
+                                if (ce >= 0)
+                                        utility = map.uc_time.utility(ce);
+                                else
+                                        utility = Double.NEGATIVE_INFINITY;
                                 metric_sm = utility / ce_interp.divisor;
                         }
                         else
@@ -114,68 +118,64 @@ class MapPeriod implements Iterable<MapElement>
                 }
                 if (!fast_path || !generate)
                 {
-                        for (int i = 0; i < scenario.all_alloc; i++)
-                                aa[i] = aa_interp[i].value(p);
-                        // Keep bounded and summed to one as exactly as possible.
+                        spend = spend_interp.value(p); // Only needed on non-generate fast path to compute aa[] below.
+
+                        double[] aa = me.aa;
+                        double allocatable = spend - aa_interp[scenario.consume_index].value(p); // Incorect if annuities are present, but OK since just used to improve interpolation.
+                        if (allocatable != 0)
+                        {
+                                double sum = 0;
+                                for (int i = 1; i < scenario.normal_assets; i++)
+                                {
+                                        // Smoother interpolation in absolute rather than aa space.
+                                        // Important for sparse interpolation.
+                                        // It would be cleaner if aa[] was in absolute space, but this would be a major code base change.
+                                        aa[i] = aa_interp[i].value(p) / allocatable;
+                                        sum += aa[i];
+                                }
+                                aa[0] = 1 - sum;
+                        }
+                        else
+                                aa = scenario.guaranteed_safe_aa();
                         boolean in_range = true;
-                        double sum = 0;
                         for (int i = 0; i < scenario.normal_assets; i++)
                         {
                                 if (!((config.min_aa < aa[i]) && (aa[i] < config.max_aa)))
                                         in_range = false;
-                                sum += aa[i];
-                        }
-                        if (Math.abs(sum - 1) > 1e-9 * Math.max(Math.abs(config.min_aa), Math.abs(config.max_aa)))
-                        {
-                                in_range = false;
                         }
                         if (!in_range)
                                 aa = scenario.inc_dec_aa_raw(aa, -1, 0, p, period);
                         for (int i = scenario.normal_assets; i < scenario.all_alloc; i++)
                         {
-                                double alloc = aa[i];
-                                if (alloc <= 0)
-                                        alloc = 1;
-                                if (alloc > 1)
-                                        alloc = 1;
+                                double alloc = aa_interp[i].value(p);
+                                if (alloc < 0)
+                                        alloc = 0;
+                                if (i != scenario.consume_index)
+                                {
+                                        if (alloc > 1)
+                                                alloc = 1;
+                                }
                                 aa[i] = alloc;
                         }
+                        me.aa = aa;
                 }
 
                 if (!fast_path)
                 {
-                        if ((spend_interp == null) || (generate_interpolator && !generate))
+                        if ((first_payout_interp == null) || (generate_interpolator && !generate))
                         {
                                 // Avoid constructing interpolators if not needed. Consumes RAM.
-                                spend_interp = Interpolator.factory(this, generate, Interpolator.spend_interp_index);
-                                consume_interp = Interpolator.factory(this, generate, Interpolator.consume_interp_index);
                                 if ((config.start_ria != null) || (config.start_nia != null))
                                         first_payout_interp = Interpolator.factory(this, generate, Interpolator.first_payout_interp_index);
                                 generate_interpolator = generate;
                         }
-                        spend = spend_interp.value(p);
-                        consume = consume_interp.value(p);
-                        //if (-1e-12 * scenario.consume_max_estimate < consume && consume < 0)
-                        //        consume = 0;
                         if ((config.start_ria != null) || (config.start_nia != null))
                                 first_payout = first_payout_interp.value(p);
-
-                        if (spend < 0)
-                        {
-                                System.err.println("lookup_interpolate(): negative interpolated spend: " + spend);
-                                assert(false);
-                        }
-                        if (consume < 0)
-                        {
-                                System.err.println("lookup_interpolate(): negative interpolated consume: " + consume);
-                                assert(false);
-                        }
                 }
 
                 me.results.metrics.metrics[scenario.success_mode_enum.ordinal()] = metric_sm; // Needed by maintain_all.
                 me.metric_sm = metric_sm;
                 me.spend = spend;
-                me.consume = consume;
                 me.first_payout = first_payout;
 
                 me.rps = p;
@@ -260,18 +260,18 @@ class MapPeriod implements Iterable<MapElement>
                 length = new int[scenario.start_p.length];
                 if (scenario.tp_index != null)
                 {
-                        bottom[scenario.tp_index] = scenario.scale[scenario.tp_index].pf_to_bucket(scenario.tp_high);
-                        length[scenario.tp_index] = scenario.scale[scenario.tp_index].pf_to_bucket(config.pf_fail) - bottom[scenario.tp_index] + 1;
+                        bottom[scenario.tp_index] = scenario.scale[scenario.tp_index].first_bucket;
+                        length[scenario.tp_index] = scenario.scale[scenario.tp_index].num_buckets;
                 }
                 if (scenario.ria_index != null)
                 {
-                        bottom[scenario.ria_index] = scenario.scale[scenario.ria_index].pf_to_bucket(config.ria_high);
-                        length[scenario.ria_index] = scenario.scale[scenario.ria_index].pf_to_bucket(0) - bottom[scenario.ria_index] + 1;
+                        bottom[scenario.ria_index] = scenario.scale[scenario.ria_index].first_bucket;
+                        length[scenario.ria_index] = scenario.scale[scenario.ria_index].num_buckets;
                 }
                 if (scenario.nia_index != null)
                 {
-                        bottom[scenario.nia_index] = scenario.scale[scenario.nia_index].pf_to_bucket(config.nia_high);
-                        length[scenario.nia_index] = scenario.scale[scenario.nia_index].pf_to_bucket(0) - bottom[scenario.nia_index] + 1;
+                        bottom[scenario.nia_index] = scenario.scale[scenario.nia_index].first_bucket;
+                        length[scenario.nia_index] = scenario.scale[scenario.nia_index].num_buckets;
                 }
 
                 floor = new double[scenario.start_p.length];

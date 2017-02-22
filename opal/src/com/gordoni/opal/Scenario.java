@@ -68,7 +68,7 @@ public class Scenario
         public int stochastic_classes;
         public int ria_aa_index;
         public int nia_aa_index;
-        public int spend_fract_index;
+        public int consume_index;
         public int all_alloc;
         public int cpi_index;
         public int ef_index;
@@ -90,6 +90,7 @@ public class Scenario
         private Returns returns_validate = null;
 
         private int safe_aa_index = -1;
+        private boolean aa_constraint;
 
         public AAMap map;
 
@@ -186,15 +187,14 @@ public class Scenario
 
                 double min_safe_aa = Double.NEGATIVE_INFINITY;
                 double max_safe_aa = Double.POSITIVE_INFINITY;
-                if ((config.min_safe_aa != Double.NEGATIVE_INFINITY || config.min_safe_abs != Double.NEGATIVE_INFINITY || config.min_safe_abs != Double.POSITIVE_INFINITY || config.min_safe_le != Double.NEGATIVE_INFINITY) &&
-                    (config.start_age + period / config.generate_time_periods < config.min_safe_until_age))
+                if (aa_constraint && (config.start_age + period / config.generate_time_periods < config.min_safe_until_age))
                 {
                         double have_safe = 0;
                         if (ria_index != null)
                                 have_safe += p[ria_index] * ss.generate_annuity_stats.real_annuity_price[period];
                         if (nia_index != null)
                                 have_safe += p[nia_index] * ss.generate_annuity_stats.nominal_annuity_price[period];
-                        if (p[tp_index] != 0)
+                        if (p[tp_index] > 0)
                         {
                                 double min_safe_le = config.min_safe_le * (ss.generate_stats.raw_sum_avg_alive[period] / ss.generate_stats.raw_alive[period]);
                                 min_safe_aa = (Math.max(config.min_safe_abs, min_safe_le) - have_safe) / p[tp_index];
@@ -588,7 +588,7 @@ public class Scenario
         }
 
         // Gnuplot doesn't support heatmaps with an exponential scale, so we have to fixed-grid the data.
-        private void dump_aa_linear_slice(AAMap map, Returns returns, double[][] corr, double[] slice, String slice_suffix, double tp_max) throws IOException
+        private void dump_aa_linear_slice(AAMap map, Returns returns, double[][] corr, double[] slice, String slice_suffix, double tp_min, double tp_max) throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-linear" + slice_suffix + ".csv"));
 
@@ -598,12 +598,12 @@ public class Scenario
                         for (int step = 0; step < config.gnuplot_steps + 1; step++)
                         {
                                 double age = age_period / config.generate_time_periods;
-                                double curr_pf = (config.gnuplot_steps - step) * tp_max / config.gnuplot_steps;
+                                double curr_pf = tp_min + (config.gnuplot_steps - step) * (tp_max - tp_min) / config.gnuplot_steps;
                                 double[] p = slice.clone();
                                 p[tp_index] = curr_pf;
                                 MapElement fpb = map.lookup_interpolate(p, i);
                                 double metric_normalized = metric_normalize(success_mode_enum, fpb.metric_sm, age);
-                                double annuitizable = fpb.spend - fpb.consume;
+                                double annuitizable = fpb.spend - fpb.aa[consume_index];
                                 double ria_purchase = fpb.ria_purchase(this);
                                 double nia_purchase = fpb.nia_purchase(this);
                                 double annuitized = ria_purchase + nia_purchase;
@@ -629,7 +629,7 @@ public class Scenario
                                 out.print("," + ((returns == null) ? "" : f4f.format(expected_return(aa, returns))));
                                 out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(aa, returns, corr))));
                                 out.print("," + f3f.format(annuitizable > 0 ? ria_purchase / annuitizable : 0));
-                                out.print("," + f2f.format(fpb.consume));
+                                out.print("," + f2f.format(fpb.aa[consume_index]));
                                 out.print("," + f3f.format(annuitizable > 0 ? nia_purchase / annuitizable : 0));
                                 out.print("," + aa_str);
                                 out.print("\n");
@@ -639,10 +639,10 @@ public class Scenario
                 out.close();
         }
 
-        private void dump_aa_linear(AAMap map, Returns returns, double[][] corr, double tp_max) throws IOException
+        private void dump_aa_linear(AAMap map, Returns returns, double[][] corr, double tp_min, double tp_max) throws IOException
         {
-                dump_aa_linear_slice(map, returns, corr, new double[start_p.length], "", tp_max);
-                //dump_aa_linear_slice(map, returns, corr, new double[]{0, 10000}, "10000", tp_max);
+                dump_aa_linear_slice(map, returns, corr, new double[start_p.length], "", tp_min, tp_max);
+                //dump_aa_linear_slice(map, returns, corr, new double[]{0, 10000}, "10000", tp_min, tp_max);
         }
 
         private Double get_path_value(List<PathElement> path, int i, String what, boolean change)
@@ -697,7 +697,7 @@ public class Scenario
                                 double weight;
                                 if (what.equals("inherit"))
                                         weight = ss.validate_stats.dying[period];
-                                        // XXX Fails for couple_unit=false. Both "inherit" and couple_unit=false not currently used in production.
+                                        // Fails for couple_unit=false. Both "inherit" and couple_unit=false not currently used in production.
                                 else
                                         weight = path.get(i).weight;
                                 int bucket = (int) ((value - min) / (max - min) * config.distribution_steps);
@@ -1117,6 +1117,7 @@ public class Scenario
                         //dump_delta_paths(paths, 1);
                         //dump_delta_paths(paths, 5);
                 }
+                double tp_min = config.gnuplot_tp_min;
                 if (config.gnuplot_tp != null)
                         tp_max = config.gnuplot_tp;
                 else
@@ -1143,7 +1144,7 @@ public class Scenario
 
                 if (returns != null)
                 {
-                        dump_aa_linear(map, returns, corr, tp_max);
+                        dump_aa_linear(map, returns, corr, tp_min, tp_max);
                         //dump_average(map);
                         dump_annuity_price();
                         dump_annuity_yield_curve();
@@ -1391,7 +1392,7 @@ public class Scenario
                                 aa[a] = fpb.aa[a];
                         }
                         System.out.println("Age " + validate_age + ", Portfolio " + Arrays.toString(fpb.rps));
-                        System.out.println("Consume: " + fpb.consume);
+                        System.out.println("Consume: " + fpb.aa[consume_index]);
                         System.out.println("Asset allocation: " + Arrays.toString(aa));
                         System.out.println("Real immediate annuities purchase: " + fpb.ria_purchase(this));
                         System.out.println("Nominal immediate annuities purchase: " + fpb.nia_purchase(this));
@@ -1615,7 +1616,7 @@ public class Scenario
                         start_p[nia_index] = start_nia;
 
                 int years = Math.max(0, config.retirement_age - config.start_age);
-                double retirement_le = ss.validate_stats.le.get(config.retirement_age);
+                double retirement_le = ss.validate_stats.le.get(Math.max(config.start_age, config.retirement_age));
                 double ia = 0;
                 if (ria_index != null)
                         ia += start_ria;
@@ -1641,26 +1642,28 @@ public class Scenario
                 if (config.tp_max != null)
                     tp_max_estimate = config.tp_max;
                 assert(consume_max_estimate > 0);
+                tp_high = config.map_max_factor * tp_max_estimate;
+                double tp_low = 0;
+                if (config.negative_p)
+                {
+                        // Handle negative portfolio sizes as they might become positive due defined benefits prior to final year.
+                        // If negtive_p is set to false will get an artifacts in asset allocation for low ages.
+                        tp_low = - 2 * (config.defined_benefit + ia) * retirement_le;
+                }
 
                 normal_assets = this.asset_classes.size();
 
                 // Set up the scales.
                 scale = new Scale[start_p.length];
                 if (tp_index != null)
-                {
-                    if (config.assume_ce_linear)
-                        scale[tp_index] = Scale.scaleFactory(consume_max_estimate / config.scaling_factor, config.scaling_factor);
-                    else
-                        scale[tp_index] = Scale.scaleFactory(config.tp_zero_factor * consume_max_estimate, config.scaling_factor);
-                }
+                         scale[tp_index] = Scale.scaleFactory(config.tp_zero_factor * consume_max_estimate, tp_low, tp_high, config.zero_bucket, config.scaling_factor, config.assume_ce_linear);
                 if (ria_index != null)
-                        scale[ria_index] = Scale.scaleFactory(config.annuity_zero_factor * consume_max_estimate, config.annuity_scaling_factor);
+                        scale[ria_index] = Scale.scaleFactory(config.annuity_zero_factor * consume_max_estimate, 0, config.ria_high, true, config.annuity_scaling_factor, false);
                 if (nia_index != null)
-                        scale[nia_index] = Scale.scaleFactory(config.annuity_zero_factor * consume_max_estimate, config.annuity_scaling_factor);
+                        scale[nia_index] = Scale.scaleFactory(config.annuity_zero_factor * consume_max_estimate, 0, config.nia_high, true, config.annuity_scaling_factor, false);
 
                 // Calculated parameters.
 
-                tp_high = config.map_max_factor * tp_max_estimate;
                 success_mode_enum = Metrics.to_enum(config.success_mode);
                 interpolation_ce = config.interpolation_ce && (success_mode_enum == MetricsEnum.COMBINED);
 
@@ -1671,6 +1674,8 @@ public class Scenario
 
                 vw_strategy = config.vw_strategy;
                 vw_percent = config.vw_percentage;
+
+                aa_constraint = (config.min_safe_aa != Double.NEGATIVE_INFINITY || config.min_safe_abs != Double.NEGATIVE_INFINITY || config.max_safe_abs != Double.POSITIVE_INFINITY || config.min_safe_le != Double.NEGATIVE_INFINITY);
 
                 // Sanity checks.
                 assert(validate_age < config.start_age + ss.max_years);
@@ -1694,7 +1699,7 @@ public class Scenario
                         assert(config.aa_offset.length == normal_assets);
                         assert(Math.abs(Utils.sum(config.aa_offset)) < 1e-6);
                 }
-                assert(!config.assume_ce_linear || (config.utility_consume_fn.equals("power") && !config.utility_join && (config.public_assistance == 0)));
+                assert(!config.assume_ce_linear || (config.utility_consume_fn.equals("power") && !config.utility_join && (config.public_assistance == 0) && !aa_constraint));
 
                 // More internal parameters.
 
@@ -1723,8 +1728,10 @@ public class Scenario
                         nia_aa_index = this.asset_classes.size();
                         this.asset_classes.add("[nia]");
                 }
-                spend_fract_index = this.asset_classes.size();
-                this.asset_classes.add("[spend_fract]");
+                consume_index = this.asset_classes.size();
+                        // Consume index represents an absolute portofilio size not a proportion of the consumable amount.
+                        // This allows us to sparsely linear interpolate for a CRRA utility function.
+                this.asset_classes.add("[consume]");
                 all_alloc = this.asset_classes.size();
                 ef_index = -1;
                 if (!config.ef.equals("none"))

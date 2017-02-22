@@ -79,12 +79,11 @@ public class Config
         public double annuity_zero_factor = 0.000002; // Taxable immediate annuity payout buckets this much of consume_max_est appart at payout 0.
                // Should be comparable to tp_annuity_factor in value after adjusting for maximal annuity price.
 
-        public double scaling_factor = 1.2; // Successive portfolio buckets this much larger.
-               // This can be set quite a bit higher without affecting map metrics.
-               // However the path metric will start to suffer.
+        public double scaling_factor = 1.05; // Successive portfolio buckets this much larger.
+               // This can be set quite a bit higher for power utility when using interpolate_ce without affecting map metrics.
+               // When set too high the path metric will start to suffer.
                // We set it low to allow validate_draw='bootstrap' bootstrap_block_size=0 map_headroom=null generation validation.
-               // Old comment: pre-interpolate_ce value was 1.05.
-               // Very old comment: pre-spline value was 1.002; above 1.01 aa plots start to become pixelated.
+               // Old comment: pre-spline value was 1.002; above 1.01 aa plots start to become pixelated.
         public double annuity_scaling_factor = 1.005; // Successive immediate annuity buckets this much larger.
                // Smaller than scaling_factor because by default we use spline-linear interpolation.
 
@@ -195,7 +194,7 @@ public class Config
         public double min_safe_le = Double.NEGATIVE_INFINITY; // Minimum safe_aa holding plus annuity values divided by then life expectancy.
         public double min_safe_until_age = 999; // Don't enforce min_safe constraints at or beyond this age.
 
-        public int spend_steps = 10000; // Number of portfolio expenditure steps.
+        public double spend_steps = 10000; // Number of portfolio expenditure steps.
 
         public String vw_strategy = "sdp";
                 // Variable withdrawal strategy to use.
@@ -258,8 +257,7 @@ public class Config
         public String interpolation3 = "spline"; // How to interpolate non-grid 3 dimensional p values.
                 // "spline" - cubic spline interpolation.
 
-        public boolean negative_p = true; // Allow negative portfolio values to result in zero consumption which turns into negative infinities versus utilized reduced consumption when p near zero.
-                // At some point delete negetive_p = false code path.
+        public boolean negative_p = false; // Allow temporarily negative portfolio values.
         public Double map_headroom = 1e-9; // Amount of headroom to leave in computing optimal solution to alow for interpolation inaccuracies.
                 // Map is computed so that the probability of a lognormally distributed return exceeding expectations and producing a -Inf result is less than headroom.
                 // Headroom is only useful near terminal returns when any final wealth is being withdrawn, and a small perturbation will cause wealth to go negative.
@@ -313,9 +311,10 @@ public class Config
 
         public double map_max_factor = 8; // Multiple of tp_max_estimate at which to generate maps.
                 // Set high enough or get top left maximum return artifact.
-        public double pf_fail = 0.0; // Stop the generation process early if we reach a guaranteed failed portfolio size.
-                // For a contribution sequence other than contributions followed by withdrawals, or if we allow leverage, may need to allow a negative pf_fail value.
+        public boolean zero_bucket = false; // Whether to consider the most negative feasible wealth level possible.
+                // Including it may be problematic as the aa is undefined.
         public double retirement_number_max_factor = 10; // Generated retirement number up to this value times retirement_number_max_estimate portfolio size.
+        public double gnuplot_tp_min = 0; // Minimum taxable portfolio value to plot.
         public Double gnuplot_tp = null; // Maximum taxable portfolio value to plot.
         public Double gnuplot_consume = null; // Maximum consume value to plot.
         public Double gnuplot_annuitization = null; // Maximum annuuitization value to plot.
