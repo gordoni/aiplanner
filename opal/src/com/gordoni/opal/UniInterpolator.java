@@ -33,7 +33,7 @@ class UniInterpolator extends Interpolator
         double xval[];
         double fval[];
 
-        boolean bilinear = false;
+        boolean linear = false;
         double xintercept;
         double slope;
         PolynomialSplineFunction f;
@@ -42,9 +42,9 @@ class UniInterpolator extends Interpolator
         public double value(double[] p)
         {
                 double x_init = p[0];
-                if (bilinear)
+                if (linear)
                 {
-                        double f = fval[1] + (x_init - xval[1]) * slope;
+                        double f = fval[0] + (x_init - xval[0]) * slope;
                         return f;
                 }
                 double xmin = xval[0];
@@ -114,8 +114,7 @@ class UniInterpolator extends Interpolator
                         double val = getWhat(me, what);
                         // Spline blows up into NaNs if it contains infinities.
                         // This can occur for utility metrics, which we set to -Infinity when consume = 0.
-                        // We want to continue to interpolate the aa splines as the aa values may reflect min_safe constraints.
-                        if ((0 <= what && what < scenario.normal_assets) || (getWhat(me, scenario.consume_index) != 0))
+                        if (getWhat(me, scenario.consume_index) != 0)
                         {
                                 fval[xindex] = val;
                         }
@@ -138,10 +137,16 @@ class UniInterpolator extends Interpolator
 
                 if (config.assume_ce_linear)
                 {
-                        bilinear = true;
+                        linear = true;
                         assert(what != metric_interp_index);
-                        assert(xval.length == 2);
-                        slope = (fval[1] - fval[0]) / (xval[1] - xval[0]);
+                        assert(xval.length == 1);
+                        double risk_free_alloc = (mp.period + 1 < mp.map.map.length ? mp.map.map[mp.period + 1].min_feasible : 0);
+                        if (what == spend_interp_index)
+                                slope = 1;
+                        else if ((0 <= what) && (what < scenario.normal_assets) && (scenario.asset_classes.get(what).equals("risk_free") || scenario.asset_classes.get(what).equals("risk_free2")))
+                                slope = (fval[0] - risk_free_alloc) / (xval[0] - mp.min_feasible);
+                        else
+                                slope = (fval[0] - 0) / (xval[0] - mp.min_feasible);
                 }
                 else if (config.interpolation1.equals("linear"))
                 {

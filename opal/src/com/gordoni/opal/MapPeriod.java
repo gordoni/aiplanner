@@ -33,6 +33,7 @@ class MapPeriod implements Iterable<MapElement>
         public AAMap map;
         public int period;
         public double age;
+        public double min_feasible;
 
         private MapElement[] mp;
 
@@ -80,6 +81,14 @@ class MapPeriod implements Iterable<MapElement>
 
         public void interpolate(boolean generate)
         {
+                double min_feasible;
+                if (period + 1 < map.map.length)
+                        min_feasible = map.map[period + 1].min_feasible;
+                else
+                        min_feasible = 0;
+                min_feasible += mp[0].rps[scenario.tp_index] - mp[0].spend; // Compute negative of income, any bucket will do.
+                this.min_feasible = min_feasible;
+
                 if (generate)
                         if (scenario.interpolation_ce)
                                 ce_interp = Interpolator.factory(this, generate, Interpolator.ce_interp_index);
@@ -97,7 +106,6 @@ class MapPeriod implements Iterable<MapElement>
 
                 double metric_sm = Double.NaN;
                 double spend = Double.NaN;
-                double consume = Double.NaN;
                 double annuitize = 0;
                 double first_payout = 0;
 
@@ -119,9 +127,12 @@ class MapPeriod implements Iterable<MapElement>
                 if (!fast_path || !generate)
                 {
                         spend = spend_interp.value(p); // Only needed on non-generate fast path to compute aa[] below.
+                        double consume = aa_interp[scenario.consume_index].value(p);
+                        if (consume < 0)
+                                consume = 0;
 
                         double[] aa = me.aa;
-                        double allocatable = spend - aa_interp[scenario.consume_index].value(p); // Incorect if annuities are present, but OK since just used to improve interpolation.
+                        double allocatable = spend - consume; // Incorect if annuities are present, but OK since just used to improve interpolation.
                         if (allocatable != 0)
                         {
                                 double sum = 0;
@@ -137,23 +148,19 @@ class MapPeriod implements Iterable<MapElement>
                         }
                         else
                                 aa = scenario.guaranteed_safe_aa();
-                        boolean in_range = true;
-                        for (int i = 0; i < scenario.normal_assets; i++)
-                        {
-                                if (!((config.min_aa < aa[i]) && (aa[i] < config.max_aa)))
-                                        in_range = false;
-                        }
-                        if (!in_range)
-                                aa = scenario.inc_dec_aa_raw(aa, -1, 0, p, period);
+                        aa = scenario.inc_dec_aa_raw(aa, -1, 0, p, period); // Respect aa constraints.
                         for (int i = scenario.normal_assets; i < scenario.all_alloc; i++)
                         {
-                                double alloc = aa_interp[i].value(p);
-                                if (alloc < 0)
-                                        alloc = 0;
-                                if (i != scenario.consume_index)
+                                double alloc;
+                                if (i == scenario.consume_index)
+                                        alloc = consume;
+                                else
                                 {
+                                        alloc = aa_interp[i].value(p);
                                         if (alloc > 1)
                                                 alloc = 1;
+                                        if (alloc < 0)
+                                                alloc = 0;
                                 }
                                 aa[i] = alloc;
                         }

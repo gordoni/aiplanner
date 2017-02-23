@@ -20,29 +20,23 @@ package com.gordoni.opal;
 
 public class Sparse_scale extends Scale
 {
-        private double low;
         private double high;
 
         public Sparse_scale(double zero_bucket_size, double max_value)
         {
                 super(zero_bucket_size);
-                this.low = max_value / 100;
                 this.high = max_value;
                 this.first_bucket = 0;
-                this.num_buckets = 2;
+                this.num_buckets = 1;
         }
 
         public double bucket_to_pf(int bucket)
         {
-                if (bucket == 0)
-                        return high;
-                else
-                        return low;
+                return high;
         }
 
         public double pf_to_fractional_bucket(double pf)
         {
-                assert(false);
-                return -1;
+                return 0;
         }
 }
