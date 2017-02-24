@@ -36,37 +36,71 @@ public class AAMapGenerate extends AAMap
         {
                 double[] p = scenario.bucketToP(bucket);
 
+                List<SearchResult> simulate_results = null;
+                if (!config.skip_dump_log && !config.conserve_ram)
+                        simulate_results = new ArrayList<SearchResult>();
+
+                MapElement me = new MapElement(p, null, null, simulate_results, null);
+
+                return me;
+        }
+
+        private double[] extrapolate(double[] current, double[] prior)
+        {
+                if (current == null)
+                        return null;
+                else if (prior == null)
+                        return current;
+                else
+                {
+                        double[] aa = new double[scenario.asset_classes.size()];
+                        for (int a = 0; a < aa.length; a++)
+                                aa[a] = current[a] - (prior[a] - current[a]);
+                        return aa;
+                }
+        }
+
+        private boolean aa_invalid(MapElement me)
+        {
+                return (me != null) && (me.aa[scenario.consume_index] == me.consumable(scenario)); // Avoid getting stuck by using an aa when the aa used didn't matter.
+        }
+
+        // Generate a good hint of where to start the aa search.
+        private void new_aa(int[] bucket, MapElement me, int period, MapElement sibling, MapElement prior_sibling)
+        {
                 double[] aa = null;
-                int pi = period;
+
                 boolean safe_search = false;
-                if (!config.search.equals("all"))
-                        if (pi + 1 < map.length)
+                if (config.search.equals("all"))
+                        safe_search = true;
+                else
+                {
+                        MapElement older = (period + 1 < map.length ? map[period + 1].get(bucket) : null);
+                        MapElement oldest = (period + 3 < map.length ? map[period + 2].get(bucket) : null); // period + 3 since map.length - 1 aa is arbitrary, so we don't want to extrapolate from it.
+                        if (oldest != null)
                         {
-                                MapElement older = map[pi + 1].get(bucket);
-                                aa = older.aa;
-                                safe_search = (aa[scenario.consume_index] == older.consumable(scenario)); // Avoid getting stuck by using aa when aa used didn't matter.
+                                aa = extrapolate(older.aa, (oldest != null) ? oldest.aa : null);
+                                safe_search = aa_invalid(older) || aa_invalid(oldest);
+                        }
+                        else if (sibling != null)
+                        {
+                                aa = extrapolate(sibling.aa, (prior_sibling != null) ? prior_sibling.aa : null);
+                                safe_search = aa_invalid(sibling) || aa_invalid(prior_sibling);
                         }
                         else
                         {
                                 aa = scenario.guaranteed_safe_aa();
-                                aa[scenario.consume_index] = p[scenario.tp_index]; // Shortcut to full value with guaranteed income.
                         }
-                else
-                        safe_search = true;
+                        if (oldest == null)
+                                aa[scenario.consume_index] = me.rps[scenario.tp_index] + config.defined_benefit; // Shortcut to approximate value.
+                }
                 if (safe_search)
                 {
                         aa = scenario.guaranteed_safe_aa();
                         aa[scenario.consume_index] = 0;
                 }
-                aa = make_safe_aa(aa, p, period);
 
-                List<SearchResult> simulate_results = null;
-                if (!config.skip_dump_log && !config.conserve_ram)
-                        simulate_results = new ArrayList<SearchResult>();
-
-                MapElement me = new MapElement(p, aa, null, simulate_results, null);
-
-                return me;
+                me.aa = make_safe_aa(aa, me.rps, period);
         }
 
         public double search_difference(SimulateResult a, SimulateResult b)
@@ -856,12 +890,16 @@ public class AAMapGenerate extends AAMap
                                                                         }
                                                                         end = next_check;
                                                                 }
+                                                                MapElement prior_sibling = null;
+                                                                MapElement sibling = null;
                                                                 for (int elem = start; elem < end; elem++)
                                                                 {
                                                                         SearchBucket check = fcheck_list.get(elem);
                                                                         MapElement me = mp.get(check.bucket);
                                                                         double[] aa = check.aa;
-                                                                        if (aa != null)
+                                                                        if (aa == null)
+                                                                            new_aa(check.bucket, me, fperiod, sibling, prior_sibling);
+                                                                        else
                                                                                 aa = make_safe_aa(aa, me.rps, fperiod);
                                                                         boolean improve = search_hint(me, aa, fperiod, local_returns);
                                                                         // Perhaps we have only searched where were the metric was -Inf. If so try somewhere safe.
@@ -893,6 +931,8 @@ public class AAMapGenerate extends AAMap
                                                                                         }
                                                                                 }
                                                                         }
+                                                                        prior_sibling = sibling;
+                                                                        sibling = me;
                                                                 }
                                                         }
                                                         return null;

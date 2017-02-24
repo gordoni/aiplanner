@@ -312,7 +312,7 @@ class AAMap
                                 double ria_prev = ria;
                                 double nia_prev = nia;
 
-                                double amount_annual; // Contribution/withdrawal amount.
+                                double amount_annual;
                                 boolean retired = period + y >= (config.retirement_age - config.start_age) * returns.time_periods;
                                 boolean compute_utility = !config.utility_retire || retired;
 
@@ -331,7 +331,7 @@ class AAMap
                                                         spend_annual += rcr;
                                                         rcr *= rcr_step;
                                                 }
-                                                amount_annual = - spend_annual;
+                                                amount_annual = income - spend_annual;
                                         }
                                         else
                                         {
@@ -341,13 +341,13 @@ class AAMap
                                                         retire = true;
                                                 }
                                                 spend_annual = spend_retirement;
-                                                amount_annual = - spend_annual;
+                                                amount_annual = income - spend_annual;
                                         }
                                 }
                                 else
                                 {
                                         spend_annual = config.floor;
-                                        amount_annual = rcr;
+                                        amount_annual = income + rcr;
                                         rcr *= rcr_step;
                                 }
 
@@ -406,18 +406,18 @@ class AAMap
                                         amount_annual += first_payout;
 
                                 // Recieve income before investing.
-                                p += income / returns.time_periods;
+                                p += amount_annual / returns.time_periods;
 
-                                p += amount_annual / returns.time_periods; // Done separtely to avoid fp imprecision.
-                                amount_annual += income;
-
-                                if (!generate && variable_withdrawals && (y == max_periods - 1))
+                                if (!generate && variable_withdrawals)
                                 {
                                         // Consume/unconsume any rounding errors from interpolation.
-                                        // Rounding errors can be large as a result of the very large asset allocations when allocatable assets is close to zero.
-                                        consume_annual += p;
-                                        amount_annual -= p;
-                                        p = 0;
+                                        if ((!config.negative_p && p < 0) || (y == max_periods - 1))
+                                        {
+                                                // Rounding errors can be large as a result of the very large asset allocations when allocatable assets is close to zero.
+                                                consume_annual += p;
+                                                amount_annual -= p;
+                                                p = 0;
+                                        }
                                 }
 
                                 // Invest after computing consumption, so that the reported consumption amount is a constant.

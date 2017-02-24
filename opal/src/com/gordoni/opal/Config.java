@@ -43,7 +43,7 @@ public class Config
         public boolean debug_till_end = false; // Whether to plot until the final year or display graphs only through age 99.
 
         public int tasks_generate = 100; // Break generation into this many concurrent tasks.
-        public int bucket_groups_per_task = 1; // Process this many buckets at a time.
+        public int bucket_groups_per_task = 3; // Process this many buckets at a time.
         public int tasks_validate = 500; // Break validation into this many concurrent tasks.
                 // Changing this value will alter the results due to different random number generators being used for each task.
         public int workers = Runtime.getRuntime().availableProcessors(); // Number of worker threads to use.
@@ -312,7 +312,7 @@ public class Config
 
         public double map_max_factor = 8; // Multiple of tp_max_estimate at which to generate maps.
                 // Set high enough or get top left maximum return artifact.
-        public boolean zero_bucket = false; // Whether to consider the most negative feasible wealth level possible.
+        public boolean zero_bucket = false; // When allowing negative_p whether to generate a zero wealth bucket.
                 // Including it may be problematic as the aa is undefined.
         public double retirement_number_max_factor = 10; // Generated retirement number up to this value times retirement_number_max_estimate portfolio size.
         public double gnuplot_tp_min = 0; // Minimum taxable portfolio value to plot.
