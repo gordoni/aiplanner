@@ -1699,7 +1699,9 @@ public class Scenario
                         assert(config.aa_offset.length == normal_assets);
                         assert(Math.abs(Utils.sum(config.aa_offset)) < 1e-6);
                 }
-                assert(!config.assume_ce_linear || (config.utility_consume_fn.equals("power") && (asset_classes.contains("risk_free") || asset_classes.contains("risk_free2")) && !config.utility_join && (config.public_assistance == 0) && !aa_constraint));
+                assert(!config.assume_ce_linear ||
+                    (config.utility_consume_fn.equals("power") && (asset_classes.contains("risk_free") || asset_classes.contains("risk_free2")) && !config.utility_join && (config.public_assistance == 0) &&
+                        config.negative_p && !aa_constraint && (ria_index == null) && (nia_index == null)));
 
                 // More internal parameters.
 

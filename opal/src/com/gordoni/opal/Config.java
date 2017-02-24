@@ -305,8 +305,9 @@ public class Config
         public int utility_steps = 1000;  // Utility cache steps.
                 // Cutoff at utility_cutoff. For utility_eta == 2.0, utility_cutoff linear units are equal in size to all utility above utility_cutoff.
         public boolean assume_ce_linear = false; // Assume certainty equivalent is a linear function of portfolio size.
-                // Provides a major speedup by computing certainty equivalence at just a few portfolio sizes and extrapolating.
-                // Can only be used for power utility without utility_join and no min/max safe constraints.
+                // Provides a major speedup by computing certainty equivalence at just one portfolio size and extrapolating.
+                // Can only be used for power utility without utility_join, risk free, negative_p, and no min/max safe constraints.
+                // Should give the same results as Merton's analytical solution after taking into account future guaranteed income.
         public double rebalance_band_hw = 0.0; // During validation and non-single step generation rebalance everything if an asset class is this far or greater from its target value.
 
         public double map_max_factor = 8; // Multiple of tp_max_estimate at which to generate maps.
