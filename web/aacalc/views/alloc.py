@@ -65,8 +65,8 @@ growth_pctl_no_db = 43
 # No enums until Python 3.4.
 stocks_index = 0
 bonds_index = 1
-contrib_index = 2
-risk_free_index = 3
+risk_free_index = 2
+contrib_index = 3
 existing_annuities_index = 4
 new_annuities_index = 5
 home_equity_index = 6
@@ -208,8 +208,6 @@ class Alloc:
             'mortgage_payment': 0,
             'contribution_growth_pct': Decimal('5.0'),
             'contribution_vol_pct': Decimal('20.0'),
-            'equity_contribution_corr_pct': Decimal('0.0'),
-            'bonds_contribution_corr_pct': Decimal('0.0'),
             'home': 0,
             'home_ret_pct': Decimal('1.0'),
             'home_vol_pct': Decimal('5.0'),
@@ -341,11 +339,11 @@ class Alloc:
 
         return sched
 
-    def npv_contrib(self, d):
+    def npv_contrib(self):
 
         payout_delay = 0
 
-        schedule = self.schedule_range((1 + self.contribution_growth) / (1.0 + d))
+        schedule = self.schedule_range(1 + self.contribution_growth)
 
         # Restrict size of life table rather than using period_certain for speed.
         life_table = LifeTable('live', 'male', 0, death_age = self.pre_retirement_years)
@@ -604,7 +602,7 @@ class Alloc:
                     discounted_sum_annual = discounted_sum / 12.0
                     try_tenure = try_credit_line / discounted_sum_annual
                     try_tenure_vol = try_credit_line_vol / discounted_sum_annual
-                    try_nv_tenure_factor += npv_credit_factor(try_delay, 0) / 12.0
+                    try_nv_tenure_factor += npv_credit_factor(try_delay, 0)
 
                     try_nv_tenure = try_nv_tenure_factor * try_tenure
                     try_tenure_vol *= try_nv_tenure_factor
@@ -696,11 +694,9 @@ class Alloc:
             w[bonds_index] ** 2 * bonds_vol ** 2 + \
             w[risk_free_index] ** 2 * lm_bonds_vol ** 2 + \
             w[home_equity_index] ** 2 * self.home_equity_vol ** 2 + \
-            2 * w[contrib_index] * w[stocks_index] * self.cov_ec2 + \
-            2 * w[contrib_index] * w[bonds_index] * self.cov_bc2 + \
             2 * w[stocks_index] * w[bonds_index] * self.cov_eb2 + \
             2 * w[bonds_index] * w[risk_free_index] * cov_bl2
-            # risk_free and home_equity covariances assumed zero against other asset classes.
+            # contribution, risk_free, and home_equity covariances assumed zero against other asset classes.
         total_vol = sqrt(total_var)
 
         total_geometric_ret = self.geomean(1 + total_ret, total_vol) - 1
@@ -824,21 +820,14 @@ class Alloc:
         w_fixed = [0] * num_index
         w_fixed[stocks_index] = min(max(0, w_prime[stocks_index] * (1 - annuitize[stocks_index])), 1)
         w_fixed[bonds_index] = min(max(0, w_prime[bonds_index] * (1 - annuitize[bonds_index])), 1)
+        w_fixed[contrib_index] = w_prime[contrib_index]
+        w_fixed[existing_annuities_index] = w_prime[existing_annuities_index]
         w_fixed[risk_free_index] = min(max(0, w_prime[risk_free_index] * (1 - annuitize[risk_free_index])), 1)
-
-        try:
-            w_fixed[contrib_index] = self.nv_contributions / abs(results['nv'])
-        except ZeroDivisionError:
-            w_fixed[contrib_index] = 1
 
         if results['nv'] >= 0:
             alloc_db = 1 - sum(w_fixed)
         else:
             alloc_db = -1 - sum(w_fixed)
-        try:
-            w_fixed[existing_annuities_index] = results['nv_db'] / abs(results['nv'])
-        except ZeroDivisionError:
-            w_fixed[existing_annuities_index] = 0
         try:
             w_utilized_home = results['nv_utilized_home'] / abs(results['nv'])
         except:
@@ -846,7 +835,7 @@ class Alloc:
         rm_drawdown = results['using_reverse_mortgage'] and results['credit_line_age'] <= self.age
         w_fixed[home_equity_index] = 0 if rm_drawdown else w_utilized_home
         new_tenure = w_utilized_home if rm_drawdown and results['rm_tenure'] else 0
-        existing_safe = w_fixed[existing_annuities_index] + w_fixed[home_equity_index] + new_tenure
+        existing_safe = w_fixed[home_equity_index] + new_tenure
         if self.needed_income != None:
             try:
                 required_safe = self.discounted_retirement_le_annuity / mwr * \
@@ -854,7 +843,7 @@ class Alloc:
             except ZeroDivisionError:
                 required_safe = float('inf')
             required_safe += existing_safe
-            required_safe = min(required_safe, 1 - w_fixed[contrib_index])
+            required_safe = min(required_safe, 1 - w_fixed[contrib_index] - w_fixed[existing_annuities_index])
         else:
             required_safe = float('-inf')
         if purchase_income_annuity:
@@ -925,70 +914,38 @@ class Alloc:
         equity_gm = self.geomean(1 + rets[stocks_index], self.equity_vol) - 1
         bonds_gm = self.geomean(1 + rets[bonds_index], self.bonds_vol) - 1
 
-        if mode == 'aa' and self.nv_contributions != 0 and self.contribution_vol > 0:
-            # Avoid contribution_vol == 0 as covariance matrix inverse fails becasue matrix is singular.
-            lo = -0.5
-            hi = 0.5
-            for _ in range(50):
-                future_growth_try = (lo + hi) / 2.0
-                discounted_contrib, _ = self.npv_contrib(future_growth_try)
-                contrib_ratio = discounted_contrib / self.nv_contributions
-                sigma_matrix = (
-                    (self.equity_vol ** 2, self.cov_eb2, contrib_ratio * self.cov_ec2),
-                    (self.cov_eb2, self.bonds_vol ** 2, contrib_ratio * self.cov_bc2),
-                    (contrib_ratio * self.cov_ec2, contrib_ratio * self.cov_bc2, (contrib_ratio * self.contribution_vol) ** 2)
-                )
-                # Merton's alpha and r are instantaneous expected rates of return.
-                #
-                # Comparing:
-                #
-                #    MERTON: Merton's Lifetime Portfolio Selection Under Uncertainty
-                #    GBM: https://en.wikipedia.org/wiki/Geometric_Brownian_motion
-                #    LND: https://en.wikipedia.org/wiki/Log-normal_distribution
-                #
-                # alphaMERTON = muGBM = muLND + sigmaLND ** 2 / 2 = log(1 + mean(annual_return_rate))
-                #
-                # This last equality being derived from the definitions of mu and sigma in LND in terms of m and v.
-                #
-                # Can thus convert mean annual rates to instantaneous expected rates by taking logs.
-                alpha = (log(1 + rets[stocks_index]), log(1 + rets[bonds_index]), log(1 + future_growth_try))
-                w = list(self.solve_merton(self.gamma, sigma_matrix, alpha, log(1 + self.lm_bonds_ret)))
-                w.append(1 - sum(w))
-                npv_discounted = results['nv'] - self.nv_contributions + discounted_contrib
-                try:
-                    wc_discounted = discounted_contrib / npv_discounted
-                except ZeroDivisionError:
-                    wc_discounted = 0
-                if hi - lo < 0.000001:
-                    break
-                if wc_discounted > w[contrib_index]:
-                    lo = future_growth_try
-                else:
-                    hi = future_growth_try
-            wc = w[contrib_index]
-            try:
-                w_prime = list(wi * (1 - self.nv_contributions / results['nv']) / (1 - wc) for wi in w)
-            except ZeroDivisionError:
-                w_prime = list(0 for _ in w)
-            w_prime[contrib_index] = 0
-            w_prime[contrib_index] = 1 - sum(w_prime)
-        else:
-            future_growth_try = 0
-            discounted_contrib = self.nv_contributions
-            try:
-                wc_discounted = discounted_contrib / results['nv']
-            except ZeroDivisionError:
-                wc_discounted = 0
-            sigma_matrix = (
-                (self.equity_vol ** 2, self.cov_eb2),
-                (self.cov_eb2, self.bonds_vol ** 2),
-            )
-            alpha = (log(1 + rets[stocks_index]), log(1 + rets[bonds_index]))
-            w = list(self.solve_merton(self.gamma, sigma_matrix, alpha, log(1 + self.lm_bonds_ret)))
-            w.append(wc_discounted)
-            w.append(1 - sum(w))
-            w_prime = list(w)
+        sigma_matrix = (
+            (self.equity_vol ** 2, self.cov_eb2),
+            (self.cov_eb2, self.bonds_vol ** 2),
+        )
+        alpha = (log(1 + rets[stocks_index]), log(1 + rets[bonds_index]))
+            # Merton's alpha and r are instantaneous expected rates of return.
+            #
+            # Comparing:
+            #
+            #    MERTON: Merton's Lifetime Portfolio Selection Under Uncertainty
+            #    GBM: https://en.wikipedia.org/wiki/Geometric_Brownian_motion
+            #    LND: https://en.wikipedia.org/wiki/Log-normal_distribution
+            #
+            # alphaMERTON = muGBM = muLND + sigmaLND ** 2 / 2 = log(1 + mean(annual_return_rate))
+            #
+            # This last equality being derived from the definitions of mu and sigma in LND in terms of m and v.
+            #
+            # Can thus convert mean annual rates to instantaneous expected rates by taking logs.
+        w = list(self.solve_merton(self.gamma, sigma_matrix, alpha, log(1 + self.lm_bonds_ret)))
+        w.append(1 - sum(w))
+        w_prime = list(w)
         w_prime = list(max(0, wi) for wi in w_prime)
+        try:
+            contributions = self.nv_contributions / abs(results['nv'])
+        except ZeroDivisionError:
+            contributions = 1
+        w_prime.append(contributions)
+        try:
+            existing_annuities = results['nv_db'] / abs(results['nv'])
+        except ZeroDivisionError:
+            existing_annuities = 0
+        w_prime.append(existing_annuities)
         w_prime[risk_free_index] = 0
         w_prime[risk_free_index] = 1 - sum(w_prime)
 
@@ -1151,22 +1108,16 @@ class Alloc:
             'bonds_am_pct':'{:.1f}'.format(rets[bonds_index] * 100),
             'equity_gm_pct':'{:.1f}'.format(equity_gm * 100),
             'bonds_gm_pct':'{:.1f}'.format(bonds_gm * 100),
-            'future_growth_try_pct': '{:.1f}'.format(future_growth_try * 100),
             'w' : [{
-                'name' : 'Discounted future contributions',
-                'alloc': '{:.0f}'.format(w[contrib_index] * 100),
-            }, {
                 'name': 'Stocks',
                 'alloc': '{:.0f}'.format(w[stocks_index] * 100),
             }, {
                 'name': 'Regular bonds',
                 'alloc': '{:.0f}'.format(w[bonds_index] * 100),
             }, {
-                'name': 'Liability matching bonds, defined benefits, and home equity',
+                'name': 'Risk free assets',
                 'alloc': '{:.0f}'.format(w[risk_free_index] * 100),
             }],
-            'discounted_contrib': '{:,.0f}'.format(discounted_contrib),
-            'wc_discounted':  '{:.0f}'.format(wc_discounted * 100),
             'w_prime' : [{
                 'name' : 'Future contributions',
                 'alloc': '{:.0f}'.format(w_prime[contrib_index] * 100),
@@ -1177,7 +1128,10 @@ class Alloc:
                 'name': 'Regular bonds',
                 'alloc': '{:.0f}'.format(w_prime[bonds_index] * 100),
             }, {
-                'name': 'Liability matching bonds, defined benefits, and home equity',
+                'name': 'Defined benefits',
+                'alloc': '{:.0f}'.format(w_prime[existing_annuities_index] * 100),
+            }, {
+                'name': 'Liability matching bonds and home equity',
                 'alloc': '{:.0f}'.format(w_prime[risk_free_index] * 100),
             }],
             'annuitize_equity_pct': '{:.0f}'.format(annuitize[stocks_index] * 100),
@@ -1336,8 +1290,6 @@ class Alloc:
             self.contribution_reduction = float(data['contribution_reduction'])
             self.contribution_growth = float(data['contribution_growth_pct']) / 100
             self.contribution_vol = float(data['contribution_vol_pct']) / 100
-            self.equity_contribution_corr = float(data['equity_contribution_corr_pct']) / 100
-            self.bonds_contribution_corr = float(data['bonds_contribution_corr_pct']) / 100
         else:
             self.traditional = 0
             self.tax_rate = 0
@@ -1347,8 +1299,6 @@ class Alloc:
             self.contribution_reduction = 0
             self.contribution_growth = 0
             self.contribution_vol = 0
-            self.equity_contribution_corr = 0
-            self.bonds_contribution_corr = 0
         if mode != 'aa':
             self.required_income = float(data['required_income'])
         self.home = float(data['home'])
@@ -1395,7 +1345,7 @@ class Alloc:
         self.frequency = 12 # Monthly. Makes accurate, doesn't run significantly slower.
         self.cpi_adjust = 'calendar'
 
-        self.nv_contributions, self.ret_contributions = self.npv_contrib(0)
+        self.nv_contributions, self.ret_contributions = self.npv_contrib()
 
         display_db, self.nv_db = self.value_table_db()
         npv_results, npv_display = self.value_table(self.nv_db, self.npv_taxable)
@@ -1433,8 +1383,6 @@ class Alloc:
         self.lm_bonds_vol = 0
 
         self.equity_bonds_corr = float(data['equity_bonds_corr_pct']) / 100
-        self.cov_ec2 = self.equity_vol * self.contribution_vol * self.equity_contribution_corr ** 2
-        self.cov_bc2 = self.bonds_vol * self.contribution_vol * self.bonds_contribution_corr ** 2
         self.cov_eb2 = self.equity_vol * self.bonds_vol * self.equity_bonds_corr ** 2
         self.cov_bl2 = 0
         self.cov_bl2_short = self.bonds_vol_short * self.lm_bonds_vol_short * self.bonds_lm_bonds_corr_short ** 2

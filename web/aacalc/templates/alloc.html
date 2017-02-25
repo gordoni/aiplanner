@@ -300,11 +300,6 @@ Real growth rate: {{ alloc_form.contribution_growth_pct }}%
 Annual volatility: {{ alloc_form.contribution_vol_pct }}%
 {{ alloc_form.contribution_growth_pct.errors }}
 {{ alloc_form.contribution_vol_pct.errors }}
-<br />
-Correlation with equity returns: {{ alloc_form.equity_contribution_corr_pct }}%
-Correlation with bond returns: {{ alloc_form.bonds_contribution_corr_pct }}%
-{{ alloc_form.equity_contribution_corr_pct.errors }}
-{{ alloc_form.bonds_contribution_corr_pct.errors }}
 <div class="small">
 Contributions and mortgage payments (below) are combined on the
 assumption that once the mortgage is paid off the additional funds
@@ -1158,6 +1153,7 @@ for the portfolio size that gives close to the desired level of consumption:
 Total portfolio value excluding defined benefits: {{ calc.npv_display.nv_investments }}
 
 <br />
+<br />
 
 {% elif mode == 'retire' %}
 
@@ -1171,25 +1167,13 @@ consumption:
 Retirement age: {{ calc.retirement_age }}
 
 <br />
+<br />
 
 {% endif %}
 
-Total net present value: {{ calc.npv_display.nv }}
-
-<br />
-<br />
-
 {% if mode != 'number' %}
 
-By trial and error we determined that we should assume a future
-contributions discount rate relative to the real interest rate, d =
-{{ calc.future_growth_try_pct }}%
-
-<br />
-<br />
-
-Using d as the rate of return for discounted future contributions
-gives the following recommended asset allocation:
+Merton's formula gives the following recommended asset allocation:
 
 <table class="table-lined center">
 {% for w in calc.w %}
@@ -1200,13 +1184,13 @@ gives the following recommended asset allocation:
 {% endfor %}
 <tr>
 <td colspan=2 class="small left">
-Computed assuming liability matching bonds, defined benefits, and home
-equity are risk free using the matrix
-<br />
-version
+Computed assuming liability matching bonds, future contributions,
+defined benefits, and home equity are risk free using the matrix
+<br /> version
 of <a href="https://en.wikipedia.org/wiki/Merton's_portfolio_problem">Merton's
-formula</a>. The returns and volatility of home equity may differ
-somewhat from this assumption.
+formula</a>. The volatility of future contributions and the returns
+and volatility of home equity may differ somewhat from this
+assumption.
 </td>
 </tr>
 </table>
@@ -1219,24 +1203,8 @@ We will eliminate them later.
 <br />
 <br />
 
-Discounted value of future contributions: {{ calc.discounted_contrib }}
-
-<br />
-
-Discounted future contributions as a proportion of adjusted total NPV: {{ calc.wc_discounted }}%
-
-<br />
-<br />
-
-The percentage holdings of discounted future contributions matches the
-recommended percentage shown in the table above. This is as it should
-be, since we can neither buy nor sell future contributions.
-
-<br />
-<br />
-
 Adjusting the recommended asset allocation for future contributions
-when they are discounted at the real interest rate gives:
+and defined benefits gives:
 
 {% else %}
 
@@ -1285,7 +1253,7 @@ holding type that we recommend be annuitized.
 
 <br />
 
-Adjusting for any existing defined benefits, any income annuity
+Adjusting for any income annuity
 purchases, home equity, the substitution of regular bonds for liability matching
 bonds, and the possibility of winning or losing the game, produces the
 following recommendations.

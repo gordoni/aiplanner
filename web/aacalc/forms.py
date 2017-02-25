@@ -797,14 +797,6 @@ class AllocContribForm(AllocBaseForm):
     contribution_vol_pct = DecimalField(
         widget=TextInput(attrs={'class': 'percent_input'}),
         min_value=0)
-    equity_contribution_corr_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=-99,
-        max_value=99) # 100 fails.
-    bonds_contribution_corr_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=-99,
-        max_value=99) # 100 fails.
 
 class AllocRetirementForm(AllocBaseForm):
 
