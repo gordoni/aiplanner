@@ -384,7 +384,7 @@ public class Returns implements Cloneable
                 if (start >= 0)
                 {
                         cpi_returns = new ArrayList<Double>();
-                        for (int year = start_year; year <= end_year; year++)
+                        for (int year = start_year; year <= ((end_year == null) ? hist.initial_year + count - 1 : end_year); year++)
                         {
                                 int i = (year - hist.initial_year) * 12 + 12;
                                 double cpi_d = hist.cpi_index.get(i) / hist.cpi_index.get(i - 12);

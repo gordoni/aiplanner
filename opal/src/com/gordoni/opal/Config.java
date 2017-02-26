@@ -494,7 +494,7 @@ public class Config
         public boolean ret_short_block = true; // Make return probabilities uniform by allowing short blocks.
                 // Short blocks may be generated from the beginning and end of the original returns sequence, and for the initial block of the generated sequence.
         public int generate_start_year = 1927;
-        public Integer generate_end_year = 2015; // None for until end of data.
+        public Integer generate_end_year = 2016; // None for until end of data.
         public String sex = "male"; // Death probabilities. 'male', 'female', or 'person'.
         public String sex2 = null; // Sex of second person in a couple, or None for an individual.
         public double le_add = 0; // Multiplicatively adjust q values to extend life expectancy of first person by le_add years.
@@ -533,7 +533,7 @@ public class Config
         public String target_shuffle = "all";
         public String target_draw = "log_normal";
         public int target_start_year = 1927;
-        public Integer target_end_year = 2015; // None for until end of data.
+        public Integer target_end_year = 2016; // None for until end of data.
         public boolean target_short_block = true;
 
         public List<String> compare_aa = new ArrayList<String>(Arrays.asList("age_in_bonds", "age_minus_10_in_bonds", "target_date"));
@@ -568,7 +568,7 @@ public class Config
         // would be difficult, so we assume all returns are from a
         // single era.
         public int validate_start_year = 1927;
-        public Integer validate_end_year = 2015; // None for until end of data.
+        public Integer validate_end_year = 2016; // None for until end of data.
 
         public int generate_seed = 0; // Random seed used for generate shuffle.
         public int target_seed = 1; // Random seed used for target shuffle.
