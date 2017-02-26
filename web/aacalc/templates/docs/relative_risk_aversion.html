@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% comment %}
+
+AACalc - Asset Allocation Calculator
+Copyright (C) 2009, 2011-2017 Gordon Irlam
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+{% endcomment %}
+
+{% block title %}Estimating the Coefficient of Relative Risk Aversion for Consumption{% endblock %}
+
+{% block content %}
+
+<div class="doc">
+
+<h1>Estimating the Coefficient of Relative Risk Aversion for Consumption</h1>
+
+<p>
+The coefficient of relative risk aversion for consumption is an
+important parameter that plays a key role in asset allocation, and
+helps determine how much to allocate to stocks versus how much to
+allocate to a risk free asset such as cash.
+</p>
+
+<p>
+Despite its importance, even at a glance there appears considerable
+uncertainty regarding its value. For instance one researcher reports
+(Choi et al., "Is Relative Risk Aversion Greater Than One?"):
+</p>
+
+<p class="bubble">
+Davies (1981) concludes that his “best guess” estimate of the value of
+relative risk aversion is between 3 and 4.  Binswanger’s (1981)
+experimental investigation suggests considerably higher values for
+relative risk aversion.  He finds that relative risk aversion ranges
+from between 1 and 2 to over 1000, depending on the gamble
+size. ... Schluter and Mount’s estimates range from 0.05 to 3, with an
+average value of 0.8.  Similarly, Hansen and Singleton’s estimates
+range from 0.17 to 1.36, with five out of six estimates being smaller
+than unity.  Using bond return data, Ferson (1983) reports a range
+from -1.4 to 5.4.
+</p>
+
+<p>
+Part of the confusion can be put down to three factors:
+</p>
+
+<ul>
+
+<li>
+<p>
+A significant fraction of the work on relative risk aversion is
+concerned with the relative risk aversion of wealth (W), rather than
+consumption (C). This is expanded on by Meyer and Meyer (Meyer and
+Meyer, "Relative Risk Aversion: What Do We Know?") and in their book
+(Meyer and Meyer, "Measuring Risk Aversion"). Wealth as used here is
+what economists refer to as Arrow-Pratt wealth, and only includes
+assets that can be freely re-allocated.  So human capital isn't
+considered, and home equity probably only just gets considered as part
+of Arrow-Pratt wealth. Roughly 80% of income comes from labor and 20%
+from capital. If C = 0.8 + 0.2 W, then it can be shown that the
+coefficient of relative risk aversion for consumption is (0.8 + 0.2) /
+0.2 = 5 times that of the coefficient of relative risk aversion for
+wealth. This is a very crude example. It fails to consider differences
+in individual circumstances as to how wealth is distributed.
+</p>
+
+<li>
+<p>
+Relative risk aversion need not be constant, but may be a function of
+consumption or wealth.
+</p>
+
+<li>
+<p>
+Framing and mental bracketing is also important. How the question is
+asked, and the surrounding assumptions and circumstances play a key
+role in the results obtained. Asking "Would you rather receive $100,
+or a 50-50 chance of $300 or nothing?"  is meaningless without knowing
+what $100 means to the recipient.
+</p>
+
+</ul>
+
+<p>
+Estimates of the coefficient of relative risk aversion for consumption
+seem to come from four sources:
+</p>
+
+<ul>
+
+<li>
+<p>
+Estimates based on how people invest. These assume people's investment
+preferences reveal how they feel about risk. They tend to produce
+large estimates for the coefficient of relative risk aversion. They
+also lead us to a circular logic that could lead to the blind leading
+the blind. We are interested in determining the coefficient of
+relative risk aversion in order to decide how to invest, and we base
+our estimate on how people currently invest.
+</p>
+
+<li>
+<p>
+Estimates based on labor elasticity (Chetty, "A New Method of
+Estimating Risk Aversion") which find a coefficient of relative risk
+aversion of consumption of about 1. The model used assumes all income
+is consumed, with no ability to carry over wealth into future time
+periods.
+</p>
+
+<li>
+<p>
+Estimates of the value of a statistical life and expenditures that
+reduce the probability of death (Kaplow, "The Value of a Statistical
+Life and the Coefficient of Relative Risk Aversion") which also finds
+small values for the coefficient of relative risk aversion. This model
+also assumes all wealth is consumed and not carried over into the
+future.
+</p>
+
+<li>
+<p>
+Direct surveys. For instance Barsky et al. (Barsky et al., "Preference
+Parameters and Behavioral Heterogeneity: An Experimental Approach in
+The Health and Retirement Study"). In this study 13% of people
+reported a coefficient of relative risk aversion for consumption in
+the range 0 to 1, 11% reported 1 to 2, 12% reported 2 to 3.76, and 65%
+reported a coefficient of relative risk aversion for consumption
+greater than 3.76. This survey may be subject to a status quo bias in
+that recipients were not asked to report when to scenarios were equal,
+but only when one was better.
+</p>
+
+</ul>
+
+<p>
+I have been unable to resolve these conflicting results. Depending on
+which study you adopt either 1 or 4 could be a reasonable value to use
+for the coefficient of relative risk aversion for consumption. In
+favor of the smaller value is that they are based on how people
+actually behave, not how they report they will behave. In favor of the
+larger value is it would be more consistent with a coefficient of
+relative risk aversion for wealth of around 1.
+</p>
+
+<p>
+Since it is the inverse of the coefficient of relative risk aversion
+that counts, a reasonable compromise value might be 2. I currently use
+3 as a default mainly to be more compatible with others that perform
+asset allocation, who are possibly motivated by consistency with how
+people invest, and therefore often use values in the range 4 to 8.
+</p>
+
+</div>
+
+{% endblock %}
