@@ -329,7 +329,7 @@ Other assets and liabilities:
 <div class="indent">
 
 Home appraised value: {{ alloc_form.home }}
-Real growth: {{ alloc_form.home_ret_pct }}%
+Real growth rate: {{ alloc_form.home_ret_pct }}%
 Volatility: {{ alloc_form.home_vol_pct }}%
 {{ alloc_form.home.errors }}
 {{ alloc_form.home_ret_pct.errors }}
@@ -431,12 +431,20 @@ Annuitization is evaluated as a second separate pass over the input data, and is
 These are the rules for what annuitization looks like: Stocks get annuitized linearly from age 65 to 90, regular bonds get annuitized linearly from 30 to 60, and liability matching bonds get 100% annuitized if the user is older than a specific age between 40 and 50 (depending on retirement age between 50 and 70), otherwise they get 0%. The choice of ages reflects rough judgement about returns from stocks and bonds versus annuity returns including mortality credits."><img src="/static/images/Information-icon.png" alt="[?]"></a>: {{ alloc_form.purchase_income_annuity }}
 {{ alloc_form.purchase_income_anuity.errors }}
 <div class="small">
-Income annuities only make sense if you are in reasonable health.
+Income annuities only make sense if you are in reasonable health and
+are not planning on leaving an estate.
 </div>
 <br />
 Permit recommendation of a variable rate reverse mortgage:
 {{ alloc_form.use_rm }}
 {{ alloc_form.use_rm.errors }}
+<div class="small">
+Reverse mortgages only make sense if you are not planning on leaving
+an estate. Many retirees use home equity as a last resort to pay for
+long term care. If you elect to consider a reverse mortgage you should
+make sure you either have long term care insurance, or that you still
+have sufficient assets to pay for your long term care needs.
+</div>
 <div class="indent">
 <br />
 Reverse mortgage lender's margin: {{ alloc_form.rm_margin_pct }}%
@@ -874,13 +882,6 @@ the results we provide here assume you elect not to do so.
 
   {% endif %}
 
-<div class="small">
-Many retirees use home equity as a last resort to pay for long term
-care.  In taking a reverse mortgage you should make sure you either
-have long term care insurance, or that you still have sufficient
-assets to pay for your long term care needs.
-</div>
-
 <br />
 
 {% elif alloc_form.cleaned_data.use_rm %}
@@ -1077,7 +1078,7 @@ Utilized at age {{ results.present.credit_line_age }}.
 </tr>
 <tr>
 <td class="left">
-Reverse mortgage annual tenure of {{ results.present.tenure }}
+Or reverse mortgage annual tenure of {{ results.present.tenure }}
 <div class="small">
 Obtained at age {{ results.present.tenure_age }}.
 </div>
@@ -1173,8 +1174,6 @@ Retirement age: {{ calc.retirement_age }}
 
 {% endif %}
 
-{% if mode != 'number' %}
-
 Merton's formula gives the following recommended asset allocation:
 
 <table class="table-lined center">
@@ -1205,14 +1204,13 @@ We will eliminate them later.
 <br />
 <br />
 
-Adjusting the recommended asset allocation for future contributions
-and defined benefits gives:
+Adjusting the recommended asset allocation for
 
-{% else %}
-
-We calculated the following asset allocations:
-
+{% if mode != 'number' %}
+future contributions and
 {% endif %}
+
+defined benefits gives:
 
 <table class="table-lined center">
 {% for w in calc.w_prime %}
@@ -1269,7 +1267,7 @@ following recommendations.
 Inflation adjusted.
 </div>
 </td>
-<td> Real volatility </td>
+<td> Short-term volatility </td>
 <td> Liability matching volatility </td>
 </tr>
 {% for r in calc.recommend %}

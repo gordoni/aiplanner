@@ -584,9 +584,9 @@ class Alloc:
 
             tenure = 0
             nv_tenure = 0
-            delay_tenure = 0
             rm_delay = 0 if self.rm_delay == None else self.rm_delay
             plf_age_start = max(self.min_age + rm_delay, self.rm_age)
+            delay_tenure = plf_age_start - self.min_age
             for plf_age_monthly in range(int(round(self.min_age * 12)) + len(nominal_scenario.calcs) - 1, int(ceil(plf_age_start * 12)) - 1, -1):
 
                 plf_age = plf_age_monthly / 12.0
@@ -839,7 +839,7 @@ class Alloc:
         if self.needed_income != None:
             try:
                 required_safe = self.discounted_retirement_le_annuity / mwr * \
-                    (self.required_income / abs(results['nv']) - existing_safe / self.discounted_retirement_le)
+                    (self.needed_income / abs(results['nv']) - existing_safe / self.discounted_retirement_le)
             except ZeroDivisionError:
                 required_safe = float('inf')
             required_safe += existing_safe
@@ -1119,14 +1119,14 @@ class Alloc:
                 'alloc': '{:.0f}'.format(w[risk_free_index] * 100),
             }],
             'w_prime' : [{
-                'name' : 'Future contributions',
-                'alloc': '{:.0f}'.format(w_prime[contrib_index] * 100),
-            }, {
                 'name': 'Stocks',
                 'alloc': '{:.0f}'.format(w_prime[stocks_index] * 100),
             }, {
                 'name': 'Regular bonds',
                 'alloc': '{:.0f}'.format(w_prime[bonds_index] * 100),
+            }, {
+                'name' : 'Future contributions',
+                'alloc': '{:.0f}'.format(w_prime[contrib_index] * 100),
             }, {
                 'name': 'Defined benefits',
                 'alloc': '{:.0f}'.format(w_prime[existing_annuities_index] * 100),
@@ -1166,8 +1166,7 @@ class Alloc:
         }
 
         if mode == 'number':
-            result['w'].pop(0)
-            result['w_prime'].pop(0)
+            result['w_prime'].pop(2)
 
         return result
 
@@ -1207,6 +1206,7 @@ class Alloc:
             found_value['taxable'] = found_location
 
             _, npv_display = self.value_table(self.nv_db, found_location) # Recompute.
+            npv_results['nv'] = nv
 
             calc_result = found_value
 
