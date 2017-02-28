@@ -50,7 +50,7 @@ public class AAMapGenerate extends AAMap
                 if (current == null)
                         return null;
                 else if (prior == null)
-                        return current;
+                        return current.clone();
                 else
                 {
                         double[] aa = new double[scenario.asset_classes.size()];
@@ -92,7 +92,7 @@ public class AAMapGenerate extends AAMap
                                 aa = scenario.guaranteed_safe_aa();
                         }
                         if (oldest == null)
-                                aa[scenario.consume_index] = me.rps[scenario.tp_index] + config.defined_benefit; // Shortcut to approximate value.
+                                aa[scenario.consume_index] = Math.max(0, me.rps[scenario.tp_index] + config.defined_benefit); // Shortcut to approximate value.
                 }
                 if (safe_search)
                 {

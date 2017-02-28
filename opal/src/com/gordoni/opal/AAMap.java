@@ -411,7 +411,8 @@ class AAMap
                                 if (!generate && variable_withdrawals)
                                 {
                                         // Consume/unconsume any rounding errors from interpolation.
-                                        if ((!config.negative_p && p < 0) || (y == max_periods - 1))
+                                        // Small positive values are treated as rounding errors too; in the event of leverage they might become negative.
+                                        if ((!config.negative_p && p < 1e-6 * scenario.consume_max_estimate) || (y == max_periods - 1))
                                         {
                                                 // Rounding errors can be large as a result of the very large asset allocations when allocatable assets is close to zero.
                                                 consume_annual += p;
