@@ -266,8 +266,10 @@ public class AAMapGenerate extends AAMap
                 double[] best_aa;
                 if (aa == null)
                 {
-                        best_results = null;
-                        best_aa = null;
+                        SimulateResult results = search_simulate_cache(me, best.aa, p, period, returns);
+                        best.results = results;
+                        best_aa = best.aa;
+                        best_results = results;
                 }
                 else
                 {

@@ -613,7 +613,10 @@ class AAMap
                                         }
                                 }
                                 else
+                                {
                                         floor_utility = Double.NEGATIVE_INFINITY; // Infeasible. Will propagate through the system.
+                                        upside_utility = uct_u_ujp;
+                                }
                                 floor_path_utility += floor_utility;
                                 upside_path_utility += upside_utility;
                                 double consume_path_utility = floor_path_utility;

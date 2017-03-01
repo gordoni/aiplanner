@@ -677,24 +677,27 @@ public class Returns implements Cloneable
                 optimal = new double[returns.size()];
                 for (int i = 0; i < returns.size(); i++)
                 {
-                        double[] rets = returns.get(i);
-                        double am = Utils.mean(rets);
-                        double sd = Utils.standard_deviation(rets);
-                        am += 1;
-                        double gm = am / Math.sqrt(1 + Math.pow(sd / am, 2));
-                        double mu = Math.log(gm);
-                        double sigma = Math.sqrt(Math.log(1 + Math.pow(sd / am, 2)));
-                        if (sigma == 0)
+                        if (!scenario.asset_classes.get(i).equals("lm_bonds"))
                         {
-                                pessimal[i] = gm - 1;
-                                optimal[i] = gm - 1;
-                        }
-                        else
-                        {
-                                LogNormalDistribution distrib = new LogNormalDistribution(mu, sigma);
-                                pessimal[i] = distrib.inverseCumulativeProbability(config.map_headroom) - 1;
-                                optimal[i] = distrib.inverseCumulativeProbability(1 - config.map_headroom) - 1;
-                                assert(pessimal[i] != -1); // Insufficient fp precisiion.
+                                double[] rets = returns.get(i);
+                                double am = Utils.mean(rets);
+                                double sd = Utils.standard_deviation(rets);
+                                am += 1;
+                                double gm = am / Math.sqrt(1 + Math.pow(sd / am, 2));
+                                double mu = Math.log(gm);
+                                double sigma = Math.sqrt(Math.log(1 + Math.pow(sd / am, 2)));
+                                if (sigma == 0)
+                                {
+                                        pessimal[i] = gm - 1;
+                                        optimal[i] = gm - 1;
+                                }
+                                else
+                                {
+                                        LogNormalDistribution distrib = new LogNormalDistribution(mu, sigma);
+                                        pessimal[i] = distrib.inverseCumulativeProbability(config.map_headroom) - 1;
+                                        optimal[i] = distrib.inverseCumulativeProbability(1 - config.map_headroom) - 1;
+                                        assert(pessimal[i] != -1); // Insufficient fp precisiion.
+                                }
                         }
                 }
         }

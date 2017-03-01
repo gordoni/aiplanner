@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -310,7 +310,7 @@ public class HistReturns
                 BufferedReader in = buffered_reader(filename);
                 Integer init_year = null;
                 String line;
-                for (line = in.readLine(); !line.trim().equals("Average Value Weighted Returns -- Annual"); line = in.readLine())
+                for (line = in.readLine(); !line.trim().equals("Value Weight Average Returns -- Annual"); line = in.readLine())
                 {
                         ;
                 }

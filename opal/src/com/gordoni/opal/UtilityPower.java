@@ -58,7 +58,7 @@ public class UtilityPower extends Utility
                         c = offset + Math.exp((zero + u) / scale);
                 else
                 {
-                        if (zero + u >= 0)
+                        if ((eta > 1) && (zero + u >= 0))
                                 return Double.POSITIVE_INFINITY; // Extrapolation may overshoot.
                         c = offset + Math.pow((zero + u) * (1 - eta) / scale, 1 / (1 - eta));
                 }
