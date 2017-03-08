@@ -114,7 +114,7 @@ class UniInterpolator extends Interpolator
                         double val = getWhat(me, what);
                         // Spline blows up into NaNs if it contains infinities.
                         // This can occur for utility metrics, which we set to -Infinity when consume = 0.
-                        if (getWhat(me, scenario.consume_index) != 0)
+                        if (getWhat(me, metric_interp_index) != Double.NEGATIVE_INFINITY)
                         {
                                 fval[xindex] = val;
                         }
@@ -128,7 +128,7 @@ class UniInterpolator extends Interpolator
                 }
 
                 int skip_low;
-                for (skip_low = 0; fval[skip_low] == Double.NEGATIVE_INFINITY; skip_low++)
+                for (skip_low = 0; (skip_low < fval.length) && fval[skip_low] == Double.NEGATIVE_INFINITY; skip_low++)
                 {
                 }
                 assert(skip_low < fval.length);

@@ -653,6 +653,9 @@ public class Returns implements Cloneable
                 double gm = am / Math.sqrt(1 + Math.pow(sd / am, 2));
                 double mu = Math.log(gm);
                 double sigma = Math.sqrt(Math.log(1 + Math.pow(sd / am, 2)));
+                gm = Math.pow(gm, 1 / this.time_periods);
+                mu /= this.time_periods;
+                sigma /= Math.sqrt(this.time_periods);
                 LogNormalDistribution distrib = null;
                 if (sigma != 0)
                         distrib = new LogNormalDistribution(mu, sigma);

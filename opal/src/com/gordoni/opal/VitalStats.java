@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2016 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -567,10 +567,10 @@ public class VitalStats
                 this.alive = new double[(int) Math.round(vs_years * time_periods) + 1];
                 this.dying = new double[(int) Math.round(vs_years * time_periods)];
                 this.sum_avg_alive = new double[(int) Math.round(vs_years * time_periods) + 1];
-                this.bounded_sum_avg_alive = new double[Math.min(actual_years, (int) Math.round(vs_years * time_periods)) + 1];
+                this.bounded_sum_avg_alive = new double[(int) Math.round(Math.min(actual_years, vs_years) * time_periods) + 1];
                 pre_compute_alive_dying(death, alive, dying, sum_avg_alive, bounded_sum_avg_alive, time_periods, config.consume_discount_rate);
                 this.upside_alive = new double[(int) Math.round(vs_years * time_periods) + 1];
-                this.bounded_sum_avg_upside_alive = new double[Math.min(actual_years, (int) Math.round(vs_years * time_periods)) + 1];
+                this.bounded_sum_avg_upside_alive = new double[(int) Math.round(Math.min(actual_years, vs_years) * time_periods) + 1];
                 pre_compute_alive_dying(death, upside_alive, null, null, bounded_sum_avg_upside_alive, time_periods, config.upside_discount_rate);
 
                 if (ss.max_years == -1)

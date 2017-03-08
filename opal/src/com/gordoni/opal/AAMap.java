@@ -212,7 +212,7 @@ class AAMap
                 }
 
                 double first_payout_fract = 1 / returns.time_periods - config.annuity_payout_delay / 12;
-                assert(first_payout_fract >= 0);
+                assert(first_payout_fract >= 0 || (scenario.ria_index == null && scenario.nia_index == null));
 
                 for (int s = 0; s < num_paths; s++)
                 {
