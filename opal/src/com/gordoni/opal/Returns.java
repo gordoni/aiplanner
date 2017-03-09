@@ -123,6 +123,8 @@ public class Returns implements Cloneable
                 this.pair = pair;
                 this.short_block = short_block;
 
+                random = new Random(ret_seed);
+
                 double adjust_management_expense = Math.pow(1.0 - management_expense, 1.0 / time_periods);
                 double adjust_all = Math.pow(1 + all_adjust, 1.0 / time_periods);
                 double adjust_equity_vol = equity_vol_adjust;
@@ -575,7 +577,6 @@ public class Returns implements Cloneable
                 this.data = returns;
                 if (config.map_headroom != null)
                         compute_pessimal_returns(returns);
-                random = new Random(ret_seed);
                 shuffle_adjust = new double[scenario.normal_assets];
                 for (int a = 0; a < shuffle_adjust.length; a++)
                         shuffle_adjust[a] = 1;
@@ -668,7 +669,7 @@ public class Returns implements Cloneable
                                 rets.add(distrib.inverseCumulativeProbability((i + 0.5) / len) - 1);
                 }
 
-                Collections.shuffle(rets);
+                Collections.shuffle(rets, random);
                 return rets;
         }
 
