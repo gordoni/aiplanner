@@ -30,15 +30,15 @@ public class Exp_offset_scale extends Scale
         public Exp_offset_scale(double zero_bucket_size, double min_value, double max_value, boolean has_zero, double scaling_factor)
         {
                 super(zero_bucket_size);
-                this.min_value = min_value;
+                this.min_value = ((has_zero || min_value != 0) ? min_value : zero_bucket_size);
                 this.has_zero = has_zero;
                 this.scaling_factor = scaling_factor;
                 this.log_scaling_factor = Math.log(scaling_factor);
                 double zero_offset = zero_bucket_size / (scaling_factor - 1.0);
                 this.zero_bucket = Math.log(zero_offset) / log_scaling_factor;
-                this.offset = zero_offset - min_value;
+                this.offset = zero_offset - this.min_value;
                 this.first_bucket = pf_to_bucket(max_value, "up");
-                this.num_buckets = pf_to_bucket(min_value, "down") - this.first_bucket + 1;
+                this.num_buckets = pf_to_bucket(this.min_value, ((has_zero || min_value != 0) ? "down" : "round")) - this.first_bucket + 1;
         }
 
         public double bucket_to_pf(int bucket)

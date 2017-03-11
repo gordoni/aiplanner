@@ -277,7 +277,7 @@ class AAMap
                         VitalStats vital_stats = couple_vital_stats;
                         int fperiod = -1;
                         MapElement me = null;
-                        double rcr = initial_rcr;
+                        double rcr = initial_rcr / returns.time_periods;
                         double raw_alive = Double.NaN;
                         int y = 0;
                         while (y < step_periods)
@@ -321,7 +321,7 @@ class AAMap
                                         income += config.cw_schedule[period + y];
                                 if (retired || config.spend_pre_retirement)
                                 {
-                                        income += current_guaranteed_income;
+                                        income += current_guaranteed_income / returns.time_periods;
                                         if (variable_withdrawals || config.spend_pre_retirement)
                                         {
                                                 // Full investment portfolio amount subject to variable spending choice.
@@ -332,6 +332,8 @@ class AAMap
                                                         rcr *= rcr_step;
                                                 }
                                                 amount_annual = income - spend_annual;
+                                                spend_annual *= returns.time_periods;
+                                                amount_annual *= returns.time_periods;
                                         }
                                         else
                                         {
@@ -412,11 +414,15 @@ class AAMap
                                 {
                                         // Consume/unconsume any rounding errors from interpolation.
                                         // Small positive values are treated as rounding errors too; in the event of leverage they might become negative.
-                                        if ((!config.negative_p && p < 1e-6 * scenario.consume_max_estimate) || (y == max_periods - 1))
+                                        if ((!config.negative_p && p < config.tp_zero_factor * scenario.consume_max_estimate) || (y == max_periods - 1))
                                         {
                                                 // Rounding errors can be large as a result of the very large asset allocations when allocatable assets is close to zero.
-                                                consume_annual += p;
-                                                amount_annual -= p;
+                                                if (Math.abs(consume_annual + p * returns.time_periods) > 1e-15 * consume_annual)
+                                                // Avoid making consume negative due to an fp precision error.
+                                                {
+                                                        consume_annual += p * returns.time_periods;
+                                                        amount_annual -= p * returns.time_periods;
+                                                }
                                                 p = 0;
                                         }
                                 }

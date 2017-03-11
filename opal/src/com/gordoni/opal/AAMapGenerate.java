@@ -725,7 +725,7 @@ public class AAMapGenerate extends AAMap
                 if (search_consume)
                 {
                         dimensions.add(scenario.consume_index); // Contrib/consume.
-                        step[scenario.consume_index] = Math.max(Math.abs(me.rps[scenario.tp_index]), 1e-2 * scenario.consume_max_estimate) / config.spend_steps;
+                        step[scenario.consume_index] = Math.max(Math.abs(me.rps[scenario.tp_index]), config.tp_zero_factor * scenario.consume_max_estimate) / config.spend_steps;
                 }
 
                 if (!search_aa)
@@ -882,9 +882,8 @@ public class AAMapGenerate extends AAMap
                                                                                 break;
                                                                         start = next_check;
                                                                         next_check++;
-                                                                        int[] start_bucket = fcheck_list.get(start).bucket;
                                                                         while (next_check < fcheck_list.size() &&
-                                                                                (Arrays.equals(fcheck_list.get(next_check).bucket, start_bucket)
+                                                                               (Arrays.equals(fcheck_list.get(next_check).bucket, fcheck_list.get(next_check - 1).bucket)
                                                                                  || ((next_check - start) * config.bucket_groups_per_task * config.tasks_generate) < mp.total_length))
                                                                         {
                                                                                 // We process all checks for a given bucket in order to ensure runs are deterministic.
@@ -944,7 +943,7 @@ public class AAMapGenerate extends AAMap
                                 invoke_all(tasks);
                                 tasks.clear();
 
-                                check_list = new_check_list; // Should really sort to prevent multiple tasks simultaneously running the same bucket.
+                                check_list = new_check_list;
                         }
 
                         for (MapElement me : map[period])
@@ -982,7 +981,9 @@ public class AAMapGenerate extends AAMap
                         {
                                 for (MapElement me : map[period + 1])
                                 {
-                                        if (config.conserve_ram || config.skip_dump_log || (config.start_age + period + 1 > config.dump_max_age) ||
+                                        if (config.conserve_ram || config.skip_dump_log ||
+                                                (config.start_age + (period + 1) / config.generate_time_periods < config.dump_min_age) ||
+                                                (config.start_age + (period + 1) / config.generate_time_periods > config.dump_max_age) ||
                                                 (scenario.tp_index != null && me.rps[scenario.tp_index] > config.dump_max_tp) ||
                                                 (scenario.ria_index != null && me.rps[scenario.ria_index] > config.dump_max_ria) ||
                                                 (scenario.nia_index != null && me.rps[scenario.nia_index] > config.dump_max_nia))
@@ -1006,7 +1007,8 @@ public class AAMapGenerate extends AAMap
                 {
                         for (MapElement me : map[period_0])
                         {
-                                if ((config.start_age + period_0 > config.dump_max_age) ||
+                                if ((config.start_age + period_0 / config.generate_time_periods < config.dump_min_age) ||
+                                        (config.start_age + period_0 / config.generate_time_periods > config.dump_max_age) ||
                                         (scenario.tp_index != null && me.rps[scenario.tp_index] > config.dump_max_tp) ||
                                         (scenario.ria_index != null && me.rps[scenario.ria_index] > config.dump_max_ria) ||
                                         (scenario.nia_index != null && me.rps[scenario.nia_index] > config.dump_max_nia))
