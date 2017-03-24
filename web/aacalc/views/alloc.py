@@ -839,7 +839,7 @@ class Alloc:
         if self.needed_income != None:
             try:
                 required_safe = self.discounted_retirement_le_annuity / mwr * \
-                    (self.needed_income / abs(results['nv']) - existing_safe / self.discounted_retirement_le)
+                    (self.needed_income / abs(results['nv']) - (existing_safe + w_fixed[existing_annuities_index]) / self.discounted_retirement_le)
             except ZeroDivisionError:
                 required_safe = float('inf')
             required_safe += existing_safe
