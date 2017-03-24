@@ -116,7 +116,7 @@ public class Config
         public double[] aa_offset = null; // Offset to apply during valadation to the generated asset allocation.
                 // Used to determine the implications of a 10% error in aa. More general than stock bias.
 
-        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', 'risk_free2', 'synthetic', 'margin', and 'lm_bonds'.
+        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'stocks_sbbi', 'bonds_sbbi', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', 'risk_free2', 'synthetic', 'margin', and 'lm_bonds'.
                 // Seem to get quicker search time if list highest return assets first.
         public List<String> asset_class_names = null;
                // Corresponding asset class names to use for MVO inputs and transition map.
@@ -349,6 +349,7 @@ public class Config
         public double accumulation_ramp = 1.07; // Annual ramping factor by which to boost accumulation rate over time.
         public Double withdrawal = null; // Annual retirement consumption amount (includes both defined benefits and investment portfolio).
         public double floor = 0.0; // Annual retirement floor consumption amount at below which portfolio failure is considered to have occured.
+        public double tp_floor = 0.0; // Taxable portfolio size at below which portfolio failure is considered to have occured.
         public Double generate_ret_equity = null; // None for no adjustment to equities during generation, float for stocks target geomean return.
         public Double validate_ret_equity = null; // None for no adjustment to equities during targeting and validation, float for stocks target geomean return.
         public Double ret_equity_adjust = null; // None for no adjustment to equities, float for adjust.
@@ -588,9 +589,6 @@ public class Config
         public int returns_cache_size = 100; // How many buckets of path_metrics_bucket size returns sequences to pre-calculate.
 
         public boolean validate_dump = false; // Whether to dump paths and aa-linear for validation runs.
-
-        // Static values that can't be changed from run to run.
-        public static String data_source = "shiller"; // 'sbbi' or 'shiller'.
 
         /**
          * Return all the fields/values as a Map

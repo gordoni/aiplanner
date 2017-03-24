@@ -47,7 +47,7 @@ public class HistReturns
         // inflation data from Stocks, Bills, Bonds, and Inflation Yearbook Classic
         // Edition.
         private String sbbi_file = "sbbi.csv";
-        private int sbbi_initial = 1926;
+        public int sbbi_initial = 1926;
 
         // Europe, Asia, Far East.
         public Integer eafe_initial = 1970;
@@ -80,6 +80,8 @@ public class HistReturns
 
         public List<Double> stock = new ArrayList<Double>();
         public List<Double> bond = new ArrayList<Double>();
+        public List<Double> stock_sbbi = new ArrayList<Double>();
+        public List<Double> bond_sbbi = new ArrayList<Double>();
         public List<Double> eafe = new ArrayList<Double>();
         public List<Double> ff_bl = new ArrayList<Double>();
         public List<Double> ff_bm = new ArrayList<Double>();
@@ -249,6 +251,8 @@ public class HistReturns
 
         private void load_sbbi_data(BufferedReader in) throws IOException
         {
+                if (in == null)
+                        return;
                 String line = null;
                 while ((line = in.readLine()) != null)
                 {
@@ -264,10 +268,8 @@ public class HistReturns
                         double e = (1 + nominal_e_delta / 100) / (1 + cpi_d / 100) - 1;
                         double b = (1 + nominal_b_delta / 100) / (1 + cpi_d / 100) - 1;
 
-                        assert(false);
-                        //cpi_delta.add(cpi_d / 100);
-                        stock.add(e);
-                        bond.add(b);
+                        stock_sbbi.add(e);
+                        bond_sbbi.add(b);
                 }
                 in.close();
         }
@@ -791,18 +793,9 @@ public class HistReturns
 
         public HistReturns() throws IOException
         {
-                // Set up returns and initial_year based on data_source.
-                if (Config.data_source.equals("sbbi"))
-                {
-                        load_sbbi_data(buffered_reader(sbbi_file));
-                        initial_year = sbbi_initial;
-                }
-                else
-                {
-                        load_shiller_data(buffered_reader(shiller_file));
-                        initial_year = shiller_initial;
-                }
-
+                load_shiller_data(buffered_reader(shiller_file));
+                initial_year = shiller_initial;
+                load_sbbi_data(buffered_reader(sbbi_file));
                 eafe_initial = load_returns("eafe.csv", eafe_initial, eafe, false);
                 ff_initial = load_ff("6_Portfolios_2x3.txt");
                 nasdaq_initial = load_returns("nasdaq-composite.csv", nasdaq_initial, nasdaq, true);

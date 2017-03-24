@@ -210,6 +210,26 @@ public class Returns implements Cloneable
                 {
                         fixed_income_returns = adjust_returns(bond_returns, fixed_income_adjust_arith + gs10_to_bonds_adjust_arith, fixed_income_adjust * adjust_management_expense * adjust_all, config.ret_gs10_to_bonds_vol_adjust);
                 }
+                List<Double> stock_sbbi_returns = null;
+                if (scenario.asset_classes.contains("stocks_sbbi"))
+                {
+                        assert(time_periods == 1);
+                        int offset = (int) Math.round((start_year - hist.sbbi_initial) * time_periods);
+                        assert(offset >= 0);
+                        assert(offset + count <= hist.stock_sbbi.size());
+                        stock_sbbi_returns = hist.stock_sbbi.subList(offset, offset + count);
+                        stock_sbbi_returns = adjust_returns(stock_sbbi_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                }
+                List<Double> bond_sbbi_returns = null;
+                if (scenario.asset_classes.contains("bonds_sbbi"))
+                {
+                        assert(time_periods == 1);
+                        int offset = (int) Math.round((start_year - hist.sbbi_initial) * time_periods);
+                        assert(offset >= 0);
+                        assert(offset + count <= hist.bond_sbbi.size());
+                        bond_sbbi_returns = hist.bond_sbbi.subList(offset, offset + count);
+                        bond_sbbi_returns = adjust_returns(bond_sbbi_returns, equity_adjust_arith, equity_adjust * adjust_management_expense * adjust_all, adjust_equity_vol);
+                }
                 if (scenario.asset_classes.contains("cash") || scenario.compute_risk_premium)
                 {
                         t1_returns = adjust_returns(t1_returns, fixed_income_adjust_arith, fixed_income_adjust * adjust_management_expense * adjust_all, 1);
@@ -419,6 +439,16 @@ public class Returns implements Cloneable
                         else if ("gs10".equals(asset_class))
                         {
                                 rets = gs10_returns;
+                                divf = config.dividend_fract_fixed_income;
+                        }
+                        else if ("stocks_sbbi".equals(asset_class))
+                        {
+                                rets = stock_sbbi_returns;
+                                divf = config.dividend_fract_equity;
+                        }
+                        else if ("bonds_sbbi".equals(asset_class))
+                        {
+                                rets = bond_sbbi_returns;
                                 divf = config.dividend_fract_fixed_income;
                         }
                         else if ("eafe".equals(asset_class))

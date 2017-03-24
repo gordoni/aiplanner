@@ -566,19 +566,19 @@ class AAMap
                                 {
                                         assert(config.floor == 0);
                                         // Get artifacts if not smooth. AA plot contains horizontal lines at low RPS in retirement.
-                                        if (p_post_inc_neg >= 0 && p_prev_inc_neg >= 0)
+                                        if (p_post_inc_neg >= config.tp_floor && p_prev_inc_neg >= config.tp_floor)
                                         {
                                                 solvent = 1.0;
                                         }
-                                        else if (p_prev_inc_neg >= 0)
+                                        else if (p_prev_inc_neg >= config.tp_floor)
                                         {
                                                 // Interpolate solvency in year of bankruptcy.
-                                                solvent = p_prev_inc_neg / (p_prev_inc_neg - p_post_inc_neg);
+                                                solvent = (p_prev_inc_neg - config.tp_floor) / (p_prev_inc_neg - p_post_inc_neg);
                                         }
-                                        else if (p_post_inc_neg >= 0)
+                                        else if (p_post_inc_neg >= config.tp_floor)
                                         {
                                                 // Contribution brought us out of insolvency.
-                                                solvent = p_post_inc_neg / (p_post_inc_neg - p_prev_inc_neg);
+                                                solvent = (p_post_inc_neg - config.tp_floor) / (p_post_inc_neg - p_prev_inc_neg);
                                         }
                                         else
                                         {
@@ -914,8 +914,12 @@ class AAMap
                 else
                         wer /= divisor_ra;
 
+                if (-1-9 < tw_goal && tw_goal <= 0)
+                        tw_goal = 0;
                 if (1.0 < tw_goal && tw_goal <= 1.0 + 1e-6)
                         tw_goal = 1.0;
+                if (-1-9 < ntw_goal && ntw_goal <= 0)
+                        ntw_goal = 0;
                 if (1.0 < ntw_goal && ntw_goal <= 1.0 + 1e-6)
                         ntw_goal = 1.0;
                 assert (0.0 <= tw_goal && tw_goal <= 1.0);
@@ -1200,13 +1204,13 @@ class AAMap
 
         private double max_stocks()
         {
-                assert(scenario.normal_assets == 2);
-                assert(scenario.asset_classes.contains("stocks"));
-                assert(scenario.asset_classes.contains("bonds"));
-
                 double max_stocks = 1.0;
                 if (!config.ef.equals("none"))
                 {
+                        assert(scenario.normal_assets == 2);
+                        assert(scenario.asset_classes.contains("stocks"));
+                        assert(scenario.asset_classes.contains("bonds"));
+
                         max_stocks = 0.0;
                         for (double[] aa : scenario.aa_ef)
                                 max_stocks = Math.max(max_stocks, aa[scenario.asset_classes.indexOf("stocks")]);
@@ -1326,8 +1330,14 @@ class AAMap
                 bonds = Math.max(1 - max_stocks, bonds);
 
                 double[] aa = new double[scenario.asset_classes.size()];
-                aa[scenario.asset_classes.indexOf("stocks")] = 1 - bonds;
-                aa[scenario.asset_classes.indexOf("bonds")] = bonds;
+                int stock_index = scenario.asset_classes.indexOf("stocks");
+                int bond_index = scenario.asset_classes.indexOf("bonds");
+                if (stock_index == -1)
+                         stock_index = scenario.asset_classes.indexOf("stocks_sbbi");
+                if (bond_index == -1)
+                         bond_index = scenario.asset_classes.indexOf("bonds_sbbi");
+                aa[stock_index] = 1 - bonds;
+                aa[bond_index] = bonds;
 
                 return aa;
         }
