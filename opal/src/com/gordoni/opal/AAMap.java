@@ -645,11 +645,11 @@ class AAMap
                                         consume_alive_discount = 0;
                                         upside_alive_discount = 0;
                                 }
-                                double floor_goal_path_elem = consume_alive_discount * floor_path_utility / returns.time_periods;
+                                double floor_goal_path_elem = consume_alive_discount * floor_path_utility;
                                 // Avoid 0 * Inf = NaN.
                                 if (consume_alive_discount == 0)
                                         floor_goal_path_elem = 0;
-                                double upside_goal_path_elem = upside_alive_discount * upside_path_utility / returns.time_periods;
+                                double upside_goal_path_elem = upside_alive_discount * upside_path_utility;
                                 double join_elem = upside_alive_discount * uct_u_ujp / returns.time_periods;
                                 double consume_goal_path_elem = floor_goal_path_elem;
                                 if (config.utility_join)
