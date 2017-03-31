@@ -249,7 +249,10 @@ public class Scenario
                         {
                                 if ((i != a) || (count > 0))
                                 {
-                                        new_aa[i] += carry - delta / (normal_assets - 1);
+                                        if (normal_assets > 1)
+                                                new_aa[i] += carry - delta / (normal_assets - 1);
+                                        else
+                                                assert(carry == 0 && delta == 0);
                                         carry = 0;
                                         if (supress_classes && config.annuity_classes_supress.contains(asset_classes.get(a)))
                                         {
@@ -288,6 +291,7 @@ public class Scenario
                 double sum = 0;
                 for (int i = 0; i < normal_assets; i++)
                 {
+                        fail = fail || Double.isNaN(new_aa[i]);
                         fail = fail || (new_aa[i] - config.min_aa < -1e-12 * precision);
                         fail = fail || (config.max_aa - new_aa[i] < -1e-12 * precision);
                         sum += new_aa[i];
