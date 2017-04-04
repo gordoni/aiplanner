@@ -14,7 +14,7 @@ Obtaining additional required components
 ----------------------------------------
 
 # Java, R, and Gnuplot:
-sudo apt-get install openjdk-7-jre-headless openjdk-7-jdk r-base gnuplot
+sudo apt-get install openjdk-8-jre-headless openjdk-8-jdk r-base gnuplot
 
 # If doing developement you might want to enable the desktop display of graphs:
 sudo apt-get install gnuplot-x11
@@ -22,10 +22,10 @@ sudo apt-get install gnuplot-x11
 # Obtaining the Java commons Math 3 library.
 cd aacalc/opal
 # In a web browser visit http://commons.apache.org/proper/commons-math/download_math.cgi and download commons-math3 tar.gz binary library.
-tar -zxf <path-to>/commons-math3-3.4.1-bin.tar.gz
+tar -zxf <path-to>/commons-math3-3.6.1-bin.tar.gz
 mkdir classes
-mv commons-math3-3.4.1/commons-math3-3.4.1.jar classes
-rm -r commons-math3-3.4.1/
+mv commons-math3-3.6.1/commons-math3-3.6.1.jar classes
+rm -r commons-math3-3.6.1/
 
 # Obtain the asset class returns, interest rate, and mortality data files:
 cd aacalc/opal
@@ -45,7 +45,7 @@ Setting up Systematic Investor Toolbox and R packages for performing MVO
 sudo apt-get install r-base r-cran-quadprog r-cran-lpsolve
 
 # Either:
-sudo R # to instlal in /usr/local
+sudo R # to install in /usr/local
 # or
 R # to install in ~/R
 
@@ -53,6 +53,7 @@ install.packages('quantmod')
 install.packages('corpcor')
 install.packages('kernlab')
 q()
+# answer 'n' to save image
 
 # Using a web browser download: https://github.com/systematicinvestor/SIT/raw/master/sit.gz
 cp <path-to-download>/sit.gz aacalc/opal/

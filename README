@@ -85,7 +85,7 @@ AACalc implementation:
     agpl-3.0.txt for details. I am experimenting with business models,
     and other licensing terms may be available.
 
-  - Runs on Ubuntu 14.04 Linux and possibly other systems. The Opal backend
+  - Runs on Ubuntu 16.04 Linux and possibly other systems. The Opal backend
     should be readily portable to other *nix systems. Frontend should
     be readily portable to other systems running Django 1.6.
 
@@ -148,10 +148,10 @@ To do:
 Getting started:
 
   - It is suggested that Amazon EC2 be used for development work. A
-    Ubuntu 16.04 t2.micro instance works fine for Alloc. A c3.xlarge
+    Ubuntu 16.04 t2.micro instance works fine for Alloc. A c4.xlarge
     instance is recommended for running Opal without annuities, or a
-    m4.10xlarge with annuities. Opal runs on Ubuntu 14.04, but hasn't
-    been tested on 16.04 or later. The same instance can be used to
+    m4.10xlarge with annuities. Opal runs on Ubuntu 16.04, but hasn't
+    been tested on 16.10 or later. The same instance can be used to
     run the web server and the Opal backend server. In production the
     load can be larger, and it may be necessary to run a separate web
     server and run multiple Opal backend servers behind a load

@@ -109,6 +109,7 @@ class UniInterpolator extends Interpolator
                 while (mpitr.hasNext())
                 {
                         int[] bucket = mpitr.nextIndex().clone();
+                        System.getenv("FOO"); // Work around for JRE 8 bug. xindex below becomes -1. Tickled when config.error_count is non-zero. This prevents bug.
                         MapElement me = mpitr.next();
                         int xindex = (fval.length - 1) - (bucket[0] - mp.bottom[0]);
                         double val = getWhat(me, what);
