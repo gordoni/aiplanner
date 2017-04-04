@@ -489,6 +489,9 @@ public class Config
                 // Setting this to null means we produce the draw directly from the underlying return statistics.
                 // Setting this to a value greater than 1, we find we need to increase num_sequences to get the same accuracy,
                 // and cost of increasing num_sequences more than offsets the performance savings.
+        public String ret_underlying_draw = null; // Whether and how to initially shuffle the underlying returns.
+                // Any draw may be specified. Blocksize is 1. Pair will be true. Short block will be true.
+                // Must use same generate and validate seed if want return sequences to correspond.
         public boolean ret_geomean_keep = false; // Whether to destroy arithmetic means and standard deviations in order to preserve geometric means when drawing.
         public int ret_geomean_keep_count = 20000; // Number of returns sequences to use to callibrate geometric mean preservation.
         public int ret_bootstrap_block_size = 20; // Size of blocks in years to use when drawing returns using bootstrap.

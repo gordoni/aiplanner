@@ -605,6 +605,8 @@ public class Returns implements Cloneable
                         num_sequences = 1;
 
                 this.data = returns;
+                if (config.ret_underlying_draw != null)
+                        this.data = new ArrayList<double[]>(Arrays.asList(shuffle_returns(config.ret_underlying_draw, 1, true, true, this.data.size())));
                 if (config.map_headroom != null)
                         compute_pessimal_returns(returns);
                 shuffle_adjust = new double[scenario.normal_assets];
@@ -743,6 +745,11 @@ public class Returns implements Cloneable
 
         public double[][] shuffle_returns(int length)
         {
+                return shuffle_returns(draw, block_size, pair, short_block, length);
+        }
+
+        private double[][] shuffle_returns(String draw, int block_size, boolean pair, boolean short_block, int length)
+        {
                 List<double[]> returns = this.data;
 
                 int len_returns = returns.size();
@@ -861,12 +868,12 @@ public class Returns implements Cloneable
                 else if (draw.equals("normal") || draw.equals("log_normal") || draw.equals("skew_normal"))
                 {
                         if (config.ret_resample == null)
-                                new_returns = draw_returns(am, sd, cholesky, length);
+                                new_returns = draw_returns(draw, pair, am, sd, cholesky, length);
                         else
                         {
                                 if (shuffle_count % config.ret_resample == 0)
                                 {
-                                        double[][] sample = draw_returns(am, sd, cholesky, len_returns);
+                                        double[][] sample = draw_returns(draw, pair, am, sd, cholesky, len_returns);
                                         sample_mean = new double[scenario.stochastic_classes];
                                         sample_std_dev = new double[scenario.stochastic_classes];
                                         for (int a = 0; a < scenario.stochastic_classes; a++)
@@ -890,7 +897,7 @@ public class Returns implements Cloneable
                                                 sample_chol = Utils.cholesky_decompose(sample_corr);
                                         }
                                 }
-                                new_returns = draw_returns(sample_mean, sample_std_dev, sample_chol, length);
+                                new_returns = draw_returns(draw, pair, sample_mean, sample_std_dev, sample_chol, length);
                         }
 
                         for (int y = 0; y < new_returns.length; y++)
@@ -920,7 +927,7 @@ public class Returns implements Cloneable
                 return new_returns;
         }
 
-        private double[][] draw_returns(double[] mean, double[] std_dev, double[][] chol, int length)
+        private double[][] draw_returns(String draw, boolean pair, double[] mean, double[] std_dev, double[][] chol, int length)
         {
                 int aa_len = scenario.stochastic_classes;
                 int aa_valid = scenario.stochastic_classes; // Prevent randomness change due to presence of ef index.

@@ -116,6 +116,7 @@ Examples:
     utility_eta=3.0          - CRRA utility with gamma of 3.0
     utility_join=True utility_eta=3.0 utility_eta_2=1.0 utility_join_required=30000 utility_join_desired=10000 utility_join_slope_ratio=0.1
                              - floor and upside utility function
+    defined_benefit=20000    - $20k defined benefits per year
 
     utility_retire=True      - only report performance metrics post retirement
                                PROBABLY DON'T WANT TO ALTER THIS FLAG
