@@ -391,10 +391,11 @@ public class Returns implements Cloneable
                 {
                         risk_free2_returns.add(risk_free2_return);
                 }
-                risk_free2_returns = adjust_returns(risk_free2_returns, 0, adjust_management_expense * adjust_all, 1);
+                risk_free2_returns = adjust_returns(risk_free2_returns, 0, adjust_all, 1);
 
                 List<Double> synthetic_returns = new ArrayList<Double>();
                 synthetic_returns = log_normal_ppf(count, config.synthetic_ret, config.synthetic_vol);
+                synthetic_returns = adjust_returns(synthetic_returns, 0, adjust_management_expense * adjust_all, 1);
 
                 List<Double> lm_bonds_returns = new ArrayList<Double>();
                 for (int i = 0; i < count; i++)
