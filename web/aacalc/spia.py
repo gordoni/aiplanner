@@ -970,6 +970,11 @@ class YieldCurve:
                     # because the input par rates of the daily quotes used differ from the end of month quotes reported there.
                 spot_rates.append(spot_rate)
 
+            if interest_rate == 'nominal':
+
+                rf_say = sum(yield_curve_rate[0] / 100.0 for yield_curve_rate in yield_curve_rates) / len(yield_curve_rates)
+                self.risk_free_rate = (1 + rf_say / 2) ** 2 - 1
+
         elif interest_rate == 'corporate':
 
             date_year = int(date_str.split('-')[0])
