@@ -463,7 +463,9 @@ public class Config
         public double[] dividend_fract = null; // Fraction of nominal gains for each asset class attributed to dividends. Null for defaults.
         public double dividend_fract_equity = 0.25; // Dividend fraction equity default.
         public double dividend_fract_fixed_income = 1.0; // Dividend fraction fixed income default.
-        public double management_expense = 0.0; // Management fees adjustment for all asset classes except margin and risk_free2.
+        public double management_expense = 0.0;
+               // Annual management fees adjustment for all asset classes except margin and risk_free2 (per 100% of asset). These assets may exceed 100%.
+        public double operating_expense = 0.0; // Annual operating fees adjustment for portfolio (per 100% of portfolio). Portfolio always adds up to exactly 100%.
         public double margin_premium = 0.05; // Premium above current cash interest rate charged for margin borrowing.
         public String borrow_aa = "margin"; // Asset class to borrow against.
         public String borrow_only_aa = "margin"; // Don't allow positive investing in margin returns.

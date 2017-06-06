@@ -165,6 +165,7 @@ class AAMap
                 MapElement li_me2 = new MapElement(null, null, li_results2, null, null);
 
                 int len_returns = 0;
+                double operating_expense_step = Math.pow(1 - config.operating_expense, 1.0 / returns.time_periods);
                 double rcr_step = Math.pow(config.accumulation_ramp, 1.0 / returns.time_periods);
                 double initial_rcr = config.accumulation_rate * Math.pow(rcr_step, period);
                 double tw_goal = 0.0;
@@ -460,7 +461,7 @@ class AAMap
                                 ssr_terms += 1 / all_return;
                                 all_return *= tot_return;
 
-                                p *= tot_return;
+                                p *= tot_return * operating_expense_step;
                                 double p_post_invest = p;
 
                                 p_post_inc_neg = p;

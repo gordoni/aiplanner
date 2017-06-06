@@ -1713,6 +1713,8 @@ public class Scenario
                 do_target = !config.skip_target && config.target_mode != null;
                 do_generate = !config.skip_generate || (do_validate && (config.validate == null)) || (do_target && (config.target_sdp_baseline || config.target_mode.equals("rps")));
 
+                assert(!(config.operating_expense != 0 && do_tax)); // Would probably break tax lot accounting.
+
                 cpi_index = -1;
                 if (do_tax || (ria_index != null && config.tax_rate_annuity != 0) || nia_index != null)
                 {
