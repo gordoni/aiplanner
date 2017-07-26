@@ -69,13 +69,14 @@ jar cf classes/opal.jar -C bin .
 Running Opal
 ------------
 
-java -ea -cp 'classes/*' com.gordoni.opal.OPAL <option> ...
+export OPAL_HOME=$HOME/aacalc/opal
+java -ea -cp $OPAL_HOME/classes/'*' com.gordoni.opal.OPAL <option> ...
 
 options:
   -e var=value
     Set variable var to value val.
     It is important to get quoting correct.
-    E.g. to add small cap value asset class: -e "asset_classes=('stocks', 'bonds', "sh')"
+    E.g. to add small cap value asset class: -e "asset_classes=('stocks', 'bonds', 'sh')"
     See aacalc/opal/src/com/gordoni/opal/Config.java for a list of variables and possible values.
     Note, not all combinations are valid, and the responsibility for sanity checking relies on the user.
  -c config_filename

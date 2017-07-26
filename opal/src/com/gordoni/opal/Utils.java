@@ -23,6 +23,16 @@ import java.util.List;
 
 public class Utils
 {
+        public static String home_dir()
+        {
+                String home_dir = System.getenv("OPAL_HOME");
+
+                if (home_dir == null)
+                        home_dir = System.getProperty("user.home") + "/aacalc/opal";
+
+                return home_dir;
+        }
+
         public static double dot_product(double[] v, double[] w)
         {
                 assert(v.length == w.length);

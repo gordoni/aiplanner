@@ -62,10 +62,10 @@ public class ScenarioSet
 
         public void subprocess(String cmd, String prefix, String... args) throws IOException, InterruptedException
         {
-                String real_cwd = System.getProperty("user.dir");
                 List<String> arguments = new ArrayList<String>(Arrays.asList(args));
-                arguments.add(0, real_cwd + "/" + cmd);
+                arguments.add(0, Utils.home_dir() + "/" + cmd);
                 ProcessBuilder pb = new ProcessBuilder(arguments);
+                pb.directory(new File(Utils.home_dir()));
                 Map<String, String> env = pb.environment();
                 env.put("OPAL_FILE_PREFIX", cwd + "/" + prefix);
                 pb.redirectError(Redirect.INHERIT);

@@ -49,7 +49,7 @@ public class AAMapGenerate extends AAMap
         {
                 if (current == null)
                         return null;
-                else if (prior == null)
+                else if (prior == null || !config.ef.equals("none"))
                         return current.clone();
                 else
                 {
@@ -183,7 +183,7 @@ public class AAMapGenerate extends AAMap
                         return scenario.inc_dec_aa_raw(aa, a, inc, p, period);
                 else
                 {
-                        assert(config.min_safe_le == 0);
+                        assert(config.min_safe_le <= 0);
                         double[] new_aa = aa.clone();
                         double index = aa[scenario.ef_index] + inc * config.aa_steps;
                         int low = (int) Math.floor(index);

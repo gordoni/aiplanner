@@ -30,7 +30,7 @@ import java.util.Map;
 
 public class HistReturns
 {
-        private String data = "data"; // Prefix to use for data files.
+        private String data = Utils.home_dir() + "/data"; // Prefix to use for data files.
 
         private List<String> search_dirs = Arrays.asList("/private/", "/public/"); // Sub-directories to search for data files.
 
