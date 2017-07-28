@@ -323,7 +323,7 @@ class AAMap
                                 if (retired || config.spend_pre_retirement)
                                 {
                                         income += current_guaranteed_income / returns.time_periods;
-                                        if (variable_withdrawals || config.spend_pre_retirement)
+                                        if (variable_withdrawals)
                                         {
                                                 // Full investment portfolio amount subject to variable spending choice.
                                                 spend_annual = p + income;
@@ -335,6 +335,11 @@ class AAMap
                                                 amount_annual = income - spend_annual;
                                                 spend_annual *= returns.time_periods;
                                                 amount_annual *= returns.time_periods;
+                                        } else if (config.spend_pre_retirement && !retired)
+                                        {
+                                                spend_annual = config.withdrawal;
+                                                amount_annual = income + rcr * returns.time_periods - spend_annual;
+                                                rcr *= rcr_step;
                                         }
                                         else
                                         {
@@ -350,7 +355,7 @@ class AAMap
                                 else
                                 {
                                         spend_annual = config.floor;
-                                        amount_annual = income + rcr;
+                                        amount_annual = income + rcr * returns.time_periods;
                                         rcr *= rcr_step;
                                 }
 
@@ -389,7 +394,7 @@ class AAMap
                                                 nia -= tax_annuity_credit_expire[period + y] / cpi;
                                         }
                                 }
-                                if (retired && variable_withdrawals)
+                                if ((retired || config.spend_pre_retirement) && variable_withdrawals)
                                 {
                                         consume_annual += first_payout;
                                         double not_consumed;
@@ -399,11 +404,6 @@ class AAMap
                                                 not_consumed = 0;
                                         consume_annual -= not_consumed;
                                         amount_annual += not_consumed;
-                                }
-                                else if (config.spend_pre_retirement)
-                                {
-                                        amount_annual += consume_annual + first_payout;
-                                        consume_annual = 0;
                                 }
                                 else
                                         amount_annual += first_payout;

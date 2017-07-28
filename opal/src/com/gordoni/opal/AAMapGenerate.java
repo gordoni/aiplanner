@@ -212,8 +212,12 @@ public class AAMapGenerate extends AAMap
 
         private double[] make_safe_aa(double[] aa, double[] p, int period)
         {
-                // inc_dec_aa() with increment of zero will force respecting of min_safe.
-                return inc_dec_aa(aa, -1, 0, p, period);
+                double[] safe_aa = inc_dec_aa(aa, -1, 0, p, period); // inc_dec_aa() with increment of zero will force respecting of min_safe.
+
+                if (safe_aa[scenario.consume_index] < 0)
+                        safe_aa[scenario.consume_index] = 0;
+
+                return safe_aa;
         }
 
         private void search_all(MapElement me, List<Integer> dimensions, double[] step, int d_index, double[] current_aa, int period, Returns returns)
@@ -669,9 +673,9 @@ public class AAMapGenerate extends AAMap
         private boolean search_hint(MapElement me, double[] aa, int period, Returns returns)
         {
                 boolean search_aa = config.aa_strategy.equals("sdp");
-                boolean retire = period >= (config.retirement_age - config.start_age) * returns.time_periods;
+                boolean retired = period >= (config.retirement_age - config.start_age) * returns.time_periods;
                 boolean annuitize = period >= (config.annuity_age - config.start_age) * returns.time_periods;
-                boolean search_consume = scenario.vw_strategy.equals("sdp") && retire;
+                boolean search_consume = scenario.vw_strategy.equals("sdp") && (retired || config.spend_pre_retirement);
 
                 me.aa = me.aa.clone(); // May be shared with older bucket.
 
@@ -899,7 +903,7 @@ public class AAMapGenerate extends AAMap
                                                                         MapElement me = mp.get(check.bucket);
                                                                         double[] aa = check.aa;
                                                                         if (aa == null)
-                                                                            new_aa(check.bucket, me, fperiod, sibling, prior_sibling);
+                                                                                new_aa(check.bucket, me, fperiod, sibling, prior_sibling);
                                                                         else
                                                                                 aa = make_safe_aa(aa, me.rps, fperiod);
                                                                         boolean improve = search_hint(me, aa, fperiod, local_returns);
