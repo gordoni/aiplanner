@@ -132,9 +132,14 @@ class UniInterpolator extends Interpolator
                 for (skip_low = 0; (skip_low < fval.length) && fval[skip_low] == Double.NEGATIVE_INFINITY; skip_low++)
                 {
                 }
-                assert(skip_low < fval.length);
-                xval = Arrays.copyOfRange(xval, skip_low, fval.length);
-                fval = Arrays.copyOfRange(fval, skip_low, fval.length);
+                // Spline can also blow up during ce interpolation. For high eta and high metric ce approximates to infinity.
+                int skip_high;
+                for (skip_high = fval.length; (skip_high > skip_low) && fval[skip_high - 1] == Double.POSITIVE_INFINITY; skip_high--)
+                {
+                }
+                assert(skip_low < skip_high);
+                xval = Arrays.copyOfRange(xval, skip_low, skip_high);
+                fval = Arrays.copyOfRange(fval, skip_low, skip_high);
 
                 if (config.assume_ce_linear)
                 {
