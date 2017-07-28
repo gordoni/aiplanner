@@ -313,33 +313,31 @@ class AAMap
                                 double ria_prev = ria;
                                 double nia_prev = nia;
 
-                                double amount_annual;
+                                double amount;
                                 boolean retired = period + y >= (config.retirement_age - config.start_age) * returns.time_periods;
                                 boolean compute_utility = !config.utility_retire || retired;
 
                                 double income = ria + nia;
                                 if (period + y < config.cw_schedule.length)
                                         income += config.cw_schedule[period + y];
+                                if (retired)
+                                        income += current_guaranteed_income / returns.time_periods;
+                                else
+                                {
+                                        income += rcr;
+                                        rcr *= rcr_step;
+                                }
+                                spend_annual = p + income;
                                 if (retired || config.spend_pre_retirement)
                                 {
-                                        income += current_guaranteed_income / returns.time_periods;
                                         if (variable_withdrawals)
                                         {
                                                 // Full investment portfolio amount subject to variable spending choice.
-                                                spend_annual = p + income;
-                                                if (config.spend_pre_retirement && !retired)
-                                                {
-                                                        spend_annual += rcr;
-                                                        rcr *= rcr_step;
-                                                }
-                                                amount_annual = income - spend_annual;
-                                                spend_annual *= returns.time_periods;
-                                                amount_annual *= returns.time_periods;
-                                        } else if (config.spend_pre_retirement && !retired)
+                                                consume_annual = spend_annual;
+                                        }
+                                        else if (config.spend_pre_retirement && !retired)
                                         {
-                                                spend_annual = config.withdrawal;
-                                                amount_annual = income + rcr * returns.time_periods - spend_annual;
-                                                rcr *= rcr_step;
+                                                consume_annual = config.withdrawal;
                                         }
                                         else
                                         {
@@ -348,18 +346,19 @@ class AAMap
                                                         spend_retirement = scenario.vw_strategy.equals("amount") ? config.withdrawal : income + scenario.vw_percent * p_prev_exc_neg;
                                                         retire = true;
                                                 }
-                                                spend_annual = spend_retirement;
-                                                amount_annual = income - spend_annual;
+                                                consume_annual = spend_retirement;
                                         }
+                                        amount = income - consume_annual;
                                 }
                                 else
                                 {
-                                        spend_annual = config.floor;
-                                        amount_annual = income + rcr * returns.time_periods;
+                                        consume_annual = config.floor;
+                                        amount = income;
                                         rcr *= rcr_step;
                                 }
+                                spend_annual *= returns.time_periods;
+                                consume_annual *= returns.time_periods;
 
-                                consume_annual = spend_annual;
                                 first_payout = 0;
                                 double real_annuitize = 0;
                                 if (scenario.ria_index != null)
@@ -403,13 +402,13 @@ class AAMap
                                         else
                                                 not_consumed = 0;
                                         consume_annual -= not_consumed;
-                                        amount_annual += not_consumed;
+                                        amount += not_consumed * returns.time_periods;
                                 }
                                 else
-                                        amount_annual += first_payout;
+                                        amount += first_payout * returns.time_periods;
 
                                 // Recieve income before investing.
-                                p += amount_annual / returns.time_periods;
+                                p += amount;
 
                                 if (!generate && variable_withdrawals)
                                 {
@@ -422,7 +421,7 @@ class AAMap
                                                 // Avoid making consume negative due to an fp precision error.
                                                 {
                                                         consume_annual += p * returns.time_periods;
-                                                        amount_annual -= p * returns.time_periods;
+                                                        amount -= p;
                                                 }
                                                 p = 0;
                                         }
@@ -704,7 +703,7 @@ class AAMap
                                 if (scenario.success_mode_enum == MetricsEnum.COST)
                                 {
                                         // Expensive.
-                                        cost_path += amount_annual / returns.time_periods * Math.pow(1.0 + config.ret_borrow, - (period + y) / returns.time_periods);
+                                        cost_path += amount * Math.pow(1.0 + config.ret_borrow, - (period + y) / returns.time_periods);
                                 }
                                 tw_goal_path += alive * solvent;
                                 ntw_goal_path += raw_dying * solvent_always;
