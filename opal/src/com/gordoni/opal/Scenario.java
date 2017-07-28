@@ -1620,7 +1620,10 @@ public class Scenario
                         start_p[nia_index] = start_nia;
 
                 int years = Math.max(0, config.retirement_age - config.start_age);
-                double retirement_le = ss.validate_stats.le.get(Math.max(config.start_age, config.retirement_age));
+                int funding_age = config.start_age;
+                if (!config.spend_pre_retirement && (config.retirement_age > config.start_age))
+                        funding_age = config.retirement_age;
+                double retirement_le = ss.validate_stats.le.get(funding_age);
                 double ia = 0;
                 if (ria_index != null)
                         ia += start_ria;
