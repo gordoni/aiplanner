@@ -92,7 +92,7 @@ public class Config
                // Old comment: pre-spline value was 1.002; above 1.01 aa plots start to become pixelated.
         public double annuity_scaling_factor = 1.005; // Successive immediate annuity buckets this much larger.
                // Smaller than scaling_factor because by default we use spline-linear interpolation.
-        public double hci_scaling_factor = 1.005; // Successive human capital income buckets this much larger.
+        public double hci_scaling_factor = 1.0005; // Successive human capital income buckets this much larger.
                // Smaller than scaling_factor because by default we use spline-linear interpolation.
 
         public Double consume_max = null; // Estimate of maximum consumption level. Should only need to specify when debugging.
@@ -260,7 +260,7 @@ public class Config
                 // "linear" - linear interpolation using math3 library. For debugging.
                 // "spline" - cubic spline interpolation.
         public String interpolation2 = "spline-linear"; // How to interpolate non-grid 2 dimensional p values.
-                // "spline" - cubic spline interpolation. Unacceptable 6 fold slowdown with annuities.
+                // "spline" - cubic spline interpolation. Unacceptable 6 fold slowdown with annuities and 2 fold slowdown with hci once relax hci_scaling_factor.
                 // "linear-spline" - linear in first dimension; spline in second.
                 // "spline-linear" - spline in first dimension; linear in second.
         public String interpolation3 = "spline"; // How to interpolate non-grid 3 dimensional p values.

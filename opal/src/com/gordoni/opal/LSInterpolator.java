@@ -118,6 +118,7 @@ class LSInterpolator extends Interpolator
                                 v += (y_init - y) * slope;
                         }
                 }
+                assert(!Double.isNaN(v));
                 return v;
         }
 
@@ -145,7 +146,13 @@ class LSInterpolator extends Interpolator
                         MapElement me = mpitr.next();
                         int xindex = (xval.length - 1) - (bucket[0] - mp.bottom[0]);
                         int yindex = (yval.length - 1) - (bucket[1] - mp.bottom[1]);
-                        fval[xindex][yindex] = getWhat(me, what);
+                        double val = getWhat(me, what);
+                        // Spline maps infinities to nans, so we need to avoid them.
+                        val = Double.max(-1e300, val);
+                        // When interpolate_ce is true positive infinities may exist over a range of portfolio sizes.
+                        // Capping them would result in a non-monotone spline which leads to allocation failure.
+                        assert(!Double.isInfinite(val));
+                        fval[xindex][yindex] = val;
                 }
                 if (!linear_spline)
                 {
