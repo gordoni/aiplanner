@@ -592,7 +592,7 @@ public class Config
 
         public int generate_seed = 0; // Random seed used for generate shuffle.
         public int target_seed = 1; // Random seed used for target shuffle.
-        public int validate_seed = 76254; // Random seed used for validation shuffle.
+        public int validate_seed = 2; // Random seed used for validation shuffle.
         public int vital_stats_seed = 3; // Random seed used for vital stats generation during validation when couple_unit=false.
 
         public int num_sequences_retirement_number = 20000; // Number of paths per location for retirement number.
