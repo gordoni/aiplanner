@@ -74,11 +74,16 @@ public class Config
         public double dump_max_ria = 0; // Dump this real immediate anuity payout and below.
         public double dump_max_nia = 0; // Dump this nominal immediate annuity payout and below.
 
+        public double[] ria_slices = new double[]{0.0}; // Real immediate annuity slice values for opal-linear.csv to dump.
+        public double[] nia_slices = new double[]{0.0}; // Nominal immediate annuity slice values for opal-linear.csv to dump.
+        public double[] hci_slices = new double[]{0.0}; // HUman capital income slice values for opal-linear.csv to dump.
+
         // Simulation specific parameters.
 
         public double tp_zero_factor = 0.0001; // Portfolio buckets this much of consume_max_est at portfolio 0.
         public double annuity_zero_factor = 0.000002; // Taxable immediate annuity payout buckets this much of consume_max_est appart at payout 0.
                // Should be comparable to tp_annuity_factor in value after adjusting for maximal annuity price.
+        public double hci_zero_factor = 0.0001; // Human capital income buckets this much of consume_max_est appart at income 0.
 
         public double scaling_factor = 1.05; // Successive portfolio buckets this much larger.
                // This can be set quite a bit higher for power utility when using interpolate_ce without affecting map metrics.
@@ -87,12 +92,15 @@ public class Config
                // Old comment: pre-spline value was 1.002; above 1.01 aa plots start to become pixelated.
         public double annuity_scaling_factor = 1.005; // Successive immediate annuity buckets this much larger.
                // Smaller than scaling_factor because by default we use spline-linear interpolation.
+        public double hci_scaling_factor = 1.005; // Successive human capital income buckets this much larger.
+               // Smaller than scaling_factor because by default we use spline-linear interpolation.
 
         public Double consume_max = null; // Estimate of maximum consumption level. Should only need to specify when debugging.
         public Double tp_max = null; // Estimate of maximum portfolio size. Should only need to specify when debugging.
 
         public double ria_high = 100000; // Maximum taxable real immediate annuity payout.
         public double nia_high = 100000; // Maximum taxable nominal immediate annuity payout.
+        public double hci_high = 1000000; // Maximum taxable human capital income.
 
         public int retirement_number_steps = 100; // Retirement number steps.
         public double success_lines_scale_size = 0.2; // Success probability line linear scale.
@@ -336,6 +344,7 @@ public class Config
         public Double start_tp = 0.0; // Starting taxable investement portfolio size. Null if not a portfolio dimension.
         public Double start_ria = null; // Starting taxable real annuity annual payout size. Null if not a portfolio dimension.
         public Double start_nia = null; // Starting taxable nominal annuity annual payout size. Null if not a portfolio dimension.
+        public Double start_hci = null; // Starting taxable human capital annual income. Null if not a portfolio dimension.
 
         public Integer birth_year = null; // Year of birth of first person or null to non-deterministically base it on the current date and start_age.
         public int start_age = 25; // Generate data from this age on.
@@ -345,8 +354,11 @@ public class Config
         public Integer utility_age = null; // Age at which utility function specified (subsequent ages experience upside discounting), last possible age if null.
         public double[] cw_schedule = new double[0]; // Contribute / withdrawal schedule to use in addition to computed plans.
                 // No utility is derived from cw_schedule withdrawals.  Array of numeric amounts for each time period, extended with zeros.
-        public double accumulation_rate = 500; // Relative contribution rate. Initial rate of asset accumulation prior to retirement.
+        public double accumulation_rate = 500; // Contribution rate. Initial rate of asset accumulation prior to retirement.
         public double accumulation_ramp = 1.07; // Annual ramping factor by which to boost accumulation rate over time.
+        public double hci_growth = 0.03; // Annual human capital income growth rate.
+        public double hci_vol = 0.0; // Annual human capital income volatility.
+        public double hci_retirement_fract = 0.0; // Proportion of post final pre-retirement human capital income received during retirement.
         public Double withdrawal = null; // Annual retirement consumption amount (includes both defined benefits and investment portfolio).
         public double floor = 0.0; // Annual retirement floor consumption amount at below which portfolio failure is considered to have occured.
         public double tp_floor = 0.0; // Taxable portfolio size at below which portfolio failure is considered to have occured.

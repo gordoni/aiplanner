@@ -122,7 +122,7 @@ public class HistReturns
                                 return data + dir + filename;
                 }
 
-                System.err.println("Data file not found: " + filename);
+                System.err.println("Data file not found (might not be needed): " + filename);
 
                 return null;
         }

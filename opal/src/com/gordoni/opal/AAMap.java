@@ -220,6 +220,7 @@ class AAMap
                         double p = (scenario.tp_index == null ? 0 : bucket_p[scenario.tp_index]);
                         double ria = (scenario.ria_index == null ? 0 : bucket_p[scenario.ria_index]); // Payout is after tax amount.
                         double nia = (scenario.nia_index == null ? 0 : bucket_p[scenario.nia_index]);
+                        double hci = (scenario.hci_index == null ? 0 : bucket_p[scenario.hci_index]);
                         double[] aa = aa1;
                         double[] free_aa = aa2;
                         System.arraycopy(start_aa, 0, aa, 0, scenario.all_alloc);
@@ -312,42 +313,45 @@ class AAMap
                                         p_prev_exc_neg = 0;
                                 double ria_prev = ria;
                                 double nia_prev = nia;
+                                double hci_prev = hci;
 
                                 double amount;
                                 boolean retired = period + y >= (config.retirement_age - config.start_age) * returns.time_periods;
                                 boolean compute_utility = !config.utility_retire || retired;
 
+                                double hci_retirement = 0;
+                                if (retired && !retire)
+                                        hci_retirement = config.hci_retirement_fract * hci;
+
                                 double income = ria + nia;
                                 if (period + y < config.cw_schedule.length)
                                         income += config.cw_schedule[period + y];
                                 if (retired)
+                                {
                                         income += current_guaranteed_income / returns.time_periods;
+                                        income += hci_retirement;
+                                }
                                 else
                                 {
                                         income += rcr;
                                         rcr *= rcr_step;
+                                        income += hci;
                                 }
                                 spend_annual = p + income;
+                                if (retired && !retire)
+                                {
+                                        spend_retirement = scenario.vw_strategy.equals("amount") ? config.withdrawal : income + scenario.vw_percent * p_prev_exc_neg;
+                                        retire = true;
+                                }
                                 if (retired || config.spend_pre_retirement)
                                 {
                                         if (variable_withdrawals)
-                                        {
                                                 // Full investment portfolio amount subject to variable spending choice.
                                                 consume_annual = spend_annual;
-                                        }
                                         else if (config.spend_pre_retirement && !retired)
-                                        {
                                                 consume_annual = config.withdrawal;
-                                        }
                                         else
-                                        {
-                                                if (!retire)
-                                                {
-                                                        spend_retirement = scenario.vw_strategy.equals("amount") ? config.withdrawal : income + scenario.vw_percent * p_prev_exc_neg;
-                                                        retire = true;
-                                                }
                                                 consume_annual = spend_retirement;
-                                        }
                                         amount = income - consume_annual;
                                 }
                                 else
@@ -393,6 +397,7 @@ class AAMap
                                                 nia -= tax_annuity_credit_expire[period + y] / cpi;
                                         }
                                 }
+
                                 if ((retired || config.spend_pre_retirement) && variable_withdrawals)
                                 {
                                         consume_annual += first_payout;
@@ -460,6 +465,9 @@ class AAMap
                                 ssr_terms += 1 / all_return;
                                 all_return *= tot_return;
 
+                                if (scenario.hci_index != null && !retired)
+                                        hci += hci * rets[scenario.hci_aa_index];
+
                                 p *= tot_return * operating_expense_step;
                                 double p_post_invest = p;
 
@@ -506,6 +514,8 @@ class AAMap
                                                 li_p[scenario.ria_index] = ria;
                                         if (scenario.nia_index != null)
                                                 li_p[scenario.nia_index] = nia;
+                                        if (scenario.hci_index != null)
+                                                li_p[scenario.hci_index] = hci;
 
                                         li_me.aa = free_aa;
                                         me = aamap.map[fperiod].lookup_interpolate(li_p, true, generate, li_me);
@@ -718,7 +728,7 @@ class AAMap
                                 // Record path.
                                 if (s < num_paths_record)
                                 {
-                                        path.add(new PathElement(aa_prev, p_prev_inc_neg, consume_annual, ria_prev, nia_prev, real_annuitize, nominal_annuitize, tax_amount, path_element_weight));
+                                        path.add(new PathElement(aa_prev, p_prev_inc_neg, consume_annual, ria_prev, nia_prev, hci_prev, real_annuitize, nominal_annuitize, tax_amount, path_element_weight));
                                 }
                                 free_aa = aa_prev;
 
@@ -801,7 +811,7 @@ class AAMap
                         if (s < num_paths_record)
                         {
                                 // 8% speedup by not recording path if know it is not needed
-                                path.add(new PathElement(null, p, Double.NaN, ria, nia, Double.NaN, Double.NaN, Double.NaN, 0));
+                                path.add(new PathElement(null, p, Double.NaN, ria, nia, hci, Double.NaN, Double.NaN, Double.NaN, 0));
                                         // Ignore any pending taxes associated with p, mainly because they are difficult to compute.
                                 paths.add(path);
                         }

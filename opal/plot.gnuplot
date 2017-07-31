@@ -389,6 +389,16 @@ if (paths && annuitization > 0) plot prefix . "-paths.csv" using 1:6 with lines 
 if (paths && annuitization > 0) set output prefix . "-paths-nia_annuitization.png"
 if (paths && annuitization > 0) plot prefix . "-paths.csv" using 1:7 with lines title "Sample nominal SPIA annuitization paths"
 
+set ylabel "annual income ($)"
+set yrange [0:hci]
+if (paths && hci > 0) set output prefix . "-paths-hci.png"
+if (paths && hci > 0) plot prefix . "-paths.csv" using 1:8 with lines title "Sample human capital income paths"
+
+if (paths && hci > 0) set output prefix . "-pct-hci.png"
+if (paths && hci > 0) plot \
+  prefix . "-pct-hci.csv" using 1:2:3:4 with errorlines title "95 percent income", \
+  prefix . "-pct-hci.csv" using 1:5 with errorlines title "mean income"
+
 set yrange [0:100]
 set format y "%.0f%%"
 

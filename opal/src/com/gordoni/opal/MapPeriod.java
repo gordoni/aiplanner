@@ -280,6 +280,11 @@ class MapPeriod implements Iterable<MapElement>
                         bottom[scenario.nia_index] = scenario.scale[scenario.nia_index].first_bucket;
                         length[scenario.nia_index] = scenario.scale[scenario.nia_index].num_buckets;
                 }
+                if (scenario.hci_index != null)
+                {
+                        bottom[scenario.hci_index] = scenario.scale[scenario.hci_index].first_bucket;
+                        length[scenario.hci_index] = scenario.scale[scenario.hci_index].num_buckets;
+                }
 
                 floor = new double[scenario.start_p.length];
                 ceiling = new double[scenario.start_p.length];

@@ -397,6 +397,9 @@ public class Returns implements Cloneable
                 synthetic_returns = log_normal_ppf(count, config.synthetic_ret, config.synthetic_vol);
                 synthetic_returns = adjust_returns(synthetic_returns, 0, adjust_management_expense * adjust_all, 1);
 
+                List<Double> hci_returns = new ArrayList<Double>();
+                hci_returns = log_normal_ppf(count, config.hci_growth, config.hci_vol);
+
                 List<Double> lm_bonds_returns = new ArrayList<Double>();
                 for (int i = 0; i < count; i++)
                 {
@@ -556,6 +559,10 @@ public class Returns implements Cloneable
                         {
                                 rets = gold_returns;
                                 divf = 0.0;
+                        }
+                        else if ("[hci]".equals(asset_class))
+                        {
+                                rets = hci_returns;
                         }
                         else if ("[cpi]".equals(asset_class))
                         {

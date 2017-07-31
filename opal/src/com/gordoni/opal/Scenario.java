@@ -58,6 +58,7 @@ public class Scenario
         public Integer tp_index;
         public Integer ria_index;
         public Integer nia_index;
+        public Integer hci_index;
 
         public double tp_max_estimate;
         public double consume_max_estimate;
@@ -68,6 +69,7 @@ public class Scenario
         public int stochastic_classes;
         public int ria_aa_index;
         public int nia_aa_index;
+        public int hci_aa_index;
         public int consume_index;
         public int all_alloc;
         public int cpi_index;
@@ -645,8 +647,36 @@ public class Scenario
 
         private void dump_aa_linear(AAMap map, Returns returns, double[][] corr, double tp_min, double tp_max) throws IOException
         {
-                dump_aa_linear_slice(map, returns, corr, new double[start_p.length], "", tp_min, tp_max);
-                //dump_aa_linear_slice(map, returns, corr, new double[]{0, 10000}, "10000", tp_min, tp_max);
+                for (double ria : config.ria_slices)
+                {
+                        for (double nia : config.nia_slices)
+                        {
+                                for (double hci : config.hci_slices)
+                                {
+                                        double[] slice = new double[start_p.length];
+                                        String slice_suffix = "";
+                                        if (ria_index != null)
+                                        {
+                                                slice[ria_index] = ria;
+                                                if (ria != 0)
+                                                        slice_suffix += "-ria" + ria;
+                                        }
+                                        if (nia_index != null)
+                                        {
+                                                slice[nia_index] = nia;
+                                                if (nia != 0)
+                                                        slice_suffix += "-nia" + nia;
+                                        }
+                                        if (hci_index != null)
+                                        {
+                                                slice[hci_index] = hci;
+                                                if (hci != 0)
+                                                        slice_suffix += "-hci" + hci;
+                                        }
+                                        dump_aa_linear_slice(map, returns, corr, slice, slice_suffix, tp_min, tp_max);
+                                }
+                        }
+                }
         }
 
         private Double get_path_value(List<PathElement> path, int i, String what, boolean change)
@@ -674,6 +704,8 @@ public class Scenario
                         PathElement elem = path.get(i);
                         if (what.equals("p"))
                                 return elem.p;
+                        else if (what.equals("hci"))
+                                return elem.hci;
                         else if (what.equals("floor"))
                                 return config.utility_join ? Math.min(elem.consume_annual, config.utility_join_required) : elem.consume_annual;
                         else if (what.equals("upside"))
@@ -857,7 +889,7 @@ public class Scenario
         }
 
         // Dump the paths taken.
-    private void dump_paths(List<List<PathElement>> paths, Returns returns, double[][] corr) throws IOException
+        private void dump_paths(List<List<PathElement>> paths, Returns returns, double[][] corr) throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-paths.csv"));
 
@@ -872,6 +904,7 @@ public class Scenario
                                 double consume_annual = step.consume_annual;
                                 double ria = step.ria;
                                 double nia = step.nia;
+                                double hci = step.hci;
                                 double real_annuitize = step.real_annuitize;
                                 double nominal_annuitize = step.nominal_annuitize;
                                 double[] step_aa = (step.aa == null) ? guaranteed_safe_aa() : step.aa; // Last path element aa may be null.
@@ -883,8 +916,10 @@ public class Scenario
                                 out.print("," + f2f.format(nia));
                                 out.print("," + f2f.format(real_annuitize));
                                 out.print("," + f2f.format(nominal_annuitize));
-                                out.print("," + ((returns == null) ? "" : f4f.format(expected_return(step_aa, returns))));
-                                out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(step_aa, returns, corr))));
+                                out.print("," + f2f.format(hci));
+                                out.print(",");
+                                //out.print("," + ((returns == null) ? "" : f4f.format(expected_return(step_aa, returns))));
+                                //out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(step_aa, returns, corr))));
                                 out.print("," + aa);
                                 out.print("\n");
                                 age_period += 1;
@@ -1032,7 +1067,7 @@ public class Scenario
                 out.close();
         }
 
-        public void dump_gnuplot_params(double p_max, double consume_max, double annuitization_max, double consume_ara_max) throws IOException
+        public void dump_gnuplot_params(double p_max, double hci_max, double consume_max, double annuitization_max, double consume_ara_max) throws IOException
         {
                 PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-gnuplot-params.gnuplot")));
                 out.println("paths = " + (do_validate ? 1 : 0));
@@ -1048,6 +1083,7 @@ public class Scenario
                         age_high = age_limit;
                 out.println("age_high = " + age_high);
                 out.println("tp = " + p_max);
+                out.println("hci = " + hci_max);
                 out.println("consume = " + consume_max);
                 double payout = 0;
                 double annuitization = 0;
@@ -1106,11 +1142,13 @@ public class Scenario
                 }
 
                 tp_max = tp_max_estimate;
+                double hci_max = 0;
                 double consume_max = consume_max_estimate;
                 if (do_validate)
                 {
                         dump_distributions(paths);
                         tp_max = dump_pct_path(paths, "p", false);
+                        hci_max = dump_pct_path(paths, "hci", false);
                         double consume_max_path = dump_pct_path(paths, "consume", false);
                         if (!Double.isNaN(consume_max_path))
                                 // NaN when debugging final period alone.
@@ -1129,6 +1167,7 @@ public class Scenario
                 if (tp_max == 0)
                         tp_max = tp_max_estimate; // Avoid crashing gnuplot.
                 tp_max = Math.min(tp_max, config.map_max_factor * tp_max_estimate);
+                hci_max *= config.gnuplot_extra;
                 if (config.gnuplot_consume != null)
                         consume_max = config.gnuplot_consume;
                 else
@@ -1159,7 +1198,7 @@ public class Scenario
 
                 if (!config.skip_generate || !config.skip_retirement_number)
                 {
-                        dump_gnuplot_params(tp_max, consume_max, annuitization_max, consume_ara_max);
+                        dump_gnuplot_params(tp_max, hci_max, consume_max, annuitization_max, consume_ara_max);
                         plot();
                 }
         }
@@ -1611,6 +1650,9 @@ public class Scenario
                 nia_index = (start_nia == null ? null : p_size);
                 if (nia_index != null)
                         p_size++;
+                hci_index = (config.start_hci == null ? null : p_size);
+                if (hci_index != null)
+                        p_size++;
                 start_p = new double[p_size];
                 if (tp_index != null)
                         start_p[tp_index] = config.start_tp;
@@ -1618,6 +1660,8 @@ public class Scenario
                         start_p[ria_index] = start_ria;
                 if (nia_index != null)
                         start_p[nia_index] = start_nia;
+                if (hci_index != null)
+                        start_p[hci_index] = config.start_hci;
 
                 int years = Math.max(0, config.retirement_age - config.start_age);
                 int funding_age = config.start_age;
@@ -1640,7 +1684,13 @@ public class Scenario
                 else
                         discounted_savings = (Math.pow(config.accumulation_ramp / return_rate, years) - 1) / (config.accumulation_ramp / return_rate - 1);
                 discounted_savings *= config.accumulation_rate;
-                tp_max_estimate = Math.max(tp_max_estimate, 5 * (config.start_tp + discounted_savings) * Math.pow(return_rate, years));
+                double discounted_hc;
+                if (1 + config.hci_growth == return_rate)
+                        discounted_hc = years;
+                else
+                        discounted_hc = (Math.pow((1 + config.hci_growth) / return_rate, years) - 1) / ((1 + config.hci_growth) / return_rate - 1);
+                discounted_hc *= (hci_index == null ? 0 : config.start_hci);
+                tp_max_estimate = Math.max(tp_max_estimate, 5 * (config.start_tp + discounted_savings + discounted_hc) * Math.pow(return_rate, years));
                 consume_max_estimate = config.defined_benefit + 2 * tp_max_estimate / retirement_le + ia;
                 tp_max_estimate += config.defined_benefit + ia; // Assume minimal carry over from one period to the next.
                 retirement_number_max_estimate = Math.max(1e-3 * config.floor, (config.floor - config.defined_benefit - ia) * retirement_le);
@@ -1668,6 +1718,8 @@ public class Scenario
                         scale[ria_index] = Scale.scaleFactory(config.annuity_zero_factor * consume_max_estimate, 0, config.ria_high, true, config.annuity_scaling_factor, false);
                 if (nia_index != null)
                         scale[nia_index] = Scale.scaleFactory(config.annuity_zero_factor * consume_max_estimate, 0, config.nia_high, true, config.annuity_scaling_factor, false);
+                if (hci_index != null)
+                        scale[hci_index] = Scale.scaleFactory(config.hci_zero_factor * consume_max_estimate, 0, config.hci_high, true, config.hci_scaling_factor, false);
 
                 // Calculated parameters.
 
@@ -1718,6 +1770,12 @@ public class Scenario
 
                 assert(!(config.operating_expense != 0 && do_tax)); // Would probably break tax lot accounting.
 
+                hci_aa_index = -1;
+                if (hci_index != null)
+                {
+                        hci_aa_index = this.asset_classes.size();
+                        this.asset_classes.add("[hci]");
+                }
                 cpi_index = -1;
                 if (do_tax || (ria_index != null && config.tax_rate_annuity != 0) || nia_index != null)
                 {
