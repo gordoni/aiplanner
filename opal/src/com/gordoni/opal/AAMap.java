@@ -307,6 +307,12 @@ class AAMap
                                 double alive = vital_stats.alive[period + y + 1];
                                 double dying = vital_stats.dying[period + y];
 
+                                double amount;
+                                double retire_in_periods = (config.retirement_age - config.start_age) * returns.time_periods - (period + y);
+                                boolean retired = (retire_in_periods <= 0);
+                                boolean retire_next = (0 < retire_in_periods) && (retire_in_periods <= 1);
+                                boolean compute_utility = !config.utility_retire || retired;
+
                                 double p_prev_inc_neg = p;
                                 double p_prev_exc_neg = p;
                                 if (p_prev_exc_neg < 0)
@@ -315,28 +321,20 @@ class AAMap
                                 double nia_prev = nia;
                                 double hci_prev = hci;
 
-                                double amount;
-                                boolean retired = period + y >= (config.retirement_age - config.start_age) * returns.time_periods;
-                                boolean compute_utility = !config.utility_retire || retired;
-
-                                double hci_retirement = 0;
-                                if (retired && !retire)
-                                        hci_retirement = config.hci_retirement_fract * hci;
-
                                 double income = ria + nia;
                                 if (period + y < config.cw_schedule.length)
                                         income += config.cw_schedule[period + y];
                                 if (retired)
                                 {
                                         income += current_guaranteed_income / returns.time_periods;
-                                        income += hci_retirement;
                                 }
                                 else
                                 {
                                         income += rcr;
                                         rcr *= rcr_step;
-                                        income += hci;
                                 }
+                                income += hci;
+
                                 spend_annual = p + income;
                                 if (retired && !retire)
                                 {
@@ -465,8 +463,16 @@ class AAMap
                                 ssr_terms += 1 / all_return;
                                 all_return *= tot_return;
 
-                                if (scenario.hci_index != null && !retired)
-                                        hci += hci * rets[scenario.hci_aa_index];
+                                if (scenario.hci_index != null)
+                                {
+                                        if (!retired)
+                                        {
+                                                if (retire_next)
+                                                        hci = config.hci_retirement + config.hci_retirement_fract * hci;
+                                                else
+                                                        hci += hci * rets[scenario.hci_aa_index];
+                                        }
+                                }
 
                                 p *= tot_return * operating_expense_step;
                                 double p_post_invest = p;
