@@ -148,7 +148,7 @@ class LSInterpolator extends Interpolator
                         int yindex = (yval.length - 1) - (bucket[1] - mp.bottom[1]);
                         double val = getWhat(me, what);
                         // Spline maps infinities to nans, so we need to avoid them.
-                        val = Double.max(-1e300, val);
+                        val = Math.max(-1e300, val);
                         // When interpolate_ce is true positive infinities may exist over a range of portfolio sizes.
                         // Capping them would result in a non-monotone spline which leads to allocation failure.
                         assert(!Double.isInfinite(val));
