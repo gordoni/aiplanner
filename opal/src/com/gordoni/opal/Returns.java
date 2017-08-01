@@ -395,10 +395,19 @@ public class Returns implements Cloneable
 
                 List<Double> synthetic_returns = new ArrayList<Double>();
                 synthetic_returns = log_normal_ppf(count, config.synthetic_ret, config.synthetic_vol);
-                synthetic_returns = adjust_returns(synthetic_returns, 0, adjust_management_expense * adjust_all, 1);
+                double synthetic_mean = Utils.mean(synthetic_returns);
+                double synthetic_vol = Utils.standard_deviation(synthetic_returns);
+                double synthetic_mean_adjust = config.synthetic_ret - synthetic_mean;
+                double synthetic_vol_adjust = config.synthetic_vol / synthetic_vol;
+                synthetic_returns = adjust_returns(synthetic_returns, synthetic_mean_adjust, adjust_management_expense * adjust_all, synthetic_vol_adjust);
 
                 List<Double> hci_returns = new ArrayList<Double>();
                 hci_returns = log_normal_ppf(count, config.hci_growth, config.hci_vol);
+                double hci_mean = Utils.mean(hci_returns);
+                double hci_vol = Utils.standard_deviation(hci_returns);
+                double hci_mean_adjust = config.hci_growth - hci_mean;
+                double hci_vol_adjust = config.hci_vol / hci_vol;
+                hci_returns = adjust_returns(hci_returns, hci_mean_adjust, 1, hci_vol_adjust);
 
                 List<Double> lm_bonds_returns = new ArrayList<Double>();
                 for (int i = 0; i < count; i++)
