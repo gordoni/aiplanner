@@ -311,6 +311,7 @@ class AAMap
                                 double retire_in_periods = (config.retirement_age - config.start_age) * returns.time_periods - (period + y);
                                 boolean retired = (retire_in_periods <= 0);
                                 boolean retire_next = (0 < retire_in_periods) && (retire_in_periods <= 1);
+                                boolean hci_volatile = (config.hci_income_flat_age - config.start_age) * returns.time_periods > (period + y);
                                 boolean compute_utility = !config.utility_retire || retired;
 
                                 double p_prev_inc_neg = p;
@@ -468,8 +469,8 @@ class AAMap
                                         if (!retired)
                                         {
                                                 if (retire_next)
-                                                        hci = config.hci_retirement + config.hci_retirement_fract * hci;
-                                                else
+                                                        hci = Math.min(config.hci_retirement + config.hci_retirement_fract * hci, config.hci_retirement_max);
+                                                else if (hci_volatile)
                                                         hci += hci * rets[scenario.hci_aa_index];
                                         }
                                 }
