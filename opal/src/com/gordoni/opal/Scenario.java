@@ -712,6 +712,8 @@ public class Scenario
                                 return config.utility_join ? Math.max(elem.consume_annual - config.utility_join_required, 0) : 0;
                         else if (what.equals("consume"))
                                 return elem.consume_annual;
+                        else if (what.equals("utility"))
+                            return utility_consume.utility(elem.consume_annual);
                         else if (what.equals("inherit"))
                                 return elem.p;
                         else if (elem.aa == null)
@@ -884,6 +886,7 @@ public class Scenario
         {
                 for (int i = 0; i < normal_assets; i++)
                         dump_pct_path(paths, asset_classes.get(i), false);
+                dump_pct_path(paths, "utility", false);
                 dump_pct_path(paths, "p", true);
                 dump_pct_path(paths, "consume", true);
         }

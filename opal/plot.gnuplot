@@ -373,6 +373,13 @@ if (paths) plot \
   prefix . "-pct-consume.csv" using 1:2:3:4 with errorlines title "95 percent consumption", \
   prefix . "-pct-consume.csv" using 1:5 with errorlines title "mean consumption"
 
+set ylabel "utility"
+set yrange [*:*]
+if (paths) set output prefix . "-pct-utility.png"
+if (paths) plot \
+  prefix . "-pct-utility.csv" using 1:2:3:4 with errorlines title "95 percent utility", \
+  prefix . "-pct-utility.csv" using 1:5 with errorlines title "mean utility"
+
 set ylabel "annual payout ($)"
 set yrange [0:annuity_payout]
 if (paths && annuitization > 0) set output prefix . "-paths-ria.png"
