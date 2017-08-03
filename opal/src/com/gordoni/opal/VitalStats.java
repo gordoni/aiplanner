@@ -251,6 +251,13 @@ public class VitalStats
                         death_cohort = suicidal;
                         death_cohort_younger = suicidal;
                 }
+                else if ("fixed_mortality".equals(table))
+                {
+                        death_cohort = new Double[config.fixed_deceased_age + 1];
+                        for (int i = 0; i < death_cohort.length - 1; i++)
+                            death_cohort[i] = 0.0;
+                        death_cohort[death_cohort.length - 1] = 1.0;
+                }
                 else if ("gompertz-makeham".equals(table))
                 {
                         death_cohort = new Double[120];
