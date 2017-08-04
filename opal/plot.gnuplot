@@ -399,7 +399,7 @@ if (paths && annuitization > 0) plot prefix . "-paths.csv" using 1:7 with lines 
 set ylabel "annual income ($)"
 set yrange [0:hci]
 if (paths && hci > 0) set output prefix . "-paths-hci.png"
-if (paths && hci > 0) plot prefix . "-paths.csv" using 1:8 with lines title "Sample human capital income paths"
+if (paths && hci > 0) plot prefix . "-paths.csv" using 1:8 with lines title "Sample income paths"
 
 if (paths && hci > 0) set output prefix . "-pct-hci.png"
 if (paths && hci > 0) plot \
