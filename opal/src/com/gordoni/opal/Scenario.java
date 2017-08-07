@@ -183,8 +183,8 @@ public class Scenario
         {
                 double[] new_aa = aa.clone();
                 double delta = inc;
-                double a_borrow = asset_classes.indexOf(config.borrow_aa);
-                double a_borrow_only = asset_classes.indexOf(config.borrow_only_aa);
+                boolean a_borrow = (a != -1) && config.borrow_aa.contains(asset_classes.get(a));
+                boolean a_borrow_only = (a != -1) && config.borrow_only_aa.contains(asset_classes.get(a));
                 int a_safe = asset_classes.indexOf(config.safe_aa);
 
                 double min_safe_aa = Double.NEGATIVE_INFINITY;
@@ -207,8 +207,8 @@ public class Scenario
                 }
 
                 boolean supress_classes = (config.annuity_classes_supress != null) && (config.start_age + period / config.generate_time_periods >= config.annuity_age);
-                double min = ((a != -1) && (a == a_borrow) ? - config.max_borrow : config.min_aa);
-                double max = ((a != -1) && (a == a_borrow_only) ? 0.0 : config.max_aa + config.max_borrow);
+                double min = (a_borrow ? - config.max_borrow : config.min_aa);
+                double max = (a_borrow_only ? 0.0 : config.max_aa);
                 min = Math.max(min, 1 - max * (normal_assets - 1));
                 max = Math.min(max, 1 - min * (normal_assets - 1));
 
@@ -435,14 +435,14 @@ public class Scenario
                 {
                         if (a > 0)
                                 out.print(",");
-                        out.print(asset_classes.get(a).equals(config.borrow_aa) ? - config.max_borrow : 0);
+                        out.print(config.borrow_aa.contains(asset_classes.get(a)) ? - config.max_borrow : 0);
                 }
                 out.println();
                 for (int a = 0; a < normal_assets; a++)
                 {
                         if (a > 0)
                                 out.print(",");
-                        out.print(asset_classes.get(a).equals(config.borrow_only_aa) ? 0 : config.max_borrow + 1);
+                        out.print(config.borrow_only_aa.contains(asset_classes.get(a)) ? 0 : config.max_borrow + 1);
                 }
                 out.println();
                 out.close();

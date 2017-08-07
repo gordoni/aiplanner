@@ -124,7 +124,7 @@ public class Config
         public double[] aa_offset = null; // Offset to apply during valadation to the generated asset allocation.
                 // Used to determine the implications of a 10% error in aa. More general than stock bias.
 
-        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'stocks_sbbi', 'bonds_sbbi', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', 'risk_free2', 'synthetic', 'margin', and 'lm_bonds'.
+        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'stocks_sbbi', 'bonds_sbbi', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', 'risk_free2', 'synthetic', 'margin', 'margin2', and 'lm_bonds'.
                 // Seem to get quicker search time if list highest return assets first.
         public List<String> asset_class_names = null;
                // Corresponding asset class names to use for MVO inputs and transition map.
@@ -195,7 +195,7 @@ public class Config
 
         public String safe_aa = null; // Asset class that has holding size constraints.
         public double ret_risk_free = 0.0; // Real return for risk-free asset class.
-        public double ret_risk_free2 = 0.0; // Real return for second risk-free asset class.
+        public double ret_risk_free2 = 0.0; // Real return for second risk-free asset class and for margin2 before margin premium.
         public double ret_borrow = 0.0; // Annual cost rate when portfolio is negative. Also annual cost for cost metric.
         public double min_safe_aa = Double.NEGATIVE_INFINITY; // Minimum safe_aa holding fraction.
         public double min_safe_abs = Double.NEGATIVE_INFINITY; // Minimum safe_aa holding plus annuity values.
@@ -481,11 +481,11 @@ public class Config
         public double dividend_fract_equity = 0.25; // Dividend fraction equity default.
         public double dividend_fract_fixed_income = 1.0; // Dividend fraction fixed income default.
         public double management_expense = 0.0;
-               // Annual management fees adjustment for all asset classes except margin and risk_free2 (per 100% of asset). These assets may exceed 100%.
+               // Annual management fees adjustment for all asset classes except margin, risk_free2, and margin2 (per 100% of asset). These assets may exceed 100%.
         public double operating_expense = 0.0; // Annual operating fees adjustment for portfolio (per 100% of portfolio). Portfolio always adds up to exactly 100%.
-        public double margin_premium = 0.05; // Premium above current cash interest rate charged for margin borrowing.
-        public String borrow_aa = "margin"; // Asset class to borrow against.
-        public String borrow_only_aa = "margin"; // Don't allow positive investing in margin returns.
+        public double margin_premium = 0.01; // Premium above current cash interest rate charged for margin borrowing, or above risk_free2 rate for margin2 borrowing.
+        public List<String> borrow_aa = new ArrayList<String>(Arrays.asList("margin", "margin2")); // Asset classes to borrow against.
+        public List<String> borrow_only_aa = new ArrayList<String>(Arrays.asList("margin", "margin2")); // Don't allow positive investing in margin returns.
         public double max_borrow = 0.0; // Maximum amount borrowed relative to total net assets to provide leverage.  May be greater than 1.0.
         public double min_aa = 0.0; // Minimum allowed allocation for non borrow_aa asset class.
         public double max_aa = 1.0; // Maximum allowed allocation for non borrow_only_aa asset class excluding any additional borrowed amount.

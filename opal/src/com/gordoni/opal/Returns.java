@@ -393,6 +393,14 @@ public class Returns implements Cloneable
                 }
                 risk_free2_returns = adjust_returns(risk_free2_returns, 0, adjust_all, 1);
 
+                List<Double> margin2_returns = new ArrayList<Double>();
+                double margin2_return = (Math.pow(1.0 + config.ret_risk_free2 + config.margin_premium, 1.0 / time_periods) - 1.0);
+                for (int i = 0; i < count; i++)
+                {
+                        margin2_returns.add(margin2_return);
+                }
+                margin2_returns = adjust_returns(margin2_returns, 0, adjust_all, 1);
+
                 List<Double> synthetic_returns = new ArrayList<Double>();
                 synthetic_returns = log_normal_ppf(count, config.synthetic_ret, config.synthetic_vol);
                 double synthetic_mean = Utils.mean(synthetic_returns);
@@ -553,6 +561,11 @@ public class Returns implements Cloneable
                         {
                                 rets = risk_free2_returns;
                                 divf = config.dividend_fract_fixed_income;
+                        }
+                        else if ("margin2".equals(asset_class))
+                        {
+                                rets = margin2_returns;
+                                divf = 0.0;
                         }
                         else if ("synthetic".equals(asset_class))
                         {
