@@ -975,7 +975,7 @@ class AAMap
                         double tp = bucket * config.retirement_number_max_factor * scenario.retirement_number_max_estimate / config.retirement_number_steps;
                         double[] p = scenario.start_p.clone();
                         p[scenario.tp_index] = tp;
-                        PathMetricsResult pm = path_metrics(config.retirement_age, p, config.num_sequences_retirement_number, false, config.validate_seed, returns);
+                        PathMetricsResult pm = path_metrics(config.retirement_age, p, config.num_sequences_retirement_number, false, config.validate_paths_seed, returns);
                         metrics[bucket] = pm.means;
                 }
 

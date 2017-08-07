@@ -1085,6 +1085,8 @@ public class Scenario
                 if (!config.debug_till_end && age_high > age_limit)
                         age_high = age_limit;
                 out.println("age_high = " + age_high);
+                out.println("min_aa = " + ((config.gnuplot_min_aa == null) ? config.min_aa : config.gnuplot_min_aa));
+                out.println("max_aa = " + ((config.gnuplot_max_aa == null) ? config.max_aa : config.gnuplot_max_aa));
                 out.println("tp = " + p_max);
                 out.println("hci = " + hci_max);
                 out.println("consume = " + consume_max);
@@ -1322,7 +1324,7 @@ public class Scenario
                         {
                                 vw_strategy = vw;
                                 AAMap map_compare = AAMap.factory(this, aa, null);
-                                PathMetricsResult pm = map_compare.path_metrics(validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+                                PathMetricsResult pm = map_compare.path_metrics(validate_age, start_p, config.num_sequences_validate, false, config.validate_paths_seed, returns_validate);
                                 System.out.printf("Compare %s/%s: %f\n", aa, vw, pm.mean(success_mode_enum));
                         }
                 }
@@ -1347,12 +1349,12 @@ public class Scenario
                                 double left = (2 * low + high) / 3;
                                 fixed_stocks = left;
                                 AAMap map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
-                                PathMetricsResult pm = map_fixed.path_metrics(validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+                                PathMetricsResult pm = map_fixed.path_metrics(validate_age, start_p, config.num_sequences_validate, false, config.validate_paths_seed, returns_validate);
                                 double left_metric = pm.means.get(success_mode_enum);
                                 double right = (low + 2 * high) / 3;
                                 fixed_stocks = right;
                                 map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
-                                pm = map_fixed.path_metrics(validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+                                pm = map_fixed.path_metrics(validate_age, start_p, config.num_sequences_validate, false, config.validate_paths_seed, returns_validate);
                                 double right_metric = pm.means.get(success_mode_enum);
                                 if (left_metric < right_metric)
                                         low = left;
@@ -1365,7 +1367,7 @@ public class Scenario
                         fixed_stocks = config.aa_fixed_stocks;
 
                 AAMap map_fixed = AAMap.factory(this, config.aa_strategy, returns_generate);
-                PathMetricsResult pm = map_fixed.path_metrics(validate_age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+                PathMetricsResult pm = map_fixed.path_metrics(validate_age, start_p, config.num_sequences_validate, false, config.validate_paths_seed, returns_validate);
 
                 return pm;
         }
@@ -1568,14 +1570,14 @@ public class Scenario
                                 PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-ce.csv")));
                                 for (int age = config.start_age; age < config.start_age + ss.max_years; age++)
                                 {
-                                        PathMetricsResult pm = map_loaded.path_metrics(age, start_p, config.num_sequences_validate, false, config.validate_seed, returns_validate);
+                                        PathMetricsResult pm = map_loaded.path_metrics(age, start_p, config.num_sequences_validate, false, config.validate_paths_seed, returns_validate);
                                         double ce = utility_consume.inverse_utility(pm.means.get(MetricsEnum.CONSUME) / ss.validate_stats.metric_divisor(MetricsEnum.CONSUME, age));
                                         out.println(age + "," + f7f.format(ce));
 
                                 }
                                 out.close();
                         }
-                        PathMetricsResult pm = map_loaded.path_metrics(validate_age, start_p, config.num_sequences_validate, true, config.validate_seed, returns_validate);
+                        PathMetricsResult pm = map_loaded.path_metrics(validate_age, start_p, config.num_sequences_validate, true, config.validate_paths_seed, returns_validate);
                         paths = pm.paths;
                         pm.print();
                         double elapsed = (System.currentTimeMillis() - start) / 1000.0;
@@ -1855,7 +1857,7 @@ public class Scenario
                         returns_target = new Returns(this, hist, config, config.target_seed, false, config.target_start_year, config.target_end_year, config.num_sequences_target, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.target_shuffle, config.ret_reshuffle, config.target_draw, config.ret_bootstrap_block_size, config.ret_pair, config.target_short_block, config.validate_all_adjust, equity_vol_adjust * config.validate_equity_vol_adjust);
 
                 if (do_validate)
-                        returns_validate = new Returns(this, hist, config, config.validate_seed, !config.skip_retirement_number, config.validate_start_year, config.validate_end_year, config.num_sequences_validate, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.validate_shuffle, config.ret_reshuffle, config.validate_draw, config.ret_bootstrap_block_size, config.ret_pair, config.ret_short_block, config.validate_all_adjust, equity_vol_adjust * config.validate_equity_vol_adjust);
+                        returns_validate = new Returns(this, hist, config, config.validate_returns_seed, !config.skip_retirement_number, config.validate_start_year, config.validate_end_year, config.num_sequences_validate, config.validate_time_periods, config.validate_ret_equity, config.validate_ret_bonds, config.ret_risk_free, config.validate_ret_inflation, config.management_expense, config.validate_shuffle, config.ret_reshuffle, config.validate_draw, config.ret_bootstrap_block_size, config.ret_pair, config.ret_short_block, config.validate_all_adjust, equity_vol_adjust * config.validate_equity_vol_adjust);
 
                 dividend_fract = (config.dividend_fract == null ? (returns_generate == null ? returns_validate.dividend_fract : returns_generate.dividend_fract) : config.dividend_fract);
 

@@ -330,6 +330,8 @@ public class Config
         public Double gnuplot_annuitization = null; // Maximum annuuitization value to plot.
         public double gnuplot_extra = 1.05; // Headroom to leave on plots.
         public int gnuplot_steps = 600; // Number of steps at which to gnuplot data.
+        public Double gnuplot_min_aa = null; // Minimum aa to plot.
+        public Double gnuplot_max_aa = null; // Maximum aa to plot.
 
         public int distribution_steps = 100; // Number of bucket steps for probability distribution outputs.
         public double distribution_significant = 0.02; // Lowest relative probability density to map.
@@ -595,8 +597,9 @@ public class Config
 
         public int generate_seed = 0; // Random seed used for generate shuffle.
         public int target_seed = 1; // Random seed used for target shuffle.
-        public int validate_seed = 2; // Random seed used for validation shuffle.
-        public int vital_stats_seed = 3; // Random seed used for vital stats generation during validation when couple_unit=false.
+        public int validate_returns_seed = 2; // Random seed used for validation shuffle.
+        public int validate_paths_seed = 3; // Random seed used for validation paths.
+        public int vital_stats_seed = 4; // Random seed used for vital stats generation during validation when couple_unit=false.
 
         public int num_sequences_retirement_number = 20000; // Number of paths per location for retirement number.
         public int num_sequences_target = 20000; // Number of paths per targeting attempt.

@@ -177,6 +177,8 @@ set cblabel "nominal SPIA purchase / total portfolio size"
 if (annuitization > 0) set output prefix . "-nia.png"
 if (annuitization > 0) plot prefix . "-linear.csv" using 1:2:($8 * 100) with image notitle
 
+set cbrange [min_aa * 100:max_aa * 100]
+
 # Looping, introduced in Gnuplot 4.6, should make the following easier and cleaner.
 # Unfortunately column(8 + i) fails with "constant expression required".
 
@@ -406,7 +408,7 @@ if (paths && hci > 0) plot \
   prefix . "-pct-hci.csv" using 1:2:3:4 with errorlines title "95 percent income", \
   prefix . "-pct-hci.csv" using 1:5 with errorlines title "mean income"
 
-set yrange [0:100]
+set yrange [min_aa * 100:max_aa * 100]
 set format y "%.0f%%"
 
 symbol = word(asset_class_symbols, 1)
