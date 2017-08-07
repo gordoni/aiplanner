@@ -1,8 +1,7 @@
 #!/usr/bin/gnuplot
 
 set datafile separator ","
-set terminal png transparent size 800,400 font "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
-# Specify font path to work around Ubuntu 12.04 bug (warning message generated because unable to find font).
+set terminal png transparent size 800,400
 
 prefix = "`echo $OPAL_FILE_PREFIX`"
 if (prefix eq "") prefix = "opal"
