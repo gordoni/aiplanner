@@ -2,6 +2,8 @@ Opal is a Java based asset allocation and consumption planning calculator.
 
 The name Opal came from Optimal Portfolio ALgorithm.
 
+Opal is research software, and is not production quality.
+
 Opal performs hill climbing searches to find the optimal solution when
 searching the asset allocation/consumption space. This requires no
 local maxima. Proof of this is not provided, but it seems likely for
@@ -148,10 +150,26 @@ default optimization goal.
 
 Opal produces a number of opal-*.csv output files. The best way to get
 a handle on them is to view the corresponding .png files using the
-ImageMagick "display" vieweer, or some other command.
+Gnome "eog" viewer, ImageMagick "display" viewer, or some other
+command.
 
 opal-linear.csv contains the asset allocation and consumption heat
 maps.
+
+Known issues
+------------
+
+tw/ntw metrics haven't been used in a long tim, and may not be
+correct.
+
+Validation (see below) occassionally fails resulting in metrics of
+zero because we consume to much in a terminal year. This is a result
+of using interpolation to decide how much to consume, and is difficult
+to fix.
+
+Ubuntu 16.04 - Heatmap plots are messed up. This is a result of
+gnuplot bug #1767. Ubuntu ships with gnuplot 5.0 patchlevel 3. This
+bug is fixed in patchlevel 4.
 
 Development
 -----------
