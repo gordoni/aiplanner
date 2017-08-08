@@ -358,9 +358,11 @@ public class Config
                 // No utility is derived from cw_schedule withdrawals.  Array of numeric amounts for each time period, extended with zeros.
         public double accumulation_rate = 0; // Contribution rate. Initial rate of asset accumulation prior to retirement.
         public double accumulation_ramp = 1.07; // Annual ramping factor by which to boost accumulation rate over time.
-        public double hci_growth = 0.0; // Annual human capital income growth rate.
-        public double hci_vol = 0.0; // Annual human capital income volatility.
-        public int hci_income_flat_age = 35; // Human capital income flat from this age on (appart from drop in retirement).
+        public double hci_growth1 = 0.0; // Annual human capital income1 growth rate.
+        public double hci_vol1 = 0.0; // Annual human capital income1 volatility.
+        public double hci_growth2 = 0.0; // Annual human capital income2 growth rate.
+        public double hci_vol2 = 0.0; // Annual human capital income2 volatility.
+        public int hci_income2_age = 35; // Human capital income2 from this age on (appart from drop in retirement); previously income1.
         public double hci_retirement = 0.0; // Fixed human capital income received during retirement.
         public double hci_retirement_fract = 0.0; // Additional proportion of final pre-retirement human capital income received during retirement.
         public double hci_retirement_max = Double.POSITIVE_INFINITY; // Maximum human capital income received during retirement.

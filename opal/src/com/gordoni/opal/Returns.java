@@ -409,13 +409,21 @@ public class Returns implements Cloneable
                 double synthetic_vol_adjust = ((synthetic_vol == 0) ? 1 : config.synthetic_vol / synthetic_vol);
                 synthetic_returns = adjust_returns(synthetic_returns, synthetic_mean_adjust, adjust_management_expense * adjust_all, synthetic_vol_adjust);
 
-                List<Double> hci_returns = new ArrayList<Double>();
-                hci_returns = log_normal_ppf(count, config.hci_growth, config.hci_vol);
-                double hci_mean = Utils.mean(hci_returns);
-                double hci_vol = Utils.standard_deviation(hci_returns);
-                double hci_mean_adjust = config.hci_growth - hci_mean;
-                double hci_vol_adjust = ((hci_vol == 0) ? 1 : config.hci_vol / hci_vol);
-                hci_returns = adjust_returns(hci_returns, hci_mean_adjust, 1, hci_vol_adjust);
+                List<Double> hci1_returns = new ArrayList<Double>();
+                hci1_returns = log_normal_ppf(count, config.hci_growth1, config.hci_vol1);
+                double hci_mean1 = Utils.mean(hci1_returns);
+                double hci_vol1 = Utils.standard_deviation(hci1_returns);
+                double hci_mean1_adjust = config.hci_growth1 - hci_mean1;
+                double hci_vol1_adjust = ((hci_vol1 == 0) ? 1 : config.hci_vol1 / hci_vol1);
+                hci1_returns = adjust_returns(hci1_returns, hci_mean1_adjust, 1, hci_vol1_adjust);
+
+                List<Double> hci2_returns = new ArrayList<Double>();
+                hci2_returns = log_normal_ppf(count, config.hci_growth2, config.hci_vol2);
+                double hci_mean2 = Utils.mean(hci2_returns);
+                double hci_vol2 = Utils.standard_deviation(hci2_returns);
+                double hci_mean2_adjust = config.hci_growth2 - hci_mean2;
+                double hci_vol2_adjust = ((hci_vol2 == 0) ? 1 : config.hci_vol2 / hci_vol2);
+                hci2_returns = adjust_returns(hci2_returns, hci_mean2_adjust, 1, hci_vol2_adjust);
 
                 List<Double> lm_bonds_returns = new ArrayList<Double>();
                 for (int i = 0; i < count; i++)
@@ -582,9 +590,13 @@ public class Returns implements Cloneable
                                 rets = gold_returns;
                                 divf = 0.0;
                         }
-                        else if ("[hci]".equals(asset_class))
+                        else if ("[hci1]".equals(asset_class))
                         {
-                                rets = hci_returns;
+                                rets = hci1_returns;
+                        }
+                        else if ("[hci2]".equals(asset_class))
+                        {
+                                rets = hci2_returns;
                         }
                         else if ("[cpi]".equals(asset_class))
                         {

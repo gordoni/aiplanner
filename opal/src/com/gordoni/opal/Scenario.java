@@ -69,7 +69,8 @@ public class Scenario
         public int stochastic_classes;
         public int ria_aa_index;
         public int nia_aa_index;
-        public int hci_aa_index;
+        public int hci1_aa_index;
+        public int hci2_aa_index;
         public int consume_index;
         public int all_alloc;
         public int cpi_index;
@@ -1690,10 +1691,10 @@ public class Scenario
                         discounted_savings = (Math.pow(config.accumulation_ramp / return_rate, years) - 1) / (config.accumulation_ramp / return_rate - 1);
                 discounted_savings *= config.accumulation_rate;
                 double discounted_hc;
-                if (1 + config.hci_growth == return_rate)
+                if (1 + config.hci_growth1 == return_rate)
                         discounted_hc = years;
                 else
-                        discounted_hc = (Math.pow((1 + config.hci_growth) / return_rate, years) - 1) / ((1 + config.hci_growth) / return_rate - 1);
+                        discounted_hc = (Math.pow((1 + config.hci_growth1) / return_rate, years) - 1) / ((1 + config.hci_growth1) / return_rate - 1);
                 discounted_hc *= (hci_index == null ? 0 : config.start_hci);
                 tp_max_estimate = Math.max(tp_max_estimate, 5 * (config.start_tp + discounted_savings + discounted_hc) * Math.pow(return_rate, years));
                 consume_max_estimate = config.defined_benefit + 2 * tp_max_estimate / retirement_le + ia;
@@ -1775,11 +1776,14 @@ public class Scenario
 
                 assert(!(config.operating_expense != 0 && do_tax)); // Would probably break tax lot accounting.
 
-                hci_aa_index = -1;
+                hci1_aa_index = -1;
+                hci2_aa_index = -1;
                 if (hci_index != null)
                 {
-                        hci_aa_index = this.asset_classes.size();
-                        this.asset_classes.add("[hci]");
+                        hci1_aa_index = this.asset_classes.size();
+                        this.asset_classes.add("[hci1]");
+                        hci2_aa_index = this.asset_classes.size();
+                        this.asset_classes.add("[hci2]");
                 }
                 cpi_index = -1;
                 if (do_tax || (ria_index != null && config.tax_rate_annuity != 0) || nia_index != null)
