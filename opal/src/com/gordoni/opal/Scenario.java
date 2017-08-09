@@ -184,8 +184,6 @@ public class Scenario
         {
                 double[] new_aa = aa.clone();
                 double delta = inc;
-                boolean a_borrow = (a != -1) && config.borrow_aa.contains(asset_classes.get(a));
-                boolean a_borrow_only = (a != -1) && config.borrow_only_aa.contains(asset_classes.get(a));
                 int a_safe = asset_classes.indexOf(config.safe_aa);
 
                 double min_safe_aa = Double.NEGATIVE_INFINITY;
@@ -208,10 +206,6 @@ public class Scenario
                 }
 
                 boolean supress_classes = (config.annuity_classes_supress != null) && (config.start_age + period / config.generate_time_periods >= config.annuity_age);
-                double min = (a_borrow ? - config.max_borrow : config.min_aa);
-                double max = (a_borrow_only ? 0.0 : config.max_aa);
-                min = Math.max(min, 1 - max * (normal_assets - 1));
-                max = Math.min(max, 1 - min * (normal_assets - 1));
 
                 if (a == -1)
                         assert(delta == 0);
@@ -223,6 +217,12 @@ public class Scenario
                                 delta -= new_aa[a];
                                 new_aa[a] = 0;
                         }
+                        boolean a_borrow = (a != -1) && config.borrow_aa.contains(asset_classes.get(a));
+                        boolean a_borrow_only = (a != -1) && config.borrow_only_aa.contains(asset_classes.get(a));
+                        double min = (a_borrow ? - config.max_borrow : config.min_aa);
+                        double max = (a_borrow_only ? 0.0 : config.max_aa);
+                        //min = Math.max(min, 1 - max * (normal_assets - 1));
+                        //max = Math.min(max, 1 - min * (normal_assets - 1));
                         double my_min = min;
                         double my_max = max;
                         if (a == a_safe)
@@ -263,6 +263,10 @@ public class Scenario
                                                 new_aa[i] = 0;
                                         }
                                 }
+                                boolean i_borrow = config.borrow_aa.contains(asset_classes.get(i));
+                                boolean i_borrow_only = config.borrow_only_aa.contains(asset_classes.get(i));
+                                double min = (i_borrow ? - config.max_borrow : config.min_aa);
+                                double max = (i_borrow_only ? 0.0 : config.max_aa);
                                 double my_min = min;
                                 double my_max = max;
                                 if (i == a_safe)
@@ -295,8 +299,12 @@ public class Scenario
                 for (int i = 0; i < normal_assets; i++)
                 {
                         fail = fail || Double.isNaN(new_aa[i]);
-                        fail = fail || (new_aa[i] - config.min_aa < -1e-12 * precision);
-                        fail = fail || (config.max_aa - new_aa[i] < -1e-12 * precision);
+                        boolean i_borrow = config.borrow_aa.contains(asset_classes.get(i));
+                        boolean i_borrow_only = config.borrow_only_aa.contains(asset_classes.get(i));
+                        double min = (i_borrow ? - config.max_borrow : config.min_aa);
+                        double max = (i_borrow_only ? 0.0 : config.max_aa);
+                        fail = fail || (new_aa[i] - min < -1e-12 * precision);
+                        fail = fail || (max - new_aa[i] < -1e-12 * precision);
                         sum += new_aa[i];
                 }
                 fail = fail || (Math.abs(sum - 1) > 1e-12 * precision);
