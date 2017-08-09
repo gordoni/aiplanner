@@ -362,6 +362,7 @@ public class Config
         public double hci_vol1 = 0.0; // Annual human capital income1 volatility.
         public double hci_growth2 = 0.0; // Annual human capital income2 growth rate.
         public double hci_vol2 = 0.0; // Annual human capital income2 volatility.
+        public Double hci_synthetic_target_corr = null; // Non-null to attempt to specify a hci/synthetic correlation.
         public int hci_income2_age = 35; // Human capital income2 from this age on (appart from drop in retirement); previously income1.
         public double hci_retirement = 0.0; // Fixed human capital income received during retirement.
         public double hci_retirement_fract = 0.0; // Additional proportion of final pre-retirement human capital income received during retirement.

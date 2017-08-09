@@ -401,24 +401,40 @@ public class Returns implements Cloneable
                 }
                 margin2_returns = adjust_returns(margin2_returns, 0, adjust_all, 1);
 
-                List<Double> synthetic_returns = new ArrayList<Double>();
-                synthetic_returns = log_normal_ppf(count, config.synthetic_ret, config.synthetic_vol);
+                List<Double> synthetic_returns = log_normal_ppf(count, config.synthetic_ret, config.synthetic_vol);
                 double synthetic_mean = Utils.mean(synthetic_returns);
                 double synthetic_vol = Utils.standard_deviation(synthetic_returns);
                 double synthetic_mean_adjust = config.synthetic_ret - synthetic_mean;
                 double synthetic_vol_adjust = ((synthetic_vol == 0) ? 1 : config.synthetic_vol / synthetic_vol);
                 synthetic_returns = adjust_returns(synthetic_returns, synthetic_mean_adjust, adjust_management_expense * adjust_all, synthetic_vol_adjust);
 
-                List<Double> hci1_returns = new ArrayList<Double>();
-                hci1_returns = log_normal_ppf(count, config.hci_growth1, config.hci_vol1);
+                List<Double> hci1_returns;
+                List<Double> hci2_returns;
+
+                if (config.hci_synthetic_target_corr == null)
+                {
+                        hci1_returns = log_normal_ppf(count, config.hci_growth1, config.hci_vol1);
+                        hci2_returns = log_normal_ppf(count, config.hci_growth2, config.hci_vol2);
+                }
+                else
+                {
+                        List<Double> synthetic_shuffled_returns = new ArrayList<Double>(synthetic_returns);
+                        Collections.shuffle(synthetic_shuffled_returns, random);
+                        hci1_returns = new ArrayList<Double>();
+                        for (int i = 0; i < count; i++)
+                        {
+                            hci1_returns.add(config.hci_synthetic_target_corr * synthetic_returns.get(i) +
+                                             (1 - config.hci_synthetic_target_corr) * synthetic_shuffled_returns.get(i));
+                        }
+                        hci2_returns = new ArrayList<Double>(hci1_returns);
+                }
+
                 double hci_mean1 = Utils.mean(hci1_returns);
                 double hci_vol1 = Utils.standard_deviation(hci1_returns);
                 double hci_mean1_adjust = config.hci_growth1 - hci_mean1;
                 double hci_vol1_adjust = ((hci_vol1 == 0) ? 1 : config.hci_vol1 / hci_vol1);
                 hci1_returns = adjust_returns(hci1_returns, hci_mean1_adjust, 1, hci_vol1_adjust);
 
-                List<Double> hci2_returns = new ArrayList<Double>();
-                hci2_returns = log_normal_ppf(count, config.hci_growth2, config.hci_vol2);
                 double hci_mean2 = Utils.mean(hci2_returns);
                 double hci_vol2 = Utils.standard_deviation(hci2_returns);
                 double hci_mean2_adjust = config.hci_growth2 - hci_mean2;
