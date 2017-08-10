@@ -375,7 +375,10 @@ Relative income required when one party deceased: {{ alloc_form.joint_income_pct
 {{ alloc_form.joint_income_pct.errors }}
 <br />
 {% if mode == 'aa' %}
-Annual retirement consumption at which you have "lost the game": {{ alloc_form.needed_income }}
+Do not enter desired consumption. This calculator computes the optimal
+consumption amount.
+<div class="indent">
+Optional annual retirement consumption at which you have "lost the game": {{ alloc_form.needed_income }}
 {{ alloc_form.needed_income.errors }}
 <div class="small">
 Losing the game means having an unbearably low level of consumption.
@@ -391,7 +394,7 @@ risk aversion which is specified later. Specifying a value here will
 potentially override the impact of the risk aversion coefficient and
 directly dictate the asset allocation.
 </div>
-Annual retirement consumption at which you have "won the game": {{ alloc_form.desired_income }}
+Optional annual retirement consumption at which you have "won the game": {{ alloc_form.desired_income }}
 {{ alloc_form.desired_income.errors }}
 <div class="small">
 Winning the game means having retirement consumption that meets your
@@ -402,6 +405,7 @@ don't need to specify a value here as the right thing to do will be
 determined based on your risk aversion which is specified later.
 Specifying a value here will potentially override the impact of the
 risk aversion coefficient and directly dictate the asset allocation.
+</div>
 </div>
 {% else %}
 Annual desired retirement consumption level: {{ alloc_form.required_income }}
