@@ -164,8 +164,10 @@ correct.
 
 Validation (see below) occassionally fails resulting in metrics of
 zero because we consume to much in a terminal year. This is a result
-of using interpolation to decide how much to consume, and is difficult
-to fix.
+of using interpolation to decide how much to consume, and has so far
+proven difficult to fix, especially in the presence of leverage. One
+additional approach might be to reduce the portfolio size slightly
+during generation, but not validation.
 
 Ubuntu 16.04 - Heatmap plots are messed up. This is a result of
 gnuplot bug #1767. Ubuntu ships with gnuplot 5.0 patchlevel 3. This

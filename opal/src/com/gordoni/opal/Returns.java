@@ -410,6 +410,7 @@ public class Returns implements Cloneable
 
                 List<Double> hci1_returns;
                 List<Double> hci2_returns;
+                List<Double> hci_noise_returns;
 
                 if (config.hci_synthetic_target_corr == null)
                 {
@@ -440,6 +441,14 @@ public class Returns implements Cloneable
                 double hci_mean2_adjust = config.hci_growth2 - hci_mean2;
                 double hci_vol2_adjust = ((hci_vol2 == 0) ? 1 : config.hci_vol2 / hci_vol2);
                 hci2_returns = adjust_returns(hci2_returns, hci_mean2_adjust, 1, hci_vol2_adjust);
+
+                hci_noise_returns = log_normal_ppf(count, config.hci_growth_noise, config.hci_vol_noise);
+
+                double hci_mean_noise = Utils.mean(hci_noise_returns);
+                double hci_vol_noise = Utils.standard_deviation(hci_noise_returns);
+                double hci_mean_noise_adjust = config.hci_growth_noise - hci_mean_noise;
+                double hci_vol_noise_adjust = ((hci_vol_noise == 0) ? 1 : config.hci_vol_noise / hci_vol_noise);
+                hci_noise_returns = adjust_returns(hci_noise_returns, hci_mean_noise_adjust, 1, hci_vol_noise_adjust);
 
                 List<Double> lm_bonds_returns = new ArrayList<Double>();
                 for (int i = 0; i < count; i++)
@@ -613,6 +622,10 @@ public class Returns implements Cloneable
                         else if ("[hci2]".equals(asset_class))
                         {
                                 rets = hci2_returns;
+                        }
+                        else if ("[hci_noise]".equals(asset_class))
+                        {
+                                rets = hci_noise_returns;
                         }
                         else if ("[cpi]".equals(asset_class))
                         {

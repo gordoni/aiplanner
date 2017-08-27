@@ -29,6 +29,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.Random;
 
+import org.apache.commons.math3.distribution.LogNormalDistribution;
+import org.apache.commons.math3.random.JDKRandomGenerator;
+import org.apache.commons.math3.random.RandomGenerator;
+
 class AAMap
 {
         protected Scenario scenario;
@@ -314,6 +318,28 @@ class AAMap
                                 boolean hci1 = (config.hci_income2_age - config.start_age) * returns.time_periods > (period + y);
                                 boolean compute_utility = !config.utility_retire || retired;
 
+                                if (pessimal)
+                                {
+                                        for (int i = 0; i < scenario.normal_assets; i++)
+                                        {
+                                            if ((aa[i] >= 0) == (p >= 0))
+                                                    rets[i] = returns.pessimal[i];
+                                            else
+                                                    rets[i] = returns.optimal[i];
+                                        }
+                                }
+                                else if (has_special)
+                                {
+                                        System.arraycopy(returns_array[index], 0, rets, 0, scenario.stochastic_classes);
+                                        for (int i = 0; i < scenario.normal_assets; i++)
+                                        {
+                                                if (special_aa[i])
+                                                        rets[i] = scenario.lm_bonds_returns[period + y];
+                                        }
+                                }
+                                else
+                                        rets = returns_array[index];
+
                                 double p_prev_inc_neg = p;
                                 double p_prev_exc_neg = p;
                                 if (p_prev_exc_neg < 0)
@@ -321,6 +347,8 @@ class AAMap
                                 double ria_prev = ria;
                                 double nia_prev = nia;
                                 double hci_prev = hci;
+                                if (scenario.hci_index != null && !retired)
+                                        hci_prev *= rets[scenario.hci_noise_aa_index];
 
                                 double income = ria + nia;
                                 if (period + y < config.cw_schedule.length)
@@ -334,7 +362,8 @@ class AAMap
                                         income += rcr;
                                         rcr *= rcr_step;
                                 }
-                                income += hci;
+                                double hci_tax_rate = (retired ? config.tax_rate_hci_retirement : config.tax_rate_hci);
+                                income += hci_prev * (1 - hci_tax_rate);
 
                                 spend_annual = p + income;
                                 if (retired && !retire)
@@ -433,28 +462,6 @@ class AAMap
 
                                 // Invest after computing consumption, so that the reported consumption amount is a constant.
                                 double p_pre_invest = p;
-
-                                if (pessimal)
-                                {
-                                        for (int i = 0; i < scenario.normal_assets; i++)
-                                        {
-                                            if ((aa[i] >= 0) == (p >= 0))
-                                                    rets[i] = returns.pessimal[i];
-                                            else
-                                                    rets[i] = returns.optimal[i];
-                                        }
-                                }
-                                else if (has_special)
-                                {
-                                        System.arraycopy(returns_array[index], 0, rets, 0, scenario.stochastic_classes);
-                                        for (int i = 0; i < scenario.normal_assets; i++)
-                                        {
-                                                if (special_aa[i])
-                                                        rets[i] = scenario.lm_bonds_returns[period + y];
-                                        }
-                                }
-                                else
-                                        rets = returns_array[index];
 
                                 double tot_return = 0.0;
                                 for (int i = 0; i < scenario.normal_assets; i++)
@@ -1066,13 +1073,19 @@ class AAMap
                                 public Integer call()
                                 {
                                         Thread.currentThread().setPriority((Thread.MIN_PRIORITY + Thread.NORM_PRIORITY) / 2);
-                                        Random rand = new Random(fseed);
+                                        RandomGenerator rand = new JDKRandomGenerator();
+                                        rand.setSeed(fseed);
+                                        LogNormalDistribution distrib = new LogNormalDistribution(rand, 0, config.start_hci_sigma);
                                         int i1 = Math.min(fnum_batches, fi0 + batchesPerTask);
                                         for (int i = fi0; i < i1; i++)
                                         {
+
+                                                double[] stochastic_p = p.clone();
+                                                if (scenario.hci_index != null)
+                                                        stochastic_p[scenario.hci_index] *= distrib.sample();
                                                 Returns local_returns = returns.clone();
                                                 local_returns.setSeed(rand.nextInt());
-                                                results[i] = simulate_paths((int) Math.round((age - config.start_age) * returns.time_periods), fbatch_size, num_paths_record, p, local_returns, i);
+                                                results[i] = simulate_paths((int) Math.round((age - config.start_age) * returns.time_periods), fbatch_size, num_paths_record, stochastic_p, local_returns, i);
                                                 if (!config.skip_metric_jpmorgan)
                                                         results[i].metrics.set(MetricsEnum.JPMORGAN, jpmorgan_metric(age, results[i].paths, fnum_batches, returns));
                                         }

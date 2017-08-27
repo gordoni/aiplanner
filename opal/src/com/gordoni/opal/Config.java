@@ -349,6 +349,8 @@ public class Config
         public Double start_nia = null; // Starting taxable nominal annuity annual payout size. Null if not a portfolio dimension.
         public Double start_hci = null; // Starting taxable human capital annual income. Null if not a portfolio dimension.
 
+        public double start_hci_sigma = 0.0; // Stochastic starting human capital annual income relative log volatility.
+
         public Integer birth_year = null; // Year of birth of first person or null to non-deterministically base it on the current date and start_age.
         public int start_age = 25; // Generate data from this age on.
         public Integer start_age2 = 25; // Initial age of second person in a couple.
@@ -363,6 +365,8 @@ public class Config
         public double hci_vol1 = 0.0; // Annual human capital income1 volatility.
         public double hci_growth2 = 0.0; // Annual human capital income2 growth rate.
         public double hci_vol2 = 0.0; // Annual human capital income2 volatility.
+        public double hci_growth_noise = 0.0; // Annualized human capital noise growth rate; applied on top of income1 and income2.
+        public double hci_vol_noise = 0.0; // Annualized human capital noise volatility.
         public Double hci_synthetic_target_corr = null; // Non-null to attempt to specify a hci/synthetic correlation.
         public int hci_income2_age = 35; // Human capital income2 from this age on (appart from drop in retirement); previously income1.
         public double hci_retirement = 0.0; // Fixed human capital income received during retirement.
@@ -468,6 +472,8 @@ public class Config
         public double tax_rate_cg = 0.0; // Average tax rate for capital gains.
         public double[] tax_rate_div = null; // Average tax rate for dividends for each asset class. Null for defaults.
         public double tax_rate_div_default = 0.0; // Default tax rate for dividends.
+        public double tax_rate_hci = 0.0; // Tax rate for income from human capital pre-retirement.
+        public double tax_rate_hci_retirement = 0.0; // Tax rate for income from human capital in retirement.
         public double tax_rate_annuity = 0.0; // Average tax rate for annuities.
                // Annuity taxation is not reported in tax metric output (could probably modify to track and report if desired).
         public boolean tax_annuity_credit_expire = true; // Perform US rather than Canadian style annuity taxation.

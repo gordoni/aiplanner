@@ -71,6 +71,7 @@ public class Scenario
         public int nia_aa_index;
         public int hci1_aa_index;
         public int hci2_aa_index;
+        public int hci_noise_aa_index;
         public int consume_index;
         public int all_alloc;
         public int cpi_index;
@@ -1794,6 +1795,8 @@ public class Scenario
                         this.asset_classes.add("[hci1]");
                         hci2_aa_index = this.asset_classes.size();
                         this.asset_classes.add("[hci2]");
+                        hci_noise_aa_index = this.asset_classes.size();
+                        this.asset_classes.add("[hci_noise]");
                 }
                 cpi_index = -1;
                 if (do_tax || (ria_index != null && config.tax_rate_annuity != 0) || nia_index != null)
