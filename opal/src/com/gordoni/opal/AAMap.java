@@ -187,7 +187,7 @@ class AAMap
                 double[] rets = new double[scenario.stochastic_classes];
                 double[] tax_annuity_credit_expire = new double[total_periods]; // Nominal amount.
                 Tax tax = null;
-                if (generate)
+                if (generate && !config.cost_basis_method.equals("immediate"))
                         tax = new TaxImmediate(scenario, config.tax_immediate_adjust);
                 else
                         tax = Tax.taxFactory(scenario, config.cost_basis_method);

@@ -447,20 +447,20 @@ public class Returns implements Cloneable
                         lm_bonds_returns.add(Double.NaN);
                 }
 
-                List<Double> cpi_returns = null;
-                if (start >= 0)
+                List<Double> cpi_returns = new ArrayList<Double>();
+                for (int year = start_year; year <= end_year; year++)
                 {
-                        cpi_returns = new ArrayList<Double>();
-                        for (int year = start_year; year <= ((end_year == null) ? hist.initial_year + count - 1 : end_year); year++)
-                        {
-                                int i = (year - hist.initial_year) * 12 + 12;
-                                double cpi_d = hist.cpi_index.get(i) / hist.cpi_index.get(i - 12);
-                                cpi_returns.add(cpi_d - 1.0);
-                        }
-                        double cpi_geomean = Utils.plus_1_geomean(cpi_returns);
-                        double cpi_adjust = (ret_inflation == null) ? 1 : (Math.pow(1.0 + ret_inflation, 1.0 / time_periods) / cpi_geomean);
-                        cpi_returns = adjust_returns(cpi_returns, 0, cpi_adjust, 1);
+                        int i = (year - hist.initial_year) * 12 + 12;
+                        Double cpi_d = Double.NaN;
+                        if (i >= 12 && i < hist.cpi_index.size())
+                                cpi_d = hist.cpi_index.get(i) / hist.cpi_index.get(i - 12) - 1.0;
+                        if (config.ret_inflation_constant != null)
+                                cpi_d = config.ret_inflation_constant;
+                        cpi_returns.add(cpi_d);
                 }
+                double cpi_geomean = Utils.plus_1_geomean(cpi_returns);
+                double cpi_adjust = (ret_inflation == null) ? 1 : (Math.pow(1.0 + ret_inflation, 1.0 / time_periods) / cpi_geomean);
+                cpi_returns = adjust_returns(cpi_returns, 0, cpi_adjust, 1);
 
                 List<double[]> returns = new ArrayList<double[]>();
                 dividend_fract = new double[scenario.asset_classes.size()];

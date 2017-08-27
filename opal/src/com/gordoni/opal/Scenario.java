@@ -1283,7 +1283,9 @@ public class Scenario
                                 //      }
                                 // }
                                 // System.err.println((config.generate_start_year + minloc) + " " + (minval - 1));
-                        }
+                                if (!config.skip_returns)
+                                        System.out.println("      Returns: " + Arrays.toString(returns.get(index)));
+                                }
                         if (!config.skip_cov)
                                 System.out.println("  Covariance: " + Arrays.deepToString(Utils.covariance_returns(returns)));
                         if (!config.skip_corr)

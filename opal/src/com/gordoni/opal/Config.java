@@ -67,6 +67,7 @@ public class Config
         public boolean skip_dump_log = true; // Save disk by not dumping future maps.
         public boolean skip_cov = true; // Don't report the covariance matrix.
         public boolean skip_corr = true; // Don't report the correlation matrix.
+        public boolean skip_returns = true; // Don't report the returns.
 
         public double dump_min_age = 0; // Dump this age and above.
         public double dump_max_age = Double.POSITIVE_INFINITY; // Dump this age and below.
@@ -343,7 +344,7 @@ public class Config
         public int max_delta_paths = 100; // Maximum number of paths to use for the delta paths output files.
         public int max_display_paths = 10; // Maximum number of paths to use for the paths output file.
 
-        public Double start_tp = 0.0; // Starting taxable investement portfolio size. Null if not a portfolio dimension.
+        public Double start_tp = 100000.0; // Starting taxable investement portfolio size. Null if not a portfolio dimension.
         public Double start_ria = null; // Starting taxable real annuity annual payout size. Null if not a portfolio dimension.
         public Double start_nia = null; // Starting taxable nominal annuity annual payout size. Null if not a portfolio dimension.
         public Double start_hci = null; // Starting taxable human capital annual income. Null if not a portfolio dimension.
@@ -457,6 +458,7 @@ public class Config
         public Double ret_bonds_adjust = null; // None for no adjustment to fixed income, float for adjust.
         public Double ret_cash_arith = null; // None for no adjustment, or arithmetic mean to use for cash returns.
         public Double ret_equity_premium = null; // None for no adjustment, or arithmetic mean to use for excess of stock returns over cash returns.
+        public Double ret_inflation_constant = null; // None for historical inflation, or float for constant inflation rate value.
         public double generate_all_adjust = 0.0;  // Adjust applied to all asset classes during generation.
         public double validate_all_adjust = 0.0;  // Adjust applied to all asset classes during targeting and validation.
         public Double generate_ret_inflation = null; // None for no adjustment to inflation during generation, float for geomean value.
@@ -476,7 +478,8 @@ public class Config
               // We fail to apply a credit to the estate if die before reach IRS life expectancy.
         public String cost_basis_method = "immediate";  // Cost basis method for validation.  Immediate is used for generation.
                // "immediate", "avgcost", "hifo", or "fifo".
-        public double tax_immediate_adjust = 0.8; // Immediate taxation isn't realistic. Multiplicative adjustment to tax rate when generating to make it more so.
+        public double tax_immediate_adjust = 0.8;
+               // Immediate taxation isn't realistic. Multiplicative adjustment to tax rate when generating and not not immediate to make it more so.
                // Determined empirically to maximize hifo.
                //     1.00: stocks/bonds and an individual age 25 with an rcr of 0.05 growing 7% and taxes of div. (0.15, 0.20), cg 0.15, rbs 20.
                //     0.75: stocks/bonds and an individual age 25 with an rcr of 0.05 growing 7% and taxes of div. (0.15, 0.25), cg 0.15, rbs 1.
