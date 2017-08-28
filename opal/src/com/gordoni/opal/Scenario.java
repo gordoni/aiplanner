@@ -716,6 +716,13 @@ public class Scenario
                                 return elem.p;
                         else if (what.equals("hci"))
                                 return elem.hci;
+                        else if (what.equals("savings"))
+                        {
+                                if (i + 1 >= path.size())
+                                        return null;
+                                else
+                                        return (path.get(i + 1).p - elem.p) * config.validate_time_periods - elem.consume_annual;
+                        }
                         else if (what.equals("floor"))
                                 return config.utility_join ? Math.min(elem.consume_annual, config.utility_join_required) : elem.consume_annual;
                         else if (what.equals("upside"))
@@ -857,10 +864,11 @@ public class Scenario
                 dump_distribution(paths, "consume", true, true);
         }
 
-        private double dump_pct_path(List<List<PathElement>> paths, String what, boolean change) throws IOException
+        private double[] dump_pct_path(List<List<PathElement>> paths, String what, boolean change) throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-pct-" + (change ? "change-" : "") + what + ".csv"));
 
+                double min_pctl = Double.NaN;
                 double max_pctl = Double.NaN;
                 double age_period = validate_age * config.generate_time_periods;
                 for (int i = 0; ; i++)
@@ -881,6 +889,8 @@ public class Scenario
                         double low = vals[(int) (pctl * values)];
                         double median = vals[(int) (0.5 * values)];
                         double high = vals[(int) ((1 - pctl) * values)];
+                        if (Double.isNaN(min_pctl) || (low < min_pctl))
+                                min_pctl = low;
                         if (Double.isNaN(max_pctl) || (high > max_pctl))
                                 max_pctl = high;
                         double mean = Utils.mean(vals);
@@ -889,7 +899,7 @@ public class Scenario
                 }
                 out.close();
 
-                return max_pctl;
+                return new double[]{min_pctl, max_pctl};
         }
 
         private void dump_pct_paths(List<List<PathElement>> paths) throws IOException
@@ -911,13 +921,17 @@ public class Scenario
                 {
                         List<PathElement> path = paths.get(pi);
                         double age_period = initial_period;
-                        for (PathElement step : path)
+                        for (int i = 0; i < path.size(); i++)
                         {
+                                PathElement step = path.get(i);
                                 double p = step.p;
                                 double consume_annual = step.consume_annual;
                                 double ria = step.ria;
                                 double nia = step.nia;
                                 double hci = step.hci;
+                                double savings = Double.NaN;
+                                if (i + 1 < path.size())
+                                        savings = (path.get(i + 1).p - p) * config.validate_time_periods - consume_annual;
                                 double real_annuitize = step.real_annuitize;
                                 double nominal_annuitize = step.nominal_annuitize;
                                 double[] step_aa = (step.aa == null) ? guaranteed_safe_aa() : step.aa; // Last path element aa may be null.
@@ -930,7 +944,7 @@ public class Scenario
                                 out.print("," + f2f.format(real_annuitize));
                                 out.print("," + f2f.format(nominal_annuitize));
                                 out.print("," + f2f.format(hci));
-                                out.print(",");
+                                out.print("," + f2f.format(savings));
                                 //out.print("," + ((returns == null) ? "" : f4f.format(expected_return(step_aa, returns))));
                                 //out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(step_aa, returns, corr))));
                                 out.print("," + aa);
@@ -1080,7 +1094,7 @@ public class Scenario
                 out.close();
         }
 
-        public void dump_gnuplot_params(double p_max, double hci_max, double consume_max, double annuitization_max, double consume_ara_max) throws IOException
+        public void dump_gnuplot_params(double p_max, double hci_max, double savings_max, double savings_min, double consume_max, double annuitization_max, double consume_ara_max) throws IOException
         {
                 PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-gnuplot-params.gnuplot")));
                 out.println("paths = " + (do_validate ? 1 : 0));
@@ -1099,6 +1113,8 @@ public class Scenario
                 out.println("max_aa = " + ((config.gnuplot_max_aa == null) ? config.max_aa : config.gnuplot_max_aa));
                 out.println("tp = " + p_max);
                 out.println("hci = " + hci_max);
+                out.println("savings_max = " + savings_max);
+                out.println("savings_min = " + savings_min);
                 out.println("consume = " + consume_max);
                 double payout = 0;
                 double annuitization = 0;
@@ -1158,13 +1174,18 @@ public class Scenario
 
                 tp_max = tp_max_estimate;
                 double hci_max = 0;
+                double savings_max = 0;
+                double savings_min = 0;
                 double consume_max = consume_max_estimate;
                 if (do_validate)
                 {
                         dump_distributions(paths);
-                        tp_max = dump_pct_path(paths, "p", false);
-                        hci_max = dump_pct_path(paths, "hci", false);
-                        double consume_max_path = dump_pct_path(paths, "consume", false);
+                        tp_max = dump_pct_path(paths, "p", false)[1];
+                        hci_max = dump_pct_path(paths, "hci", false)[1];
+                        double[] savings_bounds = dump_pct_path(paths, "savings", false);
+                        savings_min = savings_bounds[0];
+                        savings_max = savings_bounds[1];
+                        double consume_max_path = dump_pct_path(paths, "consume", false)[1];
                         if (!Double.isNaN(consume_max_path))
                                 // NaN when debugging final period alone.
                                 consume_max = consume_max_path;
@@ -1183,6 +1204,8 @@ public class Scenario
                         tp_max = tp_max_estimate; // Avoid crashing gnuplot.
                 tp_max = Math.min(tp_max, config.map_max_factor * tp_max_estimate);
                 hci_max *= config.gnuplot_extra;
+                savings_max *= 2 * config.gnuplot_extra - 1;
+                savings_min *=2 *  config.gnuplot_extra - 1;
                 if (config.gnuplot_consume != null)
                         consume_max = config.gnuplot_consume;
                 else
@@ -1213,7 +1236,7 @@ public class Scenario
 
                 if (!config.skip_generate || !config.skip_retirement_number)
                 {
-                        dump_gnuplot_params(tp_max, hci_max, consume_max, annuitization_max, consume_ara_max);
+                        dump_gnuplot_params(tp_max, hci_max, savings_max, savings_min, consume_max, annuitization_max, consume_ara_max);
                         plot();
                 }
         }

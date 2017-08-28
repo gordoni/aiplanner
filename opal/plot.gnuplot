@@ -407,6 +407,16 @@ if (paths && hci > 0) plot \
   prefix . "-pct-hci.csv" using 1:2:3:4 with errorlines title "95 percent income", \
   prefix . "-pct-hci.csv" using 1:5 with errorlines title "mean income"
 
+set ylabel "annual savings ($)"
+set yrange [savings_min:savings_max]
+if (paths) set output prefix . "-paths-savings.png"
+if (paths) plot prefix . "-paths.csv" using 1:9 with lines title "Sample savings paths"
+
+if (paths) set output prefix . "-pct-savings.png"
+if (paths) plot \
+  prefix . "-pct-savings.csv" using 1:2:3:4 with errorlines title "95 percent savings", \
+  prefix . "-pct-savings.csv" using 1:5 with errorlines title "mean savings"
+
 set yrange [min_aa * 100:max_aa * 100]
 set format y "%.0f%%"
 
