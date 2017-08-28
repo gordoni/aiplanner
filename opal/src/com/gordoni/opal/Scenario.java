@@ -721,7 +721,7 @@ public class Scenario
                                 if (i + 1 >= path.size())
                                         return null;
                                 else
-                                        return (path.get(i + 1).p - elem.p) * config.validate_time_periods - elem.consume_annual;
+                                        return (path.get(i + 1).p - elem.p) * config.validate_time_periods;
                         }
                         else if (what.equals("floor"))
                                 return config.utility_join ? Math.min(elem.consume_annual, config.utility_join_required) : elem.consume_annual;
@@ -931,7 +931,7 @@ public class Scenario
                                 double hci = step.hci;
                                 double savings = Double.NaN;
                                 if (i + 1 < path.size())
-                                        savings = (path.get(i + 1).p - p) * config.validate_time_periods - consume_annual;
+                                    savings = (path.get(i + 1).p - p) * config.validate_time_periods;
                                 double real_annuitize = step.real_annuitize;
                                 double nominal_annuitize = step.nominal_annuitize;
                                 double[] step_aa = (step.aa == null) ? guaranteed_safe_aa() : step.aa; // Last path element aa may be null.

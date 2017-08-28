@@ -98,6 +98,7 @@ class AAMap
                 final VitalStats original_vital_stats = generate ? generate_stats : validate_stats;
                 final AnnuityStats annuity_stats = generate ? scenario.ss.generate_annuity_stats : scenario.ss.validate_annuity_stats;
                 final boolean monte_carlo_validate = config.sex2 != null && !config.couple_unit;
+                final boolean start_hci_stochastic = scenario.hci_index != null && config.start_hci_sigma != 0;
                 final int total_periods = (int) (scenario.ss.max_years * returns.time_periods);
                 final int max_periods = total_periods - period;
 
@@ -210,10 +211,17 @@ class AAMap
                 double divisor_a = 0;
 
                 Random random = null;
-                if (!generate && monte_carlo_validate)
+                LogNormalDistribution lognormal_distrib = null;
+                if (!generate && (monte_carlo_validate || start_hci_stochastic))
                 {
-                        random = new Random(config.vital_stats_seed);
-                        random = new Random(random.nextInt() + bucket);
+                        random = new Random(bucket);
+                        random.setSeed(random.nextInt() + config.vital_stats_seed);
+                        if (start_hci_stochastic)
+                        {
+                                RandomGenerator rand = new JDKRandomGenerator();
+                                rand.setSeed(random.nextInt());
+                                lognormal_distrib = new LogNormalDistribution(rand, 0, config.start_hci_sigma);
+                        }
                 }
 
                 double first_payout_fract = 1 / returns.time_periods - config.annuity_payout_delay / 12;
@@ -225,6 +233,8 @@ class AAMap
                         double ria = (scenario.ria_index == null ? 0 : bucket_p[scenario.ria_index]); // Payout is after tax amount.
                         double nia = (scenario.nia_index == null ? 0 : bucket_p[scenario.nia_index]);
                         double hci = (scenario.hci_index == null ? 0 : bucket_p[scenario.hci_index]);
+                        if (!generate && start_hci_stochastic)
+                                hci *= lognormal_distrib.sample();
                         double[] aa = aa1;
                         double[] free_aa = aa2;
                         System.arraycopy(start_aa, 0, aa, 0, scenario.all_alloc);
@@ -348,7 +358,7 @@ class AAMap
                                 double nia_prev = nia;
                                 double hci_prev = hci;
                                 if (scenario.hci_index != null && !retired)
-                                        hci_prev *= rets[scenario.hci_noise_aa_index];
+                                        hci_prev += hci_prev * rets[scenario.hci_noise_aa_index];
 
                                 double income = ria + nia;
                                 if (period + y < config.cw_schedule.length)
@@ -1073,19 +1083,13 @@ class AAMap
                                 public Integer call()
                                 {
                                         Thread.currentThread().setPriority((Thread.MIN_PRIORITY + Thread.NORM_PRIORITY) / 2);
-                                        RandomGenerator rand = new JDKRandomGenerator();
-                                        rand.setSeed(fseed);
-                                        LogNormalDistribution distrib = new LogNormalDistribution(rand, 0, config.start_hci_sigma);
+                                        Random rand = new Random(fseed);
                                         int i1 = Math.min(fnum_batches, fi0 + batchesPerTask);
                                         for (int i = fi0; i < i1; i++)
                                         {
-
-                                                double[] stochastic_p = p.clone();
-                                                if (scenario.hci_index != null)
-                                                        stochastic_p[scenario.hci_index] *= distrib.sample();
                                                 Returns local_returns = returns.clone();
                                                 local_returns.setSeed(rand.nextInt());
-                                                results[i] = simulate_paths((int) Math.round((age - config.start_age) * returns.time_periods), fbatch_size, num_paths_record, stochastic_p, local_returns, i);
+                                                results[i] = simulate_paths((int) Math.round((age - config.start_age) * returns.time_periods), fbatch_size, num_paths_record, p, local_returns, i);
                                                 if (!config.skip_metric_jpmorgan)
                                                         results[i].metrics.set(MetricsEnum.JPMORGAN, jpmorgan_metric(age, results[i].paths, fnum_batches, returns));
                                         }
