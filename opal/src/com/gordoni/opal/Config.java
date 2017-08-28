@@ -40,7 +40,7 @@ public class Config
 
         public boolean trace = false; // Be chatty.
         public boolean trace_error = false; // Less chatty tracing of error bar calculations.
-        public boolean debug_till_end = false; // Whether to plot until the final year or display graphs only through age 99.
+        public boolean debug_till_end = false; // Whether to plot until the final year or display graphs only through age 100.
 
         public int tasks_generate = 100; // Break generation into this many concurrent tasks.
         public int bucket_groups_per_task = 3; // Process this many buckets at a time.
