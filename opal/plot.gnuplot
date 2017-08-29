@@ -371,8 +371,7 @@ if (paths) plot prefix . "-paths.csv" using 1:3 with lines title "Sample consump
 
 if (paths) set output prefix . "-pct-consume.png"
 if (paths) plot \
-  prefix . "-pct-consume.csv" using 1:2:3:4 with errorlines title "95 percent consumption", \
-  prefix . "-pct-consume.csv" using 1:5 with errorlines title "mean consumption"
+  prefix . "-pct-consume.csv" using 1:2:3:4 with errorlines title "95 percent consumption"
 
 set ylabel "utility"
 set yrange [*:*]
