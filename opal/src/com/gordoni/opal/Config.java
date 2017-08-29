@@ -368,7 +368,7 @@ public class Config
         public double hci_growth_noise = 0.0; // Annualized human capital noise growth rate; applied on top of income1 and income2.
         public double hci_vol_noise = 0.0; // Annualized human capital noise volatility.
         public Double hci_synthetic_target_corr = null; // Non-null to attempt to specify a hci/synthetic correlation.
-        public int hci_income2_age = 35; // Human capital income2 from this age on (appart from drop in retirement); previously income1.
+        public int hci_income2_age = 36; // Human capital income2 from this age on (appart from drop in retirement); previously income1.
         public double hci_retirement = 0.0; // Fixed human capital income received during retirement.
         public double hci_retirement_fract = 0.0; // Additional proportion of final pre-retirement human capital income received during retirement.
         public double hci_retirement_max = Double.POSITIVE_INFINITY; // Maximum human capital income received during retirement.

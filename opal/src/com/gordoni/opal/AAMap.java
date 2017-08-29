@@ -325,7 +325,7 @@ class AAMap
                                 double retire_in_periods = (config.retirement_age - config.start_age) * returns.time_periods - (period + y);
                                 boolean retired = (retire_in_periods <= 0);
                                 boolean retire_next = (0 < retire_in_periods) && (retire_in_periods <= 1);
-                                boolean hci1 = (config.hci_income2_age - config.start_age) * returns.time_periods > (period + y);
+                                boolean hci1_next = (period + y + 1) < (config.hci_income2_age - config.start_age) * returns.time_periods;
                                 boolean compute_utility = !config.utility_retire || retired;
 
                                 if (pessimal)
@@ -487,7 +487,7 @@ class AAMap
                                         {
                                                 if (retire_next)
                                                         hci = Math.min(config.hci_retirement + config.hci_retirement_fract * hci, config.hci_retirement_max);
-                                                else if (hci1)
+                                                else if (hci1_next)
                                                         hci += hci * rets[scenario.hci1_aa_index];
                                                 else
                                                         hci += hci * rets[scenario.hci2_aa_index];
