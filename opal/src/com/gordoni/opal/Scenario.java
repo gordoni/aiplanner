@@ -735,7 +735,7 @@ public class Scenario
                         PathElement elem = path.get(i);
                         if (what.equals("p"))
                                 return elem.p;
-                        else if (what.equals("hci"))
+                        else if (what.equals("nti"))
                                 return elem.hci;
                         else if (what.equals("savings"))
                         {
@@ -754,9 +754,9 @@ public class Scenario
                             return utility_consume.utility(elem.consume_annual);
                         else if (what.equals("inherit"))
                                 return elem.p;
-                        else if (what.equals("human_capital"))
+                        else if (what.equals("non_tradable"))
                                 return elem.expected_human_capital;
-                        else if (what.startsWith("hc_likeness-"))
+                        else if (what.startsWith("nt_likeness-"))
                         {
                                 double[] p = new double[start_p.length];
                                 if (tp_index != null)
@@ -771,7 +771,7 @@ public class Scenario
                                 if (hc_like == null)
                                         return null;
                                 else
-                                        return hc_like[asset_classes.indexOf(what.substring("hc_likeness-".length()))];
+                                        return hc_like[asset_classes.indexOf(what.substring("nt_likeness-".length()))];
                         }
                         else if (elem.aa == null)
                                 return null; // Final element.
@@ -948,7 +948,7 @@ public class Scenario
                 {
                         dump_pct_path(paths, map, asset_classes.get(i), false);
                         if (hci_index != null)
-                                dump_pct_path(paths, map, "hc_likeness-" + asset_classes.get(i), false);
+                                dump_pct_path(paths, map, "nt_likeness-" + asset_classes.get(i), false);
                 }
                 dump_pct_path(paths, map, "utility", false);
                 dump_pct_path(paths, map, "p", true);
@@ -1158,7 +1158,7 @@ public class Scenario
                 out.println("paths = " + (do_validate ? 1 : 0));
                 out.println("retirement_number = " + (!config.skip_retirement_number ? 1 : 0));
                 out.println("bequest = " + (config.utility_dead_limit != 0 ? 1 : 0));
-                out.println("hc_likeness = " + (hci_index != null ? 1 : 0));
+                out.println("nt_likeness = " + (hci_index != null ? 1 : 0));
                 out.println("age_label = \"" + (config.sex2 == null || config.start_age == config.start_age2 ? "age" : "age of first person") + "\"");
                 out.println("age_low = " + config.start_age);
                 int age_high = config.start_age + ss.max_years;
@@ -1171,8 +1171,8 @@ public class Scenario
                 out.println("min_aa = " + ((config.gnuplot_min_aa == null) ? config.min_aa : config.gnuplot_min_aa));
                 out.println("max_aa = " + ((config.gnuplot_max_aa == null) ? config.max_aa : config.gnuplot_max_aa));
                 out.println("tp = " + p_max);
-                out.println("hci = " + hci_max);
-                out.println("human_capital = " + human_capital_max);
+                out.println("nti = " + hci_max);
+                out.println("non_tradable = " + human_capital_max);
                 out.println("savings_max = " + savings_max);
                 out.println("savings_min = " + savings_min);
                 out.println("consume = " + consume_max);
@@ -1242,8 +1242,8 @@ public class Scenario
                 {
                         dump_distributions(paths, map);
                         tp_max = dump_pct_path(paths, map, "p", false)[1];
-                        hci_max = dump_pct_path(paths, map, "hci", false)[1];
-                        human_capital_max = dump_pct_path(paths, map, "human_capital", false)[1];
+                        hci_max = dump_pct_path(paths, map, "nti", false)[1];
+                        human_capital_max = dump_pct_path(paths, map, "non_tradable", false)[1];
                         double[] savings_bounds = dump_pct_path(paths, map, "savings", false);
                         savings_min = savings_bounds[0];
                         savings_max = savings_bounds[1];
