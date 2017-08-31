@@ -68,6 +68,10 @@ public class Config
         public boolean skip_cov = true; // Don't report the covariance matrix.
         public boolean skip_corr = true; // Don't report the correlation matrix.
         public boolean skip_returns = true; // Don't report the returns.
+        public boolean skip_human_capital_likeness = false; // Speedup by not calculating human capital likeness.
+
+        public boolean human_capital_likeness_future_tradeable = true;
+            // Whether to compute the likeness of human capital to an asset class assuming human capital is tradeable in the future.
 
         public double dump_min_age = 0; // Dump this age and above.
         public double dump_max_age = Double.POSITIVE_INFINITY; // Dump this age and below.
@@ -77,7 +81,7 @@ public class Config
 
         public double[] ria_slices = new double[]{0.0}; // Real immediate annuity slice values for opal-linear.csv to dump.
         public double[] nia_slices = new double[]{0.0}; // Nominal immediate annuity slice values for opal-linear.csv to dump.
-        public double[] hci_slices = new double[]{0.0}; // HUman capital income slice values for opal-linear.csv to dump.
+        public double[] hci_slices = new double[]{0.0}; // Human capital income slice values for opal-linear.csv to dump.
 
         // Simulation specific parameters.
 
@@ -361,6 +365,8 @@ public class Config
                 // No utility is derived from cw_schedule withdrawals.  Array of numeric amounts for each time period, extended with zeros.
         public double accumulation_rate = 0; // Contribution rate. Initial rate of asset accumulation prior to retirement.
         public double accumulation_ramp = 1.07; // Annual ramping factor by which to boost accumulation rate over time.
+        public double human_capital_time_growth = 0.0; // Rate of increase in the value of human capital if it isn't consumed today.
+                // This is the discount rate for human capital income. It should equal the growth in average wages across individuals over time.
         public double hci_growth1 = 0.0; // Annual human capital income1 growth rate.
         public double hci_vol1 = 0.0; // Annual human capital income1 volatility.
         public double hci_growth2 = 0.0; // Annual human capital income2 growth rate.

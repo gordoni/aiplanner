@@ -689,14 +689,35 @@ public class Scenario
                 }
         }
 
-        private Double get_path_value(List<PathElement> path, int i, String what, boolean change)
+        private double[] human_capital_like(AAMap map, int period, double[] aa, double[] p, double human_capital)
+        {
+                double[] nohc_aa = map.no_human_capital_aa(period, p, human_capital);
+
+                if (nohc_aa == null)
+                        return null;
+
+                double hc_like[] = new double[normal_assets];
+                for (int i = 0; i < hc_like.length; i++)
+                {
+                    if (human_capital == 0)
+                            hc_like[i] = Double.NaN;
+                    else
+                            hc_like[i] = (nohc_aa[i] * (p[tp_index] + human_capital) - aa[i] * p[tp_index]) / human_capital;
+                }
+
+                assert(human_capital == 0 || Math.abs(Utils.sum(hc_like) - 1) < 1e-12);
+
+                return hc_like;
+        }
+
+        private Double get_path_value(List<PathElement> path, AAMap map, int i, String what, boolean change)
         {
                 if (change)
                 {
                         if (i > 0)
                         {
-                                Double prev_value = get_path_value(path, i - 1, what, false);
-                                Double curr_value = get_path_value(path, i, what, false);
+                                Double prev_value = get_path_value(path, map, i - 1, what, false);
+                                Double curr_value = get_path_value(path, map, i, what, false);
                                 if (curr_value == null)
                                         return null;
                                 else if (prev_value == 0 && curr_value == 0)
@@ -733,6 +754,25 @@ public class Scenario
                             return utility_consume.utility(elem.consume_annual);
                         else if (what.equals("inherit"))
                                 return elem.p;
+                        else if (what.equals("human_capital"))
+                                return elem.expected_human_capital;
+                        else if (what.startsWith("hc_likeness-"))
+                        {
+                                double[] p = new double[start_p.length];
+                                if (tp_index != null)
+                                        p[tp_index] = elem.p;
+                                if (ria_index != null)
+                                        p[ria_index] = elem.ria;
+                                if (nia_index != null)
+                                        p[nia_index] = elem.nia;
+                                if (hci_index != null)
+                                        p[hci_index] = elem.hci;
+                                double[] hc_like = human_capital_like(map, i, elem.aa, p, elem.expected_human_capital);
+                                if (hc_like == null)
+                                        return null;
+                                else
+                                        return hc_like[asset_classes.indexOf(what.substring("hc_likeness-".length()))];
+                        }
                         else if (elem.aa == null)
                                 return null; // Final element.
                         else
@@ -740,7 +780,7 @@ public class Scenario
                 }
         }
 
-    private double[] distribution_bucketize(List<List<PathElement>> paths, int start, String what, boolean change, double min, double max, Double count_submin, Double count_supmax, double[] counts)
+        private double[] distribution_bucketize(List<List<PathElement>> paths, AAMap map, int start, String what, boolean change, double min, double max, Double count_submin, Double count_supmax, double[] counts)
         {
                 for (int pi = 0; pi < config.max_distrib_paths; pi++)
                 {
@@ -748,7 +788,7 @@ public class Scenario
                         int period = 0;
                         for (int i = start; i < path.size(); i++)
                         {
-                                double value = get_path_value(path, i, what, change);
+                                double value = get_path_value(path, map, i, what, change);
                                 double weight;
                                 if (what.equals("inherit"))
                                         weight = ss.validate_stats.dying[period];
@@ -769,7 +809,7 @@ public class Scenario
                 return counts;
         }
 
-        private void dump_distribution(List<List<PathElement>> paths, String what, boolean change, boolean retire_only) throws IOException
+        private void dump_distribution(List<List<PathElement>> paths, AAMap map, String what, boolean change, boolean retire_only) throws IOException
         {
                 double min = Double.POSITIVE_INFINITY;
                 double max = Double.NEGATIVE_INFINITY;
@@ -781,7 +821,7 @@ public class Scenario
                         List<PathElement> path = paths.get(pi);
                         for (int i = start; i < path.size(); i++)
                         {
-                                double value = get_path_value(path, i, what, change);
+                                double value = get_path_value(path, map, i, what, change);
                                 if (Double.isInfinite(value))
                                         continue; // consume zero then non-zero.
                                 if (value < min)
@@ -810,7 +850,7 @@ public class Scenario
                         count_submin = 0.0;
                         count_supmax = 0.0;
                         counts = new double[config.distribution_steps + 1];
-                        distribution_bucketize(paths, start, what, change, min, max, count_submin, count_supmax, counts);
+                        distribution_bucketize(paths, map, start, what, change, min, max, count_submin, count_supmax, counts);
                         double max_count = 0;
                         for (bucket = 0; bucket < counts.length; bucket++)
                                 if (counts[bucket] > max_count)
@@ -850,21 +890,21 @@ public class Scenario
                 out.close();
         }
 
-        private void dump_distributions(List<List<PathElement>> paths) throws IOException
+        private void dump_distributions(List<List<PathElement>> paths, AAMap map) throws IOException
         {
-                dump_distribution(paths, "p", false, false);
-                dump_distribution(paths, "floor", false, true);
-                dump_distribution(paths, "upside", false, true);
-                dump_distribution(paths, "consume", false, true);
-                dump_distribution(paths, "inherit", false, false);
+                dump_distribution(paths, map, "p", false, false);
+                dump_distribution(paths, map, "floor", false, true);
+                dump_distribution(paths, map, "upside", false, true);
+                dump_distribution(paths, map, "consume", false, true);
+                dump_distribution(paths, map, "inherit", false, false);
 
-                dump_distribution(paths, "p", true, false);
-                dump_distribution(paths, "floor", true, true);
-                dump_distribution(paths, "upside", true, true);
-                dump_distribution(paths, "consume", true, true);
+                dump_distribution(paths, map, "p", true, false);
+                dump_distribution(paths, map, "floor", true, true);
+                dump_distribution(paths, map, "upside", true, true);
+                dump_distribution(paths, map, "consume", true, true);
         }
 
-        private double[] dump_pct_path(List<List<PathElement>> paths, String what, boolean change) throws IOException
+        private double[] dump_pct_path(List<List<PathElement>> paths, AAMap map, String what, boolean change) throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-pct-" + (change ? "change-" : "") + what + ".csv"));
 
@@ -878,7 +918,7 @@ public class Scenario
                         for (int j = 0; j < config.max_pct_paths; j++)
                         {
                                 List<PathElement> path = paths.get(j);
-                                Double value = get_path_value(path, i, what, change);
+                                Double value = get_path_value(path, map, i, what, change);
                                 if (value != null)
                                         vals[values++] = value;
                         }
@@ -902,17 +942,21 @@ public class Scenario
                 return new double[]{min_pctl, max_pctl};
         }
 
-        private void dump_pct_paths(List<List<PathElement>> paths) throws IOException
+        private void dump_pct_paths(List<List<PathElement>> paths, AAMap map) throws IOException
         {
                 for (int i = 0; i < normal_assets; i++)
-                        dump_pct_path(paths, asset_classes.get(i), false);
-                dump_pct_path(paths, "utility", false);
-                dump_pct_path(paths, "p", true);
-                dump_pct_path(paths, "consume", true);
+                {
+                        dump_pct_path(paths, map, asset_classes.get(i), false);
+                        if (hci_index != null)
+                                dump_pct_path(paths, map, "hc_likeness-" + asset_classes.get(i), false);
+                }
+                dump_pct_path(paths, map, "utility", false);
+                dump_pct_path(paths, map, "p", true);
+                dump_pct_path(paths, map, "consume", true);
         }
 
         // Dump the paths taken.
-        private void dump_paths(List<List<PathElement>> paths, Returns returns, double[][] corr) throws IOException
+        private void dump_paths(List<List<PathElement>> paths, AAMap map, Returns returns, double[][] corr) throws IOException
         {
                 PrintWriter out = new PrintWriter(new File(ss.cwd + "/" + config.prefix + "-paths.csv"));
 
@@ -924,20 +968,32 @@ public class Scenario
                         for (int i = 0; i < path.size(); i++)
                         {
                                 PathElement step = path.get(i);
-                                double p = step.p;
+                                double tp = step.p;
                                 double consume_annual = step.consume_annual;
                                 double ria = step.ria;
                                 double nia = step.nia;
                                 double hci = step.hci;
+                                double[] p = new double[start_p.length];
+                                if (tp_index != null)
+                                        p[tp_index] = tp;
+                                if (ria_index != null)
+                                        p[ria_index] = ria;
+                                if (nia_index != null)
+                                        p[nia_index] = nia;
+                                if (hci_index != null)
+                                        p[hci_index] = hci;
+                                double expected_human_capital = step.expected_human_capital;
+                                double[] step_human_capital_like = human_capital_like(map, i, step.aa, p, expected_human_capital);
+                                String human_capital_like = stringify_aa(step_human_capital_like);
                                 double savings = Double.NaN;
                                 if (i + 1 < path.size())
-                                    savings = (path.get(i + 1).p - p) * config.validate_time_periods;
+                                        savings = (path.get(i + 1).p - tp) * config.validate_time_periods;
                                 double real_annuitize = step.real_annuitize;
                                 double nominal_annuitize = step.nominal_annuitize;
                                 double[] step_aa = (step.aa == null) ? guaranteed_safe_aa() : step.aa; // Last path element aa may be null.
                                 String aa = stringify_aa(step_aa);
                                 out.print(f2f.format(age_period / config.generate_time_periods));
-                                out.print("," + f2f.format(p));
+                                out.print("," + f2f.format(tp));
                                 out.print("," + (Double.isNaN(consume_annual) ? "" : f2f.format(consume_annual)));
                                 out.print("," + f2f.format(ria));
                                 out.print("," + f2f.format(nia));
@@ -945,9 +1001,11 @@ public class Scenario
                                 out.print("," + f2f.format(nominal_annuitize));
                                 out.print("," + f2f.format(hci));
                                 out.print("," + f2f.format(savings));
+                                out.print("," + f2f.format(expected_human_capital));
                                 //out.print("," + ((returns == null) ? "" : f4f.format(expected_return(step_aa, returns))));
                                 //out.print("," + ((returns == null) ? "" : f4f.format(expected_standard_deviation(step_aa, returns, corr))));
                                 out.print("," + aa);
+                                out.print("," + human_capital_like);
                                 out.print("\n");
                                 age_period += 1;
                         }
@@ -1094,12 +1152,13 @@ public class Scenario
                 out.close();
         }
 
-        public void dump_gnuplot_params(double p_max, double hci_max, double savings_max, double savings_min, double consume_max, double annuitization_max, double consume_ara_max) throws IOException
+        public void dump_gnuplot_params(double p_max, double hci_max, double human_capital_max, double savings_max, double savings_min, double consume_max, double annuitization_max, double consume_ara_max) throws IOException
         {
                 PrintWriter out = new PrintWriter(new FileWriter(new File(ss.cwd + "/" + config.prefix + "-gnuplot-params.gnuplot")));
                 out.println("paths = " + (do_validate ? 1 : 0));
                 out.println("retirement_number = " + (!config.skip_retirement_number ? 1 : 0));
                 out.println("bequest = " + (config.utility_dead_limit != 0 ? 1 : 0));
+                out.println("hc_likeness = " + (hci_index != null ? 1 : 0));
                 out.println("age_label = \"" + (config.sex2 == null || config.start_age == config.start_age2 ? "age" : "age of first person") + "\"");
                 out.println("age_low = " + config.start_age);
                 int age_high = config.start_age + ss.max_years;
@@ -1113,6 +1172,7 @@ public class Scenario
                 out.println("max_aa = " + ((config.gnuplot_max_aa == null) ? config.max_aa : config.gnuplot_max_aa));
                 out.println("tp = " + p_max);
                 out.println("hci = " + hci_max);
+                out.println("human_capital = " + human_capital_max);
                 out.println("savings_max = " + savings_max);
                 out.println("savings_min = " + savings_min);
                 out.println("consume = " + consume_max);
@@ -1174,23 +1234,27 @@ public class Scenario
 
                 tp_max = tp_max_estimate;
                 double hci_max = 0;
+                double human_capital_max = 0;
                 double savings_max = 0;
-                double savings_min = 0;
+                double savings_min = 1;
                 double consume_max = consume_max_estimate;
                 if (do_validate)
                 {
-                        dump_distributions(paths);
-                        tp_max = dump_pct_path(paths, "p", false)[1];
-                        hci_max = dump_pct_path(paths, "hci", false)[1];
-                        double[] savings_bounds = dump_pct_path(paths, "savings", false);
+                        dump_distributions(paths, map);
+                        tp_max = dump_pct_path(paths, map, "p", false)[1];
+                        hci_max = dump_pct_path(paths, map, "hci", false)[1];
+                        human_capital_max = dump_pct_path(paths, map, "human_capital", false)[1];
+                        double[] savings_bounds = dump_pct_path(paths, map, "savings", false);
                         savings_min = savings_bounds[0];
                         savings_max = savings_bounds[1];
-                        double consume_max_path = dump_pct_path(paths, "consume", false)[1];
+                        if (savings_min == savings_max)
+                                savings_max = savings_min + 1; // Prevent gnuplot crashing.
+                        double consume_max_path = dump_pct_path(paths, map, "consume", false)[1];
                         if (!Double.isNaN(consume_max_path))
                                 // NaN when debugging final period alone.
                                 consume_max = consume_max_path;
-                        dump_pct_paths(paths);
-                        dump_paths(paths, returns, corr);
+                        dump_pct_paths(paths, map);
+                        dump_paths(paths, map, returns, corr);
                         // Delta paths breaks when validate using validate dump because guaranteed_safe_aa relies on MVO tangency.
                         //dump_delta_paths(paths, 1);
                         //dump_delta_paths(paths, 5);
@@ -1204,6 +1268,7 @@ public class Scenario
                         tp_max = tp_max_estimate; // Avoid crashing gnuplot.
                 tp_max = Math.min(tp_max, config.map_max_factor * tp_max_estimate);
                 hci_max *= config.gnuplot_extra;
+                human_capital_max *= config.gnuplot_extra;
                 savings_max *= 2 * config.gnuplot_extra - 1;
                 savings_min *=2 *  config.gnuplot_extra - 1;
                 if (config.gnuplot_consume != null)
@@ -1236,7 +1301,7 @@ public class Scenario
 
                 if (!config.skip_generate || !config.skip_retirement_number)
                 {
-                        dump_gnuplot_params(tp_max, hci_max, savings_max, savings_min, consume_max, annuitization_max, consume_ara_max);
+                        dump_gnuplot_params(tp_max, hci_max, human_capital_max, savings_max, savings_min, consume_max, annuitization_max, consume_ara_max);
                         plot();
                 }
         }

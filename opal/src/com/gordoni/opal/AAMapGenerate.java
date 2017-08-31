@@ -826,9 +826,9 @@ public class AAMapGenerate extends AAMap
         // Generate asset allocation.
         Object next_check_lock = new Object();
         int next_check; // Can't declare locally as modified by thread.
-        public AAMapGenerate(final Scenario scenario, final Returns returns, AAMap aamap1, AAMap aamap2, VitalStats generate_stats, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income) throws ExecutionException
+        public AAMapGenerate(final Scenario scenario, final Returns returns, AAMap aamap1, AAMap aamap2, VitalStats generate_stats, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income, AAMap human_capital_aamap) throws ExecutionException
         {
-                super(scenario, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income);
+                super(scenario, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income, human_capital_aamap);
 
                 pre_compute_vw(returns);
 
@@ -977,6 +977,7 @@ public class AAMapGenerate extends AAMap
                                 me.spend = me.results.spend;
                                 me.first_payout = me.results.first_payout;
                                 me.metric_sm = me.results.metrics.get(scenario.success_mode_enum);
+                                me.metric_human_capital = me.results.metrics.get(MetricsEnum.HUMAN_CAPITAL);
                         }
 
                         map[period].interpolate(true);

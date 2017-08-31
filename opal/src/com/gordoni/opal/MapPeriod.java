@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2016 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -76,6 +76,7 @@ class MapPeriod implements Iterable<MapElement>
         private Interpolator spend_interp;
         private Interpolator first_payout_interp;
         private Interpolator[] aa_interp;
+        private Interpolator human_capital_interp;
 
         private boolean generate_interpolator = true;
 
@@ -98,6 +99,7 @@ class MapPeriod implements Iterable<MapElement>
                 for (int i = 1; i < scenario.all_alloc; i++)
                         aa_interp[i] = Interpolator.factory(this, generate, i);
                 spend_interp = Interpolator.factory(this, generate, Interpolator.spend_interp_index);
+                human_capital_interp = Interpolator.factory(this, generate, Interpolator.human_capital_interp_index);
         }
 
         public MapElement lookup_interpolate(double[] p, boolean fast_path, boolean generate, MapElement li_me)
@@ -184,6 +186,13 @@ class MapPeriod implements Iterable<MapElement>
                 me.metric_sm = metric_sm;
                 me.spend = spend;
                 me.first_payout = first_payout;
+
+                if (scenario.hci_index != null)
+                {
+                        double human_capital = human_capital_interp.value(p);
+                        me.metric_human_capital = human_capital;
+                        me.results.metrics.metrics[MetricsEnum.HUMAN_CAPITAL.ordinal()] = human_capital;
+                }
 
                 me.rps = p;
 

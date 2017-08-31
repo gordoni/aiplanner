@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2015 Gordon Irlam
+ * Copyright (C) 2009, 2011-2017 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -28,11 +28,12 @@ public class PathElement
         public double ria;
         public double nia;
         public double hci;
+        public double expected_human_capital;
         public double real_annuitize;
         public double nominal_annuitize;
         public double tax_amount;
 
-        public PathElement(double[] aa, double p, double consume_annual, double ria, double nia, double hci, double real_annuitize, double nominal_annuitize, double tax_amount, double weight)
+        public PathElement(double[] aa, double p, double consume_annual, double ria, double nia, double hci, double expected_human_capital, double real_annuitize, double nominal_annuitize, double tax_amount, double weight)
         {
                 this.weight = weight;
 
@@ -48,6 +49,7 @@ public class PathElement
                 this.ria = ria;
                 this.nia = nia;
                 this.hci = hci;
+                this.expected_human_capital = expected_human_capital;
                 this.real_annuitize = real_annuitize;
                 this.nominal_annuitize = nominal_annuitize;
                 this.tax_amount = tax_amount;

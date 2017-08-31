@@ -173,7 +173,7 @@ class AAMapDumpLoad extends AAMap
         @SuppressWarnings("unchecked")
         public AAMapDumpLoad(Scenario scenario, String aa_file_prefix, VitalStats validate_stats) throws IOException
         {
-                super(scenario, null, null, null, validate_stats, scenario.utility_consume_time, scenario.utility_consume, scenario.config.defined_benefit);
+                super(scenario, null, null, null, validate_stats, scenario.utility_consume_time, scenario.utility_consume, scenario.config.defined_benefit, null);
 
                 map = new MapPeriod[(int) (scenario.ss.max_years * config.generate_time_periods)];
 
@@ -311,7 +311,7 @@ class AAMapDumpLoad extends AAMap
                 // Dump out and re-read asset allocation so that we are reporting stats after any loss of precision resulting from the limited
                 // precision of the aa file.  Emperically, the results are found to vary by around 0.01% as a result of this.
 
-                super(scenario, null, null, null, validate_stats, map_precise.uc_time, map_precise.uc_risk, map_precise.guaranteed_income);
+                super(scenario, null, null, null, validate_stats, map_precise.uc_time, map_precise.uc_risk, map_precise.guaranteed_income, null);
 
                 if (config.skip_dump_load)
                 {
@@ -326,6 +326,8 @@ class AAMapDumpLoad extends AAMap
                                 aamap1 = new AAMapDumpLoad(scenario, map_precise.aamap1, validate_stats.vital_stats1);
                                 aamap2 = new AAMapDumpLoad(scenario, map_precise.aamap2, validate_stats.vital_stats2);
                         }
+                        human_capital_aamap = map_precise.human_capital_aamap;
+                        no_human_capital_aamap = map_precise.no_human_capital_aamap;
 
                         return;
                 }

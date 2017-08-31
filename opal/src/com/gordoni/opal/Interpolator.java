@@ -31,6 +31,7 @@ abstract class Interpolator
         public static final int ce_interp_index = -2;
         public static final int spend_interp_index = -3;
         public static final int first_payout_interp_index = -4;
+        public static final int human_capital_interp_index = -5;
         // 0..normal_assets-1 - asset class allocation fractions
         // ria_aa_index - ria purchase fraction
         // nia_aa_index - nia purchase fraction
@@ -59,6 +60,8 @@ abstract class Interpolator
                         return me.spend;
                 else if (what == first_payout_interp_index)
                         return me.first_payout;
+                else if (what == human_capital_interp_index)
+                        return me.metric_human_capital;
 
                 assert(false);
                 return 0;

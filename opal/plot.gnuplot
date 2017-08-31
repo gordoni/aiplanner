@@ -425,7 +425,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 1) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 1) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -435,7 +435,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 2) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 2) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -445,7 +445,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 3) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 3) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -455,7 +455,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 4) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 4) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -465,7 +465,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 5) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 5) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -475,7 +475,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 6) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 6) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -485,7 +485,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 7) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 7) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -495,7 +495,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 8) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 8) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -505,7 +505,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 9) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 9) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -515,7 +515,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 10) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 10) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -525,7 +525,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 11) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 11) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -535,7 +535,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 12) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 12) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -545,7 +545,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 13) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 13) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -555,7 +555,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 14) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 14) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -565,7 +565,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 15) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 15) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -575,7 +575,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 16) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 16) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -585,7 +585,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 17) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 17) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -595,7 +595,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 18) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 18) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -605,7 +605,7 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 19) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 19) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
@@ -615,12 +615,226 @@ name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
 name = @name_cmd
 set ylabel name . " / investments"
 if (paths && symbol ne "") set output prefix . "-paths-" . symbol . ".png"
-if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(9 + 20) * 100) with lines title "Sample asset allocation paths"
+if (paths && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + 20) * 100) with lines title "Sample asset allocation paths"
 if (paths && symbol ne "") set output prefix . "-pct-" . symbol . ".png"
 if (paths && symbol ne "") plot prefix . "-pct-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent asset allocation"
 
 symbol = word(asset_class_symbols, 21)
 if (paths && symbol ne "") die-invalid-command-too-many-asset_classes
+
+set yrange [0:100]
+set format y "%.0f%%"
+
+symbol = word(asset_class_symbols, 1)
+name = word(asset_class_names, 1)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 1) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 2)
+name = word(asset_class_names, 2)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 2) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 3)
+name = word(asset_class_names, 3)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 3) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 4)
+name = word(asset_class_names, 4)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 4) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 5)
+name = word(asset_class_names, 5)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 5) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 6)
+name = word(asset_class_names, 6)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 6) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 7)
+name = word(asset_class_names, 7)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 7) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 8)
+name = word(asset_class_names, 8)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 8) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 9)
+name = word(asset_class_names, 9)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 9) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 10)
+name = word(asset_class_names, 10)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 10) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 11)
+name = word(asset_class_names, 11)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 11) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 12)
+name = word(asset_class_names, 12)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 12) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 13)
+name = word(asset_class_names, 13)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 13) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 14)
+name = word(asset_class_names, 14)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 14) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 15)
+name = word(asset_class_names, 15)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 15) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 16)
+name = word(asset_class_names, 16)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 16) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 17)
+name = word(asset_class_names, 17)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 17) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 18)
+name = word(asset_class_names, 18)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 18) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 19)
+name = word(asset_class_names, 19)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 19) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 20)
+name = word(asset_class_names, 20)
+name_cmd = '"`echo ' . "'" . name . "'" . " | sed 's/_/ /g'" . '`"'
+name = @name_cmd
+set ylabel name . " likeness of human capital"
+if (hc_likeness && symbol ne "") set output prefix . "-paths-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-paths.csv" using 1:(column(10 + words(asset_class_symbols) + 20) * 100) with lines title "Sample human capital likeness paths"
+if (hc_likeness && symbol ne "") set output prefix . "-pct-hc_likeness-" . symbol . ".png"
+if (hc_likeness && symbol ne "") plot prefix . "-pct-hc_likeness-" . symbol . ".csv" using 1:($2*100):($3*100):($4*100) with errorlines title "95 percent human capital likeness"
+
+symbol = word(asset_class_symbols, 21)
+if (hc_likeness && symbol ne "") die-invalid-command-too-many-asset_classes
+
+set yrange [0:human_capital]
+set format y "%.1s%c"
+set ylabel "human capital"
+if (human_capital) set output prefix . "-paths-human_capital.png"
+if (human_capital) plot prefix . "-paths.csv" using 1:10 with lines title "Sample expected human capital paths"
+if (human_capital) set output prefix . "-pct-human_capital.png"
+if (human_capital) plot prefix . "-pct-human_capital.csv" using 1:2:3:4 with errorlines title "95 percent expected human capital"
 
 #set ylabel "inflation-indexed SPIA purchase / total portfolio size"
 #set yrange [0:100]

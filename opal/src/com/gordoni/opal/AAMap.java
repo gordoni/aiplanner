@@ -40,6 +40,8 @@ class AAMap
 
         protected AAMap aamap1;
         protected AAMap aamap2;
+        protected AAMap human_capital_aamap; // Non-null in no_human_capital map when computing likeness of human capital.
+        protected AAMap no_human_capital_aamap; // Non-null in human_capital map when computing likeness of human capital.
 
         private VitalStats generate_stats;
         private VitalStats validate_stats;
@@ -66,6 +68,19 @@ class AAMap
                 MapElement li_me = new MapElement(null, aa, results, null, null);
 
                 return map[period].lookup_interpolate(p, false, false, li_me);
+        }
+
+        public double[] no_human_capital_aa(int period, double[] p, double human_capital)
+        {
+                if (no_human_capital_aamap == null || period >= no_human_capital_aamap.map.length)
+                        return null;
+
+                double[] p_total = p.clone();
+                p_total[scenario.tp_index] += human_capital;
+
+                double[] nohc_aa = no_human_capital_aamap.lookup_interpolate(p_total, period).aa;
+
+                return nohc_aa;
         }
 
         private void aa_offset(double[] aa)
@@ -141,19 +156,6 @@ class AAMap
                                 has_special = true;
                 }
 
-                double[] start_aa;
-                if (initial_aa == null)
-                {
-                        MapElement res = lookup_interpolate(bucket_p, period);
-                        start_aa = res.aa;
-                }
-                else
-                {
-                        start_aa = initial_aa.clone();
-                }
-                if (!generate)
-                        aa_offset(start_aa);
-
                 double[] aa1 = new double[scenario.all_alloc]; // Avoid object creation in main loop; slow.
                 double[] aa2 = new double[scenario.all_alloc];
 
@@ -183,6 +185,7 @@ class AAMap
                 double tax_goal = 0.0;
                 double wer = 0.0; // Blanchett Withdrawal Efficiency Rate, not time discounted.
                 double cost = 0.0;
+                double human_capital = 0.0;
                 double consume_alive_discount = Double.NaN;
                 Metrics metrics = new Metrics();
                 List<List<PathElement>> paths = null;
@@ -233,8 +236,30 @@ class AAMap
                         double ria = (scenario.ria_index == null ? 0 : bucket_p[scenario.ria_index]); // Payout is after tax amount.
                         double nia = (scenario.nia_index == null ? 0 : bucket_p[scenario.nia_index]);
                         double hci = (scenario.hci_index == null ? 0 : bucket_p[scenario.hci_index]);
-                        if (!generate && start_hci_stochastic)
-                                hci *= lognormal_distrib.sample();
+
+                        double[] start_aa;
+                        double expected_human_capital = Double.NaN;
+                        if (generate)
+                        {
+                                start_aa = initial_aa.clone();
+                        }
+                        else
+                        {
+                                assert(initial_aa == null);
+
+                                double[] start_p = bucket_p.clone();
+                                if (start_hci_stochastic)
+                                {
+                                        hci *= lognormal_distrib.sample();
+                                        start_p[scenario.hci_index] = hci;
+                                }
+                                MapElement res = lookup_interpolate(start_p, period);
+                                start_aa = res.aa;
+                                aa_offset(start_aa);
+
+                                expected_human_capital = res.metric_human_capital;
+                        }
+
                         double[] aa = aa1;
                         double[] free_aa = aa2;
                         System.arraycopy(start_aa, 0, aa, 0, scenario.all_alloc);
@@ -263,6 +288,7 @@ class AAMap
                         double tax_goal_path = 0.0;
                         double wer_path = 0.0;
                         double cost_path = 0.0;
+                        double human_capital_path = 0.0;
                         List<PathElement> path = null;
                         if (s < num_paths_record)
                                 path = new ArrayList<PathElement>();
@@ -285,6 +311,15 @@ class AAMap
                                 returns_probability = returns.returns_unshuffled_probability[index];
                         }
                         AAMap aamap = this;
+                        if (generate && human_capital_aamap != null && !config.human_capital_likeness_future_tradeable)
+                        {
+                                aamap = aamap.human_capital_aamap; // No human capital map lookups to human capital map.
+                                if (aamap1 != null)
+                                {
+                                        aamap1 = aamap1.human_capital_aamap;
+                                        aamap2 = aamap2.human_capital_aamap;
+                                }
+                        }
                         VitalStats couple_vital_stats;
                         if (!generate && monte_carlo_validate)
                                 couple_vital_stats = original_vital_stats.joint_generate(random);
@@ -357,10 +392,19 @@ class AAMap
                                 double ria_prev = ria;
                                 double nia_prev = nia;
                                 double hci_prev = hci;
-                                if (scenario.hci_index != null && !retired)
-                                        hci_prev += hci_prev * rets[scenario.hci_noise_aa_index];
+                                double expected_human_capital_prev = expected_human_capital;
 
                                 double income = ria + nia;
+
+                                double hci_current = hci;
+                                if (scenario.hci_index != null && !retired)
+                                        hci_current += hci_current * rets[scenario.hci_noise_aa_index];
+                                double hci_tax_rate = (retired ? config.tax_rate_hci_retirement : config.tax_rate_hci);
+                                hci_current *= 1 - hci_tax_rate;
+                                // No human capital income when building no human capital map.
+                                if (human_capital_aamap == null)
+                                        income += hci_current / returns.time_periods;
+
                                 if (period + y < config.cw_schedule.length)
                                         income += config.cw_schedule[period + y];
                                 if (retired)
@@ -372,8 +416,6 @@ class AAMap
                                         income += rcr;
                                         rcr *= rcr_step;
                                 }
-                                double hci_tax_rate = (retired ? config.tax_rate_hci_retirement : config.tax_rate_hci);
-                                income += hci_prev * (1 - hci_tax_rate);
 
                                 spend_annual = p + income;
                                 if (retired && !retire)
@@ -581,6 +623,7 @@ class AAMap
                                                 {
                                                         aa = me.aa;
                                                 }
+                                                expected_human_capital = me.metric_human_capital;
                                                 if (tax_time)
                                                 {
                                                         tax_amount = tax.tax(p_post_invest, p_pre_invest, aa, rets);
@@ -741,6 +784,7 @@ class AAMap
                                         // Expensive.
                                         cost_path += amount * Math.pow(1.0 + config.ret_borrow, - (period + y) / returns.time_periods);
                                 }
+                                human_capital_path += vital_stats.raw_alive[period + y] * hci_current / returns.time_periods;
                                 tw_goal_path += alive * solvent;
                                 ntw_goal_path += raw_dying * solvent_always;
 
@@ -754,7 +798,7 @@ class AAMap
                                 // Record path.
                                 if (s < num_paths_record)
                                 {
-                                        path.add(new PathElement(aa_prev, p_prev_inc_neg, consume_annual, ria_prev, nia_prev, hci_prev, real_annuitize, nominal_annuitize, tax_amount, path_element_weight));
+                                        path.add(new PathElement(aa_prev, p_prev_inc_neg, consume_annual, ria_prev, nia_prev, hci_current, expected_human_capital_prev, real_annuitize, nominal_annuitize, tax_amount, path_element_weight));
                                 }
                                 free_aa = aa_prev;
 
@@ -780,6 +824,7 @@ class AAMap
                         tax_goal += tax_goal_path * returns_probability;
                         wer += wer_path * returns_probability;
                         cost += cost_path * returns_probability;
+                        human_capital += human_capital_path * returns_probability;
 
                         // The following code is performance critical.
                         if (generate && max_periods > 1)
@@ -798,6 +843,8 @@ class AAMap
                                         {
                                                 // Get and set are slow; access fields directly.
                                                 metrics.metrics[scenario.success_mode_enum.ordinal()] += me.metric_sm * returns_probability;
+                                                if (scenario.hci_index != null)
+                                                        metrics.metrics[MetricsEnum.HUMAN_CAPITAL.ordinal()] += me.metric_human_capital * returns_probability;
                                                 // Other metric values invalid.
                                         }
                                 }
@@ -837,7 +884,7 @@ class AAMap
                         if (s < num_paths_record)
                         {
                                 // 8% speedup by not recording path if know it is not needed
-                                path.add(new PathElement(null, p, Double.NaN, ria, nia, hci, Double.NaN, Double.NaN, Double.NaN, 0));
+                                path.add(new PathElement(null, p, Double.NaN, ria, nia, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, 0));
                                         // Ignore any pending taxes associated with p, mainly because they are difficult to compute.
                                 paths.add(path);
                         }
@@ -867,6 +914,7 @@ class AAMap
                         }
                         tax_goal += metrics.get(MetricsEnum.TAX) * generate_stats.bounded_sum_avg_alive[period + 1 + book_post];
                         cost += metrics.get(MetricsEnum.COST);
+                        human_capital += metrics.get(MetricsEnum.HUMAN_CAPITAL) / (1 + config.human_capital_time_growth) * generate_stats.raw_alive[period + 1 + book_post];
                 }
 
                 if (generate || !monte_carlo_validate)
@@ -898,6 +946,7 @@ class AAMap
                         tax_goal = 0;
                         wer = 0;
                         cost = 0;
+                        human_capital = 0;
                 }
                 else if (config.utility_epstein_zin)
                 {
@@ -946,6 +995,10 @@ class AAMap
                 else
                         tax_goal /= divisor_bsaa;
                 if (divisor_ra == 0)
+                        assert(human_capital == 0);
+                else
+                        human_capital /= divisor_ra;
+                if (divisor_ra == 0)
                         assert(wer == 0);
                 else
                         wer /= divisor_ra;
@@ -961,7 +1014,7 @@ class AAMap
                 assert (0.0 <= tw_goal && tw_goal <= 1.0);
                 assert (0.0 <= ntw_goal && ntw_goal <= 1.0);
 
-                Metrics result_metrics = new Metrics(tw_goal, ntw_goal, floor_goal, upside_goal, consume_goal, inherit_goal, combined_goal, tax_goal, wer, cost);
+                Metrics result_metrics = new Metrics(tw_goal, ntw_goal, floor_goal, upside_goal, consume_goal, inherit_goal, combined_goal, tax_goal, wer, cost, human_capital);
 
                 String metrics_str = null;  // Useful for debugging.
                 if (!config.skip_dump_log)
@@ -1380,8 +1433,18 @@ class AAMap
 
         private static AAMap sub_factory(Scenario scenario, String aa_strategy, Returns returns, AAMap aamap1, AAMap aamap2, VitalStats generate_stats, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income) throws IOException, ExecutionException
         {
+                Config config = scenario.config;
+
                 if (returns != null)
-                        return new AAMapGenerate(scenario, returns, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income);
+                {
+                        AAMap aamap = new AAMapGenerate(scenario, returns, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income, null);
+                        if (scenario.hci_index != null && !config.skip_human_capital_likeness)
+                        {
+                                AAMap no_human_capital_aamap = new AAMapGenerate(scenario, returns, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income, aamap);
+                                aamap.no_human_capital_aamap = no_human_capital_aamap;
+                        }
+                        return aamap;
+                }
                 else
                         // returns == null. Hack. Called by targeting. Should get AAMapGenerate to handle. Then delete AAMapStatic.java.
                         return new AAMapStatic(scenario, aa_strategy, aamap1, aamap2, validate_stats, uc_time, uc_risk, guaranteed_income);
@@ -1411,7 +1474,7 @@ class AAMap
                 }
         }
 
-        public AAMap(Scenario scenario, AAMap aamap1, AAMap aamap2, VitalStats generate_stats, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income)
+        public AAMap(Scenario scenario, AAMap aamap1, AAMap aamap2, VitalStats generate_stats, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income, AAMap human_capital_aamap)
         {
                 this.scenario = scenario;
                 this.config = scenario.config;
@@ -1423,5 +1486,6 @@ class AAMap
                 this.uc_time = uc_time;
                 this.uc_risk = uc_risk;
                 this.guaranteed_income = guaranteed_income;
+                this.human_capital_aamap = human_capital_aamap;
         }
 }

@@ -30,7 +30,7 @@ public class Metrics implements Cloneable
         {
         }
 
-        public Metrics(double tw_goal, double ntw_goal, double floor_goal, double upside_goal, double consume_goal, double inherit_goal, double combined_goal, double tax_goal, double wer, double cost)
+        public Metrics(double tw_goal, double ntw_goal, double floor_goal, double upside_goal, double consume_goal, double inherit_goal, double combined_goal, double tax_goal, double wer, double cost, double human_capital)
         {
                 metrics[MetricsEnum.TW.ordinal()] = tw_goal;
                 metrics[MetricsEnum.NTW.ordinal()] = ntw_goal;
@@ -42,6 +42,7 @@ public class Metrics implements Cloneable
                 metrics[MetricsEnum.TAX.ordinal()] = tax_goal;
                 metrics[MetricsEnum.WER.ordinal()] = wer;
                 metrics[MetricsEnum.COST.ordinal()] = cost;
+                metrics[MetricsEnum.HUMAN_CAPITAL.ordinal()] = human_capital;
         }
 
         public Metrics clone()

@@ -33,6 +33,7 @@ public class MapElement implements Cloneable
         public double spend;
         public double first_payout;
         public double metric_sm;
+        public double metric_human_capital;
 
         public List<SearchResult> simulate;
 
@@ -109,6 +110,7 @@ public class MapElement implements Cloneable
                         "\n  spendable: " + spend +
                         "\n  first_payout: " + first_payout +
                         "\n  metric_sm: " + metric_sm +
+                        "\n  metric_human_capital: " + metric_human_capital +
                         (results == null ? "" : "\n  metrics: " + results.metrics) +
                         (sim_string == null ? "" : "\n  simulate: " + sim_string) +
                         "\n";
