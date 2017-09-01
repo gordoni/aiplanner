@@ -108,6 +108,24 @@ public class Returns implements Cloneable
                 return res;
         }
 
+        private List<Double> adjust_returns_annual(List<Double> l, double annual_am, double ret_adjust, double annual_sd)
+        {
+                double annual_gm = (1 + annual_am) / Math.sqrt(1 + Math.pow(annual_sd / (1 + annual_am), 2));
+                double mu = Math.log(annual_gm);
+                double sigma = Math.sqrt(Math.log(1 + Math.pow(annual_sd / (1 + annual_am), 2)));
+                mu /= this.time_periods;
+                sigma /= Math.sqrt(this.time_periods);
+                double am = Math.exp(mu + Math.pow(sigma, 2) / 2) - 1;
+                double sd = (1 + am) * Math.sqrt(Math.exp(Math.pow(sigma, 2)) - 1);
+
+                double mean = Utils.mean(l);
+                double vol = Utils.standard_deviation(l);
+                double mean_adjust = am - mean;
+                double vol_adjust = ((vol == 0) ? 1 : sd / vol);
+
+                return adjust_returns(l, mean_adjust, ret_adjust, vol_adjust);
+        }
+
         public Returns(Scenario scenario, HistReturns hist, Config config, int ret_seed, boolean cache_returns, int start_year, Integer end_year, Integer num_sequences, double time_periods, Double ret_equity, Double ret_bonds, double ret_risk_free, Double ret_inflation, double management_expense, String ret_shuffle, boolean reshuffle, String draw, int bootstrap_block_size, boolean pair, boolean short_block, double all_adjust, double equity_vol_adjust)
         {
                 this.scenario = scenario;
@@ -402,11 +420,7 @@ public class Returns implements Cloneable
                 margin2_returns = adjust_returns(margin2_returns, 0, adjust_all, 1);
 
                 List<Double> synthetic_returns = log_normal_ppf(count, config.synthetic_ret, config.synthetic_vol);
-                double synthetic_mean = Utils.mean(synthetic_returns);
-                double synthetic_vol = Utils.standard_deviation(synthetic_returns);
-                double synthetic_mean_adjust = config.synthetic_ret - synthetic_mean;
-                double synthetic_vol_adjust = ((synthetic_vol == 0) ? 1 : config.synthetic_vol / synthetic_vol);
-                synthetic_returns = adjust_returns(synthetic_returns, synthetic_mean_adjust, adjust_management_expense * adjust_all, synthetic_vol_adjust);
+                synthetic_returns = adjust_returns_annual(synthetic_returns, config.synthetic_ret, adjust_management_expense * adjust_all, config.synthetic_vol);
 
                 List<Double> hci1_returns;
                 List<Double> hci2_returns;
@@ -430,25 +444,11 @@ public class Returns implements Cloneable
                         hci2_returns = new ArrayList<Double>(hci1_returns);
                 }
 
-                double hci_mean1 = Utils.mean(hci1_returns);
-                double hci_vol1 = Utils.standard_deviation(hci1_returns);
-                double hci_mean1_adjust = config.hci_growth1 - hci_mean1;
-                double hci_vol1_adjust = ((hci_vol1 == 0) ? 1 : config.hci_vol1 / hci_vol1);
-                hci1_returns = adjust_returns(hci1_returns, hci_mean1_adjust, 1, hci_vol1_adjust);
-
-                double hci_mean2 = Utils.mean(hci2_returns);
-                double hci_vol2 = Utils.standard_deviation(hci2_returns);
-                double hci_mean2_adjust = config.hci_growth2 - hci_mean2;
-                double hci_vol2_adjust = ((hci_vol2 == 0) ? 1 : config.hci_vol2 / hci_vol2);
-                hci2_returns = adjust_returns(hci2_returns, hci_mean2_adjust, 1, hci_vol2_adjust);
+                hci1_returns = adjust_returns_annual(hci1_returns, config.hci_growth1, 1, config.hci_vol1);
+                hci2_returns = adjust_returns_annual(hci2_returns, config.hci_growth2, 1, config.hci_vol2);
 
                 hci_noise_returns = log_normal_ppf(count, config.hci_growth_noise, config.hci_vol_noise);
-
-                double hci_mean_noise = Utils.mean(hci_noise_returns);
-                double hci_vol_noise = Utils.standard_deviation(hci_noise_returns);
-                double hci_mean_noise_adjust = config.hci_growth_noise - hci_mean_noise;
-                double hci_vol_noise_adjust = ((hci_vol_noise == 0) ? 1 : config.hci_vol_noise / hci_vol_noise);
-                hci_noise_returns = adjust_returns(hci_noise_returns, hci_mean_noise_adjust, 1, hci_vol_noise_adjust);
+                hci_noise_returns = adjust_returns_annual(hci_noise_returns, config.hci_growth_noise, 1, config.hci_vol_noise);
 
                 List<Double> lm_bonds_returns = new ArrayList<Double>();
                 for (int i = 0; i < count; i++)
@@ -457,14 +457,14 @@ public class Returns implements Cloneable
                 }
 
                 List<Double> cpi_returns = new ArrayList<Double>();
-                for (int year = start_year; year <= end_year; year++)
+                for (int c = 0; c < count; c++)
                 {
-                        int i = (year - hist.initial_year) * 12 + 12;
+                        int i = (int) Math.round((start_year + c / time_periods - hist.initial_year) * 12) + 12;
                         Double cpi_d = Double.NaN;
                         if (i >= 12 && i < hist.cpi_index.size())
-                                cpi_d = hist.cpi_index.get(i) / hist.cpi_index.get(i - 12) - 1.0;
+                                cpi_d = Math.pow(hist.cpi_index.get(i) / hist.cpi_index.get(i - 12), 1.0 / time_periods) - 1;
                         if (config.ret_inflation_constant != null)
-                                cpi_d = config.ret_inflation_constant;
+                                cpi_d = Math.pow(1 + config.ret_inflation_constant, 1.0 / time_periods) - 1;
                         cpi_returns.add(cpi_d);
                 }
                 double cpi_geomean = Utils.plus_1_geomean(cpi_returns);
