@@ -568,7 +568,7 @@ class AAMap
                                                 // Rebalance.
                                                 if (config.aa_offset != null)
                                                         aa_offset(me.aa);
-                                                boolean rebalance_period = new_period % Math.round(returns.time_periods / config.rebalance_time_periods) == 0;
+                                                boolean rebalance_period = new_period % Math.round(returns.time_periods / Math.min(config.rebalance_time_periods, returns.time_periods)) == 0;
                                                 if (!rebalance_period || config.rebalance_band_hw > 0)
                                                 {
                                                         double[] new_aa = aa.clone(); // Tangency not well defined.

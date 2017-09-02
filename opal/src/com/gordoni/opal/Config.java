@@ -108,7 +108,7 @@ public class Config
         public double success_lines_scale_size = 0.2; // Success probability line linear scale.
         public double generate_time_periods = 1.0; // 1.0 to perform analysis on an annual basis, or 12.0 to perform analysis monthly.
         public double validate_time_periods = 1.0;
-        public double rebalance_time_periods = 1.0;
+        public double rebalance_time_periods = 12.0; // Rebalance this many times per year or validate_time_periods per year, whichever is less frequent.
 
         public String aa_strategy = "sdp";
                 // Asset allocation scheme for generation. "sdp", "file" for validate=datafile,

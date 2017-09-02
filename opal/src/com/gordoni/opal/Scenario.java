@@ -1872,7 +1872,6 @@ public class Scenario
                 {
                         assert(!config.search.equals("memory"));
                 }
-                assert(config.validate_time_periods >= config.rebalance_time_periods);
                 if (config.utility_join)
                 {
                         assert(config.consume_discount_rate <= config.upside_discount_rate);
