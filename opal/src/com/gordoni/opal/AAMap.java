@@ -462,10 +462,10 @@ class AAMap
                                         else
                                                 not_consumed = 0;
                                         consume_annual -= not_consumed;
-                                        amount += not_consumed * returns.time_periods;
+                                        amount += not_consumed / returns.time_periods;
                                 }
                                 else
-                                        amount += first_payout * returns.time_periods;
+                                        amount += first_payout / returns.time_periods;
 
                                 // Recieve income before investing.
                                 p += amount;
