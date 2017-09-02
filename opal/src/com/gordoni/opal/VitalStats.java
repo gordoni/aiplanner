@@ -587,7 +587,7 @@ public class VitalStats
                 }
                 else
                 {
-                        ss.max_years = Math.min(ss.max_years, (int) (dying.length / config.validate_time_periods));
+                        ss.max_years = Math.min(ss.max_years, (int) (dying.length / time_periods));
                 }
         }
 

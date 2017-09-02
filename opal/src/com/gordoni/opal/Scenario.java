@@ -1318,14 +1318,14 @@ public class Scenario
                         dump_annuity_yield_curve();
                 }
 
-                if (!config.skip_dump_le)
-                        dump_le();
-
                 if (!config.skip_generate || !config.skip_retirement_number)
                 {
                         dump_gnuplot_params(tp_max, hci_max, human_capital_max, savings_max, savings_min, consume_max, annuitization_max, consume_ara_max);
                         plot();
                 }
+
+                if (!config.skip_dump_le)
+                        dump_le();
         }
 
         // Dump retirement number values.
