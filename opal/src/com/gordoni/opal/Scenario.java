@@ -97,11 +97,16 @@ public class Scenario
         private boolean aa_constraint;
 
         public AAMap map;
+        private AAMap map_loaded = null;
+
+        public Scenario all_tradable_scenario;
 
         public Double equity_premium;
         private double equity_vol_adjust;
         private double gamma_adjust;
         public double q_adjust;
+
+        private Metrics[] retirement_number;
 
         private static DecimalFormat f8 = new DecimalFormat("0.000E00");
         private static DecimalFormat f1f = new DecimalFormat("0.0");
@@ -691,10 +696,18 @@ public class Scenario
 
         private double[] human_capital_like(AAMap map, int period, double[] aa, double[] p, double human_capital)
         {
-                double[] nohc_aa = map.no_human_capital_aa(period, p, human_capital);
-
-                if (nohc_aa == null)
+                if (all_tradable_scenario == null || period >= all_tradable_scenario.map.map.length)
                         return null;
+
+                double[] p_all_tradable = all_tradable_scenario.start_p.clone();
+                if (tp_index != null)
+                        p_all_tradable[tp_index] = p[tp_index] + human_capital;
+                if (ria_index != null)
+                        p_all_tradable[ria_index] = p[ria_index];
+                if (nia_index != null)
+                        p_all_tradable[nia_index] = p[nia_index];
+
+                double[] nohc_aa = all_tradable_scenario.map.lookup_interpolate(p_all_tradable, period).aa;
 
                 double hc_like[] = new double[normal_assets];
                 for (int i = 0; i < hc_like.length; i++)
@@ -1475,10 +1488,6 @@ public class Scenario
         public void run_main() throws ExecutionException, IOException, InterruptedException
         {
                 AAMap map_validate = null;
-                AAMap map_loaded = null;
-                AAMap map_precise = null;
-
-                Metrics[] retirement_number = null;
 
                 boolean do_aa_search = config.aa_strategy.equals("fixed") && config.aa_fixed_stocks == null;
                 boolean do_vw_search = (config.vw_strategy.equals("percentage") || config.vw_strategy.equals("retirement_amount")) && config.vw_percentage == null;
@@ -1522,8 +1531,7 @@ public class Scenario
                 {
                         long start = System.currentTimeMillis();
                         map = AAMap.factory(this, config.aa_strategy, returns_generate);
-                        map_precise = map;
-                        MapElement fpb = map_precise.lookup_interpolate(start_p, (int) Math.round((validate_age - config.start_age) * config.generate_time_periods));
+                        MapElement fpb = map.lookup_interpolate(start_p, (int) Math.round((validate_age - config.start_age) * config.generate_time_periods));
                         String metric_str;
                         double metric_normalized = metric_normalize(success_mode_enum, fpb.metric_sm, config.start_age);
                         if (Arrays.asList(MetricsEnum.TW, MetricsEnum.NTW).contains(success_mode_enum))
@@ -1552,7 +1560,7 @@ public class Scenario
                         dump_initial_aa(aa);
 
                         start = System.currentTimeMillis();
-                        map_loaded = new AAMapDumpLoad(this, map_precise, ss.validate_stats);
+                        map_loaded = new AAMapDumpLoad(this, map, ss.validate_stats);
                         elapsed = (System.currentTimeMillis() - start) / 1000.0;
                         if (!config.skip_dump_load)
                         {
@@ -1660,7 +1668,10 @@ public class Scenario
                         System.out.println("Target done: " + f1f.format(elapsed) + " seconds");
                         System.out.println();
                 }
+        }
 
+        public void dump() throws ExecutionException, IOException, InterruptedException
+        {
                 List<List<PathElement>> paths = new ArrayList<List<PathElement>>();
                 if (do_validate)
                 {
@@ -1699,14 +1710,14 @@ public class Scenario
                 else
                 {
                         long start = System.currentTimeMillis();
-                        dump_plot(map_precise, retirement_number, paths, returns_generate);
+                        dump_plot(map, retirement_number, paths, returns_generate);
                         double elapsed = (System.currentTimeMillis() - start) / 1000.0;
                         System.out.println("Dump/plot done: " + f1f.format(elapsed) + " seconds");
                         System.out.println();
                         if (!config.skip_dump_log)
                         {
                                 System.out.println("Dump generated:");
-                                map_precise.dump_log();
+                                map.dump_log();
                                 System.out.println();
                                 //System.out.println("Dump loaded:");
                                 //map_loaded.dump_log();
@@ -1729,7 +1740,7 @@ public class Scenario
                 return min_location;
         }
 
-        public Scenario(ScenarioSet ss, Config config, HistReturns hist, boolean compute_risk_premium, boolean do_validate, List<String> asset_classes, List<String> asset_class_names, Double equity_premium, double equity_vol_adjust, double gamma_adjust, double q_adjust, Double start_ria, Double start_nia) throws IOException, InterruptedException
+        public Scenario(ScenarioSet ss, Config config, HistReturns hist, boolean compute_risk_premium, boolean do_validate, List<String> asset_classes, List<String> asset_class_names, Double equity_premium, double equity_vol_adjust, double gamma_adjust, double q_adjust, Double start_ria, Double start_nia, Double start_hci, Scenario all_tradable_scenario) throws IOException, InterruptedException
         {
                 this.ss = ss;
                 this.config = config;
@@ -1742,6 +1753,7 @@ public class Scenario
                 this.equity_vol_adjust = equity_vol_adjust;
                 this.gamma_adjust = gamma_adjust;
                 this.q_adjust = q_adjust;
+                this.all_tradable_scenario = all_tradable_scenario;
 
                 // Internal parameters.
 
@@ -1755,7 +1767,7 @@ public class Scenario
                 nia_index = (start_nia == null ? null : p_size);
                 if (nia_index != null)
                         p_size++;
-                hci_index = (config.start_hci == null ? null : p_size);
+                hci_index = (start_hci == null ? null : p_size);
                 if (hci_index != null)
                         p_size++;
                 start_p = new double[p_size];

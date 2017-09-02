@@ -826,9 +826,9 @@ public class AAMapGenerate extends AAMap
         // Generate asset allocation.
         Object next_check_lock = new Object();
         int next_check; // Can't declare locally as modified by thread.
-        public AAMapGenerate(final Scenario scenario, final Returns returns, AAMap aamap1, AAMap aamap2, VitalStats generate_stats, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income, AAMap human_capital_aamap) throws ExecutionException
+        public AAMapGenerate(final Scenario scenario, final Returns returns, AAMap aamap1, AAMap aamap2, VitalStats generate_stats, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income) throws ExecutionException
         {
-                super(scenario, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income, human_capital_aamap);
+                super(scenario, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income);
 
                 pre_compute_vw(returns);
 

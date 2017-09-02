@@ -193,10 +193,17 @@ public class ScenarioSet
                         assert(config.tax_rate_div == null);
                         assert(!config.ef.equals("none"));
                         List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds"));
-                        compare_scenario = new Scenario(this, config, hist, false, !config.skip_validate, asset_classes, asset_classes, config.ret_equity_premium, 1, 1, 1, null, null);
+                        compare_scenario = new Scenario(this, config, hist, false, !config.skip_validate, asset_classes, asset_classes, config.ret_equity_premium, 1, 1, 1, null, null, null, null);
                 }
 
-                Scenario scenario = new Scenario(this, config, hist, config.compute_risk_premium, !config.skip_validate, config.asset_classes, config.asset_class_names, config.ret_equity_premium, 1, 1, 1, config.start_ria, config.start_nia);
+                Scenario all_tradable_scenario = null;
+                if (config.start_hci != null && !config.skip_non_tradable_likeness)
+                {
+                        all_tradable_scenario = new Scenario(this, config, hist, config.compute_risk_premium, !config.skip_validate, config.asset_classes, config.asset_class_names, config.ret_equity_premium, 1, 1, 1, config.start_ria, config.start_nia, null, null);
+                }
+
+                Scenario scenario = new Scenario(this, config, hist, config.compute_risk_premium, !config.skip_validate, config.asset_classes, config.asset_class_names, config.ret_equity_premium, 1, 1, 1, config.start_ria, config.start_nia, config.start_hci, all_tradable_scenario);
+
                 scenario.report_returns();
 
                 if (config.compute_risk_premium)
@@ -206,7 +213,7 @@ public class ScenarioSet
                 if (config.error_count > 0)
                 {
                         List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds"));
-                        Scenario risk_premium_scenario = new Scenario(this, config, hist, true, false, asset_classes, asset_classes, config.ret_equity_premium, 1, 1, 1, config.start_ria, config.start_nia);
+                        Scenario risk_premium_scenario = new Scenario(this, config, hist, true, false, asset_classes, asset_classes, config.ret_equity_premium, 1, 1, 1, config.start_ria, config.start_nia, config.start_hci, null);
                         List<double[]> rp_returns = Utils.zipDoubleArray(risk_premium_scenario.returns_generate.original_data);
                         double n = rp_returns.get(0).length;
                         double sample_erp_am = Utils.mean(rp_returns.get(0));
@@ -241,7 +248,7 @@ public class ScenarioSet
                                 }
                                 double gamma_adjust = ((config.gamma_vol > 0) ? gamma_distribution.sample() : 1);
                                 double q_adjust = ((config.q_vol > 0) ? q_distribution.sample() : 1);
-                                error_scenario[i] = new Scenario(this, config, hist, false, false, config.asset_classes, config.asset_class_names, erp, equity_vol_adjust, gamma_adjust, q_adjust, config.start_ria, config.start_nia);
+                                error_scenario[i] = new Scenario(this, config, hist, false, false, config.asset_classes, config.asset_class_names, erp, equity_vol_adjust, gamma_adjust, q_adjust, config.start_ria, config.start_nia, config.start_hci, null);
                         }
                 }
 
@@ -257,7 +264,11 @@ public class ScenarioSet
                         if (do_compare)
                                 compare_scenario.run_compare();
 
+                        if (all_tradable_scenario != null)
+                                all_tradable_scenario.run_main();
+
                         scenario.run_main();
+                        scenario.dump();
 
                         if (error_scenario.length > 0)
                         {

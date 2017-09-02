@@ -40,8 +40,6 @@ class AAMap
 
         protected AAMap aamap1;
         protected AAMap aamap2;
-        protected AAMap human_capital_aamap; // Non-null in no_human_capital map when computing likeness of human capital.
-        protected AAMap no_human_capital_aamap; // Non-null in human_capital map when computing likeness of human capital.
 
         private VitalStats generate_stats;
         private VitalStats validate_stats;
@@ -68,19 +66,6 @@ class AAMap
                 MapElement li_me = new MapElement(null, aa, results, null, null);
 
                 return map[period].lookup_interpolate(p, false, false, li_me);
-        }
-
-        public double[] no_human_capital_aa(int period, double[] p, double human_capital)
-        {
-                if (no_human_capital_aamap == null || period >= no_human_capital_aamap.map.length)
-                        return null;
-
-                double[] p_total = p.clone();
-                p_total[scenario.tp_index] += human_capital;
-
-                double[] nohc_aa = no_human_capital_aamap.lookup_interpolate(p_total, period).aa;
-
-                return nohc_aa;
         }
 
         private void aa_offset(double[] aa)
@@ -311,15 +296,6 @@ class AAMap
                                 returns_probability = returns.returns_unshuffled_probability[index];
                         }
                         AAMap aamap = this;
-                        if (generate && human_capital_aamap != null && !config.human_capital_likeness_future_tradeable)
-                        {
-                                aamap = aamap.human_capital_aamap; // No human capital map lookups to human capital map.
-                                if (aamap1 != null)
-                                {
-                                        aamap1 = aamap1.human_capital_aamap;
-                                        aamap2 = aamap2.human_capital_aamap;
-                                }
-                        }
                         VitalStats couple_vital_stats;
                         if (!generate && monte_carlo_validate)
                                 couple_vital_stats = original_vital_stats.joint_generate(random);
@@ -401,8 +377,7 @@ class AAMap
                                         hci_current += hci_current * rets[scenario.hci_noise_aa_index];
                                 double hci_tax_rate = (retired ? config.tax_rate_hci_retirement : config.tax_rate_hci);
                                 hci_current *= 1 - hci_tax_rate;
-                                // No human capital income when building no human capital map.
-                                if (human_capital_aamap == null)
+                                if (scenario.hci_index != null)
                                         income += hci_current / returns.time_periods;
 
                                 if (period + y < config.cw_schedule.length)
@@ -1437,12 +1412,7 @@ class AAMap
 
                 if (returns != null)
                 {
-                        AAMap aamap = new AAMapGenerate(scenario, returns, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income, null);
-                        if (scenario.hci_index != null && !config.skip_human_capital_likeness)
-                        {
-                                AAMap no_human_capital_aamap = new AAMapGenerate(scenario, returns, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income, aamap);
-                                aamap.no_human_capital_aamap = no_human_capital_aamap;
-                        }
+                        AAMap aamap = new AAMapGenerate(scenario, returns, aamap1, aamap2, generate_stats, validate_stats, uc_time, uc_risk, guaranteed_income);
                         return aamap;
                 }
                 else
@@ -1474,7 +1444,7 @@ class AAMap
                 }
         }
 
-        public AAMap(Scenario scenario, AAMap aamap1, AAMap aamap2, VitalStats generate_stats, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income, AAMap human_capital_aamap)
+        public AAMap(Scenario scenario, AAMap aamap1, AAMap aamap2, VitalStats generate_stats, VitalStats validate_stats, Utility uc_time, Utility uc_risk, double guaranteed_income)
         {
                 this.scenario = scenario;
                 this.config = scenario.config;
@@ -1486,6 +1456,5 @@ class AAMap
                 this.uc_time = uc_time;
                 this.uc_risk = uc_risk;
                 this.guaranteed_income = guaranteed_income;
-                this.human_capital_aamap = human_capital_aamap;
         }
 }
