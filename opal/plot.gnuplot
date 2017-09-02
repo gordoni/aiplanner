@@ -832,6 +832,14 @@ if (non_tradable) plot prefix . "-paths.csv" using 1:10 with lines title "Sample
 if (non_tradable) set output prefix . "-pct-non_tradable.png"
 if (non_tradable) plot prefix . "-pct-non_tradable.csv" using 1:2:3:4 with errorlines title "95 percent non-tradable assets"
 
+set yrange [0:100]
+set format y "%.0f%%"
+set ylabel "non-tradable / total assets"
+if (non_tradable) set output prefix . "-paths-non_tradable_fract.png"
+if (non_tradable) plot prefix . "-paths.csv" using 1:($10 / ($2 + $10)) with lines title "Sample non-tradable fraction paths"
+if (non_tradable) set output prefix . "-pct-non_tradable_fract.png"
+if (non_tradable) plot prefix . "-pct-non_tradable_fract.csv" using 1:2:3:4 with errorlines title "95 percent non-tradable fraction"
+
 #set ylabel "inflation-indexed SPIA purchase / total portfolio size"
 #set yrange [0:100]
 #set format y "%.0f%%"

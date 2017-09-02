@@ -769,6 +769,14 @@ public class Scenario
                                 return elem.p;
                         else if (what.equals("non_tradable"))
                                 return elem.expected_human_capital;
+                        else if (what.equals("non_tradable_fract"))
+                        {
+                                double total = elem.p + elem.expected_human_capital;
+                                if (total == 0)
+                                        return null;
+                                else
+                                        return elem.expected_human_capital / total;
+                        }
                         else if (what.startsWith("nt_likeness-"))
                         {
                                 double[] p = new double[start_p.length];
@@ -966,6 +974,7 @@ public class Scenario
                 dump_pct_path(paths, map, "utility", false);
                 dump_pct_path(paths, map, "p", true);
                 dump_pct_path(paths, map, "consume", true);
+                dump_pct_path(paths, map, "non_tradable_fract", false);
         }
 
         // Dump the paths taken.
