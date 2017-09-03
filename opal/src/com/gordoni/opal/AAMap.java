@@ -773,7 +773,7 @@ class AAMap
                                 // Record path.
                                 if (s < num_paths_record)
                                 {
-                                        path.add(new PathElement(aa_prev, p_prev_inc_neg, consume_annual, ria_prev, nia_prev, hci_current, expected_human_capital_prev, real_annuitize, nominal_annuitize, tax_amount, path_element_weight));
+                                        path.add(new PathElement(aa_prev, p_prev_inc_neg, consume_annual, ria_prev, nia_prev, hci_prev, hci_current, expected_human_capital_prev, real_annuitize, nominal_annuitize, tax_amount, path_element_weight));
                                 }
                                 free_aa = aa_prev;
 
@@ -859,7 +859,7 @@ class AAMap
                         if (s < num_paths_record)
                         {
                                 // 8% speedup by not recording path if know it is not needed
-                                path.add(new PathElement(null, p, Double.NaN, ria, nia, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, 0));
+                                path.add(new PathElement(null, p, Double.NaN, ria, nia, hci, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, 0));
                                         // Ignore any pending taxes associated with p, mainly because they are difficult to compute.
                                 paths.add(path);
                         }

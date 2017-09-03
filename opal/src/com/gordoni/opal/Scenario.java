@@ -694,14 +694,59 @@ public class Scenario
                 }
         }
 
-        private double[] human_capital_like(AAMap map, int period, double[] aa, double[] p, double human_capital)
+        private double[] human_capital_like(AAMap map, int period, double[] aa, double[] p, double non_tradable)
         {
                 if (all_tradable_scenario == null || period >= all_tradable_scenario.map.map.length)
                         return null;
 
+                // Disable the following code as the results don't seem very meaningful. When non-tradables = 100% stock likeness exceeds 100%.
+                // Prefer more simple computation comparing maps, although it has similar problems.
+
+                // The following code computes likeness by looking at how asset allocations change as the proportion of non-tradable assets changes
+                // for a fixed total portfolio size.
+
+                // double delta = 0.05;
+
+                // double p_total = p[tp_index] + non_tradable;
+                // double p_delta = delta * p_total;
+
+                // double[] p_nt = p.clone();
+                // double non_tradable_delta = non_tradable + p_delta;
+
+                // // Compute p_nt[hci_index] so that lookup(p_nt).metric_human_capital = non_tradable_delta using Newton's method.
+                // for (int i = 1;; i++)
+                // {
+                //         double del = 0.01;
+
+                //         if (i > 10)
+                //                 assert(false);
+
+                //         double[] p_nt_delta = p_nt.clone();
+                //         p_nt_delta[hci_index] *= 1 + del;
+                //         double non_tradable_current = map.lookup_interpolate(p_nt, period).metric_human_capital;
+                //         double slope = (map.lookup_interpolate(p_nt_delta, period).metric_human_capital - non_tradable_current) / (del * p_nt[hci_index]);
+                //         double diff = non_tradable_delta - non_tradable_current;
+                //         p_nt[hci_index] += diff / slope;
+
+                //         if (diff < 1e-6 * non_tradable_delta)
+                //                 break;
+                // }
+
+                // double[] p_t = p.clone();
+                // p_t[tp_index] += p_delta;
+
+                // double[] aa_nt = map.lookup_interpolate(p_nt, period).aa;
+                // double[] aa_t = map.lookup_interpolate(p_t, period).aa;
+
+                // double hc_like[] = new double[normal_assets];
+                // for (int i = 0; i < hc_like.length; i++)
+                // {
+                //         hc_like[i] = (p_t[tp_index] * aa_t[i] - p_nt[tp_index] * aa_nt[i]) / p_delta;
+                // }
+
                 double[] p_all_tradable = all_tradable_scenario.start_p.clone();
                 if (tp_index != null)
-                        p_all_tradable[tp_index] = p[tp_index] + human_capital;
+                        p_all_tradable[tp_index] = p[tp_index] + non_tradable;
                 if (ria_index != null)
                         p_all_tradable[ria_index] = p[ria_index];
                 if (nia_index != null)
@@ -712,13 +757,13 @@ public class Scenario
                 double hc_like[] = new double[normal_assets];
                 for (int i = 0; i < hc_like.length; i++)
                 {
-                    if (human_capital == 0)
+                    if (non_tradable == 0)
                             hc_like[i] = Double.NaN;
                     else
-                            hc_like[i] = (nohc_aa[i] * (p[tp_index] + human_capital) - aa[i] * p[tp_index]) / human_capital;
+                            hc_like[i] = (nohc_aa[i] * (p[tp_index] + non_tradable) - aa[i] * p[tp_index]) / non_tradable;
                 }
 
-                assert(human_capital == 0 || Math.abs(Utils.sum(hc_like) - 1) < 1e-12);
+                assert(non_tradable == 0 || Math.abs(Utils.sum(hc_like) - 1) < 1e-12);
 
                 return hc_like;
         }
@@ -749,7 +794,7 @@ public class Scenario
                         if (what.equals("p"))
                                 return elem.p;
                         else if (what.equals("nti"))
-                                return elem.hci;
+                                return elem.hci_current;
                         else if (what.equals("savings"))
                         {
                                 if (i + 1 >= path.size())
@@ -787,7 +832,7 @@ public class Scenario
                                 if (nia_index != null)
                                         p[nia_index] = elem.nia;
                                 if (hci_index != null)
-                                        p[hci_index] = elem.hci;
+                                        p[hci_index] = elem.hci_level;
                                 double[] hc_like = human_capital_like(map, i, elem.aa, p, elem.expected_human_capital);
                                 if (hc_like == null)
                                         return null;
@@ -994,7 +1039,8 @@ public class Scenario
                                 double consume_annual = step.consume_annual;
                                 double ria = step.ria;
                                 double nia = step.nia;
-                                double hci = step.hci;
+                                double hci_level = step.hci_level;
+                                double hci_current = step.hci_current;
                                 double[] p = new double[start_p.length];
                                 if (tp_index != null)
                                         p[tp_index] = tp;
@@ -1003,7 +1049,7 @@ public class Scenario
                                 if (nia_index != null)
                                         p[nia_index] = nia;
                                 if (hci_index != null)
-                                        p[hci_index] = hci;
+                                        p[hci_index] = hci_level;
                                 double expected_human_capital = step.expected_human_capital;
                                 double[] step_human_capital_like = human_capital_like(map, i, step.aa, p, expected_human_capital);
                                 String human_capital_like = stringify_aa(step_human_capital_like);
@@ -1021,7 +1067,7 @@ public class Scenario
                                 out.print("," + f2f.format(nia));
                                 out.print("," + f2f.format(real_annuitize));
                                 out.print("," + f2f.format(nominal_annuitize));
-                                out.print("," + f2f.format(hci));
+                                out.print("," + f2f.format(hci_current));
                                 out.print("," + f2f.format(savings));
                                 out.print("," + f2f.format(expected_human_capital));
                                 //out.print("," + ((returns == null) ? "" : f4f.format(expected_return(step_aa, returns))));

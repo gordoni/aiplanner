@@ -27,13 +27,14 @@ public class PathElement
         public double consume_annual;
         public double ria;
         public double nia;
-        public double hci;
+        public double hci_level;
+        public double hci_current;
         public double expected_human_capital;
         public double real_annuitize;
         public double nominal_annuitize;
         public double tax_amount;
 
-        public PathElement(double[] aa, double p, double consume_annual, double ria, double nia, double hci, double expected_human_capital, double real_annuitize, double nominal_annuitize, double tax_amount, double weight)
+        public PathElement(double[] aa, double p, double consume_annual, double ria, double nia, double hci_level, double hci_current, double expected_human_capital, double real_annuitize, double nominal_annuitize, double tax_amount, double weight)
         {
                 this.weight = weight;
 
@@ -48,7 +49,8 @@ public class PathElement
                 this.consume_annual = consume_annual;
                 this.ria = ria;
                 this.nia = nia;
-                this.hci = hci;
+                this.hci_level = hci_level;
+                this.hci_current = hci_current;
                 this.expected_human_capital = expected_human_capital;
                 this.real_annuitize = real_annuitize;
                 this.nominal_annuitize = nominal_annuitize;
