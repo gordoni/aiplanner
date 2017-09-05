@@ -68,7 +68,7 @@ public class Config
         public boolean skip_cov = true; // Don't report the covariance matrix.
         public boolean skip_corr = true; // Don't report the correlation matrix.
         public boolean skip_returns = true; // Don't report the returns.
-        public boolean skip_non_tradable_likeness = false; // Speedup by not calculating non-tradable likeness to asset classes.
+        public boolean skip_non_tradable_likeness = true; // Speedup by not calculating non-tradable likeness to asset classes.
 
         public double dump_min_age = 0; // Dump this age and above.
         public double dump_max_age = Double.POSITIVE_INFINITY; // Dump this age and below.
