@@ -376,9 +376,9 @@ class AAMap
                                 if (scenario.hci_index != null && !retired)
                                         hci_current += hci_current * rets[scenario.hci_noise_aa_index];
                                 double hci_tax_rate = (retired ? config.tax_rate_hci_retirement : config.tax_rate_hci);
-                                hci_current *= 1 - hci_tax_rate;
+                                double hci_post_tax = (1 - hci_tax_rate) * hci_current;
                                 if (scenario.hci_index != null)
-                                        income += hci_current / returns.time_periods;
+                                        income += hci_post_tax / returns.time_periods;
 
                                 if (period + y < config.cw_schedule.length)
                                         income += config.cw_schedule[period + y];
