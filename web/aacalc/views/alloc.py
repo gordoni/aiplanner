@@ -247,8 +247,8 @@ class Alloc:
             'confidence_pct': 80,
             'expense_pct': Decimal('0.1'),
             'rm_margin_pct': Decimal('2.50'),
-            'rm_insurance_initial_pct': Decimal('0.50'),
-            'rm_insurance_annual_pct': Decimal('1.25'),
+            'rm_insurance_initial_pct': Decimal('2.00'),
+            'rm_insurance_annual_pct': Decimal('0.50'),
             'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
             'real_rate_pct': None,
 
@@ -1516,7 +1516,7 @@ def load_hecm():
         if isdir(datadir):
             break
 
-    with open(join(datadir, 'hecm', 'plf_tables_18-99.csv')) as f:
+    with open(join(datadir, 'hecm', 'august2017plftables.csv')) as f:
 
         csv = reader(f)
         assert(next(csv)[0] == 'Age')
