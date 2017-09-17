@@ -809,7 +809,12 @@ public class Scenario
                         else if (what.equals("consume"))
                                 return elem.consume_annual;
                         else if (what.equals("utility"))
-                            return utility_consume.utility(elem.consume_annual);
+                        {
+                                if (i == path.size() - 1)
+                                        return null;
+                                else
+                                        return utility_consume.utility(elem.consume_annual);
+                        }
                         else if (what.equals("inherit"))
                                 return elem.p;
                         else if (what.equals("non_tradable"))
