@@ -11,6 +11,6 @@
 from gym.envs.registration import register
 
 register(
-    id = 'fin-v0',
+    id = 'Fin-v0',
     entry_point = 'gym_fin.envs:FinEnv',
 )
