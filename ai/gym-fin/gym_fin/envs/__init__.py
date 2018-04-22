@@ -9,3 +9,4 @@
 # PURPOSE.
 
 from gym_fin.envs.fin_env import FinEnv
+from gym_fin.envs.model_params import ModelParams

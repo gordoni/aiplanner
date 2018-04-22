@@ -26,13 +26,12 @@ from baselines.ddpg.models import Actor, Critic
 from baselines.ddpg.memory import Memory
 from baselines.ddpg.noise import *
 
-import gym
-import gym_fin # Adds Fin-v0.
+from gym_fin.envs import FinEnv, ModelParams
 import numpy as np
 import tensorflow as tf
 from mpi4py import MPI
 
-def run(seed, noise_type, layer_norm, evaluation, **kwargs):
+def run(training_model_params, eval_model_params, seed, noise_type, layer_norm, evaluation, **kwargs):
 
     # Configure things.
     rank = MPI.COMM_WORLD.Get_rank()
@@ -40,12 +39,11 @@ def run(seed, noise_type, layer_norm, evaluation, **kwargs):
         logger.set_level(logger.DISABLED)
 
     # Create envs.
-    env_id = 'Fin-v0'
-    env = gym.make(env_id)
+    env = FinEnv(**training_model_params)
     env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank)))
 
     if evaluation and rank==0:
-        eval_env = gym.make(env_id)
+        eval_env = FinEnv(**eval_model_params)
         eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
         #env = bench.Monitor(env, None)
     else:
@@ -122,6 +120,9 @@ def parse_args():
     parser.add_argument('--noise-type', type=str, default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--num-timesteps', type=int, default=None)
     boolean_flag(parser, 'evaluation', default=False)
+    model_params = ModelParams()
+    model_params.add_arguments(parser, training = True)
+    model_params.add_arguments(parser, training = False)
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if we do specify them
     # they agree with the other parameters
@@ -129,12 +130,19 @@ def parse_args():
         assert(args.num_timesteps == args.nb_epochs * args.nb_epoch_cycles * args.nb_rollout_steps)
     dict_args = vars(args)
     del dict_args['num_timesteps']
-    return dict_args
+    model_params.set_params(dict_args)
+    training_model_params = model_params.get_params(training = True)
+    for param in training_model_params:
+        del dict_args['model_' + param]
+    eval_model_params = model_params.get_params(training = False)
+    for param in eval_model_params:
+        del dict_args['eval_model_' + param]
+    return training_model_params, eval_model_params, dict_args
 
 
 if __name__ == '__main__':
-    args = parse_args()
+    training_model_params, eval_model_params, args = parse_args()
     if MPI.COMM_WORLD.Get_rank() == 0:
         logger.configure()
     # Run actual script.
-    run(**args)
+    run(training_model_params, eval_model_params, **args)

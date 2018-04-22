@@ -8,16 +8,23 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+from math import exp, log
 import numpy as np
-import gym
+from random import uniform
+
+from gym import Env
 from gym.spaces import Box, Tuple
 from gym.utils import seeding
 
-class FinEnv(gym.Env):
+foo = 2
+
+class FinEnv(Env):
 
     metadata = {'render.modes': ['human']}
 
-    def __init__(self):
+    def __init__(self, **kwargs):
+
+        self.params = kwargs
 
         self.action_space = Box(low = -0.5, high = 0.5, shape = (1,), dtype = 'float32') # consume fraction - 0.5; DDPG implementation assumes symmetric actions.
         self.observation_space = Box(# life_expectancy, portfolio size
@@ -25,24 +32,33 @@ class FinEnv(gym.Env):
                                      high = np.array((100, 1e7)),
                                      dtype = 'float32')
 
+        self.gamma = self.params['gamma']
+
+        # Utility needs to be scaled to [-1, 1] for DDPG implementation.
+        self.consume_high_level = self.params['p_notax_high'] # Also sets scale for _utility(), so we don't underflow.
+        self.consume_low_level = 1e-3 * self.params['p_notax_low']
+        self.utility_scale = max(abs(self._utility(self.consume_high_level)), abs(self._utility(self.consume_low_level)))
+
+        self.reset()
+
     def step(self, action):
 
         action = float(action) # De-numpify if required.
         consume_fraction = action + 0.5
-        consume = consume_fraction * self.p
+        consume = consume_fraction * self.p_notax
 
         try:
             utility = self._utility(consume)
         except ZeroDivisionError:
             utility = float('-inf')
 
-        self.p = self.p - consume
+        self.p_notax = self.p_notax - consume
         self.age += 1
 
         observation = self._observe()
         reward = utility / self.utility_scale
         reward = min(max(reward, -1), 1) # Bound rewards for DDPG implementation. Could also try "--popart --normalize-returns" (see setup_popart() in ddpg.py).
-        done = self.age >= self.terminal_age
+        done = self.age >= self.age_terminal
         info = {}
 
         self.prev_consume = consume
@@ -52,22 +68,19 @@ class FinEnv(gym.Env):
 
     def reset(self):
 
-        self.gamma = 3
         self.age_terminal = 75
 
         self.age = 65
-        self.p = 100000
+        self.p_notax = exp(uniform(log(self.params['p_notax_low']), log(self.params['p_notax_high'])))
 
-        # Utility needs to be scaled to [-1, 1] for DDPG implementation.
-        self.consume_high_level = 2.0 * self.p # Also sets scale for _utility(), so we don't underflow.
-        self.consume_low_level = 0.5 * self.p / (self.age_terminal - self.age)
-        self.utility_scale = max(abs(self._utility(self.consume_high_level)), abs(self._utility(self.consume_low_level)))
+        self.prev_consume = None
+        self.prev_reward = None
 
         return self._observe()
 
     def render(self, mode = 'human'):
 
-        print(self.age, self.p, self.prev_consume, self.prev_reward)
+        print(self.age, self.p_notax, self.prev_consume, self.prev_reward)
 
     def seed(self, seed=None):
 
@@ -77,8 +90,14 @@ class FinEnv(gym.Env):
 
         life_expectancy = self.age_terminal - self.age
 
-        return np.array((life_expectancy, self.p), dtype = 'float32')
+        return np.array((life_expectancy, self.p_notax), dtype = 'float32')
 
     def _utility(self, c):
 
-        return (c / self.consume_high_level) ** (1 - self.gamma) / (1 - self.gamma)
+        if self.gamma == 1:
+            if c == 0:
+                return float('-inf')
+            else:
+                return log(c / self.consume_high_level)
+        else:
+            return ((c / self.consume_high_level) ** (1 - self.gamma) - 1) / (1 - self.gamma)
