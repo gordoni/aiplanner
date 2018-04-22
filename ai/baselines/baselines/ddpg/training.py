@@ -57,6 +57,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
         epoch = 0
         start_time = time.time()
 
+
         epoch_episode_rewards = []
         epoch_episode_steps = []
         epoch_episode_eval_rewards = []
@@ -79,8 +80,6 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                     assert max_action.shape == action.shape
                     new_obs, r, done, info = env.step(max_action * action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
                     t += 1
-                    if rank == 0 and render:
-                        env.render()
                     episode_reward += r
                     episode_step += 1
 
@@ -100,6 +99,8 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         epoch_episodes += 1
                         episodes += 1
 
+                        if rank == 0 and render:
+                            env.render()
                         agent.reset()
                         obs = env.reset()
 
@@ -124,14 +125,16 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 if eval_env is not None:
                     eval_episode_reward = 0.
                     for t_rollout in range(nb_eval_steps):
-                        eval_action, eval_q = agent.pi(eval_obs, apply_noise=False, compute_Q=True)
-                        eval_obs, eval_r, eval_done, eval_info = eval_env.step(max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
                         if render_eval:
                             eval_env.render()
+                        eval_action, eval_q = agent.pi(eval_obs, apply_noise=False, compute_Q=True)
+                        eval_obs, eval_r, eval_done, eval_info = eval_env.step(max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
                         eval_episode_reward += eval_r
 
                         eval_qs.append(eval_q)
                         if eval_done:
+                            if render_eval:
+                                eval_env.render()
                             eval_obs = eval_env.reset()
                             eval_episode_rewards.append(eval_episode_reward)
                             eval_episode_rewards_history.append(eval_episode_reward)
