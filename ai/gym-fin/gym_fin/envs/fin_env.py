@@ -54,10 +54,7 @@ class FinEnv(Env):
         consume_fraction = consume_ceil * (consume_action + 0.5)
         consume = consume_fraction * self.p_notax
 
-        try:
-            utility = self._utility(consume)
-        except ZeroDivisionError:
-            utility = float('-inf')
+        utility = self._utility(consume)
 
         self.p_notax = self.p_notax - consume
         self.age += 1
@@ -65,7 +62,7 @@ class FinEnv(Env):
         observation = self._observe()
         reward = utility / self.utility_scale
         if not -1 <= reward <= 1:
-            print('reward out of range')
+            print('Reward out of range:', reward)
         reward = min(max(reward, -1), 1) # Bound rewards for DDPG implementation. Could also try "--popart --normalize-returns" (see setup_popart() in ddpg.py).
         done = self.age >= self.age_terminal
         info = {}
@@ -103,10 +100,10 @@ class FinEnv(Env):
 
     def _utility(self, c):
 
+        if c == 0:
+            return float('-inf')
+
         if self.gamma == 1:
-            if c == 0:
-                return float('-inf')
-            else:
-                return log(c / self.consume_high_level)
+            return log(c / self.consume_high_level)
         else:
             return ((c / self.consume_high_level) ** (1 - self.gamma) - 1) / (1 - self.gamma)
