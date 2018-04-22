@@ -26,7 +26,7 @@ class FinEnv(Env):
 
         self.params = kwargs
 
-        self.action_space = Box(low = -0.5, high = 0.5, shape = (1,), dtype = 'float32') # consume fraction - 0.5; DDPG implementation assumes symmetric actions.
+        self.action_space = Box(low = -0.5, high = 0.5, shape = (1,), dtype = 'float32') # consume_action; DDPG implementation assumes symmetric actions.
         self.observation_space = Box(# life_expectancy, portfolio size
                                      low =  np.array((0,   0)),
                                      high = np.array((100, 1e7)),
@@ -43,8 +43,15 @@ class FinEnv(Env):
 
     def step(self, action):
 
-        action = float(action) # De-numpify if required.
-        consume_fraction = action + 0.5
+        consume_action = float(action) # De-numpify if required.
+
+        # Prevent rewards from spanning 5-10 orders of magnitude.
+        # Fitting of the critic would then perform poorly as large negative reward values would swamp accuracy of more reasonable reward values.
+        # We do this by defining a consume ceiling above which we don't consume.
+        # Without a consume ceiling we would initially consume on average half the portfolio at each step,
+        # leading to very small consumption and large negative rewards at advanced ages.
+        consume_ceil = min(2 / (self.age_terminal - self.age), 1)
+        consume_fraction = consume_ceil * (consume_action + 0.5)
         consume = consume_fraction * self.p_notax
 
         try:
@@ -57,6 +64,8 @@ class FinEnv(Env):
 
         observation = self._observe()
         reward = utility / self.utility_scale
+        if not -1 <= reward <= 1:
+            print('reward out of range')
         reward = min(max(reward, -1), 1) # Bound rewards for DDPG implementation. Could also try "--popart --normalize-returns" (see setup_popart() in ddpg.py).
         done = self.age >= self.age_terminal
         info = {}
