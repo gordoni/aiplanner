@@ -40,11 +40,11 @@ def run(training_model_params, eval_model_params, seed, noise_type, layer_norm, 
 
     # Create envs.
     env = FinEnv(**training_model_params)
-    env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank)))
+    env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank)), info_keywords = ('certainty_equivalent', ))
 
     if evaluation and rank==0:
         eval_env = FinEnv(**eval_model_params)
-        eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
+        eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'), info_keywords = ('certainty_equivalent', ))
         #env = bench.Monitor(env, None)
     else:
         eval_env = None
