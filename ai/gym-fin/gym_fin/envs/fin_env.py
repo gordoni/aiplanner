@@ -61,8 +61,8 @@ class FinEnv(Env):
 
         observation = self._observe()
         utility = self._utility(consume)
-        if not -10 <= reward <= 10:
-            print('Reward out of range:', reward)
+        if not -10 <= utility <= 10:
+            print('Reward out of range:', utility)
         reward = min(max(utility, -10), 10) # Bound rewards for DDPG implementation.
             # Prevent rewards from spanning 5-10 or more orders of magnitude in the absence of guaranteed income.
             # Fitting of the critic would then perform poorly as large negative reward values would swamp accuracy of more reasonable reward values.
