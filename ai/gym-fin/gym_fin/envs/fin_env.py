@@ -27,9 +27,9 @@ class FinEnv(Env):
         self.params = kwargs
 
         self.action_space = Box(low = -0.5, high = 0.5, shape = (1,), dtype = 'float32') # consume_action; DDPG implementation assumes symmetric actions.
-        self.observation_space = Box(# life_expectancy, portfolio size
-                                     low =  np.array((0,   0)),
-                                     high = np.array((100, 1e7)),
+        self.observation_space = Box(# life_expectancy, guaranteed_income, portfolio size
+                                     low =  np.array((  0,   0,   0)),
+                                     high = np.array((100, 1e6, 1e7)),
                                      dtype = 'float32')
 
         self.age_start = 65
@@ -77,10 +77,12 @@ class FinEnv(Env):
         # Define a consume ceiling above which we won't consume.
         # One half this value acts as a hint as to the initial consumption values to try.
         # With 1 as the consume ceiling we will initially consume on average half the portfolio at each step.
-        # This leads to very small consumption at advanced ages.
+        # This leads to very small consumption at advanced ages. The utilities and thus rewards for these values will be highly negative.
         # In the absence of guaranteed income this very small consumption will initially result in warnings aboout out of bound rewards.
-        # Setting the ceiling to min(2 / (self.age_terminal - self.age), 1) would be one way to prevent such warnings.
-        consume_ceil = 1
+        # The resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for them.
+        # This will be to the detriment of the fit for more likely reward values.
+        # Setting the ceiling as shown is one way to mitigate this problem.
+        consume_ceil = min(2 / (self.age_terminal - self.age), 1)
         consume_floor = 0
         consume_fraction = consume_floor + (consume_ceil - consume_floor) * (consume_action + 0.5)
         consume = consume_fraction * self.p_notax
@@ -92,7 +94,7 @@ class FinEnv(Env):
         utility = self._utility(consume)
         reward = min(max(utility, -10), 10) # Bound rewards for DDPG implementation.
         if reward != utility:
-            print('Reward out of range:', utility)
+            print('Reward out of range - age, p_notax, consume_fraction, utility:', self.age, self.p_notax, consume_fraction, utility)
             # Clipping to prevent rewards from spanning 5-10 or more orders of magnitude in the absence of guaranteed income.
             # Fitting of the critic would then perform poorly as large negative reward values would swamp accuracy of more reasonable reward values.
             #
@@ -129,7 +131,7 @@ class FinEnv(Env):
 
         life_expectancy = self.age_terminal - self.age
 
-        return np.array((life_expectancy, self.p_notax), dtype = 'float32')
+        return np.array((life_expectancy, self.guaranteed_income, self.p_notax), dtype = 'float32')
 
     def _utility(self, c):
 
