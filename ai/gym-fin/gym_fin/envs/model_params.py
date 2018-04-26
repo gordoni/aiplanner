@@ -20,8 +20,12 @@ class ModelParams(object):
         self.parser = parser
         self.training = training
 
-        self._add_param('gamma', 3)
-        self._add_param('p-notax', (1e3, 1e7), 1e5)
+        self._add_param('consume-floor', 1e4) # Minimum consumption level model is trained for.
+            # Don't set too low, or utility at higher consumption levels will loose floating point precision.
+
+        self._add_param('gamma', 3) # Coefficient of relative risk aversion.
+        self._add_param('guaranteed-income', (1e3, 1e5), 1e4) # Social Security and similar income.
+        self._add_param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size.
 
     def set_params(self, dict_args):
 
@@ -31,6 +35,12 @@ class ModelParams(object):
 
         prefix = 'model_' if training else 'eval_model_'
         names = self.training_param_names if training else self.param_names
+
+        for name in names:
+            if name.endswith('_low'):
+                low = self.params[prefix + name]
+                high = self.params[prefix + name[:-4] + '_high']
+                assert low <= high
 
         return {name: self.params[prefix + name] for name in names}
 

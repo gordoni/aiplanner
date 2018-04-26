@@ -37,41 +37,75 @@ class FinEnv(Env):
         self.gamma = self.params['gamma']
 
         # Utility needs to be scaled to roughly have an average absolute value of 1 for DDPG implementation (presumably due to optimizer step size).
-        consume_expect_floor = self.params['p_notax_low'] / (self.age_terminal - self.age_start)
+        consume_floor = self.params['consume_floor']
         self.utility_scale = 1 # Temporary scale for _inverse_utility().
-        self.utility_scale = consume_expect_floor / self._utility_inverse(-1) # Make utility(consume_expect_floor) = -1.
+        self.utility_scale = consume_floor / self._utility_inverse(-1) # Make utility(consume_floor) = -1.
 
         self.reset()
+
+    def reset(self):
+
+        self.age = self.age_start
+
+        found = False
+        for _ in range(1000):
+
+            self.guaranteed_income = exp(uniform(log(self.params['guaranteed_income_low']), log(self.params['guaranteed_income_high'])))
+            self.p_notax = exp(uniform(log(self.params['p_notax_low']), log(self.params['p_notax_high'])))
+
+            consume_expect = self.guaranteed_income + self.p_notax / (self.age_terminal - self.age_start)
+
+            found = consume_expect >= self.params['consume_floor']
+            if found:
+                break
+
+        if not found:
+            raise Exception('Expected consumption falls outside model training range.')
+
+        self.prev_consume = None
+        self.prev_reward = None
+
+        self.episode_utility_sum = 0
+        self.episode_length = 0
+
+        return self._observe()
 
     def step(self, action):
 
         consume_action = float(action) # De-numpify if required.
 
         # Define a consume ceiling above which we won't consume.
-        # One half this value also acts as a hint as to the initial consumption values to try; speeding up training.
-        # With 1 as the consume ceiling we would initially consume on average half the portfolio at each step,
-        # leading to very small consumption at advanced ages; causing the model to take longer to train.
-        consume_ceil = min(2 / (self.age_terminal - self.age), 1)
+        # One half this value acts as a hint as to the initial consumption values to try.
+        # With 1 as the consume ceiling we will initially consume on average half the portfolio at each step.
+        # This leads to very small consumption at advanced ages.
+        # In the absence of guaranteed income this very small consumption will initially result in warnings aboout out of bound rewards.
+        # Setting the ceiling to min(2 / (self.age_terminal - self.age), 1) would be one way to prevent such warnings.
+        consume_ceil = 1
         consume_floor = 0
         consume_fraction = consume_floor + (consume_ceil - consume_floor) * (consume_action + 0.5)
         consume = consume_fraction * self.p_notax
 
         self.p_notax = self.p_notax - consume
-        self.age += 1
 
-        observation = self._observe()
+        consume += self.guaranteed_income
+
         utility = self._utility(consume)
-        if not -10 <= utility <= 10:
-            print('Reward out of range:', utility)
         reward = min(max(utility, -10), 10) # Bound rewards for DDPG implementation.
-            # Prevent rewards from spanning 5-10 or more orders of magnitude in the absence of guaranteed income.
+        if reward != utility:
+            print('Reward out of range:', utility)
+            # Clipping to prevent rewards from spanning 5-10 or more orders of magnitude in the absence of guaranteed income.
             # Fitting of the critic would then perform poorly as large negative reward values would swamp accuracy of more reasonable reward values.
-
-            # Could also try "--popart --normalize-returns" (see setup_popart() in ddpg/ddpg.py).
+            #
+            # In DDPG could also try "--popart --normalize-returns" (see setup_popart() in ddpg/ddpg.py).
             # Need to first fix a bug in ddpg/models.py: set name='output' in final critic tf.layers.dense().
             # But doesn't appear to work well becasuse in the absense of guaranteed income the rewards may span a large many orders of magnitude range.
             # In particular some rewards can be -inf, or close there to, which appears to swamp the Pop-Art scaling of the other rewards.
+
+        self.age += 1
+
+        observation = self._observe()
         done = self.age >= self.age_terminal
+
         self.episode_utility_sum += utility
         self.episode_length += 1
         info = {}
@@ -82,19 +116,6 @@ class FinEnv(Env):
         self.prev_reward = reward
 
         return observation, reward, done, info
-
-    def reset(self):
-
-        self.age = self.age_start
-        self.p_notax = exp(uniform(log(self.params['p_notax_low']), log(self.params['p_notax_high'])))
-
-        self.prev_consume = None
-        self.prev_reward = None
-
-        self.episode_utility_sum = 0
-        self.episode_length = 0
-
-        return self._observe()
 
     def render(self, mode = 'human'):
 
