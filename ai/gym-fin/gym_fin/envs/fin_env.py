@@ -85,10 +85,13 @@ class FinEnv(Env):
         # With 1 as the consume ceiling we will initially consume on average half the portfolio at each step.
         # This leads to very small consumption at advanced ages. The utilities and thus rewards for these values will be highly negative.
         # In the absence of guaranteed income this very small consumption will initially result in warnings aboout out of bound rewards.
-        # The resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for them.
+        # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for them.
         # This will be to the detriment of the fit for more likely reward values.
-        # Setting the ceiling as shown is one way to mitigate this problem.
-        consume_ceil = min(2 / (self.age_terminal - self.age), 1)
+        # Setting:
+        #     consume_ceiling = min(2 / (self.age_terminal - self.age), 1)
+        # is one way to mitigate this problem for DDPG.
+        # For PPO the first 20,000 or so steps will perform poorly, but this soon corrects and there is no lasting problem.
+        consume_ceil = 1
         consume_floor = 0
         consume_fraction = consume_floor + (consume_ceil - consume_floor) * (consume_action + 1) / 2
         consume = consume_fraction * self.p_notax
