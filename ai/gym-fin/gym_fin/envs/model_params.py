@@ -35,6 +35,7 @@ class ModelParams(object):
             # This is because for gamma > 1 higher consumption levels are bounded (i.e. a small change in utility can produce a big change in consumption).
             # Will thus probably need separately trained models for different wealth levels.
 
+        self._add_param('time-period', 1) # Rebalancing time interval in years.
         self._add_param('gamma', 3) # Coefficient of relative risk aversion.
             # Will probably need smaller [consume_floor, consume_ceiling] ranges if use a large gamma value such as 6.
         self._add_param('guaranteed-income', (1e3, 1e5), 1e4) # Social Security and similar income. Empirically OK if eval amount is less than model lower bound.
