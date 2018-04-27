@@ -121,8 +121,7 @@ def parse_args():
     parser.add_argument('--num-timesteps', type=int, default=None)
     boolean_flag(parser, 'evaluation', default=False)
     model_params = ModelParams()
-    model_params.add_arguments(parser, training = True)
-    model_params.add_arguments(parser, training = False)
+    model_params.add_arguments(parser)
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if we do specify them
     # they agree with the other parameters
@@ -132,10 +131,10 @@ def parse_args():
     del dict_args['num_timesteps']
     model_params.set_params(dict_args)
     training_model_params = model_params.get_params(training = True)
+    eval_model_params = model_params.get_params(training = False)
     for param in training_model_params:
         del dict_args['model_' + param]
-    eval_model_params = model_params.get_params(training = False)
-    for param in eval_model_params:
+        del dict_args['train_model_' + param]
         del dict_args['eval_model_' + param]
     return training_model_params, eval_model_params, dict_args
 

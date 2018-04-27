@@ -12,13 +12,22 @@ class ModelParams(object):
 
     def __init__(self):
 
-        self.training_param_names = []
         self.param_names = []
 
-    def add_arguments(self, parser, training):
+    def add_arguments(self, parser):
 
         self.parser = parser
+
+        self._add_arguments()
+        self._add_arguments(training = True)
+        self._add_arguments(evaluate = True)
+
+    def _add_arguments(self, training = False, evaluate = False):
+
+        assert not (training and evaluate)
+
         self.training = training
+        self.evaluate = evaluate
 
         self._add_param('consume-floor', 1e4) # Minimum consumption level model is trained for.
         self._add_param('consume-ceiling', 1e5) # Maximum consumption level model is trained for.
@@ -27,6 +36,7 @@ class ModelParams(object):
             # Will thus probably need separately trained models for different wealth levels.
 
         self._add_param('gamma', 3) # Coefficient of relative risk aversion.
+            # Will probably need smaller [consume_floor, consume_ceiling] ranges if use a large gamma value such as 6.
         self._add_param('guaranteed-income', (1e3, 1e5), 1e4) # Social Security and similar income. Empirically OK if eval amount is less than model lower bound.
         self._add_param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
 
@@ -36,21 +46,26 @@ class ModelParams(object):
 
     def get_params(self, training = False):
 
-        prefix = 'model_' if training else 'eval_model_'
-        names = self.training_param_names if training else self.param_names
+        def get_param(name):
+            if self.params['model_' + name] != None:
+                return self.params['model_' + name]
+            elif training:
+                return self.params['train_model_' + name]
+            else:
+                return self.params['eval_model_' + name]
 
         params = {}
-        for name in names:
+        for name in self.param_names:
             if not name in params:
-                params[name] = self.params[prefix + name]
+                params[name] = get_param(name)
             if name.endswith('_low'):
                 base = name[:-4]
-                if self.params[prefix + base] == None:
-                    low = self.params[prefix + base + '_low']
-                    high = self.params[prefix + base + '_high']
+                if get_param(base) == None:
+                    low = get_param(base + '_low')
+                    high = get_param(base + '_high')
                     assert low <= high
                 else:
-                    params[base + '_low'] = params[base + '_high'] = self.params[prefix + base]
+                    params[base + '_low'] = params[base + '_high'] = get_param(base)
 
         return params
 
@@ -82,19 +97,30 @@ class ModelParams(object):
             train_val = (train_val, train_val)
         rnge = train_range or eval_range
 
-        under_name = name.replace('-', '_')
-        param_names = self.training_param_names if self.training else self.param_names
+        if self.training:
+            val = train_val
+            prefix = '--train-model-'
+        elif self.evaluate:
+            val = eval_val if eval_val != None else train_val
+            prefix = '--eval-model-'
+        else:
+            if rnge:
+                val = (None, None)
+            else:
+                val = None
+            prefix = '--model-'
 
-        val = train_val if self.training or eval_val == None else eval_val
-        prefix = '--model-' if self.training else '--eval-model-'
+        under_name = name.replace('-', '_')
 
         if rnge:
             self.parser.add_argument(prefix + name, type = float, default = None)
             self.parser.add_argument(prefix + name + '-low', type = float, default = val[0])
             self.parser.add_argument(prefix + name + '-high', type = float, default = val[1])
-            param_names.append(under_name)
-            param_names.append(under_name + '_low')
-            param_names.append(under_name + '_high')
+            if not (self.training or self.evaluate):
+                self.param_names.append(under_name)
+                self.param_names.append(under_name + '_low')
+                self.param_names.append(under_name + '_high')
         else:
             self.parser.add_argument(prefix + name, type = float, default = val)
-            param_names.append(under_name)
+            if not (self.training or self.evaluate):
+                self.param_names.append(under_name)

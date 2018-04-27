@@ -52,15 +52,14 @@ def fin_arg_parse(parser):
     parser.add_argument('--nb-eval-steps', type=int, default=100)  # per epoch cycle
     boolean_flag(parser, 'render-eval', default=False)
     model_params = ModelParams()
-    model_params.add_arguments(parser, training = True)
-    model_params.add_arguments(parser, training = False)
+    model_params.add_arguments(parser)
     args = parser.parse_args()
     dict_args = vars(args)
     model_params.set_params(dict_args)
     training_model_params = model_params.get_params(training = True)
+    eval_model_params = model_params.get_params(training = False)
     for param in training_model_params:
         del dict_args['model_' + param]
-    eval_model_params = model_params.get_params(training = False)
-    for param in eval_model_params:
+        del dict_args['train_model_' + param]
         del dict_args['eval_model_' + param]
     return training_model_params, eval_model_params, dict_args
