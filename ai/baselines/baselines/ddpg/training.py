@@ -46,8 +46,6 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 
         agent.reset()
         obs = env.reset()
-        if eval_env is not None:
-            eval_obs = eval_env.reset()
         done = False
         episode_reward = 0.
         episode_step = 0
@@ -123,6 +121,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 eval_episode_rewards = []
                 eval_qs = []
                 if eval_env is not None:
+                    eval_obs = eval_env.reset() # If eval_env is bench.Monitor wrapped then bench.Monitor must be called with allow_early_resets=True.
                     eval_episode_reward = 0.
                     for t_rollout in range(nb_eval_steps):
                         if render_eval:
