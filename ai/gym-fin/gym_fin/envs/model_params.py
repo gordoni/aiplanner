@@ -21,11 +21,14 @@ class ModelParams(object):
         self.training = training
 
         self._add_param('consume-floor', 1e4) # Minimum consumption level model is trained for.
-            # Don't set too low, or utility at higher consumption levels will loose floating point precision.
+        self._add_param('consume-ceiling', 1e5) # Maximum consumption level model is trained for.
+            # Don't span too large a range as neural network fitting of utility to lower consumption levels will dominate over higher consumption levels.
+            # This is because for gamma > 1 higher consumption levels are bounded (i.e. a small change in utility can produce a big change in consumption).
+            # Will thus probably need separately trained models for different wealth levels.
 
         self._add_param('gamma', 3) # Coefficient of relative risk aversion.
-        self._add_param('guaranteed-income', (1e3, 1e5), 1e4) # Social Security and similar income.
-        self._add_param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size.
+        self._add_param('guaranteed-income', (1e3, 1e5), 1e4) # Social Security and similar income. Empirically OK if eval amount is less than model lower bound.
+        self._add_param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
 
     def set_params(self, dict_args):
 
@@ -36,13 +39,20 @@ class ModelParams(object):
         prefix = 'model_' if training else 'eval_model_'
         names = self.training_param_names if training else self.param_names
 
+        params = {}
         for name in names:
+            if not name in params:
+                params[name] = self.params[prefix + name]
             if name.endswith('_low'):
-                low = self.params[prefix + name]
-                high = self.params[prefix + name[:-4] + '_high']
-                assert low <= high
+                base = name[:-4]
+                if self.params[prefix + base] == None:
+                    low = self.params[prefix + base + '_low']
+                    high = self.params[prefix + base + '_high']
+                    assert low <= high
+                else:
+                    params[base + '_low'] = params[base + '_high'] = self.params[prefix + base]
 
-        return {name: self.params[prefix + name] for name in names}
+        return params
 
     def _add_param(self, name, train_val, eval_val = None):
         '''Add parameter name to the model parameters.
@@ -79,8 +89,10 @@ class ModelParams(object):
         prefix = '--model-' if self.training else '--eval-model-'
 
         if rnge:
+            self.parser.add_argument(prefix + name, type = float, default = None)
             self.parser.add_argument(prefix + name + '-low', type = float, default = val[0])
             self.parser.add_argument(prefix + name + '-high', type = float, default = val[1])
+            param_names.append(under_name)
             param_names.append(under_name + '_low')
             param_names.append(under_name + '_high')
         else:

@@ -53,12 +53,18 @@ class FinEnv(Env):
         found = False
         for _ in range(1000):
 
-            self.guaranteed_income = exp(uniform(log(self.params['guaranteed_income_low']), log(self.params['guaranteed_income_high'])))
-            self.p_notax = exp(uniform(log(self.params['p_notax_low']), log(self.params['p_notax_high'])))
+            if self.params['guaranteed_income_low'] == self.params['guaranteed_income_high']:
+                self.guaranteed_income = self.params['guaranteed_income_low'] # Handles guaranteed_income == 0.
+            else:
+                self.guaranteed_income = exp(uniform(log(self.params['guaranteed_income_low']), log(self.params['guaranteed_income_high'])))
+            if self.params['p_notax_low'] == self.params['p_notax_high']:
+                self.p_notax = self.params['p_notax_low']
+            else:
+                self.p_notax = exp(uniform(log(self.params['p_notax_low']), log(self.params['p_notax_high'])))
 
             consume_expect = self.guaranteed_income + self.p_notax / (self.age_terminal - self.age_start)
 
-            found = consume_expect >= self.params['consume_floor']
+            found = self.params['consume_floor'] <= consume_expect <= self.params['consume_ceiling']
             if found:
                 break
 
