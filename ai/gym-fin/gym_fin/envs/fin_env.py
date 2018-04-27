@@ -22,11 +22,14 @@ class FinEnv(Env):
 
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, **kwargs):
+    def __init__(self, action_space_unbounded=False, **kwargs):
 
+        self.action_space_unbounded = action_space_unbounded
         self.params = kwargs
 
-        self.action_space = Box(low = -0.5, high = 0.5, shape = (1,), dtype = 'float32') # consume_action; DDPG implementation assumes symmetric actions.
+        self.action_space = Box(low = -1.0, high = 1.0, shape = (1,), dtype = 'float32') # consume_action
+            # DDPG implementation assumes [-x, x] symmetric actions.
+            # PPO1 implementation ignores size and assumes [-inf, inf] output.
         self.observation_space = Box(# life_expectancy, guaranteed_income, portfolio size
                                      low =  np.array((  0,   0,   0)),
                                      high = np.array((100, 1e6, 1e7)),
@@ -72,7 +75,10 @@ class FinEnv(Env):
 
     def step(self, action):
 
+        if self.action_space_unbounded:
+            action = np.tanh(action)
         consume_action = float(action) # De-numpify if required.
+        assert -1 <= consume_action <= 1
 
         # Define a consume ceiling above which we won't consume.
         # One half this value acts as a hint as to the initial consumption values to try.
@@ -84,7 +90,7 @@ class FinEnv(Env):
         # Setting the ceiling as shown is one way to mitigate this problem.
         consume_ceil = min(2 / (self.age_terminal - self.age), 1)
         consume_floor = 0
-        consume_fraction = consume_floor + (consume_ceil - consume_floor) * (consume_action + 0.5)
+        consume_fraction = consume_floor + (consume_ceil - consume_floor) * (consume_action + 1) / 2
         consume = consume_fraction * self.p_notax
 
         self.p_notax = self.p_notax - consume
