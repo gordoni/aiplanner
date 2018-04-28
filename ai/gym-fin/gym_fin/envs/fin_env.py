@@ -46,6 +46,10 @@ class FinEnv(Env):
         self.risk_free = Returns(self.params.risk_free_return, 0, self.params.time_period)
         self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.time_period)
 
+        if self.params.verbose:
+            print('risk_free - mu:', round(self.risk_free.mu, 4))
+            print('stocks - mu, sigma:', round(self.stocks.mu, 4), round(self.stocks.sigma, 4))
+
         self.utility = Utility(self.params.gamma, self.params.consume_floor)
 
         self.reset()
@@ -101,7 +105,7 @@ class FinEnv(Env):
         # One half this value acts as a hint as to the initial consumption values to try.
         # With 1 as the consume ceiling (when time_period = 1) we will initially consume on average half the portfolio at each step.
         # This leads to very small consumption at advanced ages. The utilities and thus rewards for these values will be highly negative.
-        # In the absence of guaranteed income this very small consumption will initially result in many warnings aboout out of bound rewards.
+        # In the absence of guaranteed income this very small consumption will initially result in many warnings aboout out of bound rewards (if verbose is set).
         # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for them.
         # This will be to the detriment of the fit for more likely reward values.
         # For PPO the policy network never fully retrains after the initial poor fit, and the results would be sub-optimal.
@@ -123,7 +127,7 @@ class FinEnv(Env):
 
         utility = self.utility.utility(consume_annual)
         reward = min(max(utility, -10), 10)
-        if reward != utility:
+        if self.params.verbose and reward != utility:
             print('Reward out of range - age, p_notax, consume_fraction, utility:', self.age, self.p_notax, consume_fraction, utility)
             # Clipping to prevent rewards from spanning 5-10 or more orders of magnitude in the absence of guaranteed income.
             # Fitting of the neural networks would then perform poorly as large negative reward values would swamp accuracy of more reasonable reward values.

@@ -50,7 +50,11 @@ def fin_arg_parse(parser):
     parser.add_argument('--eval-seed', help='evaluation RNG seed', type=int, default=0)
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     boolean_flag(parser, 'evaluation', default=False)
-    parser.add_argument('--nb-eval-steps', type=int, default=100)  # per epoch cycle
+    parser.add_argument('--nb-eval-steps', type=int, default=2000) # Per evaluation.
+        # Above value is good for inter-run comparisons, since the episodes are identical for each run.
+        # Set to a higher value such as 50000 to compute the true policy certainty equivalence,
+        # Should also then increase eval_frequency for acceptable performance.
+    parser.add_argument('--eval-frequency', type=int, default=20000) # Evaluate every this many env steps.
     boolean_flag(parser, 'render-eval', default=False)
     model_params = ModelParams()
     model_params.add_arguments(parser)

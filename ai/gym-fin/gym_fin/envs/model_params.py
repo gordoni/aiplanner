@@ -29,22 +29,24 @@ class ModelParams(object):
         self.training = training
         self.evaluate = evaluate
 
-        self._add_param('consume-floor', 1e4) # Minimum consumption level model is trained for.
-        self._add_param('consume-ceiling', 1e5) # Maximum consumption level model is trained for.
+        self._boolean_flag('verbose', False) # Display relevant model information such as when stepping.
+
+        self._param('consume-floor', 1e4) # Minimum consumption level model is trained for.
+        self._param('consume-ceiling', 1e5) # Maximum consumption level model is trained for.
             # Don't span too large a range as neural network fitting of utility to lower consumption levels will dominate over higher consumption levels.
             # This is because for gamma > 1 higher consumption levels are bounded (i.e. a small change in utility can produce a big change in consumption).
             # Will thus probably need separately trained models for different wealth levels.
 
-        self._add_param('time-period', 1) # Rebalancing time interval in years.
-        self._add_param('gamma', 3) # Coefficient of relative risk aversion.
+        self._param('time-period', 1) # Rebalancing time interval in years.
+        self._param('gamma', 3) # Coefficient of relative risk aversion.
             # Will probably need smaller [consume_floor, consume_ceiling] ranges if use a large gamma value such as 6.
 
-        self._add_param('guaranteed-income', (1e3, 1e5), 1e4) # Social Security and similar income. Empirically OK if eval amount is less than model lower bound.
-        self._add_param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
+        self._param('guaranteed-income', (1e3, 1e5), 1e4) # Social Security and similar income. Empirically OK if eval amount is less than model lower bound.
+        self._param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
 
-        self._add_param('risk-free-return', 0) # Annual real return for risk free asset class.
-        self._add_param('stocks-return', 0.05) # Annual real return for stocks.
-        self._add_param('stocks-volatility', 0.16) # Annual real volatility for stocks.
+        self._param('risk-free-return', 0) # Annual real return for risk free asset class.
+        self._param('stocks-return', 0.05) # Annual real return for stocks.
+        self._param('stocks-volatility', 0.16) # Annual real volatility for stocks.
 
     def set_params(self, dict_args):
 
@@ -75,7 +77,7 @@ class ModelParams(object):
 
         return params
 
-    def _add_param(self, name, train_val, eval_val = None):
+    def _param(self, name, train_val, eval_val = None, *, tp = float):
         '''Add parameter name to the model parameters.
 
         Uses the specified values as the default training and evaluation values.
@@ -117,16 +119,36 @@ class ModelParams(object):
             prefix = '--model-'
 
         under_name = name.replace('-', '_')
-
         if rnge:
-            self.parser.add_argument(prefix + name, type = float, default = None)
-            self.parser.add_argument(prefix + name + '-low', type = float, default = val[0])
-            self.parser.add_argument(prefix + name + '-high', type = float, default = val[1])
+            self.parser.add_argument(prefix + name, type = tp, default = None)
+            self.parser.add_argument(prefix + name + '-low', type = tp, default = val[0])
+            self.parser.add_argument(prefix + name + '-high', type = tp, default = val[1])
             if not (self.training or self.evaluate):
                 self.param_names.append(under_name)
                 self.param_names.append(under_name + '_low')
                 self.param_names.append(under_name + '_high')
         else:
-            self.parser.add_argument(prefix + name, type = float, default = val)
+            self.parser.add_argument(prefix + name, type = tp, default = val)
             if not (self.training or self.evaluate):
                 self.param_names.append(under_name)
+
+    def _boolean_flag(self, name, train_val, eval_val = None):
+
+        if self.training:
+            val = train_val
+            prefix = 'train-model-'
+        elif self.evaluate:
+            val = eval_val if eval_val != None else train_val
+            prefix = 'eval-model-'
+        else:
+            val = None
+            prefix = 'model-'
+
+        dest = prefix + name
+        under_dest = dest.replace('-', '_')
+        self.parser.add_argument("--" + prefix + name, action = "store_true", default = val, dest = under_dest)
+        self.parser.add_argument('--' + prefix + 'no-' + name, action = "store_false", dest = under_dest)
+
+        if not (self.training or self.evaluate):
+            under_name = name.replace('-', '_')
+            self.param_names.append(under_name)

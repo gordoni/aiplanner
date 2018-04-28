@@ -23,9 +23,9 @@ class Returns(object):
         self.mu = log(m / sqrt(1 + (vol / m) ** 2))
         self.sigma = sqrt(log(1 + (vol / m) ** 2))
 
-        self.mu *= time_period
-        self.sigma *= sqrt(time_period)
+        self.period_mu = self.mu * time_period
+        self.period_sigma = self.sigma * sqrt(time_period)
 
     def sample(self):
 
-        return lognormvariate(self.mu, self.sigma) # Caution: If switch to using numpy need to get/set numpy state in fin_evaluate().
+        return lognormvariate(self.period_mu, self.period_sigma) # Caution: If switch to using numpy need to get/set numpy state in fin_evaluate().
