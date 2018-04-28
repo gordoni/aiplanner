@@ -17,6 +17,7 @@ from gym.spaces import Box, Tuple
 from gym.utils import seeding
 
 from gym_fin.envs.returns import Returns
+from gym_fin.envs.utility import Utility
 
 class AttributeObject(object):
 
@@ -42,14 +43,10 @@ class FinEnv(Env):
 
         self.age_start = 65
         self.age_terminal = 75
-        self.gamma = self.params.gamma
         self.risk_free = Returns(self.params.risk_free_return, 0, self.params.time_period)
         self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.time_period)
 
-        # Utility needs to be scaled to roughly have an average absolute value of 1 for DDPG implementation (presumably due to optimizer step size).
-        consume_floor = self.params.consume_floor
-        self.utility_scale = 1 # Temporary scale for _inverse_utility().
-        self.utility_scale = consume_floor / self._utility_inverse(-1) # Make utility(consume_floor) = -1.
+        self.utility = Utility(self.params.gamma, self.params.consume_floor)
 
         self.reset()
 
@@ -99,6 +96,7 @@ class FinEnv(Env):
         assert -1 <= consume_action <= 1
         assert -1 <= asset_allocation_action <= 1
 
+        consume_floor = 0
         # Define a consume ceiling above which we won't consume.
         # One half this value acts as a hint as to the initial consumption values to try.
         # With 1 as the consume ceiling (when time_period = 1) we will initially consume on average half the portfolio at each step.
@@ -111,7 +109,6 @@ class FinEnv(Env):
             # Set:
             #     consume_ceil = 1 / self.params.time_period
             # to explore the full range of possible consume_fraction values.
-        consume_floor = 0
         consume_fraction = consume_floor + (consume_ceil - consume_floor) * (consume_action + 1) / 2
         consume_fraction = min(consume_fraction, 1 / self.params.time_period)
         consume_annual = consume_fraction * self.p_notax
@@ -124,12 +121,12 @@ class FinEnv(Env):
 
         consume_annual += self.guaranteed_income
 
-        utility = self._utility(consume_annual)
-        reward = min(max(utility, -10), 10) # Bound rewards for DDPG implementation.
+        utility = self.utility.utility(consume_annual)
+        reward = min(max(utility, -10), 10)
         if reward != utility:
             print('Reward out of range - age, p_notax, consume_fraction, utility:', self.age, self.p_notax, consume_fraction, utility)
             # Clipping to prevent rewards from spanning 5-10 or more orders of magnitude in the absence of guaranteed income.
-            # Fitting of the critic would then perform poorly as large negative reward values would swamp accuracy of more reasonable reward values.
+            # Fitting of the neural networks would then perform poorly as large negative reward values would swamp accuracy of more reasonable reward values.
             #
             # In DDPG could also try "--popart --normalize-returns" (see setup_popart() in ddpg/ddpg.py).
             # Need to first fix a bug in ddpg/models.py: set name='output' in final critic tf.layers.dense().
@@ -145,7 +142,7 @@ class FinEnv(Env):
         self.episode_length += 1
         info = {}
         if done:
-            info['certainty_equivalent'] = self._utility_inverse(self.episode_utility_sum / self.episode_length)
+            info['ce'] = self.utility.inverse(self.episode_utility_sum / self.episode_length)
 
         self.prev_asset_allocation = asset_allocation
         self.prev_consume_annual = consume_annual
@@ -166,20 +163,3 @@ class FinEnv(Env):
         life_expectancy = self.age_terminal - self.age
 
         return np.array((life_expectancy, self.guaranteed_income, self.p_notax), dtype = 'float32')
-
-    def _utility(self, c):
-
-        if c == 0:
-            return float('-inf')
-
-        if self.gamma == 1:
-            return log(c / self.utility_scale)
-        else:
-            return ((c / self.utility_scale) ** (1 - self.gamma) - 1) / (1 - self.gamma)
-
-    def _utility_inverse(self, u):
-
-        if self.gamma == 1:
-            return exp(u) * self.utility_scale
-        else:
-            return (u * (1 - self.gamma) + 1) ** (1 / (1 - self.gamma)) * self.utility_scale

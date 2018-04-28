@@ -32,7 +32,7 @@ def make_fin_env(*, action_space_unbounded, training, **kwargs):
     filename = logger.get_dir()
     if filename:
         filename = os.path.join(filename, '' if training else 'gym_eval')
-    env = Monitor(env, filename, allow_early_resets=not training, info_keywords = ('certainty_equivalent', ))
+    env = Monitor(env, filename, allow_early_resets=not training, info_keywords = ('ce', ))
     return env
 
 def arg_parser():
@@ -47,6 +47,7 @@ def fin_arg_parse(parser):
     Create an argparse.ArgumentParser for run_fin.py.
     """
     parser.add_argument('--seed', help='RNG seed', type=int, default=0)
+    parser.add_argument('--eval-seed', help='evaluation RNG seed', type=int, default=0)
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
     boolean_flag(parser, 'evaluation', default=False)
     parser.add_argument('--nb-eval-steps', type=int, default=100)  # per epoch cycle

@@ -28,4 +28,4 @@ class Returns(object):
 
     def sample(self):
 
-        return lognormvariate(self.mu, self.sigma)
+        return lognormvariate(self.mu, self.sigma) # Caution: If switch to using numpy need to get/set numpy state in fin_evaluate().
