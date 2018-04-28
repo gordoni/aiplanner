@@ -38,8 +38,13 @@ class ModelParams(object):
         self._add_param('time-period', 1) # Rebalancing time interval in years.
         self._add_param('gamma', 3) # Coefficient of relative risk aversion.
             # Will probably need smaller [consume_floor, consume_ceiling] ranges if use a large gamma value such as 6.
+
         self._add_param('guaranteed-income', (1e3, 1e5), 1e4) # Social Security and similar income. Empirically OK if eval amount is less than model lower bound.
         self._add_param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
+
+        self._add_param('risk-free-return', 0) # Annual real return for risk free asset class.
+        self._add_param('stocks-return', 0.05) # Annual real return for stocks.
+        self._add_param('stocks-volatility', 0.16) # Annual real volatility for stocks.
 
     def set_params(self, dict_args):
 

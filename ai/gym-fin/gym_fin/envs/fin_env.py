@@ -16,6 +16,8 @@ from gym import Env
 from gym.spaces import Box, Tuple
 from gym.utils import seeding
 
+from gym_fin.envs.returns import Returns
+
 class AttributeObject(object):
 
     def __init__(self, dict):
@@ -30,7 +32,7 @@ class FinEnv(Env):
         self.action_space_unbounded = action_space_unbounded
         self.params = AttributeObject(kwargs)
 
-        self.action_space = Box(low = -1.0, high = 1.0, shape = (1,), dtype = 'float32') # consume_action
+        self.action_space = Box(low = -1.0, high = 1.0, shape = (2,), dtype = 'float32') # consume_action, asset_allocation_action
             # DDPG implementation assumes [-x, x] symmetric actions.
             # PPO1 implementation ignores size and assumes [-inf, inf] output.
         self.observation_space = Box(# life_expectancy, guaranteed_income, portfolio size
@@ -41,6 +43,8 @@ class FinEnv(Env):
         self.age_start = 65
         self.age_terminal = 75
         self.gamma = self.params.gamma
+        self.risk_free = Returns(self.params.risk_free_return, 0, self.params.time_period)
+        self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.time_period)
 
         # Utility needs to be scaled to roughly have an average absolute value of 1 for DDPG implementation (presumably due to optimizer step size).
         consume_floor = self.params.consume_floor
@@ -74,6 +78,7 @@ class FinEnv(Env):
         if not found:
             raise Exception('Expected consumption falls outside model training range.')
 
+        self.prev_asset_allocation = None
         self.prev_consume_annual = None
         self.prev_reward = None
 
@@ -86,8 +91,13 @@ class FinEnv(Env):
 
         if self.action_space_unbounded:
             action = np.tanh(action)
-        consume_action = float(action) # De-numpify if required.
+        try:
+            action = action.tolist() # De-numpify if required.
+        except AttributeError:
+            pass
+        consume_action, asset_allocation_action = action
         assert -1 <= consume_action <= 1
+        assert -1 <= asset_allocation_action <= 1
 
         # Define a consume ceiling above which we won't consume.
         # One half this value acts as a hint as to the initial consumption values to try.
@@ -107,7 +117,10 @@ class FinEnv(Env):
         consume_annual = consume_fraction * self.p_notax
         consume = consume_annual * self.params.time_period
 
+        asset_allocation = (asset_allocation_action + 1) / 2
+
         self.p_notax = self.p_notax - consume
+        self.p_notax *= asset_allocation * self.stocks.sample() + (1 - asset_allocation) * self.risk_free.sample()
 
         consume_annual += self.guaranteed_income
 
@@ -134,6 +147,7 @@ class FinEnv(Env):
         if done:
             info['certainty_equivalent'] = self._utility_inverse(self.episode_utility_sum / self.episode_length)
 
+        self.prev_asset_allocation = asset_allocation
         self.prev_consume_annual = consume_annual
         self.prev_reward = reward
 
@@ -141,7 +155,7 @@ class FinEnv(Env):
 
     def render(self, mode = 'human'):
 
-        print(self.age, self.p_notax, self.prev_consume_annual, self.prev_reward)
+        print(self.age, self.p_notax, self.prev_asset_allocation, self.prev_consume_annual, self.prev_reward)
 
     def seed(self, seed=None):
 
