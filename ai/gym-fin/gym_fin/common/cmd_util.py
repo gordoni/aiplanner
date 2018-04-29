@@ -24,11 +24,11 @@ from baselines.common import boolean_flag, set_global_seeds
 
 from gym_fin.envs import FinEnv, ModelParams
 
-def make_fin_env(*, action_space_unbounded, training, **kwargs):
+def make_fin_env(action_space_unbounded = False, training = False, **kwargs):
     """
     Create a wrapped, monitored gym.Env for Fin.
     """
-    env = FinEnv(action_space_unbounded=action_space_unbounded, **kwargs)
+    env = FinEnv(action_space_unbounded = action_space_unbounded, **kwargs)
     filename = logger.get_dir()
     if filename:
         filename = os.path.join(filename, '' if training else 'gym_eval')
@@ -42,20 +42,23 @@ def arg_parser():
     import argparse
     return argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-def fin_arg_parse(parser):
+def fin_arg_parse(parser, training = True, evaluate = True):
     """
     Create an argparse.ArgumentParser for run_fin.py.
     """
-    parser.add_argument('--seed', help='RNG seed', type=int, default=0)
-    parser.add_argument('--eval-seed', help='evaluation RNG seed', type=int, default=0)
-    parser.add_argument('--num-timesteps', type=int, default=int(1e6))
-    boolean_flag(parser, 'evaluation', default=False)
-    parser.add_argument('--nb-eval-steps', type=int, default=2000) # Per evaluation.
-        # Above value is good for inter-run comparisons, since the episodes are identical for each run.
-        # Set to a higher value such as 50000 to compute the true policy certainty equivalence,
-        # Should also then increase eval_frequency for acceptable performance.
-    parser.add_argument('--eval-frequency', type=int, default=20000) # Evaluate every this many env steps.
-    boolean_flag(parser, 'render-eval', default=False)
+    if training:
+        parser.add_argument('--seed', help = 'RNG seed', type = int, default = 0)
+        parser.add_argument('--num-timesteps', type = int, default = int(1e6))
+    if evaluate and training:
+        boolean_flag(parser, 'evaluation', default = False)
+        parser.add_argument('--eval-frequency', type = int, default = 20000) # Evaluate every this many env steps.
+    if evaluate:
+        parser.add_argument('--eval-seed', help = 'evaluation RNG seed', type = int, default = 0)
+        parser.add_argument('--eval-num-timesteps', type = int, default = 2000) # Per evaluation.
+            # Above value is good for inter-run comparisons, since the episodes are identical for each run.
+            # Set to a higher value such as 50000 to compute the true policy certainty equivalence,
+            # Should also then increase eval_frequency for acceptable performance.
+        boolean_flag(parser, 'eval-render', default = False)
     model_params = ModelParams()
     model_params.add_arguments(parser)
     args = parser.parse_args()

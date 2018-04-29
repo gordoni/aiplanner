@@ -23,14 +23,14 @@ class Evaluator(object):
 
     LOGFILE = 'gym_eval_batch.monitor.csv'
 
-    def __init__(self, eval_env, eval_seed, nb_eval_steps, render_eval):
+    def __init__(self, eval_env, eval_seed, eval_num_timesteps, eval_render):
 
         self.tstart = time.time()
 
         self.eval_env = eval_env
         self.eval_seed = eval_seed
-        self.nb_eval_steps = nb_eval_steps
-        self.render_eval = render_eval
+        self.eval_num_timesteps = eval_num_timesteps
+        self.eval_render = eval_render
 
         filename = os.path.join(logger.get_dir(), Evaluator.LOGFILE)
         self.f = open(filename, "wt")
@@ -48,14 +48,14 @@ class Evaluator(object):
 
             rewards = []
             obs = self.eval_env.reset()
-            for _ in range(self.nb_eval_steps):
-                if self.render_eval:
+            for _ in range(self.eval_num_timesteps):
+                if self.eval_render:
                     self.eval_env.render()
                 action = pi(obs)
                 obs, r, done, info = self.eval_env.step(action)
                 rewards.append(r)
                 if done:
-                    if self.render_eval:
+                    if self.eval_render:
                         self.eval_env.render()
                     obs = self.eval_env.reset()
 
@@ -66,9 +66,9 @@ class Evaluator(object):
             ce = utility.inverse(rew)
             ce_stdev = ce - utility.inverse(rew - std)
 
-            print('Evaluation CE:', ce, '+/-', ce_stdev)
+            print('Evaluation certainty equivalent:', ce, '+/-', ce_stdev)
 
-            batchinfo = {'r': round(batchrew, 6), 'l': self.nb_eval_steps, 't': round(time.time() - self.tstart, 6), 'ce': ce, 'ce_stdev': ce_stdev}
+            batchinfo = {'r': round(batchrew, 6), 'l': self.eval_num_timesteps, 't': round(time.time() - self.tstart, 6), 'ce': ce, 'ce_stdev': ce_stdev}
             self.logger.writerow(batchinfo)
             self.f.flush()
 

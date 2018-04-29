@@ -28,9 +28,10 @@ class FinEnv(Env):
 
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, action_space_unbounded=False, **kwargs):
+    def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
 
         self.action_space_unbounded = action_space_unbounded
+        self.direct_action = direct_action
         self.params = AttributeObject(kwargs)
 
         self.action_space = Box(low = -1.0, high = 1.0, shape = (2,), dtype = 'float32') # consume_action, asset_allocation_action
@@ -47,8 +48,9 @@ class FinEnv(Env):
         self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.time_period)
 
         if self.params.verbose:
-            print('risk_free - mu:', round(self.risk_free.mu, 4))
-            print('stocks - mu, sigma:', round(self.stocks.mu, 4), round(self.stocks.sigma, 4))
+            print('Asset classes:')
+            print('    risk_free - mu:', round(self.risk_free.mu, 4))
+            print('    stocks - mu, sigma:', round(self.stocks.mu, 4), round(self.stocks.sigma, 4))
 
         self.utility = Utility(self.params.gamma, self.params.consume_floor)
 
@@ -88,15 +90,22 @@ class FinEnv(Env):
 
         return self._observe()
 
-    def step(self, action):
+    def encode_direct_action(self, consume_fraction, asset_allocation):
+
+        return (consume_fraction, asset_allocation)
+
+    def decode_action(self, action):
 
         if self.action_space_unbounded:
             action = np.tanh(action)
+
         try:
             action = action.tolist() # De-numpify if required.
         except AttributeError:
             pass
+
         consume_action, asset_allocation_action = action
+
         assert -1 <= consume_action <= 1
         assert -1 <= asset_allocation_action <= 1
 
@@ -115,15 +124,37 @@ class FinEnv(Env):
             # to explore the full range of possible consume_fraction values.
         consume_fraction = consume_floor + (consume_ceil - consume_floor) * (consume_action + 1) / 2
         consume_fraction = min(consume_fraction, 1 / self.params.time_period)
-        consume_annual = consume_fraction * self.p_notax
-        consume = consume_annual * self.params.time_period
 
         asset_allocation = (asset_allocation_action + 1) / 2
 
-        self.p_notax = self.p_notax - consume
-        self.p_notax *= asset_allocation * self.stocks.sample() + (1 - asset_allocation) * self.risk_free.sample()
+        return consume_fraction, asset_allocation
 
-        consume_annual += self.guaranteed_income
+    def consume_rate(self, consume_fraction):
+
+        consume_fraction_period = consume_fraction * self.params.time_period
+        assert 0 <= consume_fraction_period <= 1
+
+        p = self.p_notax + self.guaranteed_income * self.params.time_period
+
+        return consume_fraction * p
+
+    def step(self, action):
+
+        if self.direct_action:
+            consume_fraction, asset_allocation = action
+        else:
+            consume_fraction, asset_allocation = self.decode_action(action)
+
+        consume_annual = self.consume_rate(consume_fraction)
+        consume = consume_annual * self.params.time_period
+
+        p = self.p_notax - consume
+        nonneg_p = max(p, 0)
+        if p != nonneg_p:
+            assert p / self.p_notax > -1e-15
+            p = 0
+        ret = asset_allocation * self.stocks.sample() + (1 - asset_allocation) * self.risk_free.sample()
+        self.p_notax = p * ret
 
         utility = self.utility.utility(consume_annual)
         reward = min(max(utility, -10), 10)
@@ -164,6 +195,12 @@ class FinEnv(Env):
 
     def _observe(self):
 
-        life_expectancy = self.age_terminal - self.age
+        life_expectancy = max(self.age_terminal - self.age, 0)
 
         return np.array((life_expectancy, self.guaranteed_income, self.p_notax), dtype = 'float32')
+
+    def decode_observation(self, obs):
+
+        life_expectancy, guaranteed_income, p_notax = obs.tolist()
+
+        return {'life_expectancy': life_expectancy, 'guaranteed_income': guaranteed_income, 'p_notax': p_notax}

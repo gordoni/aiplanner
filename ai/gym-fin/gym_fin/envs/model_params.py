@@ -44,7 +44,7 @@ class ModelParams(object):
         self._param('guaranteed-income', (1e3, 1e5), 1e4) # Social Security and similar income. Empirically OK if eval amount is less than model lower bound.
         self._param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
 
-        self._param('risk-free-return', 0) # Annual real return for risk free asset class.
+        self._param('risk-free-return', 0.02) # Annual real return for risk free asset class.
         self._param('stocks-return', 0.05) # Annual real return for stocks.
         self._param('stocks-volatility', 0.16) # Annual real volatility for stocks.
 
