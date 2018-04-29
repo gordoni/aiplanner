@@ -157,16 +157,9 @@ class FinEnv(Env):
         self.p_notax = p * ret
 
         utility = self.utility.utility(consume_annual)
-        reward = min(max(utility, -10), 10)
+        reward = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
         if self.params.verbose and reward != utility:
             print('Reward out of range - age, p_notax, consume_fraction, utility:', self.age, self.p_notax, consume_fraction, utility)
-            # Clipping to prevent rewards from spanning 5-10 or more orders of magnitude in the absence of guaranteed income.
-            # Fitting of the neural networks would then perform poorly as large negative reward values would swamp accuracy of more reasonable reward values.
-            #
-            # In DDPG could also try "--popart --normalize-returns" (see setup_popart() in ddpg/ddpg.py).
-            # Need to first fix a bug in ddpg/models.py: set name='output' in final critic tf.layers.dense().
-            # But doesn't appear to work well becasuse in the absense of guaranteed income the rewards may span a large many orders of magnitude range.
-            # In particular some rewards can be -inf, or close there to, which appears to swamp the Pop-Art scaling of the other rewards.
 
         self.age += self.params.time_period
 
