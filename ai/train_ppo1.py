@@ -12,6 +12,10 @@
 
 # Code based on baselines/ppo1/run_mujoco.py
 
+from shutil import rmtree
+
+import tensorflow as tf
+
 from baselines import logger
 from baselines.common import tf_util as U
 from baselines.common.misc_util import set_global_seeds
@@ -20,10 +24,15 @@ from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 
 def train(training_model_params, eval_model_params, *, nb_hidden_layers, hidden_layer_size, num_timesteps, seed,
-        eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render):
+          eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, model_dir):
+    assert model_dir.endswith('.tf')
+    try:
+        rmtree(model_dir)
+    except FileNotFoundError:
+        pass
     from baselines.ppo1 import mlp_policy, pposgd_simple
     set_global_seeds(seed)
-    U.make_session(num_cpu=1).__enter__()
+    session = U.make_session(num_cpu=1).__enter__()
     def policy_fn(name, ob_space, ac_space):
         return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space,
             hid_size=hidden_layer_size, num_hid_layers=nb_hidden_layers)
@@ -57,6 +66,12 @@ def train(training_model_params, eval_model_params, *, nb_hidden_layers, hidden_
     env.close()
     if eval_env:
         eval_env.close()
+    g = tf.get_default_graph()
+    train_tf = g.get_tensor_by_name('pi/train:0')
+    action_tf = g.get_tensor_by_name('pi/action:0')
+    v_tf = g.get_tensor_by_name('pi/v:0')
+    observation_tf = g.get_tensor_by_name('pi/ob:0')
+    tf.saved_model.simple_save(session, model_dir, {'train': train_tf, 'observation': observation_tf}, {'action': action_tf, 'v': v_tf})
 
 def main():
     parser = arg_parser()

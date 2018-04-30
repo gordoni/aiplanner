@@ -129,14 +129,16 @@ class FinEnv(Env):
 
         return consume_fraction, asset_allocation
 
+    def _p_income(self):
+
+        return self.p_notax + self.guaranteed_income * self.params.time_period
+
     def consume_rate(self, consume_fraction):
 
         consume_fraction_period = consume_fraction * self.params.time_period
         assert 0 <= consume_fraction_period <= 1
 
-        p = self.p_notax + self.guaranteed_income * self.params.time_period
-
-        return consume_fraction * p
+        return consume_fraction * self._p_income()
 
     def step(self, action):
 
@@ -148,7 +150,7 @@ class FinEnv(Env):
         consume_annual = self.consume_rate(consume_fraction)
         consume = consume_annual * self.params.time_period
 
-        p = self.p_notax - consume
+        p = self._p_income() - consume
         nonneg_p = max(p, 0)
         if p != nonneg_p:
             assert p / self.p_notax > -1e-15

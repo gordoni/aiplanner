@@ -59,6 +59,7 @@ def fin_arg_parse(parser, training = True, evaluate = True):
             # Set to a higher value such as 50000 to compute the true policy certainty equivalence,
             # Should also then increase eval_frequency for acceptable performance.
         boolean_flag(parser, 'eval-render', default = False)
+    parser.add_argument('--model-dir', default = 'aiplanner.tf')
     model_params = ModelParams()
     model_params.add_arguments(parser, training = training, evaluate = evaluate)
     args = parser.parse_args()
