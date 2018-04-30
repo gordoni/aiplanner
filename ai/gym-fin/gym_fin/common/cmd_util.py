@@ -66,13 +66,5 @@ def fin_arg_parse(parser, training = True, evaluate = True):
     model_params.set_params(dict_args)
     training_model_params = model_params.get_params(training = True) if training else {}
     eval_model_params = model_params.get_params(training = False) if evaluate else {}
-    for param in training_model_params:
-        del dict_args['model_' + param]
-        del dict_args['train_model_' + param]
-    for param in eval_model_params:
-        try:
-            del dict_args['model_' + param]
-        except KeyError:
-            pass
-        del dict_args['eval_model_' + param]
+    dict_args = model_params.remaining_params()
     return training_model_params, eval_model_params, dict_args

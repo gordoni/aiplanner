@@ -44,6 +44,14 @@ class ModelParams(object):
             #
             # To get a sense of relative reward sizes, note that, utility(consume_floor) = -1, and when gamma > 1, utility(inf) = 1 / (gamma - 1).
             #
+            # Chosen clip value of 10 tuned for good performance on PPO with guaranteed income of zero, training p_notax effectively spanning 1 order of magnitude,
+            # evaluation p_notax at the bottom of this range, consume floor = p_notax / life expectancy, and gamma = 3.
+            #
+            # For PPO with guaranteed income of zero, a fixed p_notax, consume floor = p_notax / life expectancy, and gamma = 3,
+            # get better results with a training clip value of 100 to 500.
+            #
+            # In DDPG probably always need a low training clip value such as 10 on account of poor step choices getting saved and reused by the replay buffer.
+            #
             # In DDPG could also try "--popart --normalize-returns" (see setup_popart() in ddpg/ddpg.py).
             # Need to first fix a bug in ddpg/models.py: set name='output' in final critic tf.layers.dense().
             # But doesn't appear to work well becasuse in the absense of guaranteed income the rewards may span a large many orders of magnitude range.
@@ -67,12 +75,12 @@ class ModelParams(object):
     def get_params(self, training = False):
 
         def get_param(name):
-            if self.params['model_' + name] != None:
-                return self.params['model_' + name]
+            if self.params['master_' + name] != None:
+                return self.params['master_' + name]
             elif training:
-                return self.params['train_model_' + name]
+                return self.params['train_' + name]
             else:
-                return self.params['eval_model_' + name]
+                return self.params['eval_' + name]
 
         params = {}
         for name in self.param_names:
@@ -86,6 +94,23 @@ class ModelParams(object):
                     assert low <= high
                 else:
                     params[base + '_low'] = params[base + '_high'] = get_param(base)
+
+        return params
+
+    def remaining_params(self):
+
+        params = dict(self.params)
+
+        for param in self.param_names:
+            del params['master_' + param]
+            try:
+                del params['train_' + param]
+            except KeyError:
+                pass
+            try:
+                del params['eval_' + param]
+            except KeyError:
+                pass
 
         return params
 
@@ -119,16 +144,16 @@ class ModelParams(object):
 
         if self.training:
             val = train_val
-            prefix = '--train-model-'
+            prefix = '--train-'
         elif self.evaluate:
             val = eval_val if eval_val != None else train_val
-            prefix = '--eval-model-'
+            prefix = '--eval-'
         else:
             if rnge:
                 val = (None, None)
             else:
                 val = None
-            prefix = '--model-'
+            prefix = '--master-'
 
         under_name = name.replace('-', '_')
         if rnge:
@@ -148,13 +173,13 @@ class ModelParams(object):
 
         if self.training:
             val = train_val
-            prefix = 'train-model-'
+            prefix = 'train-'
         elif self.evaluate:
             val = eval_val if eval_val != None else train_val
-            prefix = 'eval-model-'
+            prefix = 'eval-'
         else:
             val = None
-            prefix = 'model-'
+            prefix = 'master-'
 
         dest = prefix + name
         under_dest = dest.replace('-', '_')

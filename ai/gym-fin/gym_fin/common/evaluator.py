@@ -48,20 +48,29 @@ class Evaluator(object):
 
             rewards = []
             obs = self.eval_env.reset()
-            for _ in range(self.eval_num_timesteps):
+            observation = self.eval_env.unwrapped.decode_observation(obs)
+            life_expectancy = observation['life_expectancy']
+            eprew = []
+            t = 0
+            while True:
                 if self.eval_render:
                     self.eval_env.render()
                 action = pi(obs)
                 obs, r, done, info = self.eval_env.step(action)
-                rewards.append(r)
+                t += 1
+                eprew.append(r)
                 if done:
+                    rewards.append(sum(eprew))
                     if self.eval_render:
                         self.eval_env.render()
                     obs = self.eval_env.reset()
+                    eprew = []
+                    if t >= self.eval_num_timesteps:
+                        break
 
             batchrew = sum(rewards)
-            rew = mean(rewards)
-            std = stdev(rewards)
+            rew = mean(rewards) / life_expectancy
+            std = stdev(rewards) / life_expectancy
             utility = self.eval_env.unwrapped.utility
             ce = utility.inverse(rew)
             ce_stdev = ce - utility.inverse(rew - std)

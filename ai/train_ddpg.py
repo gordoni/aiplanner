@@ -132,10 +132,7 @@ def parse_args():
     model_params.set_params(dict_args)
     training_model_params = model_params.get_params(training = True)
     eval_model_params = model_params.get_params(training = False)
-    for param in training_model_params:
-        del dict_args['model_' + param]
-        del dict_args['train_model_' + param]
-        del dict_args['eval_model_' + param]
+    dict_args = model_params.remaining_params()
     return training_model_params, eval_model_params, dict_args
 
 
