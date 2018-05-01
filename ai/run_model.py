@@ -10,7 +10,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-from math import exp
+from math import ceil, exp
 
 import numpy as np
 
@@ -28,6 +28,7 @@ from gym_fin.common.evaluator import Evaluator
 
 def pi_merton(env, obs, continuous_time = False):
     observation = env.decode_observation(obs)
+    life_expectancy = observation['life_expectancy']
     gamma = env.params.gamma
     mu = env.stocks.mu
     sigma = env.stocks.sigma
@@ -36,35 +37,33 @@ def pi_merton(env, obs, continuous_time = False):
     asset_allocation = (alpha - r) / (sigma ** 2 * gamma)
     nu = ((gamma - 1) / gamma) * ((alpha - r) * asset_allocation / 2 + r)
     if nu == 0:
-        consume_fraction = 1 / observation['life_expectancy']
+        consume_fraction = 1 / life_expectancy
     elif continuous_time:
         # Merton.
-        consume_fraction = nu / (1 - exp(- nu * observation['life_expectancy']))
+        consume_fraction = nu / (1 - exp(- nu * life_expectancy))
     else:
         # Samuelson.
         a = exp(nu * env.params.time_period)
-        t = max(observation['life_expectancy'] / env.params.time_period - 1, 0)
+        t = ceil(life_expectancy / env.params.time_period) - 1
         consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / env.params.time_period
     return consume_fraction, asset_allocation
 
-def run(eval_model_params, *, merton, eval_seed, eval_num_timesteps, eval_render, model_dir):
+def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, eval_render, model_dir):
 
-    assert not (model_dir != 'aiplanner.tf' and merton)
+    assert sum((model_dir != 'aiplanner.tf', merton, samuelson)) <= 1
+    merton_or_samuelson = merton or samuelson
 
     set_global_seeds(eval_seed)
-    eval_env = make_fin_env(**eval_model_params, action_space_unbounded = not merton, direct_action = merton)
+    eval_env = make_fin_env(**eval_model_params, action_space_unbounded = not merton_or_samuelson, direct_action = merton_or_samuelson)
     env = eval_env.unwrapped
     obs = eval_env.reset()
 
-    if merton:
+    logger.info('Properties for first episode:')
 
-        consume_fraction, asset_allocation = pi_merton(env, obs)
+    if merton_or_samuelson:
+
+        consume_fraction, asset_allocation = pi_merton(env, obs, continuous_time = merton)
         consume_annual = env.consume_rate(consume_fraction)
-        print('Initial consume rate (Samuelson):', consume_annual)
-        consume_fraction, asset_allocation = pi_merton(env, obs, continuous_time = True)
-        consume_annual = env.consume_rate(consume_fraction)
-        print('Initial consume rate (Merton):', consume_annual)
-        print('Initial asset allocation:', asset_allocation)
 
     else:
 
@@ -78,21 +77,30 @@ def run(eval_model_params, *, merton, eval_seed, eval_num_timesteps, eval_render
         action, = session.run(action_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
         consume_fraction, asset_allocation = env.decode_action(action)
         consume_annual = env.consume_rate(consume_fraction)
-        print('Initial consume rate:', consume_annual)
-        print('Initial asset allocation:', asset_allocation)
+
+    logger.info('    Initial consume rate: ', consume_annual)
+    logger.info('    Initial asset allocation: ', asset_allocation)
+
+    if not merton_or_samuelson:
+
         v, = session.run(v_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
         observation = env.decode_observation(obs)
         life_expectancy = observation['life_expectancy']
-        print('Prediction certainty equivalent:', env.utility.inverse(v / life_expectancy))
+        logger.info('    Predicted certainty equivalent: ', env.utility.inverse(v / life_expectancy))
 
     evaluator = Evaluator(eval_env, eval_seed, eval_num_timesteps, eval_render)
 
     def pi(obs):
 
-        if merton:
+        if merton or samuelson:
 
-            consume_fraction, asset_allocation = pi_merton(env, obs)
-            return env.unwrapped.encode_direct_action(consume_fraction, asset_allocation)
+            consume_fraction, asset_allocation = pi_merton(env, obs, continuous_time = merton)
+            observation = env.decode_observation(obs)
+            life_expectancy = observation['life_expectancy']
+            t = ceil(life_expectancy / env.params.time_period) - 1
+            if t == 0:
+                consume_fraction = min(consume_fraction, 1 / env.params.time_period) # Bound may be exceeded in continuous time case.
+            return env.encode_direct_action(consume_fraction, asset_allocation)
 
         else:
 
@@ -106,6 +114,7 @@ def run(eval_model_params, *, merton, eval_seed, eval_num_timesteps, eval_render
 def main():
     parser = arg_parser()
     boolean_flag(parser, 'merton', default = False)
+    boolean_flag(parser, 'samuelson', default = False)
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False)
     logger.configure()
     run(eval_model_params, **args)

@@ -51,13 +51,13 @@ def fin_arg_parse(parser, training = True, evaluate = True):
         parser.add_argument('--num-timesteps', type = int, default = int(1e6))
     if evaluate and training:
         boolean_flag(parser, 'evaluation', default = False)
-        parser.add_argument('--eval-frequency', type = int, default = 20000) # Evaluate every this many env steps.
+        parser.add_argument('--eval-frequency', type = int, default = 20000) # During training with evaluation on evaluate every this many env steps.
+            # Should also set eval_num_timesteps to around 2000 for acceptable performance.
     if evaluate:
         parser.add_argument('--eval-seed', help = 'evaluation RNG seed', type = int, default = 0)
-        parser.add_argument('--eval-num-timesteps', type = int, default = 2000) # Per evaluation.
-            # Above value is good for inter-run comparisons, since the episodes are identical for each run.
-            # Set to a higher value such as 50000 to compute the true policy certainty equivalence,
-            # Should also then increase eval_frequency for acceptable performance.
+        parser.add_argument('--eval-num-timesteps', type = int, default = 1000000) # Per evaluation.
+            # Above value is good for computing the true policy certainty equivalence to within perhaps 0.1%.
+            # A lower value such as 10000 may be more appropriate when performing inter-run comparisons, since the evaluation episodes are identical for each run.
         boolean_flag(parser, 'eval-render', default = False)
     parser.add_argument('--model-dir', default = 'aiplanner.tf')
     model_params = ModelParams()

@@ -9,12 +9,12 @@
 # PURPOSE.
 
 from math import exp, log
-import numpy as np
 from random import uniform
 
+import numpy as np
+
 from gym import Env
-from gym.spaces import Box, Tuple
-from gym.utils import seeding
+from gym.spaces import Box
 
 from gym_fin.envs.returns import Returns
 from gym_fin.envs.utility import Utility

@@ -14,8 +14,10 @@ import csv
 import json
 import os
 from random import getstate, seed, setstate
-from statistics import mean, stdev
+from statistics import mean
 import time
+
+import numpy as np
 
 from baselines import logger
 
@@ -35,7 +37,7 @@ class Evaluator(object):
         filename = os.path.join(logger.get_dir(), Evaluator.LOGFILE)
         self.f = open(filename, "wt")
         self.f.write('#%s\n'%json.dumps({"t_start": self.tstart, 'env_id' : self.eval_env.spec and self.eval_env.spec.id}))
-        self.logger = csv.DictWriter(self.f, fieldnames=('r', 'l', 't', 'ce', 'ce_stdev'))
+        self.logger = csv.DictWriter(self.f, fieldnames=('r', 'l', 't', 'ce'))
         self.logger.writeheader()
         self.f.flush()
 
@@ -51,13 +53,13 @@ class Evaluator(object):
             observation = self.eval_env.unwrapped.decode_observation(obs)
             life_expectancy = observation['life_expectancy']
             eprew = []
-            t = 0
+            s = 0
             while True:
                 if self.eval_render:
                     self.eval_env.render()
                 action = pi(obs)
                 obs, r, done, info = self.eval_env.step(action)
-                t += 1
+                s += 1
                 eprew.append(r)
                 if done:
                     rewards.append(sum(eprew))
@@ -65,19 +67,19 @@ class Evaluator(object):
                         self.eval_env.render()
                     obs = self.eval_env.reset()
                     eprew = []
-                    if t >= self.eval_num_timesteps:
+                    if s >= self.eval_num_timesteps:
                         break
 
             batchrew = sum(rewards)
-            rew = mean(rewards) / life_expectancy
-            std = stdev(rewards) / life_expectancy
+            rews = tuple(r / life_expectancy for r in rewards)
+            rew = mean(rews)
             utility = self.eval_env.unwrapped.utility
             ce = utility.inverse(rew)
-            ce_stdev = ce - utility.inverse(rew - std)
+            low, high = np.percentile(np.array(rews), (2.5, 97.5)).tolist()
 
-            print('Evaluation certainty equivalent:', ce, '+/-', ce_stdev)
+            logger.info('Evaluation certainty equivalent: ', ce, ' (95% confidence interval: ', utility.inverse(low), ' - ', utility.inverse(high), ')')
 
-            batchinfo = {'r': round(batchrew, 6), 'l': self.eval_num_timesteps, 't': round(time.time() - self.tstart, 6), 'ce': ce, 'ce_stdev': ce_stdev}
+            batchinfo = {'r': round(batchrew, 6), 'l': s, 't': round(time.time() - self.tstart, 6), 'ce': ce}
             self.logger.writerow(batchinfo)
             self.f.flush()
 
