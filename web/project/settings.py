@@ -16,7 +16,8 @@ from sitesettings import *
 
 STATIC_ROOT = ROOT + '.data/static/'
 
-DEFAULT_FROM_EMAIL = 'noreply@aacalc.com'
+SERVER_EMAIL = 'root@aacalc.com'
+#DEFAULT_FROM_EMAIL = 'noreply@aacalc.com'
 
 MANAGERS = ADMINS
 
