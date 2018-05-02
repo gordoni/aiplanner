@@ -3,10 +3,8 @@
 DIR=/home/ubuntu/aacalc/web
 DATADIR=/home/ubuntu/aacalc/opal/data
 
-if ! $DIR/ec2-security-group-is prod-aacalc-compute; then
-    $DIR/fetch_yield_curve -t corporate -d $DATADIR/public/hqm
-    $DIR/fetch_yield_curve -t real -d $DATADIR/public/rcmt
-    $DIR/fetch_yield_curve -t nominal -d $DATADIR/public/cmt
-fi
+$DIR/fetch_yield_curve -t corporate -d $DATADIR/public/hqm
+$DIR/fetch_yield_curve -t real -d $DATADIR/public/rcmt
+$DIR/fetch_yield_curve -t nominal -d $DATADIR/public/cmt
 
 #$DIR/gen_sample

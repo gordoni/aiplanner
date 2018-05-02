@@ -101,12 +101,12 @@ Age: {{ spia_form.age2_years }} years {{ spia_form.age2_months }} months
 {{ spia_form.sex2.errors }}
 {{ spia_form.age2_years.errors }}
 {{ spia_form.age2_months.errors }}
-<br />
+<div class="indent">
 {{ spia_form.joint_type }}
 {{ spia_form.joint_type.errors }}
-<br />
 Payout when one annuitant is dead: {{ spia_form.joint_payout_percent }}%
 {{ spia_form.joint_payout_percent.errors }}
+</div>
 
 </div>
 
@@ -116,7 +116,6 @@ Payout when one annuitant is dead: {{ spia_form.joint_payout_percent }}%
 
 {{ spia_form.table }}
 {{ spia_form.table.errors }}
-<br />
 <div class="small">
 Annuitant life table is Society of Actuaries 2012 Individual Annuity
 Mortality Basic Table with Projection Scale G2.

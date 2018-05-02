@@ -59,8 +59,8 @@ def first_payout(date_str, delay, frequency):
     if d > 1:
         m += 1
         d = 1
-    period = 12 / frequency
-    m_adjust = (m - 1 + period - 1) / period * period - (m - 1)
+    period = int(12 / frequency)
+    m_adjust = int((m - 1 + period - 1) / period) * period - (m - 1)
     delay += m_adjust
     m += m_adjust
     if m > 12:

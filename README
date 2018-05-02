@@ -148,14 +148,10 @@ To do:
 Getting started:
 
   - It is suggested that Amazon EC2 be used for development work. A
-    Ubuntu 16.04 t2.micro instance works fine for Alloc. A c4.xlarge
+    Ubuntu 18.04 t2.micro instance works fine for Alloc. A c5.xlarge
     instance is recommended for running Opal without annuities, or a
-    m4.10xlarge with annuities. Opal runs on Ubuntu 16.04, but hasn't
-    been tested on 16.10 or later. The same instance can be used to
-    run the web server and the Opal backend server. In production the
-    load can be larger, and it may be necessary to run a separate web
-    server and run multiple Opal backend servers behind a load
-    balancer.
+    m5.12xlarge with annuities. Opal runs on Ubuntu 16.04 and
+    18.04.
 
   - Obtain the sources:
 
@@ -167,6 +163,6 @@ Getting started:
         git config --global user.name "<FirstName> <LastName>"
         git config --global user.email "<user@email.com>"
 
-  - See web/README for the web based Python Django frontend.
+  - See web/README for the web Python Django based Alloc.
 
-  - Optionally see opal/README for the Opal Java backend.
+  - Optionally see opal/README for the Java based Opal.

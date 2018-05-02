@@ -124,6 +124,24 @@ body{
 
 /* Django styling. */
 
+ul.radio-horizontal {
+    display: inline-block;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.radio-horizontal li {
+    display: inline;
+    list-style-type: none;
+}
+
+.radio-vertical {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+}
+
 .errorlist {
     font-size: smaller;
     color: red;

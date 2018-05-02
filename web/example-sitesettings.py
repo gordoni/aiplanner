@@ -16,5 +16,3 @@ ALLOWED_HOSTS = [
 
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = '1234567890abcdefghijklmnopqrstuvwxyz1234567890abcd'
-
-OPAL_HOST = 'localhost'

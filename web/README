@@ -4,16 +4,10 @@ planning calculator.
 Source files reside in aacalc, while running instance files reside in
 aacalc.data .
 
-VERY IMPORTANT: The Opal server listens on port 8000 for requests. By
-default it only listens to localhost. If configured to run on separate
-servers behind a load balancer then it needs to listen to * and port
-8000 must be protected by a firewall from the Internet, or there is a
-major security hole.
-
 Obtaining additional required components
 ----------------------------------------
 
-sudo apt-get install apache2 apache2-utils libapache2-mod-wsgi python-django python-memcache memcached r-base python-scipy python-lxml catdoc
+sudo apt install apache2 apache2-utils libapache2-mod-wsgi-py3 python3-django r-base python3-scipy python3-lxml catdoc
 
 Set up hostname
 ---------------
@@ -27,7 +21,7 @@ sudo bash
 echo  <unqualified-hostname> > /etc/hostname
 hostname -F /etc/hostname
 [edit] /etc/hosts
-add: 127.0.0.1 <unqualified-hostname> <qualified-hostname>
+modify: 127.0.0.1 localhost <unqualified-hostname> <qualified-hostname>
 echo 'supersede domain-name "<domain-name>";' >> /etc/dhcp/dhclient.conf
 # Not sure how to get dhclient.conf re-read and resolv.conf re-written.  Not to worry, it will get picked up when we reboot.
 reboot
@@ -52,24 +46,6 @@ Update the interest rate data
 mkdir -p aacalc/opal/data/public/{hqm,rcmt,cmt}
 aacalc/web/cron.daily
 
-Set up and run Opal server
---------------------------
-
-If running a web interface to Opal (no longer recommended; use Alloc):
-
-# Install upstart script to automatically run Opal server on reboot.
-sudo cp aacalc/web/opal.conf /etc/init/
-[if opalserver on remote system (must be behind firewall): edit /etc/init/opal.conf to change listen address from "-d localhost 8000" to "-d '*' 8000"]
-
-# Copy across files.
-cd aacalc/opal
-./install-opal
-
-Uncomment the lines for Opal in aacalc/web/projects/urls.py .
-
-Add buttons for start_opal_aa and start_opal_number to
-aacalc/web/aacalc/templates/home.html .
-
 Set up Django
 -------------
 
@@ -83,9 +59,8 @@ cp aacalc/web/example-sitesettings.py aacalc.data/project/sitesettings.py
 # Set ROOT to the path to the aacalc directory (no trailing slash).
 # Set ADMINS to receive email messages.
 # Set ALLOWED_HOSTS to a list containing the web server hostname (or a suffix thereof).
-#     Can set to [ '*' ] but the Django docs suggest this may have security implications.
+#     Can set to [ '*' ] but the Django docs suggest this may have security implications when DEBUG is False.
 # Make SECRETKEY unique.
-# Edit OPAL_HOST from localhost to name of the Opal server load balancer if required.
 
 # Collect statically served files.
 aacalc/web/manage.py collectstatic --noinput
@@ -108,6 +83,8 @@ a2enmod ssl
 aacalc.data/{aacalc.com.crt,www.aacalc.com.key,gd_bundle.crt}
 
 service apache2 restart
+
+exit
 
 # Create password file if required to limit access to host:
 htpasswd -c ~/aacalc.data/aacalc.htpasswd <user>
@@ -139,19 +116,3 @@ Test it out
 -----------
 
 In a web browser visit http://<site>/ .
-
-Final notes
------------
-
-If using Opal, note that the file eafe.csv used by Opal is not
-included. You should either obtain it and place it in
-aacalc/opal{,.data}/private/ or remove:
-
-{{ se_form.class_eafe }} International
-<font size="-1">
-(developed large cap international unhedged; 1970-2014 available)
-</font>
-{{ se_form.class_eafe.errors }}
-
-from aacalc/templates/mega_form.html . Otherwise attempting to select
-International will result in a crash.

@@ -213,7 +213,7 @@ class Alloc:
             'home_vol_pct': Decimal('5.0'),
             'mortgage': 0,
             'mortgage_rate_pct': Decimal('5.0'),
-            'rm_have': False,
+            'have_rm': False,
             'rm_loc': 0,
 
             'retirement_age': 66,
@@ -289,7 +289,7 @@ class Alloc:
         while max_val == None or x < b:
 
             f_x = f(x)
-            if (f_x > max_val):
+            if (max_val == None or f_x > max_val):
                 max_at = x
                 max_val = f_x
 
@@ -1414,7 +1414,7 @@ class Alloc:
         return results
 
     def plot(self, mode, result, healthcheck):
-        umask(0077)
+        umask(0o077)
         parent = STATIC_ROOT + 'results'
         prefix = 'healthcheck-' if healthcheck else 'aa-'
         dirname = mkdtemp(prefix=prefix, dir=parent)

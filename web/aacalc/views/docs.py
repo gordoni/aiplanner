@@ -16,7 +16,7 @@
 
 from django.http import Http404
 from django.shortcuts import render
-from django.template.base import TemplateDoesNotExist
+from django.template.exceptions import TemplateDoesNotExist
 
 def docs(request, doc):
     assert(".." not in doc)
