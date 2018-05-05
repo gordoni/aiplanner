@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # SPIA - Actuarially fair SPIA price calculator
 # Copyright (C) 2014-2016 Gordon Irlam
