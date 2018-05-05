@@ -29,6 +29,7 @@ from gym_fin.common.evaluator import Evaluator
 
 def train(training_model_params, eval_model_params, *, nb_hidden_layers, hidden_layer_size, num_timesteps, seed,
           eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, model_dir):
+    assert nb_hidden_layers == 2
     assert model_dir.endswith('.tf')
     try:
         rmtree(model_dir)
@@ -41,9 +42,9 @@ def train(training_model_params, eval_model_params, *, nb_hidden_layers, hidden_
                             intra_op_parallelism_threads=ncpu,
                             inter_op_parallelism_threads=ncpu)
     session = tf.Session(config=config).__enter__()
-    def policy_fn(name, ob_space, ac_space):
-        return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space,
-            hid_size=hidden_layer_size, num_hid_layers=nb_hidden_layers)
+    def policy_fn(sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
+        return MlpPolicy(sess=sess, ob_space=ob_space, ac_space=ac_space,
+            nbatch=nbatch, nsteps=nsteps, reuse=reuse, hid_size=hidden_layer_size)
     def make_env():
         env = make_fin_env(action_space_unbounded=True, training=True, **training_model_params)
         return env
@@ -67,8 +68,7 @@ def train(training_model_params, eval_model_params, *, nb_hidden_layers, hidden_
     else:
         eval_env = None
         eval_callback = None
-    policy = MlpPolicy
-    ppo2.learn(policy=policy, env=env, nsteps=2048, nminibatches=32,
+    ppo2.learn(policy=policy_fn, env=env, nsteps=2048, nminibatches=32,
         lam=0.95, gamma=1, noptepochs=10, log_interval=1,
         ent_coef=0.0,
         lr=3e-4,
