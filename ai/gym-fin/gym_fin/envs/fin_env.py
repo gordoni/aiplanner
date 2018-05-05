@@ -159,9 +159,10 @@ class FinEnv(Env):
         self.p_notax = p * ret
 
         utility = self.utility.utility(consume_annual)
-        reward = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
-        if self.params.verbose and reward != utility:
+        reward_annual = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
+        if self.params.verbose and reward_annual != utility:
             print('Reward out of range - age, p_notax, consume_fraction, utility:', self.age, self.p_notax, consume_fraction, utility)
+        reward = reward_annual * self.params.time_period
 
         self.age += self.params.time_period
 
