@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2017 Gordon Irlam
+# Copyright (C) 2009, 2011-2018 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -289,8 +289,6 @@ class AllocBaseForm(Form):
             if cleaned_data['social_security']:
                 if not cleaned_data['inflation_indexed']:
                     raise ValidationError('Social Security must be inflation indexed')
-                if cleaned_data['period_certain'] != 0:
-                    raise ValidationError('Social Security period certain must be 0')
                 if cleaned_data['joint_type'] == 'contingent':
                     raise ValidationError('Social Security death benefit must be survivor')
             return cleaned_data
@@ -299,7 +297,6 @@ class AllocBaseForm(Form):
             super(AllocBaseForm.DbForm, self).__init__(*args, data=data, **kwargs)
             if self.data[self.prefix + '-social_security'] == 'True' if self.is_bound else self.initial['social_security']:
                 self.fields['inflation_indexed'].widget.attrs['readonly'] = True
-                self.fields['period_certain'].widget.attrs['readonly'] = True
                 self.fields['joint_type'].widget.attrs['readonly'] = True
 
         social_security = BooleanField(
@@ -323,9 +320,6 @@ class AllocBaseForm(Form):
             widget=TextInput(attrs={'class': 'p_input'}),
             min_value=0)
         inflation_indexed = BooleanField(required=False)
-        period_certain = DecimalField(
-            widget=TextInput(attrs={'class': 'small_numeric_input'}),
-            min_value=0)
         joint_type = ChoiceField(
             choices=(('contingent', ''), ('survivor', ''), ),
             widget=HorizontalRadioRenderer)

@@ -28,7 +28,6 @@ def db(who, age, amount):
         'age': age,
         'amount': amount,
         'inflation_indexed': True,
-        'period_certain' : 0,
         'joint_type': 'survivor',
         'joint_payout_pct': 0,
     }
