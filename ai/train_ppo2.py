@@ -27,16 +27,16 @@ from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 
-def train(training_model_params, eval_model_params, *, nb_hidden_layers, hidden_layer_size, num_timesteps, seed,
+def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_num_timesteps, train_seed,
           eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, model_dir):
-    assert nb_hidden_layers == 2
+    assert train_num_hidden_layers == 2
     assert model_dir.endswith('.tf')
     try:
         rmtree(model_dir)
     except FileNotFoundError:
         pass
     from baselines.ppo1 import mlp_policy, pposgd_simple
-    set_global_seeds(seed)
+    set_global_seeds(train_seed)
     ncpu = 1
     config = tf.ConfigProto(allow_soft_placement=True,
                             intra_op_parallelism_threads=ncpu,
@@ -44,7 +44,7 @@ def train(training_model_params, eval_model_params, *, nb_hidden_layers, hidden_
     session = tf.Session(config=config).__enter__()
     def policy_fn(sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
         return MlpPolicy(sess=sess, ob_space=ob_space, ac_space=ac_space,
-            nbatch=nbatch, nsteps=nsteps, reuse=reuse, hid_size=hidden_layer_size)
+            nbatch=nbatch, nsteps=nsteps, reuse=reuse, hid_size=train_hidden_layer_size)
     def make_env():
         env = make_fin_env(action_space_unbounded=True, training=True, **training_model_params)
         return env
@@ -73,7 +73,7 @@ def train(training_model_params, eval_model_params, *, nb_hidden_layers, hidden_
         ent_coef=0.0,
         lr=3e-4,
         cliprange=0.2,
-        total_timesteps=num_timesteps)
+        total_timesteps=train_num_timesteps)
     env.close()
     if eval_env:
         eval_env.close()
@@ -86,8 +86,8 @@ def train(training_model_params, eval_model_params, *, nb_hidden_layers, hidden_
 
 def main():
     parser = arg_parser()
-    parser.add_argument('--nb-hidden-layers', type=int, default=2)
-    parser.add_argument('--hidden-layer-size', type=int, default=64)
+    parser.add_argument('--train-num-hidden-layers', type=int, default=2)
+    parser.add_argument('--train-hidden-layer-size', type=int, default=64)
     training_model_params, eval_model_params, args = fin_arg_parse(parser)
     logger.configure()
     train(training_model_params, eval_model_params, **args)
