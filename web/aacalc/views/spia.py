@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2016 Gordon Irlam
+# Copyright (C) 2009, 2011-2018 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -211,15 +211,13 @@ def spia(request):
 
             except YieldCurve.NoData:
 
-                errors = spia_form._errors.setdefault('date', ErrorList())  # Simplified in Django 1.7.
-                errors.append('No interest rate data available for the specified date.')
+                spia_form.add_error('date', 'No interest rate data available for the specified date.')
 
                 errors_present = True
 
             except LifeTable.UnableToAdjust:
 
-                errors = spia_form._errors.setdefault('le', ErrorList())
-                errors.append('Unable to adjust life table to match additional life expectancy.')
+                spia_form.add_error('le_set', 'Unable to adjust life table to match additional life expectancy.')
 
                 errors_present = True
 

@@ -1,8 +1,8 @@
-spia.py is a Python module for calculating actuarially fair SPIA and
-DIA prices. This involves combining life tables with interest rate
-yield curves. The lifetables are hard coded in spia.py, while the
-interest rate data is obtained from the U.S. Treasury using the
-fetch_yield_curve script.
+spia.py is a Python module for calculating actuarially fair Single
+Premium Immediate Annuity and Deferred Income Annuity prices. This
+involves combining life tables with interest rate yield curves. The
+lifetables are hard coded in spia.py, while the interest rate data is
+obtained from the U.S. Treasury using the fetch_yield_curve script.
 
 spia.py depends on scipy for interpolation.
 
@@ -11,9 +11,9 @@ obtain the nominal interest rate.
 
 On Ubuntu, to obtain these modules:
 
-    sudo apt-get install python-scipy python-lxml catdoc
+    sudo apt-get install python3-scipy catdoc
 
-Then to fetch the yield curves for all time:
+Then to fetch the yield curves for all time (this could take a while):
 
     chmod +x fetch_yield_curve
 

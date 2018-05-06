@@ -8,7 +8,7 @@ Obtaining additional required components
 ----------------------------------------
 
 sudo apt update
-sudo apt install apache2 apache2-utils libapache2-mod-wsgi-py3 python3-django r-base python3-scipy python3-lxml catdoc
+sudo apt install apache2 apache2-utils libapache2-mod-wsgi-py3 python3-django r-base python3-scipy catdoc
 
 Set up hostname
 ---------------
