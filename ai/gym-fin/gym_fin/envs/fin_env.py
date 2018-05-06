@@ -42,8 +42,8 @@ class FinEnv(Env):
                                      high = np.array((100, 1e6, 1e7)),
                                      dtype = 'float32')
 
-        self.age_start = 65
-        self.age_terminal = 75
+        self.age_start = self.params.age_start
+        self.age_end = self.params.age_end
         self.risk_free = Returns(self.params.risk_free_return, 0, self.params.time_period)
         self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.time_period)
 
@@ -72,7 +72,7 @@ class FinEnv(Env):
             else:
                 self.p_notax = exp(uniform(log(self.params.p_notax_low), log(self.params.p_notax_high)))
 
-            consume_expect = self.guaranteed_income + self.p_notax / (self.age_terminal - self.age_start)
+            consume_expect = self.guaranteed_income + self.p_notax / (self.age_end - self.age_start)
 
             found = self.params.consume_floor <= consume_expect <= self.params.consume_ceiling
             if found:
@@ -118,7 +118,7 @@ class FinEnv(Env):
         # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for them.
         # This will be to the detriment of the fit for more likely reward values.
         # For PPO the policy network never fully retrains after the initial poor fit, and the results would be sub-optimal.
-        consume_ceil = 2 / (self.age_terminal - self.age)
+        consume_ceil = 2 / (self.age_end - self.age)
             # Set:
             #     consume_ceil = 1 / self.params.time_period
             # to explore the full range of possible consume_fraction values.
@@ -167,7 +167,7 @@ class FinEnv(Env):
         self.age += self.params.time_period
 
         observation = self._observe()
-        done = self.age >= self.age_terminal
+        done = self.age >= self.age_end
 
         self.episode_utility_sum += utility
         self.episode_length += 1
@@ -191,7 +191,7 @@ class FinEnv(Env):
 
     def _observe(self):
 
-        life_expectancy = max(self.age_terminal - self.age, 0)
+        life_expectancy = max(self.age_end - self.age, 0)
 
         return np.array((life_expectancy, self.guaranteed_income, self.p_notax), dtype = 'float32')
 

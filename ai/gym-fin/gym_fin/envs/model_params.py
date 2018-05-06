@@ -58,6 +58,9 @@ class ModelParams(object):
             # But doesn't appear to work well becasuse in the absense of guaranteed income the rewards may span a large many orders of magnitude range.
             # In particular some rewards can be -inf, or close there to, which appears to swamp the Pop-Art scaling of the other rewards.
 
+        self._param('age-start', 65) # First age to model.
+        self._param('age_end', 95) # Model done when reaches this age.
+
         self._param('time-period', 1) # Rebalancing time interval in years.
         self._param('gamma', 3) # Coefficient of relative risk aversion.
             # Will probably need smaller [consume_floor, consume_ceiling] ranges if use a large gamma value such as 6.
