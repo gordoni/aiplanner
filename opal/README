@@ -16,10 +16,10 @@ Obtaining additional required components
 ----------------------------------------
 
 # Java, R, and Gnuplot:
-sudo apt install default-jre-headless default-jdk r-base gnuplot
+sudo apt install default-jre-headless default-jdk r-base gnuplot-nox
 
 # If doing developement you might want to enable the desktop display of graphs:
-sudo apt-get install gnuplot-x11
+sudo apt-get install gnuplot-qt
 
 # Obtaining the Java commons Math 3 library.
 cd aacalc/opal
@@ -40,6 +40,8 @@ Setting up Systematic Investor Toolbox and R packages for performing MVO
 # Mean variance optimization reduces 3 or more asset classes down to a
 # single dimension to be searched.
 # This step is only needed if plan to specify ef='mvo' when running Opal.
+# Normally this will not be the case.
+# This is needed to give decent performance with 4 or more asset classes.
 
 # Notes cribbed from: http://www.r-bloggers.com/introduction-to-asset-allocation/
 
