@@ -213,10 +213,10 @@ the metric during Monte Carlo simulation.
 
 So doing:
 
-    -e ret_resample=None -e "validate_draw='bootstrap'" -e ret_bootstrap_block_size=1 -e map_headroom=null
+    -e ret_resample=None -e "validate_draw='bootstrap'" -e ret_bootstrap_block_size=1 -e map_headroom=None
 
 then the generated metric should match the combined simulation metric,
-to the limit of the finite num_sequences_generate sample size.
+to the limit of the finite num_sequences_validate sample size.
 
 If you get all zeros as the result, you may need to play with
 map_headroom, setting to to a value so that a small amount of wealth
