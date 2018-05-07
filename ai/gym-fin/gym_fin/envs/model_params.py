@@ -68,9 +68,13 @@ class ModelParams(object):
         self._param('guaranteed-income', (1e3, 1e5), 1e4) # Social Security and similar income. Empirically OK if eval amount is less than model lower bound.
         self._param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
 
-        self._param('risk-free-return', 0.02) # Annual real return for risk free asset class.
-        self._param('stocks-return', 0.05) # Annual real return for stocks.
-        self._param('stocks-volatility', 0.16) # Annual real volatility for stocks.
+        # Market parameters are World averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
+            # For equities the reported return is 6.5% +/- 17.4% (geometric 5.1%).
+            # For the risk free rate there isn't a reported World average. The reported real return of U.S. Treasury bills is 0.9% +/- 0.4% (geometric 0.8%).
+            # We use a fixed risk free rate equal to the geometric mean so we can benchmark against Merton's portfolio problem.
+        self._param('risk-free-return', 0.008) # Annual real return for risk free asset class.
+        self._param('stocks-return', 0.065) # Annual real return for stocks.
+        self._param('stocks-volatility', 0.174) # Annual real volatility for stocks.
 
     def set_params(self, dict_args):
 
