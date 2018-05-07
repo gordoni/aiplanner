@@ -13,8 +13,9 @@
 import csv
 import json
 import os
+from math import sqrt
 from random import getstate, seed, setstate
-from statistics import mean
+from statistics import mean, stdev
 import time
 
 import numpy as np
@@ -73,11 +74,14 @@ class Evaluator(object):
             batchrew = sum(rewards)
             rews = tuple(r / life_expectancy for r in rewards)
             rew = mean(rews)
+            std = stdev(rews)
+            stderr = std / sqrt(len(rews))
             utility = self.eval_env.unwrapped.utility
             ce = utility.inverse(rew)
+            ce_stderr = utility.inverse(rew + stderr) - ce
             low, high = np.percentile(np.array(rews), (2.5, 97.5)).tolist()
 
-            logger.info('Evaluation certainty equivalent: ', ce, ' (95% confidence interval: ', utility.inverse(low), ' - ', utility.inverse(high), ')')
+            logger.info('Evaluation certainty equivalent: ', ce, ' +/- ', ce_stderr, ' (95% confidence interval: ', utility.inverse(low), ' - ', utility.inverse(high), ')')
 
             batchinfo = {'r': round(batchrew, 6), 'l': s, 't': round(time.time() - self.tstart, 6), 'ce': ce}
             self.logger.writerow(batchinfo)
