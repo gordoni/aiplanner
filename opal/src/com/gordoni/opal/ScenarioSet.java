@@ -148,8 +148,10 @@ public class ScenarioSet
                 boolean param_filename_is_default = (param_filename == null);
                 if (param_filename_is_default)
                         param_filename = config.prefix + "-scenario.txt";
+                if (!param_filename.startsWith("/"))
+                    param_filename = cwd + "/" + param_filename;
 
-                File f = new File(cwd + '/' + param_filename);
+                File f = new File(param_filename);
                 if (!f.exists())
                 {
                         if (!param_filename_is_default)
