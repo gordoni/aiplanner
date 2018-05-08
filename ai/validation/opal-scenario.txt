@@ -1,0 +1,36 @@
+start_age = 65
+retirement_age = 65
+
+fixed_deceased_age = 95
+    # Applies when life_table is 'fixed_mortality'.
+
+defined_benefit = 16000
+    # Mean Social Secuity is $16,075 as of March, 2018 - https://www.ssa.gov/policy/docs/quickfacts/stat_snapshot/
+start_tp = 2000000
+
+utility_eta = 3.0
+consume_discount_rate = 0
+
+asset_classes = ('synthetic', 'risk_free2')
+
+# Market parameters are World averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
+    # For equities the reported return is 6.5% +/- 17.4% (geometric 5.1%).
+    # For the risk free rate there isn't a reported World average. The reported real return of U.S. Treasury bills is 0.9% +/- 0.4% (geometric 0.8%).
+    # We use a fixed risk free rate equal to the geometric mean so we can benchmark against Merton's portfolio problem.
+synthetic_ret = 0.065
+synthetic_vol = 0.174
+ret_risk_free2 = 0.008
+
+# Produce 200 synthetic samples. Increasing beyond this doesn't effect generated CE.
+generate_start_year = 1
+validate_start_year = 1
+generate_end_year = 200
+validate_end_year = 200
+
+# Parameters for Opal validation to work.
+ret_resample = None
+validate_draw = 'bootstrap'
+ret_bootstrap_block_size = 0
+map_headroom = null
+
+num_sequences_validate = 1000000
