@@ -1,7 +1,7 @@
 #!/bin/bash
 
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
-EVAL_TIMESTEPS=${EVAL_TIMESTEPS:-4000000}
+EVAL_TIMESTEPS=${EVAL_TIMESTEPS:-4000000} # 4000000 is observed to result in an approximately 0.1% CE standard error.
 
 AI_DIR=$AIPLANNER_HOME/ai
 export PYTHONPATH=$AI_DIR/baselines:$AI_DIR/gym-fin
@@ -17,5 +17,5 @@ validate () {
     $AI_DIR/run_model.py --$MODE $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS > $MODEL_DIR/eval.log 2>&1
 }
 
-validate fixed_30-gi_0-p_2000000 merton '--master-guaranteed-income=0 --master-p-notax=2000000'
-validate fixed_30-gi_0-p_2000000 samuelson '--master-guaranteed-income=0 --master-p-notax=2000000'
+validate fixed_30-gi_0-p_300000 merton '--master-guaranteed-income=0 --master-p-notax=300000'
+validate fixed_30-gi_0-p_300000 samuelson '--master-guaranteed-income=0 --master-p-notax=300000'

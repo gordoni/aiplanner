@@ -38,18 +38,16 @@ class ModelParams(object):
             # Don't span too large a range as neural network fitting of utility to lower consumption levels will dominate over higher consumption levels.
             # This is because for gamma > 1 higher consumption levels are bounded (i.e. a small change in utility can produce a big change in consumption).
             # Will thus probably need separately trained models for different wealth levels.
-        self._param('reward-clip', 50, float('inf')) # Clip returned reward values to lie within [-reward_clip, reward_clip].
+        self._param('reward-clip', float('inf'), float('inf')) # Clip returned reward values to lie within [-reward_clip, reward_clip].
             # Clipping during training prevents rewards from spanning 5-10 or more orders of magnitude in the absence of guaranteed income.
-            # Fitting of the neural networks would then perform poorly as large negative reward values would swamp accuracy of more reasonable small reward values.
+            # Fitting the neural networks might then perform poorly as large negative reward values would swamp accuracy of more reasonable small reward values.
             #
             # To get a sense of relative reward sizes, note that, utility(consume_floor) = -1, and when gamma > 1, utility(inf) = 1 / (gamma - 1).
             #
-            # Chosen training clip value of 50 tuned for good performance on PPO with consume floor = 10^4, consume_ceiling = 10^5,
-            # guaranteed_income_low = 10^3, guaranteed_income_high = 10^5, p_notax_low = 10^3, p_notax_high = 10^7, but only part of this range used,
-            # life expectancy = 10, and gamma = 3.
+            # Evaluation clip should always be inf.
             #
-            # For PPO with consume_floor = 10^4, consume_ceiling = 10^5 but irrelevant, guaranteed_income = 0, p_notax = 10^5, life_expectancy = 10, and gamma = 3,
-            # may get better results with a training clip of 100 to 500.
+            # Chosen training clip of inf appears reasonable for PPO.
+            # Setting a bound, such as 50, appears to produces worse CEs for Merton's portfolio problem, but has little effect when guaranteed income is present.
             #
             # In DDPG probably always need a low training clip value such as 10 on account of poor step choices getting saved and reused by the replay buffer.
             #

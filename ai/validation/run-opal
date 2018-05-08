@@ -18,5 +18,5 @@ validate () {
     $OPAL -c $AI_DIR/validation/opal-scenario.txt -e "prefix='$MODEL_DIR/opal'" $ARGS $EXTRA_ARGS > $MODEL_DIR/opal.log 2>&1
 }
 
-validate fixed_30-gi_0-p_2000000 "-e generate_life_table='fixed_mortality' -e validate_life_table='fixed_mortality' -e defined_benefit=0 -e start_tp=2000000"
+validate fixed_30-gi_0-p_300000 "-e generate_life_table='fixed_mortality' -e validate_life_table='fixed_mortality' -e defined_benefit=0 -e start_tp=300000"
 validate fixed_30-gi_16000-p_2000000 "-e generate_life_table='fixed_mortality' -e validate_life_table='fixed_mortality' -e defined_benefit=16000 -e start_tp=2000000"
