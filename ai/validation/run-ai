@@ -25,9 +25,9 @@ validate () {
     while [ $SEED -lt $SEEDS ]; do
         MODEL_DIR=run.$MODEL_NAME-seed_$SEED.tf
         TEMPFILE=`tempfile -p valid`
-        $AI_DIR/train_ppo1.py --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS 2>&1 >> $TEMPFILE
-        mv $TEMPFILE $MODEL_DIR/train.out
-        $AI_DIR/run_model.py --model-dir=$MODEL_DIR $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS $EVAL_ARGS 2>&1 >> $MODEL_DIR/eval.out
+        $AI_DIR/train_ppo1.py --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS >> $TEMPFILE 2>&1
+        mv $TEMPFILE $MODEL_DIR/train.log
+        $AI_DIR/run_model.py --model-dir=$MODEL_DIR $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS $EVAL_ARGS > $MODEL_DIR/eval.log 2>&1
         SEED=`expr $SEED + 1`
     done
 }
@@ -54,7 +54,7 @@ validate_parallel () {
     while [ $SEED -lt $SEEDS ]; do
         MODEL_DIR=run.$MODEL_NAME-seed_$SEED.tf
         mv ${TEMPFILES[$SEED]} $MODEL_DIR/train.log
-        $AI_DIR/run_model.py --model-dir=$MODEL_DIR $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS $EVAL_ARGS >> $MODEL_DIR/eval.log 2>&1 &
+        $AI_DIR/run_model.py --model-dir=$MODEL_DIR $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS $EVAL_ARGS > $MODEL_DIR/eval.log 2>&1 &
         SEED=`expr $SEED + 1`
     done
     wait
