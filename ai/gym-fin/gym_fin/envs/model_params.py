@@ -56,8 +56,12 @@ class ModelParams(object):
             # But doesn't appear to work well becasuse in the absense of guaranteed income the rewards may span a large many orders of magnitude range.
             # In particular some rewards can be -inf, or close there to, which appears to swamp the Pop-Art scaling of the other rewards.
 
+        self._param('life-table', 'ssa-cohort', tp = None) # Life expectancy table to use. See spia module for possible values.
+        self._param('life-table-date', '2020-01-01', tp = None) # Used to determine birth cohort for cohort based life expectancy tables.
+        self._param('life-expectancy-additional', 0) # Multiplicatively adjust all life table q values so as to add this many years to the life expectancy.
+        self._param('sex', 'female', tp = None) # Helps determines life expectancy table.
         self._param('age-start', 65) # First age to model.
-        self._param('age_end', 95) # Model done when reaches this age.
+        self._param('age-end', 120) # Model done when reaches this age.
 
         self._param('time-period', 1) # Rebalancing time interval in years.
         self._param('gamma', 3) # Coefficient of relative risk aversion.
@@ -128,19 +132,26 @@ class ModelParams(object):
 
         Values may be a tuple to specify a range of values: (low, high).'''
 
-        try:
-            _, _ = train_val
-        except TypeError:
-            train_range = False
-        else:
-            train_range = True
+        if tp in (float, int):
 
-        try:
-            _, _ = eval_val
-        except TypeError:
-            eval_range = False
+            try:
+                _, _ = train_val
+            except TypeError:
+                train_range = False
+            else:
+                train_range = True
+
+            try:
+                _, _ = eval_val
+            except TypeError:
+                eval_range = False
+            else:
+                eval_range = True
+
         else:
-            eval_range = True
+
+            train_range = False
+            eval_range = False
 
         if train_range and not eval_range and eval_val != None:
             eval_val = (eval_val, eval_val)

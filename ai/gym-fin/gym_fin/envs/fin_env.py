@@ -8,6 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+from datetime import datetime
 from math import exp, log
 from random import uniform
 
@@ -19,6 +20,8 @@ from gym.spaces import Box
 from gym_fin.envs.returns import Returns
 from gym_fin.envs.utility import Utility
 
+from spia import LifeTable
+
 class AttributeObject(object):
 
     def __init__(self, dict):
@@ -27,6 +30,43 @@ class AttributeObject(object):
 class FinEnv(Env):
 
     metadata = {'render.modes': ['human']}
+
+    def _compute_vital_stats(self, life_table, age_start):
+
+
+        start_date = datetime.strptime(self.params.life_table_date, '%Y-%m-%d')
+        this_year = datetime(start_date.year, 1, 1)
+        next_year = datetime(start_date.year + 1, 1, 1)
+        start_decimal_year = start_date.year + (start_date - this_year) / (next_year - this_year)
+
+        alive = []
+        _alive = 1
+
+        y = 0
+        q_y = -1
+        q = 0
+        remaining_fract = 0
+        a_y = self.params.time_period
+        while True:
+            while y - q_y >= 1:
+                _alive *= (1 - q) ** remaining_fract
+                q_y += 1
+                q = life_table.q(age_start + q_y, year = start_decimal_year + q_y)
+                remaining_fract = 1
+            if q == 1:
+                break
+            append_time = a_y - y
+            fract = min(remaining_fract, append_time)
+            _alive *= (1 - q) ** fract
+            remaining_fract -= fract
+            y += fract
+            if y >= a_y:
+                alive.append(_alive)
+                a_y += self.params.time_period
+
+        life_expectancy = tuple((sum(alive[y:]) + 0.5) * self.params.time_period for y in range(len(alive)))
+
+        return alive, life_expectancy
 
     def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
 
@@ -42,8 +82,10 @@ class FinEnv(Env):
                                      high = np.array((100, 1e6, 1e7)),
                                      dtype = 'float32')
 
+        life_table = LifeTable(self.params.life_table, self.params.sex, self.params.age_start,
+            death_age = self.params.age_end, le_add = self.params.life_expectancy_additional, date_str = self.params.life_table_date)
+        self.alive, self.life_expectancy = self._compute_vital_stats(life_table, self.params.age_start)
         self.age_start = self.params.age_start
-        self.age_end = self.params.age_end
         self.risk_free = Returns(self.params.risk_free_return, 0, self.params.time_period)
         self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.time_period)
 
@@ -72,7 +114,7 @@ class FinEnv(Env):
             else:
                 self.p_notax = exp(uniform(log(self.params.p_notax_low), log(self.params.p_notax_high)))
 
-            consume_expect = self.guaranteed_income + self.p_notax / (self.age_end - self.age_start)
+            consume_expect = self.guaranteed_income + self.p_notax / self.life_expectancy[0]
 
             found = self.params.consume_floor <= consume_expect <= self.params.consume_ceiling
             if found:
@@ -118,7 +160,7 @@ class FinEnv(Env):
         # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for them.
         # This will be to the detriment of the fit for more likely reward values.
         # For PPO the policy network never fully retrains after the initial poor fit, and the results would be sub-optimal.
-        consume_ceil = 2 / (self.age_end - self.age)
+        consume_ceil = 2 / self.life_expectancy[self.episode_length]
             # Set:
             #     consume_ceil = 1 / self.params.time_period
             # to explore the full range of possible consume_fraction values.
@@ -162,15 +204,15 @@ class FinEnv(Env):
         reward_annual = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
         if self.params.verbose and reward_annual != utility:
             print('Reward out of range - age, p_notax, consume_fraction, utility:', self.age, self.p_notax, consume_fraction, utility)
-        reward = reward_annual * self.params.time_period
+        reward = reward_annual * self.alive[self.episode_length] * self.params.time_period
 
         self.age += self.params.time_period
 
         observation = self._observe()
-        done = self.age >= self.age_end
 
         self.episode_utility_sum += utility
         self.episode_length += 1
+        done = self.episode_length >= len(self.alive)
         info = {}
         if done:
             info['ce'] = self.utility.inverse(self.episode_utility_sum / self.episode_length)
@@ -191,7 +233,7 @@ class FinEnv(Env):
 
     def _observe(self):
 
-        life_expectancy = max(self.age_end - self.age, 0)
+        life_expectancy = self.life_expectancy[self.episode_length]
 
         return np.array((life_expectancy, self.guaranteed_income, self.p_notax), dtype = 'float32')
 

@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 PARALLEL=${PARALLEL:-True}  # Set to "False" to run seeds sequentially rather than in parallel.
 SEEDS=${SEEDS:-5}
@@ -7,12 +17,17 @@ EVAL_TIMESTEPS=${EVAL_TIMESTEPS:-4000000} # 4000000 is observed to result in an 
 
 EXTRA_ARGS=$*
 AI_DIR=$AIPLANNER_HOME/ai
-export PYTHONPATH=$AI_DIR/baselines:$AI_DIR/gym-fin
-
-if [ "$PARALLEL" = False ]; then
-    VALIDATE=validate
+PYTHONPATH_ADD=$AI_DIR/baselines:$AI_DIR/gym-fin:$AIPLANNER_HOME/spia
+if [ -z "$PYTHONPATH" ]; then
+    export PYTHONPATH=$PYTHONPATH_ADD
 else
+    export PYTHONPATH=$PYTHONPATH_ADD:$PYTHONPATH
+fi
+
+if [ "$PARALLEL" = True ]; then
     VALIDATE=validate_parallel
+else
+    VALIDATE=validate
 fi
 
 validate () {
@@ -26,9 +41,9 @@ validate () {
     while [ $SEED -lt $SEEDS ]; do
         MODEL_DIR=run.$MODEL_NAME-seed_$SEED.tf
         TEMPFILE=`tempfile -p valid`
-        $AI_DIR/train_ppo1.py --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS $EXTRA_ARGS >> $TEMPFILE 2>&1
+        $AI_DIR/train_ppo1.py --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE
         mv $TEMPFILE $MODEL_DIR/train.log
-        $AI_DIR/run_model.py --model-dir=$MODEL_DIR $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS $EVAL_ARGS $EXTRA_ARGS > $MODEL_DIR/eval.log 2>&1
+        $AI_DIR/run_model.py --model-dir=$MODEL_DIR $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS $EVAL_ARGS $EXTRA_ARGS 2>&1 | tee $MODEL_DIR/eval.log
         SEED=`expr $SEED + 1`
     done
 }
@@ -46,7 +61,7 @@ validate_parallel () {
         # Output directory must not exist when tensorflow save() is called to save the model hence we can't write the log within it; instead log to a tempfile.
         TEMPFILE=`tempfile -p valid`
         TEMPFILES[$SEED]=$TEMPFILE
-        $AI_DIR/train_ppo1.py --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS $EXTRA_ARGS >> $TEMPFILE 2>&1 &
+        $AI_DIR/train_ppo1.py --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE &
         SEED=`expr $SEED + 1`
     done
     wait
@@ -55,20 +70,21 @@ validate_parallel () {
     while [ $SEED -lt $SEEDS ]; do
         MODEL_DIR=run.$MODEL_NAME-seed_$SEED.tf
         mv ${TEMPFILES[$SEED]} $MODEL_DIR/train.log
-        $AI_DIR/run_model.py --model-dir=$MODEL_DIR $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS $EVAL_ARGS $EXTRA_ARGS > $MODEL_DIR/eval.log 2>&1 &
+        $AI_DIR/run_model.py --model-dir=$MODEL_DIR $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS $EVAL_ARGS $EXTRA_ARGS 2>&1 | tee $MODEL_DIR/eval.log &
         SEED=`expr $SEED + 1`
     done
     wait
 }
 
-$VALIDATE fixed_30-gi_0-p_300000 '--master-guaranteed-income=0 --master-p-notax=300000'
-$VALIDATE fixed_30-gi_16000-p_2000000 '--master-guaranteed-income=16000 --master-p-notax=2000000'
+#$VALIDATE fixed_30-gi_0-p_300000 '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-p-notax=300000'
+#$VALIDATE fixed_30-gi_16000-p_2000000 '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=16000 --master-p-notax=2000000'
+$VALIDATE ssa_plus_5_female-gi_16000-p_2000000 '--master-life-expectancy-additional=5 --master-guaranteed-income=16000 --master-p-notax=2000000'
 
 # Notes on tweaks that have been tried out:
 #
 # train-rewrd-clip=50 produces worse results without guaranteed income, but had no effect when guranteed income was present.
-#    $VALIDATE fixed_30-gi_0-p_300000-train_reward_clip_inf '--master-guaranteed-income=0 --master-p-notax=300000' '--train-reward-clip=inf'
-#    $VALIDATE fixed_30-gi_16000-p_2000000-train_reward_clip_inf '--master-guaranteed-income=16000 --master-p-notax=2000000' '--train-reward-clip=inf'
+#    $VALIDATE fixed_30-gi_0-p_300000-train_reward_clip_inf '--life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-p-notax=300000' '--train-reward-clip=inf'
+#    $VALIDATE fixed_30-gi_16000-p_2000000-train_reward_clip_inf '--life-table=fixed --master-age-end=95 --master-guaranteed-income=16000 --master-p-notax=2000000' '--train-reward-clip=inf'
 
 # train-num-timesteps=4000000 doesn't improve CE:
-#     $VALIDATE fixed_30-gi_16000-p_2000000-timesteps_4000000 '--master-guaranteed-income=16000 --master-p-notax=2000000' '--train-num-timesteps=4000000'
+#     $VALIDATE fixed_30-gi_16000-p_2000000-timesteps_4000000 '--life-table=fixed --master-age-end=95 --master-guaranteed-income=16000 --master-p-notax=2000000' '--train-num-timesteps=4000000'

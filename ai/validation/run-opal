@@ -1,5 +1,15 @@
 #!/bin/sh
 
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 
 EXTRA_ARGS=$*
@@ -15,8 +25,9 @@ validate () {
     MODEL_DIR=run.$MODEL_NAME.opal
 
     mkdir -p $MODEL_DIR
-    $OPAL -c $AI_DIR/validation/opal-scenario.txt -e "prefix='$MODEL_DIR/opal'" $ARGS $EXTRA_ARGS > $MODEL_DIR/opal.log 2>&1
+    $OPAL -c $AI_DIR/validation/opal-scenario.txt -e "prefix='$MODEL_DIR/opal'" $ARGS $EXTRA_ARGS 2>&1 | tee $MODEL_DIR/opal.log
 }
 
 validate fixed_30-gi_0-p_300000 "-e generate_life_table='fixed_mortality' -e validate_life_table='fixed_mortality' -e defined_benefit=0 -e start_tp=300000"
 validate fixed_30-gi_16000-p_2000000 "-e generate_life_table='fixed_mortality' -e validate_life_table='fixed_mortality' -e defined_benefit=16000 -e start_tp=2000000"
+validate ssa_plus_5_female-gi_16000-p_2000000 "-e le_add=5 -e defined_benefit=16000 -e start_tp=2000000"
