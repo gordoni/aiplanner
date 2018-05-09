@@ -335,7 +335,7 @@ class Alloc:
         schedule = self.schedule_range(1 + self.contribution_growth)
 
         # Restrict size of life table rather than using period_certain for speed.
-        life_table = LifeTable('live', 'male', 0, death_age = self.pre_retirement_years)
+        life_table = LifeTable('fixed', 'male', 0, death_age = self.pre_retirement_years)
 
         scenario = Scenario(self.yield_curve_nominal, payout_delay, None, None, 0, life_table,
             frequency = 1, schedule = schedule)
@@ -349,7 +349,7 @@ class Alloc:
         value2 = (self.contribution - self.contribution_reduction) * scenario.price()
         annual_ret2 = scenario.annual_return
 
-        life_table = LifeTable('live', 'male', 0, death_age = self.pre_retirement_years_full_contrib)
+        life_table = LifeTable('fixed', 'male', 0, death_age = self.pre_retirement_years_full_contrib)
 
         scenario = Scenario(self.yield_curve_real, payout_delay, None, None, 0, life_table,
             frequency = 1, cpi_adjust = 'all', schedule = schedule)
