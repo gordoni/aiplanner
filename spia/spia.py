@@ -1315,8 +1315,8 @@ class LifeTable(object):
         '''Return the probability of dying in the next year at possibly
         fractional age, 'age'.
 
-        'year' specifies the possibly fractional Julian claendar year
-        at which to compute the q value. It is only required for
+        'year' specifies the possibly fractional Gregorian calendar
+        year at which to compute the q value. It is only required for
         cohort life tables.
 
         'contract_age' specifies the age of any annuity contract in
