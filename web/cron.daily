@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DIR=/home/ubuntu/aacalc/web
+DIR=/home/ubuntu/aacalc/spia
 DATADIR=/home/ubuntu/aacalc/opal/data
 
 $DIR/fetch_yield_curve -t corporate -d $DATADIR/public/hqm

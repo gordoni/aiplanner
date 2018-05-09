@@ -29,8 +29,8 @@ Then to fetch the yield curves for all time (this could take a while):
 Subsequent runs of fetch_yield_curve will only download updates to the
 data.
 
-spia.py can then be run to compute an example annuity price expressed
-in terms of dollars for a one dollar per year payout:
+spia.py can then be run to compute, as an example, the payout
+associated with a given premium and money's worth ratio:
 
     chmod +x spia.py
 

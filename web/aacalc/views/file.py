@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2015 Gordon Irlam
+# Copyright (C) 2009, 2011-2018 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -19,10 +19,10 @@ from os.path import dirname, join
 from django.http import Http404, HttpResponse
 
 files = {
-    'README.spia': ('web/README.spia', 'text/plain'),
-    'agpl-3.0.txt': ('agpl-3.0.txt', 'text/plain'),
-    'spia.py': ('web/aacalc/spia.py', 'application/octet-stream'),
-    'fetch_yield_curve': ('web/fetch_yield_curve', 'application/octet-stream'),
+    'README': ('spia/README', 'text/plain'),
+    'agpl-3.0.txt': ('spia/agpl-3.0.txt', 'text/plain'),
+    'spia.py': ('spia/spia.py', 'application/octet-stream'),
+    'fetch_yield_curve': ('spia/fetch_yield_curve', 'application/octet-stream'),
 }
 
 def file(request, file):

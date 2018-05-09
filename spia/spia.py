@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# SPIA - Actuarially fair income annuity (SPIA and DIA) price calculator.
+# SPIA - Income annuity (SPIA and DIA) price calculator.
 # Copyright (C) 2014-2018 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
