@@ -1,7 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
-# SPIA - Actuarially fair SPIA price calculator
-# Copyright (C) 2014-2016 Gordon Irlam
+# SPIA - Income annuity (SPIA and DIA) price calculator.
+# Copyright (C) 2014-2018 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -18,8 +18,8 @@
 
 from argparse import ArgumentParser
 from calendar import monthrange
-from csv import reader
-from math import exp
+import csv
+import math
 from os.path import expanduser, isdir, join, normpath
 
 from numpy import errstate
@@ -766,12 +766,14 @@ ssa2010_q = {
     ),
 }
 
-class YieldCurve:
+class YieldCurve(object):
 
     class NoData(Exception):
         pass
 
-    def get_treasury(self, date_str, date_str_low):
+    datadir = None
+
+    def _get_treasury(self, date_str, date_str_low):
 
         date_year_str = date_str.split('-')[0]
         special = False
@@ -795,18 +797,18 @@ class YieldCurve:
 
             try:
 
-                with open(join(datadir, 'rcmt' if self.interest_rate == 'real' else 'cmt', self.interest_rate + '-' + year_str + '.csv')) as f:
+                with open(join(YieldCurve.datadir, 'rcmt' if self.interest_rate == 'real' else 'cmt', self.interest_rate + '-' + year_str + '.csv')) as f:
 
-                    csv = reader(f)
-                    assert(next(csv)[0].startswith('#'))
+                    r = csv.reader(f)
+                    assert(next(r)[0].startswith('#'))
 
-                    years = next(csv)
+                    years = next(r)
                     years.pop(0)
                     years = tuple(float(v) for v in years)
 
                     date = []
                     rates = []
-                    for line in csv:
+                    for line in r:
                         d = line[0]
                         rate = line[1:]
                         if special:
@@ -849,7 +851,7 @@ class YieldCurve:
 
         return yield_curve_years, yield_curve_rates, yield_curve_date_str
 
-    def get_corporate(self, date_year, date_str, date_str_low):
+    def _get_corporate(self, date_year, date_str, date_str_low):
 
         assert(date_str_low == None) # Not yet implemented.
 
@@ -866,22 +868,22 @@ class YieldCurve:
 
         try:
 
-            with open(join(datadir, 'hqm', file_name + '.csv')) as f:
+            with open(join(YieldCurve.datadir, 'hqm', file_name + '.csv')) as f:
 
-                csv = reader(f)
-                line = next(csv)
-                line = next(csv)
-                line = next(csv)
+                r = csv.reader(f)
+                line = next(r)
+                line = next(r)
+                line = next(r)
                 if ''.join(line) == '':  # catdoc xls2csv ommits this line for reasons unknown.
-                    line = next(csv)
+                    line = next(r)
                 years = tuple(int(year) for year in line if year != '')
                 assert(years[file_year_offset] == date_year)
-                line = next(csv)
-                line = next(csv)
+                line = next(r)
+                line = next(r)
                 maturity = 0
                 spot_years = []
                 spot_rates = []
-                for line in csv:
+                for line in r:
                     if line[0].startswith("\f"):  # catdoc xls2csv uses formfeed as end of sheet marker.
                         break
                     if maturity == 0:
@@ -906,7 +908,7 @@ class YieldCurve:
 
         return [spot_years], [spot_rates], spot_date
 
-    def project_curve(self, spot_years, spot_rates):
+    def _project_curve(self, spot_years, spot_rates):
 
         # Project returns beyond the last rate using the average 15 year and longer forward rate (similar to Treasury methodology)
         # and beyond long_years using long_rate as the forward rate.
@@ -926,24 +928,77 @@ class YieldCurve:
                 forward_rates[i] = long_rate[self.interest_rate]
         return self.forward_to_spot(forward_rates)
 
-    def __init__(self, interest_rate, date_str, date_str_low = None, adjust = 0, interpolate_rates = True):
+    def __init__(self, interest_rate, date_str, *, date_str_low = None, adjust = 0, interpolate_rates = True):
+        '''Initialize an object representing a particular yield curve on a
+        date specified by the ISO format date string 'date_str'. If
+        necessary the relevant interest rate data will be loaded from
+        interest rate data files that are kept up to date using the
+        fetch_yield_curve script.  If no yield curve is available for
+        that date the nearest date before that date will be
+        used. Rates are computed for every 6 months.
+
+        'interest_rate' should be one of the following:
+
+            "real": U.S. Treasury daily real yield curve.
+
+                If the ISO format date, 'date_str_low', is specified
+                then the average of the spot yield curves between date
+                and 'date_str' will be used.
+
+            "nominal": U.S. Treasury daily nominal yield curve.
+
+                If the ISO format date, 'date_str_low', is specified
+                then the average of the spot yield curves between date
+                and 'date_str' will be used.
+
+            "corporate": U.S. Corporate High Quality Markets (AAA, AA,
+            A rated bonds) monthly yield curve as reported by the
+            U.S. Treasury.
+
+            "fixed": A constant yield curve of zero.
+
+            "le": A constant yield curve of zero. 'adjust' is ignored.
+            When computing SPIA prices 'le' specifies to ignore the
+            first time period zero payout, and if percentile is
+            specified to interpolate the final payout. As such the
+            SPIA price corresponds to the life expectancy.
+
+        'adjust' is an adjustment to add to spot yield curve
+        annualized rates.
+
+        If 'interpolate_rates' is True discount_rate() will
+        interpolate rates for periods that are not on 6 month
+        boundaries, otherwise it will use the rate of the nearest 6
+        month period.
+
+        Raises YieldCurve.NoData if not interest rate data can be
+        found for the requested date or dates.
+
+        '''
+
         self.interest_rate = interest_rate
         assert(interest_rate in ('real', 'nominal', 'corporate', 'fixed', 'le'))
-        # fixed and le are very similar except le doesn't give credit for the first payout and in the presence of percentile interpolates any final payout.
         self.date = date_str
-        self.date_str_low = date_str_low  # Compute average of all spot curves from date_str_low to date_str.
-        self.interpolate_rates = interpolate_rates  # Whether to interpolate interest rates. Set to true for compatibility with AACalc. Neglible difference.
-        self.adjust = adjust  # Adjustment to apply to all annualized rates.
+        self.date_str_low = date_str_low
+        self.interpolate_rates = interpolate_rates  # Set to true for compatibility with Opal. Neglible difference.
+        self.adjust = adjust
+
+        if YieldCurve.datadir == None:
+            for datadir in datapath:
+                datadir = normpath(expanduser(datadir))
+                if isdir(datadir):
+                    break
+            YieldCurve.datadir = datadir
 
         if interest_rate in ('real', 'nominal'):
 
-            yield_curve_years, yield_curve_rates, self.yield_curve_date = self.get_treasury(date_str, date_str_low)
+            yield_curve_years, yield_curve_rates, self.yield_curve_date = self._get_treasury(date_str, date_str_low)
 
             spot_rates = []
             for yield_curve_year, yield_curve_rate in zip(yield_curve_years, yield_curve_rates):
 
                 # Project returns beyond available returns data using the last forward rate.
-                # Not compatible with AACalc. To begin with the underlying splines don't match.
+                # Not compatible with Opal. To begin with the underlying splines don't match.
                 coupon_yield_curve = []
                 # Suppress spurious divide by zero; needed for Ubuntu 14.04, not needed for Scipy 0.16.1.
                 with errstate(divide='ignore'):
@@ -980,9 +1035,9 @@ class YieldCurve:
             date_year = int(date_str.split('-')[0])
 
             try:
-                spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year, date_str, date_str_low)
+                spot_years, spot_rates, self.yield_curve_date = self._get_corporate(date_year, date_str, date_str_low)
             except self.NoData:
-                spot_years, spot_rates, self.yield_curve_date = self.get_corporate(date_year - 1, date_str, date_str_low)
+                spot_years, spot_rates, self.yield_curve_date = self._get_corporate(date_year - 1, date_str, date_str_low)
 
         elif interest_rate in ('fixed', 'le'):
 
@@ -992,14 +1047,14 @@ class YieldCurve:
 
         spot_years = tuple(y / 2.0 for y in range(1, 201))
 
-        spot_yield_curves = tuple(self.project_curve(spot_years, spot_rate) for spot_rate in spot_rates)
+        spot_yield_curves = tuple(self._project_curve(spot_years, spot_rate) for spot_rate in spot_rates)
         spot_yield_curve = tuple(sum(rates) / len(rates) for rates in zip(*spot_yield_curves))
 
         spot_yield_curve = tuple(r + adjust for r in spot_yield_curve)
 
-        self.set_yield_curve(spot_years, spot_yield_curve)
+        self._set_yield_curve(spot_years, spot_yield_curve)
 
-    def set_yield_curve(self, spot_years, spot_yield_curve):
+    def _set_yield_curve(self, spot_years, spot_yield_curve):
 
         self.spot_years = spot_years
         self.spot_years_min = min(spot_years)
@@ -1011,6 +1066,7 @@ class YieldCurve:
         self.yield_curve_out_range = InterpolatedUnivariateSpline(spot_years, spot_yield_curve, k=1)  # Linear extrapolation if out of range.
 
     def par_to_spot(self, rates):
+        '''Convert semi-annual par rates to semi-annual spot rates.'''
         # See: https://en.wikipedia.org/wiki/Bootstrapping_%28finance%29
         spots = []
         discount_rate_sum = 0
@@ -1025,6 +1081,7 @@ class YieldCurve:
         return spots
 
     def spot_to_par(self, rates):
+        '''Convert semi-annual spot rates to semi-annual par rates.'''
         pars = []
         count = 0
         coupons = 0
@@ -1035,6 +1092,7 @@ class YieldCurve:
         return pars
 
     def spot_to_forward(self, rates):
+        '''Convert semi-annual spot rates to semi-annual forward rates.'''
         forwards = []
         count = 0
         old_spot_rate = 0
@@ -1047,6 +1105,7 @@ class YieldCurve:
         return forwards
 
     def forward_to_spot(self, rates):
+        '''Convert semi-annual forward rates to semi-annual spot rates.'''
         spots = []
         count = 0
         spot_rate = 1
@@ -1058,6 +1117,12 @@ class YieldCurve:
         return spots
 
     def discount_rate(self, y):
+        '''Return 1 + the annual discount rate associated with time period 'y'
+        which is expressed in years. Raise the result to the power 'y'
+        to get the applicable discount factor.
+
+        '''
+
         if self.interest_rate == 'fixed':
             ay = 1 + self.adjust
         elif self.interest_rate == 'le':
@@ -1076,33 +1141,102 @@ class YieldCurve:
             ay = (1 + say / 2) ** 2  # Convert semi-annual yields to annual yields.
         return ay
 
-class LifeTable:
+class LifeTable(object):
 
     class UnableToAdjust(Exception):
         pass
 
-    def __init__(self, table, sex, age, death_age = float('inf'), ae = 'aer2005_08-summary',
+    def __init__(self, table, sex, age, *, death_age = float('inf'), ae = 'aer2005_08-summary',
                  le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
+        '''Initialize an object representing a life expectancy table for an
+        individual.
+
+        'table' should be one of the following:
+
+            "ssa-cohort': U.S. Social Security Administration
+            Actuarial Study 120 cohort life table.
+
+            "ssa-period": U.S. Social Security Administration Period
+            LIfe Table, 2010.
+
+            "iam2012-basic": Society of Actuaries Individual Annuitant
+            Mortality Basic Table 2012.
+
+                'ae': Specifies any Society of Actuaries Individual
+                Payout Annuity Experience Report adjustment to
+                apply. This adjusts for the fact that individuals of
+                the same age who have just purchased an annuity tend
+                to be in better health than individuals that have
+                owned a annuity for a while. It may be one of:
+
+                   "none": No adjustment.
+
+                   "aer2005_08-summary": Use the all ages summary.
+                   table.
+
+                  "aer2005_08-full": Use the full age specific
+                  table. This may be more accurate but due to the
+                  limits of sampling contains statistical noise.
+
+            "gompertz-makeham": Sythetic Gompertz-Makeham mortality
+            table with parameters 'alpha', 'm', and 'b'. The
+            probability of dying in the next year at age age expressed
+            in years is given by:
+
+                alpha + exp((age - m) / b) / b
+
+            'live': Probability of death is zero until 'death_age' is
+            reached.
+
+        'sex' should be "male" or "female".
+
+        'age' should be expressed in years and may be fractional.
+
+        'death_age' can be set to force death to occur at the
+        specified age.
+
+        'le_set' if specified causes a multiplicative adjustment to be
+        applied to all q values so that the reamining life expectancy
+        in years matches the value of 'le_set'. Specifying a
+        'date_str' may be required.
+
+        'le_add' if specified causes a multiplicative adjustment to be
+        applied to all q values so that the reamining life expectancy
+        in years matches the underlying life expectancy (or the value
+        of 'le_set'), plus 'le_add' years. Specifying a 'date_str' may
+        be required.
+
+        'date_str': The date to use in computing life expectancy when
+        'le_set' or 'le_add' when using a cohort life table. Required
+        with 'le_set' or 'le_add' when a cohort life table is used.
+
+        If 'interpolate_q' is true q values will be interpolated
+        (except when using "gomertz-makeham") for fractional ages,
+        otherwise the nearest q value will be used.
+
+        Raises LifeTable.UNableToAdjust if it is not possible to
+        adjust the life table in accordance with 'le_set' and
+        'le_add'.
+
+        '''
+
         self.table = table
         assert(table in ('live', 'iam2012-basic', 'ssa-cohort', 'ssa-period', 'gompertz-makeham'))
         self.sex = sex
         self.age = age
-        self.death_age = death_age  # Force death at this age.
-        self.ae = ae  # Whether and how to use the actual/expected experience report when table is iam.
-            # 'none' - a/e report not used. AER increases MWR 20% at age 90, and 5% at age 80.
-            # 'aer2005_08-summary' - use all ages summary line. Use this value for compatibility with AACalc.
-            # 'aer2005_08-full' - use the full table; may be more accurate but report contains statistical noise. Alters values 5% at age 85.
+        self.death_age = death_age
+        self.ae = ae
+            # 'none' - AER increases MWR 20% at age 90, and 5% at age 80.
+            # 'aer2005_08-summary' - Use this value for compatibility with Opal.
+            # 'aer2005_08-full' - Alters values 5% at age 85.
         assert(ae in ('none', 'aer2005_08-summary', 'aer2005_08-full'))
-        self.le_set = le_set  # Multiplicatively adjust q values to make life expectancy match the specified value.
-            # Used to make life expectancy match personal expected life expectancy, then use value to compute fair SPIA price.
-        self.le_add = le_add  # Then multiplicatively adjust q values to increase life expectancy by this much.
-            # Used by asset allocator to ensure plan for living longer than average because running out of money is very bad.
-        self.date_str = date_str  # Only required if le_set or le_add is used.
-            # The date to be used in computing the new q values. Needed since probably have a cohort life table.
-        self.interpolate_q = interpolate_q  # Interpolation makes 0.5% difference for fractional ages. Set to false for compatibility with AACalc.
-        self.alpha = alpha # Gompertz-Makeham parameter.
-        self.m = m # Gompertz-Makeham parameter.
-        self.b = b # Gompertz-Makeham parameter.
+        self.le_set = le_set # Used to make life expectancy match personal expected life expectancy, then use value to compute fair SPIA price.
+        self.le_add = le_add # Used by asset allocator to ensure plan for living longer than average because running out of money is very bad.
+        self.date_str = date_str
+        self.interpolate_q = interpolate_q  # Interpolation makes 0.5% difference for fractional ages. Set to false for compatibility with Opal.
+        self.alpha = alpha
+        self.m = m
+        self.b = b
 
         self.q_adjust = 1
         if le_set == None and le_add == 0:
@@ -1126,7 +1260,7 @@ class LifeTable:
                 q_hi = self.q_adjust
         raise self.UnableToAdjust
 
-    def iam_q(self, year, age, contract_age):
+    def _iam_q(self, year, age, contract_age):
         year = int(year)
         if age >= len(iam2012_basic_1000_q[self.sex]):
             return 1
@@ -1152,7 +1286,7 @@ class LifeTable:
             ae = 1
         return q * (1 - g2) ** (year - iam2012_date) * ae
 
-    def ssa_cohort_q(self, cohort, age):
+    def _ssa_cohort_q(self, cohort, age):
         cohort -= 0.5  # Cohort is people born in a given year.
         cohort_fract = (cohort % 10) / 10
         cohort_year = int(cohort / 10) * 10
@@ -1160,76 +1294,134 @@ class LifeTable:
             return 1
         return (1 - cohort_fract) * ssa_as120_q[self.sex][cohort_year][age] + cohort_fract * ssa_as120_q[self.sex][cohort_year + 10][age]
 
-    def ssa_period_q(self, age):
+    def _ssa_period_q(self, age):
         if age >= len(ssa2010_q[self.sex]):
             return 1
         return ssa2010_q[self.sex][age]
 
-    def q_int(self, cohort, year, age, contract_age):
+    def _q_int(self, year, age, contract_age):
         if self.table == 'live':
             q = 0
         elif self.table == 'iam2012-basic':
-            q = self.iam_q(year, age, contract_age)
+            q = self._iam_q(year, age, contract_age)
         elif self.table == 'ssa-cohort':
-            q = self.ssa_cohort_q(cohort, age)
+            cohort = year - age
+            q = self._ssa_cohort_q(cohort, age)
         else:
-            q = self.ssa_period_q(age)
+            q = self._ssa_period_q(age)
         return 1 if q == 1 else min(q * self.q_adjust, 1)
 
-    def q(self, year, age, contract_age):
+    def q(self, age, *, year = None, contract_age = None):
+        '''Return the probability of dying in the next year at possibly
+        fractional age, 'age'.
+
+        'year' specifies the possibly fractional Julian claendar year
+        at which to compute the q value. It is only required for
+        cohort life tables.
+
+        'contract_age' specifies the age of any annuity contract in
+        years at age, 'age'. It is only required for the annuity life
+        table.
+
+        '''
+
         if age >= self.death_age:
             return 1
         if self.table == 'gompertz-makeham':
-            return max(0, min(self.alpha + exp((age - self.m) / self.b) / self.b, 1));
-        cohort = year - age
+            return max(0, min(self.alpha + math.exp((age - self.m) / self.b) / self.b, 1));
         age_nearest = (self.table in ('iam2012-basic', 'ssa-cohort', 'ssa-period'))
         if self.interpolate_q:
             if not age_nearest:
                 age -= 0.5
             fract = age % 1
             age = int(age)
-            return (1 - fract) * self.q_int(cohort, year, age, contract_age) + fract * self.q_int(cohort, year, age + 1, contract_age)
+            return (1 - fract) * self._q_int(year, age, contract_age) + fract * self._q_int(year, age + 1, contract_age)
         else:
             if age_nearest:
                 age += 0.5
             age = int(age)
-            return self.q_int(cohort, year, age, contract_age)
+            return self._q_int(year, age, contract_age)
 
-class Scenario:
+class IncomeAnnuity(object):
 
-    def __init__(self, yield_curve, payout_delay, premium, payout, tax, life_table1, life_table2 = None, \
-                 joint_payout_fraction = 1, joint_contingent = True, period_certain = 0, \
-                 frequency = 12, mwr = 1, cpi_adjust = 'calendar', percentile = None, date_str = None, \
-                 schedule = lambda y: 1, comment = ''):
+    def __init__(self, yield_curve, life_table1, *, life_table2 = None, payout_delay = 0, tax = 0,
+                 joint_payout_fraction = 1, joint_contingent = True, period_certain = 0,
+                 frequency = 12, cpi_adjust = 'calendar', percentile = None, date_str = None,
+                 schedule = None):
+        '''Initialize an object representing a Single Premium Immediate
+        Annuity or a Deferred Income Annuity.
+
+        'yield_curve' is a YieldCurve object representing the interest
+        rates.
+
+        'life_table1' is a LifeTable object for the first annuitant.
+
+        'life_table2' is a LifeTable object for any second annuitant.
+
+        'payout_delay' is the delay in receiving the first payout in
+        months.
+
+        'tax' is the annuity gurantee association tax rate to apply.
+
+        'joint_payout_fraction' is the fraction of payout when
+        first/either annuitant is dead.
+
+        'joint_contingent' is True for a joint annuity. Payout is
+        reduced on the death of either annuitant. False for a
+        coningent annuity. Payout is reduced only on the death of the
+        first annuitant.
+
+        'period_certain' is the period for which payment is guaranteed
+        after payout_delay has past irrespective of the annuitants
+        being alive, and is expressed in years.
+
+        'frequency' is the number of payouts per year.
+
+        'cpi_adjust' only applies to real yield curves and specifies
+        when any consumer price index adjustment takes place. It must
+        be one of:
+
+            'all': At every payout.
+
+            'payout': On the anniversary of the first payout.
+
+            'calendar': On January 1st.
+
+        'percentile' specifies a percentile value expressed as a
+        floating point number to compute the annuity value through to
+        the specified percentile of life expectancy, or None to
+        compute the total annuity value.
+
+        'date_str' is an ISO format date specifying the date for which
+        to compute the annuity's value. The default is to use the same
+        date as the yield curve.
+
+        'schedule' is an optional function of one parameter, the time
+        offset from the date used to compute the annuity's value
+        specified in years. It should return a multiplicative factor
+        to be applied to each payout.
+
+        '''
+
         self.yield_curve = yield_curve
-        self.payout_delay = payout_delay  # Delay in months until first payout.
-        self.premium = premium
-        self.payout = payout
+        self.payout_delay = payout_delay
         self.tax = tax
         self.life_table1 = life_table1
         self.life_table2 = life_table2
-        self.joint_payout_fraction = joint_payout_fraction  # Fraction of payout when first/either annuitant is dead.
-        self.joint_contingent = joint_contingent  # Reduce payout on the death of either annuitant (contingent), or only the first annuitant (survivor).
-        self.period_certain = period_certain  # Guaranteed full payout period in years starting at payout_delay.
-        self.frequency = frequency  # Number of payouts per year. Setting this to 1 increases the MWR by 10% at age 90.
-        self.mwr = mwr
-        self.cpi_adjust = cpi_adjust  # When to apply the cpi_adjustment for real SPIAs:
-            # 'all' - at every payout.
-            # 'payout' - on the anniversary of the first payout.
-            # 'calendar' - on January 1st.
+        self.joint_payout_fraction = joint_payout_fraction
+        self.joint_contingent = joint_contingent
+        self.period_certain = period_certain
+        self.frequency = frequency  # Setting this to 1 increases the MWR by 10% at age 90.
+        self.cpi_adjust = cpi_adjust
         assert(cpi_adjust in ('all', 'payout', 'calendar'))
-        self.percentile = percentile  # Compute SPIA payout value through the percentile life expectancy, or none to compute the expected value.
-        self.date = date_str  # Starting date. Default taken from yield_curve.
+        self.percentile = percentile
+        self.date = date_str
         self.schedule = schedule
-            # Function taking a year as a parameter and returning the annualized payment amount for that time period.
-        self.comment = comment
 
         # Depriciated options.
-        self.annual_q = True  # Whether to update q values for every payout, or once per year. Update annually for compatibility with AACalc.
+        self.annual_q = True  # Whether to update q values for every payout, or once per year. Update annually for compatibility with Opal.
             # Updating at every payout is wrong, since the annuitant never gets to experience the calculated q value for the full year.
             # Updating every payout reduces MWR by 2% at age 90.
-
-    def price(self):
 
         current_age1 = self.life_table1.age
         current_age2 = self.life_table2.age if self.life_table2 else None
@@ -1246,15 +1438,15 @@ class Scenario:
         i = 0
         while True:
             y = float(i) * update_period / self.frequency
-            q1 = self.life_table1.q(start + y, current_age1 + y, y)
-            q2 = 1 if current_age2 is None else self.life_table2.q(start + y, current_age2 + y, y)
+            q1 = self.life_table1.q(age = current_age1 + y, year = start + y, contract_age = y)
+            q2 = 1 if current_age2 is None else self.life_table2.q(age = current_age2 + y, year = start + y, contract_age = y)
             if q1 == q2 == 1:
                 break
             for _ in range(update_period):
                 alive1 *= (1 - q1) ** (1.0 / self.frequency)
                 alive2 *= (1 - q2) ** (1.0 / self.frequency)
                 if alive2 == 0:
-                    alive = alive1  # Logically not needed, but provides for precise floating point compatibility with AACalc.
+                    alive = alive1  # Logically not needed, but provides for precise floating point compatibility with Opal.
                     joint = 0
                 else:
                     alive = alive1
@@ -1311,7 +1503,9 @@ class Scenario:
                     payout_fraction = 1.0
                 else:
                     payout_fraction = (prev_combined - target_combined) / (prev_combined - combined)
-            payout_amount = payout_fraction * self.schedule(y)
+            payout_amount = payout_fraction
+            if self.schedule:
+                payout_amount *= self.schedule(y)
             payout_value = payout_amount / r ** y_eff
             price += payout_value
             duration += y * payout_value
@@ -1325,7 +1519,9 @@ class Scenario:
 
         if self.yield_curve.interest_rate == 'le' and self.percentile is None:
             payout_fraction = 0.5  # Half credit after last payout.
-            payout_amount = payout_fraction * self.schedule(y)
+            payout_amount = payout_fraction
+            if self.schedule:
+                payout_amount *= self.schedule(y)
             payout_value = payout_amount / r ** y_eff
             price += payout_value
             duration += y * payout_value
@@ -1335,23 +1531,79 @@ class Scenario:
             calcs.append(calc)
 
         try:
-            self.duration = duration / price
+            self._duration = duration / price
         except ZeroDivisionError:
             assert(duration == 0)
-            self.duration = 0
+            self._duration = 0
         try:
-            self.annual_return = annual_return / total_payout - 1
+            self._annual_return = annual_return / total_payout - 1
         except ZeroDivisionError:
-            self.annual_return = 0
-        self.total_payout = total_payout / self.frequency
+            self._annual_return = 0
         try:
-            price /= self.frequency * (1 - self.tax) * self.mwr
+            self._unit_price = price / (1 - self.tax)
         except ZeroDivisionError:
-            price = float('inf')
+            self._unit_price = float('inf')
         self.calcs = calcs
-        return price
 
-# MWR decreases 2% at age 50 and 5% at age 90 when cross from one age nearest birthday to the next.
+    @property
+    def duration(self):
+        '''Duration of the bonds backing the annuity in years.'''
+        return self._duration
+
+    @property
+    def annual_return(self):
+        '''An estimate of the life expectancy weighted average annual return
+        of the annuity.
+
+        '''
+        return self._annual_return
+
+    def premium(self, payout, mwr = 1):
+        '''The price paid to recieve periodic payout 'payout' when the Money's
+        Worth Ratio is 'mwr'.
+
+        '''
+        return self._unit_price * payout / mwr
+
+    def payout(self, premium, mwr = 1):
+        '''The periodic payout received for the single premium amount
+        'premium' when the Money's Worth Ratio is 'mwr'.
+
+        '''
+        try:
+            return premium * mwr / self._unit_price
+        except ZeroDivisonError:
+            return float('inf')
+
+    def mwr(self, premium, payout):
+        '''The Money's Worth Ratio for premium 'premium' and payout 'payout'.'''
+        try:
+            return self._unit_price * payout / premium
+        except ZeroDivisonError:
+            return float('inf')
+
+        # MWR decreases 2% at age 50 and 5% at age 90 when cross from one age nearest birthday to the next.
+
+class Scenario(IncomeAnnuity):
+
+    def __init__(self, yield_curve, payout_delay, premium, payout, tax, life_table1, *, mwr = 1, comment = '', **kwargs):
+
+        '''Initialize an object representing an observed SPIA for which two of
+        premium, payout, and mwr are known are we are interested in
+        the third. Also used by legagy AACalc web code to initialize a
+        SPIA object.
+
+        '''
+
+        super().__init__(yield_curve, life_table1, payout_delay = payout_delay, tax = tax, **kwargs)
+        self.scenario_premium = premium
+        self.scenario_payout = payout
+        self.scenario_mwr = mwr
+        self.comment = comment
+
+    def price(self):
+        '''Legagy function.'''
+        return self._unit_price / (self.frequency * self.scenario_mwr)
 
 if __name__ == '__main__':
 
@@ -1362,11 +1614,12 @@ if __name__ == '__main__':
     if args.datadir != None:
         datapath = (args.datadir, )
 
-for datadir in datapath:
-    datadir = normpath(expanduser(datadir))
-    if isdir(datadir):
-        break
-
-if __name__ == '__main__':
-
-    print(Scenario(YieldCurve('real', '2015-01-01'), 1.5, None, None, 0, LifeTable('iam2012-basic', 'male', 65)).price())
+    yield_curve = YieldCurve('real', '2018-01-01')
+    life_table = LifeTable('iam2012-basic', 'male', 65)
+    income_annuity = IncomeAnnuity(yield_curve, life_table, payout_delay = 1.5)
+    payout = income_annuity.payout(100000, mwr = 1)
+    print('Monthly payout for a $100,000 premium:', payout)
+    premium = income_annuity.premium(payout, mwr = 1)
+    assert abs(premium - 100000) < 1e-6
+    mwr = income_annuity.mwr(premium, payout)
+    assert abs(mwr - 1) < 1e-9

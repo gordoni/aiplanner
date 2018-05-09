@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2017 Gordon Irlam
+ * Copyright (C) 2009, 2011-2018 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -253,7 +253,7 @@ public class VitalStats
                 }
                 else if ("fixed_mortality".equals(table))
                 {
-                        death_cohort = new Double[config.fixed_deceased_age + 1];
+                        death_cohort = new Double[config.fixed_deceased_age];
                         for (int i = 0; i < death_cohort.length - 1; i++)
                             death_cohort[i] = 0.0;
                         death_cohort[death_cohort.length - 1] = 1.0;

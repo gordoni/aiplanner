@@ -3,7 +3,7 @@
 {% comment %}
 
 AACalc - Asset Allocation Calculator
-Copyright (C) 2009, 2011-2016 Gordon Irlam
+Copyright (C) 2009, 2011-2018 Gordon Irlam
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -69,7 +69,7 @@ assets more risky than the assumed bonds.
 <p class="small">
 Source code to the SPIA module is made available in the hope this will
 lead to feedback and improvement. Files:
-<a href="{% url 'file' 'README.spia' %}">README.spia</a>,
+<a href="{% url 'file' 'README' %}">README</a>,
 <a href="{% url 'file' 'agpl-3.0.txt' %}">agpl-3.0.txt</a>,
 <a href="{% url 'file' 'spia.py' %}">spia.py</a>, and
 <a href="{% url 'file' 'fetch_yield_curve' %}">fetch_yield_curve</a>.
@@ -101,12 +101,12 @@ Age: {{ spia_form.age2_years }} years {{ spia_form.age2_months }} months
 {{ spia_form.sex2.errors }}
 {{ spia_form.age2_years.errors }}
 {{ spia_form.age2_months.errors }}
-<br />
+<div class="indent">
 {{ spia_form.joint_type }}
 {{ spia_form.joint_type.errors }}
-<br />
 Payout when one annuitant is dead: {{ spia_form.joint_payout_percent }}%
 {{ spia_form.joint_payout_percent.errors }}
+</div>
 
 </div>
 
@@ -116,7 +116,6 @@ Payout when one annuitant is dead: {{ spia_form.joint_payout_percent }}%
 
 {{ spia_form.table }}
 {{ spia_form.table.errors }}
-<br />
 <div class="small">
 Annuitant life table is Society of Actuaries 2012 Individual Annuity
 Mortality Basic Table with Projection Scale G2.

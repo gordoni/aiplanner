@@ -16,10 +16,10 @@ Obtaining additional required components
 ----------------------------------------
 
 # Java, R, and Gnuplot:
-sudo apt-get install openjdk-8-jre-headless openjdk-8-jdk r-base gnuplot
+sudo apt install default-jre-headless default-jdk r-base gnuplot-nox
 
 # If doing developement you might want to enable the desktop display of graphs:
-sudo apt-get install gnuplot-x11
+sudo apt-get install gnuplot-qt
 
 # Obtaining the Java commons Math 3 library.
 cd aacalc/opal
@@ -29,7 +29,8 @@ mkdir classes
 mv commons-math3-3.6.1/commons-math3-3.6.1.jar classes
 rm -r commons-math3-3.6.1/
 
-# Obtain the asset class returns, interest rate, and mortality data files:
+# If aacalc/opal/data hasn't been created (from setting up web component),
+# obtain the asset class returns, interest rate, and mortality data files:
 cd aacalc/opal
 curl http://www.gordoni.com/aacalc-data.tar.gz | tar -zxf -
 
@@ -38,13 +39,13 @@ Setting up Systematic Investor Toolbox and R packages for performing MVO
 
 # Mean variance optimization reduces 3 or more asset classes down to a
 # single dimension to be searched.
-# Only needed if plan to specify ef='mvo' when running Opal.
-# This is the case for the web front end, and is needed to give decent
-# performance with 4 or more asset classes.
+# This step is only needed if plan to specify ef='mvo' when running Opal.
+# Normally this will not be the case.
+# This is needed to give decent performance with 4 or more asset classes.
 
 # Notes cribbed from: http://www.r-bloggers.com/introduction-to-asset-allocation/
 
-sudo apt-get install r-base r-cran-quadprog r-cran-lpsolve
+sudo apt install r-base r-cran-quadprog r-cran-lpsolve
 
 # Either:
 sudo R # to install in /usr/local
@@ -74,6 +75,15 @@ Running Opal
 export OPAL_HOME=$HOME/aacalc/opal
 java -ea -cp $OPAL_HOME/classes/'*' com.gordoni.opal.OPAL <option> ...
 
+Example:
+    java -ea -cp $OPAL_HOME/classes/'*' com.gordoni.opal.OPAL -e start_tp=100000 -e defined_benefit=10000 -e ret_resample=None -e "validate_draw='bootstrap'" -e ret_bootstrap_block_size=1
+
+Ignore the warnings:
+    Data file not found (might not be needed): sbbi.csv
+    Data file not found (might not be needed): eafe.csv
+    Data file not found (might not be needed): incomesolutions.com
+These files are not contained in the aacalc-data.tar.gz file.
+
 options:
   -e var=value
     Set variable var to value val.
@@ -86,8 +96,7 @@ options:
     1 per line. # for comments.
     Only 1 config file is alowed, and it will be processed ahead of any -e options.
 
-Examples:
-
+var=value examples:
     aa_strategy='age_in_bonds' vw_strategy='retirement_amount' vw_percentage=0.04 -e defined_benefit=10000 -e floor=20000
                              - Monte Carlo simulation with $10k Social Security and failure consuming less than $20k
 
@@ -204,10 +213,10 @@ the metric during Monte Carlo simulation.
 
 So doing:
 
-    -e ret_resample=None -e "validate_draw='bootstrap'" -e ret_bootstrap_block_size=1 -e map_headroom=null
+    -e ret_resample=None -e "validate_draw='bootstrap'" -e ret_bootstrap_block_size=1 -e map_headroom=None
 
 then the generated metric should match the combined simulation metric,
-to the limit of the finite num_sequences_generate sample size.
+to the limit of the finite num_sequences_validate sample size.
 
 If you get all zeros as the result, you may need to play with
 map_headroom, setting to to a value so that a small amount of wealth

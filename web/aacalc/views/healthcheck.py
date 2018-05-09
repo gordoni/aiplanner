@@ -23,7 +23,6 @@ from django.test.client import RequestFactory
 from aacalc.views.alloc import Alloc, alloc
 from aacalc.views.le import le
 from aacalc.views.spia import default_spia_params, spia
-from aacalc.views.utils import default_params, run_response
 
 def healthcheck(request):
 
@@ -34,7 +33,7 @@ def healthcheck(request):
         'age' : 65,
     })
     response = le(request)
-    page = response.content
+    page = response.content.decode('utf8')
     cohort, cohort95 = match('^.*<table id="ssa_cohort".*?<td class="right">(.*?)</td>.*?<span.*?>(.*?)</span>.*$', page, DOTALL).groups()
     assert(17 < float(cohort) < 20)
     assert(31 < float(cohort95) < 35)
@@ -52,7 +51,7 @@ def healthcheck(request):
     params['payout'] = 1000
     request = request_factory.post('/calculators/spia', params)
     response = spia(request)
-    page = response.content
+    page = response.content.decode('utf8')
     premium1, premium2, yield_curve_date, cost1, cost2 = match('^.*Actuarially fair premium:.*?(\d+),(\d+).*?Yield curve date: (\d\d\d\d-\d\d-\d\d).*?Cost to self insure: (\d+),(\d+).*$', page, DOTALL).groups()
     assert(150000 < int(premium1 + premium2) < 300000)
     assert(200000 < int(cost1 + cost2) < 400000)
@@ -62,7 +61,7 @@ def healthcheck(request):
     params['bond_type'] = 'nominal'
     request = request_factory.post('/calculators/spia', params)
     response = spia(request)
-    page = response.content
+    page = response.content.decode('utf8')
     premium1, premium2, yield_curve_date = match('^.*Actuarially fair premium:.*?(\d+),(\d+).*?Yield curve date: (\d\d\d\d-\d\d-\d\d).*$', page, DOTALL).groups()
     assert(100000 < int(premium1 + premium2) < 250000)
     quote = datetime.strptime(yield_curve_date, '%Y-%m-%d').date()
@@ -71,7 +70,7 @@ def healthcheck(request):
     params['bond_type'] = 'corporate'
     request = request_factory.post('/calculators/spia', params)
     response = spia(request)
-    page = response.content
+    page = response.content.decode('utf8')
     premium1, premium2, yield_curve_date = match('^.*Actuarially fair premium:.*?(\d+),(\d+).*?Yield curve date: (\d\d\d\d-\d\d).*$', page, DOTALL).groups()
     assert(100000 < int(premium1 + premium2) < 200000)
     quote = datetime.strptime(yield_curve_date, '%Y-%m').date()
@@ -84,34 +83,20 @@ def healthcheck(request):
     params['purchase_income_annuity'] = False
     # No way to generate the appropriate POSTed parameter values for a formset. Set manually.
     for i, db in enumerate(params['db']):
-        for k, v in db.iteritems():
+        for k, v in db.items():
             params['form-%d-%s' % (i, k)] = v
     params['form-TOTAL_FORMS'] = len(params['db'])
     params['form-INITIAL_FORMS'] = len(params['db'])
     params['form-MAX_NUM_FORMS'] = len(params['db'])
     del params['db']
-    for k, v in params.iteritems():
+    for k, v in params.items():
         if v == None:
             params[k] = ''
     request = request_factory.post('/calculators/aa', params)
     response = alloc(request, 'aa', healthcheck=True)
-    page = response.content
+    page = response.content.decode('utf8')
     stocks, consume, _ = match('^.*<!-- healthcheck_aa --> (\d+)/\d+.*<!-- healthcheck_consume --> ((\d|,)+).*$', page, DOTALL).groups()
     assert(60 < float(stocks) <= 100)
     assert(80000 < float(consume.replace(',', '')) < 110000)
-
-    # # Asset allocation.
-    # scenario_dict = dict(default_params)
-    # scenario_dict['sex'] = 'male'
-    # scenario_dict['dob'] = 90
-    # scenario_dict['p'] = 100000
-    # scenario_dict['retirement_year'] = 2000
-    # request = request_factory.post('/calculators/aa', scenario_dict)
-    # response = run_response(request, scenario_dict, True)
-    # page = response.content
-    # consume, = match('^.*Suggested initial annual consumption amount: (\d+).*$', page, DOTALL).groups()
-    # assert(30000 < int(consume) < 50000)
-    # stocks, = match('^.*Suggested initial asset allocation stocks/bonds: (\d+)/\d+.*$', page, DOTALL).groups()
-    # assert(80 <= int(stocks) <= 100)
 
     return HttpResponse('OK', content_type = 'text/plain')

@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2017 Gordon Irlam
+# Copyright (C) 2009, 2011-2018 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -96,7 +96,6 @@ class Alloc:
                 'age': 66,
                 'amount': 15000,
                 'inflation_indexed': True,
-                'period_certain': 0,
                 'joint_type': 'survivor',
                 'joint_payout_pct': 0,
             }, {
@@ -105,7 +104,6 @@ class Alloc:
                 'age': 66,
                 'amount': 0,
                 'inflation_indexed': True,
-                'period_certain': 0,
                 'joint_type': 'survivor',
                 'joint_payout_pct': 0,
             }, {
@@ -115,7 +113,6 @@ class Alloc:
                 'age': 66,
                 'amount': 0,
                 'inflation_indexed': True,
-                'period_certain': 0,
                 'joint_type': 'survivor',
                 'joint_payout_pct': 0,
             }, {
@@ -125,7 +122,6 @@ class Alloc:
                 'age': 66,
                 'amount': 0,
                 'inflation_indexed': True,
-                'period_certain': 0,
                 'joint_type': 'survivor',
                 'joint_payout_pct': 0,
             }, {
@@ -135,7 +131,6 @@ class Alloc:
                 'age': 66,
                 'amount': 0,
                 'inflation_indexed': True,
-                'period_certain': 0,
                 'joint_type': 'survivor',
                 'joint_payout_pct': 0,
             }, {
@@ -145,7 +140,6 @@ class Alloc:
                 'age': 66,
                 'amount': 0,
                 'inflation_indexed': True,
-                'period_certain': 0,
                 'joint_type': 'survivor',
                 'joint_payout_pct': 0,
             }, {
@@ -155,7 +149,6 @@ class Alloc:
                 'age': 66,
                 'amount': 0,
                 'inflation_indexed': True,
-                'period_certain': 0,
                 'joint_type': 'contingent',
                 'joint_payout_pct': 70,
             }, {
@@ -165,7 +158,6 @@ class Alloc:
                 'age': 66,
                 'amount': 0,
                 'inflation_indexed': False,
-                'period_certain': 0,
                 'joint_type': 'contingent',
                 'joint_payout_pct': 70,
             }, {
@@ -175,7 +167,6 @@ class Alloc:
                 'age': 66,
                 'amount': 0,
                 'inflation_indexed': True,
-                'period_certain': 0,
                 'joint_type': 'contingent',
                 'joint_payout_pct': 70,
             }, {
@@ -185,7 +176,6 @@ class Alloc:
                 'age': 66,
                 'amount': 0,
                 'inflation_indexed': False,
-                'period_certain': 0,
                 'joint_type': 'contingent',
                 'joint_payout_pct': 70,
             }, {
@@ -195,7 +185,6 @@ class Alloc:
                 'age': 62,
                 'amount': 0,
                 'inflation_indexed': False,
-                'period_certain': 0,
                 'joint_type': 'contingent',
                 'joint_payout_pct': 100,
             }),
@@ -213,7 +202,7 @@ class Alloc:
             'home_vol_pct': Decimal('5.0'),
             'mortgage': 0,
             'mortgage_rate_pct': Decimal('5.0'),
-            'rm_have': False,
+            'have_rm': False,
             'rm_loc': 0,
 
             'retirement_age': 66,
@@ -289,7 +278,7 @@ class Alloc:
         while max_val == None or x < b:
 
             f_x = f(x)
-            if (f_x > max_val):
+            if (max_val == None or f_x > max_val):
                 max_at = x
                 max_val = f_x
 
@@ -400,9 +389,8 @@ class Alloc:
 
             delay = float(db['age']) - starting_age
             positive_delay = max(0, delay)
-            negative_delay = min(0, delay)
             payout_delay = positive_delay * 12
-            period_certain = max(0, self.pre_retirement_years - positive_delay, float(db['period_certain']) + negative_delay)
+            period_certain = max(0, self.pre_retirement_years - positive_delay)
                 # For planning purposes when computing the npv of defined benefits and contributions we need to assume we will reach retirement.
 
             joint_payout_fraction = float(db['joint_payout_pct']) / 100
@@ -1414,7 +1402,7 @@ class Alloc:
         return results
 
     def plot(self, mode, result, healthcheck):
-        umask(0077)
+        umask(0o077)
         parent = STATIC_ROOT + 'results'
         prefix = 'healthcheck-' if healthcheck else 'aa-'
         dirname = mkdtemp(prefix=prefix, dir=parent)

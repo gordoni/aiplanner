@@ -1,9 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import os
 import sys
 
 from math import isnan
+
+from django import setup
 
 path = '/home/ubuntu/aacalc/web'
 if path not in sys.path:
@@ -15,6 +17,8 @@ if path not in sys.path:
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
+setup()
+
 from aacalc.views.alloc import Alloc
 
 def db(who, age, amount):
@@ -24,7 +28,6 @@ def db(who, age, amount):
         'age': age,
         'amount': amount,
         'inflation_indexed': True,
-        'period_certain' : 0,
         'joint_type': 'survivor',
         'joint_payout_pct': 0,
     }
@@ -74,4 +77,4 @@ for test in tests:
     results = alloc.compute_results(params, 'aa')
     over_aa = results['calc'][0]['aa_equity'] - stocks
     over_consume = float(results['calc'][0]['consume'].replace(',', '')) / consume - 1
-    print "{stocks:>4.0%} {calc[0][aa_equity]:>4.0%} {over_aa:>4.0%} {calc[1][aa_equity]:>4.0%}-{calc[2][aa_equity]:<4.0%} {consume:>7,.0f} {metric_combined:>7,.0f} {calc[0][consume]:>7} {over_consume:>4.0%} {calc[1][consume]:>7}-{calc[2][consume]:<7} {desc}".format(stocks=stocks, consume=consume, metric_combined=metric_combined, desc=desc, over_aa=over_aa, over_consume=over_consume, **results)
+    print("{stocks:>4.0%} {calc[0][aa_equity]:>4.0%} {over_aa:>4.0%} {calc[1][aa_equity]:>4.0%}-{calc[2][aa_equity]:<4.0%} {consume:>7,.0f} {metric_combined:>7,.0f} {calc[0][consume]:>7} {over_consume:>4.0%} {calc[1][consume]:>7}-{calc[2][consume]:<7} {desc}".format(stocks=stocks, consume=consume, metric_combined=metric_combined, desc=desc, over_aa=over_aa, over_consume=over_consume, **results))

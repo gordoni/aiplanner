@@ -1,9 +1,5 @@
-{% extends "base.html" %}
-
-{% comment %}
-
-AACalc - Asset Allocation Calculator
-Copyright (C) 2009, 2011-2015 Gordon Irlam
+SPIA - Income annuity (SPIA and DIA) price calculator.
+Copyright (C) 2014-2018 Gordon Irlam
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -17,30 +13,3 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-{% endcomment %}
-
-{% block title %}Please Wait{% endblock %}
-
-{% block head %}
-<meta http-equiv="refresh" content="0;URL='{% url 'scenario_run' %}'" />
-{% endblock %}
-
-{% block content %}
-
-<h1>Please Wait</h1>
-
-<p>
-Do not refresh this page.
-</p>
-
-<p>
-We are working on your request and we will provide your results as
-soon as possible.
-</p>
-
-<p>
-Requests typically take 30-60 seconds to process.
-</p>
-
-{% endblock %}

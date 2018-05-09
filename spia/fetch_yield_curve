@@ -1,7 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # Fetch yield curve - Maintain up to date yield curve data
-# Copyright (C) 2015 Gordon Irlam
+# Copyright (C) 2015-2018 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -17,13 +17,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from argparse import ArgumentParser
-from lxml import etree
+from xml.etree import ElementTree
 from os import devnull, remove, rename, stat
 from os.path import isfile
-from re import match
+from re import match, sub
 from subprocess import call, check_call, check_output
 from time import sleep
-from urllib import quote
+from urllib.parse import quote
 
 class Fetcher:
 
@@ -137,7 +137,7 @@ class TreasuryFetcher(Fetcher):
 
     def fetch_year(self, fetch_year, last_check):
 
-        s = check_output(self.curl_cmd(fetch_year, last_check))
+        s = check_output(self.curl_cmd(fetch_year, last_check)).decode('latin1')
 
         if s == '':
             return False
@@ -145,12 +145,17 @@ class TreasuryFetcher(Fetcher):
         years = {}
         rates = {}
 
-        xml = etree.fromstring(s)
+        xml = ElementTree.fromstring(s)
         entries = False
-        for entry in xml.iterfind('{*}entry'):
+        ns = {
+            'empty_ns': 'http://www.w3.org/2005/Atom',
+            'm': 'http://schemas.microsoft.com/ado/2007/08/dataservices/metadata',
+            'd': 'http://schemas.microsoft.com/ado/2007/08/dataservices',
+        }
+        for entry in xml.iterfind('empty_ns:entry', ns):
             entries = True
-            properties = entry.find('{*}content').find('{*}properties')
-            date = properties.find('{*}NEW_DATE').text
+            properties = entry.find('empty_ns:content', ns).find('m:properties', ns)
+            date = properties.find('d:NEW_DATE', ns).text
             date = date[:date.index('T')]
             rates[date] = {}
             for child in properties.iter():
@@ -169,16 +174,16 @@ class TreasuryFetcher(Fetcher):
         if not entries:
             return False
 
-        years = years.keys()
+        years = list(years.keys())
         years.sort(key = lambda s: float(s))
 
         filename = self.csv_file(fetch_year)
         out = open(filename + '.tmp', 'w')
 
-        print >>out, '# ' + bond_type + ' CMT yield curve'
-        print >>out, 'DATE,' + ','.join(years)
+        out.write('# ' + bond_type + ' CMT yield curve\n')
+        out.write('DATE,' + ','.join(years) + '\n')
         for date in sorted(rates.keys()):
-            print >>out, date + ',' + ','.join(rates[date].get(year, '') for year in years)
+            out.write(date + ',' + ','.join(rates[date].get(year, '') for year in years) + '\n')
 
         out.close()
 

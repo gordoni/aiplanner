@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2017 Gordon Irlam
+# Copyright (C) 2009, 2011-2018 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -24,16 +24,23 @@ from django.forms import BooleanField, CharField, CheckboxInput, ChoiceField, De
 from django.forms.formsets import formset_factory
 from time import strftime, strptime
 
-from aacalc.utils import all_asset_classes, asset_class_names, too_early_for_asset_classes, too_late_for_asset_classes
-from aacalc.views.utils import default_params
+class HorizontalRadioRenderer(RadioSelect):
+    def __init__(self, *args, attrs = {'class': 'radio-horizontal'}, **kwargs):
+        super().__init__(*args, attrs = attrs, **kwargs)
+    #def render(self):
+    #    return mark_safe(u'\n'.join([u'%s\n' % w for w in self]))
 
-class HorizontalRadioRenderer(RadioSelect.renderer):
-    def render(self):
-        return mark_safe(u'\n'.join([u'%s\n' % w for w in self]))
-
-class VerticalRadioRenderer(RadioSelect.renderer):
-    def render(self):
-        return mark_safe(u'\n<br />\n'.join([u'%s\n' % w for w in self]))
+class VerticalRadioRenderer(RadioSelect):
+    def __init__(self, *args, attrs = None, **kwargs):
+        if attrs == None:
+            attrs = {}
+        if 'class' in attrs:
+            attrs['class'] += ' radio-vertical'
+        else:
+            attrs['class'] = 'radio-vertical'
+        super().__init__(*args, attrs = attrs, **kwargs)
+    #def render(self):
+    #    return mark_safe(u'\n<br />\n'.join([u'%s\n' % w for w in self]))
 
 class DobOrAgeField(CharField):
 
@@ -62,282 +69,6 @@ class DobOrAgeField(CharField):
             else:
                 return None
         raise ValidationError('Invalid age or date of birth.')
-
-class ScenarioBaseForm(Form):
-    sex = ChoiceField(
-        choices = (('male', 'male'), ('female', 'female')))
-    dob = DobOrAgeField(
-        widget=TextInput(attrs={'class': 'dob_input'}))
-    sex2 = ChoiceField(
-        choices = (('', 'none'), ('male', 'male'), ('female', 'female')),
-        required=False)
-    dob2 = DobOrAgeField(
-        widget=TextInput(attrs={'class': 'dob_input'}),
-        required=False)
-    advanced_position = BooleanField(required=False,
-        widget=CheckboxInput(attrs={'class': 'advanced_button'}))
-    defined_benefit_social_security = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    defined_benefit_pensions = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    defined_benefit_fixed_annuities = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    tax_rate_cg_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=0)
-    tax_rate_div_default_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=0)
-    cost_basis_method = ChoiceField(
-        choices=(('hifo', 'HIFO (highest-in first-out)'), ('avgcost', 'Average Cost'), ('fifo', 'FIFO (first-in first-out)')),
-        widget=RadioSelect(renderer=HorizontalRadioRenderer))
-    advanced_goals = BooleanField(required=False,
-        widget=CheckboxInput(attrs={'class': 'advanced_button'}))
-    retirement_year = IntegerField(
-        widget=TextInput(attrs={'class': 'year_input'}),
-        min_value=1900)
-    withdrawal = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    utility_join_required = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=1)
-    utility_join_desired = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    risk_tolerance = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}))
-    vw_amount = BooleanField(required=False)
-    advanced_market = BooleanField(required=False,
-        widget=CheckboxInput(attrs={'class': 'advanced_button'}))
-    class_stocks = BooleanField(required=False)
-    class_bonds = BooleanField(required=False)
-    class_eafe = BooleanField(required=False)
-    class_ff_bl = BooleanField(required=False)
-    class_ff_bm = BooleanField(required=False)
-    class_ff_bh = BooleanField(required=False)
-    class_ff_sl = BooleanField(required=False)
-    class_ff_sm = BooleanField(required=False)
-    class_ff_sh = BooleanField(required=False)
-    class_reits_e = BooleanField(required=False)
-    class_reits_m = BooleanField(required=False)
-    class_baa = BooleanField(required=False)
-    class_aaa = BooleanField(required=False)
-    class_t10yr = BooleanField(required=False)
-    class_t1yr = BooleanField(required=False)
-    class_t1mo = BooleanField(required=False)
-    class_tips10yr = BooleanField(required=False)
-    class_gold = BooleanField(required=False)
-    class_risk_free = BooleanField(required=False)
-    ret_risk_free_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}))
-    generate_start_year = IntegerField(
-        widget=TextInput(attrs={'class': 'year_input'}))
-    generate_end_year = IntegerField(
-        widget=TextInput(attrs={'class': 'year_input'}))
-    validate_start_year = IntegerField(
-        widget=TextInput(attrs={'class': 'year_input'}))
-    validate_end_year = IntegerField(
-        widget=TextInput(attrs={'class': 'year_input'}))
-    ret_equity_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}))
-    ret_bonds_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}))
-    expense_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=0)
-    neg_validate_all_adjust_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}))
-    validate_equity_vol_adjust_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=0)
-    inherit = BooleanField(required=False)
-    utility_inherit_years = DecimalField(
-        widget=TextInput(attrs={'class': 'small_numeric_input'}),
-        min_value=0)
-    utility_dead_limit_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=0,
-        max_value=100)
-    utility_bequest_consume = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    advanced_well_being = BooleanField(required=False,
-        widget=CheckboxInput(attrs={'class': 'advanced_button'}))
-    consume_discount_rate_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=0)
-    upside_discount_rate_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=0)
-    utility_method = ChoiceField(
-        choices=(('floor_plus_upside', ''), ('ce', ''), ('slope', ''), ('eta', ''), ('alpha', '')))
-    utility_join_slope_ratio_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}),
-        min_value=0,
-        max_value=100)
-    utility_eta_1 = DecimalField(
-        widget=TextInput(attrs={'class': 'small_numeric_input'}),
-        min_value=0,
-        max_value=50)
-    utility_eta_2 = DecimalField(
-        widget=TextInput(attrs={'class': 'small_numeric_input'}),
-        min_value=0,
-        max_value=8) # 10 fails due to fp rounding and inverse_utility.
-    utility_ce = DecimalField(
-        widget=TextInput(attrs={'class': 'small_numeric_input'}),
-        min_value=Decimal('1.02'), # 1.01 fails.
-        max_value=Decimal('1.5'))
-    utility_slope_double_withdrawal = DecimalField(
-        widget=TextInput(attrs={'class': 'small_numeric_input'}),
-        min_value=1,
-        max_value=1e10) # 1e20 fails.
-    utility_eta = DecimalField(
-        widget=TextInput(attrs={'class': 'small_numeric_input'}),
-        min_value=0,
-        max_value=50) # 100 fails.
-    utility_alpha = DecimalField(
-        widget=TextInput(attrs={'class': 'large_numeric_input'}),
-        min_value=0,
-        max_value=100) # 1000 fails.
-
-    def coppa(sel, dob):
-        if dob == None:
-            return None
-        if isinstance(dob, int):
-            age = dob
-        else:
-            now_year = datetime.utcnow().timetuple().tm_year
-            age = now_year - dob.tm_year
-            dob = strftime('%Y-%m-%d', dob) # Ensure can be serailized.
-        if age <= 13:
-            raise ValidationError('Children under 13 prohibited as per COPPA.')
-        return dob
-
-    def clean_dob(self):
-        return self.coppa(self.cleaned_data['dob'])
-
-    def clean_sex2(self):
-        sex2 = self.cleaned_data['sex2']
-        if sex2 == '':
-            return None
-        else:
-            return sex2
-
-    def clean_dob2(self):
-        return self.coppa(self.cleaned_data['dob2'])
-
-    def clean(self):
-        cleaned_data = super(ScenarioBaseForm, self).clean()
-        if self._errors:
-            return cleaned_data
-        #if self._readonly:
-        #    for field in self.readonly_fields:
-        #        cleaned_data[field] = default_params[field]
-        sex2 = cleaned_data.get('sex2')
-        dob2 = cleaned_data.get('dob2')
-        if sex2 == None and dob2 != None or sex2 != None and dob2 == None:
-            raise ValidationError('Invalid spouse/partner.')
-        if cleaned_data['utility_join_desired'] < Decimal('0.002') * cleaned_data['utility_join_required']:
-            # Prevent singular matrix when solve in UtilityJoinSlope.java.
-            raise ValidationError('Desired consumption too small. Increase desired consumption.')
-        if cleaned_data['withdrawal'] == 0:
-            raise ValidationError('Zero annual retirement withdrawal amount')
-        if cleaned_data['inherit'] and cleaned_data['utility_method'] == 'floor_plus_upside' and cleaned_data['utility_eta_2'] <= 1:
-            raise ValidationError('Bequest requires well-being coefficient of relative risk aversion >= 1.')
-        # Don't worry about other utility methods, unlikely to have a coefficient <= 1; bequest will just be ignored.
-        classes = sum(int(cleaned_data[asset_class]) for asset_class in all_asset_classes())
-        if classes < 2:
-            raise ValidationError('Must select at least two asset classes to analyze.')
-        too_early = asset_class_names(too_early_for_asset_classes(cleaned_data, cleaned_data['generate_start_year']))
-        if too_early:
-            raise ValidationError('No data available for analysis start year - deselect ' + ', '.join(too_early) + ', or edit analysis start year in market parameters.')
-        too_late = asset_class_names(too_late_for_asset_classes(cleaned_data, cleaned_data['generate_end_year']))
-        if too_late:
-            raise ValidationError('No data available for analysis end year - deselect ' + ', '.join(too_late) + ', or edit analysis end year in market parameters.')
-        if cleaned_data['generate_end_year'] - cleaned_data['generate_start_year'] + 1 < 40:
-            raise ValidationError('Too little analysis data available - edit analysis period in market parameters.')
-        too_early = asset_class_names(too_early_for_asset_classes(cleaned_data, cleaned_data['validate_start_year']))
-        if too_early:
-            raise ValidationError('No data available for simulation start year - deselect ' + ', '.join(too_early) + ', or edit simulation start year in market parameters.')
-        too_late = asset_class_names(too_late_for_asset_classes(cleaned_data, cleaned_data['validate_end_year']))
-        if too_late:
-            raise ValidationError('No data available for simulation end year - deselect ' + ', '.join(too_late) + ', or edit simulation end year in market parameters.')
-        if cleaned_data['validate_end_year'] - cleaned_data['validate_start_year'] + 1 < 40:
-            raise ValidationError('Too little simulation data available - edit simulation period in market parameters.')
-        # Require a minimal defined benefit to avoid negative infinities.
-        if cleaned_data['defined_benefit_social_security'] == 0 and cleaned_data['defined_benefit_pensions'] == 0 and cleaned_data['defined_benefit_fixed_annuities'] == 0:
-            raise ValidationError('You have no Social Security or other guaranteed income.')
-        if cleaned_data['utility_inherit_years'] <= 0:
-            raise ValidationError('Bequest share parameter must be positive.')
-        if cleaned_data['utility_method'] == 'floor_plus_upside' and cleaned_data['upside_discount_rate_pct'] < cleaned_data['consume_discount_rate_pct']:
-            raise ValidationError('Upside discount rate is less than consumption and bequest discount rate')
-        return cleaned_data
-
-class ScenarioAaForm(ScenarioBaseForm):
-    p_traditional_iras = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    p_roth_iras = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    p = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-      # No autofocus.  Would interfere with start mega_form.
-    contribution = DecimalField(
-        widget=TextInput(attrs={'class': 'p_input'}),
-        min_value=0)
-    contribution_growth_pct = DecimalField(
-        widget=TextInput(attrs={'class': 'percent_input'}))
-
-def check_retirement_year(cleaned_data):
-    dob = cleaned_data.get('dob')
-    dob2 = cleaned_data.get('dob2')
-    retirement_year = cleaned_data.get('retirement_year')
-    now_year = datetime.utcnow().timetuple().tm_year
-    if isinstance(dob, int):
-        retirement_age = dob + retirement_year - now_year
-    else:
-        dob = strptime(dob, '%Y-%m-%d')
-        retirement_age = retirement_year - dob.tm_year
-    if retirement_age >= 100:
-        raise ValidationError('Too old for retirement year.')
-    if dob2 == None:
-        pass
-    else:
-        if isinstance(dob2, int):
-            retirement_age = dob2 + retirement_year - now_year
-        else:
-            dob2 = strptime(dob2, '%Y-%m-%d')
-            retirement_age = retirement_year - dob2.tm_year
-        if retirement_age >= 100:
-            raise ValidationError('Spouse/partner too old for retirement year.')
-
-class ScenarioNumberForm(ScenarioBaseForm):
-
-    def clean(self):
-        cleaned_data = super(ScenarioNumberForm, self).clean()
-        if self._errors:
-            return cleaned_data
-        check_retirement_year(cleaned_data)
-        return cleaned_data
-
-    retirement_number = BooleanField(widget=HiddenInput())
-
-class ScenarioEditForm(ScenarioAaForm):
-
-    def clean(self):
-        cleaned_data = super(ScenarioEditForm, self).clean()
-        if self._errors:
-            return cleaned_data
-        check_retirement_year(cleaned_data)
-        return cleaned_data
-
-    retirement_number = BooleanField(required=False)
 
 class LeForm(Form):
 
@@ -438,7 +169,7 @@ class SpiaForm(Form):
         required=False)
     joint_type = ChoiceField(
         choices=(('contingent', 'Contingent. Payout reduced on death of either annuitant.'), ('survivor', 'Survivor. Payout reduced only on death of primary annuitant.'), ),
-        widget=RadioSelect(renderer=VerticalRadioRenderer))
+        widget=VerticalRadioRenderer)
     joint_payout_percent = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
@@ -446,7 +177,7 @@ class SpiaForm(Form):
 
     table = ChoiceField(
         choices=(('iam2012-basic', 'Comparable to the average annuitant of the same sex and age.'), ('ssa-cohort', 'Comparable to the general population of the same sex and age.'), ('adjust', 'Adjust life table to match specified life expectancy.'), ),
-        widget=RadioSelect(renderer=VerticalRadioRenderer))
+        widget=VerticalRadioRenderer)
     ae = ChoiceField(
         choices = (('none', 'no'), ('aer2005_08-summary', 'summary'), ('aer2005_08-full', 'age specific'), ))
     le_set = DecimalField(
@@ -558,8 +289,6 @@ class AllocBaseForm(Form):
             if cleaned_data['social_security']:
                 if not cleaned_data['inflation_indexed']:
                     raise ValidationError('Social Security must be inflation indexed')
-                if cleaned_data['period_certain'] != 0:
-                    raise ValidationError('Social Security period certain must be 0')
                 if cleaned_data['joint_type'] == 'contingent':
                     raise ValidationError('Social Security death benefit must be survivor')
             return cleaned_data
@@ -568,7 +297,6 @@ class AllocBaseForm(Form):
             super(AllocBaseForm.DbForm, self).__init__(*args, data=data, **kwargs)
             if self.data[self.prefix + '-social_security'] == 'True' if self.is_bound else self.initial['social_security']:
                 self.fields['inflation_indexed'].widget.attrs['readonly'] = True
-                self.fields['period_certain'].widget.attrs['readonly'] = True
                 self.fields['joint_type'].widget.attrs['readonly'] = True
 
         social_security = BooleanField(
@@ -583,7 +311,7 @@ class AllocBaseForm(Form):
             required=False)
         who = ChoiceField(
             choices = (('self', ''), ('spouse', '')),
-            widget=RadioSelect(renderer=HorizontalRadioRenderer))
+            widget=HorizontalRadioRenderer)
         age = DecimalField(
             widget=TextInput(attrs={'class': 'small_numeric_input'}),
             min_value=0,
@@ -592,12 +320,9 @@ class AllocBaseForm(Form):
             widget=TextInput(attrs={'class': 'p_input'}),
             min_value=0)
         inflation_indexed = BooleanField(required=False)
-        period_certain = DecimalField(
-            widget=TextInput(attrs={'class': 'small_numeric_input'}),
-            min_value=0)
         joint_type = ChoiceField(
             choices=(('contingent', ''), ('survivor', ''), ),
-            widget=RadioSelect(renderer=HorizontalRadioRenderer))
+            widget=HorizontalRadioRenderer)
         joint_payout_pct = DecimalField(
             widget=TextInput(attrs={'class': 'percent_input'}),
             min_value=0,

@@ -3,7 +3,7 @@
 {% comment %}
 
 AACalc - Asset Allocation Calculator
-Copyright (C) 2009, 2011-2017 Gordon Irlam
+Copyright (C) 2009, 2011-2018 Gordon Irlam
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -196,7 +196,6 @@ Existing defined benefits:
 <td> Starting age </td>
 <td> Annual amount </td>
 <td> Inflation indexed </td>
-<td> Period certain </td>
 <td> Death benefit <br /> Contingent/survivor payout </td>
 </tr>
 {% for db in alloc_form.db %}
@@ -218,7 +217,6 @@ Social Security
 <td> {{ db.age }} </td>
 <td> {{ db.amount }} </td>
 <td> {{ db.inflation_indexed }} </td>
-<td> {{ db.period_certain }} </td>
 <td> {{ db.joint_type }} {{ db.joint_payout_pct }}% </td>
 </tr>
 <tr>
@@ -235,7 +233,6 @@ Social Security
 {{ db.age.errors }}
 {{ db.amount.errors }}
 {{ db.inflation_indexed.errors }}
-{{ db.period_certain.errors }}
 {{ db.joint_type.errors }}
 {{ db.joint_payout_pct.errors }}
 {{ db.non_field_errors }}
@@ -249,7 +246,6 @@ Starting age is that of the owner. Annual amount is in current inflation-adjuste
 after tax dollars, not future dollars. For income annuities, which become fully
 taxable after a certain age, enter the expected average after tax amount.
 Payouts last at least as long as the owner's life.
-Period certain: the number of years for which payments are guaranteed, even if the owner dies.
 Contingent: payout reduced on death of either party.
 Survivor: payout reduced only on death of the owner.
 </td>
