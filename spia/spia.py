@@ -1185,7 +1185,7 @@ class LifeTable(object):
 
                 alpha + exp((age - m) / b) / b
 
-            'live': Probability of death is zero until 'death_age' is
+            'fixed': Probability of death is zero until 'death_age' is
             reached.
 
         'sex' should be "male" or "female".
@@ -1221,7 +1221,7 @@ class LifeTable(object):
         '''
 
         self.table = table
-        assert(table in ('live', 'iam2012-basic', 'ssa-cohort', 'ssa-period', 'gompertz-makeham'))
+        assert(table in ('fixed', 'iam2012-basic', 'ssa-cohort', 'ssa-period', 'gompertz-makeham'))
         self.sex = sex
         self.age = age
         self.death_age = death_age
@@ -1300,7 +1300,7 @@ class LifeTable(object):
         return ssa2010_q[self.sex][age]
 
     def _q_int(self, year, age, contract_age):
-        if self.table == 'live':
+        if self.table == 'fixed':
             q = 0
         elif self.table == 'iam2012-basic':
             q = self._iam_q(year, age, contract_age)
@@ -1315,8 +1315,8 @@ class LifeTable(object):
         '''Return the probability of dying in the next year at possibly
         fractional age, 'age'.
 
-        'year' specifies the possibly fractional Julian claendar year
-        at which to compute the q value. It is only required for
+        'year' specifies the possibly fractional Gregorian calendar
+        year at which to compute the q value. It is only required for
         cohort life tables.
 
         'contract_age' specifies the age of any annuity contract in
@@ -1329,16 +1329,12 @@ class LifeTable(object):
             return 1
         if self.table == 'gompertz-makeham':
             return max(0, min(self.alpha + math.exp((age - self.m) / self.b) / self.b, 1));
-        age_nearest = (self.table in ('iam2012-basic', 'ssa-cohort', 'ssa-period'))
         if self.interpolate_q:
-            if not age_nearest:
-                age -= 0.5
             fract = age % 1
             age = int(age)
             return (1 - fract) * self._q_int(year, age, contract_age) + fract * self._q_int(year, age + 1, contract_age)
         else:
-            if age_nearest:
-                age += 0.5
+            age += 0.5
             age = int(age)
             return self._q_int(year, age, contract_age)
 
