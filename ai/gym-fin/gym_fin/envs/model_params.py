@@ -60,7 +60,9 @@ class ModelParams(object):
 
         self._param('life-table', 'ssa-cohort', tp = string_type) # Life expectancy table to use. See spia module for possible values.
         self._param('life-table-date', '2020-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
-        self._param('life-expectancy-additional', 0) # Multiplicatively adjust all life table q values so as to add this many years to the life expectancy.
+        self._param('life-expectancy-additional', 0)
+            # Multiplicatively adjust all life table q values so as to add this many years to the life expectancy.
+            # Ignored if life_table is fixed.
         self._param('sex', 'female', tp = string_type) # Helps determines life expectancy table.
         self._param('age-start', 65) # First age to model.
         self._param('age-end', 120) # Model done when reaches this age.
@@ -74,23 +76,17 @@ class ModelParams(object):
 
         # Market parameters are based on World averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
             # For equities the reported return is 6.5% +/- 17.4% (geometric 5.1%).
-            # However the U.S. market is presently widely considered to be somewhat overvalued. To get a handle on this we examined P/E ratios.
-            # For 1950-2017 the harmonic mean S&P 500 P/E ratio (not CAPE) was 14.85 (based on Shiller's data).
-            # This compares to a TTM P/E of 25.47 at the end of 2017, and a 12 month forward P/E of 16.0 (FactSet May 4, 2018).
-            # Thus two reasonable estimates are the market is 10% and 70% overvalued.
-            # For pedagogical purposes we suppose the maket will correct by permanently exhibiting a 2.0% lower return than it has historically.
-            # This has the desirable pedagogical side effect of resulting in non-100% stock asset allocations for reasonable scenarios with a gamma of 3.
             # For the risk free rate there isn't a reported World average. The reported real return of U.S. Treasury bills is 0.9% +/- 0.4% (geometric 0.8%).
-            # We use a fixed risk free rate equal to the geometric mean so we can benchmark against Merton's portfolio problem.
+            # We use a fixed risk free rate equal to the geometric mean without volatility so we can benchmark against Merton's portfolio problem.
         self._param('risk-free-return', 0.008) # Annual real return for risk free asset class.
-        self._param('stocks-return', 0.045) # Annual real return for stocks.
+        self._param('stocks-return', 0.065) # Annual real return for stocks.
         self._param('stocks-volatility', 0.174) # Annual real volatility for stocks.
 
     def set_params(self, dict_args):
 
         self.params = dict_args
 
-    def dump_params(self):
+    def dump_params(self, *, training = True, evaluate = True):
 
         print('Parameters:')
         for param in sorted(self.params):
@@ -124,6 +120,7 @@ class ModelParams(object):
     def remaining_params(self):
 
         params = dict(self.params)
+        del params['config_file']
 
         for param in self.param_names:
             del params['master_' + param]

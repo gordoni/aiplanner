@@ -11,8 +11,11 @@
 # PURPOSE.
 
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
-EVAL_TIMESTEPS=${EVAL_TIMESTEPS:-4000000} # 4000000 is observed to result in an approximately 0.1% CE standard error.
+if [ -n "$EVAL_NUM_TIMESTEPS" ]; then
+    $EXTRA_EVAL_ARGS="--eval-num-timesteps $EVAL_NUM_TIMESTEPS"
+fi
 
+EXTRA_ARGS=$*
 AI_DIR=$AIPLANNER_HOME/ai
 PYTHONPATH_ADD=$AI_DIR/baselines:$AI_DIR/gym-fin:$AIPLANNER_HOME/spia
 if [ -z "$PYTHONPATH" ]; then
@@ -20,6 +23,7 @@ if [ -z "$PYTHONPATH" ]; then
 else
     export PYTHONPATH=$PYTHONPATH_ADD:$PYTHONPATH
 fi
+CONFIG_FILE=$AI_DIR/validation/aiplanner-scenario.conf
 
 validate () {
 
@@ -29,7 +33,7 @@ validate () {
 
     MODEL_DIR=run.$MODEL_NAME.$MODE
     mkdir -p $MODEL_DIR
-    $AI_DIR/run_model.py --$MODE $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS 2>&1 | tee $MODEL_DIR/eval.log
+    $AI_DIR/run_model.py -c $CONFIG_FILE --$MODE $ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS 2>&1 | tee $MODEL_DIR/eval.log
 }
 
 validate fixed_30-gi_0-p_500000 merton '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-p-notax=500000'

@@ -16,6 +16,7 @@
 Helpers for scripts like train_ppo1.py.
 """
 
+import argparse
 import os
 
 from baselines import logger
@@ -35,12 +36,47 @@ def make_fin_env(action_space_unbounded = False, training = False, **kwargs):
     env = Monitor(env, filename, allow_early_resets=not training, info_keywords = ('ce', ))
     return env
 
+def _config_parser():
+
+    config_parser = argparse.ArgumentParser(add_help = False)
+    config_parser.add_argument('-c', '--config-file',)
+
+    return config_parser
+
 def arg_parser():
 
-    import argparse
-    return argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class = argparse.ArgumentDefaultsHelpFormatter, parents = [_config_parser()])
 
-def fin_arg_parse(parser, training = True, evaluate = True):
+    return parser
+
+def parse_args(parser, *, training = True, evaluate = True):
+
+    config_parser = _config_parser()
+
+    args, _ = config_parser.parse_known_args()
+
+    if args.config_file:
+        with open(args.config_file) as f:
+            config_str = f.read()
+        config = {}
+        exec(config_str, None, config)
+        # Hack to ensure config file doesn't contain any misspelled parameters.
+        defaults = {}
+        for action in parser._actions:
+            if action.dest in config:
+                defaults[action.dest] = config[action.dest]
+                del config[action.dest]
+        config = {param: value for param, value in config.items()
+            if (training if param.startswith('train_') else (evaluate if param.startswith('eval_') else True))}
+        if config:
+            parser.error('Unrecognised configuration file parameters: ' + ','.join(config.keys()))
+        parser.set_defaults(**defaults)
+
+    args = parser.parse_args()
+
+    return args
+
+def fin_arg_parse(parser, *, training = True, evaluate = True):
 
     if training:
         parser.add_argument('--train-seed', help = 'RNG seed', type = int, default = 0)
@@ -59,7 +95,7 @@ def fin_arg_parse(parser, training = True, evaluate = True):
 
     model_params = ModelParams()
     model_params.add_arguments(parser, training = training, evaluate = evaluate)
-    args = parser.parse_args()
+    args = parse_args(parser, training = training, evaluate = evaluate)
     dict_args = vars(args)
     model_params.set_params(dict_args)
     model_params.dump_params()

@@ -12,7 +12,6 @@
 
 # Code based on baselines/ddpg/main.py.
 
-import argparse
 import time
 import os
 import logging
@@ -26,6 +25,7 @@ from baselines.ddpg.models import Actor, Critic
 from baselines.ddpg.memory import Memory
 from baselines.ddpg.noise import *
 
+from gym_fin.common.cmd_util import arg_parser, parse_args
 from gym_fin.envs import FinEnv, ModelParams
 import numpy as np
 import tensorflow as tf
@@ -96,7 +96,7 @@ def run(training_model_params, eval_model_params, *, seed, noise_type, layer_nor
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparser()
 
     boolean_flag(parser, 'eval-render', default=False)
     boolean_flag(parser, 'layer-norm', default=True)
@@ -122,7 +122,7 @@ def parse_args():
     boolean_flag(parser, 'evaluation', default=False)
     model_params = ModelParams()
     model_params.add_arguments(parser)
-    args = parser.parse_args()
+    args = parse_args(parser)
     # we don't directly specify timesteps for this script, so make sure that if we do specify them
     # they agree with the other parameters
     if args.num_timesteps is not None:

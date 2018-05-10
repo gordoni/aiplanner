@@ -13,7 +13,9 @@
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 PARALLEL=${PARALLEL:-True}  # Set to "False" to run seeds sequentially rather than in parallel.
 SEEDS=${SEEDS:-5}
-EVAL_TIMESTEPS=${EVAL_TIMESTEPS:-4000000} # 4000000 is observed to result in an approximately 0.1% CE standard error.
+if [ -n "$EVAL_NUM_TIMESTEPS" ]; then
+    $EXTRA_EVAL_ARGS="--eval-num-timesteps $EVAL_NUM_TIMESTEPS"
+fi
 
 EXTRA_ARGS=$*
 AI_DIR=$AIPLANNER_HOME/ai
@@ -23,6 +25,7 @@ if [ -z "$PYTHONPATH" ]; then
 else
     export PYTHONPATH=$PYTHONPATH_ADD:$PYTHONPATH
 fi
+CONFIG_FILE=$AI_DIR/validation/aiplanner-scenario.conf
 
 if [ "$PARALLEL" = True ]; then
     VALIDATE=validate_parallel
@@ -41,9 +44,9 @@ validate () {
     while [ $SEED -lt $SEEDS ]; do
         MODEL_DIR=run.$MODEL_NAME-seed_$SEED.tf
         TEMPFILE=`tempfile -p valid`
-        $AI_DIR/train_ppo1.py --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE
+        $AI_DIR/train_ppo1.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE
         mv $TEMPFILE $MODEL_DIR/train.log
-        $AI_DIR/run_model.py --model-dir=$MODEL_DIR $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS $EVAL_ARGS $EXTRA_ARGS 2>&1 | tee $MODEL_DIR/eval.log
+        $AI_DIR/run_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EVAL_ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS 2>&1 | tee $MODEL_DIR/eval.log
         SEED=`expr $SEED + 1`
     done
 }
@@ -61,7 +64,7 @@ validate_parallel () {
         # Output directory must not exist when tensorflow save() is called to save the model hence we can't write the log within it; instead log to a tempfile.
         TEMPFILE=`tempfile -p valid`
         TEMPFILES[$SEED]=$TEMPFILE
-        $AI_DIR/train_ppo1.py --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS $EXTRA_ARGS > $TEMPFILE 2>&1 &
+        $AI_DIR/train_ppo1.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS $EXTRA_ARGS > $TEMPFILE 2>&1 &
         SEED=`expr $SEED + 1`
     done
     wait
@@ -70,15 +73,15 @@ validate_parallel () {
     while [ $SEED -lt $SEEDS ]; do
         MODEL_DIR=run.$MODEL_NAME-seed_$SEED.tf
         mv ${TEMPFILES[$SEED]} $MODEL_DIR/train.log
-        $AI_DIR/run_model.py --model-dir=$MODEL_DIR $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS $EVAL_ARGS $EXTRA_ARGS > $MODEL_DIR/eval.log 2>&1 &
+        $AI_DIR/run_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EVAL_ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS > $MODEL_DIR/eval.log 2>&1 &
         SEED=`expr $SEED + 1`
     done
     wait
 }
 
-$VALIDATE fixed_30-gi_0-p_500000 '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-p-notax=500000'
-$VALIDATE fixed_30-gi_16000-p_500000 '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=16000 --master-p-notax=500000'
-$VALIDATE ssa_plus_3_female-gi_16000-p_500000 '--master-life-expectancy-additional=3 --master-guaranteed-income=16000 --master-p-notax=500000'
+#$VALIDATE fixed_30-gi_0-p_500000 '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-p-notax=500000'
+#$VALIDATE fixed_30-gi_16000-p_500000 '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=16000 --master-p-notax=500000'
+$VALIDATE ssa_plus_3_female-gi_16000-p_500000 '--master-guaranteed-income=16000 --master-p-notax=500000'
 
 # Notes on tweaks that have been tried out:
 #
