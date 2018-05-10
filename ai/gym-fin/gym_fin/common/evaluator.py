@@ -51,8 +51,6 @@ class Evaluator(object):
 
             rewards = []
             obs = self.eval_env.reset()
-            observation = self.eval_env.unwrapped.decode_observation(obs)
-            life_expectancy = observation['life_expectancy']
             eprew = []
             s = 0
             while True:
@@ -72,7 +70,8 @@ class Evaluator(object):
                         break
 
             batchrew = sum(rewards)
-            rews = tuple(r / life_expectancy for r in rewards)
+            sum_alive = sum(self.eval_env.unwrapped.alive)
+            rews = tuple(r / sum_alive for r in rewards)
             rew = mean(rews)
             std = stdev(rews)
             stderr = std / sqrt(len(rews))

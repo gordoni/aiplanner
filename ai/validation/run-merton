@@ -32,5 +32,5 @@ validate () {
     $AI_DIR/run_model.py --$MODE $ARGS --eval-num-timesteps=$EVAL_TIMESTEPS 2>&1 | tee $MODEL_DIR/eval.log
 }
 
-validate fixed_30-gi_0-p_300000 merton '--master-guaranteed-income=0 --master-p-notax=300000'
-validate fixed_30-gi_0-p_300000 samuelson '--master-guaranteed-income=0 --master-p-notax=300000'
+validate fixed_30-gi_0-p_500000 merton '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-p-notax=500000'
+validate fixed_30-gi_0-p_500000 samuelson '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-p-notax=500000'

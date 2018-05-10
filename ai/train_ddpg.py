@@ -130,6 +130,7 @@ def parse_args():
     dict_args = vars(args)
     del dict_args['num_timesteps']
     model_params.set_params(dict_args)
+    model_params.dump_params()
     training_model_params = model_params.get_params(training = True)
     eval_model_params = model_params.get_params(training = False)
     dict_args = model_params.remaining_params()

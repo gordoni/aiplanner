@@ -39,7 +39,7 @@ class FinEnv(Env):
         next_year = datetime(start_date.year + 1, 1, 1)
         start_decimal_year = start_date.year + (start_date - this_year) / (next_year - this_year)
 
-        alive = []
+        alive = [1]
         _alive = 1
 
         y = 0
@@ -64,9 +64,17 @@ class FinEnv(Env):
                 alive.append(_alive)
                 a_y += self.params.time_period
 
-        life_expectancy = tuple((sum(alive[y:]) + 0.5) * self.params.time_period for y in range(len(alive)))
+        if self.params.life_table == 'fixed':
+            # Death occurs at start of age_end period.
+            alive.pop()
+            remainder = 1
+        else:
+            # Death occurs half way through each period.
+            remainder = 0.5
+        life_expectancy = [(sum(alive[y + 1:]) + remainder) / alive[y] * self.params.time_period for y in range(len(alive))]
+        life_expectancy.append(0)
 
-        return alive, life_expectancy
+        return tuple(alive), tuple(life_expectancy)
 
     def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
 
@@ -208,10 +216,10 @@ class FinEnv(Env):
 
         self.age += self.params.time_period
 
-        observation = self._observe()
-
         self.episode_utility_sum += utility
         self.episode_length += 1
+
+        observation = self._observe()
         done = self.episode_length >= len(self.alive)
         info = {}
         if done:

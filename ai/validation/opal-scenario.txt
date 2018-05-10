@@ -10,6 +10,7 @@
 
 sex = 'female'
 birth_year = 1955
+le_add = 3 # Investors tend to be in better health than the average retiree.
 
 start_age = 65
 retirement_age = 65
@@ -24,11 +25,8 @@ consume_discount_rate = 0
 
 asset_classes = ('synthetic', 'risk_free2')
 
-# Market parameters are World averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
-    # For equities the reported return is 6.5% +/- 17.4% (geometric 5.1%).
-    # For the risk free rate there isn't a reported World average. The reported real return of U.S. Treasury bills is 0.9% +/- 0.4% (geometric 0.8%).
-    # We use a fixed risk free rate equal to the geometric mean so we can benchmark against Merton's portfolio problem.
-synthetic_ret = 0.065
+# See justification in model_params.py.
+synthetic_ret = 0.045
 synthetic_vol = 0.174
 ret_risk_free2 = 0.008
 

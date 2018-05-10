@@ -36,16 +36,12 @@ def make_fin_env(action_space_unbounded = False, training = False, **kwargs):
     return env
 
 def arg_parser():
-    """
-    Create an empty argparse.ArgumentParser.
-    """
+
     import argparse
     return argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 def fin_arg_parse(parser, training = True, evaluate = True):
-    """
-    Create an argparse.ArgumentParser for run_fin.py.
-    """
+
     if training:
         parser.add_argument('--train-seed', help = 'RNG seed', type = int, default = 0)
         parser.add_argument('--train-num-timesteps', type = int, default = int(1e6))
@@ -57,14 +53,16 @@ def fin_arg_parse(parser, training = True, evaluate = True):
         parser.add_argument('--eval-seed', help = 'evaluation RNG seed', type = int, default = 0)
         parser.add_argument('--eval-num-timesteps', type = int, default = 1000000) # Per evaluation.
             # Above value is good for computing the true policy certainty equivalence to within perhaps 0.1%.
-            # A lower value such as 10000 may be more appropriate when performing inter-run comparisons, since the evaluation episodes are identical for each run.
+            # A lower value such as 10000 may be more appropriate when performing inter-run comparisons, as the evaluation episodes are identical for each run.
         boolean_flag(parser, 'eval-render', default = False)
     parser.add_argument('--model-dir', default = 'aiplanner.tf')
+
     model_params = ModelParams()
     model_params.add_arguments(parser, training = training, evaluate = evaluate)
     args = parser.parse_args()
     dict_args = vars(args)
     model_params.set_params(dict_args)
+    model_params.dump_params()
     training_model_params = model_params.get_params(training = True) if training else {}
     eval_model_params = model_params.get_params(training = False) if evaluate else {}
     dict_args = model_params.remaining_params()
