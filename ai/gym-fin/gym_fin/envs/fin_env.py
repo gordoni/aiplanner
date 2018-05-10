@@ -65,8 +65,7 @@ class FinEnv(Env):
                 a_y += self.params.time_period
 
         if self.params.life_table == 'fixed':
-            # Death occurs at start of age_end period.
-            alive.pop()
+            # Death occurs at end of death_age period.
             remainder = 1
         else:
             # Death occurs half way through each period.
@@ -91,8 +90,9 @@ class FinEnv(Env):
                                      dtype = 'float32')
 
         le_add = 0 if self.params.life_table == 'fixed' else self.params.life_expectancy_additional
+        death_age = self.params.age_end - self.params.time_period
         life_table = LifeTable(self.params.life_table, self.params.sex, self.params.age_start,
-            death_age = self.params.age_end, le_add = le_add, date_str = self.params.life_table_date)
+            death_age = death_age, le_add = le_add, date_str = self.params.life_table_date)
         self.alive, self.life_expectancy = self._compute_vital_stats(life_table, self.params.age_start)
         self.age_start = self.params.age_start
         self.risk_free = Returns(self.params.risk_free_return, 0, self.params.time_period)
@@ -169,7 +169,7 @@ class FinEnv(Env):
         # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for them.
         # This will be to the detriment of the fit for more likely reward values.
         # For PPO the policy network never fully retrains after the initial poor fit, and the results would be sub-optimal.
-        consume_ceil = 2 / self.life_expectancy[self.episode_length]
+        consume_ceil = 2 * (self.p_notax / self.life_expectancy[self.episode_length] + self.guaranteed_income) / self._p_income()
             # Set:
             #     consume_ceil = 1 / self.params.time_period
             # to explore the full range of possible consume_fraction values.
@@ -186,6 +186,7 @@ class FinEnv(Env):
 
     def consume_rate(self, consume_fraction):
 
+        # Sanity check.
         consume_fraction_period = consume_fraction * self.params.time_period
         assert 0 <= consume_fraction_period <= 1
 

@@ -12,7 +12,7 @@
 
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 if [ -n "$EVAL_NUM_TIMESTEPS" ]; then
-    $EXTRA_EVAL_ARGS="--eval-num-timesteps $EVAL_NUM_TIMESTEPS"
+    EXTRA_EVAL_ARGS="--eval-num-timesteps $EVAL_NUM_TIMESTEPS"
 fi
 
 EXTRA_ARGS=$*

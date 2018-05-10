@@ -70,8 +70,9 @@ class Evaluator(object):
                         break
 
             batchrew = sum(rewards)
-            sum_alive = sum(self.eval_env.unwrapped.alive)
-            rews = tuple(r / sum_alive for r in rewards)
+            env = self.eval_env.unwrapped
+            sum_alive = sum(env.alive)
+            rews = tuple(r / (sum_alive * env.params.time_period) for r in rewards)
             rew = mean(rews)
             std = stdev(rews)
             stderr = std / sqrt(len(rews))

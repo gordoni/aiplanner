@@ -14,7 +14,7 @@ AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 PARALLEL=${PARALLEL:-True}  # Set to "False" to run seeds sequentially rather than in parallel.
 SEEDS=${SEEDS:-5}
 if [ -n "$EVAL_NUM_TIMESTEPS" ]; then
-    $EXTRA_EVAL_ARGS="--eval-num-timesteps $EVAL_NUM_TIMESTEPS"
+    EXTRA_EVAL_ARGS="--eval-num-timesteps $EVAL_NUM_TIMESTEPS"
 fi
 
 EXTRA_ARGS=$*
