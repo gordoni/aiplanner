@@ -95,15 +95,6 @@ class FinEnv(Env):
         self.alive, self.life_expectancy = self._compute_vital_stats(self.params.life_table, self.params.sex, self.params.age_start, self.params.age_end,
             self.params.life_expectancy_additional, self.params.life_table_date, self.params.time_period)
         self.age_start = self.params.age_start
-        self.risk_free = Returns(self.params.risk_free_return, 0, self.params.time_period)
-        self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.time_period)
-        self.bonds = Returns(self.params.bonds_return, self.params.bonds_volatility, self.params.time_period)
-
-        if self.params.verbose:
-            print('Asset classes:')
-            print('    risk_free - mu:', round(self.risk_free.mu, 4))
-            print('    stocks - mu, sigma:', round(self.stocks.mu, 4), round(self.stocks.sigma, 4))
-            print('    bonds - mu, sigma:', round(self.bonds.mu, 4), round(self.bonds.sigma, 4))
 
         self.utility = Utility(self.params.gamma, self.params.consume_floor)
 
@@ -134,6 +125,13 @@ class FinEnv(Env):
         if not found:
             raise Exception('Expected consumption falls outside model training range.')
 
+        self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility,
+            self.params.stocks_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
+        self.bonds = Returns(self.params.bonds_return, self.params.bonds_volatility,
+            self.params.bonds_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
+        self.bills = Returns(self.params.bills_return, self.params.bills_volatility,
+            self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
+
         self.prev_asset_allocation = None
         self.prev_consume_annual = None
         self.prev_reward = None
@@ -145,9 +143,9 @@ class FinEnv(Env):
 
     def encode_direct_action(self, consume_fraction, stocks_allocation, bonds_allocation):
 
-        risk_free_allocation = 1 - (stocks_allocation + bonds_allocation)
+        bills_allocation = 1 - (stocks_allocation + bonds_allocation)
 
-        return (consume_fraction, (stocks_allocation, bonds_allocation, risk_free_allocation))
+        return (consume_fraction, (stocks_allocation, bonds_allocation, bills_allocation))
 
     def decode_action(self, action):
 
@@ -185,9 +183,9 @@ class FinEnv(Env):
             bonds_allocation = (1 - stocks_allocation) * (bonds_action + 1) / 2
         else:
             bonds_allocation = 0
-        risk_free_allocation = 1 - (stocks_allocation + bonds_allocation)
+        bills_allocation = 1 - (stocks_allocation + bonds_allocation)
 
-        return (consume_fraction, (stocks_allocation, bonds_allocation, risk_free_allocation))
+        return (consume_fraction, (stocks_allocation, bonds_allocation, bills_allocation))
 
     def _p_income(self):
 
@@ -217,8 +215,8 @@ class FinEnv(Env):
             assert p / self.p_notax > -1e-15
             p = 0
 
-        stocks_allocation, bonds_allocation, risk_free_allocation = asset_allocation
-        ret = stocks_allocation * self.stocks.sample() + bonds_allocation * self.bonds.sample() + risk_free_allocation * self.risk_free.sample()
+        stocks_allocation, bonds_allocation, bills_allocation = asset_allocation
+        ret = stocks_allocation * self.stocks.sample() + bonds_allocation * self.bonds.sample() + bills_allocation * self.bills.sample()
 
         self.p_notax = p * ret
 
