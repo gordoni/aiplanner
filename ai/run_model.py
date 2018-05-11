@@ -34,8 +34,8 @@ def pi_merton(env, obs, continuous_time = False):
     sigma = env.stocks.sigma
     r = env.risk_free.mu
     alpha = mu + sigma ** 2 / 2
-    asset_allocation = (alpha - r) / (sigma ** 2 * gamma)
-    nu = ((gamma - 1) / gamma) * ((alpha - r) * asset_allocation / 2 + r)
+    stocks_allocation = (alpha - r) / (sigma ** 2 * gamma)
+    nu = ((gamma - 1) / gamma) * ((alpha - r) * stocks_allocation / 2 + r)
     if nu == 0:
         consume_fraction = 1 / life_expectancy
     elif continuous_time:
@@ -46,7 +46,7 @@ def pi_merton(env, obs, continuous_time = False):
         a = exp(nu * env.params.time_period)
         t = ceil(life_expectancy / env.params.time_period) - 1
         consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / env.params.time_period
-    return consume_fraction, asset_allocation
+    return consume_fraction, stocks_allocation
 
 def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, eval_render, model_dir):
 
@@ -62,8 +62,9 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
 
     if merton_or_samuelson:
 
-        consume_fraction, asset_allocation = pi_merton(env, obs, continuous_time = merton)
+        consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
         consume_annual = env.consume_rate(consume_fraction)
+        asset_allocation = (stocks_allocation, 0, 1 - stocks_allocation)
 
     else:
 
@@ -95,13 +96,13 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
 
         if merton or samuelson:
 
-            consume_fraction, asset_allocation = pi_merton(env, obs, continuous_time = merton)
+            consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
             observation = env.decode_observation(obs)
             life_expectancy = observation['life_expectancy']
             t = ceil(life_expectancy / env.params.time_period) - 1
             if t == 0:
                 consume_fraction = min(consume_fraction, 1 / env.params.time_period) # Bound may be exceeded in continuous time case.
-            return env.encode_direct_action(consume_fraction, asset_allocation)
+            return env.encode_direct_action(consume_fraction, stocks_allocation, 0)
 
         else:
 

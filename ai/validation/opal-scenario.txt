@@ -18,23 +18,33 @@ retirement_age = 65
 fixed_deceased_age = 95 # Applies when life_table is 'fixed_mortality'.
 
 defined_benefit = 16000 # Mean Social Secuity is $16,075 as of March, 2018 - https://www.ssa.gov/policy/docs/quickfacts/stat_snapshot/
-start_tp = NaN # Initial portfolio size must be overridden when invoked.
+start_tp = 500000
 
 utility_eta = 3.0
 consume_discount_rate = 0
 
-asset_classes = ('synthetic', 'risk_free2')
+asset_classes = ('synthetic', 'synthetic2', 'risk_free2')
 
-# See justification in model_params.py.
+# See justification in aiplanner-scenario.conf .
+ret_risk_free2 = 0.008
 synthetic_ret = 0.045
 synthetic_vol = 0.174
-ret_risk_free2 = 0.008
+synthetic2_ret = 0.024
+synthetic2_vol = 0.112
 
 # Produce 200 synthetic samples. Increasing beyond this doesn't effect generated CE.
 generate_start_year = 1
 validate_start_year = 1
 generate_end_year = 200
 validate_end_year = 200
+
+# By chance synthetic return pairs may be partially correlated, effecting the resulting metrics.
+# The following seed is observed to yield a correlation of -5.9e-3, and a covariance of -1.2e-4.
+# For this seed the effect should thus be minimal.
+generate_seed = 1
+validate_returns_seed = 1
+skip_corr = False
+skip_cov = Fasle
 
 # Parameters for Opal validation to work.
 ret_resample = None

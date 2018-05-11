@@ -84,7 +84,7 @@ class FinEnv(Env):
         self.direct_action = direct_action
         self.params = AttributeObject(kwargs)
 
-        self.action_space = Box(low = -1.0, high = 1.0, shape = (2,), dtype = 'float32') # consume_action, asset_allocation_action
+        self.action_space = Box(low = -1.0, high = 1.0, shape = (3,), dtype = 'float32') # consume_action, stocks_action, bonds_action
             # DDPG implementation assumes [-x, x] symmetric actions.
             # PPO1 implementation ignores size and assumes [-inf, inf] output.
         self.observation_space = Box(# life_expectancy, guaranteed_income, portfolio size
@@ -97,11 +97,13 @@ class FinEnv(Env):
         self.age_start = self.params.age_start
         self.risk_free = Returns(self.params.risk_free_return, 0, self.params.time_period)
         self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.time_period)
+        self.bonds = Returns(self.params.bonds_return, self.params.bonds_volatility, self.params.time_period)
 
         if self.params.verbose:
             print('Asset classes:')
             print('    risk_free - mu:', round(self.risk_free.mu, 4))
             print('    stocks - mu, sigma:', round(self.stocks.mu, 4), round(self.stocks.sigma, 4))
+            print('    bonds - mu, sigma:', round(self.bonds.mu, 4), round(self.bonds.sigma, 4))
 
         self.utility = Utility(self.params.gamma, self.params.consume_floor)
 
@@ -141,9 +143,11 @@ class FinEnv(Env):
 
         return self._observe()
 
-    def encode_direct_action(self, consume_fraction, asset_allocation):
+    def encode_direct_action(self, consume_fraction, stocks_allocation, bonds_allocation):
 
-        return (consume_fraction, asset_allocation)
+        risk_free_allocation = 1 - (stocks_allocation + bonds_allocation)
+
+        return (consume_fraction, (stocks_allocation, bonds_allocation, risk_free_allocation))
 
     def decode_action(self, action):
 
@@ -155,10 +159,10 @@ class FinEnv(Env):
         except AttributeError:
             pass
 
-        consume_action, asset_allocation_action = action
+        for a in action:
+            assert -1 <= a <= 1
 
-        assert -1 <= consume_action <= 1
-        assert -1 <= asset_allocation_action <= 1
+        consume_action, stocks_action, bonds_action = action
 
         consume_floor = 0
         # Define a consume ceiling above which we won't consume.
@@ -176,9 +180,14 @@ class FinEnv(Env):
         consume_fraction = consume_floor + (consume_ceil - consume_floor) * (consume_action + 1) / 2
         consume_fraction = min(consume_fraction, 1 / self.params.time_period)
 
-        asset_allocation = (asset_allocation_action + 1) / 2
+        stocks_allocation = (stocks_action + 1) / 2
+        if self.params.bonds:
+            bonds_allocation = (1 - stocks_action) * (bonds_action + 1) / 2
+        else:
+            bonds_allocation = 0
+        risk_free_allocation = 1 - (stocks_allocation + bonds_allocation)
 
-        return consume_fraction, asset_allocation
+        return (consume_fraction, (stocks_allocation, bonds_allocation, risk_free_allocation))
 
     def _p_income(self):
 
@@ -207,7 +216,10 @@ class FinEnv(Env):
         if p != nonneg_p:
             assert p / self.p_notax > -1e-15
             p = 0
-        ret = asset_allocation * self.stocks.sample() + (1 - asset_allocation) * self.risk_free.sample()
+
+        stocks_allocation, bonds_allocation, risk_free_allocation = asset_allocation
+        ret = stocks_allocation * self.stocks.sample() + bonds_allocation * self.bonds.sample() + risk_free_allocation * self.risk_free.sample()
+
         self.p_notax = p * ret
 
         utility = self.utility.utility(consume_annual)

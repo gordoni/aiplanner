@@ -28,6 +28,5 @@ validate () {
     $OPAL -c $AI_DIR/validation/opal-scenario.txt -e "prefix='$MODEL_DIR/opal'" $ARGS $EXTRA_ARGS 2>&1 | tee $MODEL_DIR/opal.log
 }
 
-validate fixed_30-gi_0-p_500000 "-e generate_life_table='fixed_mortality' -e validate_life_table='fixed_mortality' -e le_add=0 -e defined_benefit=0 -e start_tp=500000"
-validate fixed_30-gi_16000-p_500000 "-e generate_life_table='fixed_mortality' -e validate_life_table='fixed_mortality' -e le_add=0 -e defined_benefit=16000 -e start_tp=500000"
+validate fixed_30-gi_0-p_500000-no_bonds "-e generate_life_table='fixed_mortality' -e validate_life_table='fixed_mortality' -e le_add=0 -e defined_benefit=0 -e start_tp=500000 -e asset_classes=('synthetic','risk_free2')"
 validate ssa_plus_3_female-gi_16000-p_500000 "-e defined_benefit=16000 -e start_tp=500000"

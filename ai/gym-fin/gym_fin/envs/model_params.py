@@ -75,12 +75,17 @@ class ModelParams(object):
         self._param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
 
         # Market parameters are based on World averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
-            # For equities the reported return is 6.5% +/- 17.4% (geometric 5.1%).
+            # For equities the reported real return is 6.5% +/- 17.4% (geometric 5.1%).
+            # For nominal government bonds the reported real return is 2.4% +/- 11.2% (geometric 1.8%).
             # For the risk free rate there isn't a reported World average. The reported real return of U.S. Treasury bills is 0.9% +/- 0.4% (geometric 0.8%).
             # We use a fixed risk free rate equal to the geometric mean without volatility so we can benchmark against Merton's portfolio problem.
+            # The reported U.S. inflation rate is 3.0% +/- 4.7% (geometric 2.9%).
         self._param('risk-free-return', 0.008) # Annual real return for risk free asset class.
         self._param('stocks-return', 0.065) # Annual real return for stocks.
         self._param('stocks-volatility', 0.174) # Annual real volatility for stocks.
+        self._boolean_flag('bonds', True) # Whether to model stochastic bonds (without any interest rate model).
+        self._param('bonds-return', 0.024) # Annual real return for bonds.
+        self._param('bonds-volatility', 0.112) # Annual real volatility for bonds.
 
     def set_params(self, dict_args):
 
