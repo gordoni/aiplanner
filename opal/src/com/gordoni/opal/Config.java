@@ -126,12 +126,14 @@ public class Config
         public double[] aa_offset = null; // Offset to apply during valadation to the generated asset allocation.
                 // Used to determine the implications of a 10% error in aa. More general than stock bias.
 
-        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'stocks_sbbi', 'bonds_sbbi', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', 'risk_free2', 'synthetic', 'margin', 'margin2', and 'lm_bonds'.
+        public List<String> asset_classes = new ArrayList<String>(Arrays.asList("stocks", "bonds")); // Which asset classes to simulate out of 'stocks', 'bonds', 'stocks_sbbi', 'bonds_sbbi', 'eafe', 'bl', 'bm', 'bh', 'sl', 'sm', 'sh', 'equity_reits', 'mortgage_reits', 'gs1', 'gs10', 'tips', 'aaa', 'baa', 'cash', 'gold', 'risk_free', 'risk_free2', 'synthetic', 'synthetic2', 'margin', 'margin2', and 'lm_bonds'.
                 // Seem to get quicker search time if list highest return assets first.
         public List<String> asset_class_names = null;
                // Corresponding asset class names to use for MVO inputs and transition map.
         public double synthetic_ret = 0.07; // Synthetic asset class return.
         public double synthetic_vol = 0.17; // Synthetic asset class volatility.
+        public double synthetic2_ret = 0.02; // Second synthetic asset class return.
+        public double synthetic2_vol = 0.11; // Second synthetic asset class volatility.
         public int aa_steps = 1000; // Use 4 steps to mirror 5 choice Trinity study.
         public boolean compute_risk_premium = false; // Compute the risk premium against cash (t1) instead of generating/targeting/validating.
         public boolean inflation_adjust_returns = true; // Adjust returns for the impact of inflation.

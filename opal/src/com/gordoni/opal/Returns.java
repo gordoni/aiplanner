@@ -422,6 +422,9 @@ public class Returns implements Cloneable
                 List<Double> synthetic_returns = log_normal_ppf(count, config.synthetic_ret, config.synthetic_vol);
                 synthetic_returns = adjust_returns_annual(synthetic_returns, config.synthetic_ret, adjust_management_expense * adjust_all, config.synthetic_vol);
 
+                List<Double> synthetic2_returns = log_normal_ppf(count, config.synthetic2_ret, config.synthetic2_vol);
+                synthetic2_returns = adjust_returns_annual(synthetic2_returns, config.synthetic2_ret, adjust_management_expense * adjust_all, config.synthetic2_vol);
+
                 List<Double> hci1_returns;
                 List<Double> hci2_returns;
                 List<Double> hci_noise_returns;
@@ -603,6 +606,11 @@ public class Returns implements Cloneable
                         else if ("synthetic".equals(asset_class))
                         {
                                 rets = synthetic_returns;
+                                divf = 0;
+                        }
+                        else if ("synthetic2".equals(asset_class))
+                        {
+                                rets = synthetic2_returns;
                                 divf = 0;
                         }
                         else if ("lm_bonds".equals(asset_class))
