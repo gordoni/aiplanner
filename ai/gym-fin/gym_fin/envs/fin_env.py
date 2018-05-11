@@ -31,10 +31,13 @@ class FinEnv(Env):
 
     metadata = {'render.modes': ['human']}
 
-    def _compute_vital_stats(self, life_table, age_start):
+    def _compute_vital_stats(self, life_table, sex, age_start, age_end, life_expectancy_additional, life_table_date, time_period):
 
+        le_add = 0 if life_table == 'fixed' else life_expectancy_additional
+        death_age = age_end - time_period
+        table = LifeTable(life_table, sex, age_start, death_age = death_age, le_add = le_add, date_str = life_table_date)
 
-        start_date = datetime.strptime(self.params.life_table_date, '%Y-%m-%d')
+        start_date = datetime.strptime(life_table_date, '%Y-%m-%d')
         this_year = datetime(start_date.year, 1, 1)
         next_year = datetime(start_date.year + 1, 1, 1)
         start_decimal_year = start_date.year + (start_date - this_year) / (next_year - this_year)
@@ -46,15 +49,8 @@ class FinEnv(Env):
         q_y = -1
         q = 0
         remaining_fract = 0
-        a_y = self.params.time_period
+        a_y = time_period
         while True:
-            while y - q_y >= 1:
-                _alive *= (1 - q) ** remaining_fract
-                q_y += 1
-                q = life_table.q(age_start + q_y, year = start_decimal_year + q_y)
-                remaining_fract = 1
-            if q == 1:
-                break
             append_time = a_y - y
             fract = min(remaining_fract, append_time)
             _alive *= (1 - q) ** fract
@@ -62,16 +58,23 @@ class FinEnv(Env):
             y += fract
             if y >= a_y:
                 alive.append(_alive)
-                a_y += self.params.time_period
+                a_y += time_period
+            if y - q_y >= 1:
+                q_y += 1
+                q = table.q(age_start + q_y, year = start_decimal_year + q_y)
+                remaining_fract = 1
+                if q == 1:
+                    break
 
-        if self.params.life_table == 'fixed':
+        if life_table == 'fixed':
             # Death occurs at end of death_age period.
             remainder = 1
         else:
             # Death occurs half way through each period.
             remainder = 0.5
-        life_expectancy = [(sum(alive[y + 1:]) + remainder) / alive[y] * self.params.time_period for y in range(len(alive))]
+        life_expectancy = [(sum(alive[y + 1:]) / alive[y] + remainder) * time_period for y in range(len(alive))]
         life_expectancy.append(0)
+        print(life_expectancy[0])
 
         return tuple(alive), tuple(life_expectancy)
 
@@ -89,11 +92,8 @@ class FinEnv(Env):
                                      high = np.array((100, 1e6, 1e7)),
                                      dtype = 'float32')
 
-        le_add = 0 if self.params.life_table == 'fixed' else self.params.life_expectancy_additional
-        death_age = self.params.age_end - self.params.time_period
-        life_table = LifeTable(self.params.life_table, self.params.sex, self.params.age_start,
-            death_age = death_age, le_add = le_add, date_str = self.params.life_table_date)
-        self.alive, self.life_expectancy = self._compute_vital_stats(life_table, self.params.age_start)
+        self.alive, self.life_expectancy = self._compute_vital_stats(self.params.life_table, self.params.sex, self.params.age_start, self.params.age_end,
+            self.params.life_expectancy_additional, self.params.life_table_date, self.params.time_period)
         self.age_start = self.params.age_start
         self.risk_free = Returns(self.params.risk_free_return, 0, self.params.time_period)
         self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.time_period)
@@ -168,7 +168,7 @@ class FinEnv(Env):
         # In the absence of guaranteed income this very small consumption will initially result in many warnings aboout out of bound rewards (if verbose is set).
         # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for them.
         # This will be to the detriment of the fit for more likely reward values.
-        # For PPO the policy network never fully retrains after the initial poor fit, and the results would be sub-optimal.
+        # For PPO the policy network either never fully retrains after the initial poor fit, or requires more training time.
         consume_ceil = 2 * (self.p_notax / self.life_expectancy[self.episode_length] + self.guaranteed_income) / self._p_income()
             # Set:
             #     consume_ceil = 1 / self.params.time_period

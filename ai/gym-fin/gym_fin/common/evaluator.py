@@ -15,7 +15,7 @@ import json
 import os
 from math import sqrt
 from random import getstate, seed, setstate
-from statistics import mean, stdev
+from statistics import mean, stdev, StatisticsError
 import time
 
 import numpy as np
@@ -47,7 +47,7 @@ class Evaluator(object):
         if self.eval_env is not None:
 
             state = getstate()
-            seed(self.eval_seed)
+            seed(self.eval_seed + 1000000) # Pick a different seed than might have been used during training.
 
             rewards = []
             obs = self.eval_env.reset()
@@ -74,7 +74,10 @@ class Evaluator(object):
             sum_alive = sum(env.alive)
             rews = tuple(r / (sum_alive * env.params.time_period) for r in rewards)
             rew = mean(rews)
-            std = stdev(rews)
+            try:
+                std = stdev(rews)
+            except StatisticsError:
+                std = float('nan')
             stderr = std / sqrt(len(rews))
             utility = self.eval_env.unwrapped.utility
             ce = utility.inverse(rew)

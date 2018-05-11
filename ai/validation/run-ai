@@ -79,8 +79,8 @@ validate_parallel () {
     wait
 }
 
-#$VALIDATE fixed_30-gi_0-p_500000 '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-p-notax=500000'
-#$VALIDATE fixed_30-gi_16000-p_500000 '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=16000 --master-p-notax=500000'
+$VALIDATE fixed_30-gi_0-p_500000 '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-p-notax=500000'
+$VALIDATE fixed_30-gi_16000-p_500000 '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=16000 --master-p-notax=500000'
 $VALIDATE ssa_plus_3_female-gi_16000-p_500000 '--master-guaranteed-income=16000 --master-p-notax=500000'
 
 # Notes on tweaks that have been tried out:

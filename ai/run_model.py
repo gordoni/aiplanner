@@ -84,9 +84,10 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
     if not merton_or_samuelson:
 
         v, = session.run(v_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
-        observation = env.decode_observation(obs)
-        life_expectancy = observation['life_expectancy']
-        logger.info('    Predicted certainty equivalent: ', env.utility.inverse(v / life_expectancy))
+        sum_alive = sum(env.alive)
+        logger.info('    Predicted certainty equivalent: ', env.utility.inverse(v / (sum_alive * env.params.time_period)))
+            # Only valid if train and eval have identical age_start and life table.
+            # Otherwise need to simulate to determine CE; this also provides percentile ranges.
 
     evaluator = Evaluator(eval_env, eval_seed, eval_num_timesteps, eval_render)
 
