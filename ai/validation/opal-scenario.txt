@@ -23,14 +23,14 @@ start_tp = 500000
 utility_eta = 3.0
 consume_discount_rate = 0
 
-asset_classes = ('synthetic', 'synthetic2', 'risk_free2')
+asset_classes = ('synthetic', 'synthetic2')
 
 # See justification in aiplanner-scenario.conf .
-ret_risk_free2 = 0.008
 synthetic_ret = 0.045
 synthetic_vol = 0.174
 synthetic2_ret = 0.024
 synthetic2_vol = 0.112
+ret_risk_free2 = 0.008
 
 # Produce 200 synthetic samples. Increasing beyond this doesn't effect generated CE.
 generate_start_year = 1
