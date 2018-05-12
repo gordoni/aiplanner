@@ -87,6 +87,7 @@ class ModelParams(object):
         self._param('bonds-return', 0.024) # Annual real return for bonds.
         self._param('bonds-volatility', 0.112) # Annual real volatility for bonds.
         self._param('bonds-standard-error', 0.010) # Standard error of real return for bonds.
+        self._boolean_flag('bills', True) # Whether to model stochastic bills (without any interest rate model).
         self._param('bills-return', 0.009) # Annual real return for bill asset class.
         self._param('bills-volatility', 0.004) # Annual real return for bill asset class.
         self._param('bills-standard-error', 0.004) # Standard error of real return for bills.

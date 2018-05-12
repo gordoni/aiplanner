@@ -180,8 +180,12 @@ class FinEnv(Env):
 
         stocks_allocation = (stocks_action + 1) / 2
         if self.params.bonds:
-            bonds_allocation = (1 - stocks_allocation) * (bonds_action + 1) / 2
+            if self.params.bills:
+                bonds_allocation = (1 - stocks_allocation) * (bonds_action + 1) / 2
+            else:
+                bonds_allocation = 1 - stocks_allocation
         else:
+            assert self.params.bills
             bonds_allocation = 0
         bills_allocation = 1 - (stocks_allocation + bonds_allocation)
 
