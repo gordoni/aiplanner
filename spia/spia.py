@@ -1133,7 +1133,8 @@ class YieldCurve(object):
             else:
                 look_y = round(y * 2) / 2.0
                 look_y = max(0.5, look_y)
-            if self.spot_years_min <= self.spot_years_max:
+            look_y = min(look_y, self.spot_years_max) # Even linear projection could eventually end up up of range.
+            if self.spot_years_min <= look_y:
                 yield_curve = self.yield_curve_in_range
             else:
                 yield_curve = self.yield_curve_out_range
