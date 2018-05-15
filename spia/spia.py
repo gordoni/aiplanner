@@ -27,23 +27,6 @@ from scipy.interpolate import InterpolatedUnivariateSpline, PchipInterpolator
 
 datapath = ('~/aacalc/opal/data/public', '~ubuntu/aacalc/opal/data/public')
 
-# Bonds longer than this have their remaining interest rate determined specially.
-# Prior to this the last forward rate is used to project the forward rate for real bonds, and the actual HQM data is used for nominal bonds.
-long_years = {
-    'real': 100,
-    'nominal': 100,
-    'corporate': 100,
-}
-
-# Annual forward interest rate to earn (real rate if real) on the maturity beyond long_years.
-long_rate = {
-    'real': 0.025,
-    'nominal': 0.05,
-    'corporate': 0.06,
-}
-
-# Using a forward rate of 2.5% on maturities beyond 30 years reduces the MWR by 2% at age 48.
-
 iam2012_date = 2012
 
 iam2012_basic_1000_q = {
@@ -910,9 +893,8 @@ class YieldCurve(object):
 
     def _project_curve(self, spot_years, spot_rates):
 
-        # Project returns beyond the last rate using the average 15 year and longer forward rate (similar to Treasury methodology)
-        # and beyond long_years using long_rate as the forward rate.
-        spot_yield_curve = spot_rates[:2 * long_years[self.interest_rate]]
+        # Project returns beyond the last rate using the average 15 year and longer forward rate (similar to Treasury methodology).
+        spot_yield_curve = spot_rates[:len(spot_years)]
         forward_rates = self.spot_to_forward(spot_yield_curve)
         long_forward_rates = []
         for i in range(len(forward_rates)):
@@ -923,10 +905,7 @@ class YieldCurve(object):
         except ZeroDivisionError:
             raise self.NoData
         forward_rates.extend([long_forward_rate] * (len(spot_years) - len(forward_rates)))
-        for i in range(len(spot_years)):
-            if spot_years[i] > long_years[self.interest_rate]:
-                forward_rates[i] = long_rate[self.interest_rate]
-        return self.forward_to_spot(forward_rates)
+        return long_forward_rate, self.forward_to_spot(forward_rates)
 
     def __init__(self, interest_rate, date_str, *, date_str_low = None, adjust = 0, interpolate_rates = True):
         '''Initialize an object representing a particular yield curve on a
@@ -997,7 +976,7 @@ class YieldCurve(object):
             spot_rates = []
             for yield_curve_year, yield_curve_rate in zip(yield_curve_years, yield_curve_rates):
 
-                # Project returns beyond available returns data using the last forward rate.
+                # Interpolate returns.
                 # Not compatible with Opal. To begin with the underlying splines don't match.
                 coupon_yield_curve = []
                 # Suppress spurious divide by zero; needed for Ubuntu 14.04, not needed for Scipy 0.16.1.
@@ -1047,8 +1026,10 @@ class YieldCurve(object):
 
         spot_years = tuple(y / 2.0 for y in range(1, 201))
 
-        spot_yield_curves = tuple(self._project_curve(spot_years, spot_rate) for spot_rate in spot_rates)
+        long_forward_rates, spot_yield_curves = zip(*(self._project_curve(spot_years, spot_rate) for spot_rate in spot_rates))
         spot_yield_curve = tuple(sum(rates) / len(rates) for rates in zip(*spot_yield_curves))
+        long_forward_rate = sum(long_forward_rates) / len(long_forward_rates)
+        self.long_forward_rate = (1 + (long_forward_rate + adjust) / 2) ** 2
 
         spot_yield_curve = tuple(r + adjust for r in spot_yield_curve)
 
@@ -1133,13 +1114,15 @@ class YieldCurve(object):
             else:
                 look_y = round(y * 2) / 2.0
                 look_y = max(0.5, look_y)
-            look_y = min(look_y, self.spot_years_max) # Even linear projection could eventually end up up of range.
-            if self.spot_years_min <= look_y:
+            get_y = min(look_y, self.spot_years_max)
+            if self.spot_years_min <= look_y <= self.spot_years_max:
                 yield_curve = self.yield_curve_in_range
             else:
                 yield_curve = self.yield_curve_out_range
-            say = float(yield_curve(look_y))  # De-numpy-fy.
+            say = float(yield_curve(get_y))  # De-numpy-fy.
             ay = (1 + say / 2) ** 2  # Convert semi-annual yields to annual yields.
+            if get_y < look_y:
+                ay = (ay ** get_y * self.long_forward_rate ** (look_y - get_y)) ** (1 / look_y)
         return ay
 
 class LifeTable(object):
