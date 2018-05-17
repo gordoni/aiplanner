@@ -12,34 +12,31 @@ from math import exp, sqrt
 from random import normalvariate
 
 class OUProcess(object):
-    '''
-    Ornstein-Uhlenbeck process.
-    '''
+    '''Ornstein-Uhlenbeck process.'''
 
-    def __init__(self, rev, sigma, *, mu = 0, x = None):
-        '''
-        Reversion rate theta, mean mu, initial x.
-        '''
+    def __init__(self, time_period, rev, sigma, *, mu = 0, x = None, norm = None):
+        '''Time period time_period, reversion rate theta, mean mu, initial x, initial stochastic shock norm.'''
 
+        self.time_period = time_period
         self._rev = rev
         self._sigma = sigma
         self._mu = mu
-        self._x = mu if x == None else x
-        self._t = 0
+        self.next_x = mu if x == None else x
 
-    def step(self, delta):
+        return self.step(norm = norm)
+
+    def step(self, *, norm = None):
+        '''Step the process under stochastic shock norm (generated if not
+        supplied), and return the stochastic shock.
+
+        '''
+
+        if norm == None:
+            norm = normalvariate(0, 1)
+        self.norm = norm
+
+        self.x = self.next_x
 
         # By https://en.wikipedia.org/wiki/Hull%E2%80%93White_model one-factor model r(t) distribution for theta constant:
-        erd = exp(- self._rev * delta)
-
-        self._x = normalvariate(self._x * erd + self._mu * (1 - erd), self._sigma * sqrt((1 - erd ** 2) / (2 * self._rev)))
-
-        self._t += delta
-
-    @property
-    def x(self):
-        return self._x
-
-    @property
-    def t(self):
-        return self._t
+        erd = exp(- self._rev * self.time_period)
+        self.next_x = self.x * erd + self._mu * (1 - erd) + self._sigma * sqrt((1 - erd ** 2) / (2 * self._rev)) * norm
