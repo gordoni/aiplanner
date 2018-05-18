@@ -40,7 +40,7 @@ class Bonds(object):
         rate, or none to use the yield curve short interest rate.
 
         "standard_error" is the standard error of the estimated yield
-        curve return level.
+        curve yield level.
 
         "time_period" step size in years.
 
@@ -49,20 +49,22 @@ class Bonds(object):
         self.a = a # Alpha in Wikipedia and hibbert.
         self.sigma = sigma
         self.yield_curve = yield_curve
-        self.adjust = normalvariate(0, standard_error)
+        self.r0 = r0
+        self.standard_error = standard_error
         self.time_period = time_period
 
-        self.sir_mean = log(self.yield_curve.discount_rate(0) + self.adjust)
-        self.r0 = self.sir_mean if r0 == None else r0
-
-        self._p_cache = {}
+        self._dr_cache = {}
 
         self.reset()
 
     def reset(self):
 
+        self.adjust = exp(normalvariate(0, self.standard_error))
+        self.sir_init = log(self.yield_curve.discount_rate(0) * self.adjust)
+        self.sir0 = self.sir_init if self.r0 == None else self.r0
+
         self.t = 0
-        self.oup = OUProcess(self.time_period, self.a, self.sigma, mu = self.sir_mean, x = self.r0) # Underlying random movement in short interest rates.
+        self.oup = OUProcess(self.time_period, self.a, self.sigma, mu = self.sir_init, x = self.sir0) # Underlying random movement in short interest rates.
 
         self._sir_cache = {}
 
@@ -73,12 +75,13 @@ class Bonds(object):
         '''
 
         try:
-            return self._p_cache[t]
+            dr = self._dr_cache[t]
         except KeyError:
-            p = (self.yield_curve.discount_rate(t) + self.adjust) ** - t
-            if len(self._p_cache) < 1000:
-                self._p_cache[t] = p
-            return p
+            dr = self.yield_curve.discount_rate(t)
+            if len(self._dr_cache) < 1000:
+                self._dr_cache[t] = dr
+
+        return (dr * self.adjust) ** - t
 
     def _present_value(self, oup_x, t):
         '''Return the present value of a zero coupon bond paying 1 at time t
@@ -96,7 +99,7 @@ class Bonds(object):
 
         #  https://en.wikipedia.org/wiki/Hull%E2%80%93White_model P(0, T).
         B = (1 - exp(- self.a * t)) / self.a
-        P = self._p(t) * exp(B * (self.sir_mean - sir))
+        P = self._p(t) * exp(B * (self.sir_init - sir))
 
         return P
 
@@ -128,7 +131,6 @@ class Bonds(object):
     def _report(self):
 
         durations = (1, 5, 7, 10, 20, 30)
-        durations = (10, 20, 25, 30)
 
         self.reset()
         print('duration initial_expected_yield observed_yield')
@@ -341,7 +343,7 @@ class BreakEvenInflation(Bonds):
         super().reset()
 
         # Inflation model OU Process tracks modeled nominal bond standard deviation OU Process.
-        self.inflation_oup = OUProcess(self.time_period, self.inflation_a, self.inflation_sigma, mu = self.sir_mean, x = self.r0, norm = self.oup.norm)
+        self.inflation_oup = OUProcess(self.time_period, self.inflation_a, self.inflation_sigma, mu = self.sir_init, x = self.sir0, norm = self.oup.norm)
 
         self._sir_cache_t = None
 
@@ -351,10 +353,10 @@ class BreakEvenInflation(Bonds):
         t = min(t, 1000) # Prevent math underflow.
         return - (log(self._p(t + delta)) - log(self._p(t))) / delta
 
-    def _sir(self, oup_x, a, sigma):
+    def _sir(self, t, a, sigma):
 
         # https://www.math.nyu.edu/~benartzi/Slides10.3.pdf page 11.
-        return self._forward(self.t) + (sigma * (1 - exp(- a * self.t)) / a) ** 2 / 2 + oup_x - self.sir_mean
+        return self._forward(t) + (sigma * (1 - exp(- a * t)) / a) ** 2 / 2
 
     def _short_interest_rate(self, oup_x):
         '''Return the annualized continuously compounded current short
@@ -365,7 +367,7 @@ class BreakEvenInflation(Bonds):
 
         '''
 
-        return self._sir(oup_x, self.a, self.sigma)
+        return self._sir(self.t, self.a, self.sigma) + oup_x - self.sir_init
 
     def _model_short_interest_rate(self):
         '''Current short interest rate based on fitting the inflation model,
@@ -373,7 +375,7 @@ class BreakEvenInflation(Bonds):
 
         '''
 
-        return self._sir(self.inflation_oup.x, self.inflation_a, self.inflation_sigma)
+        return self._sir(self.t, self.inflation_a, self.inflation_sigma) + self.inflation_oup.x - self.sir_init
 
     def present_value(self, t):
 
@@ -384,7 +386,7 @@ class BreakEvenInflation(Bonds):
 
         #  https://en.wikipedia.org/wiki/Hull%E2%80%93White_model P(0, T).
         B = (1 - exp(- self.inflation_a * t)) / self.inflation_a
-        P = self._p(t) * exp(B * (self.sir_mean - self._sir_cache) - self.adjust_rate / self.time_period)
+        P = self._p(t) * exp(B * (self.sir_init - self._sir_cache) - self.adjust_rate / self.time_period)
 
         return P
 
@@ -395,7 +397,7 @@ class BreakEvenInflation(Bonds):
     def step(self):
 
         super().step()
-        return self.inflation_oup.step(norm = self.oup.norm)
+        self.inflation_oup.step(norm = self.oup.norm)
 
     def observe(self):
 
@@ -462,7 +464,7 @@ class NominalBonds(Bonds):
 
     def observe(self):
 
-        return self.real_bonds.observe() + self.inflation.observe()
+        return ()
 
     def _deflate(self, yield_curve):
 
@@ -498,12 +500,14 @@ def init(need_real = True, need_nominal = True, need_inflation = True, time_peri
 
         observe()
 
-            Returns a tuple. Current real interest rate and/or
-            inflation rate as appropriate.
+            Returns a tuple. Current real interest rate or inflation
+            rate as appropriate. For nominal bonds the tuple is empty.
 
-    Calling reset(), step(), or observe() on nominal_bonds, calls the
-    corresponding routines on real_bonds and inflation. They should
-    not also be called separately.
+    The nominal_bonds model need to be kept in sync with the real
+    bonds and inflation models. Calling reset() or step() on
+    nominal_bonds takes care of this by calling the corresponding
+    routines on both real bonds and inflation. They should not also be
+    called separately.
 
     Inflation represents the nominal value of a bond that will earn
     interest at the rate of inflation. inflation defines an additional

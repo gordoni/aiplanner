@@ -98,6 +98,13 @@ class FinEnv(Env):
 
         self.utility = Utility(self.params.gamma, self.params.consume_floor)
 
+        self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility,
+            self.params.stocks_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
+        self.bonds = Returns(self.params.bonds_return, self.params.bonds_volatility,
+            self.params.bonds_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
+        self.bills = Returns(self.params.bills_return, self.params.bills_volatility,
+            self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
+
         self.reset()
 
     def reset(self):
@@ -125,12 +132,9 @@ class FinEnv(Env):
         if not found:
             raise Exception('Expected consumption falls outside model training range.')
 
-        self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility,
-            self.params.stocks_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
-        self.bonds = Returns(self.params.bonds_return, self.params.bonds_volatility,
-            self.params.bonds_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
-        self.bills = Returns(self.params.bills_return, self.params.bills_volatility,
-            self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
+        self.stocks.reset()
+        self.bonds.reset()
+        self.bills.reset()
 
         self.prev_asset_allocation = None
         self.prev_consume_annual = None

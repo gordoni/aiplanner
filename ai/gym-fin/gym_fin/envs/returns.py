@@ -15,11 +15,16 @@ class Returns(object):
 
     def __init__(self, ret, vol, standard_error, time_period):
 
-        self.ret = normalvariate(ret, standard_error)
+        self.ret = ret
         self.vol = vol
+        self.standard_error = standard_error
         self.time_period = time_period
 
-        m = 1 + self.ret
+        self.reset()
+
+    def reset(self):
+
+        m = 1 + normalvariate(self.ret, self.standard_error)
         self.mu = log(m / sqrt(1 + (self.vol / m) ** 2))
         self.sigma = sqrt(log(1 + (self.vol / m) ** 2))
 
