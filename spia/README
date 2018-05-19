@@ -1,30 +1,40 @@
-spia.py is a Python module for calculating actuarially fair Single
-Premium Immediate Annuity and Deferred Income Annuity prices. This
-involves combining life tables with interest rate yield curves. The
-lifetables are hard coded in spia.py, while the interest rate data is
-obtained from the U.S. Treasury using the fetch_yield_curve script.
+SPIA is a Python module for calculating Single Premium Immediate
+Annuity and Deferred Income Annuity prices. This involves combining
+life tables with interest rate yield curves. The lifetables are hard
+coded, while the interest rate data is obtained from the U.S. Treasury
+using the fetch_yield_curve script.
 
-spia.py depends on scipy for interpolation.
+The module comprises the following files:
 
-fetch_yield_curve depends on lxml and the catdoc xls2csv program to
-obtain the nominal interest rate.
+    spia.py - SPIAs
+    life_table.py - mortality table
+    yield_curve.py - interest rate yield curve
+    monotone_convex.py - yield curve interpolation
+    fetch_yield_curve - yield curve data file retrieval
+    README
+    LICENSE
+    agpl-3.0.txt
 
-On Ubuntu, to obtain these modules:
+fetch_yield_curve depends on the catdoc xls2csv program to obtain the
+corporate interest rate.
 
-    sudo apt-get install python3-scipy catdoc
+On Ubuntu, to obtain this module:
 
-Then to fetch the yield curves for all time (this could take a while):
+    sudo apt-get install catdoc
+
+Then to fetch the yield curves for all time to the current directory
+(this could take a while):
 
     chmod +x fetch_yield_curve
 
     mkdir -p ~/aacalc/opal/data/public/hqm
-    ./fetch_yield_curve -t corporate -d ~/aacalc/opal/data/public/hqm
+    ./fetch_yield_curve -t corporate -d .
 
     mkdir -p ~/aacalc/opal/data/public/cmt
-    ./fetch_yield_curve -t nominal -d ~/aacalc/opal/data/public/cmt
+    ./fetch_yield_curve -t nominal -d .
 
     mkdir -p ~/aacalc/opal/data/public/rcmt
-    ./fetch_yield_curve -t real -d ~/aacalc/opal/data/public/rcmt
+    ./fetch_yield_curve -t real -d .
 
 Subsequent runs of fetch_yield_curve will only download updates to the
 data.
@@ -34,7 +44,7 @@ associated with a given premium and money's worth ratio:
 
     chmod +x spia.py
 
-    ./spia.py -d ~/aacalc/opal/data/public
+    ./spia.py -d .
 
-Full details of all the options available are contained in the spia.py
-source code.
+Full details of all the options available are contained in the source
+code.
