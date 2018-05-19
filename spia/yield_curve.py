@@ -259,14 +259,16 @@ class YieldCurve(object):
         interpolators = []
         for yield_curve_year, yield_curve_rate in zip(yield_curve_years, yield_curve_rates):
             yield_curve_rate = tuple(math.log((1 + r / 2) ** 2 + self.adjust) for r in yield_curve_rate) # Treasury rates are twice the semi-annualized rate.
-            interpolator = MonotoneConvex(yield_curve_year, yield_curve_rate, min_long_term_forward = 15)
+            interpolator = MonotoneConvex(yield_curve_year, yield_curve_rate, min_long_term_forward = 15, force_forwards_non_negative = False)
+                # Treasury methodology; extrapolate using average forward rate 15 years and longer.
+                # Real forwards are not required to be positive, and favor mathematical consistency for nominal forward rates.
             interpolators.append(interpolator)
 
         # Average the yield curves.
         interpolate_spots = tuple(statistics.mean(interpolator.spot(year) for interpolator in interpolators) for year in interpolate_years)
 
         # Construct a master interpolator.
-        self.monotone_convex = MonotoneConvex(interpolate_years, interpolate_spots, min_long_term_forward = 15)
+        self.monotone_convex = MonotoneConvex(interpolate_years, interpolate_spots, min_long_term_forward = 15, force_forwards_non_negative = False)
 
     def spot(self, y):
         '''Return the continuously compounded annual spot rate.'''
