@@ -34,7 +34,7 @@ class MonotoneConvex(object):
 
         return len(self.terms) - 2
 
-    def __init__(self, terms, spots, *, min_long_term_forward = float('inf')):
+    def __init__(self, terms, spots, *, min_long_term_forward = float('inf'), force_forwards_non_negative = True):
         '''Initialize a monotone convex object.
 
         term is an ascending list of bond terms in years, exluding
@@ -43,13 +43,27 @@ class MonotoneConvex(object):
         spots is the corresponding list of continuously compounding
         annualized spot rates.
 
-        Set min_long_term_forward to 15 to use the Treasury
-        methodology, which is to use for the extrapolated forward rate
-        the average known forward rate beyond 15 years. This may
-        introduce a small discontinuity in forward rates at the
-        longest term which may not be desired.
+        min_long_term_forward is the minimum term to use in computing
+        the average forward rate. The average forward rate is used as
+        the forward rate for terms beyond on the longest term
+        specified. If min_long_term_forward exceeds the longest term
+        the forward rate of the longest term is used for the forward
+        rate of terms beyond the longest term. Set
+        min_long_term_forward to 15 to use the Treasury methodology,
+        which is to use for the extrapolated forward rate the average
+        observed forward rate beyond 15 years. Setting
+        min_long_term_forward to a value less than the longest term
+        may introduce a discontinuity in forward rates at the longest
+        term which may not be desired.
+
+        force_forwards_non_negative specifies whether forward rates
+        are forced to be non-negative. If so the negative derivative
+        of the spot rate determined price need not match the forward
+        rate.
 
         '''
+
+        self.force_forwards_non_negative = force_forwards_non_negative
 
         assert len(terms) == len(spots)
 
@@ -69,10 +83,13 @@ class MonotoneConvex(object):
                      (terms[j + 2] - terms[j + 1]) / (terms[j + 2] - terms[j]) * fdiscrete[j])
 
         # step 3
-        f[0] = self.collar(0, fdiscrete[0] - 0.5 * (f[1] - fdiscrete[0]), 2 * fdiscrete[0])
-        f.append(self.collar(0, fdiscrete[-1] - 0.5 * (f[-1] - fdiscrete[-1]), 2 * fdiscrete[-1]))
-        for j in range(len(terms) - 2):
-            f[j + 1] = self.collar(0, f[j + 1], 2 * min(fdiscrete[j], fdiscrete[j + 1]))
+        f[0] = fdiscrete[0] - 0.5 * (f[1] - fdiscrete[0])
+        f.append(fdiscrete[-1] - 0.5 * (f[-1] - fdiscrete[-1]))
+        if force_forwards_non_negative:
+            f[0] = self.collar(0, f[0], 2 * fdiscrete[0])
+            f[-1] = self.collar(0, f[-1], 2 * fdiscrete[-1])
+            for j in range(len(terms) - 2):
+                f[j + 1] = self.collar(0, f[j + 1], 2 * min(fdiscrete[j], fdiscrete[j + 1]))
 
         self.terms = tuple(terms)
         self.spots = tuple(spots)
@@ -92,11 +109,11 @@ class MonotoneConvex(object):
         '''
 
         if term <= 0:
-            return self.f[0]
+            forward = self.f[0]
         elif term == self.terms[-1]:
-            return self.f[-1]
+            forward = self.f[-1]
         elif term > self.terms[-1]:
-            return self.long_term_forward
+            forward = self.long_term_forward
         else:
             i = self.last_index(term)
             # the x in (25)
@@ -142,7 +159,12 @@ class MonotoneConvex(object):
                 else:
                     g = a + (g1 - a) * ((eta - x) / (1 - eta)) ** 2
                     # (26)
-            return g + self.fdiscrete[i]
+            forward = g + self.fdiscrete[i]
+
+        if self.force_forwards_non_negative:
+            forward = max(0, forward)
+
+        return forward
 
     def spot(self, term):
         '''Return the continuously compounding annualized spot rate for term,
@@ -153,7 +175,7 @@ class MonotoneConvex(object):
         if term <= 0:
             return self.f[0]
         elif term > self.terms[-1]:
-            return (self.terms[-1] * self.fdiscrete[-1] + (term - self.terms[-1]) * self.long_term_forward) / term
+            return (self.terms[-1] * self.spots[-1] + (term - self.terms[-1]) * self.long_term_forward) / term
         else:
             i = self.last_index(term)
             l = self.terms[i + 1] - self.terms[i]
