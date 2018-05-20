@@ -20,7 +20,7 @@ from gym.spaces import Box
 from gym_fin.envs.returns import Returns
 from gym_fin.envs.utility import Utility
 
-from spia import LifeTable
+from life_table import LifeTable
 
 class AttributeObject(object):
 
