@@ -562,7 +562,10 @@ class BondsMeasuredInNominalTerms(Bonds):
 
     def sample(self, t = 7):
 
-        return self.bonds.sample(t) * self.inflation.sample(t)
+        sample = self.bonds.sample(t)
+        period_inflation = exp(self.inflation._log_present_value(self.time_period))
+
+        return sample / period_inflation
 
     def step(self):
 
