@@ -68,9 +68,9 @@ class Bonds(object):
 
         self._sir_cache = {}
 
-    def _p(self, t):
-        '''Return the present value of a zero coupon bound paying 1 at time t
-        according to the typical yield curve.
+    def _log_p(self, t):
+        '''Return the log present value of a zero coupon bound paying 1 at
+        time t according to the typical yield curve.
 
         '''
 
@@ -81,12 +81,13 @@ class Bonds(object):
             if len(self._sr_cache) < 1000:
                 self._sr_cache[t] = sr
 
-        return exp(- t * (sr + self.adjust))
+        return - t * (sr + self.adjust)
 
-    def _present_value(self, t, *, next = False):
+    def _log_present_value(self, t, *, next = False):
         '''Return the present value of a zero coupon bond paying 1 at time t
         into the future when the short term interest rates are given
-        by the underlying OU process value, oup_x.
+        by the underlying OU process current or next value depending
+        on the value of next.
 
         '''
 
@@ -104,14 +105,14 @@ class Bonds(object):
 
         #  https://en.wikipedia.org/wiki/Hull%E2%80%93White_model P(0, T).
         B = (1 - exp(- self.a * t)) / self.a
-        P = self._p(t) * exp(B * (self.sir_init - sir))
+        log_P =  self._log_p(t) + B * (self.sir_init - sir)
 
-        return P
+        return log_P
 
     def present_value(self, t):
         '''Return the present value of a zero coupon bond paying 1 at timet t.'''
 
-        return self._present_value(t)
+        return exp(self._log_present_value(t))
 
     def _yield(self, t):
         '''Return the current continuously compounded yield of a zero coupon
@@ -119,14 +120,14 @@ class Bonds(object):
 
         '''
 
-        return - log(self._present_value(t)) / t if t > 0 else self._short_interest_rate(self.oup.x)
+        return - self._log_present_value(t) / t if t > 0 else self._short_interest_rate(self.oup.x)
 
     def sample(self, t = 7):
         '''Current return for a zero coupon bond with duration t.'''
 
         assert t >= self.time_period
 
-        return self._present_value(t - self.time_period, next = True) / self._present_value(t)
+        return exp(self._log_present_value(t - self.time_period, next = True) - self._log_present_value(t))
 
     def step(self):
 
@@ -141,7 +142,7 @@ class Bonds(object):
         print('duration observed_yield_curve_yield initial_yield')
         for duration in durations:
             r = self._yield(duration)
-            r_expect = log(self.yield_curve.discount_rate(duration))
+            r_expect = log(self.yield_curve.discount_rate(duration)) - self._inflation_adjust_yield(duration)
             print(duration, r_expect, r)
 
         print()
@@ -150,7 +151,7 @@ class Bonds(object):
         for duration in durations:
             r = []
             self.reset()
-            for _ in range(10000):
+            for _ in range(100000):
                 r.append(self._yield(duration))
                 self.step()
             print(duration, mean(r))
@@ -174,7 +175,7 @@ class Bonds(object):
                         self.step()
                     for year in range(year_low, year_high + 1):
                         yield_curve = self._deflate(YieldCurve(self.yield_curve.interest_rate, '{}-12-31'.format(year)))
-                        r_expect.append(log(yield_curve.discount_rate(duration)))
+                        r_expect.append(log(yield_curve.discount_rate(duration)) / self._inflation_adjust_annual(year))
                     print(duration, stdev(r_expect), stdev(r))
 
                 print()
@@ -192,9 +193,9 @@ class Bonds(object):
                         r_old = r
                     dr_expect = []
                     r_expect_old = None
-                    for year in range(year_low, year_high + 1):
+                    for year in range(year_low - 1, year_high + 1):
                         yield_curve = self._deflate(YieldCurve(self.yield_curve.interest_rate, '{}-12-31'.format(year)))
-                        r_expect = log(yield_curve.discount_rate(duration))
+                        r_expect = log(yield_curve.discount_rate(duration)) / self._inflation_adjust_annual(year)
                         if r_expect_old != None:
                             dr_expect.append(r_expect - r_expect_old)
                         r_expect_old = r_expect
@@ -202,19 +203,20 @@ class Bonds(object):
 
                 print()
 
-                print('duration observed_mean_real_return mean_real_return observed_standard_deviation standard_deviation')
+                print('duration observed_mean_return mean_return observed_standard_deviation standard_deviation')
                 for duration in durations:
                     ret = []
                     ret_expect = []
+                    r_expect_old = None
                     self.reset()
                     for _ in range(100000):
                         ret.append(self.sample(duration))
                         self.step()
-                    for year in range(year_low, year_high + 1):
+                    for year in range(year_low - 1, year_high + 1):
                         yield_curve = self._deflate(YieldCurve(self.yield_curve.interest_rate, '{}-12-31'.format(year)))
                         r_expect = yield_curve.discount_rate(duration - 1)
                         if r_expect_old != None:
-                            ret_expect.append(r_expect ** (1 - duration) / r_expect_old ** - duration)
+                            ret_expect.append(r_expect ** (1 - duration) / r_expect_old ** - duration / self._inflation_adjust_annual(year))
                         r_expect_old = yield_curve.discount_rate(duration)
                     print(duration, mean(ret_expect), mean(ret), stdev(ret_expect), stdev(ret))
 
@@ -234,12 +236,15 @@ class RealBonds(Bonds):
     def __init__(self, *, a = 0.14, sigma = 0.011, yield_curve = None, r0 = None, standard_error = 0, time_period = 1):
         '''Chosen value of sigma, 0.011, intended to produce a short term real
         yield volatility of 0.9-1.0%. The measured value over
-        2005-2017 was 0.94%. Obtained value is 0.99%.
+        2005-2017 was 1.00%. Obtained value is 0.99%.
 
         Chosen value of a, 0.14, intended to produce a long term (20
         year) real return standard deviation of 7-8%. The measured
-        value over 2005-2017 was 14.2% (when rates were
-        volatile). Obtained value is 7.3%.
+        value over 2005-2017 was 11.4% (when rates were volatile). The
+        real nominal bond observed standard deviation is 17.8% whereas
+        according to the Credit Suisse Yearbook 11.2% is more typical,
+        so by a simple scaling 7.2% seems a reasonable
+        expectation for real bonds. Obtained value is 7.3%.
 
         Chosen default yield curve intended to be indicative of the
         present era.
@@ -271,28 +276,37 @@ class RealBonds(Bonds):
 
         return yield_curve
 
-class DeflatedYieldCurve(object):
+    def _inflation_adjust_yield(self, duration):
 
-    def __init__(self, nominal_yield_curve, real_yield_curve):
+        return 0
 
-        self.nominal_yield_curve = nominal_yield_curve
-        self.real_yield_curve = real_yield_curve
+    def _inflation_adjust_annual(self, year):
 
-        self.interest_rate = nominal_yield_curve.interest_rate
-        self.date = nominal_yield_curve.date
-        self.date_low = nominal_yield_curve.date_low
+        return 1
+
+class YieldCurveSum(object):
+
+    def __init__(self, yield_curve1, yield_curve2, *, weight = 1):
+
+        self.yield_curve1 = yield_curve1
+        self.yield_curve2 = yield_curve2
+        self.weight = weight
+
+        self.interest_rate = self.yield_curve1.interest_rate
+        self.date = yield_curve1.date
+        self.date_low = yield_curve1.date_low
 
     def spot(self, y):
 
-        return self.nominal_yield_curve.spot(y) - self.real_yield_curve.spot(y)
+        return self.yield_curve1.spot(y) + self.weight * self.yield_curve2.spot(y)
 
     def forward(self, y):
 
-        return self.nominal_yield_curve.forward(y) - self.real_yield_curve.forward(y)
+        return self.yield_curve1.forward(y) + self.weight * self.yield_curve2.forward(y)
 
     def discount_rate(self, y):
 
-        return self.nominal_yield_curve.discount_rate(y) / self.real_yield_curve.discount_rate(y)
+        return self.yield_curve1.discount_rate(y) * self.yield_curve2.discount_rate(y) ** self.weight
 
 class BreakEvenInflation(Bonds):
 
@@ -308,16 +322,18 @@ class BreakEvenInflation(Bonds):
         inflation rate (as modeled to provide inflation
         volatility). Measured value was 0.53%. Obtained value was
         0.82%. This seems quite reasonable given inflation has
-        historically been more volatilie than it has been recently.
+        recently been constrained. Additionally. the measured short
+        term inflation yield volatility is 1.33%, compared to a
+        obtained value of 1.17%.
 
         Chosen value of bond_a, 0.14, the same as in the real case.
 
         Chosen value of bond_sigma, 0.013, intended to produce a long
         term (20 year) nominal bond real return standard deviation of
-        11-12%. The measured value over 2005-2017 was 22.1% (when
+        11-12%. The measured value over 2005-2017 was 17.8% (when
         rates were volatile). Obtained value is 11.0%. As in the real
-        case this is half the observed value, and is inline with the
-        11.2% standard deviation for long term government bonds
+        case this is less than the observed value, and is inline with
+        the 11.2% standard deviation for long term government bonds
         reported in the Credit Suisse Global Investment Returns
         Yearbook 2017.
 
@@ -332,17 +348,6 @@ class BreakEvenInflation(Bonds):
 
         Chosen default yield curve intended to be indicative of the
         present era.
-
-        Note that with the default yield curves there is a slight drop
-        in the spot rate from duration 25 to 30. This is the presumed
-        cause of 30 year nominal bonds having significantly lower mean
-        real returns than 20 year bonds. As soon as the forward rate
-        becomes the average 15 year plus forward rate at duration 31
-        years the mean returns revert. This drop in spot rates could
-        in turn be the result of poor spline interpolation of the
-        reported nominal rates by the spia module. See
-        http://www.math.ku.dk/~rolf/HaganWest.pdf for a possible
-        solution.
 
         '''
         if nominal_yield_curve == None:
@@ -363,7 +368,7 @@ class BreakEvenInflation(Bonds):
 
         self.adjust_rate = self.real_liquidity_premium - self.inflation_risk_premium
 
-        deflated_yield_curve = DeflatedYieldCurve(nominal_yield_curve, real_bonds.yield_curve)
+        deflated_yield_curve = YieldCurveSum(nominal_yield_curve, real_bonds.yield_curve, weight = -1)
 
         super().__init__(a = a, sigma = sigma, yield_curve = deflated_yield_curve, r0 = r0, standard_error = standard_error, time_period = time_period)
 
@@ -375,8 +380,6 @@ class BreakEvenInflation(Bonds):
 
         # Inflation model OU Process tracks modeled nominal bond standard deviation OU Process.
         self.inflation_oup = OUProcess(self.time_period, self.inflation_a, self.inflation_sigma, mu = self.sir_init, x = self.sir0, norm = self.oup.norm)
-
-        self._sir_cache_t = None
 
     def _sir(self, t, a, sigma):
 
@@ -404,14 +407,11 @@ class BreakEvenInflation(Bonds):
 
     def present_value(self, t):
 
-        if self.t != self._sir_cache_t:
-
-            self._sir_cache_t = self.t
-            self._sir_cache = self._model_short_interest_rate()
+        sir = self._model_short_interest_rate()
 
         #  https://en.wikipedia.org/wiki/Hull%E2%80%93White_model P(0, T).
         B = (1 - exp(- self.inflation_a * t)) / self.inflation_a
-        P = self._p(t) * exp(B * (self.sir_init - self._sir_cache) - self.adjust_rate / self.time_period)
+        P = exp(self._log_p(t) + B * (self.sir_init - sir) - self.adjust_rate / self.time_period)
 
         return P
 
@@ -430,7 +430,15 @@ class BreakEvenInflation(Bonds):
 
     def _deflate(self, yield_curve):
 
-        return DeflatedYieldCurve(yield_curve, YieldCurve('real', yield_curve.date, date_str_low = yield_curve.date_low))
+        return YieldCurveSum(yield_curve, YieldCurve('real', yield_curve.date, date_str_low = yield_curve.date_low), weight = -1)
+
+    def _inflation_adjust_yield(self, duration):
+
+        return 0
+
+    def _inflation_adjust_annual(self, year):
+
+        return 1
 
 class OUProcessTuple(object):
 
@@ -448,6 +456,24 @@ class OUProcessTuple(object):
 
         return tuple(oup.next_x for oup in self.oups)
 
+# Annual inflation rate, needed for manual calibration of Hull-White parameters.
+inflation_rate = {
+    2004: 0.027,
+    2005: 0.034,
+    2006: 0.032,
+    2007: 0.028,
+    2008: 0.038,
+    2009: -0.004,
+    2010: 0.016,
+    2011: 0.032,
+    2012: 0.021,
+    2013: 0.015,
+    2014: 0.016,
+    2015: 0.001,
+    2016: 0.013,
+    2017: 0.021,
+}
+
 class NominalBonds(Bonds):
 
     def __init__(self, real_bonds, inflation, *, time_period = 1):
@@ -456,7 +482,7 @@ class NominalBonds(Bonds):
         self.inflation = inflation
         self.time_period = time_period
 
-        self.yield_curve = self.inflation.nominal_yield_curve
+        self.yield_curve = inflation.nominal_yield_curve # Only used by _report() for expected values.
 
         self.reset()
 
@@ -471,14 +497,20 @@ class NominalBonds(Bonds):
 
         return self.real_bonds._short_interest_rate(oup_x[0]) + self.inflation._short_interest_rate(oup_x[1])
 
-    def _present_value(self, t, *, next = False):
+    def _log_present_value(self, t, *, next = False):
 
-        return self.real_bonds._present_value(t, next = next) * self.inflation._present_value(t, next = next)
+        return self.real_bonds._log_present_value(t, next = next) + self.inflation._log_present_value(t, next = next)
+
+    def _yield(self, t):
+
+        _yield = super()._yield(t)
+
+        return _yield - self.inflation._yield(t)
 
     def sample(self, t = 7):
 
-        sample = super().sample(t)
-        period_inflation = self.inflation._present_value(self.time_period)
+        sample = self.real_bonds.sample(t) * self.inflation.sample(t)
+        period_inflation = exp(self.inflation._log_present_value(self.time_period))
 
         return sample * period_inflation
 
@@ -494,6 +526,60 @@ class NominalBonds(Bonds):
     def _deflate(self, yield_curve):
 
         return yield_curve
+
+    def _inflation_adjust_yield(self, duration):
+
+        return self.inflation._yield(duration)
+
+    def _inflation_adjust_annual(self, year):
+
+        return 1 + inflation_rate[year]
+
+class BondsMeasuredInNominalTerms(Bonds):
+
+    def __init__(self, bonds, inflation):
+
+        self.bonds = bonds
+        self.inflation = inflation
+        self.time_period = self.bonds.time_period
+
+        self.yield_curve = YieldCurveSum(bonds.yield_curve, inflation.yield_curve)
+
+    def reset(self):
+
+        self.bonds.reset()
+        self.inflation.reset()
+
+        self.oup = OUProcessTuple(self.bonds.oup, self.inflation.oup)
+
+    def _short_interest_rate(self, oup_x):
+
+        return self.bonds._short_interest_rate(oup_x[0]) + self.inflation._short_interest_rate(oup_x[1])
+
+    def _yield(self, t):
+
+        return self.bonds._yield(t) + self.inflation._yield(t)
+
+    def sample(self, t = 7):
+
+        return self.bonds.sample(t) * self.inflation.sample(t)
+
+    def step(self):
+
+        self.bonds.step()
+        self.inflation.step()
+
+    def _deflate(self, yield_curve):
+
+        return YieldCurve('nominal', yield_curve.date, date_str_low = yield_curve.date_low)
+
+    def _inflation_adjust_yield(self, duration):
+
+        return self.bonds._inflation_adjust_yield(duration)
+
+    def _inflation_adjust_annual(self, year):
+
+        return self.bonds._inflation_adjust_annual(year)
 
 def init(need_real = True, need_nominal = True, need_inflation = True, time_period = 1):
     '''Return a tuple of objects (real_bonds, nominal_bonds, inflation)
@@ -573,6 +659,8 @@ if __name__ == '__main__':
 
     real_bonds, nominal_bonds, inflation = init()
     modeled_inflation = BreakEvenInflation(real_bonds, model_bond_volatility = False)
+    nominal_real_bonds = BondsMeasuredInNominalTerms(real_bonds, inflation)
+    nominal_nominal_bonds = BondsMeasuredInNominalTerms(nominal_bonds, inflation)
 
     print('Real bonds:')
     print()
@@ -592,6 +680,18 @@ if __name__ == '__main__':
 
     print()
 
-    print('Nominal bonds (in nominal terms except for returns):')
+    print('Nominal bonds (in real terms):')
     print()
     nominal_bonds._report()
+
+    print()
+
+    print('Real bonds (in nominal terms):')
+    print()
+    nominal_real_bonds._report()
+
+    print()
+
+    print('Nominal bonds (in nominal terms):')
+    print()
+    nominal_nominal_bonds._report()
