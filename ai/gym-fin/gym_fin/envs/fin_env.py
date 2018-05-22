@@ -316,6 +316,12 @@ class FinEnv(Env):
 
     def decode_observation(self, obs):
 
-        life_expectancy, guaranteed_income, p_notax = obs.tolist()
+        life_expectancy, guaranteed_income, p_notax, real_interest_rate, inflation_rate = obs.tolist()
 
-        return {'life_expectancy': life_expectancy, 'guaranteed_income': guaranteed_income, 'p_notax': p_notax}
+        return {
+            'life_expectancy': life_expectancy,
+            'guaranteed_income': guaranteed_income,
+            'p_notax': p_notax,
+            'real_interest_rate': real_interest_rate,
+            'inflation_rate': inflation_rate
+        }
