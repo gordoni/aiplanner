@@ -14,7 +14,7 @@ from statistics import mean, stdev
 
 from yield_curve import YieldCurve
 
-from ou_process import OUProcess
+from gym_fin.envs.ou_process import OUProcess
 
 class Bonds(object):
     '''Short rate models - https://en.wikipedia.org/wiki/Short-rate_model .
@@ -584,7 +584,7 @@ class BondsMeasuredInNominalTerms(Bonds):
 
         return self.bonds._inflation_adjust_annual(year)
 
-def init(need_real = True, need_nominal = True, need_inflation = True, time_period = 1):
+def init(need_real = True, need_nominal = True, need_inflation = True, real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
     '''Return a tuple of objects (real_bonds, nominal_bonds, inflation)
     representing a bond and inflation model. They are each either None
     if they are not needed and have not been computed or provide the
@@ -614,8 +614,9 @@ def init(need_real = True, need_nominal = True, need_inflation = True, time_peri
 
         observe()
 
-            Returns a tuple. Current real interest rate or inflation
-            rate as appropriate. For nominal bonds the tuple is empty.
+            Returns a tuple. Current short real interest rate or short
+            inflation rate as appropriate. For nominal bonds the tuple
+            is empty.
 
     The nominal_bonds model need to be kept in sync with the real
     bonds and inflation models. Calling reset() or step() on
@@ -640,12 +641,12 @@ def init(need_real = True, need_nominal = True, need_inflation = True, time_peri
         need_real = True
 
     if need_real:
-        real_bonds = RealBonds(time_period = time_period)
+        real_bonds = RealBonds(standard_error = real_standard_error, time_period = time_period)
     else:
         real_bonds = None
 
     if need_inflation:
-        inflation = BreakEvenInflation(real_bonds, time_period = time_period)
+        inflation = BreakEvenInflation(real_bonds, standard_error = inflation_standard_error, time_period = time_period)
     else:
         inflation = None
 

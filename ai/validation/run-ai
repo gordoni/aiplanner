@@ -41,12 +41,13 @@ validate () {
     EVAL_ARGS=$4
 
     SEED=0
+    set -o pipefail
     while [ $SEED -lt $SEEDS ]; do
         MODEL_DIR=run.$MODEL_NAME-seed_$SEED.tf
         TEMPFILE=`tempfile -p valid`
-        $AI_DIR/train_ppo1.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE
+        $AI_DIR/train_ppo1.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
         mv $TEMPFILE $MODEL_DIR/train.log
-        $AI_DIR/run_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EVAL_ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS 2>&1 | tee $MODEL_DIR/eval.log
+        $AI_DIR/run_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EVAL_ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS 2>&1 | tee $MODEL_DIR/eval.log || exit 1
         SEED=`expr $SEED + 1`
     done
 }
@@ -79,8 +80,16 @@ validate_parallel () {
     wait
 }
 
-$VALIDATE fixed_30-gi_0-p_500000-no_bonds '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-p-notax=500000 --master-no-bonds --master-bills'
-$VALIDATE ssa_plus_3_female-gi_16000-p_500000 '--master-guaranteed-income=16000 --master-p-notax=500000'
+$VALIDATE fixed_30-gi_0-no_bonds '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-no-real-bonds --master-no-nominal-bonds --master-bills'
+$VALIDATE ssa_plus_3_female-iid_bonds '--master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds'
+$VALIDATE ssa_plus_3_female-nominal_iid_bonds '--master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-type=nominal'
+$VALIDATE ssa_plus_3_female-nominal_bonds_20 '--master-no-real-bonds --master-nominal-bonds-duration=20'
+$VALIDATE ssa_plus_3_female-nominal_bonds_7 '--master-no-real-bonds --master-nominal-bonds-duration=7'
+$VALIDATE ssa_plus_3_female-nominal_bonds '--master-no-real-bonds'
+$VALIDATE ssa_plus_3_female-real_bonds_20 '--master-no-nominal-bonds --master-real-bonds-duration=20'
+$VALIDATE ssa_plus_3_female-real_bonds_7 '--master-no-nominal-bonds --master-real-bonds-duration=7'
+$VALIDATE ssa_plus_3_female-real_bonds '--master-no-nominal-bonds'
+$VALIDATE ssa_plus_3_female-real_and_nominal_bonds
 
 # Notes on tweaks that have been tried out:
 #

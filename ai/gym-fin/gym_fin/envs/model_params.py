@@ -82,15 +82,25 @@ class ModelParams(object):
         self._boolean_flag('returns-standard-error', True) # Whether to model the standard error of returns.
         self._param('stocks-return', 0.065) # Annual real return for stocks.
         self._param('stocks-volatility', 0.174) # Annual real volatility for stocks.
-        self._param('stocks-standard-error', 0.016) # Standard error of real return for stocks.
-        self._boolean_flag('bonds', True) # Whether to model stochastic bonds (without any interest rate model).
-        self._param('bonds-return', 0.024) # Annual real return for bonds.
-        self._param('bonds-volatility', 0.112) # Annual real volatility for bonds.
-        self._param('bonds-standard-error', 0.010) # Standard error of real return for bonds.
+        self._param('stocks-standard-error', 0.016) # Standard error of log real return for stocks.
+        self._boolean_flag('real-bonds', True) # Whether to model real bonds (with an interest rate model).
+        self._param('real-bonds-duration', None) # Duration in years to use for real bonds, or None to allow duration to vary.
+        self._param('real-bonds-duration-max', 30) # Maximum allowed real duration to use when duration is allowed to vary.
+        self._boolean_flag('nominal-bonds', True) # Whether to model nominal bonds (with an interest rate model).
+        self._param('nominal-bonds-duration', None) # Duration in years to use for nominal bonds, or None to allow duration to vary.
+        self._param('nominal-bonds-duration-max', 30) # Maximum allowed nominal duration to use when duration is allowed to vary.
+        self._boolean_flag('iid-bonds', False) # Whether to model independent identically distributed bonds (without any interest rate model).
+        self._param('iid-bonds-type', None, tp = string_type, choices = ('real', 'nominal', None))
+            # Derive iid bond returns from the specified bond model, or None if iid bond returns are lognormally distributed.
+        self._param('iid-bonds-duration', 20) # Duration to use when deriving iid bond returns from the bond model.
+        self._param('iid-bonds-return', 0.024) # Annual real return for iid bonds when lognormal.
+        self._param('iid-bonds-volatility', 0.112) # Annual real volatility for iid bonds when lognormal.
+        self._param('bonds-standard-error', 0.010) # Standard error of log real return for bonds.
+        self._param('inflation-standard-error', 0.004) # Standard error of log inflation.
         self._boolean_flag('bills', True) # Whether to model stochastic bills (without any interest rate model).
         self._param('bills-return', 0.009) # Annual real return for bill asset class.
         self._param('bills-volatility', 0.004) # Annual real return for bill asset class.
-        self._param('bills-standard-error', 0.004) # Standard error of real return for bills.
+        self._param('bills-standard-error', 0.004) # Standard error of log real return for bills.
 
     def set_params(self, dict_args):
 
@@ -145,7 +155,7 @@ class ModelParams(object):
 
         return params
 
-    def _param(self, name, train_val, eval_val = None, *, tp = float):
+    def _param(self, name, train_val, eval_val = None, *, tp = float, choices = None):
         '''Add parameter name to the model parameters.
 
         Uses the specified values as the default training and evaluation values.
@@ -195,15 +205,15 @@ class ModelParams(object):
 
         under_name = name.replace('-', '_')
         if rnge:
-            self.parser.add_argument(prefix + name, type = tp, default = None)
-            self.parser.add_argument(prefix + name + '-low', type = tp, default = val[0])
-            self.parser.add_argument(prefix + name + '-high', type = tp, default = val[1])
+            self.parser.add_argument(prefix + name, type = tp, default = None, choices = choices)
+            self.parser.add_argument(prefix + name + '-low', type = tp, default = val[0], choices = choices)
+            self.parser.add_argument(prefix + name + '-high', type = tp, default = val[1], choices = choices)
             if not (self.training or self.evaluate):
                 self.param_names.append(under_name)
                 self.param_names.append(under_name + '_low')
                 self.param_names.append(under_name + '_high')
         else:
-            self.parser.add_argument(prefix + name, type = tp, default = val)
+            self.parser.add_argument(prefix + name, type = tp, default = val, choices = choices)
             if not (self.training or self.evaluate):
                 self.param_names.append(under_name)
 

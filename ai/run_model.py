@@ -64,7 +64,8 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
 
         consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
         consume_annual = env.consume_rate(consume_fraction)
-        asset_allocation = (stocks_allocation, 0, 1 - stocks_allocation)
+        asset_allocation = (stocks_allocation, 0, 0, 0, 1 - stocks_allocation)
+        real_bonds_duration = nominal_bonds_duration = 0
 
     else:
 
@@ -76,11 +77,13 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
         v_tf = g.get_tensor_by_name('pi/v:0')
         observation_tf = g.get_tensor_by_name('pi/ob:0')
         action, = session.run(action_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
-        consume_fraction, asset_allocation = env.decode_action(action)
+        consume_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = env.decode_action(action)
         consume_annual = env.consume_rate(consume_fraction)
 
     logger.info('    Initial consume rate: ', consume_annual)
     logger.info('    Initial asset allocation: ', asset_allocation)
+    logger.info('    Initial real bonds duration: ', real_bonds_duration)
+    logger.info('    Initial nominal bonds duration: ', nominal_bonds_duration)
 
     if not merton_or_samuelson:
 
@@ -102,7 +105,7 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
             t = ceil(life_expectancy / env.params.time_period) - 1
             if t == 0:
                 consume_fraction = min(consume_fraction, 1 / env.params.time_period) # Bound may be exceeded in continuous time case.
-            return env.encode_direct_action(consume_fraction, stocks_allocation, 0)
+            return env.encode_direct_stock_bill_action(consume_fraction, stocks_allocation)
 
         else:
 

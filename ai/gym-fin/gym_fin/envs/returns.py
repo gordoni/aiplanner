@@ -24,12 +24,14 @@ class Returns(object):
 
     def reset(self):
 
-        m = 1 + normalvariate(self.ret, self.standard_error)
+        m = 1 + self.ret
         self.mu = log(m / sqrt(1 + (self.vol / m) ** 2))
         self.sigma = sqrt(log(1 + (self.vol / m) ** 2))
 
-        self.period_mu = self.mu * time_period
-        self.period_sigma = self.sigma * sqrt(time_period)
+        mu = normalvariate(self.mu, self.standard_error)
+
+        self.period_mu = mu * self.time_period
+        self.period_sigma = self.sigma * sqrt(self.time_period)
 
     def sample(self):
 
