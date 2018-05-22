@@ -10,6 +10,7 @@
 
 from math import exp, log, sqrt
 from random import lognormvariate, normalvariate
+from statistics import mean, stdev
 
 class Returns(object):
 
@@ -36,3 +37,31 @@ class Returns(object):
     def sample(self):
 
         return lognormvariate(self.period_mu, self.period_sigma) # Caution: If switch to using numpy need to get/set numpy state in fin_evaluate().
+
+def _report(name, rets):
+
+    avg = mean(rets) - 1
+    vol = stdev(rets)
+    geomean = exp(mean(log(r) for r in rets)) - 1
+    stderr = vol / sqrt(len(rets) - 1)
+
+    print('    {:16s}  {:5.2%} +/- {:6.2%} (geometric {:5.2%}; stderr {:5.2%})'.format(name, avg, vol, geomean, stderr))
+
+def yields_report(name, returns, *, duration, time_period, stepper, sample_size = 10000):
+
+    ylds = []
+    for _ in range(sample_size):
+        ylds.append(returns.present_value(duration) ** (- 1 / (duration * time_period)))
+        stepper.step()
+
+    _report(name, ylds)
+
+def returns_report(name, returns, *, time_period, stepper = None, sample_size = 100000, **kwargs):
+
+    rets = []
+    for _ in range(sample_size):
+        rets.append(returns.sample(**kwargs) ** (1 / time_period))
+        if stepper:
+            stepper.step()
+
+    _report(name, rets)

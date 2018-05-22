@@ -105,7 +105,7 @@ class Bonds(object):
 
         #  https://en.wikipedia.org/wiki/Hull%E2%80%93White_model P(0, T).
         B = (1 - exp(- self.a * t)) / self.a
-        log_P =  self._log_p(t) + B * (self.sir_init - sir)
+        log_P = self._log_p(t) + B * (self.sir_init - sir)
 
         return log_P
 
@@ -122,12 +122,15 @@ class Bonds(object):
 
         return - self._log_present_value(t) / t if t > 0 else self._short_interest_rate(self.oup.x)
 
-    def sample(self, t = 7):
-        '''Current return for a zero coupon bond with duration t.'''
+    def sample(self, duration = 7):
+        '''Current real return for a zero coupon bond with duration
+        duration.
 
-        assert t >= self.time_period
+        '''
 
-        return exp(self._log_present_value(t - self.time_period, next = True) - self._log_present_value(t))
+        assert duration >= self.time_period
+
+        return exp(self._log_present_value(duration - self.time_period, next = True) - self._log_present_value(duration))
 
     def step(self):
 
@@ -507,9 +510,9 @@ class NominalBonds(Bonds):
 
         return _yield - self.inflation._yield(t)
 
-    def sample(self, t = 7):
+    def sample(self, duration = 7):
 
-        sample = self.real_bonds.sample(t) * self.inflation.sample(t)
+        sample = self.real_bonds.sample(duration) * self.inflation.sample(duration)
         period_inflation = exp(self.inflation._log_present_value(self.time_period))
 
         return sample * period_inflation
@@ -560,9 +563,9 @@ class BondsMeasuredInNominalTerms(Bonds):
 
         return self.bonds._yield(t) + self.inflation._yield(t)
 
-    def sample(self, t = 7):
+    def sample(self, duration = 7):
 
-        sample = self.bonds.sample(t)
+        sample = self.bonds.sample(duration)
         period_inflation = exp(self.inflation._log_present_value(self.time_period))
 
         return sample / period_inflation
@@ -603,14 +606,14 @@ def init(need_real = True, need_nominal = True, need_inflation = True, real_stan
             Return the present value of a zero coupon bond of the
             appropriate type paying 1 in t years.
 
-        sample(t = 7)
+        sample(duration = 7)
 
             Returns the time_period multipicative real return (change
             in value) for zero coupon bonds of the appropriate type
-            having an initial duration t years. May be called
-            repeatedly with different values for t. Calling with the
-            same value will return the same result, unless step() is
-            also called.
+            having an initial duration duration years. May be called
+            repeatedly with different values for duration. Calling
+            with the same value will return the same result, unless
+            step() is also called.
 
         observe()
 
