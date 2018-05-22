@@ -311,7 +311,17 @@ class FinEnv(Env):
 
         life_expectancy = self.life_expectancy[self.episode_length]
 
-        observe = (life_expectancy, self.guaranteed_income, self.p_notax) + self.real_bonds.observe() + self.inflation.observe()
+        if self.params.observe_interest_rate:
+            real_interest_rate, = self.real_bonds.observe()
+        else:
+            real_interest_rate = 0
+
+        if self.params.observe_inflation_rate:
+            inflation_rate, = self.inflation.observe()
+        else:
+            inflation_rate = 0
+
+        observe = (life_expectancy, self.guaranteed_income, self.p_notax, real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')
 
     def decode_observation(self, obs):

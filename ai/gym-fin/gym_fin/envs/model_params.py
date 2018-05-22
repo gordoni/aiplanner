@@ -102,6 +102,9 @@ class ModelParams(object):
         self._param('bills-volatility', 0.004) # Annual real return for bill asset class.
         self._param('bills-standard-error', 0.004) # Standard error of log real return for bills.
 
+        self._boolean_flag('observe-interest-rate', True) # Whether model reveals the short real interest rate to observers.
+        self._boolean_flag('observe-inflation-rate', True) # Whether model reveals the short inflation rate to observers.
+
     def set_params(self, dict_args):
 
         self.params = dict_args

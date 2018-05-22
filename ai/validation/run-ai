@@ -90,6 +90,7 @@ $VALIDATE ssa_plus_3_female-real_bonds_20 '--master-no-nominal-bonds --master-re
 $VALIDATE ssa_plus_3_female-real_bonds_7 '--master-no-nominal-bonds --master-real-bonds-duration=7'
 $VALIDATE ssa_plus_3_female-real_bonds '--master-no-nominal-bonds'
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds
+$VALIDATE ssa_plus_3_female-real_and_nominal_bonds-blind '--master-no-observe-interest-rate --master-no-observe-inflation-rate'
 
 # Notes on tweaks that have been tried out:
 #
