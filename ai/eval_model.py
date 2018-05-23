@@ -53,12 +53,11 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
     assert sum((model_dir != 'aiplanner.tf', merton, samuelson)) <= 1
     merton_or_samuelson = merton or samuelson
 
+    eval_seed += 1000000 # Use a different seed than might have been used during training.
     set_global_seeds(eval_seed)
     eval_env = make_fin_env(**eval_model_params, action_space_unbounded = not merton_or_samuelson, direct_action = merton_or_samuelson)
     env = eval_env.unwrapped
     obs = eval_env.reset()
-
-    logger.info('Properties for first episode:')
 
     if merton_or_samuelson:
 
@@ -80,6 +79,8 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
         consume_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = env.decode_action(action)
         consume_annual = env.consume_rate(consume_fraction)
 
+    logger.info()
+    logger.info('Properties for first episode:')
     logger.info('    Initial consume rate: ', consume_annual)
     logger.info('    Initial asset allocation: ', asset_allocation)
     logger.info('    Initial real bonds duration: ', real_bonds_duration)
@@ -92,6 +93,8 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
         logger.info('    Predicted certainty equivalent: ', env.utility.inverse(v / (sum_alive * env.params.time_period)))
             # Only valid if train and eval have identical age_start and life table.
             # Otherwise need to simulate to determine CE; this also provides percentile ranges.
+
+    logger.info()
 
     evaluator = Evaluator(eval_env, eval_seed, eval_num_timesteps, eval_render)
 

@@ -587,7 +587,7 @@ class BondsMeasuredInNominalTerms(Bonds):
 
         return self.bonds._inflation_adjust_annual(year)
 
-def init(need_real = True, need_nominal = True, need_inflation = True, real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
+def bonds_init(need_real = True, need_nominal = True, need_inflation = True, real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
     '''Return a tuple of objects (real_bonds, nominal_bonds, inflation)
     representing a bond and inflation model. They are each either None
     if they are not needed and have not been computed or provide the
@@ -664,7 +664,7 @@ if __name__ == '__main__':
 
     seed(0)
 
-    real_bonds, nominal_bonds, inflation = init()
+    real_bonds, nominal_bonds, inflation = bonds_init()
     modeled_inflation = BreakEvenInflation(real_bonds, model_bond_volatility = False)
     nominal_real_bonds = BondsMeasuredInNominalTerms(real_bonds, inflation)
     nominal_nominal_bonds = BondsMeasuredInNominalTerms(nominal_bonds, inflation)

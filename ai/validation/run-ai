@@ -12,7 +12,7 @@
 
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 PARALLEL=${PARALLEL:-True}  # Set to "False" to run seeds sequentially rather than in parallel.
-SEEDS=${SEEDS:-5}
+SEEDS=${SEEDS:-10}
 if [ -n "$EVAL_NUM_TIMESTEPS" ]; then
     EXTRA_EVAL_ARGS="--eval-num-timesteps $EVAL_NUM_TIMESTEPS"
 fi
@@ -47,7 +47,7 @@ validate () {
         TEMPFILE=`tempfile -p valid`
         $AI_DIR/train_ppo1.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
         mv $TEMPFILE $MODEL_DIR/train.log
-        $AI_DIR/run_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EVAL_ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS 2>&1 | tee $MODEL_DIR/eval.log || exit 1
+        $AI_DIR/eval_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EVAL_ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS 2>&1 | tee $MODEL_DIR/eval.log || exit 1
         SEED=`expr $SEED + 1`
     done
 }
@@ -74,7 +74,7 @@ validate_parallel () {
     while [ $SEED -lt $SEEDS ]; do
         MODEL_DIR=run.$MODEL_NAME-seed_$SEED.tf
         mv ${TEMPFILES[$SEED]} $MODEL_DIR/train.log
-        $AI_DIR/run_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EVAL_ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS > $MODEL_DIR/eval.log 2>&1 &
+        $AI_DIR/eval_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EVAL_ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS > $MODEL_DIR/eval.log 2>&1 &
         SEED=`expr $SEED + 1`
     done
     wait
@@ -82,7 +82,7 @@ validate_parallel () {
 
 $VALIDATE fixed_30-gi_0-no_bonds '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-no-real-bonds --master-no-nominal-bonds --master-bills'
 $VALIDATE ssa_plus_3_female-iid_bonds '--master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds'
-$VALIDATE ssa_plus_3_female-nominal_iid_bonds '--master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-type=nominal'
+$VALIDATE ssa_plus_3_female-iid_nominal_bonds_20 '--master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-type=nominal --master-iid-bonds-duration=20'
 $VALIDATE ssa_plus_3_female-nominal_bonds_20 '--master-no-real-bonds --master-nominal-bonds-duration=20'
 $VALIDATE ssa_plus_3_female-nominal_bonds_7 '--master-no-real-bonds --master-nominal-bonds-duration=7'
 $VALIDATE ssa_plus_3_female-nominal_bonds '--master-no-real-bonds'
@@ -97,6 +97,12 @@ $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-blind '--master-no-observe-in
 # train-reward-clip=50 produces worse results without guaranteed income, but had no effect when guranteed income was present.
 #    $VALIDATE fixed_30-gi_0-p_300000-train_reward_clip_inf '--life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-p-notax=300000' '--train-reward-clip=inf'
 #    $VALIDATE fixed_30-gi_16000-p_2000000-train_reward_clip_inf '--life-table=fixed --master-age-end=95 --master-guaranteed-income=16000 --master-p-notax=2000000' '--train-reward-clip=inf'
-
+#
 # train-num-timesteps=4000000 doesn't improve CE:
 #     $VALIDATE fixed_30-gi_16000-p_2000000-timesteps_4000000 '--life-table=fixed --master-age-end=95 --master-guaranteed-income=16000 --master-p-notax=2000000' '--train-num-timesteps=4000000'
+#
+# train-hidden-layer-size=96 doesn't improve CE:
+#     $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-train_hidden_layer_size_96 '' '--train-hidden-layer-size=96'
+#
+# May need to increase both hidden layer size and num timesteps together, but:
+# train-hidden-layer-size=96 and train-num-timesteps=2000000 doesn't improve CE.

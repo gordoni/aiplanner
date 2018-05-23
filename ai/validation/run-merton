@@ -33,7 +33,7 @@ validate () {
 
     MODEL_DIR=run.$MODEL_NAME.$MODE
     mkdir -p $MODEL_DIR
-    $AI_DIR/run_model.py -c $CONFIG_FILE --$MODE $ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS 2>&1 | tee $MODEL_DIR/eval.log
+    $AI_DIR/eval_model.py -c $CONFIG_FILE --$MODE $ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS 2>&1 | tee $MODEL_DIR/eval.log
 }
 
 validate fixed_30-gi_0-no_bonds merton '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0'

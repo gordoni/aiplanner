@@ -19,10 +19,11 @@ from gym.spaces import Box
 
 from life_table import LifeTable
 
+from gym_fin.envs.asset_allocation import AssetAllocation
+from gym_fin.envs.bonds import bonds_init
 from gym_fin.envs.returns import Returns, returns_report, yields_report
 from gym_fin.envs.returns_sample import ReturnsSample
 from gym_fin.envs.utility import Utility
-from gym_fin.envs import bonds
 
 class AttributeObject(object):
 
@@ -108,7 +109,7 @@ class FinEnv(Env):
         self.bills = Returns(self.params.bills_return, self.params.bills_volatility,
             self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
 
-        self.real_bonds, self.nominal_bonds, self.inflation = bonds.init(
+        self.real_bonds, self.nominal_bonds, self.inflation = bonds_init(
             real_standard_error = self.params.bonds_standard_error if self.params.returns_standard_error else 0,
             inflation_standard_error = self.params.inflation_standard_error if self.params.returns_standard_error else 0,
             time_period = self.params.time_period)
@@ -116,11 +117,13 @@ class FinEnv(Env):
 
         if self.params.iid_bonds:
             if self.params.iid_bonds_type == 'real':
-                self.iid_bonds = ReturnsSample(self.real_bonds, self.iid_bonds_duration,
-                    self.params.bonds_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
+                self.iid_bonds = ReturnsSample(self.real_bonds, self.params.iid_bonds_duration,
+                    self.params.bonds_standard_error if self.params.returns_standard_error else 0,
+                    stepper = self.bonds.stepper, time_period = self.params.time_period)
             elif self.params.iid_bonds_type == 'nominal':
-                self.iid_bonds = ReturnsSample(self.nominal_bonds, self.iid_bonds_duration,
-                    self.params.bonds_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
+                self.iid_bonds = ReturnsSample(self.nominal_bonds, self.params.iid_bonds_duration,
+                    self.params.bonds_standard_error if self.params.returns_standard_error else 0,
+                    stepper = self.bonds_stepper, time_period = self.params.time_period)
 
         print()
         print('Real/nominal yields:')
@@ -213,7 +216,7 @@ class FinEnv(Env):
 
         bills_allocation = 1 - stocks_allocation
 
-        return (consume_fraction, (stocks_allocation, 0, 0, 0, bills_allocation), 0, 0)
+        return (consume_fraction, AssetAllocation(stocks = stocks_allocation, bills = bills_allocation), None, None)
 
     def decode_action(self, action):
 
@@ -265,19 +268,32 @@ class FinEnv(Env):
         iid_bonds /= total
         bills /= total
 
-        if self.params.real_bonds_duration == None:
+        if not self.params.real_bonds:
+            real_bonds = None
+        if not self.params.nominal_bonds:
+            nominal_bonds = None
+        if not self.params.iid_bonds:
+            iid_bonds = None
+        if not self.params.bills:
+            bills = None
+
+        if not self.params.real_bonds:
+            real_bonds_duration = None
+        elif self.params.real_bonds_duration == None:
             real_bonds_duration = self.params.time_period + \
                 (self.params.real_bonds_duration_max - self.params.time_period) * (real_bonds_duration_action + 1) / 2
         else:
             real_bonds_duration = self.params.real_bonds_duration
 
-        if self.params.nominal_bonds_duration == None:
+        if not self.params.nominal_bonds:
+            nominal_bonds_duration = None
+        elif self.params.nominal_bonds_duration == None:
             nominal_bonds_duration = self.params.time_period + \
                 (self.params.nominal_bonds_duration_max - self.params.time_period) * (nominal_bonds_duration_action + 1) / 2
         else:
             nominal_bonds_duration = self.params.nominal_bonds_duration
 
-        asset_allocation = (stocks, real_bonds, nominal_bonds, iid_bonds, bills)
+        asset_allocation = AssetAllocation(stocks = stocks, real_bonds = real_bonds, nominal_bonds = nominal_bonds, iid_bonds = iid_bonds, bills = bills)
         return (consume_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration)
 
     def _p_income(self):
@@ -308,14 +324,17 @@ class FinEnv(Env):
             assert p / self.p_notax > -1e-15
             p = 0
 
-        stocks_allocation, real_bonds_allocation, nominal_bonds_allocation, iid_bonds_allocation, bills_allocation = asset_allocation
-        ret = stocks_allocation * self.stocks.sample()
-        if real_bonds_allocation != 0:
-            # Don't want slowdown if no real bonds.
-            ret += real_bonds_allocation * self.real_bonds.sample(real_bonds_duration)
-        if nominal_bonds_allocation != 0:
-            ret += nominal_bonds_allocation * self.nominal_bonds.sample(nominal_bonds_duration)
-        ret += iid_bonds_allocation * self.iid_bonds.sample() + bills_allocation * self.bills.sample()
+        ret = 0
+        if asset_allocation.stocks != None:
+            ret += asset_allocation.stocks * self.stocks.sample()
+        if asset_allocation.real_bonds != None:
+            ret += asset_allocation.real_bonds * self.real_bonds.sample(real_bonds_duration)
+        if asset_allocation.nominal_bonds != None:
+            ret += asset_allocation.nominal_bonds * self.nominal_bonds.sample(nominal_bonds_duration)
+        if asset_allocation.iid_bonds != None:
+            ret += asset_allocation.iid_bonds * self.iid_bonds.sample()
+        if asset_allocation.bills != None:
+            ret += asset_allocation.bills * self.bills.sample()
 
         self.p_notax = p * ret
 

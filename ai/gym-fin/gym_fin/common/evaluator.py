@@ -47,7 +47,7 @@ class Evaluator(object):
         if self.eval_env is not None:
 
             state = getstate()
-            seed(self.eval_seed + 1000000) # Pick a different seed than might have been used during training.
+            seed(self.eval_seed)
 
             rewards = []
             obs = self.eval_env.reset()
