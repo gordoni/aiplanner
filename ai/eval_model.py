@@ -23,6 +23,7 @@ from baselines.common import (
 )
 from baselines.common.misc_util import set_global_seeds
 
+from gym_fin.envs.asset_allocation import AssetAllocation
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 
@@ -63,8 +64,8 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
 
         consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
         consume_annual = env.consume_rate(consume_fraction)
-        asset_allocation = (stocks_allocation, 0, 0, 0, 1 - stocks_allocation)
-        real_bonds_duration = nominal_bonds_duration = 0
+        asset_allocation = AssetAllocation(stocks = stocks_allocation, bills = 1 - stocks_allocation)
+        real_bonds_duration = nominal_bonds_duration = None
 
     else:
 

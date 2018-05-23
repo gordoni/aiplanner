@@ -26,7 +26,7 @@ consume_discount_rate = 0
 asset_classes = ('synthetic', 'synthetic2')
 
 # See justification in aiplanner-scenario.conf .
-synthetic_ret = 0.045
+synthetic_ret = 0.050
 synthetic_vol = 0.174
 synthetic2_ret = 0.024
 synthetic2_vol = 0.112
@@ -39,7 +39,7 @@ generate_end_year = 200
 validate_end_year = 200
 
 # By chance synthetic return pairs may be partially correlated, effecting the resulting metrics.
-# The following seed is observed to yield a correlation of -5.9e-3, and a covariance of -1.2e-4.
+# The following seed is observed to yield a correlation of -6.0e-3, and a covariance of -1.2e-4.
 # For this seed the effect should thus be minimal.
 generate_seed = 1
 validate_returns_seed = 1
