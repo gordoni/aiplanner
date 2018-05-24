@@ -273,12 +273,17 @@ class YieldCurve(object):
     def spot(self, y):
         '''Return the continuously compounded annual spot rate.'''
 
-        # Spot rates do not match spot rates at
-        # https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/TNC-YC.aspx
-        # because the PchipInterpolator is not being used here and the
-        # input par rates of the daily quotes used here differ from
-        # the end of month quotes reported there.
-        return self.monotone_convex.spot(y)
+        if self.interest_rate == 'fixed':
+            return math.log(1 + self.adjust)
+        elif self.interest_rate == 'le':
+            return 0
+        else:
+            # Spot rates do not match spot rates at
+            # https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/TNC-YC.aspx
+            # because the PchipInterpolator is not being used here and
+            # the input par rates of the daily quotes used here differ
+            # from the end of month quotes reported there.
+            return self.monotone_convex.spot(y)
 
     def forward(self, y):
         '''Return the continuously compounded annual forward rate.'''
@@ -292,12 +297,7 @@ class YieldCurve(object):
 
         '''
 
-        if self.interest_rate == 'fixed':
-            return 1 + self.adjust
-        elif self.interest_rate == 'le':
-            return 1
-        else:
-            return math.exp(self.monotone_convex.spot(y))
+        return math.exp(self.monotone_convex.spot(y))
 
     @property
     def risk_free_rate(self):
