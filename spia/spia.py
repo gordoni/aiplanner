@@ -294,7 +294,7 @@ class IncomeAnnuity(object):
         '''
         try:
             return premium * mwr / self._unit_price
-        except ZeroDivisonError:
+        except ZeroDivisionError:
             return float('inf')
 
     def mwr(self, premium, payout):
