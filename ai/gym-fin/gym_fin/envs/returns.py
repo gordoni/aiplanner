@@ -51,7 +51,7 @@ def yields_report(name, returns, *, duration, time_period, stepper, sample_size 
 
     ylds = []
     for _ in range(sample_size):
-        ylds.append(returns.present_value(duration) ** (- 1 / (duration * time_period)))
+        ylds.append(exp(returns.spot(duration)))
         stepper.step()
 
     _report(name, ylds)

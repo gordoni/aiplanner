@@ -80,19 +80,27 @@ validate_parallel () {
     wait
 }
 
-$VALIDATE fixed_30-gi_0-no_bonds '--master-life-table=fixed --master-age-end=95 --master-guaranteed-income=0 --master-no-real-bonds --master-no-nominal-bonds --master-bills'
+$VALIDATE fixed_30-gi_0-no_bonds '--master-life-table=fixed --master-age-end=95 --master-gi_real=0 --master-no-real-bonds --master-no-nominal-bonds --master-bills'
 $VALIDATE ssa_plus_3_female-iid_bonds '--master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds'
-$VALIDATE ssa_plus_3_female-iid_nominal_bonds_20 '--master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-type=nominal --master-iid-bonds-duration=20'
-$VALIDATE ssa_plus_3_female-nominal_bonds_20 '--master-no-real-bonds --master-nominal-bonds-duration=20'
-$VALIDATE ssa_plus_3_female-nominal_bonds_7 '--master-no-real-bonds --master-nominal-bonds-duration=7'
+$VALIDATE ssa_plus_3_female-iid_nominal_20_bonds '--master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-type=nominal --master-iid-bonds-duration=20'
+$VALIDATE ssa_plus_3_female-nominal_1_bonds '--master-no-real-bonds --master-nominal-bonds-duration=1'
+$VALIDATE ssa_plus_3_female-nominal_2_bonds '--master-no-real-bonds --master-nominal-bonds-duration=2'
+$VALIDATE ssa_plus_3_female-nominal_5_bonds '--master-no-real-bonds --master-nominal-bonds-duration=5'
+$VALIDATE ssa_plus_3_female-nominal_7_bonds '--master-no-real-bonds --master-nominal-bonds-duration=7'
+$VALIDATE ssa_plus_3_female-nominal_10_bonds '--master-no-real-bonds --master-nominal-bonds-duration=10'
+$VALIDATE ssa_plus_3_female-nominal_20_bonds '--master-no-real-bonds --master-nominal-bonds-duration=20'
+$VALIDATE ssa_plus_3_female-nominal_30_bonds '--master-no-real-bonds --master-nominal-bonds-duration=30'
 $VALIDATE ssa_plus_3_female-nominal_bonds '--master-no-real-bonds'
-$VALIDATE ssa_plus_3_female-real_bonds_20 '--master-no-nominal-bonds --master-real-bonds-duration=20'
-$VALIDATE ssa_plus_3_female-real_bonds_7 '--master-no-nominal-bonds --master-real-bonds-duration=7'
+$VALIDATE ssa_plus_3_female-real_7_bonds '--master-no-nominal-bonds --master-real-bonds-duration=7'
+$VALIDATE ssa_plus_3_female-real_20_bonds '--master-no-nominal-bonds --master-real-bonds-duration=20'
 $VALIDATE ssa_plus_3_female-real_bonds '--master-no-nominal-bonds'
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-interest_rate_blind '--master-no-observe-interest-rate'
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-inflation_rate_blind '--master-no-observe-inflation-rate'
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-blind '--master-no-observe-interest-rate --master-no-observe-inflation-rate'
+$VALIDATE ssa_plus_3_female-real_and_nominal_bonds-real_spias '--master-real-spias'
+$VALIDATE ssa_plus_3_female-real_and_nominal_bonds-real_nominal_spias '--master-nominal-spias'
+$VALIDATE ssa_plus_3_female-real_and_nominal_bonds-real_and_nominal_spias '--master-real-spias --master-nominal-spias'
 
 # Notes on tweaks that have been tried out:
 #

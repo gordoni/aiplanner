@@ -18,6 +18,7 @@ from gym import Env
 from gym.spaces import Box
 
 from life_table import LifeTable
+from spia import IncomeAnnuity
 
 from gym_fin.envs.asset_allocation import AssetAllocation
 from gym_fin.envs.bonds import bonds_init
@@ -78,7 +79,7 @@ class FinEnv(Env):
         life_expectancy = [(sum(alive[y + 1:]) / alive[y] + remainder) * time_period for y in range(len(alive))]
         life_expectancy.append(0)
 
-        return tuple(alive), tuple(life_expectancy)
+        return table, tuple(alive), tuple(life_expectancy)
 
     def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
 
@@ -86,17 +87,21 @@ class FinEnv(Env):
         self.direct_action = direct_action
         self.params = AttributeObject(kwargs)
 
-        self.action_space = Box(low = -1.0, high = 1.0, shape = (8,), dtype = 'float32')
-            # consume_action, stocks_action, real_bonds_action, nominal_bonds_action, iid_bonds_action,
-            # real_bonds_duration_action, nominal_bonds_duration_action, bills_action
+        self.action_space = Box(low = -1.0, high = 1.0, shape = (11,), dtype = 'float32')
+            # consume_action, real_spias_action, nominal_spias_action, no_spias_action,
+            # stocks_action, real_bonds_action, nominal_bonds_action, iid_bonds_action, bills_action,
+            # real_bonds_duration_action, nominal_bonds_duration_action,
             # DDPG implementation assumes [-x, x] symmetric actions.
             # PPO1 implementation ignores size and assumes [-inf, inf] output.
-        self.observation_space = Box(# life_expectancy, guaranteed_income, portfolio size, short real interest rate, short inflation rate
-                                     low =  np.array((  0,   0,   0, -0.05, 0.0)),
-                                     high = np.array((100, 1e6, 1e7,  0.05, 0.1)),
-                                     dtype = 'float32')
+        self.observation_space = Box(
+            # life_expectancy, real guaranteed income, nominal guaranteed income, portfolio size, short real interest rate, short inflation rate
+            low =  np.array((  0,   0,   0,   0, -0.05, 0.0)),
+            high = np.array((100, 1e6, 1e6, 1e7,  0.05, 0.1)),
+            dtype = 'float32'
+        )
 
-        self.alive, self.life_expectancy = self._compute_vital_stats(self.params.life_table, self.params.sex, self.params.age_start, self.params.age_end,
+        self.life_table, self.alive, self.life_expectancy = \
+            self._compute_vital_stats(self.params.life_table, self.params.sex, self.params.age_start, self.params.age_end,
             self.params.life_expectancy_additional, self.params.life_table_date, self.params.time_period)
         self.age_start = self.params.age_start
 
@@ -124,6 +129,11 @@ class FinEnv(Env):
                 self.iid_bonds = ReturnsSample(self.nominal_bonds, self.params.iid_bonds_duration,
                     self.params.bonds_standard_error if self.params.returns_standard_error else 0,
                     stepper = self.bonds_stepper, time_period = self.params.time_period)
+
+        self.real_spia = IncomeAnnuity(self.real_bonds, self.life_table, payout_delay = 1, frequency = 1, cpi_adjust = 'all',
+            date_str = self.params.life_table_date)
+        self.nominal_spia = IncomeAnnuity(self.nominal_bonds, self.life_table, payout_delay = 1, frequency = 1,
+            date_str = self.params.life_table_date)
 
         print()
         print('Real/nominal yields:')
@@ -179,16 +189,22 @@ class FinEnv(Env):
         found = False
         for _ in range(1000):
 
-            if self.params.guaranteed_income_low == self.params.guaranteed_income_high:
-                self.guaranteed_income = self.params.guaranteed_income_low # Handles guaranteed_income == 0.
+            if self.params.gi_real_low == self.params.gi_real_high:
+                self.gi_real = self.params.gi_real_low # Handles gi_real == 0.
             else:
-                self.guaranteed_income = exp(uniform(log(self.params.guaranteed_income_low), log(self.params.guaranteed_income_high)))
+                self.gi_real = exp(uniform(log(self.params.gi_real_low), log(self.params.gi_real_high)))
+
+            if self.params.gi_nominal_low == self.params.gi_nominal_high:
+                self.gi_nominal = self.params.gi_nominal_low
+            else:
+                self.gi_nominal = exp(uniform(log(self.params.gi_nominal_low), log(self.params.gi_nominal_high)))
+
             if self.params.p_notax_low == self.params.p_notax_high:
                 self.p_notax = self.params.p_notax_low
             else:
                 self.p_notax = exp(uniform(log(self.params.p_notax_low), log(self.params.p_notax_high)))
 
-            consume_expect = self.guaranteed_income + self.p_notax / self.life_expectancy[0]
+            consume_expect = self.gi_real + self.gi_nominal + self.p_notax / self.life_expectancy[0]
 
             found = self.params.consume_floor <= consume_expect <= self.params.consume_ceiling
             if found:
@@ -216,7 +232,7 @@ class FinEnv(Env):
 
         bills_allocation = 1 - stocks_allocation
 
-        return (consume_fraction, AssetAllocation(stocks = stocks_allocation, bills = bills_allocation), None, None)
+        return (consume_fraction, None, None, AssetAllocation(stocks = stocks_allocation, bills = bills_allocation), None, None)
 
     def decode_action(self, action):
 
@@ -225,7 +241,8 @@ class FinEnv(Env):
         except AttributeError:
             pass
 
-        consume_action, stocks_action, real_bonds_action, nominal_bonds_action, iid_bonds_action, bills_action, \
+        consume_action, real_spias_action, nominal_spias_action, no_spias_action, \
+            stocks_action, real_bonds_action, nominal_bonds_action, iid_bonds_action, bills_action, \
             real_bonds_duration_action, nominal_bonds_duration_action = action
 
         if self.action_space_unbounded:
@@ -233,6 +250,9 @@ class FinEnv(Env):
             real_bonds_duration_action = tanh(real_bonds_duration_action)
             nominal_bonds_duration_action = tanh(nominal_bonds_duration_action)
         else:
+            real_spias_action = atanh(real_spias_action)
+            nominal_spias_action = atanh(nominal_spias_action)
+            no_spias_action = atanh(no_spias_action)
             stocks_action = atanh(stocks_action)
             real_bonds_action = atanh(real_bonds_action)
             nominal_bonds_action = atanh(nominal_bonds_action)
@@ -248,7 +268,7 @@ class FinEnv(Env):
         # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for them.
         # This will be to the detriment of the fit for more likely reward values.
         # For PPO the policy network either never fully retrains after the initial poor fit, or requires more training time.
-        consume_ceil = 2 * (self.p_notax / self.life_expectancy[self.episode_length] + self.guaranteed_income) / self._p_income()
+        consume_ceil = 2 * (self.p_notax / self.life_expectancy[self.episode_length] + self.gi_real + self.gi_nominal) / self._p_income()
             # Set:
             #     consume_ceil = 1 / self.params.time_period
             # to explore the full range of possible consume_fraction values.
@@ -256,6 +276,18 @@ class FinEnv(Env):
         consume_fraction = min(consume_fraction, 1 / self.params.time_period)
 
         # Softmax.
+        real_spias_fraction = exp(real_spias_action) if self.params.real_spias else 0
+        nominal_spias_fraction = exp(nominal_spias_action) if self.params.nominal_spias else 0
+        no_spias_fraction = exp(no_spias_action)
+        total = real_spias_fraction + nominal_spias_fraction + no_spias_fraction
+        real_spias_fraction /= total
+        nominal_spias_fraction /= total
+
+        if not self.params.real_spias:
+            real_spias_fraction = None
+        if not self.params.nominal_spias:
+            nominal_spias_fraction = None
+
         stocks = exp(stocks_action)
         real_bonds = exp(real_bonds_action) if self.params.real_bonds else 0
         nominal_bonds = exp(nominal_bonds_action) if self.params.nominal_bonds else 0
@@ -294,35 +326,67 @@ class FinEnv(Env):
             nominal_bonds_duration = self.params.nominal_bonds_duration
 
         asset_allocation = AssetAllocation(stocks = stocks, real_bonds = real_bonds, nominal_bonds = nominal_bonds, iid_bonds = iid_bonds, bills = bills)
-        return (consume_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration)
+        return (consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration)
 
     def _p_income(self):
 
-        return self.p_notax + self.guaranteed_income * self.params.time_period
+        return self.p_notax + (self.gi_real + self.gi_nominal) * self.params.time_period
 
-    def consume_rate(self, consume_fraction):
+    def spend(self, consume_fraction, real_spias_fraction, nominal_spias_fraction):
 
         # Sanity check.
         consume_fraction_period = consume_fraction * self.params.time_period
         assert 0 <= consume_fraction_period <= 1
 
-        return consume_fraction * self._p_income()
-
-    def step(self, action):
-
-        if self.direct_action:
-            consume_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = action
-        else:
-            consume_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = self.decode_action(action)
-
-        consume_annual = self.consume_rate(consume_fraction)
+        consume_annual = consume_fraction * self._p_income()
         consume = consume_annual * self.params.time_period
 
         p = self._p_income() - consume
         nonneg_p = max(p, 0)
+
+        if self.params.real_spias:
+            real_spias_fraction *= self.params.time_period
+        else:
+            real_spias_fraction = 0
+        if self.params.nominal_spias:
+            nominal_spias_fraction *= self.params.time_period
+        else:
+            nominal_spias_fraction = 0
+        total = real_spias_fraction + nominal_spias_fraction
+        if total > 1:
+            real_spias_fraction /= total
+            nominal_spias_fraction /= total
+        real_spias_purchase = real_spias_fraction * nonneg_p
+        nominal_spias_purchase = nominal_spias_fraction * nonneg_p
+        p -= real_spias_purchase + nominal_spias_purchase
+        nonneg_p = max(p, 0)
+
         if p != nonneg_p:
             assert p / self.p_notax > -1e-15
             p = 0
+
+        return p, consume, real_spias_purchase, nominal_spias_purchase
+
+    def step(self, action):
+
+        if self.direct_action:
+            consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = action
+        else:
+            consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = \
+                self.decode_action(action)
+
+        p, consume, real_spias_purchase, nominal_spias_purchase = self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
+        consume_annual = consume / self.params.time_period
+
+        if self.params.real_spias:
+            self.real_spia.set_age(self.age)
+            self.gi_real += self.real_spia.payout(real_spias_purchase, mwr = self.params.real_spias_mwr)
+        if self.params.nominal_spias:
+            self.nominal_spia.set_age(self.age)
+            self.gi_nominal += self.nominal_spia.payout(nominal_spias_purchase, mwr = self.params.nominal_spias_mwr)
+
+        inflation = self.inflation.inflation()
+        self.gi_nominal /= inflation
 
         ret = 0
         if asset_allocation.stocks != None:
@@ -385,16 +449,17 @@ class FinEnv(Env):
         else:
             inflation_rate = 0
 
-        observe = (life_expectancy, self.guaranteed_income, self.p_notax, real_interest_rate, inflation_rate)
+        observe = (life_expectancy, self.gi_real, self.gi_nominal, self.p_notax, real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')
 
     def decode_observation(self, obs):
 
-        life_expectancy, guaranteed_income, p_notax, real_interest_rate, inflation_rate = obs.tolist()
+        life_expectancy, gi_real, gi_nominal, p_notax, real_interest_rate, inflation_rate = obs.tolist()
 
         return {
             'life_expectancy': life_expectancy,
-            'guaranteed_income': guaranteed_income,
+            'gi_real': gi_real,
+            'gi_nominal': gi_nominal,
             'p_notax': p_notax,
             'real_interest_rate': real_interest_rate,
             'inflation_rate': inflation_rate

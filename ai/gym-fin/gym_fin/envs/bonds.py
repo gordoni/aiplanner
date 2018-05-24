@@ -109,10 +109,13 @@ class Bonds(object):
 
         return log_P
 
-    def present_value(self, t):
-        '''Return the present value of a zero coupon bond paying 1 at timet t.'''
+    def spot(self, t):
+        '''Return the current continuously compounded spot rate of a zero
+        coupon bond paying 1 at timet t.
 
-        return exp(self._log_present_value(t))
+        '''
+
+        return - self._log_present_value(t) / t
 
     def _yield(self, t):
         '''Return the current continuously compounded yield of a zero coupon
@@ -257,6 +260,8 @@ class RealBonds(Bonds):
         if yield_curve == None:
             yield_curve = YieldCurve('real', '2017-12-31', date_str_low = '2005-01-01', adjust = 0)
 
+        self.interest_rate = 'real'
+
         super().__init__(a = a, sigma = sigma, yield_curve = yield_curve, r0 = r0, standard_error = standard_error, time_period = time_period)
 
     def _short_interest_rate(self, oup_x):
@@ -345,8 +350,8 @@ class BreakEvenInflation(Bonds):
         nominal return standard deviation, or the inflation rate
         standard deviation. In case of the former an inflation rate
         model tracks the process and is used when calling the
-        present_value() and observe() functions. When the inflation
-        and bond parameters are the same model_bond_volatility has no
+        inflation() and observe() functions. When the inflation and
+        bond parameters are the same model_bond_volatility has no
         effect.
 
         Chosen default yield curve intended to be indicative of the
@@ -408,7 +413,7 @@ class BreakEvenInflation(Bonds):
 
         return self._sir(self.t, self.inflation_a, self.inflation_sigma) + self.inflation_oup.x - self.sir_init
 
-    def present_value(self, t):
+    def _present_value(self, t):
 
         sir = self._model_short_interest_rate()
 
@@ -420,7 +425,7 @@ class BreakEvenInflation(Bonds):
 
     def inflation(self):
 
-        return 1 / present_value(self.time_period)
+        return 1 / self._present_value(self.time_period)
 
     def step(self):
 
@@ -484,6 +489,8 @@ class NominalBonds(Bonds):
         self.real_bonds = real_bonds
         self.inflation = inflation
         self.time_period = time_period
+
+        self.interest_rate = 'nominal'
 
         self.yield_curve = inflation.nominal_yield_curve # Only used by _report() for expected values.
 
@@ -601,10 +608,10 @@ def bonds_init(need_real = True, need_nominal = True, need_inflation = True, rea
 
             Advance by time time_period.
 
-        present_value(t)
+        spot(t)
 
-            Return the present value of a zero coupon bond of the
-            appropriate type paying 1 in t years.
+            Return the continuously compounded annualized spot rate
+            over term t years for bonds of the appropriate type.
 
         sample(duration = 7)
 

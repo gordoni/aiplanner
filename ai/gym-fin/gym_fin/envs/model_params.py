@@ -71,8 +71,24 @@ class ModelParams(object):
         self._param('gamma', 3) # Coefficient of relative risk aversion.
             # Will probably need smaller [consume_floor, consume_ceiling] ranges if use a large gamma value such as 6.
 
-        self._param('guaranteed-income', (1e3, 1e5), 1e4) # Social Security and similar income. Empirically OK if eval amount is less than model lower bound.
+        self._param('gi-real', (1e3, 1e5), 1e4)
+            # Real guaranteed income: Social Security, real SPIAs, real pensions, and similar. Empirically OK if eval amount is less than model lower bound.
+        self._param('gi-nominal', (1e3, 1e5), 0) # Nominal guaranteed income: nominal SPIAs, nominal pensions, and similar.
         self._param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
+
+        self._boolean_flag('real-spias', False) # Enable purchase of real SPIAs.
+        self._param('real-spias-mwr', 0.95) # Money's Worth Ratio for real SPIAs (after any guarantee association tax).
+            # When I priced real SPIAs against the IAM 2012 life table with actual/expected adjustemets and Treasury TIPS in 2015,
+            # Money's Worth Ratios from Principal Financial Group were around 97.4%. Factor in a 2.35% CA guarantee association tax,
+            # and a 95% MWR seems reasonable.
+        self._boolean_flag('nominal-spias', False) # Enable purchase of nominal SPIAs.
+        self._param('nominal-spias-mwr', 1.0) # Money's Worth Ratio for nominal SPIAs (after any guarantee association tax).
+            # When I priced nominal SPIAs against the IAM 2012 life table with actual/expected adjustments in 2015,
+            # the best Money's Worth Ratios were around 110-112%. This is possible because nominal SPIAs are probably primarily
+            # priced against not the Tresury yield curve, but the higher yielding High Quality Markets corporate bond curve.
+            # There is no such thing as a free lunch; a MWR abve 100% implies the issuers and thus the annuitants are taking on default risk.
+            # To crudely reflect this, we don't use MWRs above 100%, and the 2.35% CA guarantee association tax is ignored since the premium
+            # goes towards covering defaults.
 
         # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
             # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.1%).

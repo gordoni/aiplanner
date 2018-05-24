@@ -13,7 +13,7 @@
 from argparse import ArgumentParser
 from math import sqrt
 from re import search
-from statistics import mean, stdev
+from statistics import mean, StatisticsError, stdev
 
 parser = ArgumentParser()
 parser.add_argument('directory', nargs='+')
@@ -35,7 +35,14 @@ for dir in args.directory:
 
 evals.sort()
 
-print('Certainty equivalent distribution: {:f} +/- {:f} (standard error {:f})'.format(mean(ces), stdev(ces), stdev(ces) / sqrt(len(ces) - 1)))
+try:
+    sd = stdev(ces)
+    se = sd / sqrt(len(ces) - 1)
+except StatisticsError:
+    sd = float('nan')
+    se = float('nan')
+
+print('Certainty equivalent distribution: {:f} +/- {:f} (standard error {:f})'.format(mean(ces), sd, se))
 
 print('Best certainty equivalent: {:f} (standard error {:f})'.format(evals[-1][0], evals[-1][1]))
 
