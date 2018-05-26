@@ -124,7 +124,7 @@ class FinEnv(Env):
             if self.params.iid_bonds_type == 'real':
                 self.iid_bonds = ReturnsSample(self.real_bonds, self.params.iid_bonds_duration,
                     self.params.bonds_standard_error if self.params.returns_standard_error else 0,
-                    stepper = self.bonds.stepper, time_period = self.params.time_period)
+                    stepper = self.bonds_stepper, time_period = self.params.time_period)
             elif self.params.iid_bonds_type == 'nominal':
                 self.iid_bonds = ReturnsSample(self.nominal_bonds, self.params.iid_bonds_duration,
                     self.params.bonds_standard_error if self.params.returns_standard_error else 0,
