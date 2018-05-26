@@ -15,12 +15,12 @@ The module comprises the following files:
     LICENSE
     agpl-3.0.txt
 
-fetch_yield_curve depends on the catdoc xls2csv program to obtain the
-corporate interest rate.
+fetch_yield_curve depends on scipy for yield curve interpolation and
+the catdoc xls2csv program to obtain the corporate interest rate.
 
-On Ubuntu, to obtain this module:
+On Ubuntu, to obtain these modules:
 
-    sudo apt-get install catdoc
+    sudo apt-get install python3-scipy catdoc
 
 Then to fetch the yield curves for all time to the current directory
 (this could take a while):
