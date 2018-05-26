@@ -19,6 +19,8 @@ import math
 from os.path import expanduser, isdir, join, normpath
 import statistics
 
+import scipy.interpolate
+
 from monotone_convex import MonotoneConvex
 
 datapath = ('~/aacalc/opal/data/public', '~ubuntu/aacalc/opal/data/public')
@@ -228,14 +230,43 @@ class YieldCurve(object):
 
             yield_curve_years, yield_curve_rates, self.yield_curve_date = self._get_treasury(date_str, date_str_low)
 
+            # Convert par rates to spot rates.
+            spot_rates = []
+            for yield_curve_year, yield_curve_rate in zip(yield_curve_years, yield_curve_rates):
+
+                # First interpolate the spot returns.
+                coupon_yield_curve = []
+                yield_curve = scipy.interpolate.PchipInterpolator(yield_curve_year, yield_curve_rate)
+
+                for i in range(1, int(2 * max(yield_curve_year)) + 1):
+                    year = i / 2.0
+                    # For below range values Scipy just uses the polynominal, which is problematic, so we use linear interpolation in this case.
+                    if year < min(yield_curve_year):
+                        slope = yield_curve(min(yield_curve_year), 1)
+                        slope = float(slope) # De-numpify.
+                        rate = yield_curve_rate[0] + slope * (year - min(yield_curve_year))
+                    else:
+                        rate = float(yield_curve(year))
+                    coupon_yield_curve.append(rate)
+
+                spot_rate = self.par_to_spot(coupon_yield_curve)
+                    # Does not match spot rates at https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/TNC-YC.aspx
+                    # because the input par rates of the daily quotes used differ from the end of month quotes reported there.
+                # Extract just the spot rates of the original yield curve.
+                spot_rate = tuple(spot_rate[math.ceil(y * 2 - 1)] for y in yield_curve_year)
+                    # Rates less than 6 months will all get the 6 month spot rate. This is only relevant for nominals.
+                    # This is fine for computing immediate annuity prices.
+                    # For some applications it may be necessary to interpolate the spot rates, but this would slow things down.
+                spot_rates.append(spot_rate)
+
         elif interest_rate == 'corporate':
 
             date_year = int(date_str.split('-')[0])
 
             try:
-                yield_curve_years, yield_curve_rates, self.yield_curve_date = self._get_corporate(date_year, date_str, date_str_low)
+                yield_curve_years, spot_rates, self.yield_curve_date = self._get_corporate(date_year, date_str, date_str_low)
             except self.NoData:
-                yield_curve_years, yield_curve_rates, self.yield_curve_date = self._get_corporate(date_year - 1, date_str, date_str_low)
+                yield_curve_years, spot_rates, self.yield_curve_date = self._get_corporate(date_year - 1, date_str, date_str_low)
 
         elif interest_rate in ('fixed', 'le'):
 
@@ -257,9 +288,9 @@ class YieldCurve(object):
 
         # Construct interpolators for each yield curve.
         interpolators = []
-        for yield_curve_year, yield_curve_rate in zip(yield_curve_years, yield_curve_rates):
-            yield_curve_rate = tuple(math.log((1 + r / 2) ** 2 + self.adjust) for r in yield_curve_rate) # Treasury rates are twice the semi-annualized rate.
-            interpolator = MonotoneConvex(yield_curve_year, yield_curve_rate, min_long_term_forward = 15, force_forwards_non_negative = False)
+        for yield_curve_year, spot_rate in zip(yield_curve_years, spot_rates):
+            continuous_spot_rate = tuple(math.log((1 + r / 2) ** 2 + self.adjust) for r in spot_rate) # Treasury rates are twice the semi-annualized rate.
+            interpolator = MonotoneConvex(yield_curve_year, continuous_spot_rate, min_long_term_forward = 15, force_forwards_non_negative = False)
                 # Treasury methodology; extrapolate using average forward rate 15 years and longer.
                 # Real forwards are not required to be positive, and favor mathematical consistency for nominal forward rates.
             interpolators.append(interpolator)
@@ -269,6 +300,32 @@ class YieldCurve(object):
 
         # Construct a master interpolator.
         self.monotone_convex = MonotoneConvex(interpolate_years, interpolate_spots, min_long_term_forward = 15, force_forwards_non_negative = False)
+
+    def par_to_spot(self, rates):
+        '''Convert semi-annual par rates to semi-annual spot rates.'''
+        # See: https://en.wikipedia.org/wiki/Bootstrapping_%28finance%29
+        spots = []
+        discount_rate_sum = 0
+        count = 0
+        for rate in rates:
+            count += 1
+            coupon_yield = rate / 2.0
+            discount_rate = (1 - coupon_yield * discount_rate_sum) / (1 + coupon_yield)
+            spot_yield = discount_rate ** (- 1.0 / count) - 1
+            spots.append(spot_yield * 2)
+            discount_rate_sum += discount_rate
+        return spots
+
+    def spot_to_par(self, rates):
+        '''Convert semi-annual spot rates to semi-annual par rates.'''
+        pars = []
+        count = 0
+        coupons = 0
+        for spot, forward in zip(rates, self.spot_to_forward(rates)):
+            count += 1
+            coupons = 1 + coupons * (1 + forward / 2)
+            pars.append(((1 + spot / 2) ** count - 1) / coupons * 2)
+        return pars
 
     def spot(self, y):
         '''Return the continuously compounded annual spot rate.'''
