@@ -77,14 +77,14 @@ class ModelParams(object):
         self._param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
 
         self._boolean_flag('real-spias', False) # Enable purchase of real SPIAs.
-        self._param('real-spias-mwr', 0.95) # Money's Worth Ratio for real SPIAs (after any guarantee association tax).
+        self._param('real-spias-mwr', 0.94) # Money's Worth Ratio for real SPIAs (after any guarantee association tax).
             # When I priced real SPIAs against the IAM 2012 life table with actual/expected adjustemets and Treasury TIPS in 2015,
-            # Money's Worth Ratios from Principal Financial Group were around 97.4%. Factor in a 2.35% CA guarantee association tax,
-            # and a 95% MWR seems reasonable.
+            # Money's Worth Ratios from Principal Financial Group were around 96.5%. Factor in a 2.35% CA guarantee association tax,
+            # and a 94% MWR seems reasonable.
         self._boolean_flag('nominal-spias', False) # Enable purchase of nominal SPIAs.
         self._param('nominal-spias-mwr', 1.0) # Money's Worth Ratio for nominal SPIAs (after any guarantee association tax).
             # When I priced nominal SPIAs against the IAM 2012 life table with actual/expected adjustments in 2015,
-            # the best Money's Worth Ratios were around 110-112%. This is possible because nominal SPIAs are probably primarily
+            # the best Money's Worth Ratios were around 105-110%. This is possible because nominal SPIAs are probably primarily
             # priced against not the Tresury yield curve, but the higher yielding High Quality Markets corporate bond curve.
             # There is no such thing as a free lunch; a MWR abve 100% implies the issuers and thus the annuitants are taking on default risk.
             # To crudely reflect this, we don't use MWRs above 100%, and the 2.35% CA guarantee association tax is ignored since the premium
@@ -108,7 +108,7 @@ class ModelParams(object):
         self._boolean_flag('iid-bonds', False) # Whether to model independent identically distributed bonds (without any interest rate model).
         self._param('iid-bonds-type', None, tp = string_type, choices = ('real', 'nominal', None))
             # Derive iid bond returns from the specified bond model, or None if iid bond returns are lognormally distributed.
-        self._param('iid-bonds-duration', 20) # Duration to use when deriving iid bond returns from the bond model.
+        self._param('iid-bonds-duration', 15) # Duration to use when deriving iid bond returns from the bond model.
         self._param('iid-bonds-return', 0.024) # Annual real return for iid bonds when lognormal.
         self._param('iid-bonds-volatility', 0.112) # Annual real volatility for iid bonds when lognormal.
         self._param('bonds-standard-error', 0.010) # Standard error of log real return for bonds.

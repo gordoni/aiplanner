@@ -28,4 +28,4 @@ class AssetAllocation(object):
                 else:
                     s = str(a)
 
-        return s
+        return '[' + s + ']'

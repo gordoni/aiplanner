@@ -9,7 +9,7 @@
 # PURPOSE.
 
 from datetime import datetime
-from math import atanh, exp, log, tanh
+from math import atanh, exp, isnan, log, sqrt, tanh
 from random import uniform
 
 import numpy as np
@@ -87,8 +87,8 @@ class FinEnv(Env):
         self.direct_action = direct_action
         self.params = AttributeObject(kwargs)
 
-        self.action_space = Box(low = -1.0, high = 1.0, shape = (11,), dtype = 'float32')
-            # consume_action, real_spias_action, nominal_spias_action, no_spias_action,
+        self.action_space = Box(low = -1.0, high = 1.0, shape = (10, ), dtype = 'float32')
+            # consume_action, spias_action, real_spias_action,
             # stocks_action, real_bonds_action, nominal_bonds_action, iid_bonds_action, bills_action,
             # real_bonds_duration_action, nominal_bonds_duration_action,
             # DDPG implementation assumes [-x, x] symmetric actions.
@@ -143,16 +143,16 @@ class FinEnv(Env):
                 yields_report('real bonds {:2d}'.format(int(self.params.real_bonds_duration)), self.real_bonds,
                     duration = self.params.real_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
             else:
-                yields_report('real bonds  7', self.real_bonds, duration = 7, stepper = self.bonds_stepper, time_period = self.params.time_period)
-                yields_report('real bonds 20', self.real_bonds, duration = 20, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                yields_report('real bonds  5', self.real_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                yields_report('real bonds 15', self.real_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
         if self.params.nominal_bonds:
             if self.params.nominal_bonds_duration:
                 yields_report('nominal bonds {:2d}'.format(int(self.params.nominal_bonds_duration)), self.nominal_bonds,
                     duration = self.params.nominal_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
             else:
-                yields_report('nominal bonds  7', self.nominal_bonds, duration = 7, stepper = self.bonds_stepper, time_period = self.params.time_period)
-                yields_report('nominal bonds 20', self.nominal_bonds, duration = 20, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                yields_report('nominal bonds  5', self.nominal_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                yields_report('nominal bonds 15', self.nominal_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
         print()
         print('Real returns:')
@@ -164,20 +164,21 @@ class FinEnv(Env):
                 returns_report('real bonds {:2d}'.format(int(self.params.real_bonds_duration)), self.real_bonds,
                     duration = self.params.real_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
             else:
-                returns_report('real bonds  7', self.real_bonds, duration = 7, stepper = self.bonds_stepper, time_period = self.params.time_period)
-                returns_report('real bonds 20', self.real_bonds, duration = 20, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                returns_report('real bonds  5', self.real_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                returns_report('real bonds 15', self.real_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
         if self.params.nominal_bonds:
             if self.params.nominal_bonds_duration:
                 returns_report('nominal bonds {:2d}'.format(int(self.params.nominal_bonds_duration)), self.nominal_bonds,
                     duration = self.params.nominal_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
             else:
-                returns_report('nominal bonds  7', self.nominal_bonds, duration = 7, stepper = self.bonds_stepper, time_period = self.params.time_period)
-                returns_report('nominal bonds 20', self.nominal_bonds, duration = 20, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                returns_report('nominal bonds  5', self.nominal_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                returns_report('nominal bonds 15', self.nominal_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
-        returns_report('iid bonds', self.iid_bonds, time_period = self.params.time_period)
+        if self.params.iid_bonds:
+            returns_report('iid bonds', self.iid_bonds, time_period = self.params.time_period)
 
-        if self.params.nominal_bonds:
+        if self.params.nominal_bonds or self.params.nominal_spias:
             returns_report('inflation', self.inflation, duration = 1, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
         self.reset()
@@ -220,7 +221,9 @@ class FinEnv(Env):
         self.bonds_stepper.reset()
 
         self.prev_asset_allocation = None
-        self.prev_consume_annual = None
+        self.prev_real_spias_rate = None
+        self.prev_nominal_spias_rate = None
+        self.prev_consume_rate = None
         self.prev_reward = None
 
         self.episode_utility_sum = 0
@@ -236,58 +239,89 @@ class FinEnv(Env):
 
     def decode_action(self, action):
 
+        if isnan(action[0]):
+            assert False # Detect bug in code interacting with model before it messes things up.
+
         try:
             action = action.tolist() # De-numpify if required.
         except AttributeError:
             pass
 
-        consume_action, real_spias_action, nominal_spias_action, no_spias_action, \
+        consume_action, spias_action, real_spias_action, \
             stocks_action, real_bonds_action, nominal_bonds_action, iid_bonds_action, bills_action, \
             real_bonds_duration_action, nominal_bonds_duration_action = action
 
         if self.action_space_unbounded:
-            consume_action = tanh(consume_action)
+            spias_action = tanh(spias_action)
+            real_spias_action = tanh(real_spias_action)
             real_bonds_duration_action = tanh(real_bonds_duration_action)
             nominal_bonds_duration_action = tanh(nominal_bonds_duration_action)
         else:
-            real_spias_action = atanh(real_spias_action)
-            nominal_spias_action = atanh(nominal_spias_action)
-            no_spias_action = atanh(no_spias_action)
+            consume_action = atanh(consume_action)
             stocks_action = atanh(stocks_action)
             real_bonds_action = atanh(real_bonds_action)
             nominal_bonds_action = atanh(nominal_bonds_action)
             iid_bonds_action = atanh(iid_bonds_action)
             bills_action = atanh(bills_action)
 
-        consume_floor = 0
-        # Define a consume ceiling above which we won't consume.
-        # One half this value acts as a hint as to the initial consumption values to try.
-        # With 1 as the consume ceiling (when time_period = 1) we will initially consume on average half the portfolio at each step.
-        # This leads to very small consumption at advanced ages. The utilities and thus rewards for these values will be highly negative.
-        # In the absence of guaranteed income this very small consumption will initially result in many warnings aboout out of bound rewards (if verbose is set).
-        # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for them.
-        # This will be to the detriment of the fit for more likely reward values.
-        # For PPO the policy network either never fully retrains after the initial poor fit, or requires more training time.
-        consume_ceil = 2 * (self.p_notax / self.life_expectancy[self.episode_length] + self.gi_real + self.gi_nominal) / self._p_income()
-            # Set:
-            #     consume_ceil = 1 / self.params.time_period
-            # to explore the full range of possible consume_fraction values.
-        consume_fraction = consume_floor + (consume_ceil - consume_floor) * (consume_action + 1) / 2
+
+        consume_estimate = (self.gi_real + self.gi_nominal + self.p_notax / self.life_expectancy[self.episode_length]) / self._p_income()
+
+        consumption_bounded = True # Bounding consumption gives better certainty equivalents.
+        if consumption_bounded:
+
+            consume_action = tanh(consume_action / 5)
+                # Scaling back initial volatility of consume_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
+            consume_action = (consume_action + 1) / 2
+            # Define a consume floor and consume ceiling outside of which we won't consume.
+            # The mid-point acts as a hint as to the initial consumption values to try.
+            # With 0.5 as the mid-point (when time_period = 1) we will initially consume on average half the portfolio at each step.
+            # This leads to very small consumption at advanced ages. The utilities and thus rewards for these values will be highly negative.
+            # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for the negative rewards.
+            # This will be to the detriment of the fit for more likely reward values.
+            # For PPO the policy network either never fully retrains after the initial poor fit, or requires more training time.
+            consume_floor = 0
+            consume_ceil = 2 * consume_estimate
+            consume_fraction = consume_floor + (consume_ceil - consume_floor) * consume_action
+
+        else:
+
+            consume_action = tanh(consume_action / 10)
+                # Scale back initial volatility of consume_action to improve run to run mean and reduce standard deviation of certainty equivalent.
+            consume_action = (consume_action + 1) / 2
+            consume_weight = 2 * log((1 + sqrt(1 - 4 * consume_estimate * (1 - consume_estimate))) / (2 * consume_estimate))
+                # So that consume_fraction = consume_estimate when consume_action = 0.5.
+            consume_weight = max(1e-3, consume_weight) # Don't allow weight to become zero.
+            # consume_action is in the range [0, 1]. Make consume_fraction also in the range [0, 1], but weight consume_fraction towards zero.
+            # Otherwise by default consume 50% of assets each year. Quickly end up with few assets, and large negative utilities, making learning difficult.
+            consume_fraction = (exp(consume_weight * consume_action) - 1) / (exp(consume_weight) - 1)
+
         consume_fraction = min(consume_fraction, 1 / self.params.time_period)
 
-        # Softmax.
-        real_spias_fraction = exp(real_spias_action) if self.params.real_spias else 0
-        nominal_spias_fraction = exp(nominal_spias_action) if self.params.nominal_spias else 0
-        no_spias_fraction = exp(no_spias_action)
-        total = real_spias_fraction + nominal_spias_fraction + no_spias_fraction
-        real_spias_fraction /= total
-        nominal_spias_fraction /= total
+        if self.params.real_spias or self.params.nominal_spias:
+            spias_action = (spias_action + 1) / 2
+            # spias_action is in the range [0, 1]. Make spias_fraction also in the range [0, 1], but weight spias_fraction towards zero.
+            # Otherwise the default is to annuitize 50% of assets each year. Quickly end up with few non-spia assets, making learning difficult.
+            #
+            #     spias_weight    spias_fraction when spias_action = 0.5
+            #          5                         7.6%
+            #          6                         4.7%
+            #          7                         2.9%
+            #          8                         1.8%
+            #          9                         1.1%
+            spias_weight = 7
+            spias_fraction = (exp(spias_weight * spias_action) - 1) / (exp(spias_weight) - 1)
+            real_spias_fraction = spias_fraction if self.params.real_spias else 0
+            if self.params.nominal_spias:
+                real_spias_fraction *= (real_spias_action + 1) / 2
+            nominal_spias_fraction = spias_fraction - real_spias_fraction
 
         if not self.params.real_spias:
             real_spias_fraction = None
         if not self.params.nominal_spias:
             nominal_spias_fraction = None
 
+        # Softmax.
         stocks = exp(stocks_action)
         real_bonds = exp(real_bonds_action) if self.params.real_bonds else 0
         nominal_bonds = exp(nominal_bonds_action) if self.params.nominal_bonds else 0
@@ -376,12 +410,14 @@ class FinEnv(Env):
                 self.decode_action(action)
 
         p, consume, real_spias_purchase, nominal_spias_purchase = self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
-        consume_annual = consume / self.params.time_period
+        consume_rate = consume / self.params.time_period
+        real_spias_rate = real_spias_purchase / self.params.time_period
+        nominal_spias_rate = nominal_spias_purchase / self.params.time_period
 
-        if self.params.real_spias:
+        if real_spias_purchase > 0:
             self.real_spia.set_age(self.age)
             self.gi_real += self.real_spia.payout(real_spias_purchase, mwr = self.params.real_spias_mwr)
-        if self.params.nominal_spias:
+        if nominal_spias_purchase > 0:
             self.nominal_spia.set_age(self.age)
             self.gi_nominal += self.nominal_spia.payout(nominal_spias_purchase, mwr = self.params.nominal_spias_mwr)
 
@@ -402,7 +438,7 @@ class FinEnv(Env):
 
         self.p_notax = p * ret
 
-        utility = self.utility.utility(consume_annual)
+        utility = self.utility.utility(consume_rate)
         reward_annual = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
         if self.params.verbose and reward_annual != utility:
             print('Reward out of range - age, p_notax, consume_fraction, utility:', self.age, self.p_notax, consume_fraction, utility)
@@ -422,14 +458,17 @@ class FinEnv(Env):
         self.bonds_stepper.step()
 
         self.prev_asset_allocation = asset_allocation
-        self.prev_consume_annual = consume_annual
+        self.prev_real_spais_rate = real_spias_rate
+        self.prev_nominal_spias_rate = nominal_spias_rate
+        self.prev_consume_rate = consume_rate
         self.prev_reward = reward
 
         return observation, reward, done, info
 
     def render(self, mode = 'human'):
 
-        print(self.age, self.p_notax, self.prev_asset_allocation, self.prev_consume_annual, self.prev_reward)
+        print(self.age, self.gi_real, self.gi_nominal, self.p_notax, self.prev_asset_allocation, \
+            self.prev_consume_rate, self.prev_real_spias_rate, self.prev_nominal_spias_rate, self.prev_reward)
 
     def seed(self, seed=None):
 

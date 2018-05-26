@@ -142,7 +142,7 @@ class Bonds(object):
 
     def _report(self):
 
-        durations = (1, 5, 7, 10, 20, 30)
+        durations = (1, 2, 5, 7, 10, 15, 20, 30)
 
         self.reset()
         print('duration observed_yield_curve_yield initial_yield')

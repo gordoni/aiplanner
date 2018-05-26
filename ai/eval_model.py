@@ -84,8 +84,8 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
     logger.info('Initial properties for first episode:')
     logger.info('    Consume: ', consume / env.params.time_period)
     logger.info('    Asset allocation: ', asset_allocation)
-    logger.info('    Real immediate annuities purchase: ', real_spias_purchase / env.params.time_period)
-    logger.info('    Nominal immediate annuities purchase: ', nominal_spias_purchase / env.params.time_period)
+    logger.info('    Real immediate annuities purchase: ', real_spias_purchase / env.params.time_period if env.params.real_spias else None)
+    logger.info('    Nominal immediate annuities purchase: ', nominal_spias_purchase / env.params.time_period if env.params.nominal_spias else None)
     logger.info('    Real bonds duration: ', real_bonds_duration)
     logger.info('    Nominal bonds duration: ', nominal_bonds_duration)
 
