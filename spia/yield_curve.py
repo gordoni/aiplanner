@@ -327,6 +327,31 @@ class YieldCurve(object):
             pars.append(((1 + spot / 2) ** count - 1) / coupons * 2)
         return pars
 
+    def spot_to_forward(self, rates):
+        '''Convert semi-annual spot rates to semi-annual forward rates.'''
+        forwards = []
+        count = 0
+        old_spot_rate = 0
+        for rate in rates:
+            count += 1
+            new_spot_rate = rate / 2
+            forward_rate = (1 + new_spot_rate) ** count / (1 + old_spot_rate) ** (count - 1)
+            forwards.append((forward_rate - 1) * 2)
+            old_spot_rate = new_spot_rate
+        return forwards
+
+    def forward_to_spot(self, rates):
+        '''Convert semi-annual forward rates to semi-annual spot rates.'''
+        spots = []
+        count = 0
+        spot_rate = 1
+        for rate in rates:
+            count += 1
+            forward_rate = 1 + rate / 2
+            spot_rate = (forward_rate * spot_rate ** (count - 1)) ** (1.0 / count)
+            spots.append((spot_rate - 1) * 2)
+        return spots
+
     def spot(self, y):
         '''Return the continuously compounded annual spot rate.'''
 
