@@ -239,18 +239,18 @@ class Bonds(object):
 
 class RealBonds(Bonds):
 
-    def __init__(self, *, a = 0.14, sigma = 0.011, yield_curve = None, r0 = None, standard_error = 0, time_period = 1):
+    def __init__(self, *, a = 0.13, sigma = 0.011, yield_curve = None, r0 = None, standard_error = 0, time_period = 1):
         '''Chosen value of sigma, 0.011, intended to produce a short term real
         yield volatility of 0.9-1.0%. The measured value over
-        2005-2017 was 1.00%. Obtained value is 0.99%.
+        2005-2017 was 1.00%. Obtained value is 1.00%.
 
-        Chosen value of a, 0.14, intended to produce a long term (20
-        year) real return standard deviation of 7-8%. The measured
-        value over 2005-2017 was 11.4% (when rates were volatile). The
-        real nominal bond observed standard deviation is 17.8% whereas
+        Chosen value of a, 0.13, intended to produce a long term (15
+        year) real return standard deviation of about 7%. The measured
+        value over 2005-2017 was 8.8% (when rates were volatile). The
+        real nominal bond observed standard deviation is 14.2% whereas
         according to the Credit Suisse Yearbook 11.2% is more typical,
-        so by a simple scaling 7.2% seems a reasonable
-        expectation for real bonds. Obtained value is 7.3%.
+        so by a simple scaling 6.9% seems a reasonable expectation for
+        real bonds. Obtained value is 7.1%.
 
         Chosen default yield curve intended to be indicative of the
         present era.
@@ -318,28 +318,28 @@ class YieldCurveSum(object):
 
 class BreakEvenInflation(Bonds):
 
-    def __init__(self, real_bonds, *, inflation_a = 0.14, inflation_sigma = 0.013, bond_a = 0.14, bond_sigma = 0.013, model_bond_volatility = True,
+    def __init__(self, real_bonds, *, inflation_a = 0.13, inflation_sigma = 0.014, bond_a = 0.13, bond_sigma = 0.014, model_bond_volatility = True,
         nominal_yield_curve = None, inflation_risk_premium = 0, real_liquidity_premium = 0, r0 = None, standard_error = 0, time_period = 1):
         '''Keeping inflation parameters the same as the bond parameters
         simplifies the model.
 
-        Chosen value for inflation_a, 0.14, the same as in the real case.
+        Chosen value for inflation_a, 0.13, the same as in the real case.
 
-        Chosen value of inflation_sigma, 0.013, produces a reasonable
-        estimate of the long term (20 year) standard deviation of the
+        Chosen value of inflation_sigma, 0.014, produces a reasonable
+        estimate of the long term (15 year) standard deviation of the
         inflation rate (as modeled to provide inflation
-        volatility). Measured value was 0.53%. Obtained value was
-        0.82%. This seems quite reasonable given inflation has
+        volatility). Measured value was 0.58%. Obtained value was
+        1.20%. This seems quite reasonable given inflation has
         recently been constrained. Additionally. the measured short
         term inflation yield volatility is 1.33%, compared to a
-        obtained value of 1.17%.
+        obtained value of 1.27%.
 
-        Chosen value of bond_a, 0.14, the same as in the real case.
+        Chosen value of bond_a, 0.13, the same as in the real case.
 
-        Chosen value of bond_sigma, 0.013, intended to produce a long
-        term (20 year) nominal bond real return standard deviation of
-        11-12%. The measured value over 2005-2017 was 17.8% (when
-        rates were volatile). Obtained value is 11.0%. As in the real
+        Chosen value of bond_sigma, 0.014, intended to produce a long
+        term (15 year) nominal bond real return standard deviation of
+        11-12%. The measured value over 2005-2017 was 14.2% (when
+        rates were volatile). Obtained value is 11.2%. As in the real
         case this is less than the observed value, and is inline with
         the 11.2% standard deviation for long term government bonds
         reported in the Credit Suisse Global Investment Returns
