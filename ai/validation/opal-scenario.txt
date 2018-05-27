@@ -34,9 +34,12 @@ ret_risk_free2 = 0.008
 
 # Annuity related parameters.
 search = 'memory' # Use memory even though runs slower.
-search_neighbour = True # Old comment: Needed even with memory, or bad nia plot. Not sure why.
-scaling_factor = 1.01 # Old comment: Needed for good nia plot.
-annuity_scaling_factor = 1.01 # Old comment: Needed for good nia plot.
+# Surface being optimized doesn't appear smooth. This is a possible bug.
+# Setting finer scaling factors or annuity steps fails to Opal self validate.
+search_neighbour = True
+scaling_factor = 1.05
+annuity_scaling_factor = 1.05
+annuity_steps = 100
 annuity_time_periods = 1
 annuity_real_mwr1 = 0.94
 annuity_real_mwr2 = 0.94

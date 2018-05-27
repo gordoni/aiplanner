@@ -130,9 +130,9 @@ class FinEnv(Env):
                     self.params.bonds_standard_error if self.params.returns_standard_error else 0,
                     stepper = self.bonds_stepper, time_period = self.params.time_period)
 
-        self.real_spia = IncomeAnnuity(self.real_bonds, self.life_table, payout_delay = 1, frequency = 1, cpi_adjust = 'all',
+        self.real_spia = IncomeAnnuity(self.real_bonds, self.life_table, payout_delay = 12, frequency = 1, cpi_adjust = 'all',
             date_str = self.params.life_table_date)
-        self.nominal_spia = IncomeAnnuity(self.nominal_bonds, self.life_table, payout_delay = 1, frequency = 1,
+        self.nominal_spia = IncomeAnnuity(self.nominal_bonds, self.life_table, payout_delay = 12, frequency = 1,
             date_str = self.params.life_table_date)
 
         print()
@@ -263,7 +263,6 @@ class FinEnv(Env):
             nominal_bonds_action = atanh(nominal_bonds_action)
             iid_bonds_action = atanh(iid_bonds_action)
             bills_action = atanh(bills_action)
-
 
         consume_estimate = (self.gi_real + self.gi_nominal + self.p_notax / self.life_expectancy[self.episode_length]) / self._p_income()
 

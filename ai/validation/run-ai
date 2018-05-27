@@ -100,7 +100,7 @@ $VALIDATE ssa_plus_3_female-iid_nominal_15_bonds '--master-no-real-bonds --maste
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-interest_rate_blind '--master-no-observe-interest-rate'
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-inflation_rate_blind '--master-no-observe-inflation-rate'
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-blind '--master-no-observe-interest-rate --master-no-observe-inflation-rate'
-$VALIDATE ssa_plus_3_female-iid_bonds-static_real_spias '--master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-static-bonds --master-real-spias'
+$VALIDATE ssa_female-iid_bonds-static_real_spias '--master-life-expectancy-additional=0 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-static-bonds --master-real-spias'
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-real_spias '--master-real-spias'
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-nominal_spias '--master-nominal-spias'
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-real_and_nominal_spias '--master-real-spias --master-nominal-spias'
