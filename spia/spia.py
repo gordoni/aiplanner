@@ -139,6 +139,9 @@ class IncomeAnnuity(object):
                 joint_array.append(joint)
             i += 1
 
+        alive_array.append(0)
+        joint_array.append(0)
+
         return start, alive_array, joint_array
 
     def set_age(self, age, *, calcs = False):
