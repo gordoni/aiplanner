@@ -166,6 +166,8 @@ class IncomeAnnuity(object):
             self.start, self.alive_array, self.joint_array = self._compute_vital_stats(age)
             self.current_age1 = age
             index_offset = 0
+        else:
+            index_offset = int(index_offset)
 
         offset = index_offset / self.frequency
 
@@ -249,6 +251,7 @@ class IncomeAnnuity(object):
             annual_return += payout_amount * spot
             total_payout += payout_amount
             if calcs:
+                r = math.exp(spot)
                 calc = {'i': i, 'y': y, 'alive': 0.0, 'joint': 0.0, 'combined': 0.0, 'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout_value}
                 calculations.append(calc)
 
