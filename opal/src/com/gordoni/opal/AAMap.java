@@ -424,18 +424,35 @@ class AAMap
                                 {
                                         real_annuitize = consume_annual * aa[scenario.ria_aa_index];
                                         consume_annual -= real_annuitize;
-                                        double ria_purchase = real_annuitize * (1 - config.tax_rate_annuity) / annuity_stats.real_annuity_price[period + y];
-                                        ria += ria_purchase;
-                                        first_payout += first_payout_fract * ria_purchase;
+                                        double ria_price = annuity_stats.real_annuity_price[period + y];
+                                        if (ria_price > 0)
+                                        {
+                                                double ria_purchase = real_annuitize * (1 - config.tax_rate_annuity) / ria_price;
+                                                ria += ria_purchase;
+                                                first_payout += first_payout_fract * ria_purchase;
+                                        }
+                                        else
+                                        {
+                                                ria = Double.POSITIVE_INFINITY;
+                                                assert(first_payout_fract == 0);
+                                        }
                                 }
                                 double nominal_annuitize = 0;
                                 if (scenario.nia_index != null)
                                 {
                                         nominal_annuitize = consume_annual * aa[scenario.nia_aa_index];
                                         consume_annual -= nominal_annuitize;
-                                        double nia_purchase = nominal_annuitize * (1 - config.tax_rate_annuity) / annuity_stats.nominal_annuity_price[period + y];
-                                        nia += nia_purchase;
-                                        first_payout += first_payout_fract * nia_purchase;
+                                        double nia_price = annuity_stats.nominal_annuity_price[period + y];
+                                        if (nia_price > 0)
+                                        {
+                                                double nia_purchase = nominal_annuitize * (1 - config.tax_rate_annuity) / nia_price;
+                                                nia += nia_purchase;
+                                                first_payout += first_payout_fract * nia_purchase;
+                                        }
+                                        {
+                                                nia = Double.POSITIVE_INFINITY;
+                                                assert(first_payout_fract == 0);
+                                        }
                                 }
                                 double annuitize = real_annuitize + nominal_annuitize;
                                 if ((scenario.ria_index != null || scenario.nia_index != null) && config.tax_rate_annuity != 0)
