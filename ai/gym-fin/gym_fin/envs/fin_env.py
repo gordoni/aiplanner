@@ -455,7 +455,8 @@ class FinEnv(Env):
         if done:
             info['ce'] = self.utility.inverse(self.episode_utility_sum / self.episode_length)
 
-        self.bonds_stepper.step()
+        if not self.params.static_bonds:
+            self.bonds_stepper.step()
 
         self.prev_asset_allocation = asset_allocation
         self.prev_real_spais_rate = real_spias_rate

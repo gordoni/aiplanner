@@ -15,7 +15,7 @@ AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 EXTRA_ARGS=$*
 AI_DIR=$AIPLANNER_HOME/ai
 export CLASSPATH=$AIPLANNER_HOME/opal/classes/'*'
-OPAL='java -ea com.gordoni.opal.OPAL'
+OPAL='java -Xmx50g -ea com.gordoni.opal.OPAL'
 
 validate () {
 
@@ -30,3 +30,4 @@ validate () {
 
 validate fixed_30-gi_0-no_bonds "-e generate_life_table='fixed_mortality' -e validate_life_table='fixed_mortality' -e le_add=0 -e defined_benefit=0 -e asset_classes=('synthetic','risk_free2')"
 validate ssa_plus_3_female-iid_bonds
+validate ssa_plus_3_female-iid_bonds-static_real_spias "-e start_ria=0"

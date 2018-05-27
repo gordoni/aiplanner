@@ -32,6 +32,20 @@ synthetic2_ret = 0.024
 synthetic2_vol = 0.112
 ret_risk_free2 = 0.008
 
+# Annuity related parameters.
+search = 'memory' # Use memory even though runs slower.
+search_neighbour = True # Old comment: Needed even with memory, or bad nia plot. Not sure why.
+scaling_factor = 1.01 # Old comment: Needed for good nia plot.
+annuity_scaling_factor = 1.01 # Old comment: Needed for good nia plot.
+annuity_time_periods = 1
+annuity_real_mwr1 = 0.94
+annuity_real_mwr2 = 0.94
+annuity_real_yield_curve = 'special-average-2005-01-01-2017-12-31'
+annuity_payout_delay = 12
+annuity_table = 'ssa-cohort'
+annuity_mortality_experience = 'none'
+ria_high = 200000
+
 # Produce 200 synthetic samples. Increasing beyond this doesn't effect generated CE.
 generate_start_year = 1
 validate_start_year = 1
@@ -46,7 +60,7 @@ validate_returns_seed = 1
 skip_corr = False
 skip_cov = Fasle
 
-# Parameters for Opal validation to work.
+# Parameters for Opal self validation to work.
 ret_resample = None
 validate_draw = 'bootstrap'
 ret_bootstrap_block_size = 0

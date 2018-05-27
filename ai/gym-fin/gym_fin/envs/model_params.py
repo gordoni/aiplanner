@@ -76,6 +76,9 @@ class ModelParams(object):
         self._param('gi-nominal', (1e3, 1e5), 0) # Nominal guaranteed income: nominal SPIAs, nominal pensions, and similar.
         self._param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
 
+        self._boolean_flag('static-bonds', False)
+            # Whether to model real bonds and inflation and thus nominal bonds and SPIAs as static (that is using a yield curve that does not vary over time).
+
         self._boolean_flag('real-spias', False) # Enable purchase of real SPIAs.
         self._param('real-spias-mwr', 0.94) # Money's Worth Ratio for real SPIAs (after any guarantee association tax).
             # When I priced real SPIAs against the IAM 2012 life table with actual/expected adjustemets and Treasury TIPS in 2015,
