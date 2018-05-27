@@ -166,6 +166,8 @@ class IncomeAnnuity(object):
             self.start, self.alive_array, self.joint_array = self._compute_vital_stats(age)
             self.current_age1 = age
             index_offset = 0
+        else:
+            index_offset = int(index_offset)
 
         offset = index_offset / self.frequency
 
