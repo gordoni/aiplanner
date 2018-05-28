@@ -49,22 +49,31 @@ def pi_merton(env, obs, continuous_time = False):
         consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / env.params.time_period
     return consume_fraction, stocks_allocation
 
-def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, eval_render, model_dir):
+def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_timesteps, eval_render, model_dir):
 
-    assert sum((model_dir != 'aiplanner.tf', merton, samuelson)) <= 1
-    merton_or_samuelson = merton or samuelson
+    assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize)) <= 1
+    merton_or_samuelson_or_annuitize = merton or samuelson or annuitize
 
     eval_seed += 1000000 # Use a different seed than might have been used during training.
     set_global_seeds(eval_seed)
-    eval_env = make_fin_env(**eval_model_params, action_space_unbounded = not merton_or_samuelson, direct_action = merton_or_samuelson)
+    eval_env = make_fin_env(**eval_model_params, action_space_unbounded = not merton_or_samuelson_or_annuitize, direct_action = merton_or_samuelson_or_annuitize)
     env = eval_env.unwrapped
     obs = eval_env.reset()
 
-    if merton_or_samuelson:
+    if merton or samuelson:
 
         consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
-        consume_annual = env.consume_rate(consume_fraction)
+        p, consume, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction)
         asset_allocation = AssetAllocation(stocks = stocks_allocation, bills = 1 - stocks_allocation)
+        real_bonds_duration = nominal_bonds_duration = None
+
+    elif annuitize:
+
+        consume_initial = env.gi_real + env.gi_nominal + env.p_notax / (1 + env.real_spia.premium(1, mwr = env.params.real_spias_mwr))
+        consume_fraction_initial = consume_initial / env.p_plus_income()
+        consume_fraction_initial /= env.params.time_period
+        p, consume, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction_initial, real_spias_fraction = 1)
+        asset_allocation = AssetAllocation(stocks = 1)
         real_bonds_duration = nominal_bonds_duration = None
 
     else:
@@ -84,12 +93,12 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
     logger.info('Initial properties for first episode:')
     logger.info('    Consume: ', consume / env.params.time_period)
     logger.info('    Asset allocation: ', asset_allocation)
-    logger.info('    Real immediate annuities purchase: ', real_spias_purchase / env.params.time_period if env.params.real_spias else None)
+    logger.info('    Real immediate annuities purchase: ', real_spias_purchase / env.params.time_period if env.params.real_spias or annuitize else None)
     logger.info('    Nominal immediate annuities purchase: ', nominal_spias_purchase / env.params.time_period if env.params.nominal_spias else None)
     logger.info('    Real bonds duration: ', real_bonds_duration)
     logger.info('    Nominal bonds duration: ', nominal_bonds_duration)
 
-    if not merton_or_samuelson:
+    if not merton_or_samuelson_or_annuitize:
 
         v, = session.run(v_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
         sum_alive = sum(env.alive)
@@ -111,7 +120,12 @@ def run(eval_model_params, *, merton, samuelson, eval_seed, eval_num_timesteps, 
             t = ceil(life_expectancy / env.params.time_period) - 1
             if t == 0:
                 consume_fraction = min(consume_fraction, 1 / env.params.time_period) # Bound may be exceeded in continuous time case.
-            return env.encode_direct_stock_bill_action(consume_fraction, stocks_allocation)
+            return env.encode_direct_action(consume_fraction, stocks_allocation, bills_allocation = 1 - stocks_allocation)
+
+        elif annuitize:
+
+            consume_fraction = consume_fraction_initial if env.episode_length == 0 else 1 / env.params.time_period
+            return env.encode_direct_action(consume_fraction, 1, real_spias_fraction = 1)
 
         else:
 
@@ -126,6 +140,7 @@ def main():
     parser = arg_parser()
     boolean_flag(parser, 'merton', default = False)
     boolean_flag(parser, 'samuelson', default = False)
+    boolean_flag(parser, 'annuitize', default = False)
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False)
     logger.configure()
     run(eval_model_params, **args)

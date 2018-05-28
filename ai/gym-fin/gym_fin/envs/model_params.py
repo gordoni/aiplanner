@@ -57,6 +57,15 @@ class ModelParams(object):
             # Need to first fix a bug in ddpg/models.py: set name='output' in final critic tf.layers.dense().
             # But doesn't appear to work well becasuse in the absense of guaranteed income the rewards may span a large many orders of magnitude range.
             # In particular some rewards can be -inf, or close there to, which appears to swamp the Pop-Art scaling of the other rewards.
+        self._param('consume-rescale', 'estimate_bounded', tp = string_type,
+            choices = ('direct', 'positive_direct', 'fraction_direct', 'fraction_biased', 'estimate_biased', 'estimate_bounded'))
+            # Type of re-scaling applied to consume action.
+            #     "direct": consumption amount is consume action.
+            #     "positive_direct": consumption amount is consume action (after exp).
+            #     "fraction_direct": consumption fraction is a linear mapping of consume action (after tanh).
+            #     "fraction_biased": consumption fraction is an exponential rescaling of consume action (after tanh).
+            #     "estimate_bounded": consumption fraction is a bounded mapping of consume action based on expected consumption (after tanh).
+            #     "estimate_biased": consumption fraction is an exponential rescaling of consume action based on expected consumption (after tanh).
 
         self._param('life-table', 'ssa-cohort', tp = string_type) # Life expectancy table to use. See spia module for possible values.
         self._param('life-table-date', '2020-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.

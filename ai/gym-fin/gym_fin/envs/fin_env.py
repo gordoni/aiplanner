@@ -231,11 +231,9 @@ class FinEnv(Env):
 
         return self._observe()
 
-    def encode_direct_stock_bill_action(self, consume_fraction, stocks_allocation):
+    def encode_direct_action(self, consume_fraction, stocks_allocation, *, bills_allocation = None, real_spias_fraction = None):
 
-        bills_allocation = 1 - stocks_allocation
-
-        return (consume_fraction, None, None, AssetAllocation(stocks = stocks_allocation, bills = bills_allocation), None, None)
+        return (consume_fraction, real_spias_fraction, None, AssetAllocation(stocks = stocks_allocation, bills = bills_allocation), None, None)
 
     def decode_action(self, action):
 
@@ -252,22 +250,65 @@ class FinEnv(Env):
             real_bonds_duration_action, nominal_bonds_duration_action = action
 
         if self.action_space_unbounded:
-            spias_action = tanh(spias_action)
             real_spias_action = tanh(real_spias_action)
             real_bonds_duration_action = tanh(real_bonds_duration_action)
             nominal_bonds_duration_action = tanh(nominal_bonds_duration_action)
         else:
             consume_action = atanh(consume_action)
+            spias_action = atanh(spias_action)
             stocks_action = atanh(stocks_action)
             real_bonds_action = atanh(real_bonds_action)
             nominal_bonds_action = atanh(nominal_bonds_action)
             iid_bonds_action = atanh(iid_bonds_action)
             bills_action = atanh(bills_action)
 
-        consume_estimate = (self.gi_real + self.gi_nominal + self.p_notax / self.life_expectancy[self.episode_length]) / self._p_income()
+        if self.params.consume_rescale == 'direct':
 
-        consumption_bounded = True # Bounding consumption gives better certainty equivalents.
-        if consumption_bounded:
+            # Code interacting with model will fail, as can't handle -inf reward.
+
+            consume_fraction = consume_action / self.p_plus_income()
+
+        elif self.params.consume_rescale == 'positive_direct':
+
+            consume_action = exp(consume_action)
+            consume_fraction = consume_action / self.p_plus_income()
+
+        elif self.params.consume_rescale == 'fraction_direct':
+
+            consume_action = tanh(consume_action / 2)
+                # Scale back initial volatility of consume_action to improve run to run mean and reduce standard deviation of certainty equivalent.
+            consume_fraction = (consume_action + 1) / 2
+
+        elif self.params.consume_rescale == 'fraction_biased':
+
+            consume_action = tanh(consume_action)
+            consume_action = (consume_action + 1) / 2
+            # consume_action is in the range [0, 1]. Make consume_fraction also in the range [0, 1], but weight consume_fraction towards zero.
+            # Otherwise the default is to consume 50% of assets each year. Quickly end up with few assets, making learning difficult.
+            #
+            #     consume_weight    consume_fraction when consume_action = 0.5
+            #          5                         7.6%
+            #          6                         4.7%
+            #          7                         2.9%
+            #          8                         1.8%
+            #          9                         1.1%
+            consume_weight = 5
+            consume_fraction = (exp(consume_weight * consume_action) - 1) / (exp(consume_weight) - 1)
+
+        elif self.params.consume_rescale == 'estimate_biased':
+
+            consume_action = tanh(consume_action / 10)
+                # Scale back initial volatility of consume_action to improve run to run mean and reduce standard deviation of certainty equivalent.
+            consume_action = (consume_action + 1) / 2
+            consume_estimate = self._income_estimate() / self.p_plus_income()
+            consume_weight = 2 * log((1 + sqrt(1 - 4 * consume_estimate * (1 - consume_estimate))) / (2 * consume_estimate))
+                # So that consume_fraction = consume_estimate when consume_action = 0.5.
+            consume_weight = max(1e-3, consume_weight) # Don't allow weight to become zero.
+            # consume_action is in the range [0, 1]. Make consume_fraction also in the range [0, 1], but weight consume_fraction towards zero.
+            # Otherwise by default consume 50% of assets each year. Quickly end up with few assets, and large negative utilities, making learning difficult.
+            consume_fraction = (exp(consume_weight * consume_action) - 1) / (exp(consume_weight) - 1)
+
+        elif self.params.consume_rescale == 'estimate_bounded':
 
             consume_action = tanh(consume_action / 5)
                 # Scaling back initial volatility of consume_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
@@ -279,37 +320,39 @@ class FinEnv(Env):
             # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for the negative rewards.
             # This will be to the detriment of the fit for more likely reward values.
             # For PPO the policy network either never fully retrains after the initial poor fit, or requires more training time.
+            consume_estimate = self._income_estimate() / self.p_plus_income()
             consume_floor = 0
             consume_ceil = 2 * consume_estimate
             consume_fraction = consume_floor + (consume_ceil - consume_floor) * consume_action
 
         else:
 
-            consume_action = tanh(consume_action / 10)
-                # Scale back initial volatility of consume_action to improve run to run mean and reduce standard deviation of certainty equivalent.
-            consume_action = (consume_action + 1) / 2
-            consume_weight = 2 * log((1 + sqrt(1 - 4 * consume_estimate * (1 - consume_estimate))) / (2 * consume_estimate))
-                # So that consume_fraction = consume_estimate when consume_action = 0.5.
-            consume_weight = max(1e-3, consume_weight) # Don't allow weight to become zero.
-            # consume_action is in the range [0, 1]. Make consume_fraction also in the range [0, 1], but weight consume_fraction towards zero.
-            # Otherwise by default consume 50% of assets each year. Quickly end up with few assets, and large negative utilities, making learning difficult.
-            consume_fraction = (exp(consume_weight * consume_action) - 1) / (exp(consume_weight) - 1)
+            assert False
 
-        consume_fraction = min(consume_fraction, 1 / self.params.time_period)
+        consume_fraction = max(0, min(consume_fraction, 1 / self.params.time_period))
 
         if self.params.real_spias or self.params.nominal_spias:
+
+            # Try and make it easy to learn the optimal amount of guaranteed income,
+            # so things function well with differing current amounts of guaranteed income.
+
+            spias_action = tanh(spias_action / 20)
+                # Scaling back initial volatility of spias_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
             spias_action = (spias_action + 1) / 2
-            # spias_action is in the range [0, 1]. Make spias_fraction also in the range [0, 1], but weight spias_fraction towards zero.
-            # Otherwise the default is to annuitize 50% of assets each year. Quickly end up with few non-spia assets, making learning difficult.
-            #
-            #     spias_weight    spias_fraction when spias_action = 0.5
-            #          5                         7.6%
-            #          6                         4.7%
-            #          7                         2.9%
-            #          8                         1.8%
-            #          9                         1.1%
-            spias_weight = 7
-            spias_fraction = (exp(spias_weight * spias_action) - 1) / (exp(spias_weight) - 1)
+            current_spias_fraction_estimate = (self.gi_real + self.gi_nominal) / self._income_estimate()
+            assert 0 <= current_spias_fraction_estimate <= 1
+            # Might like to pass on any more SPIAs when spias_action <= current_spias_fraction_estimate,
+            # but that would then make learning to increase spias_action difficult.
+            # We thus use a variant of the leaky ReLU.
+            def leaky_lu(x):
+                '''x in [-1, 1]. Result in [0, 1].'''
+                return 0.05 + x * (1 - 0.05) if x > 0 else 0.05 * (1 + x)
+            try:
+                spias_fraction = leaky_lu(spias_action - current_spias_fraction_estimate) / leaky_lu(1 - current_spias_fraction_estimate)
+            except ZeroDivisionError:
+                spias_fraction = 0
+            assert 0 <= spias_fraction <= 1
+
             real_spias_fraction = spias_fraction if self.params.real_spias else 0
             if self.params.nominal_spias:
                 real_spias_fraction *= (real_spias_action + 1) / 2
@@ -361,27 +404,31 @@ class FinEnv(Env):
         asset_allocation = AssetAllocation(stocks = stocks, real_bonds = real_bonds, nominal_bonds = nominal_bonds, iid_bonds = iid_bonds, bills = bills)
         return (consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration)
 
-    def _p_income(self):
+    def _income_estimate(self):
+
+        return self.gi_real + self.gi_nominal + self.p_notax / self.life_expectancy[self.episode_length]
+
+    def p_plus_income(self):
 
         return self.p_notax + (self.gi_real + self.gi_nominal) * self.params.time_period
 
-    def spend(self, consume_fraction, real_spias_fraction, nominal_spias_fraction):
+    def spend(self, consume_fraction, real_spias_fraction = 0, nominal_spias_fraction = 0):
 
         # Sanity check.
         consume_fraction_period = consume_fraction * self.params.time_period
         assert 0 <= consume_fraction_period <= 1
 
-        consume_annual = consume_fraction * self._p_income()
+        consume_annual = consume_fraction * self.p_plus_income()
         consume = consume_annual * self.params.time_period
 
-        p = self._p_income() - consume
+        p = self.p_plus_income() - consume
         nonneg_p = max(p, 0)
 
-        if self.params.real_spias:
+        if real_spias_fraction != None:
             real_spias_fraction *= self.params.time_period
         else:
             real_spias_fraction = 0
-        if self.params.nominal_spias:
+        if nominal_spias_fraction != None:
             nominal_spias_fraction *= self.params.time_period
         else:
             nominal_spias_fraction = 0
