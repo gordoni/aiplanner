@@ -25,7 +25,7 @@ if [ -z "$PYTHONPATH" ]; then
 else
     export PYTHONPATH=$PYTHONPATH_ADD:$PYTHONPATH
 fi
-CONFIG_FILE=$AI_DIR/validation/aiplanner-scenario.conf
+CONFIG_FILE=$AI_DIR/validation/aiplanner-scenario.txt
 
 if [ "$PARALLEL" = True ]; then
     VALIDATE=validate_parallel

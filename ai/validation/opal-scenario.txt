@@ -61,7 +61,7 @@ validate_end_year = 200
 generate_seed = 1
 validate_returns_seed = 1
 skip_corr = False
-skip_cov = Fasle
+skip_cov = False
 
 # Parameters for Opal self validation to work.
 ret_resample = None
