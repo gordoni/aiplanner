@@ -10,16 +10,20 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+from argparse import ArgumentParser
 from math import exp
 
 from yield_curve import YieldCurve
 
-start = '2005-01-01'
-end = '2017-12-31'
+parser = ArgumentParser()
+parser.add_argument('-t', '--type', choices=('corporate', 'nominal', 'real'), required=True)
+parser.add_argument('-s', '--start', default = '2005-01-01')
+parser.add_argument('-e', '--end', default = '2017-12-31')
+args = parser.parse_args()
 
-name = 'special-average-' + start + '-' + end
+name = 'special-average-' + args.start + '-' + args.end
 
-yield_curve = YieldCurve('real', end, date_str_low = start)
+yield_curve = YieldCurve(args.type, args.end, date_str_low = args.start)
 
 maturity = tuple(i / 2 for i in range(1, 200 + 1))
 spots = tuple(2 * (exp(yield_curve.spot(y) / 2) - 1) for y in maturity)
