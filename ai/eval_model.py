@@ -54,8 +54,7 @@ def consume_one_on_life_expectancy(env, obs):
     observation = env.decode_observation(obs)
     consume = observation['gi_real'] + observation['gi_nominal'] + observation['p_notax'] / observation['life_expectancy']
     consume_fraction = consume / env.p_plus_income()
-    consume_fraction = min(consume_fraction, 1)
-    consume_fraction /= env.params.time_period
+    consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     return consume_fraction
 
@@ -79,9 +78,8 @@ def run(eval_model_params, *, merton, samuelson, annuitize, one_on_life_expectan
 
     elif annuitize:
 
-        consume_initial = env.gi_real + env.gi_nominal + env.p_notax / (1 + env.real_spia.premium(1, mwr = env.params.real_spias_mwr))
+        consume_initial = env.gi_real + env.gi_nominal + env.p_notax / (env.params.time_period + env.real_spia.premium(1, mwr = env.params.real_spias_mwr))
         consume_fraction_initial = consume_initial / env.p_plus_income()
-        consume_fraction_initial /= env.params.time_period
         p, consume, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction_initial, real_spias_fraction = 1)
         asset_allocation = AssetAllocation(stocks = 1)
         real_bonds_duration = nominal_bonds_duration = None
@@ -110,8 +108,8 @@ def run(eval_model_params, *, merton, samuelson, annuitize, one_on_life_expectan
     logger.info('Initial properties for first episode:')
     logger.info('    Consume: ', consume / env.params.time_period)
     logger.info('    Asset allocation: ', asset_allocation)
-    logger.info('    Real immediate annuities purchase: ', real_spias_purchase / env.params.time_period if env.params.real_spias or annuitize else None)
-    logger.info('    Nominal immediate annuities purchase: ', nominal_spias_purchase / env.params.time_period if env.params.nominal_spias else None)
+    logger.info('    Real immediate annuities purchase: ', real_spias_purchase if env.params.real_spias or annuitize else None)
+    logger.info('    Nominal immediate annuities purchase: ', nominal_spias_purchase if env.params.nominal_spias else None)
     logger.info('    Real bonds duration: ', real_bonds_duration)
     logger.info('    Nominal bonds duration: ', nominal_bonds_duration)
 

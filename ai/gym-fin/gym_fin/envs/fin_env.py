@@ -179,7 +179,7 @@ class FinEnv(Env):
             returns_report('iid bonds', self.iid_bonds, time_period = self.params.time_period)
 
         if self.params.nominal_bonds or self.params.nominal_spias:
-            returns_report('inflation', self.inflation, duration = 1, stepper = self.bonds_stepper, time_period = self.params.time_period)
+            returns_report('inflation', self.inflation, duration = self.params.time_period, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
         self.reset()
 
