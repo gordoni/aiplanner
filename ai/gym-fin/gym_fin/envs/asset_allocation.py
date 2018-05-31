@@ -18,6 +18,19 @@ class AssetAllocation(object):
         self.iid_bonds = iid_bonds
         self.bills = bills
 
+        s = 0
+        if stocks:
+            s += stocks
+        if real_bonds:
+            s += real_bonds
+        if nominal_bonds:
+            s += nominal_bonds
+        if iid_bonds:
+            s += iid_bonds
+        if bills:
+            s += bills
+        assert abs(s - 1) < 1e-15
+
     def __str__(self):
 
         s = ''

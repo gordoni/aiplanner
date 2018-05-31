@@ -49,14 +49,24 @@ def pi_merton(env, obs, continuous_time = False):
         consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / env.params.time_period
     return consume_fraction, stocks_allocation
 
-def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_timesteps, eval_render, model_dir):
+def consume_one_on_life_expectancy(env, obs):
 
-    assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize)) <= 1
-    merton_or_samuelson_or_annuitize = merton or samuelson or annuitize
+    observation = env.decode_observation(obs)
+    consume = observation['gi_real'] + observation['gi_nominal'] + observation['p_notax'] / observation['life_expectancy']
+    consume_fraction = consume / env.p_plus_income()
+    consume_fraction = min(consume_fraction, 1)
+    consume_fraction /= env.params.time_period
+
+    return consume_fraction
+
+def run(eval_model_params, *, merton, samuelson, annuitize, one_on_life_expectancy, eval_seed, eval_num_timesteps, eval_render, model_dir):
+
+    assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize, one_on_life_expectancy)) <= 1
+    model = not (merton or samuelson or annuitize or one_on_life_expectancy)
 
     eval_seed += 1000000 # Use a different seed than might have been used during training.
     set_global_seeds(eval_seed)
-    eval_env = make_fin_env(**eval_model_params, action_space_unbounded = not merton_or_samuelson_or_annuitize, direct_action = merton_or_samuelson_or_annuitize)
+    eval_env = make_fin_env(**eval_model_params, action_space_unbounded = model, direct_action = not model)
     env = eval_env.unwrapped
     obs = eval_env.reset()
 
@@ -73,6 +83,13 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
         consume_fraction_initial = consume_initial / env.p_plus_income()
         consume_fraction_initial /= env.params.time_period
         p, consume, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction_initial, real_spias_fraction = 1)
+        asset_allocation = AssetAllocation(stocks = 1)
+        real_bonds_duration = nominal_bonds_duration = None
+
+    elif one_on_life_expectancy:
+
+        consume_fraction = consume_one_on_life_expectancy(env, obs)
+        p, consume, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction)
         asset_allocation = AssetAllocation(stocks = 1)
         real_bonds_duration = nominal_bonds_duration = None
 
@@ -98,7 +115,7 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
     logger.info('    Real bonds duration: ', real_bonds_duration)
     logger.info('    Nominal bonds duration: ', nominal_bonds_duration)
 
-    if not merton_or_samuelson_or_annuitize:
+    if model:
 
         v, = session.run(v_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
         sum_alive = sum(env.alive)
@@ -112,7 +129,12 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
 
     def pi(obs):
 
-        if merton or samuelson:
+        if model:
+
+            action, = session.run(action_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
+            return action
+
+        elif merton or samuelson:
 
             consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
             observation = env.decode_observation(obs)
@@ -120,17 +142,21 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
             t = ceil(life_expectancy / env.params.time_period) - 1
             if t == 0:
                 consume_fraction = min(consume_fraction, 1 / env.params.time_period) # Bound may be exceeded in continuous time case.
-            return env.encode_direct_action(consume_fraction, stocks_allocation, bills_allocation = 1 - stocks_allocation)
+            return env.encode_direct_action(consume_fraction, stocks = stocks_allocation, bills = 1 - stocks_allocation)
 
         elif annuitize:
 
             consume_fraction = consume_fraction_initial if env.episode_length == 0 else 1 / env.params.time_period
-            return env.encode_direct_action(consume_fraction, 1, real_spias_fraction = 1)
+            return env.encode_direct_action(consume_fraction, stocks = 1, real_spias_fraction = 1)
+
+        elif one_on_life_expectancy:
+
+            consume_fraction = consume_one_on_life_expectancy(env, obs)
+            return env.encode_direct_action(consume_fraction, stocks = 1)
 
         else:
 
-            action, = session.run(action_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
-            return action
+            assert False
 
     evaluator.evaluate(pi)
 
@@ -141,6 +167,7 @@ def main():
     boolean_flag(parser, 'merton', default = False)
     boolean_flag(parser, 'samuelson', default = False)
     boolean_flag(parser, 'annuitize', default = False)
+    boolean_flag(parser, 'one-on-life-expectancy', default = False)
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False)
     logger.configure()
     run(eval_model_params, **args)

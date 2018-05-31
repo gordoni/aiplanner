@@ -231,9 +231,13 @@ class FinEnv(Env):
 
         return self._observe()
 
-    def encode_direct_action(self, consume_fraction, stocks_allocation, *, bills_allocation = None, real_spias_fraction = None):
+    def encode_direct_action(self, consume_fraction, *, real_spias_fraction = None, nominal_spias_fraction = None,
+        stocks = None, real_bonds = None, nominal_bonds = None, iid_bonds = None, bills = None,
+        real_bonds_duration = None, nominal_bonds_duration = None):
 
-        return (consume_fraction, real_spias_fraction, None, AssetAllocation(stocks = stocks_allocation, bills = bills_allocation), None, None)
+        return (consume_fraction, real_spias_fraction, nominal_spias_fraction,
+            AssetAllocation(stocks = stocks, real_bonds = real_bonds, nominal_bonds = nominal_bonds, iid_bonds = iid_bonds, bills = bills),
+            real_bonds_duration, nominal_bonds_duration)
 
     def decode_action(self, action):
 
