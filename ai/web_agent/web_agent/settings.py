@@ -1,3 +1,13 @@
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
 """
 Django settings for web_agent project.
 
@@ -25,27 +35,28 @@ SECRET_KEY = '(#@wo2f_!!bl_*zlogv#hkakxsjz6_ble+c19xomg=za@db#=x'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['dev.aiplanner.com']
 
 
 # Application definition
 
 INSTALLED_APPS = (
-    'django.contrib.admin',
+    'app',
+#    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
+#    'django.contrib.sessions',
+#    'django.contrib.messages',
     'django.contrib.staticfiles',
 )
 
 MIDDLEWARE_CLASSES = (
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
+#    'django.contrib.sessions.middleware.SessionMiddleware',
+#    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
+#    'django.contrib.auth.middleware.AuthenticationMiddleware',
+#    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
+#    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.security.SecurityMiddleware',
 )

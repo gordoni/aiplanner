@@ -1,0 +1,55 @@
+{% comment %}
+
+AIPlanner - Deep Learning Financial Planner
+Copyright (C) 2018 Gordon Irlam
+
+All rights reserved. This program may not be used, copied, modified,
+or redistributed without permission.
+
+This program is distributed WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE.
+
+{% endcomment %}
+
+<!DOCTYPE html>
+
+<html>
+
+<body>
+
+<form method="POST">
+{% csrf_token %}
+
+{% if errors_present %}
+<p class="errorlist">
+Please correct the errors in red below:
+</p>
+{{ home_form.non_field_errors }}
+{% endif %}
+
+<p>
+Your name: {{ home_form.name }}
+{{ home_form.name.errors }}
+</p>
+
+<p>
+Professional qualifications as a financial advisor (CFP etc.):
+{{ home_form.qualifications }}
+{{ home_form.qualifications.errors }}
+</p>
+
+<p>
+If you normally use software to assist in determining client spending
+and/or asset allocation enter the name of that software here:
+{{ home_form.software }}
+{{ home_form.software.errors }}
+</p>
+
+<input type="submit" value="Submit">
+
+</form>
+
+</body>
+
+</html>
