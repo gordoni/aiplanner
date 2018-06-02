@@ -49,14 +49,14 @@ def arg_parser():
 
     return parser
 
-def parse_args(parser, *, training = True, evaluate = True):
+def parse_args(parser, *, training = True, evaluate = True, args = None):
 
     config_parser = _config_parser()
 
-    args, _ = config_parser.parse_known_args()
+    arguments, _ = config_parser.parse_known_args(args = args)
 
-    if args.config_file:
-        with open(args.config_file) as f:
+    if arguments.config_file:
+        with open(arguments.config_file) as f:
             config_str = f.read()
         config = {}
         exec(config_str, None, config)
@@ -72,11 +72,11 @@ def parse_args(parser, *, training = True, evaluate = True):
             parser.error('Unrecognised configuration file parameters: ' + ','.join(config.keys()))
         parser.set_defaults(**defaults)
 
-    args = parser.parse_args()
+    arguments = parser.parse_args(args = args)
 
-    return args
+    return arguments
 
-def fin_arg_parse(parser, *, training = True, evaluate = True):
+def fin_arg_parse(parser, *, training = True, evaluate = True, dump = True, args = None):
 
     if training:
         parser.add_argument('--train-seed', help = 'RNG seed', type = int, default = 0)
@@ -95,10 +95,11 @@ def fin_arg_parse(parser, *, training = True, evaluate = True):
 
     model_params = ModelParams()
     model_params.add_arguments(parser, training = training, evaluate = evaluate)
-    args = parse_args(parser, training = training, evaluate = evaluate)
-    dict_args = vars(args)
+    arguments = parse_args(parser, training = training, evaluate = evaluate, args = args)
+    dict_args = vars(arguments)
     model_params.set_params(dict_args)
-    model_params.dump_params()
+    if dump:
+        model_params.dump_params()
     training_model_params = model_params.get_params(training = True) if training else {}
     eval_model_params = model_params.get_params(training = False) if evaluate else {}
     dict_args = model_params.remaining_params()
