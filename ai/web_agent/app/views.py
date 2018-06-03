@@ -8,8 +8,15 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+from csv import writer
+from locale import LC_ALL, setlocale
+from math import exp
+from os import chdir
+from subprocess import run
+
+from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.forms import CharField, FloatField, Form, NumberInput
+from django.forms import CharField, FloatField, Form, HiddenInput, IntegerField
 from django.shortcuts import redirect, render
 
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse
@@ -47,11 +54,17 @@ def home(request):
 
 def reset(request):
 
-    global obs #XXX
-
-    obs = env.reset()
-
     return render(request, 'reset.html')
+
+class StateForm(Form):
+
+    episode = IntegerField(widget = HiddenInput())
+    step = IntegerField(widget = HiddenInput())
+    real_oup_x = FloatField(widget = HiddenInput())
+    inflation_oup_x = FloatField(widget = HiddenInput())
+    gi_real = FloatField(widget = HiddenInput())
+    gi_nominal = FloatField(widget = HiddenInput())
+    p_notax = FloatField(widget = HiddenInput())
 
 class StepForm(Form):
 
@@ -77,11 +90,16 @@ class StepForm(Form):
 
 def step(request):
 
-    global obs #XXX
-
     errors_present = False
 
     if request.method == 'POST':
+
+        state_form = StateForm(request.POST)
+        assert state_form.is_valid()
+        state = state_form.cleaned_data
+        step = state['step']
+
+        obs = env.goto(state['episode'], state['step'], state['real_oup_x'], state['inflation_oup_x'], state['gi_real'], state['gi_nominal'], state['p_notax'])
 
         step_form = StepForm(request.POST)
         if step_form.is_valid():
@@ -119,6 +137,8 @@ def step(request):
                 if done:
                     return redirect('reset')
 
+                step += 1
+
         else:
 
             errors_present = True
@@ -126,9 +146,22 @@ def step(request):
     else:
 
         step_form = StepForm()
+        step = 0
+
+        obs = env.reset()
+
+    state = StateForm({
+        'episode': 0,
+        'step': step,
+        'real_oup_x': env.real_bonds.oup.x,
+        'inflation_oup_x': env.inflation.oup.x,
+        'gi_real': env.gi_real,
+        'gi_nominal': env.gi_nominal,
+        'p_notax': env.p_notax,
+    })
 
     observation = env.decode_observation(obs)
-    
+
     observation['age'] = '{:.0f}'.format(env.age)
     observation['gi'] = '{:n}'.format(round(observation['gi_real'] + observation['gi_nominal']))
     observation['nominal_interest_rate'] = '{:.1%}'.format((1 + observation['real_interest_rate']) * (1 + observation['inflation_rate']) - 1)
@@ -152,15 +185,37 @@ def step(request):
     observation['real_interest_rate'] = '{:.1%}'.format(observation['real_interest_rate'])
     observation['inflation_rate'] = '{:.1%}'.format(observation['inflation_rate'])
 
+    dump_yield_curve('real', env.real_bonds)
+    dump_yield_curve('nominal', env.nominal_bonds)
+    plot_yield_curves()
+
     return render(request, 'step.html', {
         'errors_present': errors_present,
+        'state': state,
         'observation': observation,
         'step_form': step_form,
     })
 
-from locale import LC_ALL, setlocale
+def dump_yield_curve(style, bonds):
 
-setlocale(LC_ALL, '')
+    maturity = tuple(i / 2 for i in range(1, 30 * 2 + 1))
+    spots = tuple(2 * (exp(bonds.spot(y) / 2) - 1) for y in maturity)
+        # Treasury par rates are twice the semi-annual rate.
+    pars = bonds.yield_curve.spot_to_par(spots)
+
+    with open(settings.STATIC_ROOT + style + '.csv', 'w') as f:
+        csv = writer(f)
+        csv.writerows(zip(maturity, pars))
+
+def plot_yield_curves():
+
+    chdir('app/static')
+    try:
+        run(['../plot.gnuplot'], check = True)
+    finally:
+        chdir('../..')
+
+setlocale(LC_ALL, '') # For "," as thousands separator in numbers.
 
 parser = arg_parser()
 _, eval_model_params, _ = fin_arg_parse(parser, dump = False, args = ('-c', '../validation/aiplanner-scenario.txt'))

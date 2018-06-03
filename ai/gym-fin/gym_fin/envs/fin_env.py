@@ -10,7 +10,7 @@
 
 from datetime import datetime
 from math import atanh, exp, isnan, log, sqrt, tanh
-from random import uniform
+from random import seed, uniform
 
 import numpy as np
 
@@ -499,14 +499,14 @@ class FinEnv(Env):
         self.episode_utility_sum += utility
         self.episode_length += 1
 
+        if not self.params.static_bonds:
+            self.bonds_stepper.step()
+
         observation = self._observe()
         done = self.episode_length >= len(self.alive)
         info = {}
         if done:
             info['ce'] = self.utility.inverse(self.episode_utility_sum / self.episode_length)
-
-        if not self.params.static_bonds:
-            self.bonds_stepper.step()
 
         self.prev_asset_allocation = asset_allocation
         self.prev_real_spais_rate = real_spias_rate
@@ -515,6 +515,30 @@ class FinEnv(Env):
         self.prev_reward = reward
 
         return observation, reward, done, info
+
+    def goto(self, episode, step, real_oup_x, inflation_oup_x, gi_real, gi_nominal, p_notax):
+        '''Goto a reproducable episode time step. Useful for benchmarking.'''
+
+        self.reset()
+
+        seed(episode * 1000 + step, version = 2)
+
+        self.real_bonds.oup.next_x = real_oup_x
+        self.real_bonds.oup.step()
+        assert self.inflation.inflation_a == self.inflation.bond_a and self.inflation.inflation_sigma == self.inflation.bond_sigma
+        self.inflation.oup.next_x = inflation_oup_x
+        self.inflation.inflation_oup.next_x = inflation_oup_x
+        self.inflation.oup.step()
+        self.inflation.inflation_oup.step(norm = self.inflation.oup.norm)
+
+        self.age += step * self.params.time_period
+        self.episode_length += step
+
+        self.gi_real = gi_real
+        self.gi_nominal = gi_nominal
+        self.p_notax = p_notax
+
+        return self._observe()
 
     def render(self, mode = 'human'):
 

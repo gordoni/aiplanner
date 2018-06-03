@@ -23,11 +23,11 @@ class OUProcess(object):
         self._mu = mu
         self.next_x = mu if x == None else x
 
-        return self.step(norm = norm)
+        self.step(norm = norm)
 
     def step(self, *, norm = None):
         '''Step the process under stochastic shock norm (generated if not
-        supplied), and return the stochastic shock.
+        supplied).
 
         '''
 

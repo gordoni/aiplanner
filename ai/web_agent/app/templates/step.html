@@ -32,6 +32,18 @@ Please correct the errors in red below:
 {{ step_form.non_field_errors }}
 {% endif %}
 
+{{ state.episode }}
+{{ state.step }}
+{{ state.real_oup_x }}
+{{ state.inflation_oup_x }}
+{{ state.gi_real }}
+{{ state.gi_nominal }}
+{{ state.p_notax }}
+
+<div style="float: right;">
+<img src="static/yield-curves.png" alt="Nominal and real yield curves" />
+</div>
+
 <p>
 Age: {{ observation.age }}, life expectancy: <strong>{{ observation.life_expectancy }} years</strong>
 </p>
@@ -43,17 +55,17 @@ Investment portfolio size: <strong>${{ observation.p_notax }}</strong>
 <p>
 <table>
   <tr>
-    <td> Annual non-portfolio income: </td>
+    <td colspan=2> Annual non-portfolio income: <td>
+  </tr>
+  <tr>
     <td></td>
     <th> ${{ observation.gi }} </th>
   </tr>
   <tr>
-    <td></td>
     <td> Inflation-indexed: </td>
     <td align="right"> ${{ observation.gi_real }} </td>
   </tr>
   <tr>
-    <td></td>
     <td> Non-inflation-indexed: </td>
     <td align="right">${{ observation.gi_nominal }} </td>
   </tr>
@@ -76,6 +88,11 @@ Investment portfolio size: <strong>${{ observation.p_notax }}</strong>
   </tr>
 </table>
 </p>
+
+<div style="clear: both;">
+</div>
+
+<hr>
 
 <p>
 <table>
@@ -104,7 +121,7 @@ Investment portfolio size: <strong>${{ observation.p_notax }}</strong>
 <table>
   <tr>
     <td colspan=2> Asset allocation: </td>
-    <td> Duration: </td>
+    <td> Bond duration: </td>
   </tr>
   <tr>
     <td> stocks: </td>

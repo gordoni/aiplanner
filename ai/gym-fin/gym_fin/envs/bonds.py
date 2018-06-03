@@ -363,6 +363,8 @@ class BreakEvenInflation(Bonds):
 
         self.inflation_a = inflation_a
         self.inflation_sigma = inflation_sigma
+        self.bond_a = bond_a
+        self.bond_sigma = bond_sigma
         self.nominal_yield_curve = nominal_yield_curve
         self.inflation_risk_premium = inflation_risk_premium
         self.real_liquidity_premium = real_liquidity_premium

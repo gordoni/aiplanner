@@ -13,7 +13,7 @@ from django.conf.urls import url
 from app import views
 
 urlpatterns = [
-    url(r'^$', views.home, name = 'home'),
+    url(r'^start$', views.home, name = 'start'),
     url(r'^reset$', views.reset, name = 'reset'),
     url(r'^step$', views.step, name = 'step'),
 ]
