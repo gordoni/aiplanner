@@ -16,9 +16,140 @@ PURPOSE.
 
 <html>
 
+<head>
+<link href="/static/stylesheet.css" type="text/css" rel="stylesheet" />
+</head>
+
 <body>
 
-<a href="step">Start next episode</a>
+{% if episode == 0 %}
+{% elif episode == 1 %}
+<p>
+Congratulations! You have completed the practice episode.
+</p>
+<p>
+<a href="step">Begin first episode</a>
+</p>
+{% else %}
+<p>
+Congratulations! Episode completed.
+</p>
+<p>
+<a href="step">Begin next episode</a>
+</p>
+{% endif %}
+
+<p>
+Each episode starts with the same scenario. How the episode evolves
+will depend on market returns and your investment decisions.
+</p>
+
+<h2>The scenario</h2>
+
+<p>
+It is the year 2020. The client is a 65 year old female. They are, and
+will remain, in good health, with a life expectancy 3 years long than
+the average for a 65 year old female. They start with $500,000 of tax
+free investment assets, and Social Security providing $16,000 per year
+of inflation indexed guaranteed income,
+</p>
+
+<p>
+<div style="float: right;">
+<img src="static/utility.png" alt="Utility" />
+</div>
+Annual well-being varies depending upon the annual consumption amount.
+Technically, well-being is described as exhibiting constant relative
+risk aversion with a coefficient of relative risk aversion of 3, as
+shown in the graph to the right.
+</p>
+
+<p>
+The client has an unlimited psychological ability to stomach changes
+in investment portfolio value. They have no bequest motive. They
+simply seek to maximize their overall well-being while they are alive.
+</p>
+
+<h2>Your task</h2>
+
+<p>
+You have to decide how much the client should consume each period, and
+how they should invest the remainder. The available asset classes are:
+</p>
+<ul>
+<li> Stocks - stocks are expected to return 1.5% below their
+historical value and have a geometric mean return after inflation of
+3.6% with an annual volatility of 17.4%. </li>
+<li> Government bonds - you pick the duration; bond returns will be
+similar to average historical values; 5 year duration bonds have an
+average 1.3% return after inflation and a 5.7% volatility. </li>
+<li> Inflation-indexed government bonds (TIPS) - you pick the
+duration; TIPS will have similar to average post-2004 historical
+values; 5 year duration TIPS have an average 1.0% return and 3.8%
+volatility; the spread between government bonds and TIPS will match
+inflation expectations. </li>
+</ul>
+
+<p>
+So you have full information on the investment scenario you will be
+presented with the current yield curve. It isn't critical to use it,
+but small gains may be possible through market timing. Both short-term
+interest rates and inflation exhibit larger standard deviations than
+is normal. This is an unwelcome side effect of the simple bond pricing
+model used, and can be ignored. Values for longer durations are more
+realistic.
+</p>
+
+<p>
+Inflation will largely match historical values. Occasionally the
+inflation rate may may become negative. This too is an unwanted side
+effect of the bond pricing model that can be ignored. It should not be
+a cause for alarm.
+</p>
+
+<p>
+Single Premium Immediate Annuities (SPIAs) may be purchased at any age
+in any amount, and there is no transactional overhead from doing so.
+Non-inflation indexed SPIAs have a money's worth ratio of 100% after
+fees when measured against government bonds. Inflation indexed SPIAs
+have a money's worth ratio of 94% when measured against TIPS.
+</p>
+
+<p>
+The client will likely die at some point during the episode, however
+each episode lasts until age 120. I wish to understand the strategy
+you would use if the client were still alive. Once the client's wealth
+has been spent down you can indicate that the client should consume
+the full amount of their income for each remaining time step to avoid
+having to step all the way through until age 120.
+</p>
+
+<p>
+This is a simplified world. There are no taxes or transaction costs to
+consider. There is no need for an emergency fund.
+</p>
+
+<p>
+You should use your professional judgment, and if you wish a
+calculator, but no other software. You may take as long as you wish to
+make your decisions. You should complete a whole number of episodes,
+rather than stopping midway through an episode.
+</p>
+
+<p>
+All amounts are reported in and entered in year 2020
+inflation-adjusted dollars.
+</p>
+
+<p>
+{% if episode == 0 %}
+<a href="step">Begin practice episode</a>
+{% elif episode == 1 %}
+<a href="step">Begin first episode</a>
+{% else %}
+<a href="step">Begin next episode</a>
+{% endif %}
+</p>
 
 </form>
 

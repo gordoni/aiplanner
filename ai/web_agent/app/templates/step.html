@@ -22,6 +22,8 @@ PURPOSE.
 
 <body>
 
+<h2>Status</h2>
+
 <form method="POST">
 {% csrf_token %}
 
@@ -32,7 +34,6 @@ Please correct the errors in red below:
 {{ step_form.non_field_errors }}
 {% endif %}
 
-{{ state.episode }}
 {{ state.step }}
 {{ state.real_oup_x }}
 {{ state.inflation_oup_x }}
@@ -45,7 +46,13 @@ Please correct the errors in red below:
 </div>
 
 <p>
+Probability client is still alive: {{ observation.alive }}
+<br>
 Age: {{ observation.age }}, life expectancy: <strong>{{ observation.life_expectancy }} years</strong>
+</p>
+
+<p>
+Total available: <strong>${{ observation.p_plus_income }}</strong>
 </p>
 
 <p>
@@ -94,6 +101,8 @@ Investment portfolio size: <strong>${{ observation.p_notax }}</strong>
 
 <hr>
 
+<h2>Strategy</h2>
+
 <p>
 <table>
   <tr>
@@ -103,16 +112,21 @@ Investment portfolio size: <strong>${{ observation.p_notax }}</strong>
     <td></td>
   </tr>
   <tr>
+    <td></td>
+    <td></td>
+    <td colspan=2> {{ step_form.consume_all }} Consume full amount available on this and all subsequent periods {{ step_form.consume_all.errors }} </td>
+  </tr>
+  <tr>
     <td> SPIA purchases: </td>
     <td> Non-inflation indexed: </td>
     <td> {{ step_form.nominal_spias }} {{ step_form.nominal_spias.errors }} </td>
-    <td> payout: ${{ observation.nominal_payout }} per $100,000 </td>
+    <td> annual payout: ${{ observation.nominal_payout }} per $100,000 </td>
   </tr>
   <tr>
     <td></td>
     <td> Inflation indexed: </td>
     <td> {{ step_form.real_spias }} {{ step_form.real_spias.errors }} </td>
-    <td> payout: ${{ observation.real_payout }} per $100,000 </td>
+    <td> annual payout: ${{ observation.real_payout }} per $100,000 </td>
   </tr>
 </table>
 </p>

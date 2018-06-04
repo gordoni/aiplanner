@@ -9,14 +9,17 @@
 # PURPOSE.
 
 from csv import writer
+from json import dumps
 from locale import LC_ALL, setlocale
 from math import exp
-from os import chdir
+from os import chdir, mkdir
+from random import randrange, seed
+from re import match
 from subprocess import run
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.forms import CharField, FloatField, Form, HiddenInput, IntegerField
+from django.forms import BooleanField, CharField, FloatField, Form, HiddenInput, IntegerField
 from django.shortcuts import redirect, render
 
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse
@@ -37,28 +40,56 @@ def home(request):
 
         home_form = HomeForm(request.POST)
         if home_form.is_valid():
+
             data = home_form.cleaned_data
-            print(data['name'], data['qualifications'], data['software'])
-            return redirect('reset')
+
+            uid = request.COOKIES.get('uid')
+            if uid == None:
+                seed()
+                uid = randrange(1000000000)
+                uid = str(uid)
+                mkdir('user' + uid)
+
+            with open('user' + uid + '/info.txt', 'a') as f:
+                f.write(dumps(data) + '\n')
+
+            response = redirect('reset')
+            response.set_cookie('uid', uid)
+            response.set_cookie('episode', '0')
+            return response
+
         else:
+
             errors_present = True
 
     else:
 
         home_form = HomeForm()
 
-    return render(request, 'home.html', {
+    response = render(request, 'home.html', {
         'errors_present': errors_present,
         'home_form': home_form,
     })
 
+    return response
+
 def reset(request):
 
-    return render(request, 'reset.html')
+    uid = request.COOKIES.get('uid')
+    if uid == None or not match(r'^\d{1,9}$', uid):
+        return render(request, 'no-cookie.html')
+
+    episode = request.COOKIES.get('episode')
+    if episode == None or not match(r'^\d{1,3}$', episode):
+        return render(request, 'no-cookie.html')
+    episode = int(episode)
+
+    return render(request, 'reset.html', {
+        'episode': episode,
+    })
 
 class StateForm(Form):
 
-    episode = IntegerField(widget = HiddenInput())
     step = IntegerField(widget = HiddenInput())
     real_oup_x = FloatField(widget = HiddenInput())
     inflation_oup_x = FloatField(widget = HiddenInput())
@@ -80,6 +111,7 @@ class StepForm(Form):
         return cleaned_data
 
     consume = FloatField(min_value = 0)
+    consume_all = BooleanField(required = False, initial = False)
     real_spias = FloatField(min_value = 0, initial = 0)
     nominal_spias = FloatField(min_value = 0, initial = 0)
     stocks = FloatField(min_value = 0, max_value = 100)
@@ -90,6 +122,15 @@ class StepForm(Form):
 
 def step(request):
 
+    uid = request.COOKIES.get('uid')
+    if uid == None or not match(r'^\d{1,9}$', uid):
+        return render(request, 'no-cookie.html')
+
+    episode = request.COOKIES.get('episode')
+    if episode == None or not match(r'^\d{1,3}$', episode):
+        return render(request, 'no-cookie.html')
+    episode = int(episode)
+
     errors_present = False
 
     if request.method == 'POST':
@@ -99,22 +140,36 @@ def step(request):
         state = state_form.cleaned_data
         step = state['step']
 
-        obs = env.goto(state['episode'], state['step'], state['real_oup_x'], state['inflation_oup_x'], state['gi_real'], state['gi_nominal'], state['p_notax'])
+        obs = env.goto(episode, state['step'], state['real_oup_x'], state['inflation_oup_x'], state['gi_real'], state['gi_nominal'], state['p_notax'])
 
         step_form = StepForm(request.POST)
         if step_form.is_valid():
 
             data = step_form.cleaned_data
 
-            if data['consume'] + data['real_spias'] + data['nominal_spias'] > env.p_plus_income():
-                
-                step_form.add_error(None, 'Spending exceeds portfolio size.')
+            if not data['consume_all'] and data['consume'] + data['real_spias'] + data['nominal_spias'] > env.p_plus_income():
+
+                step_form.add_error(None, 'Spending exceeds total available.')
+                errors_present = True
+
+            elif data['consume_all'] and (data['real_spias'] != 0 or data['nominal_spias'] != 0):
+
+                step_form.add_error(None, 'SPIA purchases must be zero when selecting consume all.')
+                errors_present = True
+
+            elif data['consume_all'] and (env.p_notax > 10000):
+
+                step_form.add_error(None, 'Investment portfolio must be spent down before selecting consume all.')
                 errors_present = True
 
             else:
 
-                consume_fraction = data['consume'] / env.p_plus_income()
-                p = env.p_plus_income() - data['consume']
+                if data['consume_all']:
+                    consume_fraction = 1
+                    p = 0
+                else:
+                    consume_fraction = data['consume'] / env.p_plus_income()
+                    p = env.p_plus_income() - data['consume']
                 try:
                     real_spias_fraction = data['real_spias'] / p
                 except ZeroDivisionError:
@@ -134,8 +189,10 @@ def step(request):
                     real_bonds_duration = real_bonds_duration, nominal_bonds_duration = nominal_bonds_duration)
 
                 obs, reward, done, info = env.step(action)
-                if done:
-                    return redirect('reset')
+                if done or data['consume_all']:
+                    response = redirect('reset')
+                    response.set_cookie('episode', episode + 1)
+                    return response
 
                 step += 1
 
@@ -151,7 +208,6 @@ def step(request):
         obs = env.reset()
 
     state = StateForm({
-        'episode': 0,
         'step': step,
         'real_oup_x': env.real_bonds.oup.x,
         'inflation_oup_x': env.inflation.oup.x,
@@ -162,8 +218,10 @@ def step(request):
 
     observation = env.decode_observation(obs)
 
+    observation['alive'] = '{:.1%}'.format(env.alive[env.episode_length])
     observation['age'] = '{:.0f}'.format(env.age)
     observation['gi'] = '{:n}'.format(round(observation['gi_real'] + observation['gi_nominal']))
+    observation['p_plus_income'] = '{:n}'.format(round(env.p_plus_income()))
     observation['nominal_interest_rate'] = '{:.1%}'.format((1 + observation['real_interest_rate']) * (1 + observation['inflation_rate']) - 1)
     env.real_spia.set_age(env.age)
     real_payout = env.real_spia.payout(100000, mwr = env.params.real_spias_mwr)
@@ -211,12 +269,13 @@ def plot_yield_curves():
 
     chdir('app/static')
     try:
-        run(['../plot.gnuplot'], check = True)
+        run(['../plot-step.gnuplot'], check = True)
     finally:
         chdir('../..')
 
 setlocale(LC_ALL, '') # For "," as thousands separator in numbers.
 
 parser = arg_parser()
-_, eval_model_params, _ = fin_arg_parse(parser, dump = False, args = ('-c', '../validation/aiplanner-scenario.txt'))
+_, eval_model_params, _ = fin_arg_parse(parser, dump = False,
+    args = ('-c', '../validation/aiplanner-scenario.txt', '--master-real-spias', '--master-nominal-spias'))
 env = FinEnv(direct_action = True, **eval_model_params)
