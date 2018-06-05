@@ -23,8 +23,32 @@ PURPOSE.
 <body>
 
 <p>
-Sorry, cookies need to be enabled to use this site.
+Thank you for assisting me.
 </p>
+
+<p>
+If you have any thoughts or comments on the task please enter them
+below.
+</p>
+
+<form method="POST">
+{% csrf_token %}
+
+{% if errors_present %}
+<p class="errorlist">
+Please correct the errors in red below:
+</p>
+{{ finish_form.non_field_errors }}
+{% endif %}
+
+<p>
+{{ finish_form.comments }}
+{{ finish_form.comments.errors }}
+</p>
+
+<input type="submit" value="Submit">
+
+</form>
 
 </body>
 

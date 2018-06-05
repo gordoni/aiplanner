@@ -14,6 +14,7 @@ from app import views
 
 urlpatterns = [
     url(r'^start$', views.home, name = 'start'),
-    url(r'^reset$', views.reset, name = 'reset'),
+    url(r'^episode$', views.episode, name = 'episode'),
     url(r'^step$', views.step, name = 'step'),
+    url(r'^finish$', views.finish, name = 'finish'),
 ]

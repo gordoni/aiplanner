@@ -2,7 +2,7 @@
 
 set terminal pngcairo transparent size 400,300
 
-set xlabel 'annual consumption'
+set xlabel 'annual spending'
 set xrange [0:100000]
 set format x '$%.0s%c'
 

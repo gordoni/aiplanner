@@ -12,14 +12,15 @@ from csv import writer
 from json import dumps
 from locale import LC_ALL, setlocale
 from math import exp
-from os import chdir, mkdir
+from os import chdir, getcwd, mkdir
+from os.path import dirname
 from random import randrange, seed
 from re import match
 from subprocess import run
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.forms import BooleanField, CharField, FloatField, Form, HiddenInput, IntegerField
+from django.forms import BooleanField, CharField, FloatField, Form, HiddenInput, IntegerField, NumberInput, Textarea, TextInput
 from django.shortcuts import redirect, render
 
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse
@@ -28,9 +29,9 @@ from gym_fin.envs.model_params import ModelParams
 
 class HomeForm(Form):
 
-    name = CharField(min_length = 1)
-    qualifications = CharField(min_length = 2)
-    software = CharField(required = False)
+    name = CharField(min_length = 1, widget = TextInput(attrs = {'size': 30}))
+    qualifications = CharField(min_length = 2, widget = TextInput(attrs = {'size': 30}))
+    software = CharField(required = False, widget = TextInput(attrs = {'size': 60}))
 
 def home(request):
 
@@ -48,14 +49,14 @@ def home(request):
                 seed()
                 uid = randrange(1000000000)
                 uid = str(uid)
-                mkdir('user' + uid)
+                mkdir(settings.STATIC_ROOT + 'user' + uid)
 
-            with open('user' + uid + '/info.txt', 'a') as f:
+            with open(settings.STATIC_ROOT + 'user' + uid + '/info.json', 'a') as f:
                 f.write(dumps(data) + '\n')
 
-            response = redirect('reset')
-            response.set_cookie('uid', uid)
-            response.set_cookie('episode', '0')
+            response = redirect('episode')
+            response.set_cookie('uid', uid, max_age = 7 * 86400)
+            response.set_cookie('episode', '0', max_age = 7 * 86400)
             return response
 
         else:
@@ -73,7 +74,7 @@ def home(request):
 
     return response
 
-def reset(request):
+def episode(request):
 
     uid = request.COOKIES.get('uid')
     if uid == None or not match(r'^\d{1,9}$', uid):
@@ -84,7 +85,7 @@ def reset(request):
         return render(request, 'no-cookie.html')
     episode = int(episode)
 
-    return render(request, 'reset.html', {
+    return render(request, 'episode.html', {
         'episode': episode,
     })
 
@@ -110,15 +111,15 @@ class StepForm(Form):
             raise ValidationError('Asset allocation must add up to 100%.')
         return cleaned_data
 
-    consume = FloatField(min_value = 0)
+    consume = FloatField(min_value = 0, widget = NumberInput(attrs = {'class': 'numeric'}))
     consume_all = BooleanField(required = False, initial = False)
-    real_spias = FloatField(min_value = 0, initial = 0)
-    nominal_spias = FloatField(min_value = 0, initial = 0)
-    stocks = FloatField(min_value = 0, max_value = 100)
-    real_bonds = FloatField(min_value = 0, max_value = 100, initial = 0)
-    nominal_bonds = FloatField(min_value = 0, max_value = 100)
-    real_bonds_duration = FloatField(min_value = 1, max_value = 30, initial = 5) # min duration XXX
-    nominal_bonds_duration = FloatField(min_value = 1, max_value = 30, initial = 5)
+    real_spias = FloatField(min_value = 0, initial = 0, widget = NumberInput(attrs = {'class': 'numeric'}))
+    nominal_spias = FloatField(min_value = 0, initial = 0, widget = NumberInput(attrs = {'class': 'numeric'}))
+    stocks = FloatField(min_value = 0, max_value = 100, widget = NumberInput(attrs = {'class': 'small-numeric'}))
+    real_bonds = FloatField(min_value = 0, max_value = 100, initial = 0, widget = NumberInput(attrs = {'class': 'small-numeric'}))
+    nominal_bonds = FloatField(min_value = 0, max_value = 100, widget = NumberInput(attrs = {'class': 'small-numeric'}))
+    real_bonds_duration = FloatField(min_value = 1, max_value = 30, initial = 5, widget = NumberInput(attrs = {'class': 'small-numeric'}))
+    nominal_bonds_duration = FloatField(min_value = 1, max_value = 30, initial = 5, widget = NumberInput(attrs = {'class': 'small-numeric'}))
 
 def step(request):
 
@@ -130,8 +131,12 @@ def step(request):
     if episode == None or not match(r'^\d{1,3}$', episode):
         return render(request, 'no-cookie.html')
     episode = int(episode)
+    env.set_reproduce_episode(episode)
 
     errors_present = False
+    action = None
+    done = False
+    consume_all = False
 
     if request.method == 'POST':
 
@@ -140,7 +145,7 @@ def step(request):
         state = state_form.cleaned_data
         step = state['step']
 
-        obs = env.goto(episode, state['step'], state['real_oup_x'], state['inflation_oup_x'], state['gi_real'], state['gi_nominal'], state['p_notax'])
+        obs = env.goto(state['step'], state['real_oup_x'], state['inflation_oup_x'], state['gi_real'], state['gi_nominal'], state['p_notax'])
 
         step_form = StepForm(request.POST)
         if step_form.is_valid():
@@ -165,10 +170,13 @@ def step(request):
             else:
 
                 if data['consume_all']:
+                    consume_all = True
+                    consume = env.p_plus_income()
                     consume_fraction = 1
                     p = 0
                 else:
-                    consume_fraction = data['consume'] / env.p_plus_income()
+                    consume = data['consume']
+                    consume_fraction =  consume / env.p_plus_income()
                     p = env.p_plus_income() - data['consume']
                 try:
                     real_spias_fraction = data['real_spias'] / p
@@ -189,10 +197,6 @@ def step(request):
                     real_bonds_duration = real_bonds_duration, nominal_bonds_duration = nominal_bonds_duration)
 
                 obs, reward, done, info = env.step(action)
-                if done or data['consume_all']:
-                    response = redirect('reset')
-                    response.set_cookie('episode', episode + 1)
-                    return response
 
                 step += 1
 
@@ -216,62 +220,148 @@ def step(request):
         'p_notax': env.p_notax,
     })
 
-    observation = env.decode_observation(obs)
+    user_dir = 'user' + uid
 
-    observation['alive'] = '{:.1%}'.format(env.alive[env.episode_length])
-    observation['age'] = '{:.0f}'.format(env.age)
-    observation['gi'] = '{:n}'.format(round(observation['gi_real'] + observation['gi_nominal']))
-    observation['p_plus_income'] = '{:n}'.format(round(env.p_plus_income()))
-    observation['nominal_interest_rate'] = '{:.1%}'.format((1 + observation['real_interest_rate']) * (1 + observation['inflation_rate']) - 1)
-    env.real_spia.set_age(env.age)
-    real_payout = env.real_spia.payout(100000, mwr = env.params.real_spias_mwr)
-    try:
-        observation['real_payout'] = '{:n}'.format(round(real_payout))
-    except OverflowError:
-        observation['real_payout'] = '-'
-    env.nominal_spia.set_age(env.age)
-    nominal_payout = env.nominal_spia.payout(100000, mwr = env.params.nominal_spias_mwr)
-    try:
-        observation['nominal_payout'] = '{:n}'.format(round(nominal_payout))
-    except OverflowError:
-        observation['nominal_payout'] = '-'
+    with open(settings.STATIC_ROOT + user_dir + '/' + 'log.json', 'a') as f:
 
-    observation['life_expectancy'] = '{:.1f}'.format(round(observation['life_expectancy'], 1))
-    observation['gi_real'] = '{:n}'.format(round(observation['gi_real']))
-    observation['gi_nominal'] = '{:n}'.format(round(observation['gi_nominal']))
-    observation['p_notax'] = '{:n}'.format(int(observation['p_notax']))
-    observation['real_interest_rate'] = '{:.1%}'.format(observation['real_interest_rate'])
-    observation['inflation_rate'] = '{:.1%}'.format(observation['inflation_rate'])
+        while True:
 
-    dump_yield_curve('real', env.real_bonds)
-    dump_yield_curve('nominal', env.nominal_bonds)
-    plot_yield_curves()
+            if done:
+
+                observe = None
+                observation = None
+
+            else:
+
+                observe = env.decode_observation(obs)
+
+                observation = {}
+                observation['alive'] = '{:.1%}'.format(env.alive[env.episode_length])
+                observation['age'] = '{:.0f}'.format(env.age)
+                observation['gi'] = '{:n}'.format(round(observe['gi_real'] + observe['gi_nominal']))
+                observation['p_plus_income'] = '{:n}'.format(round(env.p_plus_income()))
+                observation['nominal_interest_rate'] = '{:.1%}'.format((1 + observe['real_interest_rate']) * (1 + observe['inflation_rate']) - 1)
+                env.real_spia.set_age(env.age)
+                real_payout = env.real_spia.payout(100000, mwr = env.params.real_spias_mwr)
+                try:
+                    observation['real_payout'] = '{:n}'.format(round(real_payout))
+                except OverflowError:
+                    observation['real_payout'] = '-'
+                env.nominal_spia.set_age(env.age)
+                nominal_payout = env.nominal_spia.payout(100000, mwr = env.params.nominal_spias_mwr)
+                try:
+                    observation['nominal_payout'] = '{:n}'.format(round(nominal_payout))
+                except OverflowError:
+                    observation['nominal_payout'] = '-'
+
+                observation['life_expectancy'] = '{:.1f}'.format(round(observe['life_expectancy'], 1))
+                observation['gi_real'] = '{:n}'.format(round(observe['gi_real']))
+                observation['gi_nominal'] = '{:n}'.format(round(observe['gi_nominal']))
+                observation['p_notax'] = '{:n}'.format(int(observe['p_notax']))
+                observation['real_interest_rate'] = '{:.1%}'.format(observe['real_interest_rate'])
+                observation['inflation_rate'] = '{:.1%}'.format(observe['inflation_rate'])
+
+            if not action:
+                break
+
+            step_data = {
+                'episode': episode,
+                'step': step - 1,
+                'alive': env.alive[env.episode_length - 1],
+                'consume': consume,
+                'action': data,
+                'new_observation': observe,
+                'real_oup_x': env.real_bonds.oup.x,
+                'inflation_oup_x': env.inflation.oup.x,
+                'human_new_observation': observation,
+            }
+            if episode > 0:
+                f.write(dumps(step_data) + '\n')
+
+            if done or not consume_all:
+                break
+
+            consume = env.p_plus_income()
+            consume_fraction = 1
+            action = env.encode_direct_action(consume_fraction, stocks = 1)
+            obs, reward, done, info = env.step(action)
+            step += 1
+
+    if done:
+        response = redirect('episode')
+        response.set_cookie('episode', episode + 1, max_age = 7 * 86400)
+        return response
+
+    dump_yield_curve(user_dir, 'real', env.real_bonds)
+    dump_yield_curve(user_dir, 'nominal', env.nominal_bonds)
+    plot_yield_curves(user_dir)
 
     return render(request, 'step.html', {
         'errors_present': errors_present,
+        'user_dir': user_dir,
         'state': state,
         'observation': observation,
         'step_form': step_form,
     })
 
-def dump_yield_curve(style, bonds):
+def dump_yield_curve(user_dir, style, bonds):
 
     maturity = tuple(i / 2 for i in range(1, 30 * 2 + 1))
     spots = tuple(2 * (exp(bonds.spot(y) / 2) - 1) for y in maturity)
         # Treasury par rates are twice the semi-annual rate.
     pars = bonds.yield_curve.spot_to_par(spots)
 
-    with open(settings.STATIC_ROOT + style + '.csv', 'w') as f:
+    with open(settings.STATIC_ROOT + user_dir + '/' + style + '.csv', 'w') as f:
         csv = writer(f)
         csv.writerows(zip(maturity, pars))
 
-def plot_yield_curves():
+def plot_yield_curves(user_dir):
 
-    chdir('app/static')
+    dir = getcwd()
+    chdir(settings.STATIC_ROOT + user_dir)
     try:
-        run(['../plot-step.gnuplot'], check = True)
+        run([dirname(__file__) + '/plot-step.gnuplot'], check = True)
     finally:
-        chdir('../..')
+        chdir(dir)
+
+class FinishForm(Form):
+
+    comments = CharField(widget = Textarea(attrs = {'rows': 15, 'cols': 80}))
+
+def finish(request):
+
+    uid = request.COOKIES.get('uid')
+    if uid == None or not match(r'^\d{1,9}$', uid):
+        return render(request, 'no-cookie.html')
+
+    errors_present = False
+
+    if request.method == 'POST':
+
+        finish_form = FinishForm(request.POST)
+        if finish_form.is_valid():
+
+            data = finish_form.cleaned_data
+
+            with open(settings.STATIC_ROOT + 'user' + uid + '/comments.json', 'a') as f:
+                f.write(dumps(data) + '\n')
+
+            return render(request, 'finished.html')
+
+        else:
+
+            errors_present = True
+
+    else:
+
+        finish_form = FinishForm()
+
+    response = render(request, 'finish.html', {
+        'errors_present': errors_present,
+        'finish_form': finish_form,
+    })
+
+    return response
 
 setlocale(LC_ALL, '') # For "," as thousands separator in numbers.
 

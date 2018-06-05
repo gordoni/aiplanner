@@ -42,7 +42,7 @@ Please correct the errors in red below:
 {{ state.p_notax }}
 
 <div style="float: right;">
-<img src="static/yield-curves.png" alt="Nominal and real yield curves" />
+<img src="static/{{ user_dir }}/yield-curves.png" alt="Nominal and real yield curves" />
 </div>
 
 <p>
@@ -52,11 +52,11 @@ Age: {{ observation.age }}, life expectancy: <strong>{{ observation.life_expecta
 </p>
 
 <p>
-Total available: <strong>${{ observation.p_plus_income }}</strong>
+Total funds available: <strong>${{ observation.p_plus_income }}</strong>
 </p>
 
 <p>
-Investment portfolio size: <strong>${{ observation.p_notax }}</strong>
+Investment portfolio: ${{ observation.p_notax }}
 </p>
 
 <p>
@@ -106,7 +106,7 @@ Investment portfolio size: <strong>${{ observation.p_notax }}</strong>
 <p>
 <table>
   <tr>
-    <td> Annual consumption: </td>
+    <td> Annual spending: </td>
     <td></td>
     <td> {{ step_form.consume }} {{ step_form.consume.errors }} </td>
     <td></td>

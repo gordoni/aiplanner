@@ -16,3 +16,11 @@ PURPOSE.
     font-size: smaller;
     color: red;
 }
+
+.numeric {
+    width: 10em;
+}
+
+.small-numeric {
+    width: 4em;
+}

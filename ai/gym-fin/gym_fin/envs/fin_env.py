@@ -185,6 +185,9 @@ class FinEnv(Env):
 
     def reset(self):
 
+        if self.params.reproduce_episode != None:
+            self._reproducable_seed(self.params.reproduce_episode, 0, 0)
+
         self.age = self.age_start
 
         found = False
@@ -453,6 +456,9 @@ class FinEnv(Env):
 
     def step(self, action):
 
+        if self.params.reproduce_episode != None:
+            self._reproducable_seed(self.params.reproduce_episode, self.episode_length, 1)
+
         if self.direct_action:
             consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = action
         else:
@@ -499,8 +505,7 @@ class FinEnv(Env):
         self.episode_utility_sum += utility
         self.episode_length += 1
 
-        if not self.params.static_bonds:
-            self.bonds_stepper.step()
+        self._step_bonds()
 
         observation = self._observe()
         done = self.episode_length >= len(self.alive)
@@ -516,29 +521,44 @@ class FinEnv(Env):
 
         return observation, reward, done, info
 
-    def goto(self, episode, step, real_oup_x, inflation_oup_x, gi_real, gi_nominal, p_notax):
-        '''Goto a reproducable episode time step. Useful for benchmarking.'''
+    def _reproducable_seed(self, episode, episode_length, substep):
+
+        seed(episode * 1000000 + episode_length * 1000 + substep, version = 2)
+
+    def _step_bonds(self):
+
+        if not self.params.static_bonds:
+
+            if self.params.reproduce_episode != None:
+                self._reproducable_seed(self.params.reproduce_episode, self.episode_length, 2)
+
+            self.bonds_stepper.step()
+
+    def goto(self, step, real_oup_x, inflation_oup_x, gi_real, gi_nominal, p_notax):
+        '''Goto a reproducable time step. Useful for benchmarking.'''
 
         self.reset()
 
-        seed(episode * 1000 + step, version = 2)
+        if step > 0:
 
-        self.real_bonds.oup.next_x = real_oup_x
-        self.real_bonds.oup.step()
-        assert self.inflation.inflation_a == self.inflation.bond_a and self.inflation.inflation_sigma == self.inflation.bond_sigma
-        self.inflation.oup.next_x = inflation_oup_x
-        self.inflation.inflation_oup.next_x = inflation_oup_x
-        self.inflation.oup.step()
-        self.inflation.inflation_oup.step(norm = self.inflation.oup.norm)
+            self.age += step * self.params.time_period
+            self.episode_length += step
 
-        self.age += step * self.params.time_period
-        self.episode_length += step
+            self.real_bonds.oup.next_x = real_oup_x
+            assert self.inflation.inflation_a == self.inflation.bond_a and self.inflation.inflation_sigma == self.inflation.bond_sigma
+            self.inflation.oup.next_x = inflation_oup_x
+            self.inflation.inflation_oup.next_x = inflation_oup_x
+            self._step_bonds()
 
         self.gi_real = gi_real
         self.gi_nominal = gi_nominal
         self.p_notax = p_notax
 
         return self._observe()
+
+    def set_reproduce_episode(self, episode):
+
+        self.params.reproduce_episode = episode
 
     def render(self, mode = 'human'):
 

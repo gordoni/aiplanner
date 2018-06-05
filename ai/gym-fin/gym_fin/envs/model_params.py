@@ -35,6 +35,8 @@ class ModelParams(object):
 
         self._boolean_flag('verbose', False) # Display relevant model information such as when stepping.
 
+        self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
+
         self._param('consume-floor', 1e4) # Minimum consumption level model is trained for.
         self._param('consume-ceiling', 1e5) # Maximum consumption level model is trained for.
             # Don't span too large a range as neural network fitting of utility to lower consumption levels will dominate over higher consumption levels.
