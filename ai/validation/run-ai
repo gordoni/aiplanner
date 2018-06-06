@@ -43,7 +43,7 @@ validate () {
     SEED=0
     set -o pipefail
     while [ $SEED -lt $SEEDS ]; do
-        MODEL_DIR=run.$MODEL_NAME-seed_$SEED.tf
+        MODEL_DIR=run.ai.$MODEL_NAME-seed_$SEED.tf
         TEMPFILE=`tempfile -p valid`
         $AI_DIR/train_ppo1.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $TRAIN_ARGS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
         mv $TEMPFILE $MODEL_DIR/train.log
@@ -61,7 +61,7 @@ validate_parallel () {
 
     SEED=0
     while [ $SEED -lt $SEEDS ]; do
-        MODEL_DIR=run.$MODEL_NAME-seed_$SEED.tf
+        MODEL_DIR=run.ai.$MODEL_NAME-seed_$SEED.tf
         # Output directory must not exist when tensorflow save() is called to save the model hence we can't write the log within it; instead log to a tempfile.
         TEMPFILE=`tempfile -p valid`
         TEMPFILES[$SEED]=$TEMPFILE
@@ -72,7 +72,7 @@ validate_parallel () {
 
     SEED=0
     while [ $SEED -lt $SEEDS ]; do
-        MODEL_DIR=run.$MODEL_NAME-seed_$SEED.tf
+        MODEL_DIR=run.ai.$MODEL_NAME-seed_$SEED.tf
         mv ${TEMPFILES[$SEED]} $MODEL_DIR/train.log
         $AI_DIR/eval_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EVAL_ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS > $MODEL_DIR/eval.log 2>&1 &
         SEED=`expr $SEED + 1`

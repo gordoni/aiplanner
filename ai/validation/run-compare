@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+PARALLEL=${PARALLEL:-True}  # Set to "False" to run jobs sequentially rather than in parallel.
+if [ -n "$EVAL_NUM_TIMESTEPS" ]; then
+    EXTRA_EVAL_ARGS="--eval-num-timesteps $EVAL_NUM_TIMESTEPS"
+fi
+
+EXTRA_ARGS=$*
+AI_DIR=$AIPLANNER_HOME/ai
+PYTHONPATH_ADD=$AI_DIR/baselines:$AI_DIR/gym-fin:$AIPLANNER_HOME/spia
+if [ -z "$PYTHONPATH" ]; then
+    export PYTHONPATH=$PYTHONPATH_ADD
+else
+    export PYTHONPATH=$PYTHONPATH_ADD:$PYTHONPATH
+fi
+CONFIG_FILE=$AI_DIR/validation/aiplanner-scenario.txt
+
+validate () {
+
+    MODEL_NAME=$1
+    ARGS=$2
+
+    MODEL_DIR=run.compare.$MODEL_NAME
+    mkdir -p $MODEL_DIR
+    if [ "$PARALLEL" = True ]; then
+        $AI_DIR/eval_model.py -c $CONFIG_FILE $ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS > $MODEL_DIR/eval.log 2>&1 &
+    else
+        $AI_DIR/eval_model.py -c $CONFIG_FILE $ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS 2>&1 | tee $MODEL_DIR/eval.log
+    fi
+}
+
+validate fixed_30-gi_0-no_bonds-merton '--merton --master-life-table=fixed --master-age-end=95 --master-gi-real=0'
+validate fixed_30-gi_0-no_bonds-samuelson '--samuelson --master-life-table=fixed --master-age-end=95 --master-gi-real=0'
+validate ssa_female-annuitize '--annuitize --master-life-expectancy-additional=0'
+validate ssa_plus_3_female-annuitize '--annuitize'
+validate ssa_plus_3_female-consume_policy_constant_36000-stocks_0.5 '--master-consume-policy=constant --master-consume-initial=36000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.5;nominal_bonds=0.5 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_constant_36000-stocks_0.75 '--master-consume-policy=constant --master-consume-initial=36000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.75;nominal_bonds=0.25 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_constant_36000-stocks_1 '--master-consume-policy=constant --master-consume-initial=36000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=1 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_constant-stocks_0.5 '--master-consume-policy=constant --search-consume-initial-around=40000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.5;nominal_bonds=0.5 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_constant-stocks_0.75 '--master-consume-policy=constant --search-consume-initial-around=40000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.75;nominal_bonds=0.25 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_constant-stocks_1 '--master-consume-policy=constant --search-consume-initial-around=40000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=1 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_guyton_rule2-stocks_0.5 '--master-consume-policy=guyton_rule2 --search-consume-initial-around=40000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.5;nominal_bonds=0.5 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_guyton_rule2-stocks_0.75 '--master-consume-policy=guyton_rule2 --search-consume-initial-around=40000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.75;nominal_bonds=0.25 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_guyton_rule2-stocks_1 '--master-consume-policy=guyton_rule2 --search-consume-initial-around=40000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=1 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_target_percentage_30_0.008-stocks_0.5 '--master-consume-policy=target_percentage --master-consume-policy-life-expectancy=30 --master-consume-policy-return=0.008 --search-consume-initial-around=40000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.5;nominal_bonds=0.5 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_target_percentage_30_0.008-stocks_0.75 '--master-consume-policy=target_percentage --master-consume-policy-life-expectancy=30 --master-consume-policy-return=0.008 --search-consume-initial-around=40000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.75;nominal_bonds=0.25 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_target_percentage_30_0.008-stocks_1 '--master-consume-policy=target_percentage --master-consume-policy-life-expectancy=30 --master-consume-policy-return=0.008 --search-consume-initial-around=40000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=1 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_target_percentage_0.008-stocks_0.5 '--master-consume-policy=target_percentage --master-consume-policy-return=0.008 --search-consume-initial-around=40000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.5;nominal_bonds=0.5 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_target_percentage_0.008-stocks_0.75 '--master-consume-policy=target_percentage --master-consume-policy-return=0.008 --search-consume-initial-around=40000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.75;nominal_bonds=0.25 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_target_percentage_0.008-stocks_1 '--master-consume-policy=target_percentage --master-consume-policy-return=0.008 --search-consume-initial-around=40000 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=1 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_pmt_30_0.008-stocks_0.5 '--master-consume-policy=pmt --master-consume-policy-life-expectancy=30 --master-consume-policy-return=0.008 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.5;nominal_bonds=0.5 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_pmt_30_0.008-stocks_0.75 '--master-consume-policy=pmt --master-consume-policy-life-expectancy=30 --master-consume-policy-return=0.008 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.75;nominal_bonds=0.25 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_pmt_30_0.008-stocks_1 '--master-consume-policy=pmt --master-consume-policy-life-expectancy=30 --master-consume-policy-return=0.008 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=1 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_pmt_0.008-stocks_0.5 '--master-consume-policy=pmt --master-consume-policy-return=0.008 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.5;nominal_bonds=0.5 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_pmt_0.008-stocks_0.75 '--master-consume-policy=pmt --master-consume-policy-return=0.008 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=0.75;nominal_bonds=0.25 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+validate ssa_plus_3_female-consume_policy_pmt_0.008-stocks_1 '--master-consume-policy=pmt --master-consume-policy-return=0.008 --master-annuitization-policy=none --master-asset-allocation-policy=stocks=1 --master-real-bonds-duration=5 --master-nominal-bonds-duration=5'
+
+wait

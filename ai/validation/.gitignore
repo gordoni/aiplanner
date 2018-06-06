@@ -1,1 +1,3 @@
-run.*
+run.ai.*.tf
+run.compare.*
+run.opal.*

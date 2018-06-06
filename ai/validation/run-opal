@@ -22,7 +22,7 @@ validate () {
     MODEL_NAME=$1
     ARGS=$2
 
-    MODEL_DIR=run.$MODEL_NAME.opal
+    MODEL_DIR=run.opal.$MODEL_NAME
 
     mkdir -p $MODEL_DIR
     $OPAL -c $AI_DIR/validation/opal-scenario.txt -e "prefix='$MODEL_DIR/opal'" $ARGS $EXTRA_ARGS 2>&1 | tee $MODEL_DIR/opal.log

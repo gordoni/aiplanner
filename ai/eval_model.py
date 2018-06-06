@@ -50,7 +50,7 @@ def pi_merton(env, obs, continuous_time = False):
         consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / env.params.time_period
     return consume_fraction, stocks_allocation
 
-def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_timesteps, eval_render, model_dir, search_initial_consume_around):
+def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_timesteps, eval_render, model_dir, search_consume_initial_around):
 
     assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize)) <= 1
     model = not (merton or samuelson or annuitize)
@@ -147,7 +147,7 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
 
             return None
 
-    if search_initial_consume_around == None:
+    if search_consume_initial_around == None:
 
         evaluator.evaluate(pi)
 
@@ -169,7 +169,7 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
                 f_cache[x] = results
                 return results
 
-        x, f_x = gss(f, search_initial_consume_around / 2, search_initial_consume_around * 2)
+        x, f_x = gss(f, search_consume_initial_around / 2, search_consume_initial_around * 2)
         f_cache = {}
         f(x)
 
@@ -208,7 +208,7 @@ def main():
     boolean_flag(parser, 'merton', default = False)
     boolean_flag(parser, 'samuelson', default = False)
     boolean_flag(parser, 'annuitize', default = False)
-    parser.add_argument('--search-initial-consume-around', type = float)
+    parser.add_argument('--search-consume-initial-around', type = float)
         # Search for the initial consumption that maximizes the certainty equivalent using the supplied value as a hint as to where to search.
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False)
     logger.configure()
