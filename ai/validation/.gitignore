@@ -1,5 +1,1 @@
-run.*.annuitize
-run.*.merton
-run.*.opal
-run.*.samuelson
-run.*.tf
+run.*

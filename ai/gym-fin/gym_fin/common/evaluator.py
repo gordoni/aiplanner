@@ -44,7 +44,11 @@ class Evaluator(object):
 
     def evaluate(self, pi):
 
-        if self.eval_env is not None:
+        if self.eval_env == None:
+
+            return False
+
+        else:
 
             state = getstate()
             seed(self.eval_seed)
@@ -92,4 +96,4 @@ class Evaluator(object):
 
             setstate(state)
 
-        return False
+            return ce, ce_stderr

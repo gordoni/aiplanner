@@ -22,6 +22,7 @@ from spia import IncomeAnnuity
 
 from gym_fin.envs.asset_allocation import AssetAllocation
 from gym_fin.envs.bonds import bonds_init
+from gym_fin.envs.policies import policy
 from gym_fin.envs.returns import Returns, returns_report, yields_report
 from gym_fin.envs.returns_sample import ReturnsSample
 from gym_fin.envs.utility import Utility
@@ -392,21 +393,11 @@ class FinEnv(Env):
         if not self.params.bills:
             bills = None
 
-        if not self.params.real_bonds:
-            real_bonds_duration = None
-        elif self.params.real_bonds_duration == None:
-            real_bonds_duration = self.params.time_period + \
-                (self.params.real_bonds_duration_max - self.params.time_period) * (real_bonds_duration_action + 1) / 2
-        else:
-            real_bonds_duration = self.params.real_bonds_duration
+        real_bonds_duration = self.params.time_period + \
+            (self.params.real_bonds_duration_max - self.params.time_period) * (real_bonds_duration_action + 1) / 2
 
-        if not self.params.nominal_bonds:
-            nominal_bonds_duration = None
-        elif self.params.nominal_bonds_duration == None:
-            nominal_bonds_duration = self.params.time_period + \
-                (self.params.nominal_bonds_duration_max - self.params.time_period) * (nominal_bonds_duration_action + 1) / 2
-        else:
-            nominal_bonds_duration = self.params.nominal_bonds_duration
+        nominal_bonds_duration = self.params.time_period + \
+            (self.params.nominal_bonds_duration_max - self.params.time_period) * (nominal_bonds_duration_action + 1) / 2
 
         asset_allocation = AssetAllocation(stocks = stocks, real_bonds = real_bonds, nominal_bonds = nominal_bonds, iid_bonds = iid_bonds, bills = bills)
         return (consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration)
@@ -460,10 +451,13 @@ class FinEnv(Env):
             self._reproducable_seed(self.params.reproduce_episode, self.episode_length, 1)
 
         if self.direct_action:
-            consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = action
+            decoded_action = action
+        elif action == None:
+            decoded_action = None
         else:
-            consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = \
-                self.decode_action(action)
+            decoded_action = self.decode_action(action)
+        policified_action = policy(self, decoded_action)
+        consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
 
         p, consume, real_spias_purchase, nominal_spias_purchase = self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
         consume_rate = consume / self.params.time_period
@@ -518,6 +512,10 @@ class FinEnv(Env):
         self.prev_nominal_spias_rate = nominal_spias_rate
         self.prev_consume_rate = consume_rate
         self.prev_reward = reward
+
+        # Variables used by policy decison rules:
+        self.prev_ret = ret
+        self.prev_inflation = inflation
 
         return observation, reward, done, info
 

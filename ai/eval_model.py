@@ -10,7 +10,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-from math import ceil, exp
+from math import ceil, exp, sqrt
 
 import numpy as np
 
@@ -24,6 +24,7 @@ from baselines.common import (
 from baselines.common.misc_util import set_global_seeds
 
 from gym_fin.envs.asset_allocation import AssetAllocation
+from gym_fin.envs.policies import policy
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 
@@ -49,24 +50,21 @@ def pi_merton(env, obs, continuous_time = False):
         consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / env.params.time_period
     return consume_fraction, stocks_allocation
 
-def consume_one_on_life_expectancy(env, obs):
+def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_timesteps, eval_render, model_dir, search_initial_consume_around):
 
-    observation = env.decode_observation(obs)
-    consume = observation['gi_real'] + observation['gi_nominal'] + observation['p_notax'] / observation['life_expectancy']
-    consume_fraction = consume / env.p_plus_income()
-    consume_fraction = min(consume_fraction, 1 / env.params.time_period)
-
-    return consume_fraction
-
-def run(eval_model_params, *, merton, samuelson, annuitize, one_on_life_expectancy, eval_seed, eval_num_timesteps, eval_render, model_dir):
-
-    assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize, one_on_life_expectancy)) <= 1
-    model = not (merton or samuelson or annuitize or one_on_life_expectancy)
+    assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize)) <= 1
+    model = not (merton or samuelson or annuitize)
 
     eval_seed += 1000000 # Use a different seed than might have been used during training.
     set_global_seeds(eval_seed)
     eval_env = make_fin_env(**eval_model_params, action_space_unbounded = model, direct_action = not model)
     env = eval_env.unwrapped
+
+    if env.params.consume_policy != 'rl' and env.params.annuitization_policy != 'rl' and env.params.asset_allocation_policy != 'rl' and \
+        (not env.params.real_bonds or env.params.real_bonds_duration != None) and \
+        (not env.params.nominal_bonds or env.params.nominal_bonds_duration != None):
+        model = False
+
     obs = eval_env.reset()
 
     if merton or samuelson:
@@ -84,24 +82,22 @@ def run(eval_model_params, *, merton, samuelson, annuitize, one_on_life_expectan
         asset_allocation = AssetAllocation(stocks = 1)
         real_bonds_duration = nominal_bonds_duration = None
 
-    elif one_on_life_expectancy:
-
-        consume_fraction = consume_one_on_life_expectancy(env, obs)
-        p, consume, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction)
-        asset_allocation = AssetAllocation(stocks = 1)
-        real_bonds_duration = nominal_bonds_duration = None
-
     else:
 
-        session = U.make_session(num_cpu=1).__enter__()
-        tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], model_dir)
-        g = tf.get_default_graph()
-        train_tf = g.get_tensor_by_name('pi/train:0')
-        action_tf = g.get_tensor_by_name('pi/action:0')
-        v_tf = g.get_tensor_by_name('pi/v:0')
-        observation_tf = g.get_tensor_by_name('pi/ob:0')
-        action, = session.run(action_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
-        consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = env.decode_action(action)
+        if model:
+            session = U.make_session(num_cpu=1).__enter__()
+            tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], model_dir)
+            g = tf.get_default_graph()
+            train_tf = g.get_tensor_by_name('pi/train:0')
+            action_tf = g.get_tensor_by_name('pi/action:0')
+            v_tf = g.get_tensor_by_name('pi/v:0')
+            observation_tf = g.get_tensor_by_name('pi/ob:0')
+            action, = session.run(action_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
+            decoded_action = self.decode_action(action)
+        else:
+            decoded_action = None
+        policified_action = policy(env, decoded_action)
+        consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
         p, consume, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
 
     logger.info()
@@ -147,25 +143,73 @@ def run(eval_model_params, *, merton, samuelson, annuitize, one_on_life_expectan
             consume_fraction = consume_fraction_initial if env.episode_length == 0 else 1 / env.params.time_period
             return env.encode_direct_action(consume_fraction, stocks = 1, real_spias_fraction = 1)
 
-        elif one_on_life_expectancy:
-
-            consume_fraction = consume_one_on_life_expectancy(env, obs)
-            return env.encode_direct_action(consume_fraction, stocks = 1)
-
         else:
 
-            assert False
+            return None
 
-    evaluator.evaluate(pi)
+    if search_initial_consume_around == None:
+
+        evaluator.evaluate(pi)
+
+    else:
+
+        f_cache = {}
+
+        def f(x):
+
+            try:
+
+                return f_cache[x]
+
+            except KeyError:
+
+                logger.info('    Consume: ', x)
+                env.params.consume_initial = x
+                results = evaluator.evaluate(pi)
+                f_cache[x] = results
+                return results
+
+        x, f_x = gss(f, search_initial_consume_around / 2, search_initial_consume_around * 2)
+        f_cache = {}
+        f(x)
 
     env.close()
+
+def gss(f, a, b):
+    '''Golden segment search for maximum of f on [a, b].'''
+
+    f_a, tol_a = f(a)
+    f_b, tol_b = f(b)
+    tol = (tol_a + tol_b) / 2
+    g = (1 + sqrt(5)) / 2
+    while (b - a) > tol:
+        c = b - (b - a) / g
+        d = a + (b - a) / g
+        f_c, tol_c = f(c)
+        f_d, tol_d = f(d)
+        if f_c >= f_d:
+            b = d
+            f_b = f_d
+        else:
+            a = c
+            f_a = f_c
+        tol = (tol_c + tol_d) / 2
+    if f_a > f_b:
+        found = a
+        f_found = f_a
+    else:
+        found = b
+        f_found = f_b
+
+    return found, f_found
 
 def main():
     parser = arg_parser()
     boolean_flag(parser, 'merton', default = False)
     boolean_flag(parser, 'samuelson', default = False)
     boolean_flag(parser, 'annuitize', default = False)
-    boolean_flag(parser, 'one-on-life-expectancy', default = False)
+    parser.add_argument('--search-initial-consume-around', type = float)
+        # Search for the initial consumption that maximizes the certainty equivalent using the supplied value as a hint as to where to search.
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False)
     logger.configure()
     run(eval_model_params, **args)

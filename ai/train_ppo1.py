@@ -52,7 +52,8 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
                 stochastic = False
                 action, vpred = l['pi'].act(stochastic, obs)
                 return action
-            return evaluator.evaluate(pi)
+            evaluator.evaluate(pi)
+            return False
     else:
         eval_env = None
         eval_callback = None

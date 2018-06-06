@@ -37,6 +37,26 @@ class ModelParams(object):
 
         self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
 
+        self._param('consume-policy', 'rl', tp = string_type, choices = ('rl', 'constant', 'pmt', 'guyton_rule2'))
+            # Consumption policy.
+            # "rl": reinforcement learning.
+            # "constant": constant fixed amount consume_initial.
+            # "pmt": payout with dynamic life expectancy and return amount pmt_annual_return.
+            # "guyton_rule2": initially consume_initial, then no inflation adjustment for period following period with a negative nominal market return.
+        self._param('consume-initial', 0) # Initial consumption amount for particular consumption policies.
+        self._param('pmt-annual-return', 0) # Assumed annual return for "pmt" consumption policy.
+        self._param('annuitization-policy', 'rl', tp = string_type, choices = ('rl', 'none'))
+            # Annuitization policy.
+            # "rl": reinforcement learning.
+            # 'none': no SPIA purchases.
+        self._param('asset-allocation-policy', 'rl', tp = string_type)
+            # Asset allocation policy.
+            # "rl": reinforcement learning.
+            # "age-in-nominal-bonds": age in years as nominal bonds percentage, remainder in stocks.
+            # "<asset_class>=<allocation>; ...": fixed allocation. Eg. "stocks=0.5; nominal_bonds=0.5".
+        # Bonds duration policy.
+        # Defined by "real-bonds-duration" and "nominal-bonds-duration" below; None for reinforcement learning, or a fixed age in years.
+
         self._param('consume-floor', 1e4) # Minimum consumption level model is trained for.
         self._param('consume-ceiling', 1e5) # Maximum consumption level model is trained for.
             # Don't span too large a range as neural network fitting of utility to lower consumption levels will dominate over higher consumption levels.
