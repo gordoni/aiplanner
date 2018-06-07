@@ -93,7 +93,7 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
             v_tf = g.get_tensor_by_name('pi/v:0')
             observation_tf = g.get_tensor_by_name('pi/ob:0')
             action, = session.run(action_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
-            decoded_action = self.decode_action(action)
+            decoded_action = env.decode_action(action)
         else:
             decoded_action = None
         policified_action = policy(env, decoded_action)

@@ -452,7 +452,7 @@ class FinEnv(Env):
 
         if self.direct_action:
             decoded_action = action
-        elif action == None:
+        elif action is None:
             decoded_action = None
         else:
             decoded_action = self.decode_action(action)
