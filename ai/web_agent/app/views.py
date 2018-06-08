@@ -240,6 +240,8 @@ def step(request):
                 observation['age'] = '{:.0f}'.format(env.age)
                 observation['gi'] = '{:n}'.format(round(observe['gi_real'] + observe['gi_nominal']))
                 observation['p_plus_income'] = '{:n}'.format(round(env.p_plus_income()))
+                if env.episode_length > 0:
+                    observation['prev_nominal_return'] = '{:.1%}'.format(env.prev_ret * env.prev_inflation - 1)
                 observation['nominal_interest_rate'] = '{:.1%}'.format((1 + observe['real_interest_rate']) * (1 + observe['inflation_rate']) - 1)
                 env.real_spia.set_age(env.age)
                 real_payout = env.real_spia.payout(100000, mwr = env.params.real_spias_mwr)

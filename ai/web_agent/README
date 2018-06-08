@@ -9,7 +9,9 @@ To use it, first generate app/static/utility.png:
 
 Run the webserver:
 
-    sudo /usr/bin/python3 manage.py runserver --nothreading dev.aiplanner.com:80
+    sudo bash
+    source ../setenv
+    /usr/bin/python3 manage.py runserver --nothreading dev.aiplanner.com:80
 
 --nothreading is important. All users share the same FinEnv object,
 and the code in app/views.py is not thread safe.

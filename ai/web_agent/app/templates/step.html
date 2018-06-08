@@ -55,6 +55,12 @@ Age: {{ observation.age }}, life expectancy: <strong>{{ observation.life_expecta
 Total funds available: <strong>${{ observation.p_plus_income }}</strong>
 </p>
 
+{% if observation.prev_nominal_return %}
+<p>
+Prior nominal portfolio return: {{ observation.prev_nominal_return }}
+</p>
+{% endif %}
+
 <p>
 Investment portfolio: ${{ observation.p_notax }}
 </p>

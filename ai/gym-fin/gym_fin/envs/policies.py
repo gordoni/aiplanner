@@ -33,7 +33,7 @@ def policy(env, action):
 
         if env.episode_length == 0:
             consume = env.params.consume_initial
-        elif env.prev_ret >= env.prev_inflation:
+        elif env.prev_ret * env.prev_inflation >= 1:
             consume = consume_prev
         else:
             consume = consume_prev / env.prev_inflation
