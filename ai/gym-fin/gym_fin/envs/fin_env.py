@@ -136,51 +136,54 @@ class FinEnv(Env):
         self.nominal_spia = IncomeAnnuity(self.nominal_bonds, self.life_table, payout_delay = 12, frequency = 1,
             date_str = self.params.life_table_date)
 
-        print()
-        print('Real/nominal yields:')
+        if self.params.display_returns:
 
-        if self.params.real_bonds:
-            if self.params.real_bonds_duration:
-                yields_report('real bonds {:2d}'.format(int(self.params.real_bonds_duration)), self.real_bonds,
-                    duration = self.params.real_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
-            else:
-                yields_report('real bonds  5', self.real_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
-                yields_report('real bonds 15', self.real_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
+            print()
+            print('Real/nominal yields:')
 
-        if self.params.nominal_bonds:
-            if self.params.nominal_bonds_duration:
-                yields_report('nominal bonds {:2d}'.format(int(self.params.nominal_bonds_duration)), self.nominal_bonds,
-                    duration = self.params.nominal_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
-            else:
-                yields_report('nominal bonds  5', self.nominal_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
-                yields_report('nominal bonds 15', self.nominal_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
+            if self.params.real_bonds:
+                if self.params.real_bonds_duration:
+                    yields_report('real bonds {:2d}'.format(int(self.params.real_bonds_duration)), self.real_bonds,
+                        duration = self.params.real_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                else:
+                    yields_report('real bonds  5', self.real_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                    yields_report('real bonds 15', self.real_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
-        print()
-        print('Real returns:')
+            if self.params.nominal_bonds:
+                if self.params.nominal_bonds_duration:
+                    yields_report('nominal bonds {:2d}'.format(int(self.params.nominal_bonds_duration)), self.nominal_bonds,
+                        duration = self.params.nominal_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                else:
+                    yields_report('nominal bonds  5', self.nominal_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                    yields_report('nominal bonds 15', self.nominal_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
-        returns_report('stocks', self.stocks, time_period = self.params.time_period)
+            print()
+            print('Real returns:')
 
-        if self.params.real_bonds:
-            if self.params.real_bonds_duration:
-                returns_report('real bonds {:2d}'.format(int(self.params.real_bonds_duration)), self.real_bonds,
-                    duration = self.params.real_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
-            else:
-                returns_report('real bonds  5', self.real_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
-                returns_report('real bonds 15', self.real_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
+            returns_report('stocks', self.stocks, time_period = self.params.time_period)
 
-        if self.params.nominal_bonds:
-            if self.params.nominal_bonds_duration:
-                returns_report('nominal bonds {:2d}'.format(int(self.params.nominal_bonds_duration)), self.nominal_bonds,
-                    duration = self.params.nominal_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
-            else:
-                returns_report('nominal bonds  5', self.nominal_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
-                returns_report('nominal bonds 15', self.nominal_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
+            if self.params.real_bonds:
+                if self.params.real_bonds_duration:
+                    returns_report('real bonds {:2d}'.format(int(self.params.real_bonds_duration)), self.real_bonds,
+                        duration = self.params.real_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                else:
+                    returns_report('real bonds  5', self.real_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                    returns_report('real bonds 15', self.real_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
-        if self.params.iid_bonds:
-            returns_report('iid bonds', self.iid_bonds, time_period = self.params.time_period)
+            if self.params.nominal_bonds:
+                if self.params.nominal_bonds_duration:
+                    returns_report('nominal bonds {:2d}'.format(int(self.params.nominal_bonds_duration)), self.nominal_bonds,
+                        duration = self.params.nominal_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                else:
+                    returns_report('nominal bonds  5', self.nominal_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                    returns_report('nominal bonds 15', self.nominal_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
-        if self.params.nominal_bonds or self.params.nominal_spias:
-            returns_report('inflation', self.inflation, duration = self.params.time_period, stepper = self.bonds_stepper, time_period = self.params.time_period)
+            if self.params.iid_bonds:
+                returns_report('iid bonds', self.iid_bonds, time_period = self.params.time_period)
+
+            if self.params.nominal_bonds or self.params.nominal_spias:
+                returns_report('inflation', self.inflation,
+                    duration = self.params.time_period, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
         self.reset()
 

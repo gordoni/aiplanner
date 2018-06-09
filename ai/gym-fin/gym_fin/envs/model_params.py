@@ -34,6 +34,7 @@ class ModelParams(object):
         string_type = None
 
         self._boolean_flag('verbose', False) # Display relevant model information such as when stepping.
+        self._boolean_flag('display-returns', True) # Display yield and return statistics.
 
         self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
 
