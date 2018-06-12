@@ -744,7 +744,7 @@ class LifeTable(object):
         pass
 
     def __init__(self, table, sex, age, *, death_age = float('inf'), ae = 'aer2005_08-summary',
-                 le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
+                 q_adjust = 1, le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
         '''Initialize an object representing a life expectancy table for an
         individual.
 
@@ -792,6 +792,10 @@ class LifeTable(object):
         'death_age' can be set to force death to occur at the
         specified age.
 
+        'q_adjust': Multiplicative adjustment to be applied to all q
+        values. Must not be specified in conjunction with 'le_set' or
+        'le_add'.
+
         'le_set' if specified causes a multiplicative adjustment to be
         applied to all q values so that the reamining life expectancy
         in years matches the value of 'le_set'. Specifying a
@@ -811,7 +815,7 @@ class LifeTable(object):
         (except when using "gomertz-makeham") for fractional ages,
         otherwise the nearest q value will be used.
 
-        Raises LifeTable.UNableToAdjust if it is not possible to
+        Raises LifeTable.UnableToAdjust if it is not possible to
         adjust the life table in accordance with 'le_set' and
         'le_add'.
 
@@ -827,6 +831,7 @@ class LifeTable(object):
             # 'aer2005_08-summary' - Use this value for compatibility with Opal.
             # 'aer2005_08-full' - Alters values 5% at age 85.
         assert(ae in ('none', 'aer2005_08-summary', 'aer2005_08-full'))
+        self.q_adjust = q_adjust
         self.le_set = le_set # Used to make life expectancy match personal expected life expectancy, then use value to compute fair SPIA price.
         self.le_add = le_add # Used by asset allocator to ensure plan for living longer than average because running out of money is very bad.
         self.date_str = date_str
@@ -835,9 +840,9 @@ class LifeTable(object):
         self.m = m
         self.b = b
 
-        self.q_adjust = 1
         if le_set == None and le_add == 0:
             return
+        assert self.q_adjust == 1
 
         from spia import Scenario
         from yield_curve import YieldCurve
