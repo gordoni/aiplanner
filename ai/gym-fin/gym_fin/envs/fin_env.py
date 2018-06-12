@@ -36,11 +36,18 @@ class FinEnv(Env):
 
     metadata = {'render.modes': ['human']}
 
-    def _compute_vital_stats(self, life_table, sex, age_start, age_end, life_expectancy_additional, life_table_date, time_period):
+    def _compute_q_adjust(self, life_table, sex, age_adjust, age_end, life_expectancy_additional, life_table_date, time_period):
 
         le_add = 0 if life_table == 'fixed' else life_expectancy_additional
         death_age = age_end - time_period
-        table = LifeTable(life_table, sex, age_start, death_age = death_age, le_add = le_add, date_str = life_table_date)
+        table = LifeTable(life_table, sex, age_adjust, death_age = death_age, le_add = le_add, date_str = life_table_date)
+
+        return table.q_adjust
+
+    def _compute_vital_stats(self, life_table, sex, age_start, age_end, q_adjust, life_table_date, time_period):
+
+        death_age = age_end - time_period
+        table = LifeTable(life_table, sex, age_start, death_age = death_age, q_adjust = q_adjust, date_str = life_table_date)
 
         start_date = datetime.strptime(life_table_date, '%Y-%m-%d')
         this_year = datetime(start_date.year, 1, 1)
@@ -101,10 +108,8 @@ class FinEnv(Env):
             dtype = 'float32'
         )
 
-        self.life_table, self.alive, self.life_expectancy = \
-            self._compute_vital_stats(self.params.life_table, self.params.sex, self.params.age_start, self.params.age_end,
+        self.q_adjust = self._compute_q_adjust(self.params.life_table, self.params.sex, self.params.age_adjust, self.params.age_end,
             self.params.life_expectancy_additional, self.params.life_table_date, self.params.time_period)
-        self.age_start = self.params.age_start
 
         self.utility = Utility(self.params.gamma, self.params.consume_floor)
 
@@ -130,11 +135,6 @@ class FinEnv(Env):
                 self.iid_bonds = ReturnsSample(self.nominal_bonds, self.params.iid_bonds_duration,
                     self.params.bonds_standard_error if self.params.returns_standard_error else 0,
                     stepper = self.bonds_stepper, time_period = self.params.time_period)
-
-        self.real_spia = IncomeAnnuity(self.real_bonds, self.life_table, payout_delay = 12, frequency = 1, cpi_adjust = 'all',
-            date_str = self.params.life_table_date)
-        self.nominal_spia = IncomeAnnuity(self.nominal_bonds, self.life_table, payout_delay = 12, frequency = 1,
-            date_str = self.params.life_table_date)
 
         if self.params.display_returns:
 
@@ -181,6 +181,9 @@ class FinEnv(Env):
             if self.params.iid_bonds:
                 returns_report('iid bonds', self.iid_bonds, time_period = self.params.time_period)
 
+            if self.params.bills:
+                returns_report('bills', self.bills, time_period = self.params.time_period)
+
             if self.params.nominal_bonds or self.params.nominal_spias:
                 returns_report('inflation', self.inflation,
                     duration = self.params.time_period, stepper = self.bonds_stepper, time_period = self.params.time_period)
@@ -192,7 +195,16 @@ class FinEnv(Env):
         if self.params.reproduce_episode != None:
             self._reproducable_seed(self.params.reproduce_episode, 0, 0)
 
+        self.age_start = uniform(self.params.age_start_low, self.params.age_start_high)
+        self.life_table, self.alive, self.life_expectancy = \
+            self._compute_vital_stats(self.params.life_table, self.params.sex, self.age_start, self.params.age_end,
+            self.q_adjust, self.params.life_table_date, self.params.time_period)
         self.age = self.age_start
+
+        self.real_spia = IncomeAnnuity(self.real_bonds, self.life_table, payout_delay = 12, frequency = 1, cpi_adjust = 'all',
+            date_str = self.params.life_table_date)
+        self.nominal_spia = IncomeAnnuity(self.nominal_bonds, self.life_table, payout_delay = 12, frequency = 1,
+            date_str = self.params.life_table_date)
 
         found = False
         for _ in range(1000):

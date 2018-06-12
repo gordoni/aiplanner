@@ -11,6 +11,7 @@
 master_sex = 'female'
 master_life_table_date = '2020-01-01'
 master_life_expectancy_additional = 3 # Investors tend to be in better health than the average retiree.
+master_age_adjust = 65
 
 master_age_start = 65
 

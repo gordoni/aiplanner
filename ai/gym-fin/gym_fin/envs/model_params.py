@@ -8,6 +8,8 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+from math import isnan
+
 class ModelParams(object):
 
     def __init__(self):
@@ -96,10 +98,11 @@ class ModelParams(object):
         self._param('life-table', 'ssa-cohort', tp = string_type) # Life expectancy table to use. See spia module for possible values.
         self._param('life-table-date', '2020-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
         self._param('life-expectancy-additional', 0)
-            # Multiplicatively adjust all life table q values so as to add this many years to the life expectancy.
+            # Multiplicatively adjust all life table q values so as to add this many years to the life expectancy at age age_adjust.
             # Ignored if life_table is fixed.
-        self._param('sex', 'female', tp = string_type) # Helps determines life expectancy table.
-        self._param('age-start', 65) # First age to model.
+        self._param('age-adjust', 65) # Age for life_expectancy_additional.
+        self._param('sex', 'female', tp = string_type) # Helps determine life expectancy table.
+        self._param('age-start', (65, 65), 65) # First age to model.
         self._param('age-end', 120) # Model done when reaches this age.
 
         self._param('time-period', 1) # Rebalancing time interval in years.
@@ -161,7 +164,15 @@ class ModelParams(object):
 
     def set_params(self, dict_args):
 
-        self.params = dict_args
+        self.params = {}
+        for param, value in dict_args.items():
+            try:
+                if isnan(value):
+                    value = None
+            except TypeError:
+                pass
+            finally:
+                self.params[param] = value
 
     def dump_params(self, *, training = True, evaluate = True):
 
