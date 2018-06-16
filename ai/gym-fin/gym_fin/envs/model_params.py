@@ -97,13 +97,19 @@ class ModelParams(object):
 
         self._param('life-table', 'ssa-cohort', tp = string_type) # Life expectancy table to use. See spia module for possible values.
         self._param('life-table-date', '2020-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
-        self._param('life-expectancy-additional', 0)
+        self._param('life-expectancy-additional', 0) # q-adjustment for first individual.
             # Multiplicatively adjust all life table q values so as to add this many years to the life expectancy at age age_adjust.
             # Ignored if life_table is fixed.
-        self._param('age-adjust', 65) # Age for life_expectancy_additional.
-        self._param('sex', 'female', tp = string_type) # Helps determine life expectancy table.
-        self._param('age-start', (65, 65), 65) # First age to model.
-        self._param('age-end', 120) # Model done when reaches this age.
+        self._param('life-expectancy-additional2', 0) # q-adjustment for second individual.
+        self._param('age-adjust', 65) # Age of life_expectancy_additional for first individual.
+        self._param('age-adjust2', 65) # Age of life_expectancy_additional for second individual.
+        self._param('sex', 'female', tp = string_type, choices = ('male', 'female')) # Sex of first individual. Helps determine life expectancy table.
+        self._param('sex2', None, tp = string_type, choices = ('male', 'female', None)) # Sex of second individual, None if none.
+        self._param('age-start', (65, 65), 65) # Age of first individual.
+        self._param('age-start2', (65, 65), 65) # Age of second individual.
+        self._param('age-end', 120) # Model done when individuals reach this age.
+        self._param('consume-additional', 0.6)
+            # When a second individual is present we consume this fraction more than a single individual for the same per individual utility.
 
         self._param('time-period', 1) # Rebalancing time interval in years.
         self._param('gamma', 3) # Coefficient of relative risk aversion.

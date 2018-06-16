@@ -30,7 +30,8 @@ from gym_fin.common.evaluator import Evaluator
 
 def pi_merton(env, obs, continuous_time = False):
     observation = env.decode_observation(obs)
-    life_expectancy = observation['life_expectancy']
+    assert observation['life_expectancy_both'] == 0
+    life_expectancy = observation['life_expectancy_one']
     gamma = env.params.gamma
     mu = env.stocks.mu
     sigma = env.stocks.sigma
@@ -112,8 +113,7 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
     if model:
 
         v, = session.run(v_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
-        sum_alive = sum(env.alive)
-        logger.info('    Predicted certainty equivalent: ', env.utility.inverse(v / (sum_alive * env.params.time_period)))
+        logger.info('    Predicted certainty equivalent: ', env.utility.inverse(v / env.alive_years))
             # Only valid if train and eval have identical age_start and life table.
             # Otherwise need to simulate to determine CE; this also provides percentile ranges.
 
@@ -132,7 +132,8 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
 
             consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
             observation = env.decode_observation(obs)
-            life_expectancy = observation['life_expectancy']
+            assert observation['life_expectancy_both'] == 0
+            life_expectancy = observation['life_expectancy_one']
             t = ceil(life_expectancy / env.params.time_period) - 1
             if t == 0:
                 consume_fraction = min(consume_fraction, 1 / env.params.time_period) # Bound may be exceeded in continuous time case.

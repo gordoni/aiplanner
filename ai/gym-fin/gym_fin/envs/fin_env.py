@@ -10,7 +10,7 @@
 
 from datetime import datetime
 from math import atanh, exp, isnan, log, sqrt, tanh
-from random import seed, uniform
+from random import seed, random, uniform
 
 import numpy as np
 
@@ -44,50 +44,102 @@ class FinEnv(Env):
 
         return table.q_adjust
 
-    def _compute_vital_stats(self, life_table, sex, age_start, age_end, q_adjust, life_table_date, time_period):
+    def _compute_vital_stats(self, age_start, age_start2, q_adjust, q_adjust2):
 
-        death_age = age_end - time_period
-        table = LifeTable(life_table, sex, age_start, death_age = death_age, q_adjust = q_adjust, date_str = life_table_date)
+        death_age = self.params.age_end - self.params.time_period
+        table = LifeTable(self.params.life_table, self.params.sex, age_start,
+            death_age = death_age, q_adjust = q_adjust, date_str = self.params.life_table_date)
+        if self.params.sex2 == None:
+            table2 = None
+        else:
+            table2 = LifeTable(self.params.life_table, self.params.sex2, age_start2,
+                death_age = death_age, q_adjust = q_adjust2, date_str = self.params.life_table_date)
 
-        start_date = datetime.strptime(life_table_date, '%Y-%m-%d')
+        start_date = datetime.strptime(self.params.life_table_date, '%Y-%m-%d')
         this_year = datetime(start_date.year, 1, 1)
         next_year = datetime(start_date.year + 1, 1, 1)
         start_decimal_year = start_date.year + (start_date - this_year) / (next_year - this_year)
 
-        alive = [1]
+        alive_both = [1 if self.params.sex2 else 0]
+        alive_one = [0 if self.params.sex2 else 1]
         _alive = 1
+        _alive2 = 1
+
+        alive_single = [None if self.params.sex2 else 1]
+        _alive_single = None if self.params.sex2 else 1
+        dead = False
+        dead2 = self.params.sex2 == None
+        dead_at = random()
+        dead_at2 = random()
 
         y = 0
         q_y = -1
         q = 0
+        q2 = 0
         remaining_fract = 0
-        a_y = time_period
+        a_y = self.params.time_period
         while True:
             append_time = a_y - y
             fract = min(remaining_fract, append_time)
-            _alive *= (1 - q) ** fract
+            prev_alive = _alive
+            prev_alive2 = _alive2
+            q_fract = (1 - q) ** fract
+            _alive *= q_fract
+            q_fract2 = (1 - q2) ** fract
+            _alive2 *= q_fract2
+            if not (dead or dead2):
+                dead = _alive < dead_at
+                dead2 = _alive2 < dead_at2
+                if dead and dead2:
+                    _alive_single = 0
+                elif dead:
+                    _alive_single = q_fract ** ((dead_at - _alive) / (prev_alive - _alive))
+                elif dead2:
+                    _alive_single = q_fract2 ** ((dead_at2 - _alive2) / (prev_alive2 - _alive2))
+            elif dead:
+                _alive_single *= q_fract2
+            elif dead2:
+                _alive_single *= q_fract
             remaining_fract -= fract
             y += fract
             if y >= a_y:
-                alive.append(_alive)
-                a_y += time_period
+                alive_both.append(_alive * _alive2)
+                alive_one.append(1 - _alive * _alive2 - (1 - _alive) * (1 - _alive2))
+                alive_single.append(_alive_single)
+                a_y += self.params.time_period
             if y - q_y >= 1:
                 q_y += 1
                 q = table.q(age_start + q_y, year = start_decimal_year + q_y)
+                if self.params.sex2:
+                    q2 = table2.q(age_start2 + q_y, year = start_decimal_year + q_y)
+                else:
+                    q2 = 1
                 remaining_fract = 1
-                if q == 1:
+                if q == q2 == 1:
                     break
 
-        if life_table == 'fixed':
-            # Death occurs at end of death_age period.
-            remainder = 1
-        else:
-            # Death occurs half way through each period.
-            remainder = 0.5
-        life_expectancy = [(sum(alive[y + 1:]) / alive[y] + remainder) * time_period for y in range(len(alive))]
-        life_expectancy.append(0)
+        alive_years = (2 * sum(alive_both) + sum(alive_one)) * self.params.time_period
 
-        return table, tuple(alive), tuple(life_expectancy)
+        life_expectancy_both = []
+        for y in range(len(alive_both)):
+            try:
+                le = sum(alive_both[y:]) / alive_both[y]
+            except ZeroDivisionError:
+                le = 0
+            life_expectancy_both.append(le * self.params.time_period)
+        life_expectancy_both.append(0)
+        life_expectancy_one = []
+        for y in range(len(alive_one)):
+            try:
+                le = sum(alive_one[y:]) / (alive_both[y] + alive_one[y])
+            except ZeroDivisionError:
+                le = 0
+            life_expectancy_one.append(le * self.params.time_period)
+        life_expectancy_one.append(0)
+
+        alive_single.append(0)
+
+        return alive_years, tuple(alive_single), table, table2, tuple(life_expectancy_both), tuple(life_expectancy_one)
 
     def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
 
@@ -102,14 +154,20 @@ class FinEnv(Env):
             # DDPG implementation assumes [-x, x] symmetric actions.
             # PPO1 implementation ignores size and assumes [-inf, inf] output.
         self.observation_space = Box(
-            # life_expectancy, real guaranteed income, nominal guaranteed income, portfolio size, short real interest rate, short inflation rate
-            low =  np.array((  0,   0,   0,   0, -0.05, 0.0)),
-            high = np.array((100, 1e6, 1e6, 1e7,  0.05, 0.1)),
+            # couple, single, life-expectancy both, life-expectancy one,
+            # real guaranteed income, nominal guaranteed income, portfolio size, short real interest rate, short inflation rate
+            low  = np.array((0, 0,   0,   0,   0,   0,   0, -0.05, 0.0)),
+            high = np.array((1, 1, 100, 100, 1e6, 1e6, 1e7,  0.05, 0.1)),
             dtype = 'float32'
         )
 
         self.q_adjust = self._compute_q_adjust(self.params.life_table, self.params.sex, self.params.age_adjust, self.params.age_end,
             self.params.life_expectancy_additional, self.params.life_table_date, self.params.time_period)
+        if self.params.sex2:
+            self.q_adjust2 = self._compute_q_adjust(self.params.life_table, self.params.sex2, self.params.age_adjust2, self.params.age_end,
+                self.params.life_expectancy_additional2, self.params.life_table_date, self.params.time_period)
+        else:
+            self.q_adjust2 = None
 
         self.utility = Utility(self.params.gamma, self.params.consume_floor)
 
@@ -195,16 +253,17 @@ class FinEnv(Env):
         if self.params.reproduce_episode != None:
             self._reproducable_seed(self.params.reproduce_episode, 0, 0)
 
-        self.age_start = uniform(self.params.age_start_low, self.params.age_start_high)
-        self.life_table, self.alive, self.life_expectancy = \
-            self._compute_vital_stats(self.params.life_table, self.params.sex, self.age_start, self.params.age_end,
-            self.q_adjust, self.params.life_table_date, self.params.time_period)
-        self.age = self.age_start
+        age_start = uniform(self.params.age_start_low, self.params.age_start_high)
+        age_start2 = uniform(self.params.age_start2_low, self.params.age_start2_high)
+        self.alive_years, self.alive_single, self.life_table, self.life_table2, self.life_expectancy_both, self.life_expectancy_one = \
+            self._compute_vital_stats(age_start, age_start2, self.q_adjust, self.q_adjust2)
+        self.age = age_start
 
-        self.real_spia = IncomeAnnuity(self.real_bonds, self.life_table, payout_delay = 12, frequency = 1, cpi_adjust = 'all',
-            date_str = self.params.life_table_date)
-        self.nominal_spia = IncomeAnnuity(self.nominal_bonds, self.life_table, payout_delay = 12, frequency = 1,
-            date_str = self.params.life_table_date)
+        joint_payout_fraction = 1 # XXX 1 / (1 + self.params.consume_additional)
+        self.real_spia = IncomeAnnuity(self.real_bonds, self.life_table, life_table2 = self.life_table2, payout_delay = 12,
+            joint_payout_fraction = joint_payout_fraction, frequency = 1, cpi_adjust = 'all', date_str = self.params.life_table_date)
+        self.nominal_spia = IncomeAnnuity(self.nominal_bonds, self.life_table, life_table2 = self.life_table2, payout_delay = 12,
+            joint_payout_fraction = joint_payout_fraction, frequency = 1, date_str = self.params.life_table_date)
 
         found = False
         for _ in range(1000):
@@ -224,7 +283,7 @@ class FinEnv(Env):
             else:
                 self.p_notax = exp(uniform(log(self.params.p_notax_low), log(self.params.p_notax_high)))
 
-            consume_expect = self.gi_real + self.gi_nominal + self.p_notax / self.life_expectancy[0]
+            consume_expect = self.gi_real + self.gi_nominal + self.p_notax / (2 * self.life_expectancy_both[0] + self.life_expectancy_one[0])
 
             found = self.params.consume_floor <= consume_expect <= self.params.consume_ceiling
             if found:
@@ -419,7 +478,8 @@ class FinEnv(Env):
 
     def _income_estimate(self):
 
-        return self.gi_real + self.gi_nominal + self.p_notax / self.life_expectancy[self.episode_length]
+        lifespan = self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length]
+        return self.gi_real + self.gi_nominal + self.p_notax / lifespan
 
     def p_plus_income(self):
 
@@ -503,11 +563,20 @@ class FinEnv(Env):
 
         self.p_notax = p * ret
 
-        utility = self.utility.utility(consume_rate)
-        reward_annual = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
-        if self.params.verbose and reward_annual != utility:
-            print('Reward out of range - age, p_notax, consume_fraction, utility:', self.age, self.p_notax, consume_fraction, utility)
-        reward = reward_annual * self.alive[self.episode_length] * self.params.time_period
+        def clip(utility):
+            reward_annual = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
+            if self.params.verbose and reward_annual != utility:
+                print('Reward out of range - age, p_notax, consume_fraction, utility:', self.age, self.p_notax, consume_fraction, utility)
+            return reward_annual
+
+        if self.alive_single[self.episode_length] == None:
+            utility = self.utility.utility(consume_rate / (1 + self.params.consume_additional))
+            self.reward_weight = 2 * self.params.time_period
+        else:
+            utility = self.utility.utility(consume_rate)
+            self.reward_weight = self.alive_single[self.episode_length] * self.params.time_period
+        self.reward_value = clip(utility)
+        reward = self.reward_weight * self.reward_value
 
         self.age += self.params.time_period
 
@@ -517,7 +586,7 @@ class FinEnv(Env):
         self._step_bonds()
 
         observation = self._observe()
-        done = self.episode_length >= len(self.alive)
+        done = self.episode_length >= len(self.alive_single) - 1
         info = {}
         if done:
             info['ce'] = self.utility.inverse(self.episode_utility_sum / self.episode_length)
@@ -584,7 +653,11 @@ class FinEnv(Env):
 
     def _observe(self):
 
-        life_expectancy = self.life_expectancy[self.episode_length]
+        couple = int(self.alive_single[self.episode_length] == None)
+        single = int(self.alive_single[self.episode_length] != None)
+
+        life_expectancy_both = self.life_expectancy_both[self.episode_length]
+        life_expectancy_one = self.life_expectancy_one[self.episode_length]
 
         if self.params.observe_interest_rate:
             real_interest_rate, = self.real_bonds.observe()
@@ -596,15 +669,18 @@ class FinEnv(Env):
         else:
             inflation_rate = 0
 
-        observe = (life_expectancy, self.gi_real, self.gi_nominal, self.p_notax, real_interest_rate, inflation_rate)
+        observe = (couple, single, life_expectancy_both, life_expectancy_one, self.gi_real, self.gi_nominal, self.p_notax, real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')
 
     def decode_observation(self, obs):
 
-        life_expectancy, gi_real, gi_nominal, p_notax, real_interest_rate, inflation_rate = obs.tolist()
+        couple, single, life_expectancy_both, life_expectancy_one, gi_real, gi_nominal, p_notax, real_interest_rate, inflation_rate = obs.tolist()
 
         return {
-            'life_expectancy': life_expectancy,
+            'couple': couple,
+            'single': single,
+            'life_expectancy_both': life_expectancy_both,
+            'life_expectancy_one': life_expectancy_one,
             'gi_real': gi_real,
             'gi_nominal': gi_nominal,
             'p_notax': p_notax,

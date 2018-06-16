@@ -22,6 +22,34 @@ import numpy as np
 
 from baselines import logger
 
+def weighted_percentile(value_weights, pctl):
+    assert value_weights
+    tot = sum((w for v, w in value_weights))
+    weight = 0
+    for v, w in sorted(value_weights):
+        weight += w
+        if weight >= pctl / 100 * tot:
+            return v
+    return v
+
+def weighted_mean(value_weights):
+    n = 0
+    s = 0
+    for value, weight in sorted(value_weights, key = lambda x: abs(x[1])):
+        n += weight
+        s += weight * value
+    return s / n
+
+def weighted_stdev(value_weights, n0):
+    n = 0
+    s = 0
+    ss = 0
+    for value, weight in sorted(value_weights, key = lambda x: abs(x[1])):
+        n += weight
+        s += weight * value
+        ss += weight * value ** 2
+    return sqrt(n0 / (n0 - 1) * (n * ss - s ** 2) / (n ** 2))
+
 class Evaluator(object):
 
     LOGFILE = 'gym_eval_batch.monitor.csv'
@@ -53,40 +81,38 @@ class Evaluator(object):
             state = getstate()
             seed(self.eval_seed)
 
+            env = self.eval_env.unwrapped
             rewards = []
             obs = self.eval_env.reset()
-            eprew = []
             s = 0
+            e = 0
             while True:
                 if self.eval_render:
                     self.eval_env.render()
                 action = pi(obs)
                 obs, r, done, info = self.eval_env.step(action)
                 s += 1
-                eprew.append(r)
+                rewards.append((env.reward_value, env.reward_weight))
                 if done:
-                    rewards.append(sum(eprew))
+                    e += 1
                     if self.eval_render:
                         self.eval_env.render()
                     obs = self.eval_env.reset()
-                    eprew = []
                     if s >= self.eval_num_timesteps:
                         break
 
-            batchrew = sum(rewards)
-            env = self.eval_env.unwrapped
-            sum_alive = sum(env.alive)
-            rews = tuple(r / (sum_alive * env.params.time_period) for r in rewards)
-            rew = mean(rews)
+            batchrew = sum((v * w for v, w in rewards))
+            rew = weighted_mean(rewards)
             try:
-                std = stdev(rews)
-            except StatisticsError:
+                std = weighted_stdev(rewards, e)
+            except ZeroDivisionError:
                 std = float('nan')
-            stderr = std / sqrt(len(rews))
+            stderr = std / sqrt(e) # Upper bound since assume episodes are not independent.
             utility = self.eval_env.unwrapped.utility
             ce = utility.inverse(rew)
             ce_stderr = utility.inverse(rew + stderr) - ce
-            low, high = np.percentile(np.array(rews), (2.5, 97.5)).tolist()
+            low = weighted_percentile(rewards, 2.5)
+            high = weighted_percentile(rewards, 97.5)
 
             logger.info('Evaluation certainty equivalent: ', ce, ' +/- ', ce_stderr, ' (95% confidence interval: ', utility.inverse(low), ' - ', utility.inverse(high), ')')
 
