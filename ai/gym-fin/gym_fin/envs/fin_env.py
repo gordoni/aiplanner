@@ -71,6 +71,7 @@ class FinEnv(Env):
         dead2 = self.params.sex2 == None
         dead_at = random()
         dead_at2 = random()
+        first_dies_first = False
 
         y = 0
         q_y = -1
@@ -93,6 +94,7 @@ class FinEnv(Env):
                 if dead and dead2:
                     _alive_single = 0
                 elif dead:
+                    first_dies_first = True
                     _alive_single = q_fract ** ((dead_at - _alive) / (prev_alive - _alive))
                 elif dead2:
                     _alive_single = q_fract2 ** ((dead_at2 - _alive2) / (prev_alive2 - _alive2))
@@ -139,7 +141,7 @@ class FinEnv(Env):
 
         alive_single.append(0)
 
-        return alive_years, tuple(alive_single), table, table2, tuple(life_expectancy_both), tuple(life_expectancy_one)
+        return first_dies_first, alive_years, tuple(alive_single), table, table2, tuple(life_expectancy_both), tuple(life_expectancy_one)
 
     def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
 
@@ -155,9 +157,11 @@ class FinEnv(Env):
             # PPO1 implementation ignores size and assumes [-inf, inf] output.
         self.observation_space = Box(
             # couple, single, life-expectancy both, life-expectancy one,
-            # real guaranteed income, nominal guaranteed income, portfolio size, short real interest rate, short inflation rate
-            low  = np.array((0, 0,   0,   0,   0,   0,   0, -0.05, 0.0)),
-            high = np.array((1, 1, 100, 100, 1e6, 1e6, 1e7,  0.05, 0.1)),
+            # real guaranteed income: individual 1, individual 2, couple,
+            # nominal guaranteed income: individual 1, individual 2, couple,
+            # portfolio size, short real interest rate, short inflation rate
+            low  = np.array((0, 0,   0,   0,   0,   0,   0,   0,   0,   0,   0, -0.05, 0.0)),
+            high = np.array((1, 1, 100, 100, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e7,  0.05, 0.1)),
             dtype = 'float32'
         )
 
@@ -248,6 +252,10 @@ class FinEnv(Env):
 
         self.reset()
 
+    def gi_sum(self):
+
+        return self.gi_real + self.gi_real2 + self.gi_real_couple + self.gi_nominal + self.gi_nominal2 + self.gi_nominal_couple
+
     def reset(self):
 
         if self.params.reproduce_episode != None:
@@ -255,35 +263,44 @@ class FinEnv(Env):
 
         age_start = uniform(self.params.age_start_low, self.params.age_start_high)
         age_start2 = uniform(self.params.age_start2_low, self.params.age_start2_high)
-        self.alive_years, self.alive_single, self.life_table, self.life_table2, self.life_expectancy_both, self.life_expectancy_one = \
+        self.first_dies_first, self.alive_years, self.alive_single, self.life_table, self.life_table2, self.life_expectancy_both, self.life_expectancy_one = \
             self._compute_vital_stats(age_start, age_start2, self.q_adjust, self.q_adjust2)
         self.age = age_start
+        self.age2 = age_start2
 
-        joint_payout_fraction = 1 # XXX 1 / (1 + self.params.consume_additional)
+        self.spia_age = self.age
+        self.joint_payout_fraction = 1 / (1 + self.params.consume_additional)
         self.real_spia = IncomeAnnuity(self.real_bonds, self.life_table, life_table2 = self.life_table2, payout_delay = 12,
-            joint_payout_fraction = joint_payout_fraction, frequency = 1, cpi_adjust = 'all', date_str = self.params.life_table_date)
+            joint_payout_fraction = self.joint_payout_fraction, frequency = 1, cpi_adjust = 'all', date_str = self.params.life_table_date)
         self.nominal_spia = IncomeAnnuity(self.nominal_bonds, self.life_table, life_table2 = self.life_table2, payout_delay = 12,
-            joint_payout_fraction = joint_payout_fraction, frequency = 1, date_str = self.params.life_table_date)
+            joint_payout_fraction = self.joint_payout_fraction, frequency = 1, date_str = self.params.life_table_date)
+
+        if self.life_table2:
+
+            life_table = self.life_table2 if self.first_dies_first else self.life_table
+            self.real_spia_single = IncomeAnnuity(self.real_bonds, life_table, payout_delay = 12,
+                frequency = 1, cpi_adjust = 'all', date_str = self.params.life_table_date)
+            self.nominal_spia_single = IncomeAnnuity(self.nominal_bonds, life_table, payout_delay = 12,
+                frequency = 1, date_str = self.params.life_table_date)
 
         found = False
         for _ in range(1000):
 
-            if self.params.gi_real_low == self.params.gi_real_high:
-                self.gi_real = self.params.gi_real_low # Handles gi_real == 0.
-            else:
-                self.gi_real = exp(uniform(log(self.params.gi_real_low), log(self.params.gi_real_high)))
+            def log_uniform(low, high):
+                if low == high:
+                    return low # Handles low == high == 0.
+                else:
+                    return exp(uniform(log(low), log(high)))
 
-            if self.params.gi_nominal_low == self.params.gi_nominal_high:
-                self.gi_nominal = self.params.gi_nominal_low
-            else:
-                self.gi_nominal = exp(uniform(log(self.params.gi_nominal_low), log(self.params.gi_nominal_high)))
+            self.gi_real = log_uniform(self.params.gi_real_low, self.params.gi_real_high)
+            self.gi_real2 = log_uniform(self.params.gi_real2_low, self.params.gi_real2_high) if self.params.age_start2 != None else 0
+            self.gi_real_couple = log_uniform(self.params.gi_real_couple_low, self.params.gi_real_couple_high) if self.params.age_start2 != None else 0
+            self.gi_nominal = log_uniform(self.params.gi_nominal_low, self.params.gi_nominal_high)
+            self.gi_nominal2 = log_uniform(self.params.gi_nominal2_low, self.params.gi_nominal2_high) if self.params.age_start2 != None else 0
+            self.gi_nominal_couple = log_uniform(self.params.gi_nominal_couple_low, self.params.gi_nominal_couple_high) if self.params.age_start2 != None else 0
+            self.p_notax = log_uniform(self.params.p_notax_low, self.params.p_notax_high)
 
-            if self.params.p_notax_low == self.params.p_notax_high:
-                self.p_notax = self.params.p_notax_low
-            else:
-                self.p_notax = exp(uniform(log(self.params.p_notax_low), log(self.params.p_notax_high)))
-
-            consume_expect = self.gi_real + self.gi_nominal + self.p_notax / (2 * self.life_expectancy_both[0] + self.life_expectancy_one[0])
+            consume_expect = self.gi_sum() + self.p_notax / (2 * self.life_expectancy_both[0] + self.life_expectancy_one[0])
 
             found = self.params.consume_floor <= consume_expect <= self.params.consume_ceiling
             if found:
@@ -421,7 +438,7 @@ class FinEnv(Env):
             spias_action = tanh(spias_action / 20)
                 # Scaling back initial volatility of spias_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
             spias_action = (spias_action + 1) / 2
-            current_spias_fraction_estimate = (self.gi_real + self.gi_nominal) / self._income_estimate()
+            current_spias_fraction_estimate = self.gi_sum() / self._income_estimate()
             assert 0 <= current_spias_fraction_estimate <= 1
             # Might like to pass on any more SPIAs when spias_action <= current_spias_fraction_estimate,
             # but that would then make learning to increase spias_action difficult.
@@ -479,11 +496,11 @@ class FinEnv(Env):
     def _income_estimate(self):
 
         lifespan = self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length]
-        return self.gi_real + self.gi_nominal + self.p_notax / lifespan
+        return self.gi_sum() + self.p_notax / lifespan
 
     def p_plus_income(self):
 
-        return self.p_notax + (self.gi_real + self.gi_nominal) * self.params.time_period
+        return self.p_notax + self.gi_sum() * self.params.time_period
 
     def spend(self, consume_fraction, real_spias_fraction = 0, nominal_spias_fraction = 0):
 
@@ -540,14 +557,32 @@ class FinEnv(Env):
         nominal_spias_rate = nominal_spias_purchase / self.params.time_period
 
         if real_spias_purchase > 0:
-            self.real_spia.set_age(self.age)
-            self.gi_real += self.real_spia.payout(real_spias_purchase, mwr = self.params.real_spias_mwr)
+            self.real_spia.set_age(self.spia_age)
+            payout = self.real_spia.payout(real_spias_purchase, mwr = self.params.real_spias_mwr)
+            if self.alive_single[self.episode_length] == None:
+                self.gi_real += payout * self.joint_payout_fraction
+                self.gi_real2 += payout * self.joint_payout_fraction
+                self.gi_real_couple += payout * (1 - 2 * self.joint_payout_fraction)
+            elif first_dies_first:
+                self.gi_real2 += payout
+            else:
+                self.gi_real += payout
         if nominal_spias_purchase > 0:
-            self.nominal_spia.set_age(self.age)
-            self.gi_nominal += self.nominal_spia.payout(nominal_spias_purchase, mwr = self.params.nominal_spias_mwr)
+            self.nominal_spia.set_age(self.spia_age)
+            payout = self.nominal_spia.payout(nominal_spias_purchase, mwr = self.params.nominal_spias_mwr)
+            if self.alive_single[self.episode_length] == None:
+                self.gi_nominal += payout * self.joint_payout_fraction
+                self.gi_nominal2 += payout * self.joint_payout_fraction
+                self.gi_nominal_couple += payout * (1 - 2 * self.joint_payout_fraction)
+            elif first_dies_first:
+                self.gi_nominal2 += payout
+            else:
+                self.gi_nominal += payout
 
         inflation = self.inflation.inflation()
         self.gi_nominal /= inflation
+        self.gi_nominal2 /= inflation
+        self.gi_nominal_couple /= inflation
 
         ret = 0
         if asset_allocation.stocks != None:
@@ -579,6 +614,27 @@ class FinEnv(Env):
         reward = self.reward_weight * self.reward_value
 
         self.age += self.params.time_period
+        self.age2 += self.params.time_period
+        self.spia_age += self.params.time_period
+
+        if self.alive_single[self.episode_length] == None and self.alive_single[self.episode_length + 1] != None:
+
+            self.real_spia = self.real_spia_single
+            self.nominal_spia = self.nominal_spia_single
+
+            self.gi_real_couple = 0
+            self.gi_nominal_couple = 0
+
+            if self.first_dies_first:
+
+                self.gi_real = 0
+                self.gi_nominal = 0
+                self.spia_age = self.age2
+
+            else:
+
+                self.gi_real2 = 0
+                self.gi_nominal2 = 0
 
         self.episode_utility_sum += utility
         self.episode_length += 1
@@ -618,6 +674,8 @@ class FinEnv(Env):
 
     def goto(self, step, real_oup_x, inflation_oup_x, gi_real, gi_nominal, p_notax):
         '''Goto a reproducable time step. Useful for benchmarking.'''
+
+        assert self.params.age_start2 == None
 
         self.reset()
 
@@ -669,12 +727,15 @@ class FinEnv(Env):
         else:
             inflation_rate = 0
 
-        observe = (couple, single, life_expectancy_both, life_expectancy_one, self.gi_real, self.gi_nominal, self.p_notax, real_interest_rate, inflation_rate)
+        observe = (couple, single, life_expectancy_both, life_expectancy_one,
+            self.gi_real, self.gi_real2, self.gi_real_couple, self.gi_nominal, self.gi_nominal2, self.gi_nominal_couple, self.p_notax,
+            real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')
 
     def decode_observation(self, obs):
 
-        couple, single, life_expectancy_both, life_expectancy_one, gi_real, gi_nominal, p_notax, real_interest_rate, inflation_rate = obs.tolist()
+        couple, single, life_expectancy_both, life_expectancy_one, gi_real, gi_real2, gi_real_couple, gi_nominal, gi_nominal2, gi_nominal_couple, p_notax, \
+            real_interest_rate, inflation_rate = obs.tolist()
 
         return {
             'couple': couple,
@@ -682,7 +743,11 @@ class FinEnv(Env):
             'life_expectancy_both': life_expectancy_both,
             'life_expectancy_one': life_expectancy_one,
             'gi_real': gi_real,
+            'gi_real2': gi_real2,
+            'gi_real_couple': gi_real_couple,
             'gi_nominal': gi_nominal,
+            'gi_nominal2': gi_nominal2,
+            'gi_nominal_couple': gi_nominal_couple,
             'p_notax': p_notax,
             'real_interest_rate': real_interest_rate,
             'inflation_rate': inflation_rate

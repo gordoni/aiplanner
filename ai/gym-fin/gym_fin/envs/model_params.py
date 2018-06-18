@@ -116,8 +116,15 @@ class ModelParams(object):
             # Will probably need smaller [consume_floor, consume_ceiling] ranges if use a large gamma value such as 6.
 
         self._param('gi-real', (1e3, 1e5), 1e4)
-            # Real guaranteed income: Social Security, real SPIAs, real pensions, and similar. Empirically OK if eval amount is less than model lower bound.
-        self._param('gi-nominal', (1e3, 1e5), 0) # Nominal guaranteed income: nominal SPIAs, nominal pensions, and similar.
+            # Real guaranteed income of first individual: Social Security, real SPIAs, real pensions, and similar.
+            # Empirically OK if eval amount is less than model lower bound.
+        self._param('gi-real2', (1e3, 1e5), 0) # Real guaranteed income of second individual.
+        self._param('gi-real-couple', (1e3, 1e5), 0) # Real guaranteed income of couple.
+            # May be negative, such as when purchasing a joint SPIA:
+            # gi_real = gi_real2 = individual_payout; gi_real_couple = joint_payout - 2 * individual_payout.
+        self._param('gi-nominal', (1e3, 1e5), 0) # Nominal guaranteed income of first individual: nominal SPIAs, nominal pensions, and similar.
+        self._param('gi-nominal2', (1e3, 1e5), 0) # Nominal guaranteed income of second individual.
+        self._param('gi-nominal-couple', (1e3, 1e5), 0) # Nominal guaranteed income of couple. May be negative.
         self._param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
 
         self._boolean_flag('static-bonds', False)

@@ -77,7 +77,7 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
 
     elif annuitize:
 
-        consume_initial = env.gi_real + env.gi_nominal + env.p_notax / (env.params.time_period + env.real_spia.premium(1, mwr = env.params.real_spias_mwr))
+        consume_initial = env.gi_sum() + env.p_notax / (env.params.time_period + env.real_spia.premium(1, mwr = env.params.real_spias_mwr))
         consume_fraction_initial = consume_initial / env.p_plus_income()
         p, consume, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction_initial, real_spias_fraction = 1)
         asset_allocation = AssetAllocation(stocks = 1)

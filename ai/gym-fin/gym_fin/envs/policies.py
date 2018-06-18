@@ -37,7 +37,7 @@ def policy(env, action):
             consume = consume_prev
         else:
             consume = consume_prev / env.prev_inflation
-        consume = max(consume, env.gi_real + env.gi_nominal)
+        consume = max(consume, env.gi_sum())
         consume_prev = consume
         consume_fraction = consume / env.p_plus_income()
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
@@ -57,7 +57,7 @@ def policy(env, action):
             consume = consume_prev
         else:
             consume = consume_prev / env.prev_inflation
-        consume = max(consume, env.gi_real + env.gi_nominal)
+        consume = max(consume, env.gi_sum())
         consume_prev = consume
         consume_fraction = consume / env.p_plus_income()
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
@@ -68,7 +68,7 @@ def policy(env, action):
             life_expectancy = env.life_expectancy[env.episode_length]
         else:
             life_expectancy = max(1, env.params.consume_policy_life_expectancy - env.episode_length * env.params.time_period)
-        consume = (env.gi_real + env.gi_nominal) * env.params.time_period + _pmt(env.params.consume_policy_return, life_expectancy, env.p_notax)
+        consume = env.gi_sum() * env.params.time_period + _pmt(env.params.consume_policy_return, life_expectancy, env.p_notax)
         consume_fraction = consume / env.p_plus_income()
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
