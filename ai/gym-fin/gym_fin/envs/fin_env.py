@@ -293,11 +293,11 @@ class FinEnv(Env):
                     return exp(uniform(log(low), log(high)))
 
             self.gi_real = log_uniform(self.params.gi_real_low, self.params.gi_real_high)
-            self.gi_real2 = log_uniform(self.params.gi_real2_low, self.params.gi_real2_high) if self.params.age_start2 != None else 0
-            self.gi_real_couple = log_uniform(self.params.gi_real_couple_low, self.params.gi_real_couple_high) if self.params.age_start2 != None else 0
+            self.gi_real2 = log_uniform(self.params.gi_real2_low, self.params.gi_real2_high) if self.params.sex2 else 0
+            self.gi_real_couple = log_uniform(self.params.gi_real_couple_low, self.params.gi_real_couple_high) if self.params.sex2 else 0
             self.gi_nominal = log_uniform(self.params.gi_nominal_low, self.params.gi_nominal_high)
-            self.gi_nominal2 = log_uniform(self.params.gi_nominal2_low, self.params.gi_nominal2_high) if self.params.age_start2 != None else 0
-            self.gi_nominal_couple = log_uniform(self.params.gi_nominal_couple_low, self.params.gi_nominal_couple_high) if self.params.age_start2 != None else 0
+            self.gi_nominal2 = log_uniform(self.params.gi_nominal2_low, self.params.gi_nominal2_high) if self.params.sex2 else 0
+            self.gi_nominal_couple = log_uniform(self.params.gi_nominal_couple_low, self.params.gi_nominal_couple_high) if self.params.sex2 else 0
             self.p_notax = log_uniform(self.params.p_notax_low, self.params.p_notax_high)
 
             consume_expect = self.gi_sum() + self.p_notax / (2 * self.life_expectancy_both[0] + self.life_expectancy_one[0])
@@ -563,7 +563,7 @@ class FinEnv(Env):
                 self.gi_real += payout * self.joint_payout_fraction
                 self.gi_real2 += payout * self.joint_payout_fraction
                 self.gi_real_couple += payout * (1 - 2 * self.joint_payout_fraction)
-            elif first_dies_first:
+            elif self.first_dies_first:
                 self.gi_real2 += payout
             else:
                 self.gi_real += payout
@@ -574,7 +574,7 @@ class FinEnv(Env):
                 self.gi_nominal += payout * self.joint_payout_fraction
                 self.gi_nominal2 += payout * self.joint_payout_fraction
                 self.gi_nominal_couple += payout * (1 - 2 * self.joint_payout_fraction)
-            elif first_dies_first:
+            elif self.first_dies_first:
                 self.gi_nominal2 += payout
             else:
                 self.gi_nominal += payout
@@ -675,7 +675,7 @@ class FinEnv(Env):
     def goto(self, step, real_oup_x, inflation_oup_x, gi_real, gi_nominal, p_notax):
         '''Goto a reproducable time step. Useful for benchmarking.'''
 
-        assert self.params.age_start2 == None
+        assert self.params.sex2 == None
 
         self.reset()
 
