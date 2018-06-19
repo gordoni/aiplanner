@@ -125,23 +125,34 @@ class FinEnv(Env):
         life_expectancy_both = []
         for y in range(len(alive_both)):
             try:
-                le = sum(alive_both[y:]) / alive_both[y]
+                le = sum(alive_both[y:]) / alive_both[y] * self.params.time_period
             except ZeroDivisionError:
                 le = 0
-            life_expectancy_both.append(le * self.params.time_period)
+            life_expectancy_both.append(le)
         life_expectancy_both.append(0)
         life_expectancy_one = []
         for y in range(len(alive_one)):
             try:
-                le = sum(alive_one[y:]) / (alive_both[y] + alive_one[y])
+                le = sum(alive_one[y:]) / (alive_both[y] + alive_one[y]) * self.params.time_period
             except ZeroDivisionError:
                 le = 0
-            life_expectancy_one.append(le * self.params.time_period)
+            life_expectancy_one.append(le)
         life_expectancy_one.append(0)
+        life_expectancy_single = []
+        for y in range(len(alive_single)):
+            try:
+                le = sum(alive_single[y:]) / alive_single[y] * self.params.time_period
+            except TypeError:
+                le = None
+            except ZeroDivisionError:
+                le = 0
+            life_expectancy_single.append(le)
+        life_expectancy_single.append(0)
 
         alive_single.append(0)
 
-        return first_dies_first, alive_years, tuple(alive_single), table, table2, tuple(life_expectancy_both), tuple(life_expectancy_one)
+        return first_dies_first, alive_years, tuple(alive_single), table, table2, \
+            tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
 
     def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
 
@@ -263,7 +274,8 @@ class FinEnv(Env):
 
         age_start = uniform(self.params.age_start_low, self.params.age_start_high)
         age_start2 = uniform(self.params.age_start2_low, self.params.age_start2_high)
-        self.first_dies_first, self.alive_years, self.alive_single, self.life_table, self.life_table2, self.life_expectancy_both, self.life_expectancy_one = \
+        self.first_dies_first, self.alive_years, self.alive_single, self.life_table, self.life_table2, \
+            self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = \
             self._compute_vital_stats(age_start, age_start2, self.q_adjust, self.q_adjust2)
         self.age = age_start
         self.age2 = age_start2
@@ -496,6 +508,7 @@ class FinEnv(Env):
     def _income_estimate(self):
 
         lifespan = self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length]
+        lifespan = max(lifespan, self.params.time_period)
         return self.gi_sum() + self.p_notax / lifespan
 
     def p_plus_income(self):
@@ -618,6 +631,10 @@ class FinEnv(Env):
         self.spia_age += self.params.time_period
 
         if self.alive_single[self.episode_length] == None and self.alive_single[self.episode_length + 1] != None:
+            # One member of couple has just died.
+
+            self.life_expectancy_both = [0] * len(self.life_expectancy_both)
+            self.life_expectancy_one = self.life_expectancy_single
 
             self.real_spia = self.real_spia_single
             self.nominal_spia = self.nominal_spia_single
