@@ -19,7 +19,7 @@ def _pmt(rate, nper, pv):
 
 def policy(env, action):
 
-    global consume_prev, life_expectancy_initial, p_notax_initial
+    global consume_rate_initial, consume_prev, life_expectancy_initial, p_notax_initial
 
     if action != None:
         consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = action
@@ -32,40 +32,62 @@ def policy(env, action):
     elif env.params.consume_policy == 'guyton_rule2':
 
         if env.episode_length == 0:
-            consume = env.params.consume_initial
+            consume = env.params.consume_initial - env.gi_sum() * env.params.time_period
         elif env.prev_ret * env.prev_inflation >= 1:
             consume = consume_prev
         else:
             consume = consume_prev / env.prev_inflation
-        consume = max(consume, env.gi_sum())
         consume_prev = consume
+        consume += env.gi_sum() * env.params.time_period
+        consume_fraction = consume / env.p_plus_income()
+        consume_fraction = min(consume_fraction, 1 / env.params.time_period)
+
+    elif env.params.consume_policy == 'guyton_klinger':
+
+        if env.params.consume_policy_life_expectancy == None:
+            life_expectancy = env.life_expectancy_both[env.episode_length] + env.life_expectancy_one[env.episode_length]
+        else:
+            life_expectancy = env.params.consume_policy_life_expectancy - env.episode_length * env.params.time_period
+        if env.episode_length == 0:
+            consume = env.params.consume_initial - env.gi_sum() * env.params.time_period
+            consume_rate_initial = consume / env.p_notax
+        else:
+            consume = consume_prev
+            if consume < 0.8 * consume_rate_initial * env.p_notax:
+                consume *= 1.1
+            if consume > 1.2 * consume_rate_initial * env.p_notax and life_expectancy > 15:
+                consume *= 0.9
+            if env.prev_ret * env.prev_inflation < 1 and consume > consume_rate_initial * env.p_notax:
+                consume /= env.prev_inflation
+        consume_prev = consume
+        consume += env.gi_sum() * env.params.time_period
         consume_fraction = consume / env.p_plus_income()
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     elif env.params.consume_policy == 'target_percentage':
 
         if env.params.consume_policy_life_expectancy == None:
-            life_expectancy = env.life_expectancy[env.episode_length]
+            life_expectancy = env.life_expectancy_both[env.episode_length] + env.life_expectancy_one[env.episode_length]
         else:
             life_expectancy = max(1, env.params.consume_policy_life_expectancy - env.episode_length * env.params.time_period)
         if env.episode_length == 0:
             life_expectancy_initial = life_expectancy
             p_notax_initial = env.p_notax
-            consume = env.params.consume_initial
+            consume = env.params.consume_initial - env.gi_sum() * env.params.time_period
         elif _pmt(env.params.consume_policy_return, life_expectancy, env.p_notax) >= \
             _pmt(env.params.consume_policy_return, life_expectancy_initial, p_notax_initial):
             consume = consume_prev
         else:
             consume = consume_prev / env.prev_inflation
-        consume = max(consume, env.gi_sum())
         consume_prev = consume
+        consume += env.gi_sum() * env.params.time_period
         consume_fraction = consume / env.p_plus_income()
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     elif env.params.consume_policy == 'pmt':
 
         if env.params.consume_policy_life_expectancy == None:
-            life_expectancy = env.life_expectancy[env.episode_length]
+            life_expectancy = env.life_expectancy_both[env.episode_length] + env.life_expectancy_one[env.episode_length]
         else:
             life_expectancy = max(1, env.params.consume_policy_life_expectancy - env.episode_length * env.params.time_period)
         consume = env.gi_sum() * env.params.time_period + _pmt(env.params.consume_policy_return, life_expectancy, env.p_notax)

@@ -40,13 +40,18 @@ class ModelParams(object):
 
         self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
 
-        self._param('consume-policy', 'rl', tp = string_type, choices = ('rl', 'constant', 'guyton_rule2', 'target_percentage', 'pmt'))
+        self._param('consume-policy', 'rl', tp = string_type, choices = ('rl', 'constant', 'guyton_rule2', 'guyton_klinger', 'target_percentage', 'pmt'))
             # Consumption policy.
             # "rl": reinforcement learning.
             # "constant": constant fixed amount consume_initial.
-            # "guyton_rule2": initially consume_initial, then no inflation adjustment for period following period with a negative nominal market return.
-            # "target_percentage": initially consume_initial, then no inflation adjustment for periods where portfolio is below expected value based
-            #     upon consume_policy_life_expectancy and consume_policy_annual_return.
+            # "guyton_rule2": initially consume_initial,
+            #     then no investment portfolio withdrawal inflation adjustment for period following period with a negative nominal market return.
+            # "guyton_klinger": initially consume_initial, then increase investment consumption by 10% if below 80% of initial consumption rate,
+            #     decrease nominal investment consumption by 10% if above 120% of initial nominal consumption rate and remaining life expectancy exceeds
+            #     15 years based upon consume_policy_life_expectancy, no inflation investment withdrawal inflation adjustment for period following period
+            #     with a negative nominal market return and when nominal consumption would exceed initial nominal consumption.
+            # "target_percentage": initially consume_initial, then no investment portfolio withdrawal inflation adjustment for periods where investment
+            #     portfolio is below expected value based upon consume_policy_life_expectancy and consume_policy_annual_return.
             # "pmt": payout with life expectancy consume_policy_life_expectancy and return amount consume_policy_annual_return.
         self._param('consume-initial', 0) # Initial consumption amount for particular consumption policies.
         self._param('consume-policy-life-expectancy', None) # Assumed life expectancy for particular consumption policies, or None to use actual life expectancy.
