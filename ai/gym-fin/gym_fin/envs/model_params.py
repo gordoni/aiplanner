@@ -47,9 +47,9 @@ class ModelParams(object):
             # "guyton_rule2": initially consume_initial,
             #     then no investment portfolio withdrawal inflation adjustment for period following period with a negative nominal market return.
             # "guyton_klinger": initially consume_initial, then increase investment consumption by 10% if below 80% of initial consumption rate,
-            #     decrease nominal investment consumption by 10% if above 120% of initial nominal consumption rate and remaining life expectancy exceeds
+            #     decrease nominal investment consumption by 10% if above 120% of the initial consumption rate and remaining life expectancy exceeds
             #     15 years based upon consume_policy_life_expectancy, no inflation investment withdrawal inflation adjustment for period following period
-            #     with a negative nominal market return and when nominal consumption would exceed initial nominal consumption.
+            #     with a negative nominal market return and the investment consumption rate exceeds the initial consumption rate.
             # "target_percentage": initially consume_initial, then no investment portfolio withdrawal inflation adjustment for periods where investment
             #     portfolio is below expected value based upon consume_policy_life_expectancy and consume_policy_annual_return.
             # "pmt": payout with life expectancy consume_policy_life_expectancy and return amount consume_policy_annual_return.
