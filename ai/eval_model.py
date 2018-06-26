@@ -12,8 +12,6 @@
 
 from math import ceil, exp, sqrt
 
-import numpy as np
-
 import tensorflow as tf
 
 from baselines import logger
@@ -89,11 +87,10 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
             session = U.make_session(num_cpu=1).__enter__()
             tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], model_dir)
             g = tf.get_default_graph()
-            train_tf = g.get_tensor_by_name('pi/train:0')
             action_tf = g.get_tensor_by_name('pi/action:0')
             v_tf = g.get_tensor_by_name('pi/v:0')
             observation_tf = g.get_tensor_by_name('pi/ob:0')
-            action, = session.run(action_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
+            action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
             decoded_action = env.decode_action(action)
         else:
             decoded_action = None
@@ -112,7 +109,7 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
 
     if model:
 
-        v, = session.run(v_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
+        v, = session.run(v_tf, feed_dict = {observation_tf: [obs]})
         logger.info('    Predicted certainty equivalent: ', env.utility.inverse(v / env.alive_years))
             # Only valid if train and eval have identical age_start and life table.
             # Otherwise need to simulate to determine CE; this also provides percentile ranges.
@@ -125,7 +122,7 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
 
         if model:
 
-            action, = session.run(action_tf, feed_dict = {train_tf: np.array(False), observation_tf: [obs]})
+            action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
             return action
 
         elif merton or samuelson:

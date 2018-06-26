@@ -69,11 +69,10 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     if eval_env:
         eval_env.close()
     g = tf.get_default_graph()
-    train_tf = g.get_tensor_by_name('pi/train:0')
     action_tf = g.get_tensor_by_name('pi/action:0')
     v_tf = g.get_tensor_by_name('pi/v:0')
     observation_tf = g.get_tensor_by_name('pi/ob:0')
-    tf.saved_model.simple_save(session, model_dir, {'train': train_tf, 'observation': observation_tf}, {'action': action_tf, 'v': v_tf})
+    tf.saved_model.simple_save(session, model_dir, {'observation': observation_tf}, {'action': action_tf, 'v': v_tf})
 
 def main():
     parser = arg_parser()
