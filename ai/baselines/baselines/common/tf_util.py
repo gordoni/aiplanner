@@ -168,7 +168,7 @@ def function(inputs, outputs, updates=None, givens=None):
 class _Function(object):
     def __init__(self, inputs, outputs, updates, givens):
         for inpt in inputs:
-            if not hasattr(inpt, 'make_feed_dict') and not (type(inpt) is tf.Tensor and len(inpt.op.inputs) == 0):
+            if not hasattr(inpt, 'make_feed_dict') and not (type(inpt) is tf.Tensor and (len(inpt.op.inputs) == 0 or inpt.op.type == 'PlaceholderWithDefault')):
                 assert False, "inputs should all be placeholders, constants, or have a make_feed_dict method"
         self.inputs = inputs
         updates = updates or []

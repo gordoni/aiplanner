@@ -45,7 +45,8 @@ class MlpPolicy(object):
         self.state_in = []
         self.state_out = []
 
-        stochastic = tf.placeholder(name='train', dtype=tf.bool, shape=())
+        false = tf.constant(False, dtype=tf.bool, shape=())
+        stochastic = tf.placeholder_with_default(false, shape=())
         ac = U.switch(stochastic, self.pd.sample(), self.pd.mode())
         self._act = U.function([stochastic, ob], [ac, self.vpred])
 
