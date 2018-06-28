@@ -8,11 +8,14 @@ from baselines.common.mpi_moments import mpi_moments
 from mpi4py import MPI
 from collections import deque
 
-def traj_segment_generator(pi, env, horizon, stochastic):
+def traj_segment_generator(pi, env, horizon, stochastic, couple, indgen):
     t = 0
     ac = env.action_space.sample() # not used, just so we have the datatype
     new = True # marks if we're on first timestep of an episode
-    ob = env.reset()
+    if not couple or indgen:
+        ob = env.reset()
+    else:
+        ob = env.unwrapped._observe()
 
     cur_ep_ret = 0 # return in current episode
     cur_ep_len = 0 # len of current episode
@@ -48,17 +51,30 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         acs[i] = ac
         prevacs[i] = prevac
 
-        ob, rew, new, _ = env.step(ac)
+        ob, rew, new, info = env.step(ac)
+
+        assert not (indgen and new), 'neither member of couple has died; individual annealing rate would be off'
+        if indgen and info['couple_became_single']:
+            ind = next(indgen)
+            rew += ind['ind_ep_ret']
+            new = True
+
         rews[i] = rew
 
         cur_ep_ret += rew
         cur_ep_len += 1
         if new:
             ep_rets.append(cur_ep_ret)
-            ep_lens.append(cur_ep_len)
+            ep_lens.append(env.unwrapped.episode_length)
+                # append full episode length so that learning rate anneals correctly
+            couple_ep_len = 0
+            if not couple or indgen:
+                ob = env.reset()
+            else:
+                yield {'goto_couple': True, 'ind_ep_ret': cur_ep_ret}
+                ob = env.unwrapped._observe()
             cur_ep_ret = 0
             cur_ep_len = 0
-            ob = env.reset()
         t += 1
 
 def add_vtarg_and_adv(seg, gamma, lam):
@@ -85,7 +101,9 @@ def learn(env, policy_fn, *,
         max_timesteps=0, max_episodes=0, max_iters=0, max_seconds=0,  # time constraint
         callback=None, # you can do anything in the callback, since it takes locals(), globals()
         adam_epsilon=1e-5,
-        schedule='constant' # annealing for stepsize parameters (epsilon and adam)
+        schedule='constant', # annealing for stepsize parameters (epsilon and adam)
+        couple, # True if constructing a couple model even if single sub-model
+        indgen, # individual generator for couple model when a couple, otherwise None
         ):
     # Setup losses and stuff
     # ----------------------------------------
@@ -128,9 +146,11 @@ def learn(env, policy_fn, *,
     U.initialize()
     adam.sync()
 
+    yield 'tf_created' # Yield control in order to exit tf.variable_scope().
+
     # Prepare for rollouts
     # ----------------------------------------
-    seg_gen = traj_segment_generator(pi, env, timesteps_per_actorbatch, stochastic=True)
+    seg_gen = traj_segment_generator(pi, env, timesteps_per_actorbatch, stochastic=True, couple=couple, indgen=indgen)
 
     episodes_so_far = 0
     timesteps_so_far = 0
@@ -161,7 +181,13 @@ def learn(env, policy_fn, *,
 
         logger.log("********** Iteration %i ************"%iters_so_far)
 
-        seg = seg_gen.__next__()
+        while True:
+            seg = seg_gen.__next__()
+            try:
+                if seg['goto_couple']:
+                    yield seg
+            except KeyError:
+                break
         add_vtarg_and_adv(seg, gamma, lam)
 
         # ob, ac, atarg, ret, td1ret = map(np.concatenate, (obs, acs, atargs, rets, td1rets))
