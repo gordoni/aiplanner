@@ -155,6 +155,7 @@ class ModelParams(object):
             # For U.S. Treasury bills the reported real return is 0.9% +/- 0.4%, standard error 0.4% (geometric 0.8%).
             # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%).
         self._boolean_flag('returns-standard-error', True) # Whether to model the standard error of returns.
+        self._boolean_flag('stocks', True) # Whether to model stocks.
         self._param('stocks-return', 0.065) # Annual real return for stocks.
         self._param('stocks-volatility', 0.174) # Annual real volatility for stocks.
         self._param('stocks-standard-error', 0.016) # Standard error of log real return for stocks.

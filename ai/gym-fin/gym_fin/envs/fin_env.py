@@ -233,7 +233,8 @@ class FinEnv(Env):
             print()
             print('Real returns:')
 
-            returns_report('stocks', self.stocks, time_period = self.params.time_period)
+            if self.params.stocks:
+                returns_report('stocks', self.stocks, time_period = self.params.time_period)
 
             if self.params.real_bonds:
                 if self.params.real_bonds_duration:
@@ -475,7 +476,7 @@ class FinEnv(Env):
             nominal_spias_fraction = None
 
         # Softmax.
-        stocks = exp(stocks_action)
+        stocks = exp(stocks_action) if self.params.stocks else 0
         real_bonds = exp(real_bonds_action) if self.params.real_bonds else 0
         nominal_bonds = exp(nominal_bonds_action) if self.params.nominal_bonds else 0
         iid_bonds = exp(iid_bonds_action) if self.params.iid_bonds else 0
@@ -487,6 +488,8 @@ class FinEnv(Env):
         iid_bonds /= total
         bills /= total
 
+        if not self.params.stocks:
+            stocks = None
         if not self.params.real_bonds:
             real_bonds = None
         if not self.params.nominal_bonds:
