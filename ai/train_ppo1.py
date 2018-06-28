@@ -33,9 +33,6 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     from baselines.ppo1 import mlp_policy, pposgd_simple
     set_global_seeds(train_seed)
     session = U.make_session(num_cpu=1).__enter__()
-    def policy_fn(name, ob_space, ac_space):
-        return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space,
-            hid_size=train_hidden_layer_size, num_hid_layers=train_num_hidden_layers)
     env = make_fin_env(action_space_unbounded=True, training=True, **training_model_params)
     if evaluation:
         eval_seed += 1000000 # Use a different seed than might have been used during training.
@@ -57,22 +54,47 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     else:
         eval_env = None
         eval_callback = None
-    pposgd_simple.learn(env, policy_fn,
+
+    def pposgd(*, couple, indgen):
+        def policy_fn(name, ob_space, ac_space):
+            return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space,
+                hid_size=train_hidden_layer_size, num_hid_layers=train_num_hidden_layers)
+        return pposgd_simple.learn(env, policy_fn,
             max_timesteps=train_num_timesteps,
             timesteps_per_actorbatch=2048,
             clip_param=0.2, entcoeff=0.0,
             optim_epochs=10, optim_stepsize=3e-4, optim_batchsize=64,
             gamma=1, lam=0.95, schedule='linear',
-            callback=eval_callback
+            callback=eval_callback,
+            couple=couple, indgen=indgen,
         )
+
+    couple = training_model_params['sex2'] != None
+    with tf.variable_scope('single'):
+        indgen = pposgd(couple = couple, indgen = None)
+        next(indgen) # Setup tf graph.
+    if couple:
+        with tf.variable_scope('couple'):
+            couplegen = pposgd(couple = couple, indgen = indgen)
+            next(couplegen) # Setup tf graph.
+        try:
+            next(couplegen) # Run till done.
+        except StopIteration:
+            pass
+    else:
+        try:
+            next(indgen) # Run till done.
+        except StopIteration:
+            pass
+
     env.close()
     if eval_env:
         eval_env.close()
     g = tf.get_default_graph()
-    action_tf = g.get_tensor_by_name('pi/action:0')
-    v_tf = g.get_tensor_by_name('pi/v:0')
-    observation_tf = g.get_tensor_by_name('pi/ob:0')
-    tf.saved_model.simple_save(session, model_dir, {'observation': observation_tf}, {'action': action_tf, 'v': v_tf})
+    action_tf = g.get_tensor_by_name('single/pi/action:0')
+    v_tf = g.get_tensor_by_name('single/pi/v:0')
+    observation_tf = g.get_tensor_by_name('single/pi/ob:0')
+    tf.saved_model.simple_save(session, model_dir, {'observation': observation_tf}, {'action': action_tf, 'value': v_tf})
 
 def main():
     parser = arg_parser()

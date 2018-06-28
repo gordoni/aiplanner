@@ -630,8 +630,9 @@ class FinEnv(Env):
         self.age2 += self.params.time_period
         self.spia_age += self.params.time_period
 
-        if self.alive_single[self.episode_length] == None and self.alive_single[self.episode_length + 1] != None:
-            # One member of couple has just died.
+        couple_became_single = self.alive_single[self.episode_length] == None and self.alive_single[self.episode_length + 1] != None
+
+        if couple_became_single:
 
             self.life_expectancy_both = [0] * len(self.life_expectancy_both)
             self.life_expectancy_one = self.life_expectancy_single
@@ -660,12 +661,12 @@ class FinEnv(Env):
 
         observation = self._observe()
         done = self.episode_length >= len(self.alive_single) - 1
-        info = {}
+        info = {'couple_became_single': couple_became_single}
         if done:
             info['ce'] = self.utility.inverse(self.episode_utility_sum / self.episode_length)
 
         self.prev_asset_allocation = asset_allocation
-        self.prev_real_spais_rate = real_spias_rate
+        self.prev_real_spias_rate = real_spias_rate
         self.prev_nominal_spias_rate = nominal_spias_rate
         self.prev_consume_rate = consume_rate
         self.prev_reward = reward
@@ -719,8 +720,8 @@ class FinEnv(Env):
 
     def render(self, mode = 'human'):
 
-        print(self.age, self.gi_real, self.gi_nominal, self.p_notax, self.prev_asset_allocation, \
-            self.prev_consume_rate, self.prev_real_spias_rate, self.prev_nominal_spias_rate, self.prev_reward)
+        print(self.age, self.gi_real, self.gi_real2, self.gi_real_couple, self.gi_nominal, self.gi_nominal2, self.gi_nominal_couple, \
+            self.p_notax, self.prev_asset_allocation, self.prev_consume_rate, self.prev_real_spias_rate, self.prev_nominal_spias_rate, self.prev_reward)
 
     def seed(self, seed=None):
 

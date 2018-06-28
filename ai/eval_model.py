@@ -86,10 +86,12 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
         if model:
             session = U.make_session(num_cpu=1).__enter__()
             tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], model_dir)
+            tf_model = 'single' if eval_model_params['sex2'] == None else 'couple'
             g = tf.get_default_graph()
-            action_tf = g.get_tensor_by_name('pi/action:0')
-            v_tf = g.get_tensor_by_name('pi/v:0')
-            observation_tf = g.get_tensor_by_name('pi/ob:0')
+            observation_tf = g.get_tensor_by_name('single/pi/ob:0')
+            single_action_tf = g.get_tensor_by_name('single/pi/action:0')
+            action_tf = g.get_tensor_by_name(tf_model + '/pi/action:0')
+            v_tf = g.get_tensor_by_name(tf_model + '/pi/v:0')
             action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
             decoded_action = env.decode_action(action)
         else:
@@ -122,7 +124,10 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
 
         if model:
 
-            action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
+            observation = env.decode_observation(obs)
+            couple = observation['couple']
+            a_tf = action_tf if couple else single_action_tf
+            action, = session.run(a_tf, feed_dict = {observation_tf: [obs]})
             return action
 
         elif merton or samuelson:
