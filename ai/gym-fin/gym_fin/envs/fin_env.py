@@ -470,9 +470,10 @@ class FinEnv(Env):
                 real_spias_fraction *= (real_spias_action + 1) / 2
             nominal_spias_fraction = spias_fraction - real_spias_fraction
 
-        if not self.params.real_spias:
+        spias_allowed = self.params.couple_spias or self.alive_single[self.episode_length] != None
+        if not self.params.real_spias or not spias_allowed:
             real_spias_fraction = None
-        if not self.params.nominal_spias:
+        if not self.params.nominal_spias or not spias_allowed:
             nominal_spias_fraction = None
 
         # Softmax.

@@ -148,6 +148,7 @@ class ModelParams(object):
             # There is no such thing as a free lunch; a MWR abve 100% implies the issuers and thus the annuitants are taking on default risk.
             # To crudely reflect this, we don't use MWRs above 100%, and the 2.35% CA guarantee association tax is ignored since the premium
             # goes towards covering defaults.
+        self._boolean_flag('couple-spias', True) # Enable purchase of SPIAs by couples.
 
         # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
             # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.1%).
