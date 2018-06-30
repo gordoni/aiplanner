@@ -167,6 +167,7 @@ class FinEnv(Env):
             # DDPG implementation assumes [-x, x] symmetric actions.
             # PPO1 implementation ignores size and assumes [-inf, inf] output.
         self.observation_space = Box(
+            # Note: Couple status must be observation[0], or else change is_couple in baselines/baselines/ppo1/mlp_policy.py.
             # couple, single, life-expectancy both, life-expectancy one,
             # real guaranteed income: individual 1, individual 2, couple,
             # nominal guaranteed income: individual 1, individual 2, couple,
@@ -665,7 +666,7 @@ class FinEnv(Env):
 
         observation = self._observe()
         done = self.episode_length >= len(self.alive_single) - 1
-        info = {'couple_became_single': couple_became_single}
+        info = {}
         if done:
             info['ce'] = self.utility.inverse(self.episode_utility_sum / self.episode_length)
 
