@@ -449,17 +449,18 @@ class FinEnv(Env):
             # Try and make it easy to learn the optimal amount of guaranteed income,
             # so things function well with differing current amounts of guaranteed income.
 
-            spias_action = tanh(spias_action / 20)
+            spias_action = tanh(spias_action / 4)
                 # Scaling back initial volatility of spias_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
             spias_action = (spias_action + 1) / 2
             current_spias_fraction_estimate = self.gi_sum() / self._income_estimate()
             assert 0 <= current_spias_fraction_estimate <= 1
             # Might like to pass on any more SPIAs when spias_action <= current_spias_fraction_estimate,
-            # but that would then make learning to increase spias_action difficult.
+            # but that might then make learning to increase spias_action difficult.
             # We thus use a variant of the leaky ReLU.
             def leaky_lu(x):
                 '''x in [-1, 1]. Result in [0, 1].'''
-                return 0.05 + x * (1 - 0.05) if x > 0 else 0.05 * (1 + x)
+                leak = 0 # Disable leak for now as it results in unwanted SPIA purchases.
+                return leak + x * (1 - leak) if x > 0 else leak * (1 + x)
             try:
                 spias_fraction = leaky_lu(spias_action - current_spias_fraction_estimate) / leaky_lu(1 - current_spias_fraction_estimate)
             except ZeroDivisionError:
