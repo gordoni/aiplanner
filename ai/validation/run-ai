@@ -81,13 +81,12 @@ validate_parallel () {
 }
 
 $VALIDATE fixed_30-gi_0-no_bonds '--master-life-table=fixed --master-age-end=95 --master-gi-real=0 --master-no-real-bonds --master-no-nominal-bonds --master-bills'
+
 $VALIDATE ssa_plus_3_female-iid_bonds '--master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds'
 $VALIDATE ssa_female-iid_bonds-static_real_spias '--master-life-expectancy-additional=0 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-static-bonds --master-real-spias'
-#$VALIDATE ssa_female-iid_bonds-static_real_spias-consume_rescale_positive_direct '--master-life-expectancy-additional=0 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-static-bonds --master-real-spias --master-consume-rescale=positive_direct'
-#$VALIDATE ssa_female-iid_bonds-static_real_spias-consume_rescale_fraction_direct '--master-life-expectancy-additional=0 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-static-bonds --master-real-spias --master-consume-rescale=fraction_direct'
-#$VALIDATE ssa_female-iid_bonds-static_real_spias-consume_rescale_fraction_biased '--master-life-expectancy-additional=0 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-static-bonds --master-real-spias --master-consume-rescale=fraction_biased'
-#$VALIDATE ssa_female-iid_bonds-static_real_spias-consume_rescale_estimate_biased '--master-life-expectancy-additional=0 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-static-bonds --master-real-spias --master-consume-rescale=estimate_biased'
+
 $VALIDATE ssa_plus_3_female-nominal_5_bonds-nominal_spias '--master-no-real-bonds --master-nominal-bonds-duration=5 --master-nominal-spias'
+
 $VALIDATE ssa_plus_3_female-real_5_bonds '--master-no-nominal-bonds --master-real-bonds-duration=5'
 $VALIDATE ssa_plus_3_female-real_15_bonds '--master-no-nominal-bonds --master-real-bonds-duration=15'
 $VALIDATE ssa_plus_3_female-real_bonds '--master-no-nominal-bonds'
@@ -109,6 +108,22 @@ $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-blind '--master-no-observe-in
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-real_spias '--master-real-spias'
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-nominal_spias '--master-nominal-spias'
 $VALIDATE ssa_plus_3_female-real_and_nominal_bonds-real_and_nominal_spias '--master-real-spias --master-nominal-spias'
+
+$VALIDATE spia-stocks_and_nominal_bonds-no_spias-couple '--master-no-real-bonds --master-sex2=male --master-p-notax=1000000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
+$VALIDATE spia-stocks_and_nominal_bonds-nominal_spias-couple '--master-no-real-bonds --master-nominal-spias --master-sex2=male --master-p-notax=1000000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
+$VALIDATE spia-stocks_and_nominal_bonds-nominal_spias_no_couple-couple '--master-no-real-bonds --master-nominal-spias --master-no-couple-spias --master-sex2=male --master-p-notax=1000000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
+$VALIDATE spia-stocks_and_nominal_bonds-no_spias-single '--master-no-real-bonds'
+$VALIDATE spia-stocks_and_nominal_bonds-nominal_spias-single '--master-no-real-bonds --master-nominal-spias'
+$VALIDATE spia-nominal_bonds-no_spias-couple '--master-no-stocks --master-no-real-bonds --master-sex2=male --master-p-notax=1000000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
+$VALIDATE spia-nominal_bonds-nominal_spias-couple '--master-no-stocks --master-no-real-bonds --master-nominal-spias --master-sex2=male --master-p-notax=1000000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
+$VALIDATE spia-nominal_bonds-nominal_spias_no_couple-couple '--master-no-stocks --master-no-real-bonds --master-nominal-spias --master-no-couple-spias --master-sex2=male --master-p-notax=1000000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
+$VALIDATE spia-nominal_bonds-no_spias-single '--master-no-stocks --master-no-real-bonds'
+$VALIDATE spia-nominal_bonds-nominal_spias-single '--master-no-stocks --master-no-real-bonds --master-nominal-spias'
+$VALIDATE spia-age80-stocks_and_nominal_bonds-no_spias-couple '--master-no-real-bonds --master-sex2=male --master-age-start=80 --master-age-start2=80 --master-p-notax=500000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
+$VALIDATE spia-age80-stocks_and_nominal_bonds-nominal_spias-couple '--master-no-real-bonds --master-nominal-spias --master-sex2=male --master-age-start=80 --master-age-start2=80 --master-p-notax=500000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
+$VALIDATE spia-age80-stocks_and_nominal_bonds-nominal_spias_no_couple-couple '--master-no-real-bonds --master-nominal-spias --master-no-couple-spias --master-sex2=male --master-age-start=80 --master-age-start2=80 --master-p-notax=500000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
+$VALIDATE spia-age80-stocks_and_nominal_bonds-no_spias-single '--master-no-real-bonds --master-age-start=80  --master-p-notax=250000'
+$VALIDATE spia-age80-stocks_and_nominal_bonds-nominal_spias-single '--master-no-real-bonds --master-nominal-spias --master-age-start=80 --master-p-notax=250000'
 
 # Notes on tweaks that have been tried out:
 #
