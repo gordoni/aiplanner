@@ -473,6 +473,10 @@ class FinEnv(Env):
             nominal_spias_fraction = spias_fraction - real_spias_fraction
 
         spias_allowed = self.params.couple_spias or self.alive_single[self.episode_length] != None
+        if self.alive_single[self.episode_length] == None:
+            spias_allowed = self.params.couple_spias and min(self.age, self.age2) >= self.params.spias_age
+        else:
+            spias_allowed = self.age >= self.params.spias_age
         if not self.params.real_spias or not spias_allowed:
             real_spias_fraction = None
         if not self.params.nominal_spias or not spias_allowed:

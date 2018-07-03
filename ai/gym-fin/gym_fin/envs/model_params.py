@@ -149,6 +149,7 @@ class ModelParams(object):
             # To crudely reflect this, we don't use MWRs above 100%, and the 2.35% CA guarantee association tax is ignored since the premium
             # goes towards covering defaults.
         self._boolean_flag('couple-spias', True) # Enable purchase of SPIAs by couples.
+        self._param('spias-age', 0) # Minimum age (of youngest party) at which able to purchase SPIAs.
 
         # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
             # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.1%).
