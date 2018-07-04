@@ -127,6 +127,11 @@ $VALIDATE spia-age80-stocks_and_nominal_bonds-nominal_spias-couple '--master-no-
 $VALIDATE spia-age80-stocks_and_nominal_bonds-nominal_spias_no_couple-couple '--master-no-real-bonds --master-nominal-spias --master-no-couple-spias --master-sex2=male --master-age-start=80 --master-age-start2=80 --master-p-notax=500000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
 $VALIDATE spia-age80-stocks_and_nominal_bonds-no_spias-single '--master-no-real-bonds --master-age-start=80  --master-p-notax=250000'
 $VALIDATE spia-age80-stocks_and_nominal_bonds-nominal_spias-single '--master-no-real-bonds --master-nominal-spias --master-age-start=80 --master-p-notax=250000'
+$VALIDATE spia-age90-stocks_and_nominal_bonds-no_spias-couple '--master-no-real-bonds --master-sex2=male --master-age-start=90 --master-age-start2=90 --master-p-notax=200000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
+$VALIDATE spia-age90-stocks_and_nominal_bonds-nominal_spias-couple '--master-no-real-bonds --master-nominal-spias --master-sex2=male --master-age-start=90 --master-age-start2=90 --master-p-notax=200000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
+$VALIDATE spia-age90-stocks_and_nominal_bonds-nominal_spias_no_couple-couple '--master-no-real-bonds --master-nominal-spias --master-no-couple-spias --master-sex2=male --master-age-start=90 --master-age-start2=90 --master-p-notax=200000 --master-gi-real2=16000' '--train-num-timesteps=5000000'
+$VALIDATE spia-age90-stocks_and_nominal_bonds-no_spias-single '--master-no-real-bonds --master-age-start=90  --master-p-notax=100000'
+$VALIDATE spia-age90-stocks_and_nominal_bonds-nominal_spias-single '--master-no-real-bonds --master-nominal-spias --master-age-start=90 --master-p-notax=100000'
 
 # Notes on tweaks that have been tried out:
 #
