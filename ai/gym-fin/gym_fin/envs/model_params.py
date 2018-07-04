@@ -40,7 +40,8 @@ class ModelParams(object):
 
         self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
 
-        self._param('consume-policy', 'rl', tp = string_type, choices = ('rl', 'constant', 'guyton_rule2', 'guyton_klinger', 'target_percentage', 'pmt'))
+        self._param('consume-policy', 'rl', tp = string_type,
+            choices = ('rl', 'constant', 'guyton_rule2', 'guyton_klinger', 'target_percentage', 'extended_rmd', 'pmt'))
             # Consumption policy.
             # "rl": reinforcement learning.
             # "constant": constant fixed amount consume_initial.
@@ -52,6 +53,7 @@ class ModelParams(object):
             #     with a negative nominal market return and the investment consumption rate exceeds the initial consumption rate.
             # "target_percentage": initially consume_initial, then no investment portfolio withdrawal inflation adjustment for periods where investment
             #     portfolio is below expected value based upon consume_policy_life_expectancy and consume_policy_annual_return.
+            # "extended_rmd": consume according to IRS Required Minimum Distribution table extended to start from age 50.
             # "pmt": payout with life expectancy consume_policy_life_expectancy and return amount consume_policy_annual_return.
         self._param('consume-initial', 0) # Initial consumption amount for particular consumption policies.
         self._param('consume-policy-life-expectancy', None) # Assumed life expectancy for particular consumption policies, or None to use actual life expectancy.
