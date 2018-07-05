@@ -166,7 +166,8 @@ def policy(env, action):
         if env.params.consume_policy_life_expectancy == None:
             life_expectancy = env.life_expectancy_both[env.episode_length] + env.life_expectancy_one[env.episode_length]
         else:
-            life_expectancy = max(1, env.params.consume_policy_life_expectancy - env.episode_length * env.params.time_period)
+            life_expectancy = env.params.consume_policy_life_expectancy - env.episode_length * env.params.time_period
+        life_expectancy = max(1, life_expectancy)
         consume = env.gi_sum() * env.params.time_period + _pmt(env.params.consume_policy_return, life_expectancy, env.p_notax)
         consume_fraction = consume / env.p_plus_income()
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
