@@ -172,7 +172,18 @@ def policy(env, action):
         consume_fraction = consume / env.p_plus_income()
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
-    if env.params.annuitization_policy == 'none':
+    if env.params.annuitization_policy == 'age_real':
+
+        if env.alive_single[env.episode_length] == None:
+            min_age = min(env.age, env.age2)
+        else:
+            min_age = env.age
+
+        spias_allowed = (env.params.couple_spias or env.alive_single[env.episode_length] != None) and min_age >= env.params.spias_permitted_from_age
+        real_spias_fraction = 1 if spias_allowed and min_age >= env.params.annuitization_policy_age_real else 0
+        nominal_spias_fraction = 0
+
+    elif env.params.annuitization_policy == 'none':
 
         real_spias_fraction = 0
         nominal_spias_fraction = 0

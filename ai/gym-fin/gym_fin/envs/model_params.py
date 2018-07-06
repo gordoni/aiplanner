@@ -58,10 +58,12 @@ class ModelParams(object):
         self._param('consume-initial', 0) # Initial consumption amount for particular consumption policies.
         self._param('consume-policy-life-expectancy', None) # Assumed life expectancy for particular consumption policies, or None to use actual life expectancy.
         self._param('consume-policy-return', 0) # Assumed annual return for particular consumption policies.
-        self._param('annuitization-policy', 'rl', tp = string_type, choices = ('rl', 'none'))
+        self._param('annuitization-policy', 'rl', tp = string_type, choices = ('rl', 'age_real', 'none'))
             # Annuitization policy.
             # "rl": reinforcement learning.
+            # "age_real": fully annuitize starting at annuitization_policy_age_real.
             # 'none': no SPIA purchases.
+        self._param('annuitization-policy-age-real', 0) # Age (of youngest party) at which to switch from no annuitization to fully real annuitized.
         self._param('asset-allocation-policy', 'rl', tp = string_type)
             # Asset allocation policy.
             # "rl": reinforcement learning.
@@ -151,7 +153,7 @@ class ModelParams(object):
             # To crudely reflect this, we don't use MWRs above 100%, and the 2.35% CA guarantee association tax is ignored since the premium
             # goes towards covering defaults.
         self._boolean_flag('couple-spias', True) # Enable purchase of SPIAs by couples.
-        self._param('spias-age', 0) # Minimum age (of youngest party) at which able to purchase SPIAs.
+        self._param('spias-permitted-from-age', 0) # Minimum age (of youngest party) at which able to purchase SPIAs.
 
         # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
             # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.1%).
