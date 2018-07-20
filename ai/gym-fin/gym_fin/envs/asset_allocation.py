@@ -10,35 +10,22 @@
 
 class AssetAllocation(object):
 
-    def __init__(self, *, stocks = None, real_bonds = None, nominal_bonds = None, iid_bonds = None, bills = None):
+    def __init__(self, *, fractional = True, **kwargs):
 
-        self.stocks = stocks
-        self.real_bonds = real_bonds
-        self.nominal_bonds = nominal_bonds
-        self.iid_bonds = iid_bonds
-        self.bills = bills
+        self.aa = {**kwargs}
 
-        s = 0
-        if stocks:
-            s += stocks
-        if real_bonds:
-            s += real_bonds
-        if nominal_bonds:
-            s += nominal_bonds
-        if iid_bonds:
-            s += iid_bonds
-        if bills:
-            s += bills
-        assert abs(s - 1) < 1e-15
+        if fractional:
+
+            assert abs(sum(self.aa.values()) - 1) < 1e-15
 
     def __str__(self):
 
         s = ''
-        for a in (self.stocks, self.real_bonds, self.nominal_bonds, self.iid_bonds, self.bills):
-            if a != None:
+        for ac in ('stocks', 'real_bonds', 'nominal_bonds', 'iid_bonds', 'bills'):
+            if ac in self.aa:
                 if s:
-                    s += ', ' + str(a)
+                    s += ', ' + str(self.aa[ac])
                 else:
-                    s = str(a)
+                    s = str(self.aa[ac])
 
         return '[' + s + ']'

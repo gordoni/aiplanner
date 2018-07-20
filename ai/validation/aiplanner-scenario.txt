@@ -26,7 +26,7 @@ master_gi_real_couple = 0
 master_gi_nominal = 0
 master_gi_nominal2 = 0
 master_gi_nominal_couple = 0
-master_p_notax = 500000
+master_p_tax_free = 500000
 
 master_gamma = 3.0
 

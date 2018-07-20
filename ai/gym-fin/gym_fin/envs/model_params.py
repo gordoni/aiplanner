@@ -134,7 +134,23 @@ class ModelParams(object):
         self._param('gi-nominal', (1e3, 1e5), 0) # Nominal guaranteed income of first individual: nominal SPIAs, nominal pensions, and similar.
         self._param('gi-nominal2', (1e3, 1e5), 0) # Nominal guaranteed income of second individual.
         self._param('gi-nominal-couple', (1e3, 1e5), 0) # Nominal guaranteed income of couple. May be negative.
-        self._param('p-notax', (1e3, 1e7), 1e5) # Taxable portfolio size. Empirically OK if eval amount is less than model lower bound.
+        self._param('p-tax-free', (1e3, 1e7), 1e5) # Non-taxable portfolio size. Roth IRAs and similar. Empirically OK if eval amount is less than model lower bound.
+        self._param('p-tax-deferred', (1e3, 1e7), 0) # Taxable deferred portfolio size. Traditional IRAs and similar.
+        self._param('p-taxable-stocks', (1e3, 1e7), 0) # Taxable portfolio stocks.
+        self._param('p-taxable-real-bonds', (1e3, 1e7), 0) # Taxable portfolio real bonds.
+        self._param('p-taxable-nominal-bonds', (1e3, 1e7), 0) # Taxable portfolio nominal bonds.
+        self._param('p-taxable-iid-bonds', (1e3, 1e7), 0) # Taxable portfolio iid bonds.
+        self._param('p-taxable-bills', (1e3, 1e7), 0) # Taxable portfolio bills.
+        self._param('p-taxable-stocks-basis-fraction', (0, 1.5), 1) # Taxable portfolio stocks cost basis as a fraction of stocks value.
+        # Consumption order is assumed to be p_taxable, p_tax_deferred, p_notax.
+
+        self._boolean_flag('tax', False) # Whether income is taxed.
+        self._param('dividend-yield-stocks', 0.02) # Dividend yield for stocks.
+        self._param('dividend-yield-bonds', 0.04) # Dividend yield for bonds and bills.
+        self._param('qualified-dividends-stocks', 1) # Qualified dividends fraction for stocks. Qualified dividends are taxed at capital gains rates.
+        self._param('qualified-dividends-bonds', 0) # Qualified dividends fraction for bonds and bills.
+        self._param('tax-state', 0.06) # Aggregate state, local, and property taxes as a percentage of income after standard deduction.
+            # Average state and local income tax rate is around 3%, and average state property tax is around 3% of income.
 
         self._boolean_flag('static-bonds', False)
             # Whether to model real bonds and inflation and thus nominal bonds and SPIAs as static (that is using a yield curve that does not vary over time).

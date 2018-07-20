@@ -69,15 +69,16 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
     if merton or samuelson:
 
         consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
-        p, consume, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction)
+        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction)
         asset_allocation = AssetAllocation(stocks = stocks_allocation, bills = 1 - stocks_allocation)
         real_bonds_duration = nominal_bonds_duration = None
 
     elif annuitize:
 
-        consume_initial = env.gi_sum() + env.p_notax / (env.params.time_period + env.real_spia.premium(1, mwr = env.params.real_spias_mwr))
+        consume_initial = env.gi_sum() + env.p_sum() / (env.params.time_period + env.real_spia.premium(1, mwr = env.params.real_spias_mwr))
         consume_fraction_initial = consume_initial / env.p_plus_income()
-        p, consume, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction_initial, real_spias_fraction = 1)
+        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, real_spias_purchase, nominal_spias_purchase = \
+            env.spend(consume_fraction_initial, real_spias_fraction = 1)
         asset_allocation = AssetAllocation(stocks = 1)
         real_bonds_duration = nominal_bonds_duration = None
 
@@ -96,7 +97,8 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
             decoded_action = None
         policified_action = policy(env, decoded_action)
         consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
-        p, consume, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
+        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, real_spias_purchase, nominal_spias_purchase = \
+            env.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
 
     logger.info()
     logger.info('Initial properties for first episode:')
