@@ -1,0 +1,51 @@
+/* AIPlanner - Deep Learning Financial Planner
+ * Copyright (C) 2018 Gordon Irlam
+ *
+ * All rights reserved. This program may not be used, copied, modified,
+ * or redistributed without permission.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.
+ */
+
+.error {
+    color: red;
+}
+
+.small-numeric {
+    width: 4em;
+}
+
+.numeric {
+    width: 8em;
+}
+
+.db-component {
+    padding: 10px;
+}
+
+.db-form {
+    margin: auto;
+    width: 80%;
+    border: 2px solid black;
+    padding: 10px;
+    text-align: left;
+}
+
+.db-type {
+    text-align: center;
+}
+
+.cancel {
+    float: left;
+}
+
+.done {
+    float: right;
+}
+
+.clear {
+    clear: left;
+    clear: right;
+}

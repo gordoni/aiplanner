@@ -1,0 +1,185 @@
+<!--
+
+AIPlanner - Deep Learning Financial Planner
+Copyright (C) 2018 Gordon Irlam
+
+All rights reserved. This program may not be used, copied, modified,
+or redistributed without permission.
+
+This program is distributed WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE.
+
+-->
+
+<form class="scenario-form" #scenarioForm="ngForm">
+
+  <div *ngIf="step == 0">
+    <h1 class="title">AIPlanner</h1>
+    AIPlaner uses <a href="http://ssrn.com/abstract=3201703" target="_blank" rel="noopener">deep
+    reinforcement learning</a> to compute the optimal spending and
+    investment strategy so as to maximize lifetime well-being.
+  </div>
+
+  <div class="main-button" *ngIf="step == 0">
+    <button class="button" (click)="nextStep()">Start</button>
+  </div>
+
+  <div *ngIf="step == 1">
+    <h1 class="title">Longevity</h1>
+    Sex: <select type="select" name="scenarioSex" [(ngModel)]="sex">
+      <option value="male">male</option>
+      <option value="female">female</option>
+    </select>
+    Age: <input type="number" class="small-numeric" required name="scenarioAge" #scenarioAge="ngModel" [(ngModel)]="age">
+      <div class="error" *ngIf="scenarioAge.invalid">
+        Invalid numeric value.
+      </div>
+    Health: {{health()}} - extra life expectancy of
+        <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional" [(ngModel)]="lifeExpectancyAdditional"> years
+  </div>
+
+  <div *ngIf="step == 2">
+    <h1 class="title">Financial position</h1>
+    Existing defined benefits:
+    <br>
+    <div class="defined-benefits">
+      <table>
+        <tr *ngIf="definedBenefits.length > 0; else elseBlock">
+          <td> </td>
+          <td> Owner </td>
+          <td> Starting age </td>
+          <td> Annual amount </td>
+        </tr>
+        <ng-template #elseBlock>
+          <td> None </td>
+        </ng-template>
+        <tr class="db-container" *ngFor="let db of definedBenefits; index as i">
+          <td> {{db.type}} </td>
+          <td> {{db.owner}} </td>
+          <td class="right"> {{db.age}} </td>
+          <td class="right"> {{db.amount()}} </td>
+          <td>
+            <button (click)="doEdit(db)" [disabled]="editDefinedBenefit">Edit</button>
+            <button (click)="deleteDb(i)" [disabled]="editDefinedBenefit">Delete</button>
+          </td>
+        </tr>
+        <tr *ngIf="definedBenefits.length > 0">
+          <td> Total </td>
+          <td> - </td>
+          <td class="right"> - </td>
+          <td class="right"> {{dbTotal()}} </td>
+          <td> </td>
+        </tr>
+      </table>
+      <div class="buttons">
+        <button (click)="addDb('Social Security')" [disabled]="editDefinedBenefit">add Social Security</button>
+        <button (click)="addDb('Pension')" [disabled]="editDefinedBenefit">add Pension</button>
+        <button (click)="addDb('Income Annuity')" [disabled]="editDefinedBenefit">add Income Annuity</button>
+        <button (click)="addDb('Reverse Mortgage')" [disabled]="editDefinedBenefit">add Reverse Mortgage</button>
+      </div>
+    </div>
+    <div *ngIf="editDefinedBenefit">
+      <app-db [data]="editDefinedBenefit"></app-db>
+    </div>
+    <br>
+    <br>
+    Existing defined contribution savings:
+    <div class="defined-contributions">
+      <table>
+        <tr>
+          <td> Traditional IRA/401(k) </td>
+          <td> <input type="number" class="numeric" required name="scenarioPTaxDeferred" #scenarioPTaxDeferred="ngModel" [(ngModel)]="pTaxDeferred">
+            <div class="error" *ngIf="scenarioPTaxDeferred.invalid">
+              Invalid numeric value.
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td> Roth IRA/401(k) </td>
+          <td> <input type="number" class="numeric" required name="scenarioPTaxFree" #scenarioPTaxFree="ngModel" [(ngModel)]="pTaxFree">
+            <div class="error" *ngIf="scenarioPTaxFree.invalid">
+              Invalid numeric value.
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td> Taxable bonds </td>
+          <td> <input type="number" class="numeric" required name="scenarioPTaxableBonds" #scenarioPTaxableBonds="ngModel" [(ngModel)]="pTaxableBonds">
+            <div class="error" *ngIf="scenarioPTaxableBonds.invalid">
+              Invalid numeric value.
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td> Taxable stocks </td>
+          <td> <input type="number" class="numeric" required name="scenarioPTaxableStocks" #scenarioPTaxableStocks="ngModel" [(ngModel)]="pTaxableStocks">
+            <div class="error" *ngIf="scenarioPTaxableStocks.invalid">
+              Invalid numeric value.
+            </div>
+          </td>
+          <td>
+            Stocks cost basis:
+            <input type="number" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
+            <div class="error" *ngIf="scenarioPTaxableStocksBasis.invalid">
+              Invalid numeric value.
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td> Total </td>
+          <td class="right"> {{pTotal()}} </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div *ngIf="step == 3">
+    <h1 class="title">Financial goals</h1>
+    Age at retirement: <input type="number" class="small-numeric" required name="scenarioRetirementAge" #scenarioRetirementAge="ngModel" [(ngModel)]="retirementAge">
+      <div class="error" *ngIf="scenarioRetirementAge.invalid">
+        Invalid numeric value.
+      </div>
+  </div>
+
+  <div class="main-button-right" *ngIf="1 <= step && step < 4">
+    <button class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !dbValid()">Next</button>
+  </div>
+
+  <div *ngIf="step == 4">
+    <h1 class="title">Well being</h1>
+    Coefficient of relative risk aversion: <input type="number" class="small-numeric" required name="scenarioGamma" #scenarioGamma="ngModel" [(ngModel)]="gamma">
+      <div class="error" *ngIf="scenarioGamma.invalid">
+        Invalid numeric value.
+      </div>
+    <div class="main-button">
+      <button class="button" (click)="calculate()" [disabled]="!scenarioForm.valid || !dbValid()">Submit</button>
+    </div>
+  </div>
+
+  <div *ngIf="step == 5">
+    <h1 class="title">Calculating</h1>
+    <p>
+      Please wait 10 seconds.
+      Do not reload this page.
+    </p>
+  </div>
+
+  <div *ngIf="step == 6">
+    <p>
+      Current recommended retirement consumption: {{consume}}
+    </p>
+    <p>
+      Recommended asset allocation: {{assetAllocation}}
+    </p>
+    <img src="{{dataDir}}/paths.svg" width="50%"/>
+    <div class="main-button">
+      <button class="button" (click)="editSteps()">Edit</button>
+    </div>
+  </div>
+
+  <div class="error" *ngIf="errorMessage">
+    {{errorMessage}}
+  </div>
+
+</form>

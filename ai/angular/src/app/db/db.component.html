@@ -1,0 +1,109 @@
+<!--
+
+AIPlanner - Deep Learning Financial Planner
+Copyright (C) 2018 Gordon Irlam
+
+All rights reserved. This program may not be used, copied, modified,
+or redistributed without permission.
+
+This program is distributed WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE.
+
+-->
+
+<div class="db-component">
+
+  <form class="db-form" #dbForm="ngForm">
+
+    <div class="db-type">
+      {{newData.type}}
+    </div>
+
+    <div>
+      Owner: <select name="dbOwner" [(ngModel)]="newData.owner">
+        <option value="self">self</option>
+        <option value="spouse">spouse</option>
+      </select>
+    </div>
+
+    <div>
+      Starting age: <input type="number" class="small-numeric" required name="dbAge" #dbAge="ngModel" [(ngModel)]="newData.age">
+        <div class="error" *ngIf="dbAge.invalid">
+          Invalid numeric value.
+        </div>
+    </div>
+
+    <div>
+      Payment: <input type="number" class="numeric" required name="dbAmountPer" #dbAmountPer="ngModel" [(ngModel)]="newData.amountPer">
+        <div class="error" *ngIf="dbAmountPer.invalid">
+          Invalid numeric value.
+        </div>
+      per <select name="dbPer" [(ngModel)]="newData.per">
+        <option value="month">month</option>
+        <option value="year">year</option>
+      </select>
+    </div>
+
+    <div *ngIf="!['Social Security', 'Reverse Mortgage'].includes(newData.type)">
+      Annual inflation adjustment:
+      <select name="dbInflationAdjustment" [ngModel]="newData.inflationAdjustment" (ngModelChange)="newData.inflationAdjustment=toNumber($event)">
+        <option value="cpi">CPI</option>
+        <option value="0">none</option>
+        <option value="0.01">1%</option>
+        <option value="0.02">2%</option>
+        <option value="0.03">3%</option>
+        <option value="0.04">4%</option>
+      </select>
+    </div>
+
+    <div *ngIf="newData.type != 'Social Security'">
+      <select *ngIf="newData.type != 'Pension'" name="dbJoint" [ngModel]="newData.joint" (ngModelChange)="newData.joint=($event == 'true')">
+        <option value="true">Joint</option>
+        <option value="false">Survivor only</option>
+      </select>
+      <span *ngIf="newData.type == 'Pension'"> Survivor </span>
+      payout: <input type="number" class="small-numeric" required name="dbPayoutFractionPct" #dbPayoutFractionPct="ngModel" [(ngModel)]="newData.payoutFractionPct">%
+        <div class="error" *ngIf="dbPayoutFractionPct.invalid">
+          Invalid numeric value.
+        </div>
+    </div>
+
+    <div *ngIf="newData.type == 'Income Annuity'">
+      Source of funds: <select name="dbSourceOfFunds" [(ngModel)]="newData.sourceOfFunds">
+        <option value="taxable">Taxable (non-qualified funds)</option>
+        <option value="tax_deferred">Tax deferred (qualified funds - IRA, 401(k))</option>
+        <option value="tax_free">Tax exempt (Roth)</option>
+      </select>
+    </div>
+
+    <div *ngIf="newData.sourceOfFunds == 'taxable'">
+      Taxble exclusion period:
+        <input type="number" class="small-numeric" required name="dbExclusionPeriod" #dbExclusionPeriod="ngModel" [(ngModel)]="newData.exclusionPeriod">
+        years from starting age
+        <div class="error" *ngIf="dbExclusionPeriod.invalid">
+          Invalid numeric value.
+        </div>
+    </div>
+
+    <div *ngIf="newData.sourceOfFunds == 'taxable'">
+      Taxable exclusion amount:
+        <input type="number" class="numeric" required name="dbExclusionAmountPer" #dbExclusionAmountPer="ngModel" [(ngModel)]="newData.exclusionAmountPer">
+        <div class="error" *ngIf="dbExclusionAmountPer.invalid">
+          Invalid numeric value.
+        </div>
+        per {{newData.per}}
+    </div>
+
+    <div class="cancel">
+      <button (click)="cancel()">Cancel</button>
+    </div>
+    <div class="done">
+      <button (click)="done()" [disabled]="!dbForm.valid">Done</button>
+    </div>
+    <div class="clear">
+    </div>
+
+  </form>
+
+</div>

@@ -1,0 +1,83 @@
+/* AIPlanner - Deep Learning Financial Planner
+ * Copyright (C) 2018 Gordon Irlam
+ *
+ * All rights reserved. This program may not be used, copied, modified,
+ * or redistributed without permission.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.
+ */
+
+.error {
+    color: red;
+}
+
+.small-numeric {
+    width: 4em;
+}
+
+.numeric {
+    width: 8em;
+}
+
+.scenario-form {
+    margin: auto;
+    width: 85%;
+    text-align: left;
+}
+
+.right {
+    text-align: right;
+}
+
+.title {
+    text-align: center;
+}
+
+.defined-benefits, .defined-contributions {
+    padding: 10px 50px;
+}
+
+.defined-benefits table, .defined-benefits td {
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 5px;
+}
+
+.buttons {
+    padding: 10px 0px;
+}
+
+.defined-contributions table {
+    border: 1px solid black;
+    padding: 5px;
+}
+
+.main-button {
+    text-align: center;
+    padding: 20px;
+}
+
+.main-button-right {
+    text-align: right;
+    padding: 20px;
+}
+
+.button {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    background-color: black;
+    color: white;
+    font-size: 24px;
+}
+
+.button:hover {
+    box-shadow: -4px 4px 10px 5px rgba(0,0,0,0.2);
+}
+
+.button[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
