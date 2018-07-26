@@ -22,7 +22,7 @@ export class DbComponent implements OnInit {
 
   @Input() public data: DefinedBenefit;
 
-  private newData: DefinedBenefit;
+  public newData: DefinedBenefit;
 
   constructor() {
   }
