@@ -1,6 +1,9 @@
-AACalc comprises a pair of asset allocation and consumption planning
-calculators based on scientific principles, plus a SPIA pricing
-calulator.
+This directory comprises three asset allocation and consumption
+planning calculators based on scientific principles, plus a SPIA
+pricing calulator.
+
+AIPlanner uses deep reinforcement learning. It is computationally
+demanding to train, but fast once trained.
 
 AACalc Alloc uses Merton's approach. It is fast, and easy to use.
 
@@ -162,6 +165,8 @@ Getting started:
         cd aacalc
         git config --global user.name "<FirstName> <LastName>"
         git config --global user.email "<user@email.com>"
+
+  - See ai/README for the web Python Angular frontend based AIPlanner.
 
   - See web/README for the web Python Django based Alloc.
 
