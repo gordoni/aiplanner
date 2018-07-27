@@ -1,0 +1,80 @@
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+master_consume_floor = 1e4
+master_consume_ceiling = 1e7
+
+# Observation is of life expectancy, so the fact that we train using
+# parameters that don't match those of the user has a second order
+# impact only.
+master_sex = 'female'
+master_life_table_date = '2020-01-01'
+master_life_expectancy_additional = 3 # Investors tend to be in better health than the average retiree.
+master_life_expectancy_additional2 = 3
+master_age_adjust = 65
+master_age_adjust2 = 65
+
+master_age_start = 50
+master_age_start2 = 50
+master_age_end = 120
+
+master_consume_additional = 0.6
+
+master_gi_real_low = 1e3
+master_gi_real_high = 1e5
+master_gi_real2 = 0
+master_gi_real_couple = 0
+master_gi_nominal_low = 1e3
+master_gi_nominal_high = 1e5
+master_gi_nominal2 = 0
+master_gi_nominal_couple = 0
+master_p_tax_free_low = 1e3
+master_p_tax_free_high = 1e7
+master_p_tax_deferred_low = 1e3
+master_p_tax_deferred_high = 1e7
+master_p_taxable_stocks_low = 1e3
+master_p_taxable_stocks_high = 1e7
+master_p_taxable_real_bonds = 0
+master_p_taxable_nominal_bonds_low = 1e3
+master_p_taxable_nominal_bonds_high = 1e7
+master_p_taxable_iid_bonds = 0
+master_p_taxable_bills = 0
+master_p_taxable_stocks_basis_fraction_low = 0
+master_p_taxable_stocks_basis_fraction_high = 1.5
+
+master_gamma = 3.0
+
+master_tax = True
+
+master_real_spias = False
+master_nominal_spias = False
+master_nominal_spias_mwr = 1.0 # Based on 2015 pricing exceeding 100%.
+
+# Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
+    # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.1%).
+    # For nominal government bonds the reported real return is 2.4% +/- 11.2%, standard error 1.0% (geometric 1.8%).
+    # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%).
+    #
+    # However the U.S. market is presently widely considered to be somewhat overvalued. To get a handle on this we examined P/E ratios.
+    # For 1950-2017 the harmonic mean S&P 500 P/E ratio (not CAPE) was 14.85 (based on Shiller's data).
+    # This compares to a TTM P/E of 25.47 at the end of 2017, and a 12 month forward P/E of 16.0 (FactSet May 4, 2018).
+    # Thus two reasonable estimates are the market is 10% and 70% overvalued.
+master_returns_standard_error = True
+master_stocks = True
+master_stocks_return = 0.065
+master_stocks_volatility = 0.174
+master_stocks_standard_error = 0.016
+master_real_bonds = False
+master_nominal_bonds = True
+master_iid_bonds = False
+master_bonds_standard_error = 0.010
+master_bills = False
+
+train_num_timesteps = 1000000 # No observed advantage from longer, may produce worse CE if 500000.
