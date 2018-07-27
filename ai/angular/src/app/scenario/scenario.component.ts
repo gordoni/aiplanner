@@ -49,7 +49,7 @@ export class ScenarioComponent implements OnInit {
   }
 
   health() {
-    if (this.lifeExpectancyAdditional >= 3)
+    if (this.lifeExpectancyAdditional >= 4)
       return "Excellent";
     if (this.lifeExpectancyAdditional >= 2)
       return "Good";
@@ -123,7 +123,7 @@ export class ScenarioComponent implements OnInit {
 
     var scenario = {
         'sex': this.sex,
-        'age': this.age,
+        'age_start': this.age,
         'life_expectancy_additional': this.lifeExpectancyAdditional,
 
         'defined_benefits': dbs,
