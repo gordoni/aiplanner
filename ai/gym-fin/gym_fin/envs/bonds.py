@@ -596,91 +596,104 @@ class BondsMeasuredInNominalTerms(Bonds):
 
         return self.bonds._inflation_adjust_annual(year)
 
-def bonds_init(need_real = True, need_nominal = True, need_inflation = True, real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
-    '''Return a tuple of objects (real_bonds, nominal_bonds, inflation)
-    representing a bond and inflation model. They are each either None
-    if they are not needed and have not been computed or provide the
-    following methods:
+class BondsSet(object):
 
-        reset()
+    def __init__(self, need_real = True, need_nominal = True, need_inflation = True, real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
+        '''Returns a BondsSet object having attributes "real",
+        "nominal", and "inflation" representing a bond and
+        inflation model. They are each either None if they are not
+        needed and have not been computed or provide the following
+        methods:
 
-            Reset to the initial state.
+            reset()
 
-        step()
+                Reset to the initial state.
 
-            Advance by time time_period.
+            step()
 
-        spot(t)
+                Advance by time time_period.
 
-            Return the continuously compounded annualized spot rate
-            over term t years for bonds of the appropriate type.
+            spot(t)
 
-        sample(duration = 7)
+                Return the continuously compounded annualized spot
+                rate over term t years for bonds of the appropriate
+                type.
 
-            Returns the time_period multipicative real return (change
-            in value) for zero coupon bonds of the appropriate type
-            having an initial duration duration years. May be called
-            repeatedly with different values for duration. Calling
-            with the same value will return the same result, unless
-            step() is also called.
+            sample(duration = 7)
 
-        observe()
+                Returns the time_period multipicative real return
+                (change in value) for zero coupon bonds of the
+                appropriate type having an initial duration duration
+                years. May be called repeatedly with different values
+                for duration. Calling with the same value will return
+                the same result, unless step() is also called.
 
-            Returns a tuple. Current short real interest rate or short
-            inflation rate as appropriate. For nominal bonds the tuple
-            is empty.
+            observe()
 
-    The nominal_bonds model need to be kept in sync with the real
-    bonds and inflation models. Calling reset() or step() on
-    nominal_bonds takes care of this by calling the corresponding
-    routines on both real bonds and inflation. They should not also be
-    called separately.
+                Returns a tuple. Current short real interest rate or
+                short inflation rate as appropriate. For nominal bonds
+                the tuple is empty.
 
-    Inflation represents the nominal value of a bond that will earn
-    interest at the rate of inflation. inflation defines an additional
-    method:
+        The nominal_bonds model need to be kept in sync with the real
+        bonds and inflation models. Calling reset() or step() on
+        nominal_bonds takes care of this by calling the corresponding
+        routines on both real bonds and inflation. They should not
+        also be called separately.
 
-        inflation()
+        Inflation represents the nominal value of a bond that will
+        earn interest at the rate of inflation. inflation defines an
+        additional method:
 
-            Returns the inflation rate factor to be experienced over
-            the the next time period of length time_period.
+            inflation()
 
-    '''
+                Returns the inflation rate factor to be experienced
+                over the the next time period of length time_period.
 
-    if need_nominal:
-        need_inflation = True
-    if need_inflation:
-        need_real = True
+        '''
 
-    if need_real:
-        real_bonds = RealBonds(standard_error = real_standard_error, time_period = time_period)
-    else:
-        real_bonds = None
+        self.time_period = time_period
 
-    if need_inflation:
-        inflation = BreakEvenInflation(real_bonds, standard_error = inflation_standard_error, time_period = time_period)
-    else:
-        inflation = None
+        if need_nominal:
+            need_inflation = True
+        if need_inflation:
+            need_real = True
 
-    if need_nominal:
-        nominal_bonds = NominalBonds(real_bonds, inflation, time_period = time_period)
-    else:
-        nominal_bonds = None
+        if need_real:
+            self.real = RealBonds(standard_error = real_standard_error, time_period = time_period)
+        else:
+            self.real = None
 
-    return real_bonds, nominal_bonds, inflation
+        if need_inflation:
+            self.inflation = BreakEvenInflation(self.real, standard_error = inflation_standard_error, time_period = time_period)
+        else:
+            self.inflation = None
+
+        if need_nominal:
+            self.nominal = NominalBonds(self.real, self.inflation, time_period = time_period)
+        else:
+            self.nominal = None
+
+    def update(self, *, real_standard_error, inflation_standard_error, time_period):
+        '''Change the indicated bond parameters.'''
+
+        if self.real:
+            self.real.standard_error = real_standard_error
+        if self.inflation:
+            self.inflation.standard_error = inflation_standard_error
+        assert time_period == self.time_period
 
 if __name__ == '__main__':
 
     seed(0)
 
-    real_bonds, nominal_bonds, inflation = bonds_init()
-    modeled_inflation = BreakEvenInflation(real_bonds, model_bond_volatility = False)
-    nominal_real_bonds = BondsMeasuredInNominalTerms(real_bonds, inflation)
-    nominal_nominal_bonds = BondsMeasuredInNominalTerms(nominal_bonds, inflation)
+    bonds = BondsSet()
+    modeled_inflation = BreakEvenInflation(bonds.real, model_bond_volatility = False)
+    nominal_real_bonds = BondsMeasuredInNominalTerms(bonds.real, bonds.inflation)
+    nominal_nominal_bonds = BondsMeasuredInNominalTerms(bonds.nominal, bonds.inflation)
 
     print('Real bonds:')
     print()
-    real_bonds._report()
+    bonds.real._report()
 
     print()
 
@@ -692,13 +705,13 @@ if __name__ == '__main__':
 
     print('Inflation (as used to provide nominal bond volatility):')
     print()
-    inflation._report()
+    bonds.inflation._report()
 
     print()
 
     print('Nominal bonds (in real terms):')
     print()
-    nominal_bonds._report()
+    bonds.nominal._report()
 
     print()
 

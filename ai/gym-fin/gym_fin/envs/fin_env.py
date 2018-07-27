@@ -21,7 +21,7 @@ from life_table import LifeTable
 from spia import IncomeAnnuity
 
 from gym_fin.envs.asset_allocation import AssetAllocation
-from gym_fin.envs.bonds import bonds_init
+from gym_fin.envs.bonds import BondsSet
 from gym_fin.envs.policies import policy
 from gym_fin.envs.returns import Returns, returns_report, yields_report
 from gym_fin.envs.returns_sample import ReturnsSample
@@ -155,8 +155,9 @@ class FinEnv(Env):
         return first_dies_first, alive_years, tuple(alive_single), table, table2, \
             tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
 
-    def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
+    def __init__(self, bonds_cached = None, action_space_unbounded = False, direct_action = False, **kwargs):
 
+        self.bonds = bonds_cached if bonds_cached else BondsSet()
         self.action_space_unbounded = action_space_unbounded
         self.direct_action = direct_action
         self.params = AttributeObject(kwargs)
@@ -195,19 +196,19 @@ class FinEnv(Env):
         self.bills = Returns(self.params.bills_return, self.params.bills_volatility,
             self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
 
-        self.real_bonds, self.nominal_bonds, self.inflation = bonds_init(
+        self.bonds.update(
             real_standard_error = self.params.bonds_standard_error if self.params.returns_standard_error else 0,
             inflation_standard_error = self.params.inflation_standard_error if self.params.returns_standard_error else 0,
             time_period = self.params.time_period)
-        self.bonds_stepper = self.nominal_bonds
+        self.bonds_stepper = self.bonds.nominal
 
         if self.params.iid_bonds:
             if self.params.iid_bonds_type == 'real':
-                self.iid_bonds = ReturnsSample(self.real_bonds, self.params.iid_bonds_duration,
+                self.iid_bonds = ReturnsSample(self.bonds.real, self.params.iid_bonds_duration,
                     self.params.bonds_standard_error if self.params.returns_standard_error else 0,
                     stepper = self.bonds_stepper, time_period = self.params.time_period)
             elif self.params.iid_bonds_type == 'nominal':
-                self.iid_bonds = ReturnsSample(self.nominal_bonds, self.params.iid_bonds_duration,
+                self.iid_bonds = ReturnsSample(self.bonds.nominal, self.params.iid_bonds_duration,
                     self.params.bonds_standard_error if self.params.returns_standard_error else 0,
                     stepper = self.bonds_stepper, time_period = self.params.time_period)
 
@@ -218,19 +219,19 @@ class FinEnv(Env):
 
             if self.params.real_bonds:
                 if self.params.real_bonds_duration:
-                    yields_report('real bonds {:2d}'.format(int(self.params.real_bonds_duration)), self.real_bonds,
+                    yields_report('real bonds {:2d}'.format(int(self.params.real_bonds_duration)), self.bonds.real,
                         duration = self.params.real_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
                 else:
-                    yields_report('real bonds  5', self.real_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
-                    yields_report('real bonds 15', self.real_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                    yields_report('real bonds  5', self.bonds.real, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                    yields_report('real bonds 15', self.bonds.real, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
             if self.params.nominal_bonds:
                 if self.params.nominal_bonds_duration:
-                    yields_report('nominal bonds {:2d}'.format(int(self.params.nominal_bonds_duration)), self.nominal_bonds,
+                    yields_report('nominal bonds {:2d}'.format(int(self.params.nominal_bonds_duration)), self.bonds.nominal,
                         duration = self.params.nominal_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
                 else:
-                    yields_report('nominal bonds  5', self.nominal_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
-                    yields_report('nominal bonds 15', self.nominal_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                    yields_report('nominal bonds  5', self.bonds.nominal, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                    yields_report('nominal bonds 15', self.bonds.nominal, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
             print()
             print('Real returns:')
@@ -240,19 +241,19 @@ class FinEnv(Env):
 
             if self.params.real_bonds:
                 if self.params.real_bonds_duration:
-                    returns_report('real bonds {:2d}'.format(int(self.params.real_bonds_duration)), self.real_bonds,
+                    returns_report('real bonds {:2d}'.format(int(self.params.real_bonds_duration)), self.bonds.real,
                         duration = self.params.real_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
                 else:
-                    returns_report('real bonds  5', self.real_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
-                    returns_report('real bonds 15', self.real_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                    returns_report('real bonds  5', self.bonds.real, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                    returns_report('real bonds 15', self.bonds.real, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
             if self.params.nominal_bonds:
                 if self.params.nominal_bonds_duration:
-                    returns_report('nominal bonds {:2d}'.format(int(self.params.nominal_bonds_duration)), self.nominal_bonds,
+                    returns_report('nominal bonds {:2d}'.format(int(self.params.nominal_bonds_duration)), self.bonds.nominal,
                         duration = self.params.nominal_bonds_duration, stepper = self.bonds_stepper, time_period = self.params.time_period)
                 else:
-                    returns_report('nominal bonds  5', self.nominal_bonds, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
-                    returns_report('nominal bonds 15', self.nominal_bonds, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                    returns_report('nominal bonds  5', self.bonds.nominal, duration = 5, stepper = self.bonds_stepper, time_period = self.params.time_period)
+                    returns_report('nominal bonds 15', self.bonds.nominal, duration = 15, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
             if self.params.iid_bonds:
                 returns_report('iid bonds', self.iid_bonds, time_period = self.params.time_period)
@@ -261,7 +262,7 @@ class FinEnv(Env):
                 returns_report('bills', self.bills, time_period = self.params.time_period)
 
             if self.params.nominal_bonds or self.params.nominal_spias:
-                returns_report('inflation', self.inflation,
+                returns_report('inflation', self.bonds.inflation,
                     duration = self.params.time_period, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
         self.reset()
@@ -289,17 +290,17 @@ class FinEnv(Env):
 
         self.spia_age = self.age
         self.joint_payout_fraction = 1 / (1 + self.params.consume_additional)
-        self.real_spia = IncomeAnnuity(self.real_bonds, self.life_table, life_table2 = self.life_table2, payout_delay = 12,
+        self.real_spia = IncomeAnnuity(self.bonds.real, self.life_table, life_table2 = self.life_table2, payout_delay = 12,
             joint_payout_fraction = self.joint_payout_fraction, frequency = 1, cpi_adjust = 'all', date_str = self.params.life_table_date)
-        self.nominal_spia = IncomeAnnuity(self.nominal_bonds, self.life_table, life_table2 = self.life_table2, payout_delay = 12,
+        self.nominal_spia = IncomeAnnuity(self.bonds.nominal, self.life_table, life_table2 = self.life_table2, payout_delay = 12,
             joint_payout_fraction = self.joint_payout_fraction, frequency = 1, date_str = self.params.life_table_date)
 
         if self.life_table2:
 
             life_table = self.life_table2 if self.first_dies_first else self.life_table
-            self.real_spia_single = IncomeAnnuity(self.real_bonds, life_table, payout_delay = 12,
+            self.real_spia_single = IncomeAnnuity(self.bonds.real, life_table, payout_delay = 12,
                 frequency = 1, cpi_adjust = 'all', date_str = self.params.life_table_date)
-            self.nominal_spia_single = IncomeAnnuity(self.nominal_bonds, life_table, payout_delay = 12,
+            self.nominal_spia_single = IncomeAnnuity(self.bonds.nominal, life_table, payout_delay = 12,
                 frequency = 1, date_str = self.params.life_table_date)
 
         found = False
@@ -677,7 +678,7 @@ class FinEnv(Env):
             else:
                 self.gi_nominal += payout
 
-        inflation = self.inflation.inflation()
+        inflation = self.bonds.inflation.inflation()
         self.gi_nominal /= inflation
         self.gi_nominal2 /= inflation
         self.gi_nominal_couple /= inflation
@@ -694,9 +695,9 @@ class FinEnv(Env):
                 dividend_yield = self.params.dividend_yield_bonds
                 qualified_dividends = self.params.qualified_dividends_bonds
                 if ac == 'real_bonds':
-                    ret = self.real_bonds.sample(real_bonds_duration)
+                    ret = self.bonds.real.sample(real_bonds_duration)
                 elif ac == 'nominal_bonds':
-                    ret = self.nominal_bonds.sample(nominal_bonds_duration)
+                    ret = self.bonds.nominal.sample(nominal_bonds_duration)
                 elif ac == 'iid_bonds':
                     ret = self.iid_bonds.sample()
                 elif ac == 'bills':
@@ -809,10 +810,10 @@ class FinEnv(Env):
             self.age += step * self.params.time_period
             self.episode_length += step
 
-            self.real_bonds.oup.next_x = real_oup_x
-            assert self.inflation.inflation_a == self.inflation.bond_a and self.inflation.inflation_sigma == self.inflation.bond_sigma
-            self.inflation.oup.next_x = inflation_oup_x
-            self.inflation.inflation_oup.next_x = inflation_oup_x
+            self.bonds.real.oup.next_x = real_oup_x
+            assert self.bonds.inflation.inflation_a == self.bonds.inflation.bond_a and self.bonds.inflation.inflation_sigma == self.bonds.inflation.bond_sigma
+            self.bonds.inflation.oup.next_x = inflation_oup_x
+            self.bonds.inflation.inflation_oup.next_x = inflation_oup_x
             self._step_bonds()
 
         self.gi_real = gi_real
@@ -846,12 +847,12 @@ class FinEnv(Env):
         p_basis, cg_carry = self.taxes.observe()
 
         if self.params.observe_interest_rate:
-            real_interest_rate, = self.real_bonds.observe()
+            real_interest_rate, = self.bonds.real.observe()
         else:
             real_interest_rate = 0
 
         if self.params.observe_inflation_rate:
-            inflation_rate, = self.inflation.observe()
+            inflation_rate, = self.bonds.inflation.observe()
         else:
             inflation_rate = 0
 
