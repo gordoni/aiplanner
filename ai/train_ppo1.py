@@ -12,6 +12,8 @@
 
 # Code based on baselines/ppo1/run_mujoco.py
 
+from json import dumps
+from os import mkdir
 from shutil import rmtree
 
 import tensorflow as tf
@@ -77,6 +79,11 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     v_tf = g.get_tensor_by_name('pi/v:0')
     observation_tf = g.get_tensor_by_name('pi/ob:0')
     tf.saved_model.simple_save(session, model_dir, {'observation': observation_tf}, {'action': action_tf, 'value': v_tf})
+    assets_dir = model_dir + '/assets.extra'
+    mkdir(assets_dir)
+    data = dumps(training_model_params)
+    with open(assets_dir + '/params.json', 'w') as f:
+        f.write(data)
 
 def main():
     parser = arg_parser()
