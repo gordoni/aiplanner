@@ -50,25 +50,6 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
         return env
     env = DummyVecEnv([make_env])
     env = VecNormalize(env)
-    if evaluation:
-        eval_seed += 1000000 # Use a different seed than might have been used during training.
-        eval_env = make_fin_env(action_space_unbounded=True, training=False, **eval_model_params)
-        evaluator = Evaluator(eval_env, eval_seed, eval_num_timesteps, eval_render)
-        global next_eval_timestep
-        next_eval_timestep = 0
-        def eval_callback(l, g):
-            global next_eval_timestep
-            if l['timesteps_so_far'] < next_eval_timestep:
-                return False
-            next_eval_timestep = l['timesteps_so_far'] + eval_frequency
-            def pi(obs):
-                stochastic = False
-                action, vpred = l['pi'].act(stochastic, obs)
-                return action
-            return evaluator.evaluate(pi)
-    else:
-        eval_env = None
-        eval_callback = None
     ppo2.learn(policy=policy_fn, env=env, nsteps=2048, nminibatches=32,
         lam=0.95, gamma=1, noptepochs=10, log_interval=1,
         ent_coef=0.0,
@@ -76,8 +57,6 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
         cliprange=0.2,
         total_timesteps=train_num_timesteps)
     env.close()
-    if eval_env:
-        eval_env.close()
     #g = tf.get_default_graph()
     #train_tf = g.get_tensor_by_name('pi/train:0')
     #action_tf = g.get_tensor_by_name('pi/action:0')

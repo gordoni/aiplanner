@@ -886,3 +886,23 @@ class FinEnv(Env):
             'real_interest_rate': real_interest_rate,
             'inflation_rate': inflation_rate
         }
+
+    def fully_decode_action(self, action):
+
+        if action is None:
+            decoded_action = None
+        else:
+            decoded_action = self.decode_action(action)
+        policified_action = policy(self, decoded_action)
+        consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
+        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, real_spias_purchase, nominal_spias_purchase = \
+            self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
+
+        return {
+            'consume': consume,
+            'asset_allocation': asset_allocation,
+            'real_spias_purchase': real_spias_purchase if self.params.real_spias else None,
+            'nominal_spias_purchase': nominal_spias_purchase if self.params.real_spias else None,
+            'real_bonds_duration': real_bonds_duration,
+            'nominal_bonds_duration': nominal_bonds_duration,
+        }

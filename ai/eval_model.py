@@ -92,20 +92,22 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
             action_tf = g.get_tensor_by_name('pi/action:0')
             v_tf = g.get_tensor_by_name('pi/v:0')
             action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
-            decoded_action = env.decode_action(action)
         else:
-            decoded_action = None
-        policified_action = policy(env, decoded_action)
-        consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
-        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, real_spias_purchase, nominal_spias_purchase = \
-            env.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
+            action = None
+        decoded_action = env.fully_decode_action(action)
+        consume = decoded_action['consume']
+        asset_allocation = decoded_action['asset_allocation']
+        real_spias_purchase = decoded_action['real_spias_purchase']
+        nominal_spias_purchase = decoded_action['nominal_spias_purchase']
+        real_bonds_duration = decoded_action['real_bonds_duration']
+        nominal_bonds_duration = decoded_action['nominal_bonds_duration']
 
     logger.info()
     logger.info('Initial properties for first episode:')
     logger.info('    Consume: ', consume / env.params.time_period)
     logger.info('    Asset allocation: ', asset_allocation)
-    logger.info('    Real immediate annuities purchase: ', real_spias_purchase if env.params.real_spias or annuitize else None)
-    logger.info('    Nominal immediate annuities purchase: ', nominal_spias_purchase if env.params.nominal_spias else None)
+    logger.info('    Real immediate annuities purchase: ', real_spias_purchase)
+    logger.info('    Nominal immediate annuities purchase: ', nominal_spias_purchase)
     logger.info('    Real bonds duration: ', real_bonds_duration)
     logger.info('    Nominal bonds duration: ', nominal_bonds_duration)
 
@@ -118,7 +120,7 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
 
     logger.info()
 
-    evaluator = Evaluator(eval_env, eval_seed, eval_num_timesteps, eval_render)
+    evaluator = Evaluator(eval_env, eval_seed, eval_num_timesteps, render = eval_render)
 
     def pi(obs):
 
@@ -165,8 +167,8 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
 
                 logger.info('    Consume: ', x)
                 env.params.consume_initial = x
-                results = evaluator.evaluate(pi)
-                f_cache[x] = results
+                f_x, tol_x, _, _ = evaluator.evaluate(pi)
+                f_cache[x] = (f_x, tol_x)
                 return results
 
         x, f_x = gss(f, search_consume_initial_around / 2, search_consume_initial_around * 2)

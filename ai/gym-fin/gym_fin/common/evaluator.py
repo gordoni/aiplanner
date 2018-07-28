@@ -40,11 +40,14 @@ def weighted_mean(value_weights):
         s += weight * value
     return s / n
 
-def weighted_stdev(value_weights, n0):
+def weighted_stdev(value_weights):
+    n0 = 0
     n = 0
     s = 0
     ss = 0
     for value, weight in sorted(value_weights, key = lambda x: abs(x[1])):
+        if weight != 0:
+            n0 += 1
         n += weight
         s += weight * value
         ss += weight * value ** 2
@@ -54,21 +57,42 @@ class Evaluator(object):
 
     LOGFILE = 'gym_eval_batch.monitor.csv'
 
-    def __init__(self, eval_env, eval_seed, eval_num_timesteps, eval_render):
+    def __init__(self, eval_env, eval_seed, eval_num_timesteps, *, render = False, eval_batch_monitor = False, num_trace_episodes = 0):
 
         self.tstart = time.time()
 
         self.eval_env = eval_env
         self.eval_seed = eval_seed
         self.eval_num_timesteps = eval_num_timesteps
-        self.eval_render = eval_render
+        self.eval_render = render
+        self.eval_batch_monitor = eval_batch_monitor
+        self.num_trace_episodes = num_trace_episodes
 
-        filename = os.path.join(logger.get_dir(), Evaluator.LOGFILE)
-        self.f = open(filename, "wt")
-        self.f.write('#%s\n'%json.dumps({"t_start": self.tstart, 'env_id' : self.eval_env.spec and self.eval_env.spec.id}))
-        self.logger = csv.DictWriter(self.f, fieldnames=('r', 'l', 't', 'ce'))
-        self.logger.writeheader()
-        self.f.flush()
+        self.trace = []
+        self.episode = []
+
+        if eval_batch_monitor:
+            filename = os.path.join(logger.get_dir(), Evaluator.LOGFILE)
+            self.f = open(filename, "wt")
+            self.f.write('#%s\n'%json.dumps({"t_start": self.tstart, 'env_id' : self.eval_env.spec and self.eval_env.spec.id}))
+            self.logger = csv.DictWriter(self.f, fieldnames=('r', 'l', 't', 'ce'))
+            self.logger.writeheader()
+            self.f.flush()
+
+    def trace_step(self, env, action, done):
+
+        if not done:
+            decoded_action = env.fully_decode_action(action)
+        self.episode.append({
+            'age': env.age,
+            'gi_sum': env.gi_sum(),
+            'p_sum': env.p_sum(),
+            'consume': decoded_action['consume'] if not done else None,
+        })
+
+        if done:
+            self.trace.append(self.episode)
+            self.episode = []
 
     def evaluate(self, pi):
 
@@ -83,17 +107,33 @@ class Evaluator(object):
 
             env = self.eval_env.unwrapped
             rewards = []
+            erewards = []
             obs = self.eval_env.reset()
             s = 0
             e = 0
+            erew = 0
+            eweight = 0
             while True:
+                action = pi(obs)
+                if e < self.num_trace_episodes:
+                    self.trace_step(env, action, False)
                 if self.eval_render:
                     self.eval_env.render()
-                action = pi(obs)
                 obs, r, done, info = self.eval_env.step(action)
+                erew += r
+                eweight += env.reward_weight
                 s += 1
                 rewards.append((env.reward_value, env.reward_weight))
                 if done:
+                    if e < self.num_trace_episodes:
+                        self.trace_step(env, None, done)
+                    try:
+                        er = erew / eweight
+                    except ZeroDivisionError:
+                        er = 0
+                    erewards.append((er, eweight))
+                    erew = 0
+                    eweight = 0
                     e += 1
                     if self.eval_render:
                         self.eval_env.render()
@@ -101,25 +141,26 @@ class Evaluator(object):
                     if s >= self.eval_num_timesteps:
                         break
 
-            batchrew = sum((v * w for v, w in rewards))
-            rew = weighted_mean(rewards)
+            rew = weighted_mean(erewards)
             try:
-                std = weighted_stdev(rewards, e)
+                std = weighted_stdev(erewards)
             except ZeroDivisionError:
                 std = float('nan')
-            stderr = std / sqrt(e) # Upper bound since assume episodes are not independent.
+            stderr = std / sqrt(e)
             utility = self.eval_env.unwrapped.utility
             ce = utility.inverse(rew)
             ce_stderr = utility.inverse(rew + stderr) - ce
-            low = weighted_percentile(rewards, 2.5)
-            high = weighted_percentile(rewards, 97.5)
+            low = weighted_percentile(rewards, 10)
+            high = weighted_percentile(rewards, 90)
 
-            logger.info('Evaluation certainty equivalent: ', ce, ' +/- ', ce_stderr, ' (95% confidence interval: ', utility.inverse(low), ' - ', utility.inverse(high), ')')
+            logger.info('Evaluation certainty equivalent: ', ce, ' +/- ', ce_stderr, ' (80% confidence interval: ', utility.inverse(low), ' - ', utility.inverse(high), ')')
 
-            batchinfo = {'r': round(batchrew, 6), 'l': s, 't': round(time.time() - self.tstart, 6), 'ce': ce}
-            self.logger.writerow(batchinfo)
-            self.f.flush()
+            if self.eval_batch_monitor:
+                batchrew = sum((v * w for v, w in erewards))
+                batchinfo = {'r': round(batchrew, 6), 'l': s, 't': round(time.time() - self.tstart, 6), 'ce': ce}
+                self.logger.writerow(batchinfo)
+                self.f.flush()
 
             setstate(state)
 
-            return ce, ce_stderr
+            return ce, ce_stderr, low, high

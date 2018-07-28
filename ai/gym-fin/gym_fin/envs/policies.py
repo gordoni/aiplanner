@@ -21,7 +21,7 @@ def policy(env, action):
 
     global consume_rate_initial, consume_prev, life_expectancy_initial, p_notax_initial
 
-    if action != None:
+    if action is not None:
         consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = action
 
     if env.params.consume_policy == 'constant':

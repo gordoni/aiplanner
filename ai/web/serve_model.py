@@ -11,9 +11,13 @@
 # PURPOSE.
 
 from argparse import ArgumentParser
-from socketserver import ThreadingMixIn
+from csv import writer
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from json import dumps, loads
+from os import chmod, environ, mkdir
+from socketserver import ThreadingMixIn
+from subprocess import run
+from tempfile import mkdtemp
 
 import tensorflow as tf
 
@@ -130,6 +134,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             'p_taxable_real_bonds', 'p_taxable_iid_bonds', 'p_taxable_bills'):
             set_low_high(param, 0)
 
+        model_params['gi_nominal_low'] = model_params['gi_nominal_high'] = 10000 # XXX For testing.
+
         set_low_high('p_taxable_nominal_bonds', request['p_taxable_bonds'])
         del request['p_taxable_bonds']
 
@@ -151,27 +157,22 @@ class RequestHandler(BaseHTTPRequestHandler):
             obs = env.reset()
 
             with U.make_session(num_cpu=1) as session:
+
                 tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], model_dir)
                 g = tf.get_default_graph()
                 observation_tf = g.get_tensor_by_name('pi/ob:0')
                 action_tf = g.get_tensor_by_name('pi/action:0')
-                v_tf = g.get_tensor_by_name('pi/v:0')
                 action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
-                decoded_action = env.decode_action(action)
-                policified_action = policy(env, decoded_action)
-                consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
-                p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, real_spias_purchase, nominal_spias_purchase = \
-                    env.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
+                decoded_action = env.fully_decode_action(action)
 
-                print('Consume: ', consume / env.params.time_period)
-                print('Asset allocation: ', asset_allocation)
-                print('Real immediate annuities purchase: ', real_spias_purchase if env.params.real_spias else None)
-                print('Nominal immediate annuities purchase: ', nominal_spias_purchase if env.params.nominal_spias else None)
-                print('Real bonds duration: ', real_bonds_duration)
-                print('Nominal bonds duration: ', nominal_bonds_duration)
+                print('Consume:', decoded_action['consume'] / env.params.time_period)
+                print('Asset allocation:', decoded_action['asset_allocation'])
+                print('Real immediate annuities purchase:', decoded_action['real_spias_purchase'])
+                print('Nominal immediate annuities purchase:', decoded_action['nominal_spias_purchase'])
+                print('Real bonds duration:', decoded_action['real_bonds_duration'])
+                print('Nominal bonds duration:', decoded_action['nominal_bonds_duration'])
 
-                render = False
-                evaluator = Evaluator(env, seed, args.num_timesteps, render)
+                evaluator = Evaluator(env, seed, args.num_timesteps, num_trace_episodes = args.num_trace_episodes)
 
                 def pi(obs):
                     action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
@@ -179,14 +180,38 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                 evaluator.evaluate(pi)
 
+                data_dir = self.plot(evaluator.trace)
+
         finally:
             self.bonds_cache.append(bonds)
 
         return {
-            'consume': consume / env.params.time_period,
-            'asset_allocation': str(asset_allocation),
-            'data_dir': '/api/data/dir1',
+            'consume': decoded_action['consume'] / env.params.time_period,
+            'asset_allocation': str(decoded_action['asset_allocation']),
+            'data_dir': '/api/data/' + data_dir,
         }
+
+    def plot(self, traces):
+
+        try:
+            mkdir(data_root)
+        except FileExistsError:
+            pass
+        dir = mkdtemp(prefix='', dir=data_root)
+        chmod(dir, 0o775)
+
+        prefix = dir + '/aiplanner'
+        with open(prefix + '-data.csv', 'w') as f:
+            csv_writer = writer(f)
+            for trace in traces:
+                for step in trace:
+                    csv_writer.writerow((step['age'], step['gi_sum'], step['p_sum'], step['consume']))
+                csv_writer.writerow(())
+
+        environ['AIPLANNER_FILE_PREFIX'] = prefix
+        run(['./plot.gnuplot'], check = True)
+
+        return dir[len(data_root):]
         
 def main():
     global args
@@ -195,6 +220,7 @@ def main():
     parser.add_argument('--seed', type = int, default = 0)
     parser.add_argument('--num-timesteps', type = int, default = 10000)
     parser.add_argument('--master-model-dir', default = './')
+    parser.add_argument('--num-trace-episodes', type = int, default = 5)
     args = parser.parse_args()
     logger.configure()
     server = ThreadingHTTPServer((host, port), RequestHandler)
