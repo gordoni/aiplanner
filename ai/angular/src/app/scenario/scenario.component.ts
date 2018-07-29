@@ -39,11 +39,9 @@ export class ScenarioComponent implements OnInit {
 
   public gamma: number = 3;
 
-  public errorMessage = null;
+  public errorMessage: string = null;
 
-  public consume: number;
-  public assetAllocation: string;
-  public dataDir: string;
+  public results: object = null;
 
   constructor(private scenarioService: ScenarioService) {
   }
@@ -155,10 +153,7 @@ export class ScenarioComponent implements OnInit {
   }
 
   doResults(scenario, results) {
-    scenario.consume = results.consume;
-    scenario.assetAllocation = results.asset_allocation;
-    scenario.dataDir = results.data_dir;
-
+    scenario.results = results;
     scenario.step++;
   }
 

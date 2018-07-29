@@ -150,10 +150,10 @@ class Evaluator(object):
             utility = self.eval_env.unwrapped.utility
             ce = utility.inverse(rew)
             ce_stderr = utility.inverse(rew + stderr) - ce
-            low = weighted_percentile(rewards, 10)
-            high = weighted_percentile(rewards, 90)
+            low = utility.inverse(weighted_percentile(rewards, 10))
+            high = utility.inverse(weighted_percentile(rewards, 90))
 
-            logger.info('Evaluation certainty equivalent: ', ce, ' +/- ', ce_stderr, ' (80% confidence interval: ', utility.inverse(low), ' - ', utility.inverse(high), ')')
+            logger.info('Evaluation certainty equivalent: ', ce, ' +/- ', ce_stderr, ' (80% confidence interval: ', low, ' - ', high, ')')
 
             if self.eval_batch_monitor:
                 batchrew = sum((v * w for v, w in erewards))

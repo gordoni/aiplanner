@@ -178,7 +178,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
                     return action
 
-                evaluator.evaluate(pi)
+                ce, ce_stderr, low, high = evaluator.evaluate(pi)
 
                 data_dir = self.plot(evaluator.trace)
 
@@ -187,6 +187,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         return {
             'consume': decoded_action['consume'] / env.params.time_period,
+            'consume_low': low,
             'asset_allocation': str(decoded_action['asset_allocation']),
             'data_dir': '/api/data/' + data_dir,
         }

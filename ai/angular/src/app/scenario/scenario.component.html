@@ -167,14 +167,17 @@ PURPOSE.
 
   <div *ngIf="step == 6">
     <p>
-      Current recommended retirement consumption: {{consume}}
+      Current recommended after tax retirement consumption: {{results.consume}}
     </p>
     <p>
-      Recommended asset allocation: {{assetAllocation}}
+      Recommended asset allocation: {{results.asset_allocation}}
     </p>
-    <img src="{{dataDir}}/aiplanner-paths-gi.svg" width="50%"/>
-    <img src="{{dataDir}}/aiplanner-paths-p.svg" width="50%"/>
-    <img src="{{dataDir}}/aiplanner-paths-consume.svg" width="50%"/>
+    <p>
+      10% chance of annual consumption below: {{results.consume_low}}
+    </p>
+    <img src="{{results.data_dir}}/aiplanner-paths-gi.svg" width="50%"/>
+    <img src="{{results.data_dir}}/aiplanner-paths-p.svg" width="50%"/>
+    <img src="{{results.data_dir}}/aiplanner-paths-consume.svg" width="50%"/>
     <div class="main-button">
       <button class="button" (click)="editSteps()">Edit</button>
     </div>
