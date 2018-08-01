@@ -69,18 +69,15 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
     if merton or samuelson:
 
         consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
-        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, real_spias_purchase, nominal_spias_purchase = env.spend(consume_fraction)
         asset_allocation = AssetAllocation(stocks = stocks_allocation, bills = 1 - stocks_allocation)
-        real_bonds_duration = nominal_bonds_duration = None
+        interp = self.interpret_spending(consume_fraction, asset_allocation)
 
     elif annuitize:
 
         consume_initial = env.gi_sum() + env.p_sum() / (env.params.time_period + env.real_spia.premium(1, mwr = env.params.real_spias_mwr))
         consume_fraction_initial = consume_initial / env.p_plus_income()
-        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, real_spias_purchase, nominal_spias_purchase = \
-            env.spend(consume_fraction_initial, real_spias_fraction = 1)
         asset_allocation = AssetAllocation(stocks = 1)
-        real_bonds_duration = nominal_bonds_duration = None
+        interp = self.interpret_spending(consume_fraction_initial, asset_allocation, real_spias_fraction = 1)
 
     else:
 
@@ -94,22 +91,16 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
             action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
         else:
             action = None
-        decoded_action = env.fully_decode_action(action)
-        consume = decoded_action['consume']
-        asset_allocation = decoded_action['asset_allocation']
-        real_spias_purchase = decoded_action['real_spias_purchase']
-        nominal_spias_purchase = decoded_action['nominal_spias_purchase']
-        real_bonds_duration = decoded_action['real_bonds_duration']
-        nominal_bonds_duration = decoded_action['nominal_bonds_duration']
+        interp = env.interpret_action(action)
 
     logger.info()
     logger.info('Initial properties for first episode:')
-    logger.info('    Consume: ', consume / env.params.time_period)
-    logger.info('    Asset allocation: ', asset_allocation)
-    logger.info('    Real immediate annuities purchase: ', real_spias_purchase)
-    logger.info('    Nominal immediate annuities purchase: ', nominal_spias_purchase)
-    logger.info('    Real bonds duration: ', real_bonds_duration)
-    logger.info('    Nominal bonds duration: ', nominal_bonds_duration)
+    logger.info('    Consume: ', interp['consume'])
+    logger.info('    Asset allocation: ', interp['asset_allocation'])
+    logger.info('    Real immediate annuities purchase: ', interp['real_spias_purchase'])
+    logger.info('    Nominal immediate annuities purchase: ', interp['nominal_spias_purchase'])
+    logger.info('    Real bonds duration: ', interp['real_bonds_duration'])
+    logger.info('    Nominal bonds duration: ', interp['nominal_bonds_duration'])
 
     if model:
 

@@ -124,17 +124,19 @@ class ModelParams(object):
         self._param('gamma', 3) # Coefficient of relative risk aversion.
             # Will probably need smaller [consume_floor, consume_ceiling] ranges if use a large gamma value such as 6.
 
-        self._param('gi-real', (1e3, 1e5), 1e4)
-            # Real guaranteed income of first individual: Social Security, real SPIAs, real pensions, and similar.
-            # Empirically OK if eval amount is less than model lower bound.
-        self._param('gi-real2', (1e3, 1e5), 0) # Real guaranteed income of second individual.
-        self._param('gi-real-couple', (1e3, 1e5), 0) # Real guaranteed income of couple.
-            # May be negative, such as when purchasing a joint SPIA:
-            # gi_real = gi_real2 = individual_payout; gi_real_couple = joint_payout - 2 * individual_payout.
-        self._param('gi-nominal', (1e3, 1e5), 0) # Nominal guaranteed income of first individual: nominal SPIAs, nominal pensions, and similar.
-        self._param('gi-nominal2', (1e3, 1e5), 0) # Nominal guaranteed income of second individual.
-        self._param('gi-nominal-couple', (1e3, 1e5), 0) # Nominal guaranteed income of couple. May be negative.
-        self._param('p-tax-free', (1e3, 1e7), 1e5) # Non-taxable portfolio size. Roth IRAs and similar. Empirically OK if eval amount is less than model lower bound.
+        self._param('defined-benefits', '[{"payout": [1e3, 1e5]}]', '[{"payout": 1e4}]', tp = string_type)
+            # Defined benefits represented as a JSON array of objects. Object fields:
+            #     "type": Type of defined benefit. Arbitrary string. Default "Income Annuity". A value of "Social Security" may in the future be taxed specially.
+            #     "owner": Value "self" or "spouse". Default "self".
+            #     "age": Starting age in years of owner for benefit. Default initial age of owner.
+            #     "payout": Annual payment amount in today's dollars. May be a array of length 2 for stochastic log range. Required.
+            #     "inflation_adjustment": Annual inflation increase fraction from today, or "cpi" for adjustment to reflect the CPI value. Default "cpi".
+            #     "joint": true if payout drops on death of either self or spouse, false if value payout drops only on death of owner. Default false.
+            #     "payout_fraction": payout fraction when joint contingency occurs. Default 0.
+            #     "source_of_funds": "taxable", "tax_deferred", or "tax_free". Default "tax_deferred".
+            #     "exclusion_period": If taxable, exclusion period in years from starting age. Default 0.
+            #     "exclusion_amount": If taxable, annual tax exclusion amount of payout in today's dollars. Not adjusted for inflation. Default 0.
+        self._param('p-tax-free', (1e3, 1e7), 0) # Non-taxable portfolio size. Roth IRAs and similar. Empirically OK if eval amount is less than model lower bound.
         self._param('p-tax-deferred', (1e3, 1e7), 0) # Taxable deferred portfolio size. Traditional IRAs and similar.
         self._param('p-taxable-stocks', (1e3, 1e7), 0) # Taxable portfolio stocks.
         self._param('p-taxable-real-bonds', (1e3, 1e7), 0) # Taxable portfolio real bonds.

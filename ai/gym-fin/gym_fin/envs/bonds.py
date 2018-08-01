@@ -115,7 +115,7 @@ class Bonds(object):
 
         '''
 
-        return - self._log_present_value(t) / t
+        return - self._log_present_value(t) / t if t > 0 else self._short_interest_rate(self.oup.x)
 
     def _yield(self, t):
         '''Return the current continuously compounded yield of a zero coupon

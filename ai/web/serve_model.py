@@ -163,14 +163,14 @@ class RequestHandler(BaseHTTPRequestHandler):
                 observation_tf = g.get_tensor_by_name('pi/ob:0')
                 action_tf = g.get_tensor_by_name('pi/action:0')
                 action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
-                decoded_action = env.fully_decode_action(action)
+                interp = env.interpret_action(action)
 
-                print('Consume:', decoded_action['consume'] / env.params.time_period)
-                print('Asset allocation:', decoded_action['asset_allocation'])
-                print('Real immediate annuities purchase:', decoded_action['real_spias_purchase'])
-                print('Nominal immediate annuities purchase:', decoded_action['nominal_spias_purchase'])
-                print('Real bonds duration:', decoded_action['real_bonds_duration'])
-                print('Nominal bonds duration:', decoded_action['nominal_bonds_duration'])
+                print('Consume:', interp['consume'])
+                print('Asset allocation:', interp['asset_allocation'])
+                print('Real immediate annuities purchase:', interp['real_spias_purchase'])
+                print('Nominal immediate annuities purchase:', interp['nominal_spias_purchase'])
+                print('Real bonds duration:', interp['real_bonds_duration'])
+                print('Nominal bonds duration:', interp['nominal_bonds_duration'])
 
                 evaluator = Evaluator(env, seed, args.num_timesteps, num_trace_episodes = args.num_trace_episodes)
 
@@ -186,9 +186,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.bonds_cache.append(bonds)
 
         return {
-            'consume': decoded_action['consume'] / env.params.time_period,
+            'consume': interp['consume'],
             'consume_low': low,
-            'asset_allocation': str(decoded_action['asset_allocation']),
+            'asset_allocation': str(interp['asset_allocation']),
             'data_dir': '/api/data/' + data_dir,
         }
 

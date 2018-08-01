@@ -20,13 +20,10 @@ master_age_start2 = 65
 
 master_consume_additional = 0.6
 
-master_gi_real = 16000 # Mean Social Secuity is $16,075 as of March, 2018 - https://www.ssa.gov/policy/docs/quickfacts/stat_snapshot/
-master_gi_real2 = 0
-master_gi_real_couple = 0
-master_gi_nominal = 0
-master_gi_nominal2 = 0
-master_gi_nominal_couple = 0
+master_defined_benefits = '[{"payout": 16000}]' # Mean Social Secuity is $16,075 as of March, 2018 - https://www.ssa.gov/policy/docs/quickfacts/stat_snapshot/
 master_p_tax_free = 500000
+
+master_tax = False
 
 master_gamma = 3.0
 

@@ -9,7 +9,8 @@
 # PURPOSE.
 
 from datetime import datetime
-from math import atanh, exp, isnan, log, sqrt, tanh
+from json import loads
+from math import atanh, ceil, exp, floor, isnan, log, sqrt, tanh
 from random import seed, random, uniform
 
 import numpy as np
@@ -157,7 +158,6 @@ class FinEnv(Env):
 
     def __init__(self, bonds_cached = None, action_space_unbounded = False, direct_action = False, **kwargs):
 
-        self.bonds = bonds_cached if bonds_cached else BondsSet()
         self.action_space_unbounded = action_space_unbounded
         self.direct_action = direct_action
         self.params = AttributeObject(kwargs)
@@ -171,11 +171,11 @@ class FinEnv(Env):
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple in baselines/baselines/ppo1/mlp_policy.py.
             # couple, single, life-expectancy both, life-expectancy one,
-            # real guaranteed income: individual 1, individual 2, couple,
-            # nominal guaranteed income: individual 1, individual 2, couple,
-            # p_tax_free, p_tax_deferred, p_taxable, p_taxable_basis, taxes due, capital gain carry forward, short real interest rate, short inflation rate
-            low  = np.array((0, 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,    0,   0, -1e7, -0.05, 0.0)),
-            high = np.array((1, 1, 100, 100, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e7, 1e7, 1e7,  1e7, 1e7,    0,  0.05, 0.1)),
+            # income present value annualized: tax_free, tax_deferred, taxable,
+            # wealth annualized: tax_free, tax_deferred, taxable,
+            # short real interest rate, short inflation rate
+            low  = np.array((0, 0,   0,   0,   0,   0,   0,   0,   0,   0, -0.05, 0.0)),
+            high = np.array((1, 1, 100, 100, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6,  0.05, 0.1)),
             dtype = 'float32'
         )
 
@@ -196,6 +196,7 @@ class FinEnv(Env):
         self.bills = Returns(self.params.bills_return, self.params.bills_volatility,
             self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
 
+        self.bonds = bonds_cached if bonds_cached else BondsSet()
         self.bonds.update(
             real_standard_error = self.params.bonds_standard_error if self.params.returns_standard_error else 0,
             inflation_standard_error = self.params.inflation_standard_error if self.params.returns_standard_error else 0,
@@ -269,11 +270,126 @@ class FinEnv(Env):
 
     def gi_sum(self):
 
-        return self.gi_real + self.gi_real2 + self.gi_real_couple + self.gi_nominal + self.gi_nominal2 + self.gi_nominal_couple
+        gi = 0
+        for key, db in self.defined_benefits.items():
+            real = key[1]
+            payout = db['sched'][0]
+            if not real:
+                payout /= self.cpi
+            gi += payout
+
+        return gi
 
     def p_sum(self):
 
         return self.p_tax_free + self.p_tax_deferred + self.p_taxable
+
+    def get_db(self, defined_benefits, type, owner, inflation_adjustment, joint, payout_fraction, type_of_funds):
+
+        key = (type_of_funds, inflation_adjustment == 'cpi', type == 'Social Security', owner, joint, payout_fraction)
+        try:
+            db = defined_benefits[key]
+        except KeyError:
+
+            owner_single = 'spouse' if self.first_dies_first else 'self'
+            db = {'owner': owner, 'owner_single': owner_single, 'ignore_schedule': False}
+            defined_benefits[key] = db
+
+            younger = self.age if self.params.sex2 == None else min(self.age, self.age2)
+            episodes = int(self.params.age_end - younger)
+
+            bonds = self.bonds.real if inflation_adjustment == 'cpi' else self.bonds.nominal
+            if self.couple:
+                life_table = self.life_table if owner == 'self' else self.life_table2
+                life_table2 = self.life_table2 if owner == 'self' else self.life_table
+            else:
+                life_table = self.life_table2 if self.first_dies_first else self.life_table
+                life_table2 = None
+            payout_delay = 0
+            sched = [0] * episodes
+            db['sched'] = sched
+            schedule = lambda y: (1 if y >= 1 else 0) if db['ignore_schedule'] else sched[int(y)]
+            db['spia'] = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint_contingent = joint,
+                joint_payout_fraction = payout_fraction, frequency = 1, cpi_adjust = 'all', date_str = self.params.life_table_date, schedule = schedule)
+
+            if self.couple and self.life_table2:
+
+                life_table = self.life_table2 if self.first_dies_first else self.life_table
+                sched_single = [0] * episodes
+                db['sched_single'] = sched_single
+                schedule = lambda y: (1 if y >= 1 else 0) if db['ignore_schedule'] else sched_single[int(y)]
+                db['spia_single'] = IncomeAnnuity(bonds, life_table, payout_delay = 12 * payout_delay,
+                    frequency = 1, cpi_adjust = 'all', date_str = self.params.life_table_date, schedule = schedule)
+
+        return db
+
+    def add_sched(self, db, start, end, payout, payout_fraction, inflation_adjustment):
+
+        for e in range(ceil(max(start, 0)), floor(min(end, len(db['sched'])))):
+            adjustment = 1 if inflation_adjustment == 'cpi' else (1 + inflation_adjustment) ** e
+            db['sched'][e] += payout * adjustment
+            try:
+                db['sched_single'][e] += payout * payout_fraction * adjustment
+            except KeyError:
+                pass
+
+    def add_db(self, defined_benefits, type = 'Income Annuity', owner = 'self', age = None, premium = None, payout = None,
+        inflation_adjustment = 'cpi', joint = False, payout_fraction = 0, source_of_funds = 'tax_deferred', exclusion_period = 0, exclusion_amount = 0):
+
+        assert owner in ('self', 'spouse')
+        owner_age = self.age if owner == 'self' else self.age2
+        if age == None:
+            age = owner_age
+        assert (premium == None) != (payout == None)
+
+        db = self.get_db(defined_benefits, type, owner, inflation_adjustment, joint, payout_fraction, source_of_funds)
+
+        if premium != None:
+            mwr = self.params.real_spias_mwr if inflation_adjustment == 'cpi' else self.params.nominal_spias_mwr
+            db['ignore_schedule'] = True # Hack.
+            db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2) # Forces use of schedule.
+            payout = db['spia'].payout(premium, mwr = mwr)
+            db['ignore_schedule'] = False
+            # Will set_age() back when reset()/step() completes.
+            start = 1
+        else:
+            try:
+                payout_low, payout_high = payout
+            except TypeError:
+                pass
+            else:
+                payout = self.log_uniform(payout_low, payout_high)
+
+            start = age - owner_age
+
+        if joint or ((owner == 'self') == self.first_dies_first):
+            actual_payout_fraction = payout_fraction
+        else:
+            actual_payout_fraction = 1
+
+        self.add_sched(db, start, float('inf'), payout, actual_payout_fraction, inflation_adjustment)
+
+        if source_of_funds == 'taxable' and exclusion_period > 0:
+
+            # Shift nominal exclusion amount from taxable to tax free income.
+            end = start + exclusion_period
+            db = self.get_db(defined_benefits, type, owner, 0, joint, payout_fraction, 'taxable')
+            self.add_sched(db, start, end, - exclusion_amount, actual_payout_fraction, 0)
+            db = self.get_db(defined_benefits, type, owner, 0, joint, payout_fraction, 'tax_free')
+            self.add_sched(db, start, end, exclusion_amount, actual_payout_fraction, 0)
+
+    def parse_defined_benefits(self, defined_benefits_json):
+
+        defined_benefits = {}
+        for db in loads(defined_benefits_json):
+            self.add_db(defined_benefits, **db)
+        return defined_benefits
+
+    def log_uniform(self, low, high):
+        if low == high:
+            return low # Handles low == high == 0.
+        else:
+            return exp(uniform(log(low), log(high)))
 
     def reset(self):
 
@@ -288,49 +404,27 @@ class FinEnv(Env):
         self.age = age_start
         self.age2 = age_start2
 
-        self.spia_age = self.age
-        self.joint_payout_fraction = 1 / (1 + self.params.consume_additional)
-        self.real_spia = IncomeAnnuity(self.bonds.real, self.life_table, life_table2 = self.life_table2, payout_delay = 12,
-            joint_payout_fraction = self.joint_payout_fraction, frequency = 1, cpi_adjust = 'all', date_str = self.params.life_table_date)
-        self.nominal_spia = IncomeAnnuity(self.bonds.nominal, self.life_table, life_table2 = self.life_table2, payout_delay = 12,
-            joint_payout_fraction = self.joint_payout_fraction, frequency = 1, date_str = self.params.life_table_date)
-
-        if self.life_table2:
-
-            life_table = self.life_table2 if self.first_dies_first else self.life_table
-            self.real_spia_single = IncomeAnnuity(self.bonds.real, life_table, payout_delay = 12,
-                frequency = 1, cpi_adjust = 'all', date_str = self.params.life_table_date)
-            self.nominal_spia_single = IncomeAnnuity(self.bonds.nominal, life_table, payout_delay = 12,
-                frequency = 1, date_str = self.params.life_table_date)
+        self.couple = self.alive_single[0] == None
+        self.defined_benefits = self.parse_defined_benefits(self.params.defined_benefits)
+        for db in self.defined_benefits.values():
+            db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2) # Pick up non-zero schedule for observe.
 
         found = False
         for _ in range(1000):
 
-            def log_uniform(low, high):
-                if low == high:
-                    return low # Handles low == high == 0.
-                else:
-                    return exp(uniform(log(low), log(high)))
-
-            self.gi_real = log_uniform(self.params.gi_real_low, self.params.gi_real_high)
-            self.gi_real2 = log_uniform(self.params.gi_real2_low, self.params.gi_real2_high) if self.params.sex2 else 0
-            self.gi_real_couple = log_uniform(self.params.gi_real_couple_low, self.params.gi_real_couple_high) if self.params.sex2 else 0
-            self.gi_nominal = log_uniform(self.params.gi_nominal_low, self.params.gi_nominal_high)
-            self.gi_nominal2 = log_uniform(self.params.gi_nominal2_low, self.params.gi_nominal2_high) if self.params.sex2 else 0
-            self.gi_nominal_couple = log_uniform(self.params.gi_nominal_couple_low, self.params.gi_nominal_couple_high) if self.params.sex2 else 0
-            self.p_tax_free = log_uniform(self.params.p_tax_free_low, self.params.p_tax_free_high)
-            self.p_tax_deferred = log_uniform(self.params.p_tax_deferred_low, self.params.p_tax_deferred_high)
+            self.p_tax_free = self.log_uniform(self.params.p_tax_free_low, self.params.p_tax_free_high)
+            self.p_tax_deferred = self.log_uniform(self.params.p_tax_deferred_low, self.params.p_tax_deferred_high)
             taxable_assets = AssetAllocation(fractional = False)
             if self.params.stocks:
-                taxable_assets.aa['stocks'] = log_uniform(self.params.p_taxable_stocks_low, self.params.p_taxable_stocks_high)
+                taxable_assets.aa['stocks'] = self.log_uniform(self.params.p_taxable_stocks_low, self.params.p_taxable_stocks_high)
             if self.params.real_bonds:
-                taxable_assets.aa['real_bonds'] = log_uniform(self.params.p_taxable_real_bonds_low, self.params.p_taxable_real_bonds_high)
+                taxable_assets.aa['real_bonds'] = self.log_uniform(self.params.p_taxable_real_bonds_low, self.params.p_taxable_real_bonds_high)
             if self.params.nominal_bonds:
-                taxable_assets.aa['nominal_bonds'] = log_uniform(self.params.p_taxable_nominal_bonds_low, self.params.p_taxable_nominal_bonds_high)
+                taxable_assets.aa['nominal_bonds'] = self.log_uniform(self.params.p_taxable_nominal_bonds_low, self.params.p_taxable_nominal_bonds_high)
             if self.params.iid_bonds:
-                taxable_assets.aa['iid_bonds'] = log_uniform(self.params.p_taxable_iid_bonds_low, self.params.p_taxable_iid_bonds_high)
+                taxable_assets.aa['iid_bonds'] = self.log_uniform(self.params.p_taxable_iid_bonds_low, self.params.p_taxable_iid_bonds_high)
             if self.params.bills:
-                taxable_assets.aa['bills'] = log_uniform(self.params.p_taxable_bills_low, self.params.p_taxable_bills_high)
+                taxable_assets.aa['bills'] = self.log_uniform(self.params.p_taxable_bills_low, self.params.p_taxable_bills_high)
             self.p_taxable = sum(taxable_assets.aa.values())
             if self.params.p_taxable_stocks_basis_fraction_low == self.params.p_taxable_stocks_basis_fraction_high:
                 p_taxable_stocks_basis_fraction = self.params.p_taxable_stocks_basis_fraction_low
@@ -348,6 +442,8 @@ class FinEnv(Env):
 
         self.taxes = Taxes(self, taxable_assets, p_taxable_stocks_basis_fraction)
         self.taxes_due = 0
+
+        self.cpi = 1
 
         self.stocks.reset()
         self.iid_bonds.reset()
@@ -499,12 +595,12 @@ class FinEnv(Env):
                 real_spias_fraction *= (real_spias_action + 1) / 2
             nominal_spias_fraction = spias_fraction - real_spias_fraction
 
-        if self.alive_single[self.episode_length] == None:
+        if self.couple:
             min_age = min(self.age, self.age2)
         else:
             min_age = self.age
 
-        spias_allowed = (self.params.couple_spias or self.alive_single[self.episode_length] != None) and min_age >= self.params.spias_permitted_from_age
+        spias_allowed = (self.params.couple_spias or not self.couple) and min_age >= self.params.spias_permitted_from_age
         if not self.params.real_spias or not spias_allowed:
             real_spias_fraction = None
         if not self.params.nominal_spias or not spias_allowed:
@@ -560,13 +656,25 @@ class FinEnv(Env):
         assert 0 <= consume_fraction_period <= 1
 
         p = self.p_plus_income()
-        taxes_paid = min(self.taxes_due, 0.9 * p) # Don't allow taxes to consume all of p.
-        p -= taxes_paid
-        consume_annual = consume_fraction * p
-        consume = consume_annual * self.params.time_period
-
+        #consume_annual = consume_fraction * p
+        consume = consume_fraction_period * p
         p -= consume
-        nonneg_p = max(p, 0)
+        if p < 0:
+            assert p / self.p_sum() > -1e-15
+            p = 0
+
+        taxes_paid = min(self.taxes_due, p) # Don't allow taxes to consume more than p.
+        p -= taxes_paid
+
+        p_taxable = self.p_taxable + (p - self.p_sum())
+        p_tax_deferred = self.p_tax_deferred + min(p_taxable, 0)
+        # Required Minimum Distributions (RMDs) not considered. Would need separate p_tax_deferred for each spouse.
+        p_tax_free = self.p_tax_free + min(p_tax_deferred, 0)
+        p_taxable = max(p_taxable, 0)
+        p_tax_deferred = max(p_tax_deferred, 0)
+        if p_tax_free < 0:
+            assert p_tax_free / self.p_sum() > -1e-15
+            p_tax_free = 0
 
         if real_spias_fraction != None:
             real_spias_fraction *= self.params.time_period
@@ -580,25 +688,72 @@ class FinEnv(Env):
         if total > 1:
             real_spias_fraction /= total
             nominal_spias_fraction /= total
-        real_spias_purchase = real_spias_fraction * nonneg_p
-        nominal_spias_purchase = nominal_spias_fraction * nonneg_p
-        p -= real_spias_purchase + nominal_spias_purchase
-        nonneg_p = max(p, 0)
+        real_spias = real_spias_fraction * p
+        nominal_spias = nominal_spias_fraction * p
+        real_tax_free_spias = min(real_spias, p_tax_free)
+        p_tax_free -= real_tax_free_spias
+        real_spias -= real_tax_free_spias
+        nominal_tax_free_spias = min(nominal_spias, p_tax_free)
+        p_tax_free -= nominal_tax_free_spias
+        nominal_spias -= nominal_tax_free_spias
+        real_tax_deferred_spias = min(real_spias, p_tax_deferred)
+        p_tax_deferred -= real_tax_deferred_spias
+        real_taxable_spias = real_spias - real_tax_deferred_spias
+        nominal_tax_deferred_spias = min(nominal_spias, p_tax_deferred)
+        p_tax_deferred -= nominal_tax_deferred_spias
+        nominal_taxable_spias = nominal_spias - nominal_tax_deferred_spias
+        p_taxable -= real_taxable_spias + nominal_taxable_spias
+        if p_taxable < 0:
+            assert p_taxable / self.p_sum() > -1e-15
+            p_taxable = 0
 
-        if p != nonneg_p:
-            assert p / self.p_sum() > -1e-15
-            p = 0
+        return p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, \
+            real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias
 
-        p_taxable = self.p_taxable + (p - self.p_sum())
-        p_tax_deferred = self.p_tax_deferred + min(p_taxable, 0)
-        # Required Minimum Distributions (RMDs) not considered. Would need separate p_tax_deferred for each spouse.
-        p_tax_free = self.p_tax_free + min(p_tax_deferred, 0)
-        p_taxable = max(p_taxable, 0)
-        p_tax_deferred = max(p_tax_deferred, 0)
-        if p_tax_free < 0:
-            assert p_tax_free / self.p_sum() > -1e-15
-            p_tax_free = 0
-        return p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, real_spias_purchase, nominal_spias_purchase
+    def interpret_spending(self, consume_fraction, asset_allocation, *, real_spias_fraction = 0, nominal_spias_fraction = 0,
+        real_bonds_duration = None, nominal_bonds_duration = None):
+
+        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, \
+            real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias = \
+            self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
+
+        return {
+            'consume': consume / self.params.time_period,
+            'asset_allocation': asset_allocation,
+            'real_spias_purchase': real_tax_free_spias + real_tax_deferred_spias + real_taxable_spias if self.params.real_spias else None,
+            'nominal_spias_purchase': nominal_tax_free_spias + nominal_tax_deferred_spias + nominal_taxable_spias if self.params.real_spias else None,
+            'real_bonds_duration': real_bonds_duration,
+            'nominal_bonds_duration': nominal_bonds_duration,
+        }
+
+    def interpret_action(self, action):
+
+        if action is None:
+            decoded_action = None
+        else:
+            decoded_action = self.decode_action(action)
+        policified_action = policy(self, decoded_action)
+        consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
+        return self.interpret_spending(consume_fraction, asset_allocation, real_spias_fraction = real_spias_fraction, nominal_spias_fraction = nominal_spias_fraction,
+            real_bonds_duration = real_bonds_duration, nominal_bonds_duration = nominal_bonds_duration)
+
+    def add_spias(self, spia, cpi, tax_free_spias, tax_deferred_spias, taxable_spias):
+
+        age = self.age + 1
+        payout_fraction = 1 / (1 + self.params.consume_additional)
+        if tax_free_spias > 0:
+            self.add_db(self.defined_benefits, age = age, premium = tax_free_spias, inflation_adjustment = cpi, joint = true, \
+                payout_fraction = payout_fraction, source_of_funds = 'tax_free')
+        if tax_deferred_spias > 0:
+            self.add_db(self.defined_benefits, age = age, premium = tax_deferred_spias, inflation_adjustment = cpi, joint = true, \
+                payout_fraction = payout_fraction, source_of_funds = 'tax_deferred')
+        if taxable_spias > 0:
+            exclusion_period = ceil(self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length])
+                # Highly imperfect, but total exclusion amount will be correct.
+            exlusion_amount = taxable_spias / exclusion_period
+            self.add_db(self.defined_benefits, age = age, premium = taxable_spias, inflation_adjustment = cpi, joint = true, \
+                payout_fraction = payout_fraction, source_of_funds = 'taxable',
+                exclusion_period = exclusion_period, exclusion_amount = exclusion_amount)
 
     def allocate_aa(self, p_tax_free, p_tax_deferred, p_taxable, asset_allocation):
 
@@ -645,43 +800,25 @@ class FinEnv(Env):
         policified_action = policy(self, decoded_action)
         consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
 
-        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, real_spias_purchase, nominal_spias_purchase = \
+        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, \
+            real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias = \
             self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
         consume_rate = consume / self.params.time_period
-        real_spias_rate = real_spias_purchase / self.params.time_period
-        nominal_spias_rate = nominal_spias_purchase / self.params.time_period
+        real_spias_rate = (real_tax_free_spias + real_tax_deferred_spias + real_taxable_spias) / self.params.time_period
+        nominal_spias_rate = (nominal_tax_free_spias + nominal_tax_deferred_spias + nominal_taxable_spias) / self.params.time_period
+
+        if real_spias_rate > 0:
+            self.add_spias(self.real_spias, 'cpi', real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias)
+
+        if nominal_spias_rate > 0:
+            self.add_spias(self.nominal_spias, 0, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias)
 
         tax_free_assets, tax_deferred_assets, taxable_assets = self.allocate_aa(p_tax_free, p_tax_deferred, p_taxable, asset_allocation)
 
         regular_income = self.gi_sum() + self.p_tax_deferred - p_tax_deferred
 
-        if real_spias_purchase > 0:
-            self.real_spia.set_age(self.spia_age)
-            payout = self.real_spia.payout(real_spias_purchase, mwr = self.params.real_spias_mwr)
-            if self.alive_single[self.episode_length] == None:
-                self.gi_real += payout * self.joint_payout_fraction
-                self.gi_real2 += payout * self.joint_payout_fraction
-                self.gi_real_couple += payout * (1 - 2 * self.joint_payout_fraction)
-            elif self.first_dies_first:
-                self.gi_real2 += payout
-            else:
-                self.gi_real += payout
-        if nominal_spias_purchase > 0:
-            self.nominal_spia.set_age(self.spia_age)
-            payout = self.nominal_spia.payout(nominal_spias_purchase, mwr = self.params.nominal_spias_mwr)
-            if self.alive_single[self.episode_length] == None:
-                self.gi_nominal += payout * self.joint_payout_fraction
-                self.gi_nominal2 += payout * self.joint_payout_fraction
-                self.gi_nominal_couple += payout * (1 - 2 * self.joint_payout_fraction)
-            elif self.first_dies_first:
-                self.gi_nominal2 += payout
-            else:
-                self.gi_nominal += payout
-
         inflation = self.bonds.inflation.inflation()
-        self.gi_nominal /= inflation
-        self.gi_nominal2 /= inflation
-        self.gi_nominal_couple /= inflation
+        self.cpi *= inflation
 
         p_tax_free = 0
         p_tax_deferred = 0
@@ -716,7 +853,7 @@ class FinEnv(Env):
         self.p_tax_deferred = p_tax_deferred
         self.p_taxable = p_taxable
 
-        self.taxes_due += self.taxes.tax(regular_income, self.alive_single[self.episode_length] != None, self.p_taxable, inflation) - taxes_paid
+        self.taxes_due += self.taxes.tax(regular_income, not self.couple, self.p_taxable, inflation) - taxes_paid
 
         def clip(utility):
             reward_annual = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
@@ -724,7 +861,7 @@ class FinEnv(Env):
                 print('Reward out of range - age, p_sum, consume_fraction, utility:', self.age, self.p_sum(), consume_fraction, utility)
             return reward_annual
 
-        if self.alive_single[self.episode_length] == None:
+        if self.couple:
             utility = self.utility.utility(consume_rate / (1 + self.params.consume_additional))
             self.reward_weight = 2 * self.params.time_period
         else:
@@ -735,34 +872,31 @@ class FinEnv(Env):
 
         self.age += self.params.time_period
         self.age2 += self.params.time_period
-        self.spia_age += self.params.time_period
 
-        couple_became_single = self.alive_single[self.episode_length] == None and self.alive_single[self.episode_length + 1] != None
-
+        couple_became_single = self.couple and self.alive_single[self.episode_length + 1] != None
         if couple_became_single:
 
             self.life_expectancy_both = [0] * len(self.life_expectancy_both)
             self.life_expectancy_one = self.life_expectancy_single
 
-            self.real_spia = self.real_spia_single
-            self.nominal_spia = self.nominal_spia_single
+            for db in self.defined_benefits.values():
+                db['spia'] = db['spia_single']
+                db['sched'] = db['sched_single']
+                db['sched_single'] = None
+                db['owner'] = db['owner_single']
 
-            self.gi_real_couple = 0
-            self.gi_nominal_couple = 0
-
-            if self.first_dies_first:
-
-                self.gi_real = 0
-                self.gi_nominal = 0
-                self.spia_age = self.age2
-
-            else:
-
-                self.gi_real2 = 0
-                self.gi_nominal2 = 0
+        for db in self.defined_benefits.values():
+            db['sched'].pop(0)
+            try:
+                db['sched_single'].pop(0)
+            except KeyError:
+                pass
+            db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2)
 
         self.episode_utility_sum += utility
         self.episode_length += 1
+
+        self.couple = self.alive_single[self.episode_length] == None
 
         self._step_bonds()
 
@@ -828,8 +962,7 @@ class FinEnv(Env):
 
     def render(self, mode = 'human'):
 
-        print(self.age, self.gi_real, self.gi_real2, self.gi_real_couple, self.gi_nominal, self.gi_nominal2, self.gi_nominal_couple, \
-              self.p_tax_free, self.p_tax_deferred, self.p_taxable, \
+        print(self.age, self.p_tax_free, self.p_tax_deferred, self.p_taxable, \
               self.prev_asset_allocation, self.prev_consume_rate, self.prev_real_spias_rate, self.prev_nominal_spias_rate, self.prev_reward)
 
     def seed(self, seed=None):
@@ -838,13 +971,33 @@ class FinEnv(Env):
 
     def _observe(self):
 
-        couple = int(self.alive_single[self.episode_length] == None)
-        single = int(self.alive_single[self.episode_length] != None)
+        couple = int(self.couple)
+        single = int(not self.couple)
 
         life_expectancy_both = self.life_expectancy_both[self.episode_length]
         life_expectancy_one = self.life_expectancy_one[self.episode_length]
+        equivalent_consume_to_wealth = 2 * life_expectancy_both / (1 + self.params.consume_additional) + life_expectancy_one
+
+        income = {'tax_free': 0, 'tax_deferred': 0, 'taxable': 0}
+        for key, db in self.defined_benefits.items():
+            type_of_funds = key[0]
+            real = key[1]
+            mwr = self.params.real_spias_mwr if real else self.params.nominal_spias_mwr
+            pv = db['spia'].premium(1, mwr = mwr)
+            income[type_of_funds] += pv
+        for key, value in income.items():
+            try:
+                income[key] /= equivalent_consume_to_wealth
+            except ZeroDivisionError:
+                income[key] = float('inf')
 
         p_basis, cg_carry = self.taxes.observe()
+        wealth = {'tax_free': self.p_tax_free + p_basis, 'tax_deferred': self.p_tax_deferred, 'taxable': self.p_taxable - p_basis - self.taxes_due + cg_carry}
+        for key, value in wealth.items():
+            try:
+                wealth[key] /= equivalent_consume_to_wealth
+            except ZeroDivisionError:
+                wealth[key] = float('inf')
 
         if self.params.observe_interest_rate:
             real_interest_rate, = self.bonds.real.observe()
@@ -856,53 +1009,26 @@ class FinEnv(Env):
         else:
             inflation_rate = 0
 
-        observe = (couple, single, life_expectancy_both, life_expectancy_one,
-                   self.gi_real, self.gi_real2, self.gi_real_couple, self.gi_nominal, self.gi_nominal2, self.gi_nominal_couple,
-                   self.p_tax_free, self.p_tax_deferred, self.p_taxable, p_basis, self.taxes_due, cg_carry, real_interest_rate, inflation_rate)
+        observe = (couple, single, life_expectancy_both, life_expectancy_one, income['tax_free'], income['tax_deferred'], income['taxable'],
+            wealth['tax_free'], wealth['tax_deferred'], wealth['taxable'], real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')
 
     def decode_observation(self, obs):
 
-        couple, single, life_expectancy_both, life_expectancy_one, gi_real, gi_real2, gi_real_couple, gi_nominal, gi_nominal2, gi_nominal_couple, \
-            p_tax_free, p_tax_deferred, p_taxable, p_taxable_basis, taxes_due, cg_carry, real_interest_rate, inflation_rate = obs.tolist()
+        couple, single, life_expectancy_both, life_expectancy_one, income_tax_free, income_tax_deferred, income_taxable, \
+            wealth_tax_free, wealth_tax_deferred, wealth_taxable, real_interest_rate, inflation_rate = obs.tolist()
 
         return {
             'couple': couple,
             'single': single,
             'life_expectancy_both': life_expectancy_both,
             'life_expectancy_one': life_expectancy_one,
-            'gi_real': gi_real,
-            'gi_real2': gi_real2,
-            'gi_real_couple': gi_real_couple,
-            'gi_nominal': gi_nominal,
-            'gi_nominal2': gi_nominal2,
-            'gi_nominal_couple': gi_nominal_couple,
-            'p_tax_free': p_tax_free,
-            'p_tax_deferred': p_deferred,
-            'p_taxable': p_taxable,
-            'p_taxable_basis': p_taxable_basis,
-            'taxes_due': taxes_due,
-            'cg_carry': cg_carry,
+            'income_tax_free': income_tax_free,
+            'income_tax_deferred': income_tax_deferred,
+            'income_taxable': income_taxable,
+            'wealth_tax_free': wealth_tax_free,
+            'wealth_tax_deferred': wealth_tax_deferred,
+            'wealth_taxable': wealth_taxable,
             'real_interest_rate': real_interest_rate,
             'inflation_rate': inflation_rate
-        }
-
-    def fully_decode_action(self, action):
-
-        if action is None:
-            decoded_action = None
-        else:
-            decoded_action = self.decode_action(action)
-        policified_action = policy(self, decoded_action)
-        consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
-        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, real_spias_purchase, nominal_spias_purchase = \
-            self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
-
-        return {
-            'consume': consume,
-            'asset_allocation': asset_allocation,
-            'real_spias_purchase': real_spias_purchase if self.params.real_spias else None,
-            'nominal_spias_purchase': nominal_spias_purchase if self.params.real_spias else None,
-            'real_bonds_duration': real_bonds_duration,
-            'nominal_bonds_duration': nominal_bonds_duration,
         }
