@@ -127,4 +127,11 @@ class Taxes(object):
 
     def observe(self):
 
-        return sum(self.basis.values()), self.cg_carry
+        if self.env.params.tax:
+            basis = sum(self.basis.values())
+            cg_carry = self.cg_carry
+        else:
+            basis = 0
+            cg_carry = 0
+
+        return basis, cg_carry

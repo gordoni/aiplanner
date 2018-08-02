@@ -999,6 +999,10 @@ class FinEnv(Env):
             except ZeroDivisionError:
                 wealth[key] = float('inf')
 
+        if not self.params.tax:
+            income = {'tax_free': sum(income.values()), 'tax_deferred': 0, 'taxable': 0} # Results in better training.
+            wealth = {'tax_free': sum(wealth.values()), 'tax_deferred': 0, 'taxable': 0}
+
         if self.params.observe_interest_rate:
             real_interest_rate, = self.bonds.real.observe()
         else:
