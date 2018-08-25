@@ -82,10 +82,10 @@ class Evaluator(object):
     def trace_step(self, env, action, done):
 
         if not done:
-            decoded_action = env.fully_decode_action(action)
+            decoded_action = env.interpret_action(action)
         self.episode.append({
             'age': env.age,
-            'gi_sum': env.gi_sum(),
+            'gi_sum': env.gi_sum() if not done else None,
             'p_sum': env.p_sum(),
             'consume': decoded_action['consume'] if not done else None,
         })

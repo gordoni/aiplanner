@@ -8,6 +8,8 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+from json import loads
+
 from gym_fin.envs.asset_allocation import AssetAllocation
 
 def _pmt(rate, nper, pv):
@@ -19,7 +21,7 @@ def _pmt(rate, nper, pv):
 
 def policy(env, action):
 
-    global consume_rate_initial, consume_prev, life_expectancy_initial, p_notax_initial
+    global consume_rate_initial, consume_prev, life_expectancy_initial, p_initial
 
     if action is not None:
         consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = action
@@ -50,14 +52,14 @@ def policy(env, action):
             life_expectancy = env.params.consume_policy_life_expectancy - env.episode_length * env.params.time_period
         if env.episode_length == 0:
             consume = env.params.consume_initial - env.gi_sum() * env.params.time_period
-            consume_rate_initial = consume / env.p_notax
+            consume_rate_initial = consume / env.p_sum()
         else:
             consume = consume_prev
-            if consume < 0.8 * consume_rate_initial * env.p_notax:
+            if consume < 0.8 * consume_rate_initial * env.p_sum():
                 consume *= 1.1
-            if consume > 1.2 * consume_rate_initial * env.p_notax and life_expectancy > 15:
+            if consume > 1.2 * consume_rate_initial * env.p_sum() and life_expectancy > 15:
                 consume *= 0.9
-            if env.prev_ret * env.prev_inflation < 1 and consume > consume_rate_initial * env.p_notax:
+            if env.prev_ret * env.prev_inflation < 1 and consume > consume_rate_initial * env.p_sum():
                 consume /= env.prev_inflation
         consume_prev = consume
         consume += env.gi_sum() * env.params.time_period
@@ -72,10 +74,10 @@ def policy(env, action):
             life_expectancy = max(1, env.params.consume_policy_life_expectancy - env.episode_length * env.params.time_period)
         if env.episode_length == 0:
             life_expectancy_initial = life_expectancy
-            p_notax_initial = env.p_notax
+            p_initial = env.p_sum()
             consume = env.params.consume_initial - env.gi_sum() * env.params.time_period
-        elif _pmt(env.params.consume_policy_return, life_expectancy, env.p_notax) >= \
-            _pmt(env.params.consume_policy_return, life_expectancy_initial, p_notax_initial):
+        elif _pmt(env.params.consume_policy_return, life_expectancy, env.p_sum()) >= \
+            _pmt(env.params.consume_policy_return, life_expectancy_initial, p_initial):
             consume = consume_prev
         else:
             consume = consume_prev / env.prev_inflation
@@ -157,7 +159,7 @@ def policy(env, action):
 
         assert env.alive_single[env.episode_length] != None or env.age == env.age2
         rmd_period = extended_rmd_table[min(int(env.age), max(extended_rmd_table.keys()))]
-        consume = (env.gi_sum() + env.p_notax / rmd_period) * env.params.time_period
+        consume = (env.gi_sum() + env.p_sum() / rmd_period) * env.params.time_period
         consume_fraction = consume / env.p_plus_income()
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
@@ -168,7 +170,7 @@ def policy(env, action):
         else:
             life_expectancy = env.params.consume_policy_life_expectancy - env.episode_length * env.params.time_period
         life_expectancy = max(1, life_expectancy)
-        consume = env.gi_sum() * env.params.time_period + _pmt(env.params.consume_policy_return, life_expectancy, env.p_notax)
+        consume = env.gi_sum() * env.params.time_period + _pmt(env.params.consume_policy_return, life_expectancy, env.p_sum())
         consume_fraction = consume / env.p_plus_income()
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
@@ -196,8 +198,7 @@ def policy(env, action):
 
     elif env.params.asset_allocation_policy != 'rl':
 
-        asset_allocation = {}
-        exec(env.params.asset_allocation_policy, None, asset_allocation)
+        asset_allocation = loads(env.params.asset_allocation_policy)
         asset_allocation = AssetAllocation(**asset_allocation)
 
     if env.params.real_bonds:

@@ -68,7 +68,7 @@ class ModelParams(object):
             # Asset allocation policy.
             # "rl": reinforcement learning.
             # "age-in-nominal-bonds": age in years as nominal bonds percentage, remainder in stocks.
-            # "<asset_class>=<allocation>; ...": fixed allocation. Eg. "stocks=0.5; nominal_bonds=0.5".
+            # '{"<asset_class>":<allocation>, ...}': fixed allocation. Eg. '{"stocks":0.5, "nominal_bonds":0.5}'.
         # Bonds duration policy.
         # Defined by "real-bonds-duration" and "nominal-bonds-duration" below; None for reinforcement learning, or a fixed age in years.
 

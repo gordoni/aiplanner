@@ -409,6 +409,8 @@ class FinEnv(Env):
         for db in self.defined_benefits.values():
             db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2) # Pick up non-zero schedule for observe.
 
+        self.cpi = 1
+
         found = False
         for _ in range(1000):
 
@@ -442,8 +444,6 @@ class FinEnv(Env):
 
         self.taxes = Taxes(self, taxable_assets, p_taxable_stocks_basis_fraction)
         self.taxes_due = 0
-
-        self.cpi = 1
 
         self.stocks.reset()
         self.iid_bonds.reset()

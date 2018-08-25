@@ -103,8 +103,6 @@ class RequestHandler(BaseHTTPRequestHandler):
         model_dir = args.master_model_dir
         model_params = loads(open(model_dir + '/assets.extra/params.json').read())
 
-        assert 'asset_allocation_policy' not in request, 'Be doubly sure to prevent untrusted code execution'
-
         def set_delete(param):
             model_params[param] = request[param]
             del request[param]
@@ -116,6 +114,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         set_delete('sex')
         set_delete('life_expectancy_additional')
         set_delete('gamma')
+
+        model_params['defined_benefits'] = dumps(request['defined_benefits'])
+        del request['defined_benefits']
 
         try:
             basis_fraction = request['p_taxable_stocks_basis'] / request['p_taxable_stocks']
@@ -130,17 +131,14 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         for param in (
             'age_start2',
-            'gi_real', 'gi_real2', 'gi_real_couple', 'gi_nominal', 'gi_nominal2', 'gi_nominal_couple',
             'p_taxable_real_bonds', 'p_taxable_iid_bonds', 'p_taxable_bills'):
             set_low_high(param, 0)
-
-        model_params['gi_nominal_low'] = model_params['gi_nominal_high'] = 10000 # XXX For testing.
 
         set_low_high('p_taxable_nominal_bonds', request['p_taxable_bonds'])
         del request['p_taxable_bonds']
 
         for param, value in request.items():
-            assert param in ('defined_benefits', 'retirement_age', ), 'Unexpected parameter: ' + param
+            assert param in ('retirement_age', ), 'Unexpected parameter: ' + param
 
         model_params['display_returns'] = False;
 

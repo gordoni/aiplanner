@@ -42,7 +42,7 @@ Development
 Run the API server (the Angular server will proxy to it when handling
 /api requests):
 
-    cd aiplanner/web
+    cd aiplanner/ai/web
     ./serve_model.py
 
 On the same machine in a separate shell window run the Angular server:
