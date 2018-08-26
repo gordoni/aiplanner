@@ -411,6 +411,15 @@ class FinEnv(Env):
 
         self.cpi = 1
 
+        self.stocks.reset()
+        self.iid_bonds.reset()
+        self.bills.reset()
+
+        self.bonds_stepper.reset()
+
+        self.episode_utility_sum = 0
+        self.episode_length = 0
+
         found = False
         for _ in range(1000):
 
@@ -433,7 +442,11 @@ class FinEnv(Env):
             else:
                 p_taxable_stocks_basis_fraction = uniform(self.params.p_taxable_stocks_basis_fraction_low, self.params.p_taxable_stocks_basis_fraction_high)
 
-            consume_expect = self.gi_sum() + self.p_sum() / (2 * self.life_expectancy_both[0] + self.life_expectancy_one[0])
+            self.taxes = Taxes(self, taxable_assets, p_taxable_stocks_basis_fraction)
+            self.taxes_due = 0
+
+            self._pre_calculate()
+            consume_expect = self._income_estimate()
 
             found = self.params.consume_floor <= consume_expect <= self.params.consume_ceiling
             if found:
@@ -442,24 +455,12 @@ class FinEnv(Env):
         if not found:
             raise Exception('Expected consumption falls outside model training range.')
 
-        self.taxes = Taxes(self, taxable_assets, p_taxable_stocks_basis_fraction)
-        self.taxes_due = 0
-
-        self.stocks.reset()
-        self.iid_bonds.reset()
-        self.bills.reset()
-
-        self.bonds_stepper.reset()
-
         self.prev_asset_allocation = None
         self.prev_taxable_assets = taxable_assets
         self.prev_real_spias_rate = None
         self.prev_nominal_spias_rate = None
         self.prev_consume_rate = None
         self.prev_reward = None
-
-        self.episode_utility_sum = 0
-        self.episode_length = 0
 
         return self._observe()
 
@@ -556,7 +557,10 @@ class FinEnv(Env):
             # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for the negative rewards.
             # This will be to the detriment of the fit for more likely reward values.
             # For PPO the policy network either never fully retrains after the initial poor fit, or requires more training time.
-            consume_estimate = self._income_estimate() / self.p_plus_income()
+            try:
+                consume_estimate = self._income_estimate() / self.p_plus_income()
+            except ZeroDivisionError:
+                consume_estimate = float('inf')
             consume_floor = 0
             consume_ceil = 2 * consume_estimate
             consume_fraction = consume_floor + (consume_ceil - consume_floor) * consume_action
@@ -575,7 +579,7 @@ class FinEnv(Env):
             spias_action = tanh(spias_action / 4)
                 # Scaling back initial volatility of spias_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
             spias_action = (spias_action + 1) / 2
-            current_spias_fraction_estimate = self.gi_sum() / self._income_estimate()
+            current_spias_fraction_estimate = sum(self.income.values()) / self._income_estimate()
             assert 0 <= current_spias_fraction_estimate <= 1
             # Might like to pass on any more SPIAs when spias_action <= current_spias_fraction_estimate,
             # but that might then make learning to increase spias_action difficult.
@@ -641,9 +645,7 @@ class FinEnv(Env):
 
     def _income_estimate(self):
 
-        lifespan = self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length]
-        lifespan = max(lifespan, self.params.time_period)
-        return self.gi_sum() + self.p_sum() / lifespan
+        return sum(self.income.values()) + sum(self.wealth.values())
 
     def p_plus_income(self):
 
@@ -900,6 +902,7 @@ class FinEnv(Env):
 
         self._step_bonds()
 
+        self._pre_calculate()
         observation = self._observe()
         done = self.episode_length >= len(self.alive_single) - 1
         info = {}
@@ -954,6 +957,7 @@ class FinEnv(Env):
         self.gi_nominal = gi_nominal
         self.p_tax_free = p_tax_free
 
+        self._pre_calculate()
         return self._observe()
 
     def set_reproduce_episode(self, episode):
@@ -969,6 +973,36 @@ class FinEnv(Env):
 
         return
 
+    def _pre_calculate(self):
+
+        equivalent_consume_to_wealth = 2 * self.life_expectancy_both[self.episode_length] / (1 + self.params.consume_additional) + \
+            self.life_expectancy_one[self.episode_length]
+
+        self.income = {'tax_free': 0, 'tax_deferred': 0, 'taxable': 0}
+        for key, db in self.defined_benefits.items():
+            type_of_funds = key[0]
+            real = key[1]
+            mwr = self.params.real_spias_mwr if real else self.params.nominal_spias_mwr
+            pv = db['spia'].premium(1, mwr = mwr)
+            self.income[type_of_funds] += pv
+        for key, value in self.income.items():
+            try:
+                self.income[key] /= equivalent_consume_to_wealth
+            except ZeroDivisionError:
+                self.income[key] = float('inf')
+
+        p_basis, cg_carry = self.taxes.observe()
+        self.wealth = {'tax_free': self.p_tax_free + p_basis, 'tax_deferred': self.p_tax_deferred, 'taxable': self.p_taxable - p_basis - self.taxes_due + cg_carry}
+        for key, value in self.wealth.items():
+            try:
+                self.wealth[key] /= equivalent_consume_to_wealth
+            except ZeroDivisionError:
+                self.wealth[key] = float('inf')
+
+        if not self.params.tax:
+            self.income = {'tax_free': sum(self.income.values()), 'tax_deferred': 0, 'taxable': 0} # Results in better training.
+            self.wealth = {'tax_free': sum(self.wealth.values()), 'tax_deferred': 0, 'taxable': 0}
+
     def _observe(self):
 
         couple = int(self.couple)
@@ -976,32 +1010,6 @@ class FinEnv(Env):
 
         life_expectancy_both = self.life_expectancy_both[self.episode_length]
         life_expectancy_one = self.life_expectancy_one[self.episode_length]
-        equivalent_consume_to_wealth = 2 * life_expectancy_both / (1 + self.params.consume_additional) + life_expectancy_one
-
-        income = {'tax_free': 0, 'tax_deferred': 0, 'taxable': 0}
-        for key, db in self.defined_benefits.items():
-            type_of_funds = key[0]
-            real = key[1]
-            mwr = self.params.real_spias_mwr if real else self.params.nominal_spias_mwr
-            pv = db['spia'].premium(1, mwr = mwr)
-            income[type_of_funds] += pv
-        for key, value in income.items():
-            try:
-                income[key] /= equivalent_consume_to_wealth
-            except ZeroDivisionError:
-                income[key] = float('inf')
-
-        p_basis, cg_carry = self.taxes.observe()
-        wealth = {'tax_free': self.p_tax_free + p_basis, 'tax_deferred': self.p_tax_deferred, 'taxable': self.p_taxable - p_basis - self.taxes_due + cg_carry}
-        for key, value in wealth.items():
-            try:
-                wealth[key] /= equivalent_consume_to_wealth
-            except ZeroDivisionError:
-                wealth[key] = float('inf')
-
-        if not self.params.tax:
-            income = {'tax_free': sum(income.values()), 'tax_deferred': 0, 'taxable': 0} # Results in better training.
-            wealth = {'tax_free': sum(wealth.values()), 'tax_deferred': 0, 'taxable': 0}
 
         if self.params.observe_interest_rate:
             real_interest_rate, = self.bonds.real.observe()
@@ -1013,8 +1021,8 @@ class FinEnv(Env):
         else:
             inflation_rate = 0
 
-        observe = (couple, single, life_expectancy_both, life_expectancy_one, income['tax_free'], income['tax_deferred'], income['taxable'],
-            wealth['tax_free'], wealth['tax_deferred'], wealth['taxable'], real_interest_rate, inflation_rate)
+        observe = (couple, single, life_expectancy_both, life_expectancy_one, self.income['tax_free'], self.income['tax_deferred'], self.income['taxable'],
+            self.wealth['tax_free'], self.wealth['tax_deferred'], self.wealth['taxable'], real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')
 
     def decode_observation(self, obs):
