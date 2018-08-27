@@ -22,7 +22,7 @@ export class DefinedBenefit {
   public inflationAdjustment: any;
   public joint: boolean;
   public payoutFractionPct: number;
-  public sourceOfFunds: string = 'tax_deferred';
+  public sourceOfFunds: string;
   public exclusionPeriod: number = 0;
   public exclusionAmountPer: number = 0;
 
@@ -33,6 +33,7 @@ export class DefinedBenefit {
     this.inflationAdjustment = ['Social Security', 'Pension'].includes(type) ? "cpi" : 0;
     this.joint = ['Income Annuity', 'Reverse Mortgage'].includes(type);
     this.payoutFractionPct = type == 'Income Annuity' ? 70 : (type == 'Reverse Mortgage' ? 100 : 0);
+    this.sourceOfFunds = type == 'Income Annuity' ? 'tax_deferred' : (type == 'Reverse Mortgage' ? 'tax_free' : 'taxable');
   }
 
   amount() {

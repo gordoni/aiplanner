@@ -173,9 +173,10 @@ class FinEnv(Env):
             # couple, single, life-expectancy both, life-expectancy one,
             # income present value annualized: tax_free, tax_deferred, taxable,
             # wealth annualized: tax_free, tax_deferred, taxable,
+            # taxable basis annualized,
             # short real interest rate, short inflation rate
-            low  = np.array((0, 0,   0,   0,   0,   0,   0,   0,   0,   0, -0.05, 0.0)),
-            high = np.array((1, 1, 100, 100, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6,  0.05, 0.1)),
+            low  = np.array((0, 0,   0,   0,   0,   0,   0,   0,   0,   0,   0, -0.05, 0.0)),
+            high = np.array((1, 1, 100, 100, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6,  0.05, 0.1)),
             dtype = 'float32'
         )
 
@@ -569,7 +570,8 @@ class FinEnv(Env):
 
             assert False
 
-        consume_fraction = max(0, min(consume_fraction, 1 / self.params.time_period))
+        consume_fraction = max(1e-6, min(consume_fraction, 1 / self.params.time_period))
+            # Don't allow consume_fraction of zero as have problems with -inf utility.
 
         if self.params.real_spias or self.params.nominal_spias:
 
@@ -992,16 +994,21 @@ class FinEnv(Env):
                 self.income[key] = float('inf')
 
         p_basis, cg_carry = self.taxes.observe()
-        self.wealth = {'tax_free': self.p_tax_free + p_basis, 'tax_deferred': self.p_tax_deferred, 'taxable': self.p_taxable - p_basis - self.taxes_due + cg_carry}
+        self.wealth = {'tax_free': self.p_tax_free, 'tax_deferred': self.p_tax_deferred, 'taxable': self.p_taxable - self.taxes_due}
         for key, value in self.wealth.items():
             try:
                 self.wealth[key] /= equivalent_consume_to_wealth
             except ZeroDivisionError:
                 self.wealth[key] = float('inf')
+        try:
+            self.taxable_basis = (p_basis - cg_carry) / equivalent_consume_to_wealth
+        except ZeroDivisionError:
+            self.taxable_basis = float('inf')
 
         if not self.params.tax:
             self.income = {'tax_free': sum(self.income.values()), 'tax_deferred': 0, 'taxable': 0} # Results in better training.
             self.wealth = {'tax_free': sum(self.wealth.values()), 'tax_deferred': 0, 'taxable': 0}
+            self.taxable_basis = 0
 
     def _observe(self):
 
@@ -1022,13 +1029,13 @@ class FinEnv(Env):
             inflation_rate = 0
 
         observe = (couple, single, life_expectancy_both, life_expectancy_one, self.income['tax_free'], self.income['tax_deferred'], self.income['taxable'],
-            self.wealth['tax_free'], self.wealth['tax_deferred'], self.wealth['taxable'], real_interest_rate, inflation_rate)
+            self.wealth['tax_free'], self.wealth['tax_deferred'], self.wealth['taxable'], self.taxable_basis, real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')
 
     def decode_observation(self, obs):
 
         couple, single, life_expectancy_both, life_expectancy_one, income_tax_free, income_tax_deferred, income_taxable, \
-            wealth_tax_free, wealth_tax_deferred, wealth_taxable, real_interest_rate, inflation_rate = obs.tolist()
+            wealth_tax_free, wealth_tax_deferred, wealth_taxable, taxable_basis, real_interest_rate, inflation_rate = obs.tolist()
 
         return {
             'couple': couple,
@@ -1041,6 +1048,7 @@ class FinEnv(Env):
             'wealth_tax_free': wealth_tax_free,
             'wealth_tax_deferred': wealth_tax_deferred,
             'wealth_taxable': wealth_taxable,
+            'taxable_basis': taxable_basis,
             'real_interest_rate': real_interest_rate,
             'inflation_rate': inflation_rate
         }
