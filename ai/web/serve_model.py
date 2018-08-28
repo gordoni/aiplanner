@@ -184,6 +184,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.bonds_cache.append(bonds)
 
         return {
+            'ce': ce,
             'consume': interp['consume'],
             'consume_low': low,
             'asset_allocation': str(interp['asset_allocation']),
