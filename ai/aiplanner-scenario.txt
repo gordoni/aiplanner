@@ -25,7 +25,13 @@ master_age_start = 50
 master_age_start2 = 50
 master_age_end = 120
 
+master_age_retirement_low = 50
+master_age_retirement_high = 75
+
 master_consume_additional = 0.6
+
+master_consume_preretirement_low = 1e4
+master_consume_preretirement_high = 2e5
 
 master_defined_benefits = '[{"payout": [1e3, 1e5], "source_of_funds": "tax_free"}, {"payout": [1e3, 1e5], "source_of_funds": "tax_deferred"}, {"payout": [1e3, 1e5], "source_of_funds": "taxable"}]'
 master_p_tax_free_low = 1e3

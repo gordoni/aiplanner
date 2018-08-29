@@ -117,8 +117,10 @@ class ModelParams(object):
         self._param('age-start', (65, 65), 65) # Age of first individual.
         self._param('age-start2', (65, 65), 65) # Age of second individual.
         self._param('age-end', 120) # Model done when individuals reach this age.
+        self._param('age-retirement', (65, 65), 65) # Assess and optimize consumption from when first individual reaches this age.
         self._param('consume-additional', 0.6)
             # When a second individual is present we consume this fraction more than a single individual for the same per individual utility.
+        self._param('consume-preretirement', (0, 0), 0) # Annual pre-retirement consumption.
 
         self._param('time-period', 1) # Rebalancing time interval in years.
         self._param('gamma', 3) # Coefficient of relative risk aversion.

@@ -170,13 +170,13 @@ class FinEnv(Env):
             # PPO1 implementation ignores size and assumes [-inf, inf] output.
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple in baselines/baselines/ppo1/mlp_policy.py.
-            # couple, single, life-expectancy both, life-expectancy one,
+            # couple, single, life-expectancy both, life-expectancy one, preretirement years,
             # income present value annualized: tax_free, tax_deferred, taxable,
             # wealth annualized: tax_free, tax_deferred, taxable,
-            # taxable basis annualized,
+            # preretirement consume annualized, taxable basis annualized,
             # short real interest rate, short inflation rate
-            low  = np.array((0, 0,   0,   0,   0,   0,   0,   0,   0,   0,   0, -0.05, 0.0)),
-            high = np.array((1, 1, 100, 100, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6,  0.05, 0.1)),
+            low  = np.array((0, 0,   0,   0,  0,   0,   0,   0,   0,   0,   0,   0,   0, -0.05, 0.0)),
+            high = np.array((1, 1, 100, 100, 50, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6,  0.05, 0.1)),
             dtype = 'float32'
         )
 
@@ -404,6 +404,8 @@ class FinEnv(Env):
             self._compute_vital_stats(age_start, age_start2, self.q_adjust, self.q_adjust2)
         self.age = age_start
         self.age2 = age_start2
+        self.age_retirement = uniform(self.params.age_retirement_low, self.params.age_retirement_high)
+        self.consume_preretirement = self.log_uniform(self.params.consume_preretirement_low, self.params.consume_preretirement_high)
 
         self.couple = self.alive_single[0] == None
         self.defined_benefits = self.parse_defined_benefits(self.params.defined_benefits)
@@ -660,8 +662,11 @@ class FinEnv(Env):
         assert 0 <= consume_fraction_period <= 1
 
         p = self.p_plus_income()
-        #consume_annual = consume_fraction * p
-        consume = consume_fraction_period * p
+        if self.age < self.age_retirement:
+            consume = min(p, self.consume_preretirement * self.params.time_period)
+        else:
+            #consume_annual = consume_fraction * p
+            consume = consume_fraction_period * p
         p -= consume
         if p < 0:
             assert p / self.p_sum() > -1e-15
@@ -871,6 +876,8 @@ class FinEnv(Env):
         else:
             utility = self.utility.utility(consume_rate)
             self.reward_weight = self.alive_single[self.episode_length] * self.params.time_period
+        if self.age < self.age_retirement:
+            self.reward_weight = 0
         self.reward_value = clip(utility)
         reward = self.reward_weight * self.reward_value
 
@@ -977,8 +984,12 @@ class FinEnv(Env):
 
     def _pre_calculate(self):
 
-        equivalent_consume_to_wealth = 2 * self.life_expectancy_both[self.episode_length] / (1 + self.params.consume_additional) + \
-            self.life_expectancy_one[self.episode_length]
+        self.preretirement = max(0, self.age_retirement - self.age)
+        preretirement_both = min(self.preretirement, self.life_expectancy_both[self.episode_length])
+        preretirement_one = self.preretirement - preretirement_both
+
+        equivalent_consume_to_wealth = 2 * (self.life_expectancy_both[self.episode_length] - preretirement_both) / (1 + self.params.consume_additional) + \
+            self.life_expectancy_one[self.episode_length] - preretirement_one
 
         self.income = {'tax_free': 0, 'tax_deferred': 0, 'taxable': 0}
         for key, db in self.defined_benefits.items():
@@ -1010,6 +1021,11 @@ class FinEnv(Env):
             self.wealth = {'tax_free': sum(self.wealth.values()), 'tax_deferred': 0, 'taxable': 0}
             self.taxable_basis = 0
 
+        try:
+            self.consume_preretirement_annualized = self.consume_preretirement * self.preretirement / equivalent_consume_to_wealth
+        except ZeroDivisionError:
+            self.consume_preretirement_annualized = float('inf')
+
     def _observe(self):
 
         couple = int(self.couple)
@@ -1028,26 +1044,30 @@ class FinEnv(Env):
         else:
             inflation_rate = 0
 
-        observe = (couple, single, life_expectancy_both, life_expectancy_one, self.income['tax_free'], self.income['tax_deferred'], self.income['taxable'],
-            self.wealth['tax_free'], self.wealth['tax_deferred'], self.wealth['taxable'], self.taxable_basis, real_interest_rate, inflation_rate)
+        observe = (couple, single, life_expectancy_both, life_expectancy_one, self.preretirement,
+            self.income['tax_free'], self.income['tax_deferred'], self.income['taxable'],
+            self.wealth['tax_free'], self.wealth['tax_deferred'], self.wealth['taxable'], self.consume_preretirement_annualized,
+            self.taxable_basis, real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')
 
     def decode_observation(self, obs):
 
-        couple, single, life_expectancy_both, life_expectancy_one, income_tax_free, income_tax_deferred, income_taxable, \
-            wealth_tax_free, wealth_tax_deferred, wealth_taxable, taxable_basis, real_interest_rate, inflation_rate = obs.tolist()
+        couple, single, life_expectancy_both, life_expectancy_one, preretirement, income_tax_free, income_tax_deferred, income_taxable, \
+            wealth_tax_free, wealth_tax_deferred, wealth_taxable, consume_preretirement, taxable_basis, real_interest_rate, inflation_rate = obs.tolist()
 
         return {
             'couple': couple,
             'single': single,
             'life_expectancy_both': life_expectancy_both,
             'life_expectancy_one': life_expectancy_one,
+            'preretirement': preretirement,
             'income_tax_free': income_tax_free,
             'income_tax_deferred': income_tax_deferred,
             'income_taxable': income_taxable,
             'wealth_tax_free': wealth_tax_free,
             'wealth_tax_deferred': wealth_tax_deferred,
             'wealth_taxable': wealth_taxable,
+            'consume_preretirement': consume_preretirement,
             'taxable_basis': taxable_basis,
             'real_interest_rate': real_interest_rate,
             'inflation_rate': inflation_rate

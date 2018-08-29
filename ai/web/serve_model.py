@@ -125,7 +125,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         set_low_high('p_taxable_stocks_basis_fraction', basis_fraction)
         del request['p_taxable_stocks_basis']
 
-        for param in ('age_start', 'p_tax_free', 'p_tax_deferred', 'p_taxable_stocks'):
+        for param in ('age_start', 'age_retirement', 'consume_preretirement', 'p_tax_free', 'p_tax_deferred', 'p_taxable_stocks'):
             set_low_high(param, request[param])
             del request[param]
 
@@ -138,7 +138,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         del request['p_taxable_bonds']
 
         for param, value in request.items():
-            assert param in ('retirement_age', ), 'Unexpected parameter: ' + param
+            assert False, 'Unexpected parameter: ' + param
 
         model_params['display_returns'] = False;
 

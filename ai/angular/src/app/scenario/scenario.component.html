@@ -36,7 +36,7 @@ PURPOSE.
         Invalid numeric value.
       </div>
     Health: {{health()}} - extra life expectancy of
-        <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional" [(ngModel)]="lifeExpectancyAdditional"> years
+      <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional" [(ngModel)]="lifeExpectancyAdditional"> years
   </div>
 
   <div *ngIf="step == 2">
@@ -136,8 +136,14 @@ PURPOSE.
 
   <div *ngIf="step == 3">
     <h1 class="title">Financial goals</h1>
-    Age at retirement: <input type="number" class="small-numeric" required name="scenarioRetirementAge" #scenarioRetirementAge="ngModel" [(ngModel)]="retirementAge">
-      <div class="error" *ngIf="scenarioRetirementAge.invalid">
+    Age at retirement: <input type="number" class="small-numeric" required name="scenarioAgeRetirement" #scenarioAgeRetirement="ngModel" [(ngModel)]="ageRetirement">
+      <div class="error" *ngIf="scenarioAgeRetirement.invalid">
+        Invalid numeric value.
+      </div>
+    <br>
+    Pre-retirement annual consumption:
+      <input type="number" class="numeric" required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
+      <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
         Invalid numeric value.
       </div>
   </div>
@@ -167,7 +173,7 @@ PURPOSE.
 
   <div *ngIf="step == 6">
     <p>
-      Current recommended after tax retirement consumption: {{results.consume}}
+      Current recommended after tax consumption: {{results.consume}}
     </p>
     <p>
       Recommended asset allocation: {{results.asset_allocation}}

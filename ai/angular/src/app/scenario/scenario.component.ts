@@ -24,7 +24,7 @@ export class ScenarioComponent implements OnInit {
   public step: number = 0;
   public sex: string = "male";
   public age: number = 50;
-  public lifeExpectancyAdditional: number = 2;
+  public lifeExpectancyAdditional: number = 3;
 
   public definedBenefits: DefinedBenefit[] = [];
   public editDefinedBenefit: DefinedBenefit = null;
@@ -35,7 +35,8 @@ export class ScenarioComponent implements OnInit {
   public pTaxableStocks: number = 0;
   public pTaxableStocksBasis: number = 0;
 
-  public retirementAge: number = 66;
+  public ageRetirement: number = 66;
+  public consumePreretirement = 20000;
 
   public gamma: number = 3;
 
@@ -132,7 +133,8 @@ export class ScenarioComponent implements OnInit {
         'p_taxable_stocks': this.pTaxableStocks,
         'p_taxable_stocks_basis': this.pTaxableStocksBasis,
 
-        'retirement_age': this.retirementAge,
+        'age_retirement': this.ageRetirement,
+        'consume_preretirement': this.consumePreretirement,
 
         'gamma': this.gamma,
     };
