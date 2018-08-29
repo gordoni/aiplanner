@@ -59,7 +59,7 @@ def parse_args(parser, *, training = True, evaluate = True, args = None):
         with open(arguments.config_file) as f:
             config_str = f.read()
         config = {}
-        exec(config_str, None, config)
+        exec(config_str, {'inf': float('inf')}, config)
         # Hack to ensure config file doesn't contain any misspelled parameters.
         defaults = {}
         for action in parser._actions:

@@ -219,11 +219,11 @@ class ModelParams(object):
             finally:
                 self.params[param] = value
 
-    def dump_params(self, *, training = True, evaluate = True):
+    def dump_params(self):
 
         print('Parameters:')
         for param in sorted(self.params):
-            print('   ', param, '=', self.params[param])
+            print('   ', param, '=', repr(self.params[param]))
 
     def get_params(self, training = False):
 
@@ -350,3 +350,9 @@ class ModelParams(object):
         if not (self.training or self.evaluate):
             under_name = name.replace('-', '_')
             self.param_names.append(under_name)
+
+def dump_params_file(fname, params, *, prefix = 'master_'):
+
+    with open(fname, 'w') as f:
+        for param in sorted(params):
+            f.write(prefix + param + ' = ' + repr(params[param]) + '\n')

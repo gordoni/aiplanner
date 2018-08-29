@@ -30,6 +30,7 @@ from baselines.common.misc_util import set_global_seeds
 from gym_fin.common.evaluator import Evaluator
 from gym_fin.envs.bonds import BondsSet
 from gym_fin.envs.fin_env import FinEnv
+from gym_fin.envs.model_params import dump_params_file
 from gym_fin.envs.policies import policy
 
 host = 'localhost'
@@ -148,6 +149,15 @@ class RequestHandler(BaseHTTPRequestHandler):
             bonds = BondsSet()
 
         try:
+            mkdir(data_root)
+        except FileExistsError:
+            pass
+        dir = mkdtemp(prefix='', dir=data_root)
+        chmod(dir, 0o775)
+
+        dump_params_file(dir + '/aiplanner-scenario.txt', model_params)
+
+        try:
 
             seed = args.seed + 1000000 # Use a different seed than might have been used during training.
             set_global_seeds(seed)
@@ -178,7 +188,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                 ce, ce_stderr, low, high = evaluator.evaluate(pi)
 
-                data_dir = self.plot(evaluator.trace)
+                self.plot(dir, evaluator.trace)
 
         finally:
             self.bonds_cache.append(bonds)
@@ -188,17 +198,10 @@ class RequestHandler(BaseHTTPRequestHandler):
             'consume': interp['consume'],
             'consume_low': low,
             'asset_allocation': str(interp['asset_allocation']),
-            'data_dir': '/api/data/' + data_dir,
+            'data_dir': '/api/data/' + dir[len(data_root):],
         }
 
-    def plot(self, traces):
-
-        try:
-            mkdir(data_root)
-        except FileExistsError:
-            pass
-        dir = mkdtemp(prefix='', dir=data_root)
-        chmod(dir, 0o775)
+    def plot(self, dir, traces):
 
         prefix = dir + '/aiplanner'
         with open(prefix + '-data.csv', 'w') as f:
@@ -210,8 +213,6 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         environ['AIPLANNER_FILE_PREFIX'] = prefix
         run(['./plot.gnuplot'], check = True)
-
-        return dir[len(data_root):]
         
 def main():
     global args
