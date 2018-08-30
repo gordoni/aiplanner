@@ -112,6 +112,7 @@ class ModelParams(object):
         self._param('life-expectancy-additional2', 0) # q-adjustment for second individual.
         self._param('age-adjust', 65) # Age of life_expectancy_additional for first individual.
         self._param('age-adjust2', 65) # Age of life_expectancy_additional for second individual.
+        self._param('life-table-spia', 'iam2012-basic', tp = string_type) # Life expectancy table to use for pricing spia purchases.
         self._param('sex', 'female', tp = string_type, choices = ('male', 'female')) # Sex of first individual. Helps determine life expectancy table.
         self._param('sex2', None, tp = string_type, choices = ('male', 'female', None)) # Sex of second individual, None if none.
         self._param('age-start', (65, 65), 65) # Age of first individual.
@@ -198,7 +199,9 @@ class ModelParams(object):
         self._param('iid-bonds-return', 0.024) # Annual real return for iid bonds when lognormal.
         self._param('iid-bonds-volatility', 0.112) # Annual real volatility for iid bonds when lognormal.
         self._param('bonds-standard-error', 0.010) # Standard error of log real return for bonds.
+        self._param('real-short-rate', None) # Initial short real interest rate when using model, or None to use the average model value.
         self._param('inflation-standard-error', 0.004) # Standard error of log inflation.
+        self._param('inflation-short-rate', None) # Initial inflation rate when using model, or None to use the average model value.
         self._boolean_flag('bills', True) # Whether to model stochastic bills (without any interest rate model).
         self._param('bills-return', 0.009) # Annual real return for bill asset class.
         self._param('bills-volatility', 0.004) # Annual real return for bill asset class.

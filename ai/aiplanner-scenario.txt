@@ -76,4 +76,9 @@ master_iid_bonds = False
 master_bonds_standard_error = 0.010
 master_bills = False
 
+master_real_short_rate = 0.008
+    # 2018-08-29 5 year rate - https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=realyield
+master_inflation_short_rate = 0.022
+    # 2018-2022 inflation - https://www.philadelphiafed.org/research-and-data/real-time-center/survey-of-professional-forecasters/2018/survq318 
+
 train_num_timesteps = 1000000 # No observed advantage from longer, may produce worse CE if 500000.

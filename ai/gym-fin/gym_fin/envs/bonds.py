@@ -673,13 +673,15 @@ class BondsSet(object):
         else:
             self.nominal = None
 
-    def update(self, *, real_standard_error, inflation_standard_error, time_period):
+    def update(self, *, real_short_rate, inflation_short_rate, real_standard_error, inflation_standard_error, time_period):
         '''Change the indicated bond parameters.'''
 
         if self.real:
             self.real.standard_error = real_standard_error
+            self.real.r0 = real_short_rate
         if self.inflation:
             self.inflation.standard_error = inflation_standard_error
+            self.inflation.r0 = inflation_short_rate
         assert time_period == self.time_period
 
 if __name__ == '__main__':
