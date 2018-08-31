@@ -46,7 +46,7 @@ class FinEnv(Env):
 
         return table.q_adjust
 
-    def _compute_vital_stats(self, age_start, age_start2, q_adjust, q_adjust2):
+    def _compute_vital_stats(self, age_start, age_start2, q_adjust, q_adjust2, preretirement):
 
         death_age = self.params.age_end - self.params.time_period
         table = LifeTable(self.params.life_table, self.params.sex, age_start,
@@ -122,12 +122,14 @@ class FinEnv(Env):
                 if q == q2 == 1:
                     break
 
-        alive_years = (2 * sum(alive_both) + sum(alive_one)) * self.params.time_period
+        retired_index = ceil(preretirement / self.params.time_period)
+
+        alive_years = (2 * sum(alive_both[retired_index:]) + sum(alive_one[retired_index:])) * self.params.time_period
 
         life_expectancy_both = []
         for y in range(len(alive_both)):
             try:
-                le = sum(alive_both[y:]) / alive_both[y] * self.params.time_period
+                le = sum(alive_both[max(y, retired_index):]) / alive_both[y] * self.params.time_period
             except ZeroDivisionError:
                 le = 0
             life_expectancy_both.append(le)
@@ -135,7 +137,7 @@ class FinEnv(Env):
         life_expectancy_one = []
         for y in range(len(alive_one)):
             try:
-                le = sum(alive_one[y:]) / (alive_both[y] + alive_one[y]) * self.params.time_period
+                le = sum(alive_one[max(y, retired_index):]) / (alive_both[y] + alive_one[y]) * self.params.time_period
             except ZeroDivisionError:
                 le = 0
             life_expectancy_one.append(le)
@@ -143,7 +145,7 @@ class FinEnv(Env):
         life_expectancy_single = []
         for y in range(len(alive_single)):
             try:
-                le = sum(alive_single[y:]) / alive_single[y] * self.params.time_period
+                le = sum(alive_single[max(y, retired_index):]) / alive_single[y] * self.params.time_period
             except TypeError:
                 le = None
             except ZeroDivisionError:
@@ -309,7 +311,7 @@ class FinEnv(Env):
 
     def get_db(self, defined_benefits, type, owner, inflation_adjustment, joint, payout_fraction, type_of_funds):
 
-        key = (type_of_funds, type == 'Social Security', owner, inflation_adjustment == 'cpi', joint, payout_fraction)
+        key = (type_of_funds, inflation_adjustment == 'cpi', type == 'Social Security', owner, joint, payout_fraction)
         try:
             db = defined_benefits[key]
         except KeyError:
@@ -420,15 +422,13 @@ class FinEnv(Env):
         if self.params.reproduce_episode != None:
             self._reproducable_seed(self.params.reproduce_episode, 0, 0)
 
-        age_start = uniform(self.params.age_start_low, self.params.age_start_high)
-        age_start2 = uniform(self.params.age_start2_low, self.params.age_start2_high)
+        self.age = uniform(self.params.age_start_low, self.params.age_start_high)
+        self.age2 = uniform(self.params.age_start2_low, self.params.age_start2_high)
+        self.age_retirement = uniform(self.params.age_retirement_low, self.params.age_retirement_high)
+        self.preretirement = max(0, self.age_retirement - self.age)
         self.first_dies_first, self.alive_years, self.alive_single, self.life_table, self.life_table2, \
             self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = \
-            self._compute_vital_stats(age_start, age_start2, self.q_adjust, self.q_adjust2)
-        self.age = age_start
-        self.age2 = age_start2
-        self.age_retirement = uniform(self.params.age_retirement_low, self.params.age_retirement_high)
-        self.consume_preretirement = self.log_uniform(self.params.consume_preretirement_low, self.params.consume_preretirement_high)
+            self._compute_vital_stats(self.age, self.age2, self.q_adjust, self.q_adjust2, self.preretirement)
 
         self.couple = self.alive_single[0] == None
 
@@ -441,12 +441,13 @@ class FinEnv(Env):
 
         self.bonds_stepper.reset()
 
-        self.episode_utility_sum = 0
+        self.episode_reward_sum = 0
         self.episode_length = 0
 
         found = False
         for _ in range(1000):
 
+            self.consume_preretirement = self.log_uniform(self.params.consume_preretirement_low, self.params.consume_preretirement_high)
             self.defined_benefits = self.parse_defined_benefits(self.params.defined_benefits)
             for db in self.defined_benefits.values():
                 db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2) # Pick up non-zero schedule for observe.
@@ -674,11 +675,15 @@ class FinEnv(Env):
 
     def _income_estimate(self):
 
-        return sum(self.income.values()) + sum(self.wealth.values())
+        return sum(self.income.values()) + sum(self.wealth.values()) - self.consume_preretirement_annualized
 
     def p_plus_income(self):
 
-        return self.p_sum() + self.gi_sum() * self.params.time_period
+        p = self.p_sum() + self.gi_sum() * self.params.time_period
+        taxes_paid = min(self.taxes_due, 0.9 * p) # Don't allow taxes to consume all of p.
+        p -= taxes_paid
+
+        return p
 
     def spend(self, consume_fraction, real_spias_fraction = 0, nominal_spias_fraction = 0):
 
@@ -686,19 +691,21 @@ class FinEnv(Env):
         consume_fraction_period = consume_fraction * self.params.time_period
         assert 0 <= consume_fraction_period <= 1
 
-        p = self.p_plus_income()
+        #p = self.p_plus_income()
+        p = self.p_sum() + self.gi_sum() * self.params.time_period
+        taxes_paid = min(self.taxes_due, 0.9 * p)
+        p -= taxes_paid
+
         if self.age < self.age_retirement:
             consume = min(p, self.consume_preretirement * self.params.time_period)
         else:
             #consume_annual = consume_fraction * p
             consume = consume_fraction_period * p
         p -= consume
+        assert p >= 0
         if p < 0:
             assert p / self.p_sum() > -1e-15
             p = 0
-
-        taxes_paid = min(self.taxes_due, p) # Don't allow taxes to consume more than p.
-        p -= taxes_paid
 
         p_taxable = self.p_taxable + (p - self.p_sum())
         p_tax_deferred = self.p_tax_deferred + min(p_taxable, 0)
@@ -782,7 +789,7 @@ class FinEnv(Env):
             self.add_db(self.defined_benefits, age = age, premium = tax_deferred_spias, inflation_adjustment = cpi, joint = true, \
                 payout_fraction = payout_fraction, source_of_funds = 'tax_deferred')
         if taxable_spias > 0:
-            exclusion_period = ceil(self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length])
+            exclusion_period = ceil(self.preretirement + self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length])
                 # Highly imperfect, but total exclusion amount will be correct.
             exlusion_amount = taxable_spias / exclusion_period
             self.add_db(self.defined_benefits, age = age, premium = taxable_spias, inflation_adjustment = cpi, joint = true, \
@@ -901,13 +908,16 @@ class FinEnv(Env):
         else:
             utility = self.utility.utility(consume_rate)
             self.reward_weight = self.alive_single[self.episode_length] * self.params.time_period
+        self.reward_value = clip(utility)
         if self.age < self.age_retirement:
             self.reward_weight = 0
-        self.reward_value = clip(utility)
-        reward = self.reward_weight * self.reward_value
+            reward = 0
+        else:
+            reward = self.reward_weight * self.reward_value
 
         self.age += self.params.time_period
         self.age2 += self.params.time_period
+        self.preretirement = max(0, self.preretirement - self.params.time_period)
 
         couple_became_single = self.couple and self.alive_single[self.episode_length + 1] != None
         if couple_became_single:
@@ -929,7 +939,7 @@ class FinEnv(Env):
                 pass
             db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2)
 
-        self.episode_utility_sum += utility
+        self.episode_reward_sum += reward
         self.episode_length += 1
 
         self.couple = self.alive_single[self.episode_length] == None
@@ -944,7 +954,7 @@ class FinEnv(Env):
         done = self.episode_length >= len(self.alive_single) - 1
         info = {}
         if done:
-            info['ce'] = self.utility.inverse(self.episode_utility_sum / self.episode_length)
+            info['ce'] = self.utility.inverse(self.episode_reward_sum / self.alive_years)
 
         self.prev_asset_allocation = asset_allocation
         self.prev_taxable_assets = taxable_assets
@@ -1012,14 +1022,8 @@ class FinEnv(Env):
 
     def _pre_calculate(self):
 
-        self.preretirement = max(0, self.age_retirement - self.age)
-        preretirement_both = min(self.preretirement, self.life_expectancy_both[self.episode_length])
-        preretirement_one = self.preretirement - preretirement_both
-
-        #XXXalive_years = (2 * sum(alive_both) + sum(alive_one)) * self.params.time_period
-
-        equivalent_consume_to_wealth = 2 * (self.life_expectancy_both[self.episode_length] - preretirement_both) / (1 + self.params.consume_additional) + \
-            self.life_expectancy_one[self.episode_length] - preretirement_one
+        equivalent_consume_to_wealth = 2 * (self.life_expectancy_both[self.episode_length]) / (1 + self.params.consume_additional) + \
+            self.life_expectancy_one[self.episode_length]
 
         self.income = {'tax_free': 0, 'tax_deferred': 0, 'taxable': 0}
         for key, db in self.defined_benefits.items():
