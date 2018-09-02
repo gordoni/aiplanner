@@ -11,7 +11,7 @@
 from datetime import datetime, timedelta
 from json import loads
 from math import atanh, ceil, exp, floor, isnan, log, sqrt, tanh
-from random import seed, random, uniform
+from random import seed, random, uniform, lognormvariate
 
 import numpy as np
 
@@ -26,7 +26,7 @@ from gym_fin.envs.bonds import BondsSet
 from gym_fin.envs.policies import policy
 from gym_fin.envs.returns import Returns, returns_report, yields_report
 from gym_fin.envs.returns_sample import ReturnsSample
-from gym_fin.envs.taxes import Taxes
+from gym_fin.envs.taxes import Taxes, contribution_limit
 from gym_fin.envs.utility import Utility
 
 class AttributeObject(object):
@@ -175,10 +175,10 @@ class FinEnv(Env):
             # couple, single, life-expectancy both, life-expectancy one, preretirement years,
             # income present value annualized: tax_free, tax_deferred, taxable,
             # wealth annualized: tax_free, tax_deferred, taxable,
-            # preretirement consume annualized, taxable basis annualized,
+            # first person preretirement income annualized, second person preretirement income annualized, consume annualized, taxable basis annualized,
             # short real interest rate, short inflation rate
-            low  = np.array((0, 0,   0,   0,  0,   0,   0,   0,   0,   0,   0,   0,   0, -0.05, 0.0)),
-            high = np.array((1, 1, 100, 100, 50, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6,  0.05, 0.1)),
+            low  = np.array((0, 0,   0,   0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, -0.05, 0.0)),
+            high = np.array((1, 1, 100, 100, 50, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6,  0.05, 0.1)),
             dtype = 'float32'
         )
 
@@ -272,15 +272,19 @@ class FinEnv(Env):
 
         self.reset()
 
-    def gi_sum(self):
+    def gi_sum(self, source = ('tax_free', 'tax_deferred', 'taxable')):
 
         gi = 0
+        if 'taxable' in source:
+            gi += self.income_preretirement + self.income_preretirement2
         for key, db in self.defined_benefits.items():
+            type_of_funds = key[0]
             real = key[1]
-            payout = db['sched'][0]
-            if not real:
-                payout /= self.cpi
-            gi += payout
+            if type_of_funds in source:
+                payout = db['sched'][0]
+                if not real:
+                    payout /= self.cpi
+                gi += payout
 
         return gi
 
@@ -425,10 +429,14 @@ class FinEnv(Env):
         self.age = uniform(self.params.age_start_low, self.params.age_start_high)
         self.age2 = uniform(self.params.age_start2_low, self.params.age_start2_high)
         self.age_retirement = uniform(self.params.age_retirement_low, self.params.age_retirement_high)
-        self.preretirement = max(0, self.age_retirement - self.age)
+        self.preretirement_years = max(0, self.age_retirement - self.age)
+        self.income_preretirement_age_end = uniform(self.params.income_preretirement_age_end_low, self.params.income_preretirement_age_end_high)
+        self.income_preretirement_years = max(0, self.income_preretirement_age_end - self.age)
+        self.income_preretirement_age_end2 = uniform(self.params.income_preretirement_age_end2_low, self.params.income_preretirement_age_end2_high)
+        self.income_preretirement_years2 = max(0, self.income_preretirement_age_end2 - self.age2)
         self.first_dies_first, self.alive_years, self.alive_single, self.life_table, self.life_table2, \
             self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = \
-            self._compute_vital_stats(self.age, self.age2, self.q_adjust, self.q_adjust2, self.preretirement)
+            self._compute_vital_stats(self.age, self.age2, self.q_adjust, self.q_adjust2, self.preretirement_years)
 
         self.couple = self.alive_single[0] == None
 
@@ -451,6 +459,11 @@ class FinEnv(Env):
             self.defined_benefits = self.parse_defined_benefits(self.params.defined_benefits)
             for db in self.defined_benefits.values():
                 db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2) # Pick up non-zero schedule for observe.
+
+            self.income_preretirement = self.log_uniform(self.params.income_preretirement_low, self.params.income_preretirement_high) \
+                if self.income_preretirement_years > 0 else 0
+            self.income_preretirement2 = self.log_uniform(self.params.income_preretirement2_low, self.params.income_preretirement2_high) \
+                if self.income_preretirement_years2 > 0 else 0
 
             self.p_tax_free = self.log_uniform(self.params.p_tax_free_low, self.params.p_tax_free_high)
             self.p_tax_deferred = self.log_uniform(self.params.p_tax_deferred_low, self.params.p_tax_deferred_high)
@@ -675,7 +688,8 @@ class FinEnv(Env):
 
     def _income_estimate(self):
 
-        return sum(self.income.values()) + sum(self.wealth.values()) - self.consume_preretirement_annualized
+        return sum(self.income.values()) + sum(self.wealth.values()) \
+            + self.income_preretirement_annualized + self.income_preretirement2_annualized - self.consume_preretirement_annualized
 
     def p_plus_income(self):
 
@@ -717,6 +731,12 @@ class FinEnv(Env):
             assert p_tax_free / self.p_sum() > -1e-15
             p_tax_free = 0
 
+        retirement_contribution = contribution_limit(self.income_preretirement, self.age, self.params.have_401k, self.params.time_period) \
+            + contribution_limit(self.income_preretirement2, self.age2, self.params.have_401k2, self.params.time_period)
+        retirement_contribution = min(retirement_contribution, p_taxable)
+        p_taxable -= retirement_contribution
+        p_tax_deferred += retirement_contribution
+
         if real_spias_fraction != None:
             real_spias_fraction *= self.params.time_period
         else:
@@ -748,19 +768,20 @@ class FinEnv(Env):
             assert p_taxable / self.p_sum() > -1e-15
             p_taxable = 0
 
-        return p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, \
+        return p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, retirement_contribution, \
             real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias
 
     def interpret_spending(self, consume_fraction, asset_allocation, *, real_spias_fraction = 0, nominal_spias_fraction = 0,
         real_bonds_duration = None, nominal_bonds_duration = None):
 
-        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, \
+        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, retirement_contribution, \
             real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias = \
             self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
 
         return {
             'consume': consume / self.params.time_period,
             'asset_allocation': asset_allocation,
+            'retirement_contribution': retirement_contribution / self.params.time_period,
             'real_spias_purchase': real_tax_free_spias + real_tax_deferred_spias + real_taxable_spias if self.params.real_spias else None,
             'nominal_spias_purchase': nominal_tax_free_spias + nominal_tax_deferred_spias + nominal_taxable_spias if self.params.real_spias else None,
             'real_bonds_duration': real_bonds_duration,
@@ -789,7 +810,7 @@ class FinEnv(Env):
             self.add_db(self.defined_benefits, age = age, premium = tax_deferred_spias, inflation_adjustment = cpi, joint = true, \
                 payout_fraction = payout_fraction, source_of_funds = 'tax_deferred')
         if taxable_spias > 0:
-            exclusion_period = ceil(self.preretirement + self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length])
+            exclusion_period = ceil(self.preretirement_years + self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length])
                 # Highly imperfect, but total exclusion amount will be correct.
             exlusion_amount = taxable_spias / exclusion_period
             self.add_db(self.defined_benefits, age = age, premium = taxable_spias, inflation_adjustment = cpi, joint = true, \
@@ -841,7 +862,7 @@ class FinEnv(Env):
         policified_action = policy(self, decoded_action)
         consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
 
-        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, \
+        p_tax_free, p_tax_deferred, p_taxable, consume, taxes_paid, retirement_contribution, \
             real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias = \
             self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
         consume_rate = consume / self.params.time_period
@@ -856,7 +877,8 @@ class FinEnv(Env):
 
         tax_free_assets, tax_deferred_assets, taxable_assets = self.allocate_aa(p_tax_free, p_tax_deferred, p_taxable, asset_allocation)
 
-        regular_income = self.gi_sum() + self.p_tax_deferred - p_tax_deferred
+        regular_income = self.gi_sum(source = ('tax_deferred', 'taxable')) - retirement_contribution \
+            + self.p_tax_deferred - (p_tax_deferred - retirement_contribution + real_tax_deferred_spias + nominal_tax_deferred_spias)
 
         inflation = self.bonds.inflation.inflation()
         self.cpi *= inflation
@@ -894,7 +916,7 @@ class FinEnv(Env):
         self.p_tax_deferred = p_tax_deferred
         self.p_taxable = p_taxable
 
-        self.taxes_due += self.taxes.tax(regular_income, not self.couple, self.p_taxable, inflation) - taxes_paid
+        self.taxes_due += self.taxes.tax(regular_income, not self.couple, inflation) - taxes_paid
 
         def clip(utility):
             reward_annual = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
@@ -917,7 +939,20 @@ class FinEnv(Env):
 
         self.age += self.params.time_period
         self.age2 += self.params.time_period
-        self.preretirement = max(0, self.preretirement - self.params.time_period)
+        self.preretirement_years = max(0, self.preretirement_years - self.params.time_period)
+        self.income_preretirement_years = max(0, self.income_preretirement_years - self.params.time_period)
+        self.income_preretirement_years2 = max(0, self.income_preretirement_years2 - self.params.time_period)
+
+        if self.income_preretirement_years > 0:
+            self.income_preretirement *= lognormvariate(self.params.income_preretirement_mu * self.params.time_period,
+                self.params.income_preretirement_sigma * sqrt(self.params.time_period))
+        else:
+            self.income_preretirement = 0
+        if self.income_preretirement_years2 > 0:
+            self.income_preretirement2 *= lognormvariate(self.params.income_preretirement_mu2 * self.params.time_period,
+                self.params.income_preretirement_sigma2 * sqrt(self.params.time_period))
+        else:
+            self.income_preretirement2 = 0
 
         couple_became_single = self.couple and self.alive_single[self.episode_length + 1] != None
         if couple_became_single:
@@ -1054,8 +1089,12 @@ class FinEnv(Env):
             self.taxable_basis = 0
 
         try:
-            self.consume_preretirement_annualized = self.consume_preretirement * self.preretirement / equivalent_consume_to_wealth
+            self.income_preretirement_annualized = self.income_preretirement * self.income_preretirement_years / equivalent_consume_to_wealth
+            self.income_preretirement2_annualized = self.income_preretirement2 * self.income_preretirement_years2 / equivalent_consume_to_wealth
+            self.consume_preretirement_annualized = self.consume_preretirement * self.preretirement_years / equivalent_consume_to_wealth
         except ZeroDivisionError:
+            self.income_preretirement_annualized = float('inf')
+            self.income_preretirement2_annualized = float('inf')
             self.consume_preretirement_annualized = float('inf')
 
     def _observe(self):
@@ -1076,29 +1115,33 @@ class FinEnv(Env):
         else:
             inflation_rate = 0
 
-        observe = (couple, single, life_expectancy_both, life_expectancy_one, self.preretirement,
+        observe = (couple, single, life_expectancy_both, life_expectancy_one, self.preretirement_years,
             self.income['tax_free'], self.income['tax_deferred'], self.income['taxable'],
-            self.wealth['tax_free'], self.wealth['tax_deferred'], self.wealth['taxable'], self.consume_preretirement_annualized,
+            self.wealth['tax_free'], self.wealth['tax_deferred'], self.wealth['taxable'],
+            self.income_preretirement_annualized, self.income_preretirement2_annualized, self.consume_preretirement_annualized,
             self.taxable_basis, real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')
 
     def decode_observation(self, obs):
 
-        couple, single, life_expectancy_both, life_expectancy_one, preretirement, income_tax_free, income_tax_deferred, income_taxable, \
-            wealth_tax_free, wealth_tax_deferred, wealth_taxable, consume_preretirement, taxable_basis, real_interest_rate, inflation_rate = obs.tolist()
+        couple, single, life_expectancy_both, life_expectancy_one, preretirement_years, income_tax_free, income_tax_deferred, income_taxable, \
+            wealth_tax_free, wealth_tax_deferred, wealth_taxable, income_preretirement, income_preretirement2, consume_preretirement, \
+            taxable_basis, real_interest_rate, inflation_rate = obs.tolist()
 
         return {
             'couple': couple,
             'single': single,
             'life_expectancy_both': life_expectancy_both,
             'life_expectancy_one': life_expectancy_one,
-            'preretirement': preretirement,
+            'preretirement_years': preretirement_years,
             'income_tax_free': income_tax_free,
             'income_tax_deferred': income_tax_deferred,
             'income_taxable': income_taxable,
             'wealth_tax_free': wealth_tax_free,
             'wealth_tax_deferred': wealth_tax_deferred,
             'wealth_taxable': wealth_taxable,
+            'income_preretirement': income_preretirement,
+            'income_preretirement2': income_preretirement2,
             'consume_preretirement': consume_preretirement,
             'taxable_basis': taxable_basis,
             'real_interest_rate': real_interest_rate,

@@ -9,7 +9,7 @@
 # PURPOSE.
 
 master_consume_floor = 1e4
-master_consume_ceiling = 1e7
+master_consume_ceiling = 1e6
 
 # Observation is of life expectancy, so the fact that we train using
 # parameters that don't match those of the user has a second order
@@ -30,6 +30,10 @@ master_age_retirement_high = 75
 
 master_consume_additional = 0.6
 
+master_income_preretirement_low = 1e4
+master_income_preretirement_high = 5e5
+master_income_preretirement_age_end_low = 50
+master_income_preretirement_age_end_high = 75
 master_consume_preretirement_low = 1e4
 master_consume_preretirement_high = 2e5
 

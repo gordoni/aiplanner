@@ -36,7 +36,9 @@ export class ScenarioComponent implements OnInit {
   public pTaxableStocksBasis: number = 0;
 
   public ageRetirement: number = 66;
-  public consumePreretirement = 20000;
+  public incomePreretirement = 60000;
+  public consumePreretirement = 40000;
+  public have401k = true;
 
   public gamma: number = 3;
 
@@ -134,7 +136,9 @@ export class ScenarioComponent implements OnInit {
         'p_taxable_stocks_basis': this.pTaxableStocksBasis,
 
         'age_retirement': this.ageRetirement,
+        'income_preretirement': this.incomePreretirement,
         'consume_preretirement': this.consumePreretirement,
+        'have_401k': this.have401k,
 
         'gamma': this.gamma,
     };

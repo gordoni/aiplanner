@@ -91,7 +91,7 @@ class Taxes(object):
 
         return tax
 
-    def tax(self, regular_income, single, p_taxable, inflation):
+    def tax(self, regular_income, single, inflation):
 
         assert regular_income >= 0
 
@@ -135,3 +135,13 @@ class Taxes(object):
             cg_carry = 0
 
         return basis, cg_carry
+
+def contribution_limit(annual_income, age, have_401k, time_period):
+
+    if have_401k:
+        limit = 18500
+    else:
+        limit = 5500 if age < 50 else 6500
+    annual_contribution = min(annual_income, limit)
+
+    return annual_contribution * time_period

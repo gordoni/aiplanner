@@ -141,11 +141,19 @@ PURPOSE.
         Invalid numeric value.
       </div>
     <br>
+    Pre-retirement annual income before tax:
+      <input type="number" class="numeric" required name="scenarioIncomePreretirement" #scenarioIncomePreretirement="ngModel" [(ngModel)]="incomePreretirement">
+      <div class="error" *ngIf="scenarioIncomePreretirement.invalid">
+        Invalid numeric value.
+      </div>
+    <br>
     Pre-retirement annual consumption:
       <input type="number" class="numeric" required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
       <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
         Invalid numeric value.
       </div>
+    <br>
+    401(k) plan available: <input type="checkbox" name="scenarioHave401k" [(ngModel)]="have401k">
   </div>
 
   <div class="main-button-right" *ngIf="1 <= step && step < 4">
@@ -177,6 +185,9 @@ PURPOSE.
     </p>
     <p>
       Recommended asset allocation: {{results.asset_allocation}}
+    </p>
+    <p>
+      Current recommended retirement plan contribution: {{results.retirement_contribution}}
     </p>
     <p>
       Certainty equivalent retirement consumption: {{results.ce}}

@@ -121,7 +121,19 @@ class ModelParams(object):
         self._param('age-retirement', (65, 65), 65) # Assess and optimize consumption from when first individual reaches this age.
         self._param('consume-additional', 0.6)
             # When a second individual is present we consume this fraction more than a single individual for the same per individual utility.
+
+        self._param('income-preretirement', (0, 0), 0) # Annual pre-tax pre-retirement income for first individual.
+        self._param('income-preretirement2', (0, 0), 0) # Annual pre-tax pre-retirement income for second individual.
+        self._param('income-preretirement-age-end', (65, 65), 65) # Age of first individual when pre-retirement income ends.
+        self._param('income-preretirement-age-end2', (65, 65), 65) # Age of second individual when pre-retirement income ends.
+        self._param('income-preretirement-mu', 0) # Pre-retirement income annual drift for first individual.
+        self._param('income-preretirement-mu2', 0) # Pre-retirement income annual drift for second individual.
+        self._param('income-preretirement-sigma', 0.12) # Pre-retirement income annual log volatility for first individual.
+        self._param('income-preretirement-sigma2', 0.12) # Pre-retirement income annual log volatility for second individual.
         self._param('consume-preretirement', (0, 0), 0) # Annual pre-retirement consumption.
+
+        self._boolean_flag('have_401k', True) # 401(k) available to first individual.
+        self._boolean_flag('have_401k2', True) # 401(k) available to second individual.
 
         self._param('time-period', 1) # Rebalancing time interval in years.
         self._param('gamma', 3) # Coefficient of relative risk aversion.

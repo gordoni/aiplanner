@@ -97,6 +97,7 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
     logger.info('Initial properties for first episode:')
     logger.info('    Consume: ', interp['consume'])
     logger.info('    Asset allocation: ', interp['asset_allocation'])
+    logger.info('    401(k)/IRA contribution: ', interp['retirement_contribution'])
     logger.info('    Real immediate annuities purchase: ', interp['real_spias_purchase'])
     logger.info('    Nominal immediate annuities purchase: ', interp['nominal_spias_purchase'])
     logger.info('    Real bonds duration: ', interp['real_bonds_duration'])

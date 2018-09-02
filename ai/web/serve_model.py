@@ -101,7 +101,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def run_model(self, request):
 
-        model_dir = args.master_model_dir
+        model_dir = args.model_dir
         model_params = loads(open(model_dir + '/assets.extra/params.json').read())
 
         def set_delete(param):
@@ -114,6 +114,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         set_delete('sex')
         set_delete('life_expectancy_additional')
+        set_delete('have_401k')
         set_delete('gamma')
 
         model_params['defined_benefits'] = dumps(request['defined_benefits'])
@@ -126,7 +127,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         set_low_high('p_taxable_stocks_basis_fraction', basis_fraction)
         del request['p_taxable_stocks_basis']
 
-        for param in ('age_start', 'age_retirement', 'consume_preretirement', 'p_tax_free', 'p_tax_deferred', 'p_taxable_stocks'):
+        set_low_high('income_preretirement_age_end', request['age_retirement'])
+
+        for param in ('age_start', 'age_retirement', 'income_preretirement', 'consume_preretirement', 'p_tax_free', 'p_tax_deferred', 'p_taxable_stocks'):
             set_low_high(param, request[param])
             del request[param]
 
@@ -175,12 +178,13 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                 print('Consume:', interp['consume'])
                 print('Asset allocation:', interp['asset_allocation'])
+                print('401(k)/IRA contribution:', interp['retirement_contribution'])
                 print('Real immediate annuities purchase:', interp['real_spias_purchase'])
                 print('Nominal immediate annuities purchase:', interp['nominal_spias_purchase'])
                 print('Real bonds duration:', interp['real_bonds_duration'])
                 print('Nominal bonds duration:', interp['nominal_bonds_duration'])
 
-                evaluator = Evaluator(env, seed, args.num_timesteps, num_trace_episodes = args.num_trace_episodes)
+                evaluator = Evaluator(env, seed, args.num_timesteps, render = args.render, num_trace_episodes = args.num_trace_episodes)
 
                 def pi(obs):
                     action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
@@ -198,6 +202,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             'consume': interp['consume'],
             'consume_low': low,
             'asset_allocation': str(interp['asset_allocation']),
+            'retirement_contribution': interp['retirement_contribution'],
             'data_dir': '/api/data/' + dir[len(data_root):],
         }
 
@@ -220,8 +225,10 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--seed', type = int, default = 0)
     parser.add_argument('--num-timesteps', type = int, default = 10000)
-    parser.add_argument('--master-model-dir', default = './')
+    parser.add_argument('--model-dir', default = './')
     parser.add_argument('--num-trace-episodes', type = int, default = 5)
+    parser.add_argument('--render', action = 'store_true', default = False)
+    parser.add_argument('--no-render', action = 'store_false', dest = 'render')
     args = parser.parse_args()
     logger.configure()
     server = ThreadingHTTPServer((host, port), RequestHandler)
