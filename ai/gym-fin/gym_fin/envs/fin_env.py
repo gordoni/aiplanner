@@ -339,8 +339,7 @@ class FinEnv(Env):
             db['sched'] = sched
             schedule = lambda y: sched[int(y)]
             db['spia'] = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint_contingent = joint,
-                joint_payout_fraction = payout_fraction, frequency = 1, cpi_adjust = 'all', date_str = self.params.life_table_date, schedule = schedule)
-                # Use of life_table_date is imperfect, but acceptable, since we only use the spia to gain an estimate of defined_benefit value.
+                joint_payout_fraction = payout_fraction, frequency = 1, cpi_adjust = 'all', date_str = self.date, schedule = schedule)
 
             if self.couple:
 
@@ -354,6 +353,8 @@ class FinEnv(Env):
         return db
 
     def add_sched(self, db, start, end, payout, payout_fraction, inflation_adjustment):
+
+        #print('add_sched:', start, end, payout, payout_fraction, inflation_adjustment)
 
         for e in range(ceil(max(start, 0)), floor(min(end, len(db['sched'])))):
             adjustment = 1 if inflation_adjustment == 'cpi' else (1 + inflation_adjustment) ** e
@@ -391,6 +392,9 @@ class FinEnv(Env):
                 payout = self.log_uniform(payout_low, payout_high)
 
             start = age - owner_age
+
+        if inflation_adjustment != 'cpi':
+            payout *= self.cpi
 
         if joint or ((owner == 'self') == self.first_dies_first):
             actual_payout_fraction = payout_fraction
@@ -623,7 +627,8 @@ class FinEnv(Env):
                 # Scaling back initial volatility of spias_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
             spias_action = (spias_action + 1) / 2
             current_spias_fraction_estimate = sum(self.income.values()) / self._income_estimate()
-            assert 0 <= current_spias_fraction_estimate <= 1
+            current_spias_fraction_estimate = min(current_spias_fraction_estimate, 1)
+            assert 0 <= current_spias_fraction_estimate
             # Might like to pass on any more SPIAs when spias_action <= current_spias_fraction_estimate,
             # but that might then make learning to increase spias_action difficult.
             # We thus use a variant of the leaky ReLU.
@@ -783,7 +788,7 @@ class FinEnv(Env):
             'asset_allocation': asset_allocation,
             'retirement_contribution': retirement_contribution / self.params.time_period,
             'real_spias_purchase': real_tax_free_spias + real_tax_deferred_spias + real_taxable_spias if self.params.real_spias else None,
-            'nominal_spias_purchase': nominal_tax_free_spias + nominal_tax_deferred_spias + nominal_taxable_spias if self.params.real_spias else None,
+            'nominal_spias_purchase': nominal_tax_free_spias + nominal_tax_deferred_spias + nominal_taxable_spias if self.params.nominal_spias else None,
             'real_bonds_duration': real_bonds_duration,
             'nominal_bonds_duration': nominal_bonds_duration,
         }
@@ -799,21 +804,23 @@ class FinEnv(Env):
         return self.interpret_spending(consume_fraction, asset_allocation, real_spias_fraction = real_spias_fraction, nominal_spias_fraction = nominal_spias_fraction,
             real_bonds_duration = real_bonds_duration, nominal_bonds_duration = nominal_bonds_duration)
 
-    def add_spias(self, spia, cpi, tax_free_spias, tax_deferred_spias, taxable_spias):
+    def add_spias(self, cpi, tax_free_spias, tax_deferred_spias, taxable_spias):
 
-        age = self.age + 1
+        owner = 'self' if self.couple or not self.first_dies_first else 'spouse'
+        age = self.age if owner == 'self' else self.age2
+        age += 1
         payout_fraction = 1 / (1 + self.params.consume_additional)
         if tax_free_spias > 0:
-            self.add_db(self.defined_benefits, age = age, premium = tax_free_spias, inflation_adjustment = cpi, joint = true, \
+            self.add_db(self.defined_benefits, owner = owner, age = age, premium = tax_free_spias, inflation_adjustment = cpi, joint = True, \
                 payout_fraction = payout_fraction, source_of_funds = 'tax_free')
         if tax_deferred_spias > 0:
-            self.add_db(self.defined_benefits, age = age, premium = tax_deferred_spias, inflation_adjustment = cpi, joint = true, \
+            self.add_db(self.defined_benefits, owner = owner, age = age, premium = tax_deferred_spias, inflation_adjustment = cpi, joint = True, \
                 payout_fraction = payout_fraction, source_of_funds = 'tax_deferred')
         if taxable_spias > 0:
             exclusion_period = ceil(self.preretirement_years + self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length])
                 # Highly imperfect, but total exclusion amount will be correct.
-            exlusion_amount = taxable_spias / exclusion_period
-            self.add_db(self.defined_benefits, age = age, premium = taxable_spias, inflation_adjustment = cpi, joint = true, \
+            exclusion_amount = taxable_spias / exclusion_period
+            self.add_db(self.defined_benefits, owner = owner, age = age, premium = taxable_spias, inflation_adjustment = cpi, joint = True, \
                 payout_fraction = payout_fraction, source_of_funds = 'taxable',
                 exclusion_period = exclusion_period, exclusion_amount = exclusion_amount)
 
@@ -870,15 +877,18 @@ class FinEnv(Env):
         nominal_spias_rate = (nominal_tax_free_spias + nominal_tax_deferred_spias + nominal_taxable_spias) / self.params.time_period
 
         if real_spias_rate > 0:
-            self.add_spias(self.real_spias, 'cpi', real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias)
+            self.add_spias('cpi', real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias)
 
         if nominal_spias_rate > 0:
-            self.add_spias(self.nominal_spias, 0, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias)
+            self.add_spias(0, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias)
 
         tax_free_assets, tax_deferred_assets, taxable_assets = self.allocate_aa(p_tax_free, p_tax_deferred, p_taxable, asset_allocation)
 
         regular_income = self.gi_sum(source = ('tax_deferred', 'taxable')) - retirement_contribution \
             + self.p_tax_deferred - (p_tax_deferred - retirement_contribution + real_tax_deferred_spias + nominal_tax_deferred_spias)
+        if regular_income < 0:
+            assert regular_income > -1e-12 * (self.gi_sum(source = ('tax_deferred', 'taxable')) + self.p_tax_deferred)
+            regular_income = 0
 
         inflation = self.bonds.inflation.inflation()
         self.cpi *= inflation
@@ -939,6 +949,11 @@ class FinEnv(Env):
 
         self.age += self.params.time_period
         self.age2 += self.params.time_period
+        self.life_table.age = self.age # Hack.
+        try:
+            self.life_table2.age = self.age2
+        except AttributeError:
+            pass
         self.preretirement_years = max(0, self.preretirement_years - self.params.time_period)
         self.income_preretirement_years = max(0, self.income_preretirement_years - self.params.time_period)
         self.income_preretirement_years2 = max(0, self.income_preretirement_years2 - self.params.time_period)
@@ -980,7 +995,7 @@ class FinEnv(Env):
         self.couple = self.alive_single[self.episode_length] == None
 
         self.date = (datetime.strptime(self.params.life_table_date, '%Y-%m-%d') \
-            + timedelta(days = self.episode_length * self.params.time_period * 365.25)).isoformat()
+            + timedelta(days = self.episode_length * self.params.time_period * 365.25)).date().isoformat()
 
         self._step_bonds()
 
@@ -1051,6 +1066,19 @@ class FinEnv(Env):
         print(self.age, self.p_tax_free, self.p_tax_deferred, self.p_taxable, \
               self.prev_asset_allocation, self.prev_consume_rate, self.prev_real_spias_rate, self.prev_nominal_spias_rate, self.prev_reward)
 
+        for key, db in self.defined_benefits.items():
+            type_of_funds = key[0]
+            real = key[1]
+            try:
+                payout = db['sched'][0]
+            except IndexError:
+                payout = 0
+            pv = db['spia'].premium(1)
+            if not real:
+                payout /= self.cpi
+                pv /= self.cpi
+            print('    ', type_of_funds, payout, real, pv)
+
     def seed(self, seed=None):
 
         return
@@ -1063,7 +1091,10 @@ class FinEnv(Env):
         self.income = {'tax_free': 0, 'tax_deferred': 0, 'taxable': 0}
         for key, db in self.defined_benefits.items():
             type_of_funds = key[0]
+            real = key[1]
             pv = db['spia'].premium(1)
+            if not real:
+                pv /= self.cpi
             self.income[type_of_funds] += pv
         for key, value in self.income.items():
             try:
