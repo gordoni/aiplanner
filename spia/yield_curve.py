@@ -370,7 +370,12 @@ class YieldCurve(object):
     def forward(self, y):
         '''Return the continuously compounded annual forward rate.'''
 
-        return self.monotone_convex.forward(y)
+        if self.interest_rate == 'fixed':
+            return math.log(1 + self.adjust)
+        elif self.interest_rate == 'le':
+            return 0
+        else:
+            return self.monotone_convex.forward(y)
 
     def discount_rate(self, y):
         '''Return 1 + the annual discount rate associated with time period 'y'
@@ -379,7 +384,12 @@ class YieldCurve(object):
 
         '''
 
-        return math.exp(self.monotone_convex.spot(y))
+        if self.interest_rate == 'fixed':
+            return 1 + self.adjust
+        elif self.interest_rate == 'le':
+            return 1
+        else:
+            return math.exp(self.monotone_convex.spot(y))
 
     @property
     def risk_free_rate(self):
