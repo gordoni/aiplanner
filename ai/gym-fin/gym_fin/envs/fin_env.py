@@ -295,7 +295,7 @@ class FinEnv(Env):
 
         return self.p_tax_free + self.p_tax_deferred + self.p_taxable
 
-    def _spia_payout(self, inflation_adjustment, payout_fraction, premium, mwr):
+    def _spia_payout(self, payout_delay, inflation_adjustment, payout_fraction, premium, mwr):
 
         bonds = self.bonds.real if inflation_adjustment == 'cpi' else self.bonds.nominal
         life_table = LifeTable(self.params.life_table_spia, self.params.sex, self.age, ae = 'aer2005_08-summary')
@@ -307,7 +307,6 @@ class FinEnv(Env):
                 life_table2 = None
         else:
             life_table2 = None
-        payout_delay = 1
         schedule = lambda y: 1 if inflation_adjustment == 'cpi' else (1 + inflation_adjustment) ** y
 
         spia = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint_contingent = True,
@@ -384,8 +383,8 @@ class FinEnv(Env):
             assert age == self.age + 1
             assert joint
             mwr = self.params.real_spias_mwr if inflation_adjustment == 'cpi' else self.params.nominal_spias_mwr
-            payout = self._spia_payout(inflation_adjustment, payout_fraction, premium, mwr)
-            start = 1
+            start = max(1, self.preretirement_years)
+            payout = self._spia_payout(start, inflation_adjustment, payout_fraction, premium, mwr)
         else:
             try:
                 payout_low, payout_high = payout
