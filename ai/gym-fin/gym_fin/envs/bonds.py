@@ -380,6 +380,8 @@ class BreakEvenInflation(Bonds):
 
         deflated_yield_curve = YieldCurveSum(nominal_yield_curve, real_bonds.yield_curve, weight = -1)
 
+        self.interest_rate = 'inflation'
+
         super().__init__(a = a, sigma = sigma, yield_curve = deflated_yield_curve, r0 = r0, standard_error = standard_error, time_period = time_period)
 
         self.reset()
@@ -598,7 +600,8 @@ class BondsMeasuredInNominalTerms(Bonds):
 
 class BondsSet(object):
 
-    def __init__(self, need_real = True, need_nominal = True, need_inflation = True, real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
+    def __init__(self, need_real = True, need_nominal = True, need_inflation = True, fixed_real_bonds_rate = None, fixed_nominal_bonds_rate = None,
+        real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
         '''Returns a BondsSet object having attributes "real",
         "nominal", and "inflation" representing a bond and
         inflation model. They are each either None if they are not
@@ -651,6 +654,8 @@ class BondsSet(object):
 
         '''
 
+        self.fixed_real_bonds_rate = fixed_real_bonds_rate
+        self.fixed_nominal_bonds_rate = fixed_nominal_bonds_rate
         self.time_period = time_period
 
         if need_nominal:
@@ -659,12 +664,15 @@ class BondsSet(object):
             need_real = True
 
         if need_real:
-            self.real = RealBonds(standard_error = real_standard_error, time_period = time_period)
+            yield_curve = YieldCurve('fixed', '2017-12-31', adjust = fixed_real_bonds_rate) if fixed_real_bonds_rate else None
+            self.real = RealBonds(yield_curve = yield_curve, standard_error = real_standard_error, time_period = time_period)
         else:
             self.real = None
 
         if need_inflation:
-            self.inflation = BreakEvenInflation(self.real, standard_error = inflation_standard_error, time_period = time_period)
+            nominal_yield_curve = YieldCurve('fixed', '2017-12-31', adjust = fixed_nominal_bonds_rate) if fixed_nominal_bonds_rate else None
+            self.inflation = BreakEvenInflation(self.real, nominal_yield_curve = nominal_yield_curve,
+                standard_error = inflation_standard_error, time_period = time_period)
         else:
             self.inflation = None
 
@@ -673,9 +681,12 @@ class BondsSet(object):
         else:
             self.nominal = None
 
-    def update(self, *, real_short_rate, inflation_short_rate, real_standard_error, inflation_standard_error, time_period):
+    def update(self, *, fixed_real_bonds_rate, fixed_nominal_bonds_rate, real_short_rate, inflation_short_rate,
+        real_standard_error, inflation_standard_error, time_period):
         '''Change the indicated bond parameters.'''
 
+        assert fixed_real_bonds_rate == self.fixed_real_bonds_rate
+        assert fixed_nominal_bonds_rate == self.fixed_nominal_bonds_rate
         if self.real:
             self.real.standard_error = real_standard_error
             self.real.r0 = real_short_rate

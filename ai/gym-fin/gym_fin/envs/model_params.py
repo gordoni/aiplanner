@@ -171,6 +171,8 @@ class ModelParams(object):
 
         self._boolean_flag('static-bonds', False)
             # Whether to model real bonds and inflation and thus nominal bonds and SPIAs as static (that is using a yield curve that does not vary over time).
+        self._param('fixed-real-bonds-rate', None) # Rate to model real bonds with a fixed mean yield curve (does not favor duration).
+        self._param('fixed-nominal-bonds-rate', None) # Rate to model nominal bonds in determining inflation with a fixed mean yield curve (does not favor duration).
 
         self._boolean_flag('real-spias', False) # Enable purchase of real SPIAs.
         self._param('real-spias-mwr', 0.94) # Money's Worth Ratio for real SPIAs (after any guarantee association tax).
@@ -185,6 +187,7 @@ class ModelParams(object):
             # There is no such thing as a free lunch; a MWR abve 100% implies the issuers and thus the annuitants are taking on default risk.
             # To crudely reflect this, we don't use MWRs above 100%, and the 2.35% CA guarantee association tax is ignored since the premium
             # goes towards covering defaults.
+        self._param('nominal-spias-adjust', 0) # Fixed annual adjustment to apply to nominal SPIAs payout to compensate for inflation.
         self._boolean_flag('couple-spias', True) # Enable purchase of SPIAs by couples.
         self._param('spias-permitted-from-age', 0) # Minimum age (of youngest party) at which able to purchase SPIAs.
 

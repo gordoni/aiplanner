@@ -59,6 +59,7 @@ master_tax = True
 master_real_spias = False
 master_nominal_spias = False
 master_nominal_spias_mwr = 1.0 # Based on 2015 pricing exceeding 100%.
+master_nominal_spias_inflation = 0.02
 
 # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
     # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.1%).
