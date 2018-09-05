@@ -190,6 +190,8 @@ class ModelParams(object):
         self._param('nominal-spias-adjust', 0) # Fixed annual adjustment to apply to nominal SPIAs payout to compensate for inflation.
         self._boolean_flag('couple-spias', True) # Enable purchase of SPIAs by couples.
         self._param('spias-permitted-from-age', 0) # Minimum age (of youngest party) at which able to purchase SPIAs.
+        self._param('spias-permitted-to-age', 85) # Maximum age (of oldest party) at which able to purchase SPIAs.
+            # Age at which availability of quotes starts to decrease.
 
         # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
             # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.1%).

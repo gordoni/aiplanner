@@ -661,10 +661,12 @@ class FinEnv(Env):
 
         if self.couple:
             min_age = min(self.age, self.age2)
+            max_age = max(self.age, self.age2)
         else:
-            min_age = self.age
+            min_age = max_age = self.age2 if self.first_dies_first else self.age
 
-        spias_allowed = (self.params.couple_spias or not self.couple) and min_age >= self.params.spias_permitted_from_age
+        spias_allowed = (self.params.couple_spias or not self.couple) and \
+            min_age >= self.params.spias_permitted_from_age and max_age <= self.params.spias_permitted_to_age
         if not self.params.real_spias or not spias_allowed:
             real_spias_fraction = None
         if not self.params.nominal_spias or not spias_allowed:
