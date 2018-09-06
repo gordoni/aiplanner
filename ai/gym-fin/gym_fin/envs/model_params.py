@@ -151,6 +151,7 @@ class ModelParams(object):
             #     "source_of_funds": "taxable", "tax_deferred", or "tax_free". Default "tax_deferred".
             #     "exclusion_period": If taxable, exclusion period in years from starting age. Default 0.
             #     "exclusion_amount": If taxable, annual tax exclusion amount of payout in today's dollars. Not adjusted for inflation. Default 0.
+        self._param('defined-benefits-additional', '[]', tp = string_type) # Additional defined benefits.
         self._param('p-tax-free', (1e3, 1e7), 0) # Non-taxable portfolio size. Roth IRAs and similar. Empirically OK if eval amount is less than model lower bound.
         self._param('p-tax-deferred', (1e3, 1e7), 0) # Taxable deferred portfolio size. Traditional IRAs and similar.
         self._param('p-taxable-stocks', (1e3, 1e7), 0) # Taxable portfolio stocks.

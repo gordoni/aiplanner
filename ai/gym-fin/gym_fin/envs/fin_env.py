@@ -10,7 +10,7 @@
 
 from datetime import datetime, timedelta
 from json import loads
-from math import atanh, ceil, exp, floor, isnan, log, sqrt, tanh
+from math import atanh, ceil, exp, floor, isinf, isnan, log, sqrt, tanh
 from random import seed, random, uniform, lognormvariate
 
 import numpy as np
@@ -351,7 +351,7 @@ class FinEnv(Env):
                 db['sched_single'] = sched_single
                 schedule = lambda y: sched_single[int(y)]
                 db['spia_single'] = IncomeAnnuity(bonds, life_table, payout_delay = 12 * payout_delay,
-                    frequency = 1, cpi_adjust = 'all', date_str = self.params.date, schedule = schedule)
+                    frequency = 1, cpi_adjust = 'all', date_str = self.date, schedule = schedule)
 
         return db
 
@@ -379,8 +379,6 @@ class FinEnv(Env):
         db = self.get_db(defined_benefits, type, owner, inflation_adjustment, joint, payout_fraction, source_of_funds)
 
         if premium != None:
-            assert owner == 'self'
-            assert age == self.age + 1
             assert joint
             mwr = self.params.real_spias_mwr if inflation_adjustment == 'cpi' else self.params.nominal_spias_mwr
             start = max(1, self.preretirement_years)
@@ -424,10 +422,10 @@ class FinEnv(Env):
             db = self.get_db(defined_benefits, type, owner, 0, joint, payout_fraction, 'tax_free')
             self.add_sched(db, start, end, exclusion_amount, actual_payout_fraction, adjustment)
 
-    def parse_defined_benefits(self, defined_benefits_json):
+    def parse_defined_benefits(self):
 
         defined_benefits = {}
-        for db in loads(defined_benefits_json):
+        for db in loads(self.params.defined_benefits) + loads(self.params.defined_benefits_additional):
             self.add_db(defined_benefits, **db)
         return defined_benefits
 
@@ -472,7 +470,7 @@ class FinEnv(Env):
         for _ in range(1000):
 
             self.consume_preretirement = self.log_uniform(self.params.consume_preretirement_low, self.params.consume_preretirement_high)
-            self.defined_benefits = self.parse_defined_benefits(self.params.defined_benefits)
+            self.defined_benefits = self.parse_defined_benefits()
             for db in self.defined_benefits.values():
                 db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2) # Pick up non-zero schedule for observe.
 
@@ -639,8 +637,7 @@ class FinEnv(Env):
                 # Scaling back initial volatility of spias_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
             spias_action = (spias_action + 1) / 2
             current_spias_fraction_estimate = sum(self.income.values()) / self._income_estimate()
-            current_spias_fraction_estimate = min(current_spias_fraction_estimate, 1)
-            assert 0 <= current_spias_fraction_estimate
+            current_spias_fraction_estimate = max(0, min(current_spias_fraction_estimate, 1))
             # Might like to pass on any more SPIAs when spias_action <= current_spias_fraction_estimate,
             # but that might then make learning to increase spias_action difficult.
             # We thus use a variant of the leaky ReLU.
@@ -904,7 +901,8 @@ class FinEnv(Env):
         regular_income = self.gi_sum(source = ('tax_deferred', 'taxable')) - retirement_contribution \
             + self.p_tax_deferred - (p_tax_deferred - retirement_contribution + real_tax_deferred_spias + nominal_tax_deferred_spias)
         if regular_income < 0:
-            assert regular_income > -1e-12 * (self.gi_sum(source = ('tax_deferred', 'taxable')) + self.p_tax_deferred)
+            print('Negative regular income:', regular_income)
+                # Possible if taxable SPIA non-taxable amount exceeds payout due to defaltion.
             regular_income = 0
 
         inflation = self.bonds.inflation.inflation()
@@ -949,6 +947,8 @@ class FinEnv(Env):
             reward_annual = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
             if self.params.verbose and reward_annual != utility:
                 print('Reward out of range - age, p_sum, consume_fraction, utility:', self.age, self.p_sum(), consume_fraction, utility)
+            if isinf(reward_annual):
+                print('Infinite reward')
             return reward_annual
 
         if self.couple:
@@ -1019,6 +1019,7 @@ class FinEnv(Env):
         self._pre_calculate()
         observation = self._observe()
         done = self.episode_length >= len(self.alive_single) - 1
+        done = self.alive_single[self.episode_length] == 0
         info = {}
         if done:
             info['ce'] = self.utility.inverse(self.episode_reward_sum / self.alive_years)
@@ -1104,6 +1105,7 @@ class FinEnv(Env):
 
         equivalent_consume_to_wealth = 2 * (self.life_expectancy_both[self.episode_length]) / (1 + self.params.consume_additional) + \
             self.life_expectancy_one[self.episode_length]
+        equivalent_consume_to_wealth = max(1e-6, equivalent_consume_to_wealth) # Prevent inf.
 
         self.income = {'tax_free': 0, 'tax_deferred': 0, 'taxable': 0}
         for key, db in self.defined_benefits.items():
