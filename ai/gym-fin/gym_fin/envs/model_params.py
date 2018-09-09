@@ -124,8 +124,10 @@ class ModelParams(object):
 
         self._param('income-preretirement', (0, 0), 0) # Annual pre-tax pre-retirement income for first individual.
         self._param('income-preretirement2', (0, 0), 0) # Annual pre-tax pre-retirement income for second individual.
-        self._param('income-preretirement-age-end', (65, 65), 65) # Age of first individual when pre-retirement income ends.
-        self._param('income-preretirement-age-end2', (65, 65), 65) # Age of second individual when pre-retirement income ends.
+        self._param('income-preretirement-age-end', None)
+            # Age of first individual when pre-retirement income ends, or None to base on first individual reaching age_retirement.
+        self._param('income-preretirement-age-end2', None)
+            # Age of second individual when pre-retirement income ends, or None to base on first individual reaching age_retirement.
         self._param('income-preretirement-mu', 0) # Pre-retirement income annual drift for first individual.
         self._param('income-preretirement-mu2', 0) # Pre-retirement income annual drift for second individual.
         self._param('income-preretirement-sigma', 0.12) # Pre-retirement income annual log volatility for first individual.
@@ -143,7 +145,7 @@ class ModelParams(object):
             # Defined benefits represented as a JSON array of objects. Object fields:
             #     "type": Type of defined benefit. Arbitrary string. Default "Income Annuity". A value of "Social Security" may in the future be taxed specially.
             #     "owner": Value "self" or "spouse". Default "self".
-            #     "age": Starting age in years of owner for benefit. Default initial age of owner.
+            #     "age": Starting age in years of owner for benefit. Default starts when first individual reaches age_retirement.
             #     "payout": Annual payment amount in today's dollars. May be a array of length 2 for stochastic log range. Required.
             #     "inflation_adjustment": Annual inflation increase fraction from today, or "cpi" for adjustment to reflect the CPI value. Default "cpi".
             #     "joint": true if payout drops on death of either self or spouse, false if value payout drops only on death of owner. Default false.

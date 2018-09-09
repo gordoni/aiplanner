@@ -371,9 +371,6 @@ class FinEnv(Env):
         inflation_adjustment = 'cpi', joint = False, payout_fraction = 0, source_of_funds = 'tax_deferred', exclusion_period = 0, exclusion_amount = 0):
 
         assert owner in ('self', 'spouse')
-        owner_age = self.age if owner == 'self' else self.age2
-        if age == None:
-            age = owner_age
         assert (premium == None) != (payout == None)
 
         db = self.get_db(defined_benefits, type, owner, inflation_adjustment, joint, payout_fraction, source_of_funds)
@@ -390,8 +387,11 @@ class FinEnv(Env):
                 pass
             else:
                 payout = self.log_uniform(payout_low, payout_high)
-
-            start = age - owner_age
+            if age == None:
+                start = self.preretirement_years
+            else:
+                owner_age = self.age if owner == 'self' else self.age2
+                start = age - owner_age
 
         if inflation_adjustment != 'cpi':
             payout *= self.cpi
@@ -444,10 +444,14 @@ class FinEnv(Env):
         self.age2 = uniform(self.params.age_start2_low, self.params.age_start2_high)
         self.age_retirement = uniform(self.params.age_retirement_low, self.params.age_retirement_high)
         self.preretirement_years = max(0, self.age_retirement - self.age)
-        self.income_preretirement_age_end = uniform(self.params.income_preretirement_age_end_low, self.params.income_preretirement_age_end_high)
-        self.income_preretirement_years = max(0, self.income_preretirement_age_end - self.age)
-        self.income_preretirement_age_end2 = uniform(self.params.income_preretirement_age_end2_low, self.params.income_preretirement_age_end2_high)
-        self.income_preretirement_years2 = max(0, self.income_preretirement_age_end2 - self.age2)
+        if self.params.income_preretirement_age_end != None:
+            self.income_preretirement_years = max(0, self.params.income_preretirement_age_end - self.age)
+        else:
+            self.income_preretirement_years = self.preretirement_years
+        if self.params.income_preretirement_age_end != None:
+            self.income_preretirement_years2 = max(0, self.params.income_preretirement_age_end2 - self.age2)
+        else:
+            self.income_preretirement_years2 = self.preretirement_years
         self.first_dies_first, self.alive_years, self.alive_single, self.life_table, self.life_table2, \
             self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = \
             self._compute_vital_stats(self.age, self.age2, self.q_adjust, self.q_adjust2, self.preretirement_years)
