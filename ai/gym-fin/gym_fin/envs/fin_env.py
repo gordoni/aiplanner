@@ -483,6 +483,9 @@ class FinEnv(Env):
             self.income_preretirement2 = self.log_uniform(self.params.income_preretirement2_low, self.params.income_preretirement2_high) \
                 if self.income_preretirement_years2 > 0 else 0
 
+            if self.consume_preretirement / (self.income_preretirement + self.income_preretirement2) > self.params.consume_income_ratio_max:
+                continue
+
             self.p_tax_free = self.log_uniform(self.params.p_tax_free_low, self.params.p_tax_free_high)
             self.p_tax_deferred = self.log_uniform(self.params.p_tax_deferred_low, self.params.p_tax_deferred_high)
             taxable_assets = AssetAllocation(fractional = False)
@@ -905,8 +908,9 @@ class FinEnv(Env):
         regular_income = self.gi_sum(source = ('tax_deferred', 'taxable')) - retirement_contribution \
             + self.p_tax_deferred - (p_tax_deferred - retirement_contribution + real_tax_deferred_spias + nominal_tax_deferred_spias)
         if regular_income < 0:
-            print('Negative regular income:', regular_income)
-                # Possible if taxable SPIA non-taxable amount exceeds payout due to defaltion.
+            if regular_income < -1e-12 * (self.gi_sum(source = ('tax_deferred', 'taxable')) + self.p_tax_deferred):
+                print('Negative regular income:', regular_income)
+                    # Possible if taxable SPIA non-taxable amount exceeds payout due to deflation.
             regular_income = 0
 
         inflation = self.bonds.inflation.inflation()

@@ -133,6 +133,7 @@ class ModelParams(object):
         self._param('income-preretirement-sigma', 0.12) # Pre-retirement income annual log volatility for first individual.
         self._param('income-preretirement-sigma2', 0.12) # Pre-retirement income annual log volatility for second individual.
         self._param('consume-preretirement', (0, 0), 0) # Annual pre-retirement consumption.
+        self._param('consume-income-ratio-max', float('inf')) # Maximum allowed value of consume_preretirement / (income_preretirement + income_preretirement2).
 
         self._boolean_flag('have_401k', True) # 401(k) available to first individual.
         self._boolean_flag('have_401k2', True) # 401(k) available to second individual.
