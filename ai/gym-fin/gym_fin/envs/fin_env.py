@@ -484,7 +484,8 @@ class FinEnv(Env):
                 if self.income_preretirement_years2 > 0 else 0
 
             if self.preretirement_years * self.consume_preretirement > self.params.consume_income_ratio_max * \
-               (self.income_preretirement_years * self.income_preretirement + self.income_preretirement_years2 * self.income_preretirement2):
+               (min(self.income_preretirement_years, self.preretirement_years) * self.income_preretirement + \
+               min(self.preretirement_years, self.income_preretirement_years2) * self.income_preretirement2):
                 continue
 
             self.p_tax_free = self.log_uniform(self.params.p_tax_free_low, self.params.p_tax_free_high)
