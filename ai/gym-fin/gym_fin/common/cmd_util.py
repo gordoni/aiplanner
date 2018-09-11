@@ -39,7 +39,7 @@ def make_fin_env(action_space_unbounded = False, training = False, **kwargs):
 def _config_parser():
 
     config_parser = argparse.ArgumentParser(add_help = False)
-    config_parser.add_argument('-c', '--config-file',)
+    config_parser.add_argument('-c', '--config-file', action = 'append', default = [])
 
     return config_parser
 
@@ -55,22 +55,23 @@ def parse_args(parser, *, training = True, evaluate = True, args = None):
 
     arguments, _ = config_parser.parse_known_args(args = args)
 
-    if arguments.config_file:
-        with open(arguments.config_file) as f:
+    config = {}
+    for config_file in arguments.config_file:
+        with open(config_file) as f:
             config_str = f.read()
-        config = {}
         exec(config_str, {'inf': float('inf')}, config)
-        # Hack to ensure config file doesn't contain any misspelled parameters.
-        defaults = {}
-        for action in parser._actions:
-            if action.dest in config:
-                defaults[action.dest] = config[action.dest]
-                del config[action.dest]
-        config = {param: value for param, value in config.items()
-            if (training if param.startswith('train_') else (evaluate if param.startswith('eval_') else True))}
-        if config:
-            parser.error('Unrecognised configuration file parameters: ' + ','.join(config.keys()))
-        parser.set_defaults(**defaults)
+
+    # Hack to ensure config files dosn't contain any misspelled parameters.
+    defaults = {}
+    for action in parser._actions:
+        if action.dest in config:
+            defaults[action.dest] = config[action.dest]
+            del config[action.dest]
+    config = {param: value for param, value in config.items()
+        if (training if param.startswith('train_') else (evaluate if param.startswith('eval_') else True))}
+    if config:
+        parser.error('Unrecognised configuration file parameters: ' + ','.join(config.keys()))
+    parser.set_defaults(**defaults)
 
     arguments = parser.parse_args(args = args)
 
