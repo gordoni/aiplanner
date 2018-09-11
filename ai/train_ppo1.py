@@ -27,6 +27,8 @@ from gym_fin.common.evaluator import Evaluator
 
 def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_num_timesteps, train_seed,
           eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, model_dir):
+    while model_dir and model_dir[-1] == '/':
+        model_dir = model_dir[:-1]
     assert model_dir.endswith('.tf')
     try:
         rmtree(model_dir)

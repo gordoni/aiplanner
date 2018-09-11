@@ -960,11 +960,12 @@ class FinEnv(Env):
             return reward_annual
 
         if self.couple:
-            utility = self.utility.utility(consume_rate / (1 + self.params.consume_additional))
+            consume = max(consume_rate / (1 + self.params.consume_additional), self.params.consume_clip)
             self.reward_weight = 2 * self.params.time_period
         else:
-            utility = self.utility.utility(consume_rate)
+            consume = max(consume_rate, self.params.consume_clip)
             self.reward_weight = self.alive_single[self.episode_length] * self.params.time_period
+        utility = self.utility.utility(consume)
         self.reward_value = clip(utility)
         if self.age < self.age_retirement:
             self.reward_weight = 0

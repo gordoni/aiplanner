@@ -72,8 +72,8 @@ class ModelParams(object):
         # Bonds duration policy.
         # Defined by "real-bonds-duration" and "nominal-bonds-duration" below; None for reinforcement learning, or a fixed age in years.
 
-        self._param('consume-floor', 1e4) # Minimum consumption level model is trained for.
-        self._param('consume-ceiling', 1e5) # Maximum consumption level model is trained for.
+        self._param('consume-floor', 1e4) # Minimum expected consumption level model is trained for.
+        self._param('consume-ceiling', 1e5) # Maximum expected consumption level model is trained for.
             # Don't span too large a range as neural network fitting of utility to lower consumption levels will dominate over higher consumption levels.
             # This is because for gamma > 1 higher consumption levels are bounded (i.e. a small change in utility can produce a big change in consumption).
             # Will thus probably need separately trained models for different wealth levels.
@@ -94,6 +94,9 @@ class ModelParams(object):
             # Need to first fix a bug in ddpg/models.py: set name='output' in final critic tf.layers.dense().
             # But doesn't appear to work well becasuse in the absense of guaranteed income the rewards may span a large many orders of magnitude range.
             # In particular some rewards can be -inf, or close there to, which appears to swamp the Pop-Art scaling of the other rewards.
+        self._param('consume-clip', 0, 0) # Minimum allowed consumption level.
+            # Similar role to reward_clip, but limit is specified in terms of consumption.
+            # Evaluation clip should always be zero.
         self._param('consume-rescale', 'estimate_bounded', tp = string_type,
             choices = ('direct', 'positive_direct', 'fraction_direct', 'fraction_biased', 'estimate_biased', 'estimate_bounded'))
             # Type of re-scaling applied to consume action.
