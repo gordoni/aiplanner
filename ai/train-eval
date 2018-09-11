@@ -15,9 +15,6 @@
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 PARALLEL=${PARALLEL:-True}  # Set to "False" to run seeds sequentially rather than in parallel.
 SEEDS=${SEEDS:-10}
-if [ -n "$EVAL_NUM_TIMESTEPS" ]; then
-    EXTRA_EVAL_ARGS="--eval-num-timesteps $EVAL_NUM_TIMESTEPS"
-fi
 
 EXTRA_ARGS=$*
 AI_DIR=$AIPLANNER_HOME/ai
@@ -65,7 +62,7 @@ eval () {
     set -o pipefail
     while [ $SEED -lt $SEEDS ]; do
         MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
-        $AI_DIR/eval_model.py -c $CONFIG_FILE -c $EVAL_FILE --model-dir=$MODEL_DIR $ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS 2>&1 | tee $MODEL_DIR/eval-$EVAL_NAME.log || exit 1
+        $AI_DIR/eval_model.py -c $CONFIG_FILE -c $EVAL_FILE --model-dir=$MODEL_DIR $ARGS $EXTRA_ARGS 2>&1 | tee $MODEL_DIR/eval-$EVAL_NAME.log || exit 1
         SEED=`expr $SEED + 1`
     done
 }
@@ -103,20 +100,25 @@ evaluate_parallel () {
     SEED=0
     while [ $SEED -lt $SEEDS ]; do
         MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
-        $AI_DIR/eval_model.py -c $CONFIG_FILE -c $EVAL_FILE --model-dir=$MODEL_DIR $ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS > $MODEL_DIR/eval-$EVAL_NAME.log 2>&1 &
+        $AI_DIR/eval_model.py -c $CONFIG_FILE -c $EVAL_FILE --model-dir=$MODEL_DIR $ARGS $EXTRA_ARGS > $MODEL_DIR/eval-$EVAL_NAME.log 2>&1 &
         SEED=`expr $SEED + 1`
     done
     wait
 }
 
-$TRAIN retired65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE --master-age-start=65"
+$TRAIN no_tax-retired65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE --master-no-tax --master-age-start=65"
     # Eval parameters will override train parameters by virtue of being specified last and/or not containing low/high values.
-$EVAL retired65-defined_benefits16e3-tax_free5e5 specific '--master-age-start=65'
+$EVALUATE no_tax-retired65-defined_benefits16e3-tax_free5e5 specific '--master-no-tax --master-age-start=65'
 $TRAIN start_age50-age_retirement65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE"
-$EVAL start_age50-age_retirement65-defined_benefits16e3-tax_free5e5 specific
+$EVALUATE start_age50-age_retirement65-defined_benefits16e3-tax_free5e5 specific
 $TRAIN generic
-$EVAL generic start_age65-age_retirement65-defined_benefits16e3-tax_free5e5 '--master-age-start=65'
-$EVAL generic start_age50-age_retirement65-defined_benefits16e3-tax_free5e5
+$EVALUATE generic start_age50-age_retirement65-defined_benefits16e3-tax_free5e5
+$TRAIN generic-train2m '--train-num-timesteps=2000000'
+$EVALUATE generic-train2m start_age50-age_retirement65-defined_benefits16e3-tax_free5e5
+$TRAIN generic-hls128 '--train-hidden-layer-size=128'
+$EVALUATE generic start_age50-age_retirement65-defined_benefits16e3-tax_free5e5
+$TRAIN generic-hls128-train2m '--train-hidden-layer-size=128 --train-num-timestes=2000000'
+$EVALUATE generic-hls128-train2m start_age50-age_retirement65-defined_benefits16e3-tax_free5e5
 
 # Notes on tweaks that have been tried out:
 #

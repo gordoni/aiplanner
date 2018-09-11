@@ -12,6 +12,7 @@
 
 from argparse import ArgumentParser
 from math import sqrt
+from os.path import isdir
 from re import search
 from statistics import mean, StatisticsError, stdev
 
@@ -21,16 +22,20 @@ args = parser.parse_args()
 
 evals = []
 ces = []
-for dir in args.directory:
+for path in args.directory:
 
-    with open(dir + '/eval.log') as f:
+    if isdir(path):
+        fname = path + '/eval.log'
+    else:
+        fname = path
+    with open(fname) as f:
 
         s = f.read()
         m = search(r'Initial properties for first episode:(.*\n)+Evaluation certainty equivalent: (\d+\.\d+) \+/- (\d+\.\d+).*', s)
         properties = m.group(0)
         ce = float(m.group(2))
         ce_se = float(m.group(3))
-        evals.append((ce, ce_se, dir, properties))
+        evals.append((ce, ce_se, path, properties))
         ces.append(ce)
 
 evals.sort()
