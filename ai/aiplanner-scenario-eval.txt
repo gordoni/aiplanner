@@ -18,10 +18,10 @@ master_income_preretirement = 6e4
 master_consume_preretirement = 3e4
 
 master_defined_benefits = '[{"age": null, "payout": 16e3, "source_of_funds": "taxable"}]'
-master_p_tax_free = 5e5
+master_p_tax_free = 0
 master_p_tax_deferred = 0
 master_p_taxable_stocks = 0
 master_p_taxable_nominal_bonds = 0
-master_p_taxable_stocks_basis_fraction = 0
+master_p_taxable_stocks_basis_fraction = 0.5
 
 eval_num_timesteps = 2000000

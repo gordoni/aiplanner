@@ -106,19 +106,35 @@ evaluate_parallel () {
     wait
 }
 
-$TRAIN no_tax-retired65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE --master-no-tax --master-age-start=65"
+$TRAIN no_tax-retired65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE --master-no-tax --master-age-start=65 --master-p-tax-free=5e5"
     # Eval parameters will override train parameters by virtue of being specified last and/or not containing low/high values.
-$EVALUATE no_tax-retired65-defined_benefits16e3-tax_free5e5 specific '--master-no-tax --master-age-start=65'
-$TRAIN start_age50-age_retirement65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE"
-$EVALUATE start_age50-age_retirement65-defined_benefits16e3-tax_free5e5 specific
+$EVALUATE no_tax-retired65-defined_benefits16e3-tax_free5e5 specific '--master-no-tax --master-age-start=65 --master-p-tax-free=5e5'
+
+$TRAIN no_tax-generic '--master-no-tax'
+$EVALUATE no_tax-generic retired65-defined_benefits16e3-tax_free5e5 '--master-no-tax --master-age-start=65 --master-p-tax-free=5e5'
+
+$TRAIN age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE --master-p-tax-free=5e5"
+$EVALUATE age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 specific ' --master-p-tax-free=5e5'
+$TRAIN age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 "-c $EVAL_FILE --master-p-tax-deferred=5e5"
+$EVALUATE age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 specific ' --master-p-tax-deferred=5e5'
+$TRAIN age_start50-age_retirement65-defined_benefits16e3-taxable_stocks5e5 "-c $EVAL_FILE --master-p-taxable-stocks=5e5"
+$EVALUATE age_start50-age_retirement65-defined_benefits16e3-taxable_stocks5e5 specific ' --master-p-taxable-stocks=5e5'
+$TRAIN retired65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5"
+$EVALUATE retired65-defined_benefits16e3-tax_free5e5 specific '--master-age-start=65 --master-p-tax-free=5e5'
+
 $TRAIN generic
-$EVALUATE generic start_age50-age_retirement65-defined_benefits16e3-tax_free5e5
-$TRAIN generic-train2m '--train-num-timesteps=2000000'
-$EVALUATE generic-train2m start_age50-age_retirement65-defined_benefits16e3-tax_free5e5
-$TRAIN generic-hls128 '--train-hidden-layer-size=128'
-$EVALUATE generic start_age50-age_retirement65-defined_benefits16e3-tax_free5e5
-$TRAIN generic-hls128-train2m '--train-hidden-layer-size=128 --train-num-timestes=2000000'
-$EVALUATE generic-hls128-train2m start_age50-age_retirement65-defined_benefits16e3-tax_free5e5
+$EVALUATE generic age_start50-defined_benefits16e3-tax_free5e5 '--master-p-tax-free=5e5'
+$EVALUATE generic age_start50-defined_benefits16e3-tax_deferred5e5 '--master-p-tax-deferred=5e5'
+$EVALUATE generic age_start50-defined_benefits16e3-taxable_stocks5e5 '--master-p-taxable-stocks=5e5'
+$EVALUATE generic retired65-defined_benefits16e3-tax_free5e5 '--master-age-start=65 --master-p-tax-free=5e5'
 
 # Notes on tweaks that have been tried out:
 #
+# --train-num-timesteps=2000000
+#    Produced 0.5% worse generic results than 1m timesteps.
+#
+# --train-hidden-layer-size=128
+#    Produced 0.05% worse generic results than hidden layer size 64.
+#
+# --train-hidden-layer-size=128 --train-num-timesteps=2000000
+#    Produced 1% worse generic results than 1m timesteps and hidden layer size 64.
