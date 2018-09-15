@@ -142,7 +142,7 @@ class ModelParams(object):
         self._boolean_flag('have_401k2', True) # 401(k) available to second individual.
 
         self._param('time-period', 1) # Rebalancing time interval in years.
-        self._param('gamma', 3) # Coefficient of relative risk aversion.
+        self._param('gamma', (3, 3), 3) # Coefficient of relative risk aversion.
             # Will probably need smaller [consume_floor, consume_ceiling] ranges if use a large gamma value such as 6.
 
         self._param('defined-benefits', '[{"payout": [1e3, 1e5]}]', '[{"payout": 1e4}]', tp = string_type)
@@ -169,6 +169,7 @@ class ModelParams(object):
         # Consumption order is assumed to be p_taxable, p_tax_deferred, p_notax.
 
         self._boolean_flag('tax', False) # Whether income is taxed.
+        self._boolean_flag('income-aggregate', True) # When income isn't taxed, whether to aggregate tax_free, tax_deferred, and taxable observations.
         self._param('dividend-yield-stocks', 0.02) # Dividend yield for stocks.
         self._param('dividend-yield-bonds', 0.04) # Dividend yield for bonds and bills.
         self._param('qualified-dividends-stocks', 1) # Qualified dividends fraction for stocks. Qualified dividends are taxed at capital gains rates.

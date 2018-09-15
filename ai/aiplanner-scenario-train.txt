@@ -33,4 +33,7 @@ master_p_taxable_nominal_bonds_high = 2e6
 master_p_taxable_stocks_basis_fraction_low = 0
 master_p_taxable_stocks_basis_fraction_high = 1.5
 
+master_gamma_low = 1.0
+master_gamma_high = 6.0
+
 train_num_timesteps = 1000000 # No observed advantage from longer, may produce worse CE if 500000.

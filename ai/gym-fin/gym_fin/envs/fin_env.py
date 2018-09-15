@@ -173,13 +173,13 @@ class FinEnv(Env):
             # PPO1 implementation ignores size and assumes [-inf, inf] output.
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple in baselines/baselines/ppo1/mlp_policy.py.
-            # couple, single, life-expectancy both, life-expectancy one, preretirement years,
+            # couple, single, 1 / gamma, life-expectancy both, life-expectancy one, preretirement years,
             # income present value annualized: tax_free, tax_deferred, taxable,
             # wealth annualized: tax_free, tax_deferred, taxable,
             # first person preretirement income annualized, second person preretirement income annualized, consume annualized, taxable basis annualized,
             # short real interest rate, short inflation rate
-            low  = np.array((0, 0,   0,   0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, -0.05, 0.0)),
-            high = np.array((1, 1, 100, 100, 50, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6,  0.05, 0.1)),
+            low  = np.array((0, 0, 0,  0,   0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, -0.05, 0.0)),
+            high = np.array((1, 1, 1, 100, 100, 50, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6,  0.05, 0.1)),
             dtype = 'float32'
         )
 
@@ -190,8 +190,6 @@ class FinEnv(Env):
                 self.params.life_expectancy_additional2, self.params.life_table_date, self.params.time_period)
         else:
             self.q_adjust2 = None
-
-        self.utility = Utility(self.params.gamma, self.params.consume_floor)
 
         self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility,
             self.params.stocks_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
@@ -457,6 +455,9 @@ class FinEnv(Env):
             self._compute_vital_stats(self.age, self.age2, self.q_adjust, self.q_adjust2, self.preretirement_years)
 
         self.couple = self.alive_single[0] == None
+
+        self.gamma = self.log_uniform(self.params.gamma_low, self.params.gamma_high)
+        self.utility = Utility(self.gamma, self.params.consume_floor)
 
         self.date = self.params.life_table_date
         self.cpi = 1
@@ -1144,7 +1145,7 @@ class FinEnv(Env):
         except ZeroDivisionError:
             self.taxable_basis = float('inf')
 
-        if not self.params.tax:
+        if not self.params.tax and self.params.income_aggregate:
             self.income = {'tax_free': sum(self.income.values()), 'tax_deferred': 0, 'taxable': 0} # Results in better training.
             self.wealth = {'tax_free': sum(self.wealth.values()), 'tax_deferred': 0, 'taxable': 0}
             self.taxable_basis = 0
@@ -1162,7 +1163,7 @@ class FinEnv(Env):
 
         couple = int(self.couple)
         single = int(not self.couple)
-
+        one_on_gamma = 1 / self.gamma
         life_expectancy_both = self.life_expectancy_both[self.episode_length]
         life_expectancy_one = self.life_expectancy_one[self.episode_length]
 
@@ -1176,7 +1177,7 @@ class FinEnv(Env):
         else:
             inflation_rate = 0
 
-        observe = (couple, single, life_expectancy_both, life_expectancy_one, self.preretirement_years,
+        observe = (couple, single, one_on_gamma, life_expectancy_both, life_expectancy_one, self.preretirement_years,
             self.income['tax_free'], self.income['tax_deferred'], self.income['taxable'],
             self.wealth['tax_free'], self.wealth['tax_deferred'], self.wealth['taxable'],
             self.income_preretirement_annualized, self.income_preretirement2_annualized, self.consume_preretirement_annualized,
@@ -1185,13 +1186,14 @@ class FinEnv(Env):
 
     def decode_observation(self, obs):
 
-        couple, single, life_expectancy_both, life_expectancy_one, preretirement_years, income_tax_free, income_tax_deferred, income_taxable, \
+        couple, single, one_on_gamma, life_expectancy_both, life_expectancy_one, preretirement_years, income_tax_free, income_tax_deferred, income_taxable, \
             wealth_tax_free, wealth_tax_deferred, wealth_taxable, income_preretirement, income_preretirement2, consume_preretirement, \
             taxable_basis, real_interest_rate, inflation_rate = obs.tolist()
 
         return {
             'couple': couple,
             'single': single,
+            'one_on_gamma': one_on_gamma,
             'life_expectancy_both': life_expectancy_both,
             'life_expectancy_one': life_expectancy_one,
             'preretirement_years': preretirement_years,

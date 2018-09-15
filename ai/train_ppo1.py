@@ -25,7 +25,7 @@ from baselines.common.misc_util import set_global_seeds
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 
-def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_num_timesteps, train_seed,
+def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_minibatch_size, train_num_timesteps, train_seed,
           eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, model_dir):
     while model_dir and model_dir[-1] == '/':
         model_dir = model_dir[:-1]
@@ -68,7 +68,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
         max_timesteps=train_num_timesteps,
         timesteps_per_actorbatch=2048,
         clip_param=0.2, entcoeff=0.0,
-        optim_epochs=10, optim_stepsize=3e-4, optim_batchsize=64,
+        optim_epochs=10, optim_stepsize=3e-4, optim_batchsize=train_minibatch_size,
         gamma=1, lam=0.95, schedule='linear',
         callback=eval_callback
     )
@@ -91,6 +91,7 @@ def main():
     parser = arg_parser()
     parser.add_argument('--train-num-hidden-layers', type=int, default=2)
     parser.add_argument('--train-hidden-layer-size', type=int, default=64)
+    parser.add_argument('--train-minibatch-size', type=int, default=128)
     training_model_params, eval_model_params, args = fin_arg_parse(parser)
     logger.configure()
     train(training_model_params, eval_model_params, **args)

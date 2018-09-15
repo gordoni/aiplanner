@@ -106,13 +106,13 @@ evaluate_parallel () {
     wait
 }
 
+# Specific benchmarks.
+
 $TRAIN no_tax-retired65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE --master-no-tax --master-age-start=65 --master-p-tax-free=5e5"
     # Eval parameters will override train parameters by virtue of being specified last and/or not containing low/high values.
 $EVALUATE no_tax-retired65-defined_benefits16e3-tax_free5e5 specific '--master-no-tax --master-age-start=65 --master-p-tax-free=5e5'
-
-$TRAIN no_tax-generic '--master-no-tax'
-$EVALUATE no_tax-generic retired65-defined_benefits16e3-tax_free5e5 '--master-no-tax --master-age-start=65 --master-p-tax-free=5e5'
-
+$TRAIN no_tax-no_income_aggregate-retired65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE --master-no-tax --master-no-income-aggregate --master-age-start=65 --master-p-tax-free=5e5"
+$EVALUATE no_tax-no_income_aggregate-retired65-defined_benefits16e3-tax_free5e5 specific '--master-no-tax --master-no-income-aggregate --master-age-start=65 --master-p-tax-free=5e5'
 $TRAIN age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE --master-p-tax-free=5e5"
 $EVALUATE age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 specific ' --master-p-tax-free=5e5'
 $TRAIN age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 "-c $EVAL_FILE --master-p-tax-deferred=5e5"
@@ -122,7 +122,27 @@ $EVALUATE age_start50-age_retirement65-defined_benefits16e3-taxable_stocks5e5 sp
 $TRAIN retired65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5"
 $EVALUATE retired65-defined_benefits16e3-tax_free5e5 specific '--master-age-start=65 --master-p-tax-free=5e5'
 
+# Variable scenario, fixed gamma.
+
+$TRAIN no_tax-gamma3 '--master-no-tax --master-gamma=3'
+$TRAIN no_tax-no_income_aggregate-gamma3 '--master-no-tax --master-no-income-aggregate --master-gamma=3'
+$TRAIN gamma3 '--master-gamma=3'
+
+$EVALUATE no_tax-gamma3 retired65-defined_benefits16e3-tax_free5e5 '--master-no-tax --master-gamma=3 --master-age-start=65 --master-p-tax-free=5e5'
+$EVALUATE no_tax-no_income_aggregate-gamma3 retired65-defined_benefits16e3-tax_free5e5 '--master-no-tax --master-no-income-aggregate --master-gamma=3 --master-age-start=65 --master-p-tax-free=5e5'
+$EVALUATE gamma3 age_start50-defined_benefits16e3-tax_free5e5 '--master-gamma=3 --master-p-tax-free=5e5'
+$EVALUATE gamma3 age_start50-defined_benefits16e3-tax_deferred5e5 '--master-gamma=3 --master-p-tax-deferred=5e5'
+$EVALUATE gamma3 age_start50-defined_benefits16e3-taxable_stocks5e5 '--master-gamma=3 --master-p-taxable-stocks=5e5'
+$EVALUATE gamma3 retired65-defined_benefits16e3-tax_free5e5 '--master-gamma=3 --master-age-start=65 --master-p-tax-free=5e5'
+
+# Variable scenario, variable gamma.
+
+$TRAIN no_tax-generic '--master-no-tax'
+$TRAIN no_tax-no_income_aggregate-generic '--master-no-tax --master-no-income-aggregate'
 $TRAIN generic
+
+$EVALUATE no_tax-generic retired65-defined_benefits16e3-tax_free5e5 '--master-no-tax --master-age-start=65 --master-p-tax-free=5e5'
+$EVALUATE no_tax-no_income_aggregate-generic retired65-defined_benefits16e3-tax_free5e5 '--master-no-tax --master-no-income-aggregate --master-age-start=65 --master-p-tax-free=5e5'
 $EVALUATE generic age_start50-defined_benefits16e3-tax_free5e5 '--master-p-tax-free=5e5'
 $EVALUATE generic age_start50-defined_benefits16e3-tax_deferred5e5 '--master-p-tax-deferred=5e5'
 $EVALUATE generic age_start50-defined_benefits16e3-taxable_stocks5e5 '--master-p-taxable-stocks=5e5'
@@ -130,11 +150,38 @@ $EVALUATE generic retired65-defined_benefits16e3-tax_free5e5 '--master-age-start
 
 # Notes on tweaks that have been tried out:
 #
+# --train-num-timesteps=500000
+#    Produced 0.0% better generic results than 1m timesteps both pposgd_simple.learn(optim_batchsize=64).
+#    SUGGESTS COULD CUT TRAINING TIME IN HALF BUT MIGHT NOT WORK FOR MORE COMPLEX ENVIRONMENTS SUCH AS SPIAS.
+#
 # --train-num-timesteps=2000000
-#    Produced 0.5% worse generic results than 1m timesteps.
+#    Produced 0.7% worse generic results than 1m timesteps both pposgd_simple.learn(optim_batchsize=64).
 #
 # --train-hidden-layer-size=128
-#    Produced 0.05% worse generic results than hidden layer size 64.
+#    Produced 0.2% worse generic results than hidden layer size 64 both pposgd_simple.learn(optim_batchsize=64).
 #
 # --train-hidden-layer-size=128 --train-num-timesteps=2000000
-#    Produced 1% worse generic results than 1m timesteps and hidden layer size 64.
+#    Produced 0.6% worse generic results than 1m timesteps and hidden layer size 64 both pposgd_simple.learn(optim_batchsize=64).
+#
+# pposgd_simple.learn(lam=0.98)
+# pposgd_simple.learn(lam=1)
+#    Produced 0.2% better and 0.1% worse generic results than lam=0.95 all pposgd_simple.learn(optim_batchsize=64).
+#
+# pposgd_simple.learn(optim_batchsize=128)
+# pposgd_simple.learn(optim_batchsize=256)
+#    Produced 0.3% better and 0.3% generic results than optim_batchsize=64.
+#
+# pposgd_simple.learn(adam_epsilon=1e-6)
+#    Produced 0.1% worse generic results than adam_epsilon=1e-5 default both pposgd_simple.learn(optim_batchsize=64).
+#
+# pposgd_simple.learn(optim_epochs=20)
+#    Produced 0.4% worse generic results than optim_epochs=10 both pposgd_simple.learn(optim_batchsize=64).
+#
+# pposgd_simple.learn(optim_batchsize=128, optim_stepsize=3e-5)
+#    Produduced 0.4% worse generic results than optim_batchsize=128, optim_stepsize=3e-4.
+#
+# pposgd_simple.learn(optim_batchsize=128, optim_stepsize=1e-4)
+#    Produduced 0.2% worse generic results than optim_batchsize=128, optim_stepsize=3e-4.
+#
+# --train-num-hidden-layers=3
+#    Produced 0.4% worse generic results than 2 hidden layers both pposgd_simple.learn(optim_batchsize=128)

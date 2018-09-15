@@ -31,8 +31,6 @@ master_p_taxable_real_bonds = 0
 master_p_taxable_iid_bonds = 0
 master_p_taxable_bills = 0
 
-master_gamma = 3.0
-
 master_tax = True
 
 master_real_spias = False
