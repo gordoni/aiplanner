@@ -660,6 +660,8 @@ class FinEnv(Env):
                 spias_fraction = leaky_lu(spias_action - current_spias_fraction_estimate) / leaky_lu(1 - current_spias_fraction_estimate)
             except ZeroDivisionError:
                 spias_fraction = 0
+            if spias_action - current_spias_fraction_estimate < self.params.spias_min_purchase_fraction:
+                spias_fraction = 0
             assert 0 <= spias_fraction <= 1
 
             real_spias_fraction = spias_fraction if self.params.real_spias else 0

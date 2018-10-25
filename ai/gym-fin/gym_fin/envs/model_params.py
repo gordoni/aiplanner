@@ -196,6 +196,7 @@ class ModelParams(object):
             # To crudely reflect this, we don't use MWRs above 100%, and the 2.35% CA guarantee association tax is ignored since the premium
             # goes towards covering defaults.
         self._param('nominal-spias-adjust', 0) # Fixed annual adjustment to apply to nominal SPIAs payout to compensate for inflation.
+        self._param('spias-min-purchase-fraction', 0) # Minimum fraction of total estimated annual income making up a SPIAs purchase.
         self._boolean_flag('couple-spias', True) # Enable purchase of SPIAs by couples.
         self._param('spias-permitted-from-age', 0) # Minimum age (of youngest party) at which able to purchase SPIAs.
         self._param('spias-permitted-to-age', 85) # Maximum age (of oldest party) at which able to purchase SPIAs.
