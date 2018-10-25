@@ -208,8 +208,14 @@ class ModelParams(object):
             # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%).
         self._boolean_flag('returns-standard-error', True) # Whether to model the standard error of returns.
         self._boolean_flag('stocks', True) # Whether to model stocks.
-        self._param('stocks-return', 0.065) # Annual real return for stocks.
-        self._param('stocks-volatility', 0.174) # Annual real volatility for stocks.
+        self._param('stocks-return', 0.065) # Annual real return for stocks prior to effects of mean reversion.
+        self._param('stocks-volatility', 0.174) # Annual real volatility for stocks prior to effects of mean reversion.
+        self._param('stocks-price', (0.5, 2.0)) # Initial price of stocks relative to fair price. Used in the case of mean reversion.
+        self._param('stocks-mean-reversion-rate', 0) # Mean reversion rate, - d(return percentage)/d(overvalued percentage).
+            # Set to zero for independent identically distributed stock returns.
+            # Set to non-zero for mean reverting stock returns.
+            # Use a value like 0.1 to mimick findings from Shiller's data, that for every 10% overvalued stocks are,
+            # there is an approximate 1% reduction in annual returns for the following year.
         self._param('stocks-standard-error', 0.016) # Standard error of log real return for stocks.
         self._boolean_flag('real-bonds', True) # Whether to model real bonds (with an interest rate model).
         self._param('real-bonds-duration', None) # Duration in years to use for real bonds, or None to allow duration to vary.

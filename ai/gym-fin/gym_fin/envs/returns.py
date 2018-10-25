@@ -9,15 +9,18 @@
 # PURPOSE.
 
 from math import exp, log, sqrt
-from random import lognormvariate, normalvariate
+from random import lognormvariate, normalvariate, uniform
 from statistics import mean, stdev
 
 class Returns(object):
 
-    def __init__(self, ret, vol, standard_error, time_period):
+    def __init__(self, ret, vol, price_low, price_high, mean_reversion_rate, standard_error, time_period):
 
         self.ret = ret
         self.vol = vol
+        self.price_low = price_low
+        self.price_high = price_high
+        self.mean_reversion_rate = mean_reversion_rate
         self.standard_error = standard_error
         self.time_period = time_period
 
@@ -33,10 +36,23 @@ class Returns(object):
 
         self.period_mu = mu * self.time_period
         self.period_sigma = self.sigma * sqrt(self.time_period)
+        self.above_trend = uniform(self.price_low, self.price_high)
+        self.period_mean_reversion_rate = self.mean_reversion_rate * self.time_period
 
     def sample(self):
 
-        return lognormvariate(self.period_mu, self.period_sigma) # Caution: If switch to using numpy need to get/set numpy state in fin_evaluate().
+        sample = lognormvariate(self.period_mu, self.period_sigma) # Caution: If switch to using numpy need to get/set numpy state in fin_evaluate().
+
+        self.above_trend *= sample / exp(self.period_mu)
+        reversion = self.above_trend ** (- self.period_mean_reversion_rate)
+
+        self.above_trend *= reversion
+
+        return sample * reversion
+
+    def observe(self):
+
+        return (self.above_trend, )
 
 def _report(name, rets):
 

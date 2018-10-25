@@ -177,9 +177,9 @@ class FinEnv(Env):
             # income present value annualized: tax_free, tax_deferred, taxable,
             # wealth annualized: tax_free, tax_deferred, taxable,
             # first person preretirement income annualized, second person preretirement income annualized, consume annualized, taxable basis annualized,
-            # short real interest rate, short inflation rate
-            low  = np.array((0, 0, 0,  0,   0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, -0.05, 0.0)),
-            high = np.array((1, 1, 1, 100, 100, 50, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6,  0.05, 0.1)),
+            # stock price on fair value, short real interest rate, short inflation rate
+            low  = np.array((0, 0, 0,  0,   0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  0.2, -0.05, 0.0)),
+            high = np.array((1, 1, 1, 100, 100, 50, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 5,    0.05, 0.1)),
             dtype = 'float32'
         )
 
@@ -191,11 +191,12 @@ class FinEnv(Env):
         else:
             self.q_adjust2 = None
 
-        self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility,
+        self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.stocks_price_low, self.params.stocks_price_high,
+            self.params.stocks_mean_reversion_rate,
             self.params.stocks_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
-        self.iid_bonds = Returns(self.params.iid_bonds_return, self.params.iid_bonds_volatility,
+        self.iid_bonds = Returns(self.params.iid_bonds_return, self.params.iid_bonds_volatility, 1, 1, 0,
             self.params.bonds_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
-        self.bills = Returns(self.params.bills_return, self.params.bills_volatility,
+        self.bills = Returns(self.params.bills_return, self.params.bills_volatility, 1, 1, 0,
             self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
 
         self.bonds = bonds_cached if bonds_cached else \
@@ -1167,6 +1168,11 @@ class FinEnv(Env):
         life_expectancy_both = self.life_expectancy_both[self.episode_length]
         life_expectancy_one = self.life_expectancy_one[self.episode_length]
 
+        if self.params.stocks_mean_reversion_rate != 0:
+            stocks_price, = self.stocks.observe()
+        else:
+            stocks_price = 1 # Avoid observing spurious noise for better training.
+
         if self.params.observe_interest_rate:
             real_interest_rate, = self.bonds.real.observe()
         else:
@@ -1181,14 +1187,14 @@ class FinEnv(Env):
             self.income['tax_free'], self.income['tax_deferred'], self.income['taxable'],
             self.wealth['tax_free'], self.wealth['tax_deferred'], self.wealth['taxable'],
             self.income_preretirement_annualized, self.income_preretirement2_annualized, self.consume_preretirement_annualized,
-            self.taxable_basis, real_interest_rate, inflation_rate)
+            self.taxable_basis, stocks_price, real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')
 
     def decode_observation(self, obs):
 
         couple, single, one_on_gamma, life_expectancy_both, life_expectancy_one, preretirement_years, income_tax_free, income_tax_deferred, income_taxable, \
             wealth_tax_free, wealth_tax_deferred, wealth_taxable, income_preretirement, income_preretirement2, consume_preretirement, \
-            taxable_basis, real_interest_rate, inflation_rate = obs.tolist()
+            taxable_basis, stocks_price, real_interest_rate, inflation_rate = obs.tolist()
 
         return {
             'couple': couple,
@@ -1207,6 +1213,7 @@ class FinEnv(Env):
             'income_preretirement2': income_preretirement2,
             'consume_preretirement': consume_preretirement,
             'taxable_basis': taxable_basis,
+            'stocks_price': stocks_price,
             'real_interest_rate': real_interest_rate,
             'inflation_rate': inflation_rate
         }
