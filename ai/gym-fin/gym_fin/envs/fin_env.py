@@ -76,6 +76,9 @@ class FinEnv(Env):
         dead_at2 = random()
         first_dies_first = False
 
+        alive_count = [2 if self.params.sex2 else 1] # Mock count of number of individuals alive. Only used for plots, for computations use alive_single probability.
+        _alive_count = 2 if self.params.sex2 else 1
+
         y = 0
         q_y = -1
         q = 0
@@ -96,21 +99,29 @@ class FinEnv(Env):
                 dead2 = _alive2 < dead_at2
                 if dead and dead2:
                     _alive_single = 0
+                    _alive_count = 0
                 elif dead:
                     first_dies_first = True
                     _alive_single = q_fract ** ((dead_at - _alive) / (prev_alive - _alive))
+                    _alive_count = 1
                 elif dead2:
                     _alive_single = q_fract2 ** ((dead_at2 - _alive2) / (prev_alive2 - _alive2))
+                    _alive_count = 1
             elif dead:
                 _alive_single *= q_fract2
+                if _alive2 < dead_at2:
+                    _alive_count = 0
             elif dead2:
                 _alive_single *= q_fract
+                if _alive < dead_at:
+                    _alive_count = 0
             remaining_fract -= fract
             y += fract
             if y >= a_y:
                 alive_both.append(_alive * _alive2)
                 alive_one.append(1 - _alive * _alive2 - (1 - _alive) * (1 - _alive2))
                 alive_single.append(_alive_single)
+                alive_count.append(_alive_count)
                 a_y += self.params.time_period
             if y - q_y >= 1:
                 q_y += 1
@@ -155,8 +166,9 @@ class FinEnv(Env):
         life_expectancy_single.append(0)
 
         alive_single.append(0)
+        alive_count.append(0)
 
-        return first_dies_first, alive_years, tuple(alive_single), table, table2, \
+        return first_dies_first, alive_years, tuple(alive_single), tuple(alive_count), table, table2, \
             tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
 
     def __init__(self, bonds_cached = None, action_space_unbounded = False, direct_action = False, **kwargs):
@@ -447,11 +459,11 @@ class FinEnv(Env):
             self.income_preretirement_years = max(0, self.params.income_preretirement_age_end - self.age)
         else:
             self.income_preretirement_years = self.preretirement_years
-        if self.params.income_preretirement_age_end != None:
+        if self.params.income_preretirement_age_end2 != None:
             self.income_preretirement_years2 = max(0, self.params.income_preretirement_age_end2 - self.age2)
         else:
             self.income_preretirement_years2 = self.preretirement_years
-        self.first_dies_first, self.alive_years, self.alive_single, self.life_table, self.life_table2, \
+        self.first_dies_first, self.alive_years, self.alive_single, self.alive_count, self.life_table, self.life_table2, \
             self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = \
             self._compute_vital_stats(self.age, self.age2, self.q_adjust, self.q_adjust2, self.preretirement_years)
 

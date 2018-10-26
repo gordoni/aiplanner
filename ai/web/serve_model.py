@@ -127,7 +127,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         set_low_high('p_taxable_stocks_basis_fraction', basis_fraction)
         del request['p_taxable_stocks_basis']
 
-        set_low_high('income_preretirement_age_end', request['age_retirement'])
+        model_params['income_preretirement_age_end'] = request['age_retirement']
 
         for param in ('age_start', 'age_retirement', 'income_preretirement', 'consume_preretirement', 'p_tax_free', 'p_tax_deferred', 'p_taxable_stocks'):
             set_low_high(param, request[param])
@@ -203,7 +203,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             'consume_low': low,
             'asset_allocation': str(interp['asset_allocation']),
             'retirement_contribution': interp['retirement_contribution'],
-            'data_dir': '/api/data/' + dir[len(data_root):],
+            'data_dir': '/api/data/' + dir[len(data_root) + 1:],
         }
 
     def plot(self, dir, traces):
@@ -212,8 +212,15 @@ class RequestHandler(BaseHTTPRequestHandler):
         with open(prefix + '-data.csv', 'w') as f:
             csv_writer = writer(f)
             for trace in traces:
-                for step in trace:
-                    csv_writer.writerow((step['age'], step['gi_sum'], step['p_sum'], step['consume']))
+                for i, step in enumerate(trace):
+                    couple_plot = step['alive_count'] == 2
+                    single_plot = step['alive_count'] == 1
+                    try:
+                        if step['alive_count'] == 2 and trace[i + 1]['alive_count'] == 1:
+                            single_plot = True
+                    except KeyError:
+                        pass
+                    csv_writer.writerow((step['age'], int(couple_plot), int(single_plot), step['gi_sum'], step['p_sum'], step['consume']))
                 csv_writer.writerow(())
 
         environ['AIPLANNER_FILE_PREFIX'] = prefix

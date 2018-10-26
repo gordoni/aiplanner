@@ -85,6 +85,7 @@ class Evaluator(object):
             decoded_action = env.interpret_action(action)
         self.episode.append({
             'age': env.age,
+            'alive_count': env.alive_count[env.episode_length],
             'gi_sum': env.gi_sum() if not done else None,
             'p_sum': env.p_sum(),
             'consume': decoded_action['consume'] if not done else None,
