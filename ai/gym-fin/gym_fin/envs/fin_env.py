@@ -384,6 +384,9 @@ class FinEnv(Env):
         assert owner in ('self', 'spouse')
         assert (premium == None) != (payout == None)
 
+        if owner == 'spouse' and self.sex2 == None:
+            return
+
         db = self.get_db(defined_benefits, type, owner, inflation_adjustment, joint, payout_fraction, source_of_funds)
 
         if premium != None:
@@ -495,7 +498,7 @@ class FinEnv(Env):
             self.income_preretirement = self.log_uniform(self.params.income_preretirement_low, self.params.income_preretirement_high) \
                 if self.income_preretirement_years > 0 else 0
             self.income_preretirement2 = self.log_uniform(self.params.income_preretirement2_low, self.params.income_preretirement2_high) \
-                if self.income_preretirement_years2 > 0 else 0
+                if self.couple and self.income_preretirement_years2 > 0 else 0
 
             if self.preretirement_years * self.consume_preretirement > self.params.consume_income_ratio_max * \
                (min(self.income_preretirement_years, self.preretirement_years) * self.income_preretirement + \

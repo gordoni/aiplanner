@@ -21,7 +21,6 @@ master_life_expectancy_additional2 = 3
 master_age_adjust = 65
 master_age_adjust2 = 65
 
-master_age_start2 = 50
 master_age_end = 120
 
 master_consume_additional = 0.6

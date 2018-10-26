@@ -11,17 +11,24 @@
 master_consume_clip = 5000 # Prevent learning very negative rewards.
 
 master_age_start = 40
+master_age_start2_low = 30
+master_age_start2_high = 50
 
 master_age_retirement_low = 50
 master_age_retirement_high = 75
 
 master_income_preretirement_low = 1e4
 master_income_preretirement_high = 2e5
+master_income_preretirement2_low = 1e4
+master_income_preretirement2_high = 2e5
 master_consume_preretirement_low = 1e4
 master_consume_preretirement_high = 1e5
 master_consume_income_ratio_max = 0.7
 
-master_defined_benefits = '[{"age": null, "payout": [1e3, 1e5], "source_of_funds": "taxable"}]'
+master_defined_benefits = '[
+    {"owner": "self", "age": null, "payout": [1e3, 1e5], "source_of_funds": "taxable"},
+    {"owner": "spouse", "age": null, "payout": [1e3, 1e5], "source_of_funds": "taxable"}
+]'
 master_p_tax_free_low = 1e3
 master_p_tax_free_high = 2e6
 master_p_tax_deferred_low = 1e3

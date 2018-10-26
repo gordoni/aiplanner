@@ -1,0 +1,29 @@
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+master_consume_clip = 0
+
+master_age_start = 50
+
+master_age_retirement = 65
+
+master_income_preretirement = 6e4
+master_consume_preretirement = 3e4
+
+master_defined_benefits = '[{"owner": "self", "age": null, "payout": 16e3, "source_of_funds": "taxable"}]'
+master_p_tax_free = 0
+master_p_tax_deferred = 0
+master_p_taxable_stocks = 0
+master_p_taxable_nominal_bonds = 0
+master_p_taxable_stocks_basis_fraction = 0.5
+
+master_gamma = 3.0
+
+eval_num_timesteps = 2000000
