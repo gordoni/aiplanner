@@ -339,7 +339,7 @@ class FinEnv(Env):
             defined_benefits[key] = db
 
             younger = self.age if self.params.sex2 == None else min(self.age, self.age2)
-            episodes = int(self.params.age_end - younger)
+            episodes = ceil(self.params.age_end - younger)
 
             bonds = YieldCurve('fixed', self.date) if inflation_adjustment == 'cpi' else self.bonds.inflation
             if self.couple:
@@ -384,7 +384,7 @@ class FinEnv(Env):
         assert owner in ('self', 'spouse')
         assert (premium == None) != (payout == None)
 
-        if owner == 'spouse' and self.sex2 == None:
+        if owner == 'spouse' and self.params.sex2 == None:
             return
 
         db = self.get_db(defined_benefits, type, owner, inflation_adjustment, joint, payout_fraction, source_of_funds)
