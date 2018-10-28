@@ -22,9 +22,12 @@ import { DefinedBenefit } from '../defined-benefit';
 export class ScenarioComponent implements OnInit {
 
   public step: number = 0;
-  public sex: string = "male";
+  public sex: string = "female";
   public age: number = 50;
   public lifeExpectancyAdditional: number = 3;
+  public sex2: string = "none";
+  public age2: number = 50;
+  public lifeExpectancyAdditional2: number = 3;
 
   public definedBenefits: DefinedBenefit[] = [];
   public editDefinedBenefit: DefinedBenefit = null;
@@ -37,8 +40,10 @@ export class ScenarioComponent implements OnInit {
 
   public ageRetirement: number = 66;
   public incomePreretirement = 60000;
+  public incomePreretirement2 = 60000;
   public consumePreretirement = 40000;
   public have401k = true;
+  public have401k2 = true;
 
   public gamma: number = 3;
 
@@ -49,12 +54,13 @@ export class ScenarioComponent implements OnInit {
   constructor(private scenarioService: ScenarioService) {
   }
 
-  health() {
-    if (this.lifeExpectancyAdditional >= 4)
+  health(individual: string) {
+    var leAdditional: number = (individual == 'self') ? this.lifeExpectancyAdditional : this.lifeExpectancyAdditional2;
+    if (leAdditional >= 4)
       return "Excellent";
-    if (this.lifeExpectancyAdditional >= 2)
+    if (leAdditional >= 2)
       return "Good";
-    if (this.lifeExpectancyAdditional >= 0)
+    if (leAdditional >= 0)
       return "Fair";
     else
       return "Poor";
@@ -124,8 +130,11 @@ export class ScenarioComponent implements OnInit {
 
     var scenario = {
         'sex': this.sex,
+        'sex2': (this.sex2 == 'none') ? null : this.sex2,
         'age_start': this.age,
+        'age_start2': (this.sex2 == 'none') ? 0 : this.age2,
         'life_expectancy_additional': this.lifeExpectancyAdditional,
+        'life_expectancy_additional2': (this.sex2 == 'none') ? 0 : this.lifeExpectancyAdditional2,
 
         'defined_benefits': dbs,
 
@@ -137,8 +146,10 @@ export class ScenarioComponent implements OnInit {
 
         'age_retirement': this.ageRetirement,
         'income_preretirement': this.incomePreretirement,
+        'income_preretirement2': this.incomePreretirement,
         'consume_preretirement': this.consumePreretirement,
         'have_401k': this.have401k,
+        'have_401k2': this.have401k2,
 
         'gamma': this.gamma,
     };

@@ -70,29 +70,31 @@ PURPOSE.
     </div>
 
     <div *ngIf="newData.type == 'Income Annuity'">
+
       Source of funds: <select name="dbSourceOfFunds" [(ngModel)]="newData.sourceOfFunds">
         <option value="taxable">Taxable (non-qualified funds)</option>
         <option value="tax_deferred">Tax deferred (qualified funds - IRA, 401(k))</option>
         <option value="tax_free">Tax exempt (Roth)</option>
       </select>
-    </div>
 
-    <div *ngIf="newData.sourceOfFunds == 'taxable'">
-      Taxble exclusion period:
-        <input type="number" class="small-numeric" required name="dbExclusionPeriod" #dbExclusionPeriod="ngModel" [(ngModel)]="newData.exclusionPeriod">
-        years from starting age
-        <div class="error" *ngIf="dbExclusionPeriod.invalid">
-          Invalid numeric value.
-        </div>
-    </div>
+      <div *ngIf="newData.sourceOfFunds == 'taxable'">
+        Taxble exclusion period:
+          <input type="number" class="small-numeric" required name="dbExclusionPeriod" #dbExclusionPeriod="ngModel" [(ngModel)]="newData.exclusionPeriod">
+          years from starting age
+          <div class="error" *ngIf="dbExclusionPeriod.invalid">
+            Invalid numeric value.
+          </div>
+      </div>
 
-    <div *ngIf="newData.sourceOfFunds == 'taxable'">
-      Taxable exclusion amount:
-        <input type="number" class="numeric" required name="dbExclusionAmountPer" #dbExclusionAmountPer="ngModel" [(ngModel)]="newData.exclusionAmountPer">
-        <div class="error" *ngIf="dbExclusionAmountPer.invalid">
-          Invalid numeric value.
-        </div>
-        per {{newData.per}}
+      <div *ngIf="newData.sourceOfFunds == 'taxable'">
+        Taxable exclusion amount:
+          <input type="number" class="numeric" required name="dbExclusionAmountPer" #dbExclusionAmountPer="ngModel" [(ngModel)]="newData.exclusionAmountPer">
+          <div class="error" *ngIf="dbExclusionAmountPer.invalid">
+            Invalid numeric value.
+          </div>
+          per {{newData.per}}
+      </div>
+
     </div>
 
     <div class="cancel">

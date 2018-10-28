@@ -36,7 +36,7 @@ class MlpPolicy(object):
             if couple:
                 with tf.variable_scope('couple'):
                     couple_tf = hidden_layers(obz)
-                last_out = tf.where(is_couple, single_tf, couple_tf)
+                last_out = tf.where(is_couple, couple_tf, single_tf)
             else:
                 last_out = single_tf
             self.vpred = tf.layers.dense(last_out, 1, name='final', kernel_initializer=U.normc_initializer(1.0))[:,0]
@@ -47,7 +47,7 @@ class MlpPolicy(object):
             if couple:
                 with tf.variable_scope('couple'):
                     couple_tf = hidden_layers(obz)
-                last_out = tf.where(is_couple, single_tf, couple_tf)
+                last_out = tf.where(is_couple, couple_tf, single_tf)
             else:
                 last_out = single_tf
             if gaussian_fixed_var and isinstance(ac_space, gym.spaces.Box):

@@ -113,9 +113,11 @@ class RequestHandler(BaseHTTPRequestHandler):
             del model_params[param] # Should not be used. Make sure.
 
         set_delete('sex')
+        set_delete('sex2')
         set_delete('life_expectancy_additional')
+        set_delete('life_expectancy_additional2')
         set_delete('have_401k')
-        set_delete('gamma')
+        set_delete('have_401k2')
 
         model_params['defined_benefits'] = dumps(request['defined_benefits'])
         del request['defined_benefits']
@@ -129,12 +131,12 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         model_params['income_preretirement_age_end'] = request['age_retirement']
 
-        for param in ('age_start', 'age_retirement', 'income_preretirement', 'consume_preretirement', 'p_tax_free', 'p_tax_deferred', 'p_taxable_stocks'):
+        for param in ('age_start', 'age_start2', 'age_retirement', 'income_preretirement', 'income_preretirement2', 'consume_preretirement', 'gamma',
+            'p_tax_free', 'p_tax_deferred', 'p_taxable_stocks'):
             set_low_high(param, request[param])
             del request[param]
 
         for param in (
-            'age_start2',
             'p_taxable_real_bonds', 'p_taxable_iid_bonds', 'p_taxable_bills'):
             set_low_high(param, 0)
 
@@ -144,7 +146,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         for param, value in request.items():
             assert False, 'Unexpected parameter: ' + param
 
-        model_params['display_returns'] = False;
+        model_params['display_returns'] = False
 
         try:
             bonds = self.bonds_cache.pop()

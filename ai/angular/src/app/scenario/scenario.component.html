@@ -27,16 +27,51 @@ PURPOSE.
 
   <div *ngIf="step == 1">
     <h1 class="title">Longevity</h1>
-    Sex: <select type="select" name="scenarioSex" [(ngModel)]="sex">
-      <option value="male">male</option>
-      <option value="female">female</option>
-    </select>
-    Age: <input type="number" class="small-numeric" required name="scenarioAge" #scenarioAge="ngModel" [(ngModel)]="age">
-      <div class="error" *ngIf="scenarioAge.invalid">
-        Invalid numeric value.
-      </div>
-    Health: {{health()}} - extra life expectancy of
-      <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional" [(ngModel)]="lifeExpectancyAdditional"> years
+    <table>
+      <tr>
+        <td> Self: </td>
+        <td>
+          <select type="select" name="scenarioSex" [(ngModel)]="sex">
+            <option value="male">male</option>
+            <option value="female">female</option>
+          </select>
+        </td>
+        <td> Age: <input type="number" class="small-numeric" required name="scenarioAge" #scenarioAge="ngModel" [(ngModel)]="age">
+          <div class="error" *ngIf="scenarioAge.invalid">
+            Invalid numeric value.
+          </div>
+        </td>
+        <td> Health: {{health("self")}} - </td>
+        <td> extra life expectancy of
+          <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional" #scenarioLifeExpectancyAdditional="ngModel" [(ngModel)]="lifeExpectancyAdditional"> years
+          <div class="error" *ngIf="scenarioLifeExpectancyAdditional.invalid">
+            Invalid numeric value.
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td> Spouse: </td>
+        <td>
+          <select type="select" name="scenarioSex2" [(ngModel)]="sex2">
+            <option value="none">none</option>
+            <option value="male">male</option>
+            <option value="female">female</option>
+          </select>
+        </td>
+        <td *ngIf="sex2 != 'none'"> Age: <input type="number" class="small-numeric" required name="scenarioAge2" #scenarioAge2="ngModel" [(ngModel)]="age2">
+          <div class="error" *ngIf="scenarioAge2.invalid">
+            Invalid numeric value.
+          </div>
+        </td>
+        <td *ngIf="sex2 != 'none'"> Health: {{health("spouse")}} - </td>
+        <td *ngIf="sex2 != 'none'"> extra life expectancy of
+          <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional2" #scenarioLifeExpectancyAdditional2="ngModel" [(ngModel)]="lifeExpectancyAdditional2"> years
+          <div class="error" *ngIf="scenarioLifeExpectancyAdditional2.invalid">
+            Invalid numeric value.
+          </div>
+        </td>
+      </tr>
+    </table>
   </div>
 
   <div *ngIf="step == 2">
@@ -136,14 +171,8 @@ PURPOSE.
 
   <div *ngIf="step == 3">
     <h1 class="title">Financial goals</h1>
-    Age at retirement: <input type="number" class="small-numeric" required name="scenarioAgeRetirement" #scenarioAgeRetirement="ngModel" [(ngModel)]="ageRetirement">
+    Age of self at retirement: <input type="number" class="small-numeric" required name="scenarioAgeRetirement" #scenarioAgeRetirement="ngModel" [(ngModel)]="ageRetirement">
       <div class="error" *ngIf="scenarioAgeRetirement.invalid">
-        Invalid numeric value.
-      </div>
-    <br>
-    Pre-retirement annual income before tax:
-      <input type="number" class="numeric" required name="scenarioIncomePreretirement" #scenarioIncomePreretirement="ngModel" [(ngModel)]="incomePreretirement">
-      <div class="error" *ngIf="scenarioIncomePreretirement.invalid">
         Invalid numeric value.
       </div>
     <br>
@@ -152,8 +181,35 @@ PURPOSE.
       <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
         Invalid numeric value.
       </div>
-    <br>
-    401(k) plan available: <input type="checkbox" name="scenarioHave401k" [(ngModel)]="have401k">
+    <div class="income">
+      <table>
+        <tr>
+          <td> </td>
+          <td> Annual pre-retirement income before tax </td>
+          <td> 401(k) plan available </td>
+        </tr>
+        <tr>
+          <td> Self </td>
+          <td class="center">
+            <input type="number" class="numeric" required name="scenarioIncomePreretirement" #scenarioIncomePreretirement="ngModel" [(ngModel)]="incomePreretirement">
+            <div class="error" *ngIf="scenarioIncomePreretirement.invalid">
+              Invalid numeric value.
+            </div>
+          </td>
+          <td class="center"> <input type="checkbox" name="scenarioHave401k" [(ngModel)]="have401k"> </td>
+        </tr>
+        <tr *ngIf="sex2 != 'none'">
+          <td> Spouse </td>
+          <td class="center">
+            <input type="number" class="numeric" required name="scenarioIncomePreretirement2" #scenarioIncomePreretirement2="ngModel" [(ngModel)]="incomePreretirement2">
+            <div class="error" *ngIf="scenarioIncomePreretirement2.invalid">
+              Invalid numeric value.
+            </div>
+          </td>
+          <td class="center"> <input type="checkbox" name="scenarioHave401k2" [(ngModel)]="have401k2"> </td>
+        </tr>
+      </table>
+    </div>
   </div>
 
   <div class="main-button-right" *ngIf="1 <= step && step < 4">

@@ -31,7 +31,7 @@
     text-align: right;
 }
 
-.title {
+.center, .title {
     text-align: center;
 }
 
@@ -51,6 +51,16 @@
 
 .defined-contributions table {
     border: 1px solid black;
+    padding: 5px;
+}
+
+.income {
+    padding: 10px 0;
+}
+
+.income table, .income td {
+    border: 1px solid black;
+    border-collapse: collapse;
     padding: 5px;
 }
 

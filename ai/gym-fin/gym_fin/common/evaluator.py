@@ -148,7 +148,7 @@ class Evaluator(object):
             except ZeroDivisionError:
                 std = float('nan')
             stderr = std / sqrt(e)
-            utility = self.eval_env.unwrapped.utility
+            utility = env.utility
             ce = utility.inverse(rew)
             ce_stderr = utility.inverse(rew + stderr) - ce
             low = utility.inverse(weighted_percentile(rewards, 10))
