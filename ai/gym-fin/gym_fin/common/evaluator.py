@@ -154,6 +154,27 @@ class Evaluator(object):
             unit_low = indiv_low = utility.inverse(weighted_percentile(rewards, 10))
             unit_high = indiv_high = utility.inverse(weighted_percentile(rewards, 90))
 
+            u_min = utility.inverse(weighted_percentile(rewards, 2))
+            u_max = utility.inverse(weighted_percentile(rewards, 98))
+            pdf_bucket_weights = [0] * (env.params.pdf_buckets + 4)
+            w_tot = 0
+            for r, w in rewards:
+                try:
+                    bucket = 2 + int((utility.inverse(r) - u_min) / (u_max - u_min) * env.params.pdf_buckets)
+                except ZeroDivisionError:
+                    bucket = 2
+                try:
+                    pdf_bucket_weights[bucket] += w
+                except IndexError:
+                    pass
+                w_tot += w
+            self.consume_pdf = []
+            for bucket, w in enumerate(pdf_bucket_weights):
+                unit_consume = u_min + (bucket - 1.5) * (u_max - u_min) / (env.params.pdf_buckets)
+                if env.params.sex2 != None:
+                    unit_consume *= 1 + env.params.consume_additional
+                self.consume_pdf.append((unit_consume, w / w_tot))
+
             if env.params.sex2 != None:
                 unit_ce *= 1 + env.params.consume_additional
                 unit_ce_stderr *= 1 + env.params.consume_additional

@@ -240,6 +240,8 @@ class ModelParams(object):
         self._boolean_flag('observe-interest-rate', True) # Whether model reveals the short real interest rate to observers.
         self._boolean_flag('observe-inflation-rate', True) # Whether model reveals the short inflation rate to observers.
 
+        self._param('pdf-buckets', 10) # Number of non de minus buckets to use in computing consume probability density distribution.
+
     def set_params(self, dict_args):
 
         self.params = {}

@@ -460,7 +460,7 @@ class FinEnv(Env):
             self.life_table2 = None
         elif self.age2 != self.life_table2_age:
             self.life_table2 = LifeTable(self.params.life_table, self.params.sex2, self.age2,
-                death_age = death_age, le_add = self.params.life_expectancy_additonal2, date_str = self.params.life_table_date)
+                death_age = death_age, le_add = self.params.life_expectancy_additional2, date_str = self.params.life_table_date)
             self.life_table2_age = self.age2
         else:
             self.life_table2.age = self.age2

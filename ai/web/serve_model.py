@@ -194,7 +194,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                 ce, ce_stderr, low, high = evaluator.evaluate(pi)
 
-                self.plot(dir, evaluator.trace)
+                self.plot(dir, evaluator.trace, evaluator.consume_pdf)
 
         except FinError as e:
             return {
@@ -214,10 +214,11 @@ class RequestHandler(BaseHTTPRequestHandler):
             'data_dir': '/api/data/' + dir[len(data_root) + 1:],
         }
 
-    def plot(self, dir, traces):
+    def plot(self, dir, traces, consume_pdf):
 
         prefix = dir + '/aiplanner'
-        with open(prefix + '-data.csv', 'w') as f:
+
+        with open(prefix + '-trace.csv', 'w') as f:
             csv_writer = writer(f)
             for trace in traces:
                 for i, step in enumerate(trace):
@@ -230,6 +231,10 @@ class RequestHandler(BaseHTTPRequestHandler):
                         pass
                     csv_writer.writerow((step['age'], int(couple_plot), int(single_plot), step['gi_sum'], step['p_sum'], step['consume']))
                 csv_writer.writerow(())
+
+        with open(prefix + '-consume-pdf.csv', 'w') as f:
+            csv_writer = writer(f)
+            csv_writer.writerows(consume_pdf)
 
         environ['AIPLANNER_FILE_PREFIX'] = prefix
         run(['./plot.gnuplot'], check = True)
