@@ -744,7 +744,7 @@ class LifeTable(object):
         pass
 
     def __init__(self, table, sex, age, *, death_age = float('inf'), ae = 'aer2005_08-summary',
-                 q_adjust = 1, le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
+                 le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
         '''Initialize an object representing a life expectancy table for an
         individual.
 
@@ -792,20 +792,14 @@ class LifeTable(object):
         'death_age' can be set to force death to occur at the
         specified age.
 
-        'q_adjust': Multiplicative adjustment to be applied to all q
-        values. Must not be specified in conjunction with 'le_set' or
-        'le_add'.
+        'le_set' if specified causes a shift in the perceived age so
+        that the reamining life expectancy in years matches the value
+        of 'le_set'. Specifying a 'date_str' may be required.
 
-        'le_set' if specified causes a multiplicative adjustment to be
-        applied to all q values so that the reamining life expectancy
-        in years matches the value of 'le_set'. Specifying a
-        'date_str' may be required.
-
-        'le_add' if specified causes a multiplicative adjustment to be
-        applied to all q values so that the reamining life expectancy
-        in years matches the underlying life expectancy (or the value
-        of 'le_set'), plus 'le_add' years. Specifying a 'date_str' may
-        be required.
+        'le_add' if specified causes a shift in the perceived age so
+        so that the reamining life expectancy in years matches the
+        underlying life expectancy (or the value of 'le_set'), plus
+        'le_add' years. Specifying a 'date_str' may be required.
 
         'date_str': The date to use in computing life expectancy when
         'le_set' or 'le_add' when using a cohort life table. Required
@@ -831,7 +825,6 @@ class LifeTable(object):
             # 'aer2005_08-summary' - Use this value for compatibility with Opal.
             # 'aer2005_08-full' - Alters values 5% at age 85.
         assert(ae in ('none', 'aer2005_08-summary', 'aer2005_08-full'))
-        self.q_adjust = q_adjust
         self.le_set = le_set # Used to make life expectancy match personal expected life expectancy, then use value to compute fair SPIA price.
         self.le_add = le_add # Used by asset allocator to ensure plan for living longer than average because running out of money is very bad.
         self.date_str = date_str
@@ -840,9 +833,9 @@ class LifeTable(object):
         self.m = m
         self.b = b
 
+        self.age_add = 0
         if le_set == None and le_add == 0:
             return
-        assert self.q_adjust == 1
 
         from spia import Scenario
         from yield_curve import YieldCurve
@@ -852,18 +845,20 @@ class LifeTable(object):
             scenario = Scenario(yield_curve, 0, None, None, 0, self)
             le_set = scenario.price()
         le = le_set + le_add
-        q_lo = 0
-        q_hi = 10
+        age_lo = 0
+        age_hi = 200
         for _ in range(50):
-            self.q_adjust = (q_lo + q_hi) / 2.0
+            self.age = (age_lo + age_hi) / 2.0
             scenario = Scenario(yield_curve, 0, None, None, 0, self)
             compute_le = scenario.price()
             if abs(le / compute_le - 1) < 1e-4:
+                self.age_add = self.age - age
+                self.age = age
                 return
             if compute_le > le:
-                q_lo = self.q_adjust
+                age_lo = self.age
             else:
-                q_hi = self.q_adjust
+                age_hi = self.age
         raise self.UnableToAdjust
 
     def _iam_q(self, year, age, contract_age):
@@ -915,7 +910,7 @@ class LifeTable(object):
             q = self._ssa_cohort_q(cohort, age)
         else:
             q = self._ssa_period_q(age)
-        return 1 if q == 1 else min(q * self.q_adjust, 1)
+        return min(q, 1)
 
     def q(self, age, *, year = None, contract_age = None):
         '''Return the probability of dying in the next year at possibly
@@ -933,6 +928,7 @@ class LifeTable(object):
 
         if age >= self.death_age:
             return 1
+        age += self.age_add
         if self.table == 'gompertz-makeham':
             return max(0, min(self.alpha + math.exp((age - self.m) / self.b) / self.b, 1));
         if self.interpolate_q:
