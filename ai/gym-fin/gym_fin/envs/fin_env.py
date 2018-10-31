@@ -30,6 +30,10 @@ from gym_fin.envs.returns_sample import ReturnsSample
 from gym_fin.envs.taxes import Taxes, contribution_limit
 from gym_fin.envs.utility import Utility
 
+class FinError(Exception):
+
+    pass
+
 class AttributeObject(object):
 
     def __init__(self, dict):
@@ -488,6 +492,7 @@ class FinEnv(Env):
         self.episode_length = 0
 
         found = False
+        preretirement_ok = False
         for _ in range(1000):
 
             self.consume_preretirement = self.log_uniform(self.params.consume_preretirement_low, self.params.consume_preretirement_high)
@@ -499,11 +504,6 @@ class FinEnv(Env):
                 if self.income_preretirement_years > 0 else 0
             self.income_preretirement2 = self.log_uniform(self.params.income_preretirement2_low, self.params.income_preretirement2_high) \
                 if self.couple and self.income_preretirement_years2 > 0 else 0
-
-            if self.preretirement_years * self.consume_preretirement > self.params.consume_income_ratio_max * \
-               (min(self.income_preretirement_years, self.preretirement_years) * self.income_preretirement + \
-               min(self.preretirement_years, self.income_preretirement_years2) * self.income_preretirement2):
-                continue
 
             self.p_tax_free = self.log_uniform(self.params.p_tax_free_low, self.params.p_tax_free_high)
             self.p_tax_deferred = self.log_uniform(self.params.p_tax_deferred_low, self.params.p_tax_deferred_high)
@@ -530,12 +530,25 @@ class FinEnv(Env):
             self._pre_calculate()
             consume_expect = self._income_estimate()
 
+            if self.preretirement_years * self.consume_preretirement > self.params.consume_income_ratio_max * \
+                (min(self.preretirement_years, self.income_preretirement_years) * self.income_preretirement + \
+                 min(self.preretirement_years, self.income_preretirement_years2) * self.income_preretirement2) + sum(self.wealth.values()):
+                # Scenario consumes too much of portfolio preretirement.
+                # Stochastic nature of preretirement income means we might run out of assets preretirement,
+                # which would result in training to fit large negative reward values.
+                continue
+
+            preretirement_ok = True
+
             found = self.params.consume_floor <= consume_expect <= self.params.consume_ceiling
             if found:
                 break
 
         if not found:
-            raise Exception('Expected consumption falls outside model training range.')
+            if preretirement_ok:
+                raise FinError('Expected consumption falls outside model training range.')
+            else:
+                raise FinError('Insufficient pre-retirement wages and wealth to support pre-retirement consumption.')
 
         self.prev_asset_allocation = None
         self.prev_taxable_assets = taxable_assets
@@ -732,7 +745,7 @@ class FinEnv(Env):
 
     def _income_estimate(self):
 
-        return sum(self.income.values()) + sum(self.wealth.values()) \
+        return sum(self.income.values()) + sum(self.wealth_as_income.values()) \
             + self.income_preretirement_annualized + self.income_preretirement2_annualized - self.consume_preretirement_annualized
 
     def p_plus_income(self):
@@ -1153,11 +1166,12 @@ class FinEnv(Env):
 
         p_basis, cg_carry = self.taxes.observe()
         self.wealth = {'tax_free': self.p_tax_free, 'tax_deferred': self.p_tax_deferred, 'taxable': self.p_taxable - self.taxes_due}
+        self.wealth_as_income = {}
         for key, value in self.wealth.items():
             try:
-                self.wealth[key] /= equivalent_consume_to_wealth
+                self.wealth_as_income[key] = self.wealth[key] / equivalent_consume_to_wealth
             except ZeroDivisionError:
-                self.wealth[key] = float('inf')
+                self.wealth_as_income[key] = float('inf')
         try:
             self.taxable_basis = (p_basis - cg_carry) / equivalent_consume_to_wealth
         except ZeroDivisionError:
@@ -1165,7 +1179,7 @@ class FinEnv(Env):
 
         if not self.params.tax and self.params.income_aggregate:
             self.income = {'tax_free': sum(self.income.values()), 'tax_deferred': 0, 'taxable': 0} # Results in better training.
-            self.wealth = {'tax_free': sum(self.wealth.values()), 'tax_deferred': 0, 'taxable': 0}
+            self.wealth_as_income = {'tax_free': sum(self.wealth_as_income.values()), 'tax_deferred': 0, 'taxable': 0}
             self.taxable_basis = 0
 
         try:
@@ -1202,7 +1216,7 @@ class FinEnv(Env):
 
         observe = (couple, single, one_on_gamma, life_expectancy_both, life_expectancy_one, self.preretirement_years,
             self.income['tax_free'], self.income['tax_deferred'], self.income['taxable'],
-            self.wealth['tax_free'], self.wealth['tax_deferred'], self.wealth['taxable'],
+            self.wealth_as_income['tax_free'], self.wealth_as_income['tax_deferred'], self.wealth_as_income['taxable'],
             self.income_preretirement_annualized, self.income_preretirement2_annualized, self.consume_preretirement_annualized,
             self.taxable_basis, stocks_price, real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')

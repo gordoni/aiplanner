@@ -149,19 +149,26 @@ class Evaluator(object):
                 std = float('nan')
             stderr = std / sqrt(e)
             utility = env.utility
-            ce = utility.inverse(rew)
-            ce_stderr = utility.inverse(rew + stderr) - ce
-            low = utility.inverse(weighted_percentile(rewards, 10))
-            high = utility.inverse(weighted_percentile(rewards, 90))
+            unit_ce = indiv_ce = utility.inverse(rew)
+            unit_ce_stderr = indiv_ce_stderr = utility.inverse(rew + stderr) - indiv_ce
+            unit_low = indiv_low = utility.inverse(weighted_percentile(rewards, 10))
+            unit_high = indiv_high = utility.inverse(weighted_percentile(rewards, 90))
 
-            logger.info('Evaluation certainty equivalent: ', ce, ' +/- ', ce_stderr, ' (80% confidence interval: ', low, ' - ', high, ')')
+            if env.params.sex2 != None:
+                unit_ce *= 1 + env.params.consume_additional
+                unit_ce_stderr *= 1 + env.params.consume_additional
+                unit_low *= 1 + env.params.consume_additional
+                unit_high *= 1 + env.params.consume_additional
+                logger.info('Couple certainty equivalent: ', unit_ce, ' +/- ', unit_ce_stderr, ' (80% confidence interval: ', unit_low, ' - ', unit_high, ')')
+
+            logger.info('Evaluation certainty equivalent: ', indiv_ce, ' +/- ', indiv_ce_stderr, ' (80% confidence interval: ', indiv_low, ' - ', indiv_high, ')')
 
             if self.eval_batch_monitor:
                 batchrew = sum((v * w for v, w in erewards))
-                batchinfo = {'r': round(batchrew, 6), 'l': s, 't': round(time.time() - self.tstart, 6), 'ce': ce}
+                batchinfo = {'r': round(batchrew, 6), 'l': s, 't': round(time.time() - self.tstart, 6), 'ce': indiv_ce}
                 self.logger.writerow(batchinfo)
                 self.f.flush()
 
             setstate(state)
 
-            return ce, ce_stderr, low, high
+            return unit_ce, unit_ce_stderr, unit_low, unit_high

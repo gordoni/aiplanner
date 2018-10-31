@@ -8,6 +8,8 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+master_consume_floor = 1e4
+master_consume_ceiling = 1e5
 master_consume_clip = 5000 # Prevent learning very negative rewards.
 
 master_age_start = 40

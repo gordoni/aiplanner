@@ -29,7 +29,7 @@ from baselines.common.misc_util import set_global_seeds
 
 from gym_fin.common.evaluator import Evaluator
 from gym_fin.envs.bonds import BondsSet
-from gym_fin.envs.fin_env import FinEnv
+from gym_fin.envs.fin_env import FinEnv, FinError
 from gym_fin.envs.model_params import dump_params_file
 from gym_fin.envs.policies import policy
 
@@ -196,10 +196,16 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                 self.plot(dir, evaluator.trace)
 
+        except FinError as e:
+            return {
+                'error': str(e)
+            }
+
         finally:
             self.bonds_cache.append(bonds)
 
         return {
+            'error': None,
             'ce': ce,
             'consume': interp['consume'],
             'consume_low': low,

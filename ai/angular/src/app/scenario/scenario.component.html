@@ -236,24 +236,33 @@ PURPOSE.
   </div>
 
   <div *ngIf="step == 6">
-    <p>
-      Current recommended after tax consumption: {{results.consume}}
-    </p>
-    <p>
-      Recommended asset allocation: {{results.asset_allocation}}
-    </p>
-    <p>
-      Current recommended retirement plan contribution: {{results.retirement_contribution}}
-    </p>
-    <p>
-      Certainty equivalent retirement consumption: {{results.ce}}
-    </p>
-    <p>
-      10% chance of annual retirement consumption below: {{results.consume_low}}
-    </p>
-    <img src="{{results.data_dir}}/aiplanner-paths-gi.svg" width="50%"/>
-    <img src="{{results.data_dir}}/aiplanner-paths-p.svg" width="50%"/>
-    <img src="{{results.data_dir}}/aiplanner-paths-consume.svg" width="50%"/>
+    <div *ngIf="results.error">
+      <h1 class="title">Problem detected</h1>
+      <div class="error">
+        {{results.error}}
+      </div>
+    </div>
+    <div *ngIf="!results.error">
+      <h1 class="title">Results</h1>
+      <p>
+        Current recommended after tax consumption: {{results.consume}}
+      </p>
+      <p>
+        Recommended asset allocation: {{results.asset_allocation}}
+      </p>
+      <p>
+        Current recommended retirement plan contribution: {{results.retirement_contribution}}
+      </p>
+      <p>
+        Certainty equivalent retirement consumption: {{results.ce}}
+      </p>
+      <p>
+        10% chance of annual retirement consumption below: {{results.consume_low}}
+      </p>
+      <img src="{{results.data_dir}}/aiplanner-paths-gi.svg" width="50%"/>
+      <img src="{{results.data_dir}}/aiplanner-paths-p.svg" width="50%"/>
+      <img src="{{results.data_dir}}/aiplanner-paths-consume.svg" width="50%"/>
+    </div>
     <div class="main-button">
       <button class="button" (click)="editSteps()">Edit</button>
     </div>
