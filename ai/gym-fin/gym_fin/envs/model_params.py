@@ -109,12 +109,10 @@ class ModelParams(object):
 
         self._param('life-table', 'ssa-cohort', tp = string_type) # Life expectancy table to use. See spia module for possible values.
         self._param('life-table-date', '2020-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
-        self._param('life-expectancy-additional', 0) # q-adjustment for first individual.
-            # Multiplicatively adjust all life table q values so as to add this many years to the life expectancy at age age_adjust.
-            # Ignored if life_table is fixed.
-        self._param('life-expectancy-additional2', 0) # q-adjustment for second individual.
-        self._param('age-adjust', 65) # Age of life_expectancy_additional for first individual.
-        self._param('age-adjust2', 65) # Age of life_expectancy_additional for second individual.
+        self._param('life-expectancy-additional', 0) # Initial age adjustment for first individual.
+            # Shift initial age so as to add this many years to the life expectancy of the first individual.
+            # Compute time will suffer if value is non-zero and age-start is variable rather than fixed.
+        self._param('life-expectancy-additional2', 0) # Initial age adjustment for second individual.
         self._param('life-table-spia', 'iam2012-basic', tp = string_type) # Life expectancy table to use for pricing spia purchases.
         self._param('sex', 'female', tp = string_type, choices = ('male', 'female')) # Sex of first individual. Helps determine life expectancy table.
         self._param('sex2', None, tp = string_type, choices = ('male', 'female', None)) # Sex of second individual, None if none.

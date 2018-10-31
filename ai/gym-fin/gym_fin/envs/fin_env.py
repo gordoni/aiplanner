@@ -43,24 +43,7 @@ class FinEnv(Env):
 
     metadata = {'render.modes': ['human']}
 
-    def _compute_q_adjust(self, life_table, sex, age_adjust, age_end, life_expectancy_additional, life_table_date, time_period):
-
-        le_add = 0 if life_table == 'fixed' else life_expectancy_additional
-        death_age = age_end - time_period
-        table = LifeTable(life_table, sex, age_adjust, death_age = death_age, le_add = le_add, date_str = life_table_date)
-
-        return table.q_adjust
-
-    def _compute_vital_stats(self, age_start, age_start2, q_adjust, q_adjust2, preretirement):
-
-        death_age = self.params.age_end - self.params.time_period
-        table = LifeTable(self.params.life_table, self.params.sex, age_start,
-            death_age = death_age, q_adjust = q_adjust, date_str = self.params.life_table_date)
-        if self.params.sex2 == None:
-            table2 = None
-        else:
-            table2 = LifeTable(self.params.life_table, self.params.sex2, age_start2,
-                death_age = death_age, q_adjust = q_adjust2, date_str = self.params.life_table_date)
+    def _compute_vital_stats(self, age_start, age_start2, preretirement):
 
         start_date = datetime.strptime(self.params.life_table_date, '%Y-%m-%d')
         this_year = datetime(start_date.year, 1, 1)
@@ -129,9 +112,9 @@ class FinEnv(Env):
                 a_y += self.params.time_period
             if y - q_y >= 1:
                 q_y += 1
-                q = table.q(age_start + q_y, year = start_decimal_year + q_y)
+                q = self.life_table.q(age_start + q_y, year = start_decimal_year + q_y)
                 if self.params.sex2:
-                    q2 = table2.q(age_start2 + q_y, year = start_decimal_year + q_y)
+                    q2 = self.life_table2.q(age_start2 + q_y, year = start_decimal_year + q_y)
                 else:
                     q2 = 1
                 remaining_fract = 1
@@ -172,7 +155,7 @@ class FinEnv(Env):
         alive_single.append(0)
         alive_count.append(0)
 
-        return first_dies_first, alive_years, tuple(alive_single), tuple(alive_count), table, table2, \
+        return first_dies_first, alive_years, tuple(alive_single), tuple(alive_count), \
             tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
 
     def __init__(self, bonds_cached = None, action_space_unbounded = False, direct_action = False, **kwargs):
@@ -199,13 +182,8 @@ class FinEnv(Env):
             dtype = 'float32'
         )
 
-        self.q_adjust = self._compute_q_adjust(self.params.life_table, self.params.sex, self.params.age_adjust, self.params.age_end,
-            self.params.life_expectancy_additional, self.params.life_table_date, self.params.time_period)
-        if self.params.sex2:
-            self.q_adjust2 = self._compute_q_adjust(self.params.life_table, self.params.sex2, self.params.age_adjust2, self.params.age_end,
-                self.params.life_expectancy_additional2, self.params.life_table_date, self.params.time_period)
-        else:
-            self.q_adjust2 = None
+        self.life_table_age = None
+        self.life_table2_age = None
 
         self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.stocks_price_low, self.params.stocks_price_high,
             self.params.stocks_mean_reversion_rate,
@@ -470,9 +448,21 @@ class FinEnv(Env):
             self.income_preretirement_years2 = max(0, self.params.income_preretirement_age_end2 - self.age2)
         else:
             self.income_preretirement_years2 = self.preretirement_years
-        self.first_dies_first, self.alive_years, self.alive_single, self.alive_count, self.life_table, self.life_table2, \
+
+        death_age = self.params.age_end - self.params.time_period
+        if self.age != self.life_table_age:
+            self.life_table = LifeTable(self.params.life_table, self.params.sex, self.age,
+                death_age = death_age, le_add = self.params.life_expectancy_additional, date_str = self.params.life_table_date)
+            self.life_table_age = self.age
+        if self.params.sex2 == None:
+            self.life_table2 = None
+        elif self.age2 != self.life_table2_age:
+            self.life_table2 = LifeTable(self.params.life_table, self.params.sex2, self.age2,
+                death_age = death_age, le_add = self.params.life_expectancy_additonal2, date_str = self.params.life_table_date)
+            self.life_table2_age = self.age2
+        self.first_dies_first, self.alive_years, self.alive_single, self.alive_count, \
             self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = \
-            self._compute_vital_stats(self.age, self.age2, self.q_adjust, self.q_adjust2, self.preretirement_years)
+            self._compute_vital_stats(self.age, self.age2, self.preretirement_years)
 
         self.couple = self.alive_single[0] == None
 
