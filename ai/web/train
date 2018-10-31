@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+# Code based on validate/run-ai.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+PARALLEL=${PARALLEL:-True}  # Set to "False" to run seeds sequentially rather than in parallel.
+SEEDS=${SEEDS:-1}
+
+EXTRA_ARGS=$*
+AI_DIR=$AIPLANNER_HOME/ai
+PYTHONPATH_ADD=$AI_DIR/baselines:$AI_DIR/gym-fin:$AIPLANNER_HOME/spia
+if [ -z "$PYTHONPATH" ]; then
+    export PYTHONPATH=$PYTHONPATH_ADD
+else
+    export PYTHONPATH=$PYTHONPATH_ADD:$PYTHONPATH
+fi
+CONFIG_FILE=$AI_DIR/aiplanner-scenario.txt
+TRAIN_FILE=$AI_DIR/aiplanner-scenario-train.txt
+
+if [ "$PARALLEL" = True ]; then
+    TRAIN=train_parallel
+else
+    TRAIN=train
+fi
+
+train () {
+
+    MODEL_NAME=$1
+    ARGS=$2
+
+    SEED=0
+    set -o pipefail
+    while [ $SEED -lt $SEEDS ]; do
+        MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
+        TEMPFILE=`tempfile -p train`
+        $AI_DIR/train_ppo1.py -c $CONFIG_FILE -c $TRAIN_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
+        mv $TEMPFILE $MODEL_DIR/train.log
+        SEED=`expr $SEED + 1`
+    done
+}
+
+train_parallel () {
+
+    MODEL_NAME=$1
+    ARGS=$2
+
+    SEED=0
+    while [ $SEED -lt $SEEDS ]; do
+        MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
+        # Output directory must not exist when tensorflow save() is called to save the model hence we can't write the log within it; instead log to a tempfile.
+        TEMPFILE=`tempfile -p train`
+        TEMPFILES[$SEED]=$TEMPFILE
+        $AI_DIR/train_ppo1.py -c $CONFIG_FILE -c $TRAIN_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $EXTRA_ARGS > $TEMPFILE 2>&1 &
+        SEED=`expr $SEED + 1`
+    done
+    wait
+
+    SEED=0
+    while [ $SEED -lt $SEEDS ]; do
+        MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
+        mv ${TEMPFILES[$SEED]} $MODEL_DIR/train.log
+        SEED=`expr $SEED + 1`
+    done
+}
+
+# Variable scenarios.
+
+$TRAIN single
+$TRAIN couple '--train-num-timesteps=2000000 --master-sex2=male'

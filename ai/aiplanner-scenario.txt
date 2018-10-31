@@ -16,10 +16,6 @@ master_consume_ceiling = 1e5
 # impact only.
 master_sex = 'female'
 master_life_table_date = '2020-01-01'
-master_life_expectancy_additional = 3 # Investors tend to be in better health than the average retiree.
-master_life_expectancy_additional2 = 3
-master_age_adjust = 65
-master_age_adjust2 = 65
 
 master_age_end = 120
 

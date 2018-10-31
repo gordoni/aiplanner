@@ -454,12 +454,16 @@ class FinEnv(Env):
             self.life_table = LifeTable(self.params.life_table, self.params.sex, self.age,
                 death_age = death_age, le_add = self.params.life_expectancy_additional, date_str = self.params.life_table_date)
             self.life_table_age = self.age
+        else:
+            self.life_table.age = self.age # Undo hack (value gets messed with below).
         if self.params.sex2 == None:
             self.life_table2 = None
         elif self.age2 != self.life_table2_age:
             self.life_table2 = LifeTable(self.params.life_table, self.params.sex2, self.age2,
                 death_age = death_age, le_add = self.params.life_expectancy_additonal2, date_str = self.params.life_table_date)
             self.life_table2_age = self.age2
+        else:
+            self.life_table2.age = self.age2
         self.first_dies_first, self.alive_years, self.alive_single, self.alive_count, \
             self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = \
             self._compute_vital_stats(self.age, self.age2, self.preretirement_years)
