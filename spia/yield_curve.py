@@ -16,6 +16,8 @@
 
 import csv
 import math
+from json import dumps, loads
+from os import makedirs
 from os.path import expanduser, isdir, join, normpath
 import statistics
 
@@ -167,14 +169,14 @@ class YieldCurve(object):
 
         return [spot_years], [spot_rates], spot_date
 
-    def __init__(self, interest_rate, date_str, *, date_str_low = None, adjust = 0, datapath = datapath):
+    def __init__(self, interest_rate, date_str, *, date_str_low = None, adjust = 0.0, datapath = datapath, cache = True):
         '''Initialize an object representing a particular yield curve on a
         date specified by the ISO format date string 'date_str'. If
         necessary the relevant interest rate data will be loaded from
         interest rate data files that are kept up to date using the
         fetch_yield_curve script.  If no yield curve is available for
         that date the nearest date before that date will be
-        used. Rates are computed for every 6 months.
+        used.
 
         'interest_rate' should be one of the following:
 
@@ -202,11 +204,22 @@ class YieldCurve(object):
             specified to interpolate the final payout. As such the
             SPIA price corresponds to the life expectancy.
 
+        'date_str_low' specifies the lower bound date of a range of
+        dates ending at 'date_str' for which to compute the average
+        yield curve.
+
         'adjust' is an adjustment to add to spot yield curve
         annualized rates.
 
         'datapath' is a list of locations to search for the interest
         rate data files.
+
+        'cache' specifies whether to cache and utilize any cache of
+        the yield curve saved to the directory "~/.cache/spia" when
+        'date_str_low' is specified. This can speed up initialization.
+        Cache should be False if 'date_str' exceeds the latest yield
+        curve data date. The cache should be manually cleared if this
+        file is changed.
 
         Raises YieldCurve.NoData if not interest rate data can be
         found for the requested date or dates.
@@ -219,84 +232,114 @@ class YieldCurve(object):
         self.date_low = date_str_low
         self.adjust = adjust
 
-        if YieldCurve.datadir == None:
-            for datadir in datapath:
-                datadir = normpath(expanduser(datadir))
-                if isdir(datadir):
-                    break
-            YieldCurve.datadir = datadir
+        cached = False
 
-        if interest_rate in ('real', 'nominal'):
+        if cache and date_str_low:
 
-            yield_curve_years, yield_curve_rates, self.yield_curve_date = self._get_treasury(date_str, date_str_low)
-
-            # Convert par rates to spot rates.
-            spot_rates = []
-            for yield_curve_year, yield_curve_rate in zip(yield_curve_years, yield_curve_rates):
-
-                # First interpolate the spot returns.
-                coupon_yield_curve = []
-                yield_curve = scipy.interpolate.PchipInterpolator(yield_curve_year, yield_curve_rate)
-
-                for i in range(1, int(2 * max(yield_curve_year)) + 1):
-                    year = i / 2.0
-                    # For below range values Scipy just uses the polynominal, which is problematic, so we use linear interpolation in this case.
-                    if year < min(yield_curve_year):
-                        slope = yield_curve(min(yield_curve_year), 1)
-                        slope = float(slope) # De-numpify.
-                        rate = yield_curve_rate[0] + slope * (year - min(yield_curve_year))
-                    else:
-                        rate = float(yield_curve(year))
-                    coupon_yield_curve.append(rate)
-
-                spot_rate = self.par_to_spot(coupon_yield_curve)
-                    # Does not match spot rates at https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/TNC-YC.aspx
-                    # because the input par rates of the daily quotes used differ from the end of month quotes reported there.
-                # Extract just the spot rates of the original yield curve.
-                spot_rate = tuple(spot_rate[math.ceil(y * 2 - 1)] for y in yield_curve_year)
-                    # Rates less than 6 months will all get the 6 month spot rate. This is only relevant for nominals.
-                    # This is fine for computing immediate annuity prices.
-                    # For some applications it may be necessary to interpolate the spot rates, but this would slow things down.
-                spot_rates.append(spot_rate)
-
-        elif interest_rate == 'corporate':
-
-            date_year = int(date_str.split('-')[0])
+            cache_dir = normpath(expanduser('~/.cache/spia'))
+            makedirs(cache_dir, exist_ok = True)
+            cache_path = cache_dir + '/spia-' + interest_rate + '-' + date_str + '-' + date_str_low + '-' + str(adjust)
 
             try:
-                yield_curve_years, spot_rates, self.yield_curve_date = self._get_corporate(date_year, date_str, date_str_low)
-            except self.NoData:
-                yield_curve_years, spot_rates, self.yield_curve_date = self._get_corporate(date_year - 1, date_str, date_str_low)
+                json_str = open(cache_path).read()
+                cached = True
+            except IOError:
+                pass
 
-        elif interest_rate in ('fixed', 'le'):
+            if cached:
+                cache_data = loads(json_str)
+                interpolate_years = cache_data['years']
+                interpolate_spots = cache_data['spots']
 
-            self.yield_curve_date = 'none'
+        if not cached:
 
-            return
+            if YieldCurve.datadir == None:
+                for datadir in datapath:
+                    datadir = normpath(expanduser(datadir))
+                    if isdir(datadir):
+                        break
+                YieldCurve.datadir = datadir
 
-        else:
+            if interest_rate in ('real', 'nominal'):
 
-            assert False
+                yield_curve_years, yield_curve_rates, self.yield_curve_date = self._get_treasury(date_str, date_str_low)
 
-        # When dealing with a date range not all of the yield curves might have rates for all of the same years.
+                # Convert par rates to spot rates.
+                spot_rates = []
+                for yield_curve_year, yield_curve_rate in zip(yield_curve_years, yield_curve_rates):
 
-        # Figure out what years have been reported.
-        interpolate_years = set()
-        for yield_curve_year in yield_curve_years:
-               interpolate_years |= set(yield_curve_year)
-        interpolate_years = sorted(interpolate_years)
+                    # First interpolate the spot returns.
+                    coupon_yield_curve = []
+                    yield_curve = scipy.interpolate.PchipInterpolator(yield_curve_year, yield_curve_rate)
 
-        # Construct interpolators for each yield curve.
-        interpolators = []
-        for yield_curve_year, spot_rate in zip(yield_curve_years, spot_rates):
-            continuous_spot_rate = tuple(math.log((1 + r / 2) ** 2 + self.adjust) for r in spot_rate) # Treasury rates are twice the semi-annualized rate.
-            interpolator = MonotoneConvex(yield_curve_year, continuous_spot_rate, min_long_term_forward = 15, force_forwards_non_negative = False)
-                # Treasury methodology; extrapolate using average forward rate 15 years and longer.
-                # Real forwards are not required to be positive, and favor mathematical consistency for nominal forward rates.
-            interpolators.append(interpolator)
+                    for i in range(1, int(2 * max(yield_curve_year)) + 1):
+                        year = i / 2.0
+                        # For below range values Scipy just uses the polynominal, which is problematic, so we use linear interpolation in this case.
+                        if year < min(yield_curve_year):
+                            slope = yield_curve(min(yield_curve_year), 1)
+                            slope = float(slope) # De-numpify.
+                            rate = yield_curve_rate[0] + slope * (year - min(yield_curve_year))
+                        else:
+                            rate = float(yield_curve(year))
+                        coupon_yield_curve.append(rate)
 
-        # Average the yield curves.
-        interpolate_spots = tuple(statistics.mean(interpolator.spot(year) for interpolator in interpolators) for year in interpolate_years)
+                    spot_rate = self.par_to_spot(coupon_yield_curve)
+                        # Does not match spot rates at https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/TNC-YC.aspx
+                        # because the input par rates of the daily quotes used differ from the end of month quotes reported there.
+                    # Extract just the spot rates of the original yield curve.
+                    spot_rate = tuple(spot_rate[math.ceil(y * 2 - 1)] for y in yield_curve_year)
+                        # Rates less than 6 months will all get the 6 month spot rate. This is only relevant for nominals.
+                        # This is fine for computing immediate annuity prices.
+                        # For some applications it may be necessary to interpolate the spot rates, but this would slow things down.
+                    spot_rates.append(spot_rate)
+
+            elif interest_rate == 'corporate':
+
+                date_year = int(date_str.split('-')[0])
+
+                try:
+                    yield_curve_years, spot_rates, self.yield_curve_date = self._get_corporate(date_year, date_str, date_str_low)
+                except self.NoData:
+                    yield_curve_years, spot_rates, self.yield_curve_date = self._get_corporate(date_year - 1, date_str, date_str_low)
+
+            elif interest_rate in ('fixed', 'le'):
+
+                self.yield_curve_date = 'none'
+
+                return
+
+            else:
+
+                assert False
+
+            # When dealing with a date range not all of the yield curves might have rates for all of the same years.
+
+            # Figure out what years have been reported.
+            interpolate_years = set()
+            for yield_curve_year in yield_curve_years:
+                   interpolate_years |= set(yield_curve_year)
+            interpolate_years = sorted(interpolate_years)
+
+            # Construct interpolators for each yield curve.
+            interpolators = []
+            for yield_curve_year, spot_rate in zip(yield_curve_years, spot_rates):
+                continuous_spot_rate = tuple(math.log((1 + r / 2) ** 2 + self.adjust) for r in spot_rate) # Treasury rates are twice the semi-annualized rate.
+                interpolator = MonotoneConvex(yield_curve_year, continuous_spot_rate, min_long_term_forward = 15, force_forwards_non_negative = False)
+                    # Treasury methodology; extrapolate using average forward rate 15 years and longer.
+                    # Real forwards are not required to be positive, and favor mathematical consistency for nominal forward rates.
+                interpolators.append(interpolator)
+
+            # Average the yield curves.
+            interpolate_spots = tuple(statistics.mean(interpolator.spot(year) for interpolator in interpolators) for year in interpolate_years)
+
+            if date_str_low:
+
+                cache_data = {'years': interpolate_years, 'spots': interpolate_spots}
+                json_str = dumps(cache_data)
+                try:
+                    open(cache_path, 'w').write(json_str)
+                except IOError:
+                    pass
 
         # Construct a master interpolator.
         self.monotone_convex = MonotoneConvex(interpolate_years, interpolate_spots, min_long_term_forward = 15, force_forwards_non_negative = False)
