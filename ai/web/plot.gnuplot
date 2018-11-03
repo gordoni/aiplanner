@@ -6,7 +6,7 @@ set terminal svg dynamic size 800,400
 prefix = "`echo $AIPLANNER_FILE_PREFIX`"
 if (prefix eq "") prefix = "aiplanner"
 
-set xlabel "consumption"
+set xlabel "annual consumption"
 set xrange [0:*]
 set format x "%.1s%c"
 set ylabel "probability"
@@ -19,7 +19,7 @@ set ytics
 set xlabel "age"
 set xrange [*:100]
 
-set ylabel "consumption"
+set ylabel "annual consumption"
 set yrange [0:*]
 set format y "%.1s%c"
 set output prefix . "-paths-consume.svg"

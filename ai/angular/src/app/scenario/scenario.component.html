@@ -243,7 +243,7 @@ PURPOSE.
       </div>
     </div>
     <div *ngIf="!results.error">
-      <h1 class="title">Results</h1>
+      <h1 class="title">Preliminary Results</h1>
       <p>
         Current recommended after tax consumption: {{results.consume}}
       </p>
@@ -257,7 +257,7 @@ PURPOSE.
         Certainty equivalent retirement consumption: {{results.ce}}
       </p>
       <p>
-        10% chance of annual retirement consumption below: {{results.consume_low}}
+        10% chance of annual retirement consumption below: {{results.ce_low}}
       </p>
       <img src="{{results.data_dir}}/aiplanner-consume-pdf.svg" width="50%"/>
       <img src="{{results.data_dir}}/aiplanner-paths-consume.svg" width="50%"/>

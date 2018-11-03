@@ -11,27 +11,14 @@
 # PURPOSE.
 
 from argparse import ArgumentParser
-from csv import writer
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from json import dumps, loads
-from os import chmod, environ, mkdir
+from os import chmod, mkdir
 from socketserver import ThreadingMixIn
-from subprocess import run
+from subprocess import Popen
 from tempfile import mkdtemp
 
-import tensorflow as tf
-
-from baselines import logger
-from baselines.common import (
-    tf_util as U,
-)
-from baselines.common.misc_util import set_global_seeds
-
-from gym_fin.common.evaluator import Evaluator
-from gym_fin.envs.bonds import BondsSet
-from gym_fin.envs.fin_env import FinEnv, FinError
 from gym_fin.envs.model_params import dump_params_file
-from gym_fin.envs.policies import policy
 
 host = 'localhost'
 port = 3000
@@ -54,7 +41,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             json_data = data.decode('utf-8')
             request = loads(json_data)
 
-            result = self.run_model(request)
+            result = self.run_models(request)
 
             result_bytes = dumps(result).encode('utf-8')
             self.send_response(200)
@@ -96,62 +83,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         self.send_error(404)
 
-    bonds_cache = [BondsSet()]
-        # Cache of pre-computed BondsSets. Handled in thread-safe manner.
-
-    def run_model(self, request):
-
-        model_dir = args.model_dir
-        model_params = loads(open(model_dir + '/assets.extra/params.json').read())
-
-        def set_delete(param):
-            model_params[param] = request[param]
-            del request[param]
-
-        def set_low_high(param, value):
-            model_params[param + '_low'] = model_params[param + '_high'] = value
-            del model_params[param] # Should not be used. Make sure.
-
-        set_delete('sex')
-        set_delete('sex2')
-        set_delete('life_expectancy_additional')
-        set_delete('life_expectancy_additional2')
-        set_delete('have_401k')
-        set_delete('have_401k2')
-
-        model_params['defined_benefits'] = dumps(request['defined_benefits'])
-        del request['defined_benefits']
-
-        try:
-            basis_fraction = request['p_taxable_stocks_basis'] / request['p_taxable_stocks']
-        except ZeroDivisionError:
-            basis_fraction = 0
-        set_low_high('p_taxable_stocks_basis_fraction', basis_fraction)
-        del request['p_taxable_stocks_basis']
-
-        model_params['income_preretirement_age_end'] = request['age_retirement']
-
-        for param in ('age_start', 'age_start2', 'age_retirement', 'income_preretirement', 'income_preretirement2', 'consume_preretirement', 'gamma',
-            'p_tax_free', 'p_tax_deferred', 'p_taxable_stocks'):
-            set_low_high(param, request[param])
-            del request[param]
-
-        for param in (
-            'p_taxable_real_bonds', 'p_taxable_iid_bonds', 'p_taxable_bills'):
-            set_low_high(param, 0)
-
-        set_low_high('p_taxable_nominal_bonds', request['p_taxable_bonds'])
-        del request['p_taxable_bonds']
-
-        for param, value in request.items():
-            assert False, 'Unexpected parameter: ' + param
-
-        model_params['display_returns'] = False
-
-        try:
-            bonds = self.bonds_cache.pop()
-        except:
-            bonds = BondsSet()
+    def run_models(self, request):
 
         try:
             mkdir(data_root)
@@ -160,97 +92,88 @@ class RequestHandler(BaseHTTPRequestHandler):
         dir = mkdtemp(prefix='', dir=data_root)
         chmod(dir, 0o775)
 
-        dump_params_file(dir + '/aiplanner-scenario.txt', model_params)
+        dump_params_file(dir + '/aiplanner-request.txt', request, prefix = '')
 
+        request_params = dict(request)
+        request_params['defined_benefits'] = dumps(request_params['defined_benefits'])
         try:
+            request_params['p_taxable_stocks_basis_fraction'] = request_params['p_taxable_stocks_basis'] / request_params['p_taxable_stocks']
+        except ZeroDivisionError:
+            request_params['p_taxable_stocks_basis_fraction'] = 0
+        del request_params['p_taxable_stocks_basis']
+        request_params['income_preretirement_age_end'] = request_params['age_retirement']
+        for param in ('p_taxable_real_bonds', 'p_taxable_iid_bonds', 'p_taxable_bills'):
+            request_params[param] = 0
+        request_params['p_taxable_nominal_bonds'] = request_params['p_taxable_bonds']
+        del request_params['p_taxable_bonds']
+        request_params['display_returns'] = False
 
-            seed = args.seed + 1000000 # Use a different seed than might have been used during training.
-            set_global_seeds(seed)
-            env = FinEnv(bonds_cached = bonds, action_space_unbounded = True, direct_action = False,  **model_params)
-            obs = env.reset()
+        dump_params_file(dir + '/aiplanner-scenario-request.txt', request_params)
 
-            with U.make_session(num_cpu=1) as session:
+        processes = []
+        dir_seeds = []
+        for model_seed in range(args.num_models):
+            dir_seed = dir + '/' + str(model_seed)
+            processes.append(self.run_model(request, model_seed, dir, dir_seed))
+            dir_seeds.append(dir_seed)
 
-                tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], model_dir)
-                g = tf.get_default_graph()
-                observation_tf = g.get_tensor_by_name('pi/ob:0')
-                action_tf = g.get_tensor_by_name('pi/action:0')
-                action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
-                interp = env.interpret_action(action)
+        for process in processes:
+              process.wait()
 
-                print('Consume:', interp['consume'])
-                print('Asset allocation:', interp['asset_allocation'])
-                print('401(k)/IRA contribution:', interp['retirement_contribution'])
-                print('Real immediate annuities purchase:', interp['real_spias_purchase'])
-                print('Nominal immediate annuities purchase:', interp['nominal_spias_purchase'])
-                print('Real bonds duration:', interp['real_bonds_duration'])
-                print('Nominal bonds duration:', interp['nominal_bonds_duration'])
+        best_ce = float('-inf')
+        for dir_seed in dir_seeds:
 
-                evaluator = Evaluator(env, seed, args.num_timesteps, render = args.render, num_trace_episodes = args.num_trace_episodes)
+            final = loads(open(dir_seed + '/aiplanner-final.json').read())
 
-                def pi(obs):
-                    action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
-                    return action
+            if final['error']:
+                return final
 
-                ce, ce_stderr, low, high = evaluator.evaluate(pi)
+            initial = loads(open(dir_seed + '/aiplanner-initial.json').read())
 
-                self.plot(dir, evaluator.trace, evaluator.consume_pdf)
+            results = dict(initial, **final)
+            results['data_dir'] = '/api/data/' + dir_seed[len(data_root) + 1:]
 
-        except FinError as e:
-            return {
-                'error': str(e)
-            }
+            if results['ce'] > best_ce:
+                best_ce = results['ce']
+                best_results = results
 
-        finally:
-            self.bonds_cache.append(bonds)
+        return best_results
 
-        return {
-            'error': None,
-            'ce': ce,
-            'consume': interp['consume'],
-            'consume_low': low,
-            'asset_allocation': str(interp['asset_allocation']),
-            'retirement_contribution': interp['retirement_contribution'],
-            'data_dir': '/api/data/' + dir[len(data_root) + 1:],
-        }
+    def run_model(self, request, model_seed, dir, dir_seed):
 
-    def plot(self, dir, traces, consume_pdf):
+        mkdir(dir_seed)
+        chmod(dir_seed, 0o775)
 
-        prefix = dir + '/aiplanner'
+        unit = 'single' if request['sex2'] == None else 'couple'
+        suffix = '' if args.modelset_suffix == None else '-' + args.modelset_suffix
+        model_dir = args.modelset_dir + 'aiplanner.' + unit + suffix + '-seed_' + str(model_seed) + '.tf'
+        model_params = loads(open(model_dir + '/assets.extra/params.json').read())
 
-        with open(prefix + '-trace.csv', 'w') as f:
-            csv_writer = writer(f)
-            for trace in traces:
-                for i, step in enumerate(trace):
-                    couple_plot = step['alive_count'] == 2
-                    single_plot = step['alive_count'] == 1
-                    try:
-                        if step['alive_count'] == 2 and trace[i + 1]['alive_count'] == 1:
-                            single_plot = True
-                    except KeyError:
-                        pass
-                    csv_writer.writerow((step['age'], int(couple_plot), int(single_plot), step['gi_sum'], step['p_sum'], step['consume']))
-                csv_writer.writerow(())
+        dump_params_file(dir_seed + '/aiplanner-scenario-model.txt', model_params)
 
-        with open(prefix + '-consume-pdf.csv', 'w') as f:
-            csv_writer = writer(f)
-            csv_writer.writerows(consume_pdf)
+        return Popen(('./eval_model',
+            '--model-dir', model_dir,
+            '-c', dir_seed + '/aiplanner-scenario-model.txt',
+            '-c', dir + '/aiplanner-scenario-request.txt',
+            '--result-dir', dir_seed,
+            '--eval-seed', str(args.eval_seed),
+            '--eval-num-timesteps', str(args.eval_num_timesteps),
+            '--num-trace-episodes', str(args.num_trace_episodes),
+            '--pdf-buckets', str(args.pdf_buckets),
+        ))
 
-        environ['AIPLANNER_FILE_PREFIX'] = prefix
-        run(['./plot.gnuplot'], check = True)
-        
 def main():
     global args
 
     parser = ArgumentParser()
-    parser.add_argument('--seed', type = int, default = 0)
-    parser.add_argument('--num-timesteps', type = int, default = 10000)
-    parser.add_argument('--model-dir', default = './')
+    parser.add_argument('--eval-seed', type = int, default = 0)
+    parser.add_argument('--eval-num-timesteps', type = int, default = 10000)
+    parser.add_argument('--modelset-dir', default = './')
+    parser.add_argument('--modelset-suffix')
+    parser.add_argument('--num-models', type = int, default = 10)
     parser.add_argument('--num-trace-episodes', type = int, default = 5)
-    parser.add_argument('--render', action = 'store_true', default = False)
-    parser.add_argument('--no-render', action = 'store_false', dest = 'render')
+    parser.add_argument('--pdf-buckets', type = int, default = 10) # Number of non de minus buckets to use in computing consume probability density distribution.
     args = parser.parse_args()
-    logger.configure()
     server = ThreadingHTTPServer((host, port), RequestHandler)
     server.serve_forever()
 
