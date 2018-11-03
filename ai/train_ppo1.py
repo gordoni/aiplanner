@@ -41,7 +41,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     if evaluation:
         eval_seed += 1000000 # Use a different seed than might have been used during training.
         eval_env = make_fin_env(action_space_unbounded=True, training=False, **eval_model_params)
-        evaluator = Evaluator(eval_env, eval_seed, eval_num_timesteps, render = eval_render, eval_batch_monitor = True)
+        evaluator = Evaluator([eval_env], eval_seed, eval_num_timesteps, render = eval_render, eval_batch_monitor = True)
         global next_eval_timestep
         next_eval_timestep = 0
         def eval_callback(l, g):
@@ -49,10 +49,11 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
             if l['timesteps_so_far'] < next_eval_timestep:
                 return False
             next_eval_timestep = l['timesteps_so_far'] + eval_frequency
-            def pi(obs):
+            def pi(obss):
+                obs, = obss
                 stochastic = False
                 action, vpred = l['pi'].act(stochastic, obs)
-                return action
+                return [action]
             evaluator.evaluate(pi)
             return False
     else:

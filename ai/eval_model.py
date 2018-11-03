@@ -112,17 +112,18 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
 
     logger.info()
 
-    evaluator = Evaluator(eval_env, eval_seed, eval_num_timesteps, render = eval_render)
+    evaluator = Evaluator([eval_env], eval_seed, eval_num_timesteps, render = eval_render)
 
-    def pi(obs):
+    def pi(obss):
 
         if model:
 
-            action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
+            action = session.run(action_tf, feed_dict = {observation_tf: obss})
             return action
 
         elif merton or samuelson:
 
+            obs, = obss
             consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
             observation = env.decode_observation(obs)
             assert observation['life_expectancy_both'] == 0
@@ -130,12 +131,12 @@ def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_
             t = ceil(life_expectancy / env.params.time_period) - 1
             if t == 0:
                 consume_fraction = min(consume_fraction, 1 / env.params.time_period) # Bound may be exceeded in continuous time case.
-            return env.encode_direct_action(consume_fraction, stocks = stocks_allocation, bills = 1 - stocks_allocation)
+            return [env.encode_direct_action(consume_fraction, stocks = stocks_allocation, bills = 1 - stocks_allocation)]
 
         elif annuitize:
 
             consume_fraction = consume_fraction_initial if env.episode_length == 0 else 1 / env.params.time_period
-            return env.encode_direct_action(consume_fraction, stocks = 1, real_spias_fraction = 1)
+            return [env.encode_direct_action(consume_fraction, stocks = 1, real_spias_fraction = 1)]
 
         else:
 

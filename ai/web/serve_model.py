@@ -159,6 +159,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             '--eval-seed', str(args.eval_seed),
             '--eval-num-timesteps', str(args.eval_num_timesteps),
             '--num-trace-episodes', str(args.num_trace_episodes),
+            '--num-environments', str(args.num_environments),
             '--pdf-buckets', str(args.pdf_buckets),
         ))
 
@@ -167,12 +168,13 @@ def main():
 
     parser = ArgumentParser()
     parser.add_argument('--eval-seed', type = int, default = 0)
-    parser.add_argument('--eval-num-timesteps', type = int, default = 10000)
+    parser.add_argument('--eval-num-timesteps', type = int, default = 50000)
     parser.add_argument('--modelset-dir', default = './')
     parser.add_argument('--modelset-suffix')
     parser.add_argument('--num-models', type = int, default = 10)
     parser.add_argument('--num-trace-episodes', type = int, default = 5)
-    parser.add_argument('--pdf-buckets', type = int, default = 10) # Number of non de minus buckets to use in computing consume probability density distribution.
+    parser.add_argument('--num-environments', type = int, default = 10) # Number of parallel environments to use for a single model. Speeds up tensor flow.
+    parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
     args = parser.parse_args()
     server = ThreadingHTTPServer((host, port), RequestHandler)
     server.serve_forever()

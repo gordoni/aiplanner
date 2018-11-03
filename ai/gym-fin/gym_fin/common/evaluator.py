@@ -57,11 +57,11 @@ class Evaluator(object):
 
     LOGFILE = 'gym_eval_batch.monitor.csv'
 
-    def __init__(self, eval_env, eval_seed, eval_num_timesteps, *, render = False, eval_batch_monitor = False, num_trace_episodes = 0, pdf_buckets = 10):
+    def __init__(self, eval_envs, eval_seed, eval_num_timesteps, *, render = False, eval_batch_monitor = False, num_trace_episodes = 0, pdf_buckets = 10):
 
         self.tstart = time.time()
 
-        self.eval_env = eval_env
+        self.eval_envs = eval_envs
         self.eval_seed = eval_seed
         self.eval_num_timesteps = eval_num_timesteps
         self.eval_render = render
@@ -75,7 +75,7 @@ class Evaluator(object):
         if eval_batch_monitor:
             filename = os.path.join(logger.get_dir(), Evaluator.LOGFILE)
             self.f = open(filename, "wt")
-            self.f.write('#%s\n'%json.dumps({"t_start": self.tstart, 'env_id' : self.eval_env.spec and self.eval_env.spec.id}))
+            self.f.write('#%s\n'%json.dumps({"t_start": self.tstart, 'env_id' : self.eval_envs[0].spec and self.eval_envs[0].spec.id}))
             self.logger = csv.DictWriter(self.f, fieldnames=('r', 'l', 't', 'ce'))
             self.logger.writeheader()
             self.f.flush()
@@ -98,7 +98,7 @@ class Evaluator(object):
 
     def evaluate(self, pi):
 
-        if self.eval_env == None:
+        if self.eval_envs == None:
 
             return False
 
@@ -107,41 +107,50 @@ class Evaluator(object):
             state = getstate()
             seed(self.eval_seed)
 
-            env = self.eval_env.unwrapped
+            envs = tuple(eval_env.unwrapped for eval_env in self.eval_envs)
             rewards = []
             erewards = []
-            obs = self.eval_env.reset()
-            s = 0
+            obss = [eval_env.reset() for eval_env in self.eval_envs]
+            et = 0
             e = 0
-            erew = 0
-            eweight = 0
+            s = 0
+            erews = [0 for _ in self.eval_envs]
+            eweights = [0 for _ in self.eval_envs]
+            finished = [False for _ in self.eval_envs]
             while True:
-                action = pi(obs)
-                if e < self.num_trace_episodes:
-                    self.trace_step(env, action, False)
+                actions = pi(obss)
+                if et < self.num_trace_episodes:
+                    self.trace_step(envs[0], actions[0], False)
                 if self.eval_render:
-                    self.eval_env.render()
-                obs, r, done, info = self.eval_env.step(action)
-                erew += r
-                eweight += env.reward_weight
-                s += 1
-                rewards.append((env.reward_value, env.reward_weight))
-                if done:
-                    if e < self.num_trace_episodes:
-                        self.trace_step(env, None, done)
-                    try:
-                        er = erew / eweight
-                    except ZeroDivisionError:
-                        er = 0
-                    erewards.append((er, eweight))
-                    erew = 0
-                    eweight = 0
-                    e += 1
-                    if self.eval_render:
-                        self.eval_env.render()
-                    obs = self.eval_env.reset()
-                    if s >= self.eval_num_timesteps:
-                        break
+                    self.eval_envs[0].render()
+                for i, (eval_env, env, action) in enumerate(zip(self.eval_envs, envs, actions)):
+                    if not finished[i]:
+                        obs, r, done, info = eval_env.step(action)
+                        erews[i] += r
+                        eweights[i] += env.reward_weight
+                        s += 1
+                        rewards.append((env.reward_value, env.reward_weight))
+                        if done:
+                            if i == 0 and et < self.num_trace_episodes:
+                                self.trace_step(env, None, done)
+                                et += 1
+                            e += 1
+                            try:
+                                er = erews[i] / eweights[i]
+                            except ZeroDivisionError:
+                                er = 0
+                            erewards.append((er, eweights[i]))
+                            erews[i] = 0
+                            eweights[i] = 0
+                            if i == 0 and self.eval_render:
+                                eval_env.render()
+                            obss[i] = eval_env.reset()
+                            if s >= self.eval_num_timesteps:
+                                finished[i] = True
+                        else:
+                            obss[i] = obs
+                if all(finished):
+                    break
 
             rew = weighted_mean(erewards)
             try:
@@ -149,7 +158,7 @@ class Evaluator(object):
             except ZeroDivisionError:
                 std = float('nan')
             stderr = std / sqrt(e)
-            utility = env.utility
+            utility = envs[0].utility
             unit_ce = indiv_ce = utility.inverse(rew)
             unit_ce_stderr = indiv_ce_stderr = utility.inverse(rew + stderr) - indiv_ce
             unit_low = indiv_low = utility.inverse(weighted_percentile(rewards, 10))
@@ -172,15 +181,15 @@ class Evaluator(object):
             self.consume_pdf = []
             for bucket, w in enumerate(pdf_bucket_weights):
                 unit_consume = u_min + (bucket - 1.5) * (u_max - u_min) / self.pdf_buckets
-                if env.params.sex2 != None:
-                    unit_consume *= 1 + env.params.consume_additional
+                if envs[0].params.sex2 != None:
+                    unit_consume *= 1 + envs[0].params.consume_additional
                 self.consume_pdf.append((unit_consume, w / w_tot))
 
-            if env.params.sex2 != None:
-                unit_ce *= 1 + env.params.consume_additional
-                unit_ce_stderr *= 1 + env.params.consume_additional
-                unit_low *= 1 + env.params.consume_additional
-                unit_high *= 1 + env.params.consume_additional
+            if envs[0].params.sex2 != None:
+                unit_ce *= 1 + env[0].params.consume_additional
+                unit_ce_stderr *= 1 + env[0].params.consume_additional
+                unit_low *= 1 + env[0].params.consume_additional
+                unit_high *= 1 + env[0].params.consume_additional
                 logger.info('Couple certainty equivalent: ', unit_ce, ' +/- ', unit_ce_stderr, ' (80% confidence interval: ', unit_low, ' - ', unit_high, ')')
 
             logger.info('Evaluation certainty equivalent: ', indiv_ce, ' +/- ', indiv_ce_stderr, ' (80% confidence interval: ', indiv_low, ' - ', indiv_high, ')')

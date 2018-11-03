@@ -25,7 +25,7 @@ from baselines.common.misc_util import set_global_seeds
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 
-def eval_model(eval_model_params, *, eval_seed, eval_num_timesteps, eval_render, model_dir, result_dir, num_trace_episodes, pdf_buckets):
+def eval_model(eval_model_params, *, eval_seed, eval_num_timesteps, eval_render, model_dir, result_dir, num_trace_episodes, num_environments, pdf_buckets):
 
     try:
         mkdir(result_dir)
@@ -38,8 +38,8 @@ def eval_model(eval_model_params, *, eval_seed, eval_num_timesteps, eval_render,
 
         eval_seed += 1000000 # Use a different seed than might have been used during training.
         set_global_seeds(eval_seed)
-        env = make_fin_env(**eval_model_params, action_space_unbounded = True, direct_action = False)
-        obs = env.reset()
+        envs = tuple(make_fin_env(**eval_model_params, action_space_unbounded = True, direct_action = False) for _ in range(num_environments))
+        obs = envs[0].reset()
 
         with U.make_session(num_cpu=1) as session:
 
@@ -48,17 +48,17 @@ def eval_model(eval_model_params, *, eval_seed, eval_num_timesteps, eval_render,
             observation_tf = g.get_tensor_by_name('pi/ob:0')
             action_tf = g.get_tensor_by_name('pi/action:0')
             action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
-            interp = env.unwrapped.interpret_action(action)
+            interp = envs[0].unwrapped.interpret_action(action)
 
             interp['asset_allocation'] = str(interp['asset_allocation'])
             interp_str = dumps(interp)
             with open(result_dir + '/aiplanner-initial.json', 'w') as w:
                  w.write(interp_str)
 
-            evaluator = Evaluator(env, eval_seed, eval_num_timesteps, render = eval_render, num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets)
+            evaluator = Evaluator(envs, eval_seed, eval_num_timesteps, render = eval_render, num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets)
 
-            def pi(obs):
-                action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
+            def pi(obss):
+                action = session.run(action_tf, feed_dict = {observation_tf: obss})
                 return action
 
             ce, ce_stderr, low, high = evaluator.evaluate(pi)
@@ -114,7 +114,8 @@ def main():
     parser = arg_parser()
     parser.add_argument('--result-dir', default = './')
     parser.add_argument('--num-trace-episodes', type = int, default = 5)
-    parser.add_argument('--pdf-buckets', type = int, default = 10) # Number of non de minus buckets to use in computing consume probability density distribution.
+    parser.add_argument('--num-environments', type = int, default = 10) # Number of parallel environments to use for a single model. Speeds up tensor flow.
+    parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, dump = False)
 
     eval_model(eval_model_params, **args)

@@ -43,7 +43,18 @@ class FinEnv(Env):
 
     metadata = {'render.modes': ['human']}
 
+    vs_cache_age_start = None
+    vs_cache_age_start2 = None
+    vs_cache_preretirement = None
+
     def _compute_vital_stats(self, age_start, age_start2, preretirement):
+
+        if self.vs_cache_age_start == age_start and self.vs_cache_age_start2 == age_start2 and self.vs_cache_preretirement == preretirement:
+            return
+
+        vs_cache_age_start = age_start
+        vs_cache_age_start2 = age_start2
+        vs_cache_preretirement = preretirement
 
         start_date = datetime.strptime(self.params.life_table_date, '%Y-%m-%d')
         this_year = datetime(start_date.year, 1, 1)
@@ -158,7 +169,7 @@ class FinEnv(Env):
         return first_dies_first, alive_years, tuple(alive_single), tuple(alive_count), \
             tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
 
-    def __init__(self, bonds_cached = None, action_space_unbounded = False, direct_action = False, **kwargs):
+    def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
 
         self.action_space_unbounded = action_space_unbounded
         self.direct_action = direct_action
@@ -193,8 +204,7 @@ class FinEnv(Env):
         self.bills = Returns(self.params.bills_return, self.params.bills_volatility, 1, 1, 0,
             self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
 
-        self.bonds = bonds_cached if bonds_cached else \
-            BondsSet(fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate)
+        self.bonds = BondsSet(fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate)
         self.bonds.update(
             fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate,
             real_short_rate = self.params.real_short_rate, inflation_short_rate = self.params.inflation_short_rate,
@@ -474,6 +484,7 @@ class FinEnv(Env):
         self.utility = Utility(self.gamma, self.params.consume_floor)
 
         self.date = self.params.life_table_date
+        self.date_start = datetime.strptime(self.date, '%Y-%m-%d')
         self.cpi = 1
 
         self.stocks.reset()
@@ -1048,8 +1059,7 @@ class FinEnv(Env):
 
         self.couple = self.alive_single[self.episode_length] == None
 
-        self.date = (datetime.strptime(self.params.life_table_date, '%Y-%m-%d') \
-            + timedelta(days = self.episode_length * self.params.time_period * 365.25)).date().isoformat()
+        self.date = (self.date_start + timedelta(days = self.episode_length * self.params.time_period * 365.25)).date().isoformat()
 
         self._step_bonds()
 

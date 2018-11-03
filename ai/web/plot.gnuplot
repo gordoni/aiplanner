@@ -13,7 +13,7 @@ set ylabel "probability"
 set yrange [0:*]
 unset ytics
 set output prefix . "-consume-pdf.svg"
-plot prefix . "-consume-pdf.csv" with lines smooth csplines notitle lt 2
+plot prefix . "-consume-pdf.csv" with lines notitle lt 2
 set ytics
 
 set xlabel "age"
