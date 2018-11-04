@@ -183,13 +183,13 @@ class FinEnv(Env):
             # PPO1 implementation ignores size and assumes [-inf, inf] output.
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple in baselines/baselines/ppo1/mlp_policy.py.
-            # couple, single, 1 / gamma, life-expectancy both, life-expectancy one, preretirement years,
+            # couple, single, 1 / gamma, year, life-expectancy both, life-expectancy one, preretirement years,
             # income present value annualized: tax_free, tax_deferred, taxable,
             # wealth annualized: tax_free, tax_deferred, taxable,
             # first person preretirement income annualized, second person preretirement income annualized, consume annualized, taxable basis annualized,
             # stock price on fair value, short real interest rate, short inflation rate
-            low  = np.array((0, 0, 0,  0,   0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  0.2, -0.05, 0.0)),
-            high = np.array((1, 1, 1, 100, 100, 50, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 5,    0.05, 0.1)),
+            low  = np.array((0, 0, 0,   0,   0,   0,  0,   0,   0,   0,   0,  0,   0,   0,   0,   0,   0,  0.2, -0.05, 0.0)),
+            high = np.array((1, 1, 1, 100, 100, 100, 50, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 5,    0.05, 0.1)),
             dtype = 'float32'
         )
 
@@ -483,6 +483,7 @@ class FinEnv(Env):
         self.gamma = self.log_uniform(self.params.gamma_low, self.params.gamma_high)
         self.utility = Utility(self.gamma, self.params.consume_floor)
 
+        self.year = 0
         self.date = self.params.life_table_date
         self.date_start = datetime.strptime(self.date, '%Y-%m-%d')
         self.cpi = 1
@@ -1059,7 +1060,8 @@ class FinEnv(Env):
 
         self.couple = self.alive_single[self.episode_length] == None
 
-        self.date = (self.date_start + timedelta(days = self.episode_length * self.params.time_period * 365.25)).date().isoformat()
+        self.year += self.params.time_period
+        self.date = (self.date_start + timedelta(days = self.year * 365.25)).date().isoformat()
 
         self._step_bonds()
 
@@ -1218,7 +1220,7 @@ class FinEnv(Env):
         else:
             inflation_rate = 0
 
-        observe = (couple, single, one_on_gamma, life_expectancy_both, life_expectancy_one, self.preretirement_years,
+        observe = (couple, single, one_on_gamma, self.year, life_expectancy_both, life_expectancy_one, self.preretirement_years,
             self.income['tax_free'], self.income['tax_deferred'], self.income['taxable'],
             self.wealth_as_income['tax_free'], self.wealth_as_income['tax_deferred'], self.wealth_as_income['taxable'],
             self.income_preretirement_annualized, self.income_preretirement2_annualized, self.consume_preretirement_annualized,
@@ -1227,7 +1229,7 @@ class FinEnv(Env):
 
     def decode_observation(self, obs):
 
-        couple, single, one_on_gamma, life_expectancy_both, life_expectancy_one, preretirement_years, income_tax_free, income_tax_deferred, income_taxable, \
+        couple, single, one_on_gamma, year, life_expectancy_both, life_expectancy_one, preretirement_years, income_tax_free, income_tax_deferred, income_taxable, \
             wealth_tax_free, wealth_tax_deferred, wealth_taxable, income_preretirement, income_preretirement2, consume_preretirement, \
             taxable_basis, stocks_price, real_interest_rate, inflation_rate = obs.tolist()
 
@@ -1235,6 +1237,7 @@ class FinEnv(Env):
             'couple': couple,
             'single': single,
             'one_on_gamma': one_on_gamma,
+            'year': year,
             'life_expectancy_both': life_expectancy_both,
             'life_expectancy_one': life_expectancy_one,
             'preretirement_years': preretirement_years,

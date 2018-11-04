@@ -14,7 +14,7 @@
 
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 PARALLEL=${PARALLEL:-True}  # Set to "False" to run seeds sequentially rather than in parallel.
-SEEDS=${SEEDS:-1}
+SEEDS=${SEEDS:-10}
 
 EXTRA_ARGS=$*
 AI_DIR=$AIPLANNER_HOME/ai
@@ -75,5 +75,8 @@ train_parallel () {
 
 # Variable scenarios.
 
-$TRAIN single
-$TRAIN couple '--train-num-timesteps=2000000 --master-sex2=male'
+$TRAIN single-no_spias
+$TRAIN single-spias '--master-nominal-spias'
+
+$TRAIN couple-no_spias '--train-num-timesteps=2000000 --master-sex2=male'
+$TRAIN couple-spias '--train-num-timesteps=2000000 --master-sex2=male --master-nominal-spias'

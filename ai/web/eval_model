@@ -38,7 +38,10 @@ def eval_model(eval_model_params, *, eval_seed, eval_num_timesteps, eval_render,
 
         eval_seed += 1000000 # Use a different seed than might have been used during training.
         set_global_seeds(eval_seed)
-        envs = tuple(make_fin_env(**eval_model_params, action_space_unbounded = True, direct_action = False) for _ in range(num_environments))
+        envs = []
+        for _ in range(num_environments):
+            envs.append(make_fin_env(**eval_model_params, action_space_unbounded = True, direct_action = False))
+            eval_model_params['display_returns'] = False # Only have at most one env display returns.
         obs = envs[0].reset()
 
         with U.make_session(num_cpu=1) as session:

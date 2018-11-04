@@ -106,6 +106,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             request_params[param] = 0
         request_params['p_taxable_nominal_bonds'] = request_params['p_taxable_bonds']
         del request_params['p_taxable_bonds']
+        request_params['nominal_spias'] = request_params['spias']
+        del request_params['spias']
         request_params['display_returns'] = False
 
         dump_params_file(dir + '/aiplanner-scenario-request.txt', request_params)
@@ -145,15 +147,13 @@ class RequestHandler(BaseHTTPRequestHandler):
         chmod(dir_seed, 0o775)
 
         unit = 'single' if request['sex2'] == None else 'couple'
+        spias = 'spias' if request['spias'] else 'no_spias'
         suffix = '' if args.modelset_suffix == None else '-' + args.modelset_suffix
-        model_dir = args.modelset_dir + 'aiplanner.' + unit + suffix + '-seed_' + str(model_seed) + '.tf'
-        model_params = loads(open(model_dir + '/assets.extra/params.json').read())
-
-        dump_params_file(dir_seed + '/aiplanner-scenario-model.txt', model_params)
+        model_dir = args.modelset_dir + 'aiplanner.' + unit + '-' + spias + suffix + '-seed_' + str(model_seed) + '.tf'
 
         return Popen(('./eval_model',
             '--model-dir', model_dir,
-            '-c', dir_seed + '/aiplanner-scenario-model.txt',
+            '-c', model_dir + '/assets.extra/params.txt',
             '-c', dir + '/aiplanner-scenario-request.txt',
             '--result-dir', dir_seed,
             '--eval-seed', str(args.eval_seed),
@@ -168,7 +168,7 @@ def main():
 
     parser = ArgumentParser()
     parser.add_argument('--eval-seed', type = int, default = 0)
-    parser.add_argument('--eval-num-timesteps', type = int, default = 50000)
+    parser.add_argument('--eval-num-timesteps', type = int, default = 20000)
     parser.add_argument('--modelset-dir', default = './')
     parser.add_argument('--modelset-suffix')
     parser.add_argument('--num-models', type = int, default = 10)

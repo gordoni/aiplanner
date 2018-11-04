@@ -12,7 +12,6 @@
 
 # Code based on baselines/ppo1/run_mujoco.py
 
-from json import dumps
 from os import mkdir
 from shutil import rmtree
 
@@ -24,6 +23,7 @@ from baselines.common.misc_util import set_global_seeds
 
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
+from gym_fin.envs.model_params import dump_params_file
 
 def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_minibatch_size, train_num_timesteps, train_seed,
           eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, model_dir):
@@ -84,9 +84,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     tf.saved_model.simple_save(session, model_dir, {'observation': observation_tf}, {'action': action_tf, 'value': v_tf})
     assets_dir = model_dir + '/assets.extra'
     mkdir(assets_dir)
-    data = dumps(training_model_params)
-    with open(assets_dir + '/params.json', 'w') as f:
-        f.write(data)
+    dump_params_file(assets_dir + '/params.txt', training_model_params)
 
 def main():
     parser = arg_parser()

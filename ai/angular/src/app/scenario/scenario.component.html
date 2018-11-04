@@ -175,7 +175,8 @@ PURPOSE.
       <div class="error" *ngIf="scenarioAgeRetirement.invalid">
         Invalid numeric value.
       </div>
-    <br>
+      <br>
+      <br>
     Pre-retirement annual consumption:
       <input type="number" class="numeric" required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
       <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
@@ -210,6 +211,8 @@ PURPOSE.
         </tr>
       </table>
     </div>
+    <br>
+    Allow income annuity purchases: <input type="checkbox" name="spias" [(ngModel)]="spias">
   </div>
 
   <div class="main-button-right" *ngIf="1 <= step && step < 4">
@@ -247,8 +250,13 @@ PURPOSE.
       <p>
         Current recommended after tax consumption: {{results.consume}}
       </p>
+      <p *ngIf="results.nominal_spias_purchase != null">
+        Recommended SPIA purchase amount: {{ results.nominal_spias_purchase }}
+      </p>
       <p>
         Recommended asset allocation: {{results.asset_allocation}}
+        <br>
+        Bonds duration: {{results.nominal_bonds_duration}} years
       </p>
       <p>
         Current recommended retirement plan contribution: {{results.retirement_contribution}}

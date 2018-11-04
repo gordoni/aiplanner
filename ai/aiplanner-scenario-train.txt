@@ -10,7 +10,10 @@
 
 master_consume_clip = 5000 # Prevent learning very negative rewards.
 
-master_age_start = 40
+# Make age_start vary, even though we will encounter all ages as we step.
+# This ensures if we market time we do so using the year rather than age, when deciding to do so.
+master_age_start_low = 30
+master_age_start_high = 50
 master_age_start2_low = 30
 master_age_start2_high = 50
 
@@ -26,7 +29,11 @@ master_consume_preretirement_high = 1e5
 master_consume_income_ratio_max = 0.7
 
 master_defined_benefits = '''[
-    {"owner": "self", "age": null, "payout": [1e3, 1e5], "source_of_funds": "taxable"},
+    {"owner": "self",   "age": null, "payout": [1e3, 1e5], "source_of_funds": "tax_free"},
+    {"owner": "self",   "age": null, "payout": [1e3, 1e5], "source_of_funds": "tax_deferred"},
+    {"owner": "self",   "age": null, "payout": [1e3, 1e5], "source_of_funds": "taxable"},
+    {"owner": "spouse", "age": null, "payout": [1e3, 1e5], "source_of_funds": "tax_free"},
+    {"owner": "spouse", "age": null, "payout": [1e3, 1e5], "source_of_funds": "tax_deferred"},
     {"owner": "spouse", "age": null, "payout": [1e3, 1e5], "source_of_funds": "taxable"}
 ]'''
 master_p_tax_free_low = 1e3

@@ -44,6 +44,7 @@ export class ScenarioComponent implements OnInit {
   public consumePreretirement = 40000;
   public have401k = true;
   public have401k2 = true;
+  public spias = true;
 
   public gamma: number = 3;
 
@@ -150,6 +151,7 @@ export class ScenarioComponent implements OnInit {
         'consume_preretirement': this.consumePreretirement,
         'have_401k': this.have401k,
         'have_401k2': this.have401k2,
+        'spias': this.spias,
 
         'gamma': this.gamma,
     };
