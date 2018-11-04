@@ -17,6 +17,7 @@ from os import chmod, mkdir
 from socketserver import ThreadingMixIn
 from subprocess import Popen
 from tempfile import mkdtemp
+from threading import BoundedSemaphore
 
 from gym_fin.envs.model_params import dump_params_file
 
@@ -33,6 +34,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
 
+        print('foo')
         if self.path == '/api/scenario':
 
             content_type = self.headers.get('Content-Type')
@@ -41,15 +43,18 @@ class RequestHandler(BaseHTTPRequestHandler):
             json_data = data.decode('utf-8')
             request = loads(json_data)
 
-            result = self.run_models(request)
+            result = self.run_models_with_lock(request)
 
-            result_bytes = dumps(result).encode('utf-8')
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Content-Length', len(result_bytes))
-            self.send_header('Connection', 'close')
-            self.end_headers()
-            self.wfile.write(result_bytes)
+            if result:
+
+                result_bytes = dumps(result).encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', len(result_bytes))
+                self.send_header('Connection', 'close')
+                self.end_headers()
+                self.wfile.write(result_bytes)
+
             return
 
         self.send_error(404)
@@ -82,6 +87,19 @@ class RequestHandler(BaseHTTPRequestHandler):
                         return
 
         self.send_error(404)
+
+    run_lock = BoundedSemaphore(1) # For load management; there are no known concurrency problems.
+
+    def run_models_with_lock(self, request):
+
+        if self.run_lock.acquire(timeout = 60):
+            # Development client resubmits request after 120 seconds, so keep timeout plus evaluation time below that.
+            try:
+                return self.run_models(request)
+            finally:
+                self.run_lock.release()
+        else:
+            self.send_error(503, 'Overloaded: try again later')
 
     def run_models(self, request):
 

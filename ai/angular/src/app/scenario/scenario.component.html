@@ -256,7 +256,7 @@ PURPOSE.
       <p>
         Recommended asset allocation: [{{results.asset_allocation}}]
         <br>
-        Bonds duration: {{results.nominal_bonds_duration}} years
+        Bonds duration: {{results.nominal_bonds_duration}} years ({{(results.nominal_bonds_duration <= 9) ? ((results.nominal_bonds_duration <= 2) ? "short" : "intermediate") : "long"}} term)
       </p>
       <p>
         Current recommended retirement plan contribution: {{results.retirement_contribution}}
