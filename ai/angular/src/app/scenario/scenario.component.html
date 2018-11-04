@@ -175,8 +175,8 @@ PURPOSE.
       <div class="error" *ngIf="scenarioAgeRetirement.invalid">
         Invalid numeric value.
       </div>
-      <br>
-      <br>
+    <br>
+    <br>
     Pre-retirement annual consumption:
       <input type="number" class="numeric" required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
       <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
@@ -239,13 +239,13 @@ PURPOSE.
   </div>
 
   <div *ngIf="step == 6">
-    <div *ngIf="results.error">
+    <div *ngIf="results.error != null">
       <h1 class="title">Problem detected</h1>
       <div class="error">
         {{results.error}}
       </div>
     </div>
-    <div *ngIf="!results.error">
+    <div *ngIf="results.error == null">
       <h1 class="title">Preliminary Results</h1>
       <p>
         Current recommended after tax consumption: {{results.consume}}

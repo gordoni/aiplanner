@@ -11,7 +11,7 @@
 master_consume_clip = 5000 # Prevent learning very negative rewards.
 
 # Make age_start vary, even though we will encounter all ages as we step.
-# This ensures if we market time we do so using the year rather than age, when deciding to do so.
+# This ensures if trained with market data we market time using the market parameters rather than age.
 master_age_start_low = 30
 master_age_start_high = 50
 master_age_start2_low = 30

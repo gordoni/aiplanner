@@ -127,7 +127,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             final = loads(open(dir_seed + '/aiplanner-final.json').read())
 
-            if final['error']:
+            if final['error'] != None:
                 return final
 
             initial = loads(open(dir_seed + '/aiplanner-initial.json').read())
@@ -155,6 +155,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             '--model-dir', model_dir,
             '-c', model_dir + '/assets.extra/params.txt',
             '-c', dir + '/aiplanner-scenario-request.txt',
+            '-c', '../market_data.txt',
             '--result-dir', dir_seed,
             '--eval-seed', str(args.eval_seed),
             '--eval-num-timesteps', str(args.eval_num_timesteps),

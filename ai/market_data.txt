@@ -1,0 +1,9 @@
+master_stocks_price = 1.3 # Rough estimate of current stock market price to long term fair price.
+    # The U.S. market is presently widely considered to be somewhat overvalued. To get a handle on this we examined P/E ratios.
+    # For 1950-2017 the harmonic mean S&P 500 P/E ratio (not CAPE) was 14.85 (based on Shiller's data).
+    # This compares to a TTM P/E of 25.47 at the end of 2017, and a 12 month forward P/E of 16.0 (FactSet May 4, 2018).
+    # Thus two reasonable estimates are the market is 10% and 70% overvalued.
+master_real_short_rate = 0.011
+    # 2018-11-02 5 year rate - https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=realyield
+master_inflation_short_rate = 0.022
+    # 2018-2022 inflation - https://www.philadelphiafed.org/research-and-data/real-time-center/survey-of-professional-forecasters/2018/survq318 
