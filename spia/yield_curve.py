@@ -102,7 +102,7 @@ class YieldCurve(object):
                 pass
 
         if len(yield_curve_date) == 0:
-            raise self.NoData
+            raise self.NoData('Requested interest rate data unavailable.')
         elif len(yield_curve_date) == 1:
             yield_curve_date_str = yield_curve_date[0]
         else:
@@ -117,7 +117,7 @@ class YieldCurve(object):
         assert(date_str_low == None) # Not yet implemented.
 
         if date_year < 1984:
-            raise self.NoData
+            raise self.NoData('Requested interest rate data unavailable.')
 
         date_month = int(date_str.split('-')[1])
         assert(1 <= date_month <= 12)
@@ -153,7 +153,7 @@ class YieldCurve(object):
                         offset = min(len(line) - 1, 2 + file_year_offset * 12 + date_month - 1)
                         spot_year = file_year + (offset - 2) / 12
                         if spot_year < file_year:
-                            raise self.NoData
+                            raise self.NoData('Requested interest rate data unavailable.')
                         spot_month = (offset - 2) % 12 + 1
                         spot_date = '%d-%02d' % (spot_year, spot_month)
                     maturity += 0.5
@@ -165,7 +165,7 @@ class YieldCurve(object):
 
         except IOError:
 
-            raise self.NoData
+            raise self.NoData('Requested interest rate data unavailable.')
 
         return [spot_years], [spot_rates], spot_date
 
