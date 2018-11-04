@@ -859,7 +859,7 @@ class LifeTable(object):
                 age_lo = self.age
             else:
                 age_hi = self.age
-        raise self.UnableToAdjust
+        raise self.UnableToAdjust('Unable to adjust life expectancy.')
 
     def _iam_q(self, year, age, contract_age):
         year = int(year)
