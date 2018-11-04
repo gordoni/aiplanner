@@ -18,14 +18,15 @@ class AssetAllocation(object):
 
             assert abs(sum(self.aa.values()) - 1) < 1e-15
 
-    def __str__(self):
+    def as_list(self):
 
-        s = ''
+        l = []
         for ac in ('stocks', 'real_bonds', 'nominal_bonds', 'iid_bonds', 'bills'):
             if ac in self.aa:
-                if s:
-                    s += ', ' + str(self.aa[ac])
-                else:
-                    s = str(self.aa[ac])
+                l.append(self.aa[ac])
 
-        return '[' + s + ']'
+        return l
+
+    def __str__(self):
+
+        s = str(self.as_list())
