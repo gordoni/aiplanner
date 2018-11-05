@@ -9,10 +9,6 @@
  * PURPOSE.
  */
 
-.error {
-    color: red;
-}
-
 .small-numeric {
     width: 4em;
 }
@@ -25,14 +21,6 @@
     margin: auto;
     width: 85%;
     text-align: left;
-}
-
-.right {
-    text-align: right;
-}
-
-.center, .title {
-    text-align: center;
 }
 
 .defined-benefits, .defined-contributions {
@@ -64,30 +52,11 @@
     padding: 5px;
 }
 
-.main-button {
-    text-align: center;
-    padding: 20px;
-}
-
 .main-button-right {
     text-align: right;
     padding: 20px;
 }
 
-.button {
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    background-color: black;
-    color: white;
-    font-size: 24px;
-}
-
-.button:hover {
-    box-shadow: -4px 4px 10px 4px rgba(0,0,0,0.2);
-}
-
-.button[disabled] {
-    opacity: 0.5;
-    cursor: not-allowed;
+.small {
+    font-size: 70%;
 }

@@ -14,6 +14,7 @@ from argparse import ArgumentParser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from json import dumps, loads
 from os import chmod, mkdir
+from os.path import isdir
 from socketserver import ThreadingMixIn
 from subprocess import Popen
 from tempfile import mkdtemp
@@ -34,8 +35,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
 
-        print('foo')
-        if self.path == '/api/scenario':
+        if self.path in ('/api/scenario', '/api/result'):
 
             content_type = self.headers.get('Content-Type')
             content_length = int(self.headers['Content-Length'])
@@ -43,7 +43,10 @@ class RequestHandler(BaseHTTPRequestHandler):
             json_data = data.decode('utf-8')
             request = loads(json_data)
 
-            result = self.run_models_with_lock(request)
+            if self.path == '/api/scenario':
+                result = self.run_models_with_lock(request)
+            else:
+                result = self.get_results(request)
 
             if result:
 
@@ -140,10 +143,29 @@ class RequestHandler(BaseHTTPRequestHandler):
         for process in processes:
               process.wait()
 
-        best_ce = float('-inf')
-        for dir_seed in dir_seeds:
+        return {'id': dir[len(data_root) + 1:]}
 
-            final = loads(open(dir_seed + '/aiplanner-final.json').read())
+    def get_results(self, request):
+
+        id = request['id']
+        if '/' in id:
+            return {'error': 'Illegal character in path.'}
+
+        dir = data_root + '/' + id
+
+        best_ce = float('-inf')
+        model_seed = 0
+        while True:
+
+            dir_seed = dir + '/' + str(model_seed)
+
+            if not isdir(dir_seed):
+                break
+
+            try:
+                final = loads(open(dir_seed + '/aiplanner-final.json').read())
+            except IOError:
+                return {'error': 'Simulation results not found.'}
 
             if final['error'] != None:
                 return final
@@ -157,12 +179,17 @@ class RequestHandler(BaseHTTPRequestHandler):
                 best_ce = results['ce']
                 best_results = results
 
-        return best_results
+            model_seed += 1
+
+        if model_seed == 0:
+            return {'error': 'Simulation results not found.'}
+        else:
+            return best_results
 
     def run_model(self, request, model_seed, dir, dir_seed):
 
         mkdir(dir_seed)
-        chmod(dir_seed, 0o775)
+        chmod(dir_seed, 0o755)
 
         unit = 'single' if request['sex2'] == None else 'couple'
         spias = 'spias' if request['spias'] else 'no_spias'

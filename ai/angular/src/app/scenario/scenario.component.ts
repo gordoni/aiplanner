@@ -13,6 +13,7 @@ import { Component, OnInit } from '@angular/core';
 
 import { ScenarioService } from '../scenario.service';
 import { DefinedBenefit } from '../defined-benefit';
+import { ResultComponent } from '../result/result.component';
 
 @Component({
   selector: 'app-scenario',
@@ -48,12 +49,13 @@ export class ScenarioComponent implements OnInit {
 
   public gamma: number = 3;
 
+  private result_id: string = null;
+
   public errorMessage: string = null;
 
-  public results: object = null;
-
-  constructor(private scenarioService: ScenarioService) {
-  }
+  constructor(
+    private scenarioService: ScenarioService,
+  ) {}
 
   health(individual: string) {
     var leAdditional: number = (individual == 'self') ? this.lifeExpectancyAdditional : this.lifeExpectancyAdditional2;
@@ -106,7 +108,8 @@ export class ScenarioComponent implements OnInit {
     return false;
   }
 
-  editSteps() {
+  firstStep() {
+    this.result_id = null;
     this.step = 1;
     return false;
   }
@@ -158,22 +161,22 @@ export class ScenarioComponent implements OnInit {
 
     this.errorMessage = null;
     this.scenarioService.doScenario(scenario).subscribe(
-      results => this.doResults(this, results),
-      error => this.handleError(this, error)
+      results => this.doResults(results),
+      error => this.handleError(error)
     );
     this.step++;
 
     return false;
   }
 
-  handleError(scenario, error) {
-    scenario.errorMessage = error.message;
+  handleError(error) {
+    this.errorMessage = error.message;
     this.step--;
   }
 
-  doResults(scenario, results) {
-    scenario.results = results;
-    scenario.step++;
+  doResults(results) {
+    this.result_id = results['id'];
+    this.step++;
   }
 
   ngOnInit() {

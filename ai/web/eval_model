@@ -75,9 +75,10 @@ def eval_model(eval_model_params, *, eval_seed, eval_num_timesteps, eval_render,
                 'ce_low': low,
                 'ce_high': high,
             }
-            e = None
+            exception = None
 
     except Exception as e:
+        exception = e
         error_msg = str(e)
         if not error_msg:
             error_msg = e.__class__.__name__ + ' exception encountered.'
@@ -89,8 +90,8 @@ def eval_model(eval_model_params, *, eval_seed, eval_num_timesteps, eval_render,
     with open(prefix + '-final.json', 'w') as w:
         w.write(final_str)
 
-    if e:
-        raise e
+    if exception:
+        raise exception
 
 def plot(prefix, traces, consume_pdf):
 
