@@ -40,8 +40,8 @@ master_spias_permitted_to_age = 85
     # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%).
 master_returns_standard_error = True
 master_stocks = True
-master_stocks_return = 0.065
-master_stocks_volatility = 0.174
+master_stocks_return = 0.067 # Generate 6.5% return in presence of mean reversion in the absence of returns_standard_error.
+master_stocks_volatility = 0.189 # Generate 17.4% volatility in presence of mean reversion in the absence of returns_standard_error.
 master_stocks_mean_reversion_rate = 0.1 # Rough estimate of mean reversion rate based on Shiller data.
 master_stocks_price_low = 0.5
 master_stocks_price_high = 2.0

@@ -11,7 +11,7 @@
 
 import { Component, Input, OnChanges, OnInit } from '@angular/core';
 
-import { ResultService } from '../result.service';
+import { ApiService } from '../api.service';
 
 @Component({
   selector: 'app-result',
@@ -21,26 +21,30 @@ import { ResultService } from '../result.service';
 export class ResultComponent implements OnInit {
 
   @Input() public id: string;
+  @Input() public mode: string;
 
   public errorMessage = null;
   public results: object = null;
 
   constructor(
-    private resultService: ResultService
+    private apiService: ApiService
   ) {}
 
   doResults(results) {
-    this.results = results;
+    if (this.mode == 'full' && results.error == 'Results not found.')
+      this.results = null;
+    else
+      this.results = results;
   }
 
   handleError(error) {
-    this.errorMessage = error.message;
+    this.results = {'error': error.message};
   }
 
   ngOnChanges() {
     this.errorMessage = null;
     this.results = null;
-    this.resultService.doResult(this.id).subscribe(
+    this.apiService.post('result', {'id': this.id, 'mode': this.mode}).subscribe(
       results => this.doResults(results),
       error => this.handleError(error)
     );

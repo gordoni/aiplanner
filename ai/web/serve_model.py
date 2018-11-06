@@ -13,19 +13,21 @@
 from argparse import ArgumentParser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from json import dumps, loads
-from os import chmod, mkdir
+from os import chmod, mkdir, scandir, symlink
 from os.path import isdir
+from re import match
 from socketserver import ThreadingMixIn
 from subprocess import Popen
 from tempfile import mkdtemp
 from threading import BoundedSemaphore
 
-from gym_fin.envs.model_params import dump_params_file
+from gym_fin.envs.model_params import dump_params_file, load_params_file
 
 host = 'localhost'
 port = 3000
 
 data_root = '/tmp/aiplanner-data'
+run_queue = data_root + '/run.queue'
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
@@ -35,7 +37,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
 
-        if self.path in ('/api/scenario', '/api/result'):
+        if self.path in ('/api/scenario', '/api/result', '/api/full'):
 
             content_type = self.headers.get('Content-Type')
             content_length = int(self.headers['Content-Length'])
@@ -45,8 +47,12 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             if self.path == '/api/scenario':
                 result = self.run_models_with_lock(request)
-            else:
+            elif self.path == '/api/result':
                 result = self.get_results(request)
+            elif self.path == '/api/full':
+                result = self.run_full(request)
+            else:
+                assert False
 
             if result:
 
@@ -106,12 +112,8 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def run_models(self, request):
 
-        try:
-            mkdir(data_root)
-        except FileExistsError:
-            pass
         dir = mkdtemp(prefix='', dir=data_root)
-        chmod(dir, 0o775)
+        chmod(dir, 0o755)
 
         dump_params_file(dir + '/aiplanner-request.txt', request, prefix = '')
 
@@ -129,15 +131,20 @@ class RequestHandler(BaseHTTPRequestHandler):
         del request_params['p_taxable_bonds']
         request_params['nominal_spias'] = request_params['spias']
         del request_params['spias']
+        request_params['consume_clip'] = 0
         request_params['display_returns'] = False
 
-        dump_params_file(dir + '/aiplanner-scenario-request.txt', request_params)
+        dump_params_file(dir + '/aiplanner-scenario.txt', request_params)
+
+        mode = 'prelim'
+        dir_mode = dir + '/' + mode
+        mkdir(dir_mode)
 
         processes = []
         dir_seeds = []
         for model_seed in range(args.num_models):
-            dir_seed = dir + '/' + str(model_seed)
-            processes.append(self.run_model(request, model_seed, dir, dir_seed))
+            dir_seed = dir_mode + '/' + str(model_seed)
+            processes.append(self.run_model(model_seed, dir, dir_seed))
             dir_seeds.append(dir_seed)
 
         for process in processes:
@@ -148,10 +155,11 @@ class RequestHandler(BaseHTTPRequestHandler):
     def get_results(self, request):
 
         id = request['id']
-        if '/' in id:
-            return {'error': 'Illegal character in path.'}
+        assert match('[A-Za-z0-9_]+$', id)
+        mode = request['mode']
+        assert mode in ('prelim', 'full')
 
-        dir = data_root + '/' + id
+        dir = data_root + '/' + id + '/' + mode
 
         best_ce = float('-inf')
         model_seed = 0
@@ -165,7 +173,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             try:
                 final = loads(open(dir_seed + '/aiplanner-final.json').read())
             except IOError:
-                return {'error': 'Simulation results not found.'}
+                return {'error': 'Results not found.'}
 
             if final['error'] != None:
                 return final
@@ -182,14 +190,33 @@ class RequestHandler(BaseHTTPRequestHandler):
             model_seed += 1
 
         if model_seed == 0:
-            return {'error': 'Simulation results not found.'}
+            return {'error': 'Results not found.'}
         else:
             return best_results
 
-    def run_model(self, request, model_seed, dir, dir_seed):
+    def run_full(self, request):
+
+        email = request['email']
+        assert match('[^\s]+@[^\s]+$', email)
+        name = request['name']
+        assert match('.*$', name)
+        id = request['id']
+        assert match('[A-Za-z0-9_]+$', id)
+
+        dir = data_root + '/' + id
+        dump_params_file(dir + '/aiplanner-request-full.txt', request, prefix = '')
+
+        symlink('../' + id, run_queue + '/' + id)
+
+        run_queue_length = len(tuple(scandir(run_queue)))
+
+        return {'run_queue_length': run_queue_length}
+
+    def run_model(self, model_seed, dir, dir_seed):
+
+        request = load_params_file(dir + '/aiplanner-request.txt', prefix = '')
 
         mkdir(dir_seed)
-        chmod(dir_seed, 0o755)
 
         unit = 'single' if request['sex2'] == None else 'couple'
         spias = 'spias' if request['spias'] else 'no_spias'
@@ -199,7 +226,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         return Popen(('./eval_model',
             '--model-dir', model_dir,
             '-c', model_dir + '/assets.extra/params.txt',
-            '-c', dir + '/aiplanner-scenario-request.txt',
+            '-c', dir + '/aiplanner-scenario.txt',
             '-c', '../market_data.txt',
             '--result-dir', dir_seed,
             '--eval-seed', str(args.eval_seed),
@@ -222,6 +249,16 @@ def main():
     parser.add_argument('--num-environments', type = int, default = 10) # Number of parallel environments to use for a single model. Speeds up tensor flow.
     parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
     args = parser.parse_args()
+
+    try:
+        mkdir(data_root)
+    except FileExistsError:
+        pass
+    try:
+        mkdir(run_queue)
+    except FileExistsError:
+        pass
+
     server = ThreadingHTTPServer((host, port), RequestHandler)
     server.serve_forever()
 

@@ -389,3 +389,17 @@ def dump_params_file(fname, params, *, prefix = 'master_'):
     with open(fname, 'w') as f:
         for param in sorted(params):
             f.write(prefix + param + ' = ' + repr(params[param]) + '\n')
+
+def load_params_file(fname, *, prefix = 'master_'):
+
+    config = {}
+    with open(fname) as f:
+        config_str = f.read()
+    exec(config_str, {'inf': float('inf')}, config)
+
+    params = {}
+    for param, value in config.items():
+        assert param.startswith(prefix)
+        params[param[len(prefix):]] = value
+
+    return params

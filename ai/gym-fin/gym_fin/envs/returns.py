@@ -40,6 +40,7 @@ class Returns(object):
         self.period_mean_reversion_rate = self.mean_reversion_rate * self.time_period
 
     def sample(self):
+        '''Sample the returns, also of necessity steps the returns.'''
 
         sample = lognormvariate(self.period_mu, self.period_sigma) # Caution: If switch to using numpy need to get/set numpy state in fin_evaluate().
 
@@ -72,12 +73,21 @@ def yields_report(name, returns, *, duration, time_period, stepper, sample_size 
 
     _report(name, ylds)
 
-def returns_report(name, returns, *, time_period, stepper = None, sample_size = 100000, **kwargs):
+def returns_report(name, returns, *, time_period, stepper = None, sample_count = 1000, sample_skip=100, sample_length=100, **kwargs):
 
     rets = []
-    for _ in range(sample_size):
-        rets.append(returns.sample(**kwargs) ** (1 / time_period))
+    for _ in range(sample_count):
+        returns.reset()
         if stepper:
-            stepper.step()
+            stepper.reset()
+        # Skip samples influenced by initial market data.
+        for _ in range(sample_skip):
+            returns.sample(**kwargs)
+            if stepper:
+                stepper.step()
+        for _ in range(sample_length):
+            rets.append(returns.sample(**kwargs) ** (1 / time_period))
+            if stepper:
+                stepper.step()
 
     _report(name, rets)

@@ -12,8 +12,10 @@ PURPOSE.
 
 -->
 
-<div class="result-component">
-  <div *ngIf="results && results.error != null">
+<div *ngIf="results" class="result-component">
+  <h1 *ngIf="mode == 'prelim'" class="title">Preliminary Results</h1>
+  <h1 *ngIf="mode == 'full'" class="title">Results</h1>
+  <div *ngIf="results.error != null">
     <p>
       Problem detected:
       <span class="error">
@@ -21,7 +23,7 @@ PURPOSE.
       </span>
     </p>
   </div>
-  <div *ngIf="results && results.error == null">
+  <div *ngIf="results.error == null">
     <p>
       Current recommended after tax consumption: {{results.consume}}
     </p>
@@ -29,7 +31,7 @@ PURPOSE.
       Recommended SPIA purchase amount: {{ results.nominal_spias_purchase }}
     </p>
     <p>
-      Recommended asset allocation: [{{results.asset_allocation}}]
+      Recommended asset allocation [stocks,bonds]: [{{results.asset_allocation}}]
       <br>
       Bonds duration: {{results.nominal_bonds_duration}} years ({{(results.nominal_bonds_duration <= 9) ? ((results.nominal_bonds_duration <= 2) ? "short" : "intermediate") : "long"}} term)
     </p>
@@ -37,9 +39,11 @@ PURPOSE.
       Current recommended retirement plan contribution: {{results.retirement_contribution}}
     </p>
     <p>
-      Certainty equivalent retirement consumption: {{results.ce}}
+      Certainty equivalent retirement consumption: {{results.ce}} (standard error {{results.ce_stderr}})
     </p>
     <p>
+      Probability retirement consumption below {{results.consume_preretirement}}: {{results.preretirement_ppf}}
+      <br>
       10% chance of annual retirement consumption below: {{results.ce_low}}
     </p>
     <img src="{{results.data_dir}}/aiplanner-consume-pdf.svg" width="50%"/>

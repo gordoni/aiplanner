@@ -53,6 +53,15 @@ def weighted_stdev(value_weights):
         ss += weight * value ** 2
     return sqrt(n0 / (n0 - 1) * (n * ss - s ** 2) / (n ** 2))
 
+def weighted_ppf(value_weights, q):
+    n = 0
+    ppf = 0
+    for value, weight in sorted(value_weights, key = lambda x: abs(x[1])):
+        n += weight
+        if value <= q:
+            ppf += weight
+    return ppf / n * 100
+
 class Evaluator(object):
 
     LOGFILE = 'gym_eval_batch.monitor.csv'
@@ -163,6 +172,9 @@ class Evaluator(object):
             unit_ce_stderr = indiv_ce_stderr = utility.inverse(rew + stderr) - indiv_ce
             unit_low = indiv_low = utility.inverse(weighted_percentile(rewards, 10))
             unit_high = indiv_high = utility.inverse(weighted_percentile(rewards, 90))
+
+            utility_preretirement = utility.utility(envs[0].params.consume_preretirement)
+            self.preretirement_ppf = weighted_ppf(rewards, utility_preretirement) / 100
 
             u_min = utility.inverse(weighted_percentile(rewards, 2))
             u_max = utility.inverse(weighted_percentile(rewards, 98))

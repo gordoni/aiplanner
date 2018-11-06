@@ -23,6 +23,18 @@
     text-align: right;
 }
 
+.float-left {
+    float: left;
+}
+
+.float-right {
+    float: right;
+}
+
+.float-clear {
+    clear: both;
+}
+
 .main-button {
     text-align: center;
     padding: 20px;

@@ -15,11 +15,13 @@ import { HttpClient } from '@angular/common/http';
 @Injectable({
   providedIn: 'root'
 })
-export class ResultService {
+export class ApiService {
 
-  constructor(private http: HttpClient) { }
+  constructor(
+    private http: HttpClient
+  ) { }
 
-  doResult(id) {
-    return this.http.post('/api/result', {'id': id});
+  post(method, params) {
+    return this.http.post('/api/' + method, params);
   }
 }

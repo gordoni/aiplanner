@@ -16,13 +16,14 @@ PURPOSE.
 
   <div *ngIf="step == 0">
     <h1 class="title">AIPlanner</h1>
-    AIPlaner uses <a href="http://ssrn.com/abstract=3201703" target="_blank" rel="noopener">deep
-    reinforcement learning</a> to compute the optimal spending and
-    investment strategy to maximize lifetime well-being.
-  </div>
-
-  <div class="main-button" *ngIf="step == 0">
-    <button class="button" (click)="nextStep()">Start</button>
+    <p>
+      AIPlaner uses <a href="http://ssrn.com/abstract=3201703" target="_blank" rel="noopener">deep
+      reinforcement learning</a> to compute the optimal spending and
+      investment strategy to maximize lifetime well-being.
+    </p>
+    <div class="main-button">
+      <button class="button" (click)="nextStep()">Start</button>
+    </div>
   </div>
 
   <div *ngIf="step == 1">
@@ -215,8 +216,15 @@ PURPOSE.
     Allow income annuity purchases: <input type="checkbox" name="spias" [(ngModel)]="spias">
   </div>
 
-  <div class="main-button-right" *ngIf="1 <= step && step < 4">
-    <button class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !dbValid()">Next</button>
+  <div *ngIf="1 <= step && step < 4">
+    <div class="main-button float-left">
+      <button class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
+    </div>
+    <div class="main-button float-right">
+      <button class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !dbValid()">Next</button>
+    </div>
+    <div class="float-clear">
+    </div>
   </div>
 
   <div *ngIf="step == 4">
@@ -225,8 +233,18 @@ PURPOSE.
       <div class="error" *ngIf="scenarioGamma.invalid">
         Invalid numeric value.
       </div>
-    <div class="main-button">
-      <button class="button" (click)="calculate()" [disabled]="!scenarioForm.valid || !dbValid()">Submit</button>
+    <div>
+      <div class="main-button float-left">
+        <button class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
+      </div>
+      <div class="main-button float-right">
+        <button class="button" (click)="calculate()" [disabled]="!scenarioForm.valid || !dbValid()">Submit</button>
+      </div>
+      <div class="float-clear">
+      </div>
+    </div>
+    <div class="error" *ngIf="errorMessage">
+      {{errorMessage}}
     </div>
   </div>
 
@@ -238,18 +256,62 @@ PURPOSE.
     </p>
   </div>
 
-  <div class="error" *ngIf="errorMessage">
-    {{errorMessage}}
-  </div>
-
 </form>
 
 <div *ngIf="step == 6">
-  <h1 class="title">Preliminary Results</h1>
-  <div class="small">
-    [Temporary <a href="/result/{{result_id}}">link</a>]
+  <div class="small-font">
+    [Temporary <a href="/result/{{result_id}}" target="_blank" rel="noopener">link</a>]
   </div>
-  <app-result [id]="result_id"></app-result>
+  <app-result [id]="result_id" [mode]="'prelim'"></app-result>
+  <div class="main-button">
+    <button class="button" (click)="firstStep()">Edit</button>
+  </div>
+  <div class="main-button">
+    <button class="button" (click)="nextStep()">Full Results</button>
+  </div>
+</div>
+
+<form class="scenario-form" #fullForm="ngForm">
+  <div *ngIf="step == 7">
+    <h1 class="title">Full Results</h1>
+    <p>
+      Full results are more accurate, but are computationally
+      expensive to produce, taking 1-2 hours to generate provided no
+      other similar results are being generated at the same time.
+    </p>
+    <p>
+      Enter your email address, and we will contact you once the
+      results are ready.
+    </p>
+    Descriptive name for these results: <input type="text" class="text" name="name" [(ngModel)]="name">
+    <br>
+    Your email address: <input type="email" class="text" pattern=".+@.+" required name="email" #scenarioEmail="ngModel" [(ngModel)]="email">
+    <div class="error" *ngIf="scenarioEmail.invalid && scenarioEmail.dirty">
+      Invalid email address.
+    </div>
+    <div>
+      <div class="main-button float-left">
+        <button class="button" (click)="prevStep()">Back</button>
+      </div>
+      <div class="main-button float-right">
+        <button class="button" (click)="calculateFull()" [disabled]="!fullForm.valid">Compute</button>
+      </div>
+      <div class="float-clear">
+      </div>
+    </div>
+    <div class="error" *ngIf="errorMessage">
+      {{errorMessage}}
+    </div>
+  </div>
+</form>
+
+<div class="scenario-form" *ngIf="step == 8">
+  <h1 class="title">Calculating Full Results</h1>
+  <p>
+    Thank you. Your request has been received.
+    There are {{run_queue_length - 1}} requests ahead of yours.
+    We will let you know when your results are ready.
+  </p>
   <div class="main-button">
     <button class="button" (click)="firstStep()">Edit</button>
   </div>

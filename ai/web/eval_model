@@ -74,6 +74,8 @@ def eval_model(eval_model_params, *, eval_seed, eval_num_timesteps, eval_render,
                 'ce_stderr': ce_stderr,
                 'ce_low': low,
                 'ce_high': high,
+                'consume_preretirement': envs[0].unwrapped.params.consume_preretirement,
+                'preretirement_ppf': evaluator.preretirement_ppf,
             }
             exception = None
 

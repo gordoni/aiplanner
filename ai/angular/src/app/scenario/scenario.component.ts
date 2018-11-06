@@ -11,7 +11,7 @@
 
 import { Component, OnInit } from '@angular/core';
 
-import { ScenarioService } from '../scenario.service';
+import { ApiService } from '../api.service';
 import { DefinedBenefit } from '../defined-benefit';
 import { ResultComponent } from '../result/result.component';
 
@@ -51,10 +51,15 @@ export class ScenarioComponent implements OnInit {
 
   private result_id: string = null;
 
+  public email: string = null
+  public name: string = "My Results";
+
+  public run_queue_length = null;
+
   public errorMessage: string = null;
 
   constructor(
-    private scenarioService: ScenarioService,
+    private apiService: ApiService,
   ) {}
 
   health(individual: string) {
@@ -104,12 +109,20 @@ export class ScenarioComponent implements OnInit {
   }
 
   nextStep() {
+    this.errorMessage = null;
     this.step++;
+    return false;
+  }
+
+  prevStep() {
+    this.errorMessage = null;
+    this.step--;
     return false;
   }
 
   firstStep() {
     this.result_id = null;
+    this.errorMessage = null;
     this.step = 1;
     return false;
   }
@@ -160,7 +173,7 @@ export class ScenarioComponent implements OnInit {
     };
 
     this.errorMessage = null;
-    this.scenarioService.doScenario(scenario).subscribe(
+    this.apiService.post('scenario', scenario).subscribe(
       results => this.doResults(results),
       error => this.handleError(error)
     );
@@ -169,14 +182,34 @@ export class ScenarioComponent implements OnInit {
     return false;
   }
 
-  handleError(error) {
-    this.errorMessage = error.message;
-    this.step--;
+  calculateFull() {
+    var request = {
+      'email': this.email,
+      'name': this.name,
+      'id': this.result_id,
+    }
+    this.errorMessage = null;
+    this.apiService.post('full', request).subscribe(
+      results => this.doFull(results),
+      error => this.handleError(error)
+    );
+    this.step++;
+
+    return false;
   }
 
   doResults(results) {
     this.result_id = results['id'];
     this.step++;
+  }
+
+  doFull(results) {
+    this.run_queue_length = results['run_queue_length']
+  }
+
+  handleError(error) {
+    this.errorMessage = error.message;
+    this.step--;
   }
 
   ngOnInit() {

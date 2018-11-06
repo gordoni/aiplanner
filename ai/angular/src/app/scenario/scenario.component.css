@@ -17,6 +17,10 @@
     width: 8em;
 }
 
+.text {
+    width: 20em;
+}
+
 .scenario-form {
     margin: auto;
     width: 85%;
@@ -52,11 +56,6 @@
     padding: 5px;
 }
 
-.main-button-right {
-    text-align: right;
-    padding: 20px;
-}
-
-.small {
+.small-font {
     font-size: 70%;
 }
