@@ -46,14 +46,31 @@
     padding: 5px;
 }
 
-.income {
+.income, .crra {
     padding: 10px 0;
 }
 
 .income table, .income td {
     border: 1px solid black;
     border-collapse: collapse;
-    padding: 5px;
+    padding: 5px 10px;
+    text-align: center;
+}
+
+.crra table, .crra td {
+    border: 0px;
+    border-collapse: collapse;
+    padding: 0px 10px;
+    text-align: center;
+}
+
+.crra {
+    text-align: center;
+}
+
+.crra table {
+    display: inline-block;
+    border: 1px solid black;
 }
 
 .small-font {

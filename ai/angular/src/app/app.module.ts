@@ -18,7 +18,7 @@ import { FormsModule } from '@angular/forms';
 import { AppComponent } from './app.component';
 import { ScenarioComponent } from './scenario/scenario.component';
 import { DbComponent } from './db/db.component';
-import { ScenarioService } from './scenario.service';
+import { ApiService } from './api.service';
 import { ResultComponent } from './result/result.component';
 import { ResultPageComponent } from './result-page/result-page.component';
 import { PageNotFoundComponent } from './page-not-found/page-not-found.component';
@@ -45,7 +45,7 @@ const appRoutes: Routes = [
     FormsModule,
   ],
   providers: [
-    ScenarioService,
+    ApiService,
   ],
   bootstrap: [AppComponent]
 })

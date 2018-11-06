@@ -36,6 +36,14 @@ Installing additional required components on Amazon Deep Learning AMI
 npm install -g typescript
 npm install -g @angular/cli
 
+Generating required assets (images)
+-----------------------------------
+
+Generate the images required for the website:
+
+    cd ai/angular/src/assets.generate
+    ./run
+
 Development
 -----------
 
