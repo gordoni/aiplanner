@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ "$1" != "--model-dir" ]; then
+    echo '--model-dir must be first argument' >&2
+    exit 1
+fi
+MODEL_DIR=$2
+
+TEMPFILE=`tempfile -p train`
+../train_ppo1.py $* > $TEMPFILE 2>&1 || exit 1
+
+mv $TEMPFILE "$MODEL_DIR/train.log" || exit 1

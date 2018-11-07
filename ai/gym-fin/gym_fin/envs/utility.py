@@ -12,13 +12,12 @@ from math import exp, log
 
 class Utility(object):
 
-    def __init__(self, gamma, consume_floor):
+    def __init__(self, gamma, floor):
 
         self.gamma = gamma
 
-        # Utility needs to be scaled to roughly have an average absolute value of 1 for DDPG implementation (presumably due to optimizer step size).
         self.utility_scale = 1 # Temporary scale for _inverse_utility().
-        self.utility_scale = consume_floor / self.inverse(-1) # Make utility(consume_floor) = -1.
+        self.utility_scale = floor / self.inverse(-1) # Make utility(consume_floor) = -1.
 
     def utility(self, c):
 

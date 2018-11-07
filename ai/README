@@ -44,6 +44,34 @@ Generate the images required for the website:
     cd ai/angular/src/assets.generate
     ./run
 
+Installing an outbound mailer
+-----------------------------
+
+A mail transfer agent is required to provide end users with
+notification that models have been trained.
+
+    sudo apt install postfix
+    sudo dpkg-reconfigure postfix
+        Config type: Internet Site
+        Site: aiplanner.com
+        Root mail: gordoni@gordoni.com
+        Accept mail for: aiplanner.com
+        Synchronous updates: no
+        Local networks: <leave as is>
+        Mailbox size limit: 0
+        Address extension: +
+        Internet protocols: all
+
+You may also need to add an SPF record for the site so messages from
+it don't end up in the spam folder. Something like:
+
+    Type: TXT
+    Host: @
+    Value: v=spf1 ip4:18.206.41.110 ~all
+    TTL: 3600
+
+Consult your domain provider for details of how to do this.
+
 Development
 -----------
 
@@ -51,9 +79,16 @@ Run the API server (the Angular server will proxy to it when handling
 /api requests):
 
     cd aiplanner/ai/web
-    ./serve_model.py
+    ./serve_model.py --serve http
 
-On the same machine in a separate shell window run the Angular server:
+On the same machine in a separate shell window run the runq server
+(which performs running long running model traning and evaluations):
+
+    cd aiplanner/ai/web
+    nice ./serve_model.py --serve runq --admin-email=<you@yourdomain> \
+        --notify-email=<you@yourdomain> --notify-name="<FirstName> <LastName>"
+
+On the same machine in another shell window run the Angular server:
 
     export PATH=$HOME/node-v8.11.3-linux-x64/bin:$PATH
     cd aiplanner/ai/angular

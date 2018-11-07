@@ -8,8 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-master_consume_floor = 1e4
-master_consume_ceiling = 2e5
+master_consume_clip = 5000 # Prevent learning very negative rewards.
 
 # Observation is of life expectancy, so the fact that we train using
 # parameters that don't match those of the user has a second order

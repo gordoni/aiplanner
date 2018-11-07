@@ -481,7 +481,7 @@ class FinEnv(Env):
         self.couple = self.alive_single[0] == None
 
         self.gamma = self.log_uniform(self.params.gamma_low, self.params.gamma_high)
-        self.utility = Utility(self.gamma, self.params.consume_floor)
+        self.utility = Utility(self.gamma, self.params.consume_utility_floor)
 
         self.date = self.params.life_table_date
         self.date_start = datetime.strptime(self.date, '%Y-%m-%d')

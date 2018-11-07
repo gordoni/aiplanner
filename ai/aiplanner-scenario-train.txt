@@ -8,7 +8,8 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-master_consume_clip = 5000 # Prevent learning very negative rewards.
+master_consume_floor = 1e4
+master_consume_ceiling = 2e5
 
 # Make age_start vary, even though we will encounter all ages as we step.
 # This ensures if trained with market data we market time using the market parameters rather than age.

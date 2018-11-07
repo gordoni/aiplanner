@@ -167,6 +167,8 @@ class Evaluator(object):
             except ZeroDivisionError:
                 std = float('nan')
             stderr = std / sqrt(e)
+                # Standard error is ill-defined for a weighted asmple.
+                # Here we are incorrectly assuming each episode carries equal weight.
             utility = envs[0].utility
             unit_ce = indiv_ce = utility.inverse(rew)
             unit_ce_stderr = indiv_ce_stderr = utility.inverse(rew + stderr) - indiv_ce

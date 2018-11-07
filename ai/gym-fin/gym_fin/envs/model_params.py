@@ -72,11 +72,14 @@ class ModelParams(object):
         # Bonds duration policy.
         # Defined by "real-bonds-duration" and "nominal-bonds-duration" below; None for reinforcement learning, or a fixed age in years.
 
-        self._param('consume-floor', 1e4) # Minimum expected consumption level model is trained for.
-        self._param('consume-ceiling', 1e5) # Maximum expected consumption level model is trained for.
+        self._param('consume-floor', 0) # Minimum expected consumption level model is trained for.
+        self._param('consume-ceiling', float('inf')) # Maximum expected consumption level model is trained for.
+            # When training a generic model should normally be set to perhaps a factor of 10 appart.
             # Don't span too large a range as neural network fitting of utility to lower consumption levels will dominate over higher consumption levels.
             # This is because for gamma > 1 higher consumption levels are bounded (i.e. a small change in utility can produce a big change in consumption).
             # Will thus probably need separately trained models for different wealth levels.
+        self._param('consume-utility-floor', 10000) # Scale utility to have a value of -1 for this consumption amount.
+            # Utility needs to be scaled to roughly have an average absolute value of 1 for DDPG implementation (presumably due to optimizer step size).
         self._param('reward-clip', float('inf'), float('inf')) # Clip returned reward values to lie within [-reward_clip, reward_clip].
             # Clipping during training prevents rewards from spanning 5-10 or more orders of magnitude in the absence of guaranteed income.
             # Fitting the neural networks might then perform poorly as large negative reward values would swamp accuracy of more reasonable small reward values.
