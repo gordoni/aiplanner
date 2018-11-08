@@ -11,31 +11,28 @@
 # PURPOSE.
 
 from argparse import ArgumentParser
+from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from json import dumps, loads
 from os import chmod, listdir, makedirs, remove, scandir
-from os.path import isdir
+from os.path import expanduser, isdir
 from re import match
 from socketserver import ThreadingMixIn
 from subprocess import PIPE, Popen
 from tempfile import mkdtemp
-from threading import BoundedSemaphore
+from threading import BoundedSemaphore, Lock, Thread
 from time import sleep
 from traceback import print_tb
 
 from gym_fin.envs.model_params import dump_params_file, load_params_file
 
-host = 'localhost'
-port = 3000
+class ApiHTTPServer(ThreadingMixIn, HTTPServer):
 
-data_root = '/tmp/aiplanner-data'
+    def __init__(self, args):
 
-results_dir = data_root + '/results'
-run_queue = data_root + '/runq'
-
-class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
-
-    pass
+        super().__init__((args.host, args.port), RequestHandler)
+        self.args = args
+        self.run_lock = BoundedSemaphore(self.args.num_concurrent_jobs)
 
 class RequestHandler(BaseHTTPRequestHandler):
 
@@ -85,7 +82,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 else:
                     filetype = None
                 if filetype:
-                    path = results_dir + '/' + asset
+                    path = self.server.args.results_dir + '/' + asset
                     try:
                         data = open(path, 'rb').read()
                     except IOError:
@@ -101,25 +98,24 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         self.send_error(404)
 
-    run_lock = BoundedSemaphore(1) # For load management; there are no known concurrency problems.
-
     def run_models_with_lock(self, request):
 
-        if self.run_lock.acquire(timeout = 60):
+        if self.server.run_lock.acquire(timeout = 60):
             # Development client resubmits request after 120 seconds, so keep timeout plus evaluation time below that.
             try:
                 dir = self.save_params(request)
                 model_prefix = self.get_model_prefix(dir)
-                eval_models('prelim', model_prefix, dir)
-                return {'id': dir[len(results_dir) + 1:]}
+                model_runner = ModelRunner(dir, self.server.args)
+                model_runner.eval_models('prelim', model_prefix)
+                return {'id': dir[len(self.server.args.results_dir) + 1:]}
             finally:
-                self.run_lock.release()
+                self.server.run_lock.release()
         else:
             self.send_error(503, 'Overloaded: try again later')
 
     def save_params(self, request):
 
-        dir = mkdtemp(prefix = '', dir = results_dir)
+        dir = mkdtemp(prefix = '', dir = self.server.args.results_dir)
         chmod(dir, 0o755)
 
         dump_params_file(dir + '/aiplanner-request.txt', request, prefix = '')
@@ -152,8 +148,8 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         unit = 'single' if request['sex2'] == None else 'couple'
         spias = 'spias' if request['spias'] else 'no_spias'
-        suffix = '' if args.modelset_suffix == None else '-' + args.modelset_suffix
-        model_prefix = args.modelset_dir + 'aiplanner.' + unit + '-' + spias + suffix
+        suffix = '' if self.server.args.modelset_suffix == None else '-' + self.server.args.modelset_suffix
+        model_prefix = self.server.args.modelset_dir + 'aiplanner.' + unit + '-' + spias + suffix
 
         return model_prefix
 
@@ -164,7 +160,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         mode = request['mode']
         assert mode in ('prelim', 'full')
 
-        dir = results_dir + '/' + id + '/' + mode
+        dir = self.server.args.results_dir + '/' + id + '/' + mode
 
         best_ce = float('-inf')
         model_seed = 0
@@ -186,7 +182,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             initial = loads(open(dir_seed + '/aiplanner-initial.json').read())
 
             results = dict(initial, **final)
-            results['data_dir'] = '/api/data/' + dir_seed[len(results_dir) + 1:]
+            results['data_dir'] = '/api/data/' + dir_seed[len(self.server.args.results_dir) + 1:]
 
             if results['ce'] > best_ce:
                 best_ce = results['ce']
@@ -208,135 +204,197 @@ class RequestHandler(BaseHTTPRequestHandler):
         id = request['id']
         assert match('[A-Za-z0-9_]+$', id)
 
-        dir = results_dir + '/' + id
+        dir = self.server.args.results_dir + '/' + id
         dump_params_file(dir + '/aiplanner-request-full.txt', request, prefix = '')
 
-        open(run_queue + '/' + id, 'w')
-        #symlink('../' + id, run_queue + '/' + id)
+        open(self.server.args.run_queue + '/' + id, 'w')
+        #symlink('../' + id, self.server.args.run_queue + '/' + id)
 
-        run_queue_length = len(listdir(run_queue))
+        run_queue_length = len(listdir(self.server.args.run_queue))
 
         return {'run_queue_length': run_queue_length}
 
-def eval_models(mode, model_prefix, dir):
+class ModelRunner(object):
 
-    processes = []
-    for model_seed in range(args.num_models):
-        processes.append(eval_model(mode, model_prefix, dir, model_seed))
+    def __init__(self, dir, args):
 
-    fail = False
-    for process in processes:
-        if process.wait() != 0:
-            fail = True
+        self.dir = dir
+        self.args = args
 
-    if fail:
-        raise Exception('Model evaluation failed mode ' + mode + ': ' + dir)
+    def eval_models(self, mode, model_prefix):
 
-def train_eval_models(dir):
+        processes = []
+        for model_seed in range(self.args.num_models):
+            processes.append(self.eval_model(mode, model_prefix, model_seed))
 
-    dir_model = dir + '/models'
-    model_prefix = dir_model + '/aiplanner'
+        fail = False
+        for process in processes:
+            if process.wait() != 0:
+                fail = True
 
-    makedirs(dir_model, exist_ok = True)
+        if fail:
+            raise Exception('Model evaluation failed mode ' + mode + ': ' + self.dir)
 
-    unit = get_family_unit(dir)
-    num_timesteps = str(args.train_single_num_timesteps) if unit == 'single' else str(args.train_couple_num_timesteps)
+    def train_eval_models(self):
 
-    processes = []
-    for model_seed in range(args.num_models):
-        processes.append(train_model(model_prefix, dir, model_seed, num_timesteps))
+        dir_model = self.dir + '/models'
+        model_prefix = dir_model + '/aiplanner'
 
-    fail = False
-    for process in processes:
-        if process.wait() != 0:
-            fail = True
+        makedirs(dir_model, exist_ok = True)
 
-    if fail:
-        raise Exception('Model training failed: ' + dir)
+        unit = self.get_family_unit()
+        num_timesteps = str(self.args.train_single_num_timesteps) if unit == 'single' else str(self.args.train_couple_num_timesteps)
 
-    mode = 'full'
-    eval_models(mode, model_prefix, dir)
+        processes = []
+        for model_seed in range(self.args.num_models):
+            processes.append(self.train_model(model_prefix, model_seed, num_timesteps))
 
-def get_family_unit(dir):
+        fail = False
+        for process in processes:
+            if process.wait() != 0:
+                fail = True
 
-    request = load_params_file(dir + '/aiplanner-request.txt', prefix = '')
+        if fail:
+            raise Exception('Model training failed: ' + self.dir)
 
-    unit = 'single' if request['sex2'] == None else 'couple'
+        mode = 'full'
+        self.eval_models(mode, model_prefix)
 
-    return unit
+    def get_family_unit(self):
 
-def eval_model(mode, model_prefix, dir, model_seed):
+        request = load_params_file(self.dir + '/aiplanner-request.txt', prefix = '')
 
-    model_dir = model_prefix + '-seed_' + str(model_seed) + '.tf'
-    dir_seed = dir + '/' + mode + '/' + str(model_seed)
+        unit = 'single' if request['sex2'] == None else 'couple'
 
-    makedirs(dir_seed, exist_ok = True)
+        return unit
 
-    num_timesteps = str(args.eval_prelim_num_timesteps) if mode == 'prelim' else str(args.eval_full_num_timesteps)
+    def eval_model(self, mode, model_prefix, model_seed):
 
-    return Popen(('./eval_model',
-        '--result-dir', dir_seed,
-        '--model-dir', model_dir,
-        '-c', model_dir + '/assets.extra/params.txt',
-        '-c', '../market_data.txt',
-        '-c', dir + '/aiplanner-scenario.txt',
-        '--eval-num-timesteps', num_timesteps,
-        '--num-trace-episodes', str(args.num_trace_episodes),
-        '--num-environments', str(args.num_environments),
-        '--pdf-buckets', str(args.pdf_buckets),
-    ))
+        model_dir = model_prefix + '-seed_' + str(model_seed) + '.tf'
+        dir_seed = self.dir + '/' + mode + '/' + str(model_seed)
 
-def train_model(model_prefix, dir, model_seed, num_timesteps):
+        makedirs(dir_seed, exist_ok = True)
 
-    model_dir = model_prefix + '-seed_' + str(model_seed) + '.tf'
+        num_timesteps = str(self.args.eval_prelim_num_timesteps) if mode == 'prelim' else str(self.args.eval_full_num_timesteps)
 
-    return Popen(('./train_model',
-        '--model-dir', model_dir,
-        '-c', '../aiplanner-scenario.txt',
-        '-c', '../market_data.txt',
-        '-c', dir + '/aiplanner-scenario.txt',
-        '--train-seed', str(model_seed),
-        '--train-num-timesteps', num_timesteps,
-    ))
+        return Popen(('./eval_model',
+            '--result-dir', dir_seed,
+            '--model-dir', model_dir,
+            '-c', model_dir + '/assets.extra/params.txt',
+            '-c', '../market_data.txt',
+            '-c', self.dir + '/aiplanner-scenario.txt',
+            '--eval-num-timesteps', num_timesteps,
+            '--num-trace-episodes', str(self.args.num_trace_episodes),
+            '--num-environments', str(self.args.num_environments),
+            '--pdf-buckets', str(self.args.pdf_buckets),
+        ))
+
+    def train_model(self, model_prefix, model_seed, num_timesteps):
+
+        model_dir = model_prefix + '-seed_' + str(model_seed) + '.tf'
+
+        return Popen(('./train_model',
+            '--model-dir', model_dir,
+            '-c', '../aiplanner-scenario.txt',
+            '-c', '../market_data.txt',
+            '-c', self.dir + '/aiplanner-scenario.txt',
+            '--train-seed', str(model_seed),
+            '--train-num-timesteps', num_timesteps,
+        ))
 
 class RunQueueServer(object):
 
+    def __init__(self, args):
+
+        self.args = args
+
+        self.run_queue_lock = Lock()
+        self.output_lock = Lock()
+
+        self.running = {}
+
+    def report_exception(self, e):
+
+        self.output_lock.acquire()
+        print('----------------------------------------')
+        print_tb(e.__traceback__)
+        print(e.__class__.__name__ + ': ' + str(e))
+        print('----------------------------------------')
+        self.output_lock.release()
+
     def serve_forever(self):
 
+        prev_pending = None
         while True:
             try:
+                run_queue_length = 0
                 oldest_id = None
                 oldest_age = float('inf')
-                with scandir(run_queue) as iter:
+                self.run_queue_lock.acquire()
+                with scandir(self.args.run_queue) as iter:
                     for entry in iter:
-                        age = entry.stat(follow_symlinks = False).st_mtime
-                        if age < oldest_age:
-                            oldest_id = entry.name
-                            oldest_age = age
+                        run_queue_length += 1
+                        if len(self.running) < self.args.num_concurrent_jobs:
+                            age = entry.stat(follow_symlinks = False).st_mtime
+                            if age < oldest_age and entry.name not in self.running:
+                                oldest_id = entry.name
+                                oldest_age = age
+                self.run_queue_lock.release()
                 if oldest_id:
-                    try:
-                        self.serve_one(oldest_id)
-                    finally:
-                        remove(run_queue + '/' + oldest_id)
+                    id = oldest_id
+                    thread = Thread(target = self.serve_thread, args = (id, ), daemon = True)
+                    self.log('Starting', id)
+                    self.running[id] = thread
+                    thread.start()
                 else:
+                    pending = max(0, run_queue_length - len(self.running))
+                    if pending != prev_pending:
+                        prev_pending = pending
+                        if pending > 0:
+                            self.log('Jobs pending', pending)
                     sleep(10)
             except Exception as e:
-                print('----------------------------------------')
-                print_tb(e.__traceback__)
-                print(e.__class__.__name__ + ': ' + str(e))
-                print('----------------------------------------')
+                self.report_exception(e)
                 sleep(10)
+            except KeyboardInterrupt:
+                break
+
+    def log(self, *args):
+
+        self.output_lock.acquire()
+        print(datetime.now().replace(microsecond = 0).isoformat(), *args)
+        self.output_lock.release()
+
+    def serve_thread(self, id):
+
+        try:
+            self.serve_one(id)
+            self.log('Completed', id)
+        except Exception as e:
+            self.report_exception(e)
+            self.log('Failed', id)
+        finally:
+            try:
+                self.run_queue_lock.acquire()
+                remove(self.args.run_queue + '/' + id)
+                del self.running[id]
+            except Exception as e:
+                self.report_exception(e)
+                pass
+            finally:
+                self.run_queue_lock.release()
 
     def serve_one(self, id):
 
-        dir = results_dir + '/' + id
+        dir = self.args.results_dir + '/' + id
         request = load_params_file(dir + '/aiplanner-request-full.txt', prefix = '')
         email = request['email']
         name = request['name']
 
         try:
-            dir = results_dir + '/' + id
-            train_eval_models(dir)
+            dir = self.args.results_dir + '/' + id
+            model_runner = ModelRunner(dir, self.args)
+            model_runner.train_eval_models()
             self.notify(email, name, id, True)
         except Exception as e:
             self.notify(email, name, id, False)
@@ -349,22 +407,22 @@ class RunQueueServer(object):
             email,
         ]
         if not success:
-            cmd.append(args.admin_email)
+            cmd.append(self.args.admin_email)
         mta = Popen(cmd, stdin = PIPE, encoding = 'utf-8')
 
-        header = 'From: "' + args.notify_name + '" <' + args.notify_email + '''>
+        header = 'From: "' + self.args.notify_name + '" <' + self.args.notify_email + '''>
 To: ''' + email + '''
-Subject: ''' + args.project_name + ': ' + name + '''
+Subject: ''' + self.args.project_name + ': ' + name + '''
 
 '''
 
         if success:
-            body = 'Your requested ' + args.project_name + ' results are now available at ' + args.base_url + 'result/' + id + '''
+            body = 'Your requested ' + self.args.project_name + ' results are now available at ' + self.args.base_url + 'result/' + id + '''
 
-Thank you for using ''' + args.project_name + '''.
+Thank you for using ''' + self.args.project_name + '''.
 '''
         else:
-            body = 'Something went wrong computing your ' + args.project_name + ''' results. We are looking into the problem.
+            body = 'Something went wrong computing your ' + self.args.project_name + ''' results. We are looking into the problem.
 
 JobRef: ''' + id + '''
 '''
@@ -375,34 +433,47 @@ JobRef: ''' + id + '''
         assert mta.wait() == 0
 
 def main():
-    global args
 
     parser = ArgumentParser()
+
+    # Generic options.
     parser.add_argument('--serve', default='http', choices=('http', 'runq'))
+    parser.add_argument('--root-dir', default = '~/aiplanner-data')
+    parser.add_argument('--num-concurrent-jobs', type = int, default = 1) # Each job represents the concurrent execution of num_models models in a single scenario.
+    parser.add_argument('--num-models', type = int, default = 10)
+    parser.add_argument('--num-trace-episodes', type = int, default = 5) # Number of sample traces to generate.
+    parser.add_argument('--num-environments', type = int, default = 10) # Number of parallel environments to use for a single model evaluation. Speeds up tensor flow.
+    parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
+
+    # HTTP options.
+    parser.add_argument('--host', default = 'localhost')
+    parser.add_argument('--port', type = int, default = 3000)
     parser.add_argument('--modelset-dir', default = './')
     parser.add_argument('--modelset-suffix')
+    parser.add_argument('--eval-prelim-num-timesteps', type = int, default = 20000)
+
+    # runq options.
     parser.add_argument('--notify-email', default = 'notify@aiplanner.com')
     parser.add_argument('--notify-name', default = 'AIPlanner')
     parser.add_argument('--admin-email', default = 'admin@aiplanner.com')
     parser.add_argument('--project-name', default = 'AIPlanner')
     parser.add_argument('--base-url', default = 'https://www.aiplanner.com/')
-    parser.add_argument('--eval-prelim-num-timesteps', type = int, default = 20000)
-    parser.add_argument('--eval-full-num-timesteps', type = int, default = 2000000)
     parser.add_argument('--train-single-num-timesteps', type = int, default = 1000000)
     parser.add_argument('--train-couple-num-timesteps', type = int, default = 2000000)
-    parser.add_argument('--num-models', type = int, default = 10)
-    parser.add_argument('--num-trace-episodes', type = int, default = 5)
-    parser.add_argument('--num-environments', type = int, default = 10) # Number of parallel environments to use for a single model evaluation. Speeds up tensor flow.
-    parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
-    args = parser.parse_args()
+    parser.add_argument('--eval-full-num-timesteps', type = int, default = 2000000)
 
-    makedirs(results_dir, exist_ok = True)
-    makedirs(run_queue, exist_ok = True)
+    args = parser.parse_args()
+    root_dir = expanduser(args.root_dir)
+    args.results_dir = root_dir + '/results'
+    args.run_queue = root_dir + '/runq'
+
+    makedirs(args.results_dir, exist_ok = True)
+    makedirs(args.run_queue, exist_ok = True)
 
     if args.serve == 'http':
-        server = ThreadingHTTPServer((host, port), RequestHandler)
+        server = ApiHTTPServer(args)
     else:
-        server = RunQueueServer()
+        server = RunQueueServer(args)
     server.serve_forever()
 
 if __name__ == '__main__':
