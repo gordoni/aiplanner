@@ -151,27 +151,27 @@ $EVALUATE generic retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FI
 
 # Couple. Specific benchmark.
 
-$TRAIN couple-age_start50-age_retirement65-defined_benefits16e3-tax_deferred1e6 "--train-num-timesteps=2000000 -c $COUPLE_EVAL_FILE --master-p-tax-deferred=1e6"
+$TRAIN couple-age_start50-age_retirement65-defined_benefits16e3-tax_deferred1e6 "-c $COUPLE_EVAL_FILE --master-p-tax-deferred=1e6"
 $EVALUATE couple-age_start50-age_retirement65-defined_benefits16e3-tax_deferred1e6 specific "-c $COUPLE_EVAL_FILE --master-p-tax-deferred=1e6"
 
 # Couple. Variable scenario.
 
-$TRAIN couple-generic '--train-num-timesteps=2000000 --master-sex2=male'
+$TRAIN couple-generic '--master-sex2=male'
 $EVALUATE couple-generic couple-age_start50-defined_benefits16e3-tax_deferred1e6 "-c $COUPLE_EVAL_FILE --master-p-tax-deferred=1e6"
 
 # Notes on tweaks that have been tried out:
 #
-# --train-num-timesteps=500000
+# --train-single-num-timesteps=500000
 #    Produced 0.0% better generic results than 1m timesteps both pposgd_simple.learn(optim_batchsize=64).
 #    SUGGESTS COULD CUT TRAINING TIME IN HALF BUT MIGHT NOT WORK FOR MORE COMPLEX ENVIRONMENTS SUCH AS SPIAS.
 #
-# --train-num-timesteps=2000000
+# --train-single-num-timesteps=2000000
 #    Produced 0.7% worse generic results than 1m timesteps both pposgd_simple.learn(optim_batchsize=64).
 #
 # --train-hidden-layer-size=128
 #    Produced 0.2% worse generic results than hidden layer size 64 both pposgd_simple.learn(optim_batchsize=64).
 #
-# --train-hidden-layer-size=128 --train-num-timesteps=2000000
+# --train-hidden-layer-size=128 --train-single-num-timesteps=2000000
 #    Produced 0.6% worse generic results than 1m timesteps and hidden layer size 64 both pposgd_simple.learn(optim_batchsize=64).
 #
 # pposgd_simple.learn(lam=0.98)

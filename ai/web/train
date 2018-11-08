@@ -78,5 +78,5 @@ train_parallel () {
 $TRAIN single-no_spias
 $TRAIN single-spias '--master-nominal-spias'
 
-$TRAIN couple-no_spias '--train-num-timesteps=2000000 --master-sex2=male'
-$TRAIN couple-spias '--train-num-timesteps=2000000 --master-sex2=male --master-nominal-spias'
+$TRAIN couple-no_spias '--master-sex2=male'
+$TRAIN couple-spias '--master-sex2=male --master-nominal-spias'

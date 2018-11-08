@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 # AIPlanner - Deep Learning Financial Planner
 # Copyright (C) 2018 Gordon Irlam
 #
@@ -81,7 +79,9 @@ def fin_arg_parse(parser, *, training = True, evaluate = True, dump = True, args
 
     if training:
         parser.add_argument('--train-seed', help = 'RNG seed', type = int, default = 0)
-        parser.add_argument('--train-num-timesteps', type = int, default = int(1e6))
+        parser.add_argument('--train-num-timesteps', type = int, default = int(1e9))
+        parser.add_argument('--train-single-num-timesteps', type = int, default = int(1e6))
+        parser.add_argument('--train-couple-num-timesteps', type = int, default = int(2e6))
     if evaluate and training:
         boolean_flag(parser, 'evaluation', default = False)
         parser.add_argument('--eval-frequency', type = int, default = 20000) # During training with evaluation on evaluate every this many env steps.

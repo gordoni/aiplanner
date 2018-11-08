@@ -25,7 +25,8 @@ from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 from gym_fin.envs.model_params import dump_params_file
 
-def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_minibatch_size, train_num_timesteps, train_seed,
+def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_minibatch_size,
+          train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps, train_seed,
           eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, model_dir):
     while model_dir and model_dir[-1] == '/':
         model_dir = model_dir[:-1]
@@ -38,6 +39,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     set_global_seeds(train_seed)
     session = U.make_session(num_cpu=1).__enter__()
     env = make_fin_env(action_space_unbounded=True, training=True, **training_model_params)
+    couple = training_model_params['sex2'] != None
     if evaluation:
         eval_seed += 1000000 # Use a different seed than might have been used during training.
         eval_env = make_fin_env(action_space_unbounded=True, training=False, **eval_model_params)
@@ -59,8 +61,11 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     else:
         eval_env = None
         eval_callback = None
+        def eval_callback(l, g):
+            if env.unwrapped.env_single_timesteps >= train_single_num_timesteps and (not couple or env.unwrapped.env_couple_timesteps >= train_couple_num_timesteps):
+                l['timesteps_so_far'] = train_num_timesteps # Leads to termination of training.
+            return False
 
-    couple = training_model_params['sex2'] != None
     def policy_fn(name, ob_space, ac_space):
         return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space,
             hid_size=train_hidden_layer_size, num_hid_layers=train_num_hidden_layers,

@@ -193,6 +193,9 @@ class FinEnv(Env):
             dtype = 'float32'
         )
 
+        self.env_couple_timesteps = 0
+        self.env_single_timesteps = 0
+
         self.life_table_age = None
         self.life_table2_age = None
 
@@ -1056,6 +1059,10 @@ class FinEnv(Env):
 
         self.episode_reward_sum += reward
         self.episode_length += 1
+        if self.couple:
+            self.env_couple_timesteps += 1
+        else:
+            self.env_single_timesteps += 1
 
         self.couple = self.alive_single[self.episode_length] == None
 

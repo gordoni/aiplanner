@@ -242,12 +242,9 @@ class ModelRunner(object):
 
         makedirs(dir_model, exist_ok = True)
 
-        unit = self.get_family_unit()
-        num_timesteps = str(self.args.train_single_num_timesteps) if unit == 'single' else str(self.args.train_couple_num_timesteps)
-
         processes = []
         for model_seed in range(self.args.num_models):
-            processes.append(self.train_model(model_prefix, model_seed, num_timesteps))
+            processes.append(self.train_model(model_prefix, model_seed))
 
         fail = False
         for process in processes:
@@ -259,14 +256,6 @@ class ModelRunner(object):
 
         mode = 'full'
         self.eval_models(mode, model_prefix)
-
-    def get_family_unit(self):
-
-        request = load_params_file(self.dir + '/aiplanner-request.txt', prefix = '')
-
-        unit = 'single' if request['sex2'] == None else 'couple'
-
-        return unit
 
     def eval_model(self, mode, model_prefix, model_seed):
 
@@ -289,7 +278,7 @@ class ModelRunner(object):
             '--pdf-buckets', str(self.args.pdf_buckets),
         ))
 
-    def train_model(self, model_prefix, model_seed, num_timesteps):
+    def train_model(self, model_prefix, model_seed):
 
         model_dir = model_prefix + '-seed_' + str(model_seed) + '.tf'
 
@@ -299,7 +288,7 @@ class ModelRunner(object):
             '-c', '../market_data.txt',
             '-c', self.dir + '/aiplanner-scenario.txt',
             '--train-seed', str(model_seed),
-            '--train-num-timesteps', num_timesteps,
+            '--train-num-timesteps', str(self.args.train_num_timesteps),
         ))
 
 class RunQueueServer(object):
@@ -458,8 +447,7 @@ def main():
     parser.add_argument('--admin-email', default = 'admin@aiplanner.com')
     parser.add_argument('--project-name', default = 'AIPlanner')
     parser.add_argument('--base-url', default = 'https://www.aiplanner.com/')
-    parser.add_argument('--train-single-num-timesteps', type = int, default = 1000000)
-    parser.add_argument('--train-couple-num-timesteps', type = int, default = 2000000)
+    parser.add_argument('--train-num-timesteps', type = int, default = 10000000)
     parser.add_argument('--eval-full-num-timesteps', type = int, default = 2000000)
 
     args = parser.parse_args()

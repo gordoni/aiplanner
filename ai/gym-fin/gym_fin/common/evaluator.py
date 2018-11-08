@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 # AIPlanner - Deep Learning Financial Planner
 # Copyright (C) 2018 Gordon Irlam
 #
