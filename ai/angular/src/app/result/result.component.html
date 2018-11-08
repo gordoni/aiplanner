@@ -14,7 +14,7 @@ PURPOSE.
 
 <div *ngIf="results" class="result-component">
   <h1 *ngIf="mode == 'prelim'" class="title">Preliminary Results</h1>
-  <h1 *ngIf="mode == 'full'" class="title">Results</h1>
+  <h1 *ngIf="mode == 'full'" class="title">{{results.name}}</h1>
   <div *ngIf="results.error != null">
     <p>
       Problem detected:

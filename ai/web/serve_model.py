@@ -17,14 +17,20 @@ from json import dumps, loads
 from os import chmod, listdir, makedirs, remove, scandir
 from os.path import expanduser, isdir
 from re import match
+from shutil import copyfile, move
 from socketserver import ThreadingMixIn
 from subprocess import PIPE, Popen
-from tempfile import mkdtemp
+from tempfile import mkdtemp, mkstemp
 from threading import BoundedSemaphore, Lock, Thread
 from time import sleep
 from traceback import print_tb
 
 from gym_fin.envs.model_params import dump_params_file, load_params_file
+
+class AttributeObject(object):
+
+    def __init__(self, dict):
+        self.__dict__.update(dict)
 
 class ApiHTTPServer(ThreadingMixIn, HTTPServer):
 
@@ -71,7 +77,24 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
 
-        if self.path.startswith('/api/data/'):
+        if self.path == '/healthcheck':
+
+            if self.healthcheck():
+                data = 'OK'
+            else:
+                data = 'FAIL'
+
+            data = data.encode('utf-8')
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
+            self.send_header('Content-Length', len(data))
+            self.send_header('Connection', 'close')
+            self.end_headers()
+            self.wfile.write(data)
+            return
+
+        elif self.path.startswith('/api/data/'):
 
             asset = self.path[len('/api/data/'):];
             if '..' not in asset:
@@ -98,27 +121,78 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         self.send_error(404)
 
+    def healthcheck(self):
+
+        myargs = dict(
+            vars(self.server.args),
+            num_models = 1,
+            eval_prelim_num_timesteps = 2000,
+            train_num_timesteps = 2000,
+            eval_full_num_timesteps = 2000,
+        )
+        args = AttributeObject(myargs)
+
+        request = {
+            'sex2': None,
+            'spias': True,
+        }
+        result = self.run_models(request, args, prefix = 'healthcheck-')
+        id = result['id']
+        request = {
+            'id': id,
+            'mode': 'prelim',
+        }
+        results = self.get_results(request)
+
+        assert 40000 < results['ce'] < 50000 # Generically trained model doesn't allow for SPIAs past 85. Hence worse CE than self trained model below.
+
+        dir = self.server.args.results_dir + '/' + id
+        model_runner = ModelRunner(dir, args)
+        model_runner.train_eval_models('Healthcheck Results')
+        request = {
+            'id': id,
+            'mode': 'full',
+        }
+        results = self.get_results(request)
+
+        assert 45000 < results['ce'] < 50000
+
+        return True
+
     def run_models_with_lock(self, request):
 
         if self.server.run_lock.acquire(timeout = 60):
             # Development client resubmits request after 120 seconds, so keep timeout plus evaluation time below that.
             try:
-                dir = self.save_params(request)
-                model_prefix = self.get_model_prefix(dir)
-                model_runner = ModelRunner(dir, self.server.args)
-                model_runner.eval_models('prelim', model_prefix)
-                return {'id': dir[len(self.server.args.results_dir) + 1:]}
+                return self.run_models(request, self.server.args)
             finally:
                 self.server.run_lock.release()
         else:
             self.send_error(503, 'Overloaded: try again later')
 
-    def save_params(self, request):
+    def run_models(self, request, args, prefix = ''):
 
-        dir = mkdtemp(prefix = '', dir = self.server.args.results_dir)
+        dir = self.save_request(request, prefix = prefix)
+        if prefix == 'healthcheck-':
+            copyfile('healthcheck-scenario.txt', dir + '/aiplanner-scenario.txt')
+        else:
+            self.save_scenario(dir, request)
+        model_prefix = self.get_model_prefix(dir)
+        model_runner = ModelRunner(dir, args)
+        model_runner.eval_models('prelim', model_prefix)
+
+        return {'id': dir[len(args.results_dir) + 1:]}
+
+    def save_request(self, request, prefix = ''):
+
+        dir = mkdtemp(prefix = prefix, dir = self.server.args.results_dir)
         chmod(dir, 0o755)
 
         dump_params_file(dir + '/aiplanner-request.txt', request, prefix = '')
+
+        return dir
+
+    def save_scenario(self, dir, request):
 
         request_params = dict(request)
         request_params['defined_benefits'] = dumps(request_params['defined_benefits'])
@@ -134,13 +208,10 @@ class RequestHandler(BaseHTTPRequestHandler):
         del request_params['p_taxable_bonds']
         request_params['nominal_spias'] = request_params['spias']
         del request_params['spias']
-        request_params['consume_clip'] = 0
         request_params['consume_income_ratio_max'] = float('inf')
         request_params['display_returns'] = False
 
         dump_params_file(dir + '/aiplanner-scenario.txt', request_params)
-
-        return dir
 
     def get_model_prefix(self, dir):
 
@@ -156,7 +227,7 @@ class RequestHandler(BaseHTTPRequestHandler):
     def get_results(self, request):
 
         id = request['id']
-        assert match('[A-Za-z0-9_]+$', id)
+        assert match('[A-Za-z0-9_-]+$', id)
         mode = request['mode']
         assert mode in ('prelim', 'full')
 
@@ -202,7 +273,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         name = request['name']
         assert match('.*$', name)
         id = request['id']
-        assert match('[A-Za-z0-9_]+$', id)
+        assert match('[A-Za-z0-9_-]+$', id)
 
         dir = self.server.args.results_dir + '/' + id
         dump_params_file(dir + '/aiplanner-request-full.txt', request, prefix = '')
@@ -235,7 +306,7 @@ class ModelRunner(object):
         if fail:
             raise Exception('Model evaluation failed mode ' + mode + ': ' + self.dir)
 
-    def train_eval_models(self):
+    def train_eval_models(self, name):
 
         dir_model = self.dir + '/models'
         model_prefix = dir_model + '/aiplanner'
@@ -244,12 +315,14 @@ class ModelRunner(object):
 
         processes = []
         for model_seed in range(self.args.num_models):
-            processes.append(self.train_model(model_prefix, model_seed))
+            model_dir = model_prefix + '-seed_' + str(model_seed) + '.tf'
+            processes.append(self.train_model(name, model_dir, model_seed))
 
         fail = False
-        for process in processes:
+        for process, temp_name in processes:
             if process.wait() != 0:
                 fail = True
+            move(temp_name, model_dir + '/train.log')
 
         if fail:
             raise Exception('Model training failed: ' + self.dir)
@@ -266,30 +339,34 @@ class ModelRunner(object):
 
         num_timesteps = str(self.args.eval_prelim_num_timesteps) if mode == 'prelim' else str(self.args.eval_full_num_timesteps)
 
-        return Popen(('./eval_model',
+        eval_log = open(dir_seed + '/eval.log', 'w')
+        return Popen(('./eval_model.py',
             '--result-dir', dir_seed,
             '--model-dir', model_dir,
             '-c', model_dir + '/assets.extra/params.txt',
             '-c', '../market_data.txt',
             '-c', self.dir + '/aiplanner-scenario.txt',
+            '--master-consume-clip', '0',
             '--eval-num-timesteps', num_timesteps,
             '--num-trace-episodes', str(self.args.num_trace_episodes),
             '--num-environments', str(self.args.num_environments),
             '--pdf-buckets', str(self.args.pdf_buckets),
-        ))
+        ), stdout = eval_log, stderr = eval_log)
 
-    def train_model(self, model_prefix, model_seed):
+    def train_model(self, name, model_dir, model_seed):
 
-        model_dir = model_prefix + '-seed_' + str(model_seed) + '.tf'
-
-        return Popen(('./train_model',
+        temp, temp_name = mkstemp(prefix = 'train')
+        process = Popen(('../train_ppo1.py',
             '--model-dir', model_dir,
             '-c', '../aiplanner-scenario.txt',
             '-c', '../market_data.txt',
             '-c', self.dir + '/aiplanner-scenario.txt',
+            '--master-name', name,
             '--train-seed', str(model_seed),
             '--train-num-timesteps', str(self.args.train_num_timesteps),
-        ))
+        ), stdout = temp, stderr = temp)
+
+        return process, temp_name
 
 class RunQueueServer(object):
 
@@ -383,13 +460,16 @@ class RunQueueServer(object):
         try:
             dir = self.args.results_dir + '/' + id
             model_runner = ModelRunner(dir, self.args)
-            model_runner.train_eval_models()
+            model_runner.train_eval_models(name)
             self.notify(email, name, id, True)
         except Exception as e:
             self.notify(email, name, id, False)
             raise e
 
     def notify(self, email, name, id, success):
+
+        if not email:
+            return
 
         cmd = ['/usr/sbin/sendmail',
             '-f', 'root',

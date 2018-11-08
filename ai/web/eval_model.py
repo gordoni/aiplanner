@@ -54,6 +54,7 @@ def eval_model(eval_model_params, *, eval_seed, eval_num_timesteps, eval_render,
             interp = envs[0].unwrapped.interpret_action(action)
 
             interp['asset_allocation'] = interp['asset_allocation'].as_list()
+            interp['name'] = envs[0].unwrapped.params.name
             interp_str = dumps(interp)
             with open(result_dir + '/aiplanner-initial.json', 'w') as w:
                  w.write(interp_str)

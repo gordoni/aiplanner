@@ -35,6 +35,8 @@ class ModelParams(object):
 
         string_type = None
 
+        self._param('name', 'AIPlanner', tp = string_type) # Descriptive name of this parameter set.
+
         self._boolean_flag('verbose', False) # Display relevant model information such as when stepping.
         self._boolean_flag('display-returns', True) # Display yield and return statistics.
 
