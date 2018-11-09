@@ -1,5 +1,19 @@
 AIPlanner - Deep Reinforcement Learning Financial Planner.
 
+Server requirements
+-------------------
+
+AIPLanner runs well in production on an 8 core 16 thread Amazon
+c5.4xlarge instance. Such an instance is also necessary for training
+the generic nueral networks.
+
+For development a much smaller c5.large, or even a t3.micro instance,
+can often be used, provided the SEEDS=1 environment variable is set
+and the --num-models=1 flag is passed to serve_model.py .
+
+Obtaining tensorflow
+--------------------
+
 Would like to run on Ubuntu 18.04, but:
 
     Ubuntu 18.04 has CUDA 9.1.
@@ -36,12 +50,34 @@ Installing additional required components on Amazon Deep Learning AMI
 npm install -g typescript
 npm install -g @angular/cli
 
+Setting up environment variables
+--------------------------------
+
+Various environment variables need to be set up for production or
+development tasks:
+
+    source activate tensorflow_p36
+    source aiplanner/setenv
+
+Training the generic nueral network models
+------------------------------------------
+
+Training the neural network models will take several hours:
+
+    cd aiplanner/ai/web
+    ./train
+
+The models should then be installed:
+
+    mkdir -p ~/aiplanner-data/models
+    mv aiplanner.*.tf ~/aiplanner-data/models
+
 Generating required assets (images)
 -----------------------------------
 
 Generate the images required for the website:
 
-    cd ai/angular/src/assets.generate
+    cd aiplanner/ai/angular/src/assets.generate
     ./run
 
 Installing an outbound mailer

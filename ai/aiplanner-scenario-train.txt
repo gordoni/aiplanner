@@ -12,11 +12,18 @@ master_consume_floor = 1e4
 master_consume_ceiling = 2e5
 
 # Make age_start vary, even though we will encounter all ages as we step.
-# This ensures if trained with market data we market time using the market parameters rather than age.
+# This helps ensure if trained with market data we market time using the market parameters rather than life expectancy.
 master_age_start_low = 30
 master_age_start_high = 50
 master_age_start2_low = 30
 master_age_start2_high = 50
+
+# Ensure life expectancy isn't a proxy for age.
+# This helps ensure we use spias_purchase_years rather than life expectancy in determining whether to purchase SPIAs.
+master_life_expectancy_additional_low = -5
+master_life_expectancy_additional_high = 5
+master_life_expectancy_additional2_low = -5
+master_life_expectancy_additional2_high = 5
 
 master_age_retirement_low = 50
 master_age_retirement_high = 75

@@ -222,7 +222,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         unit = 'single' if request['sex2'] == None else 'couple'
         spias = 'spias' if request['spias'] else 'no_spias'
         suffix = '' if self.server.args.modelset_suffix == None else '-' + self.server.args.modelset_suffix
-        model_prefix = self.server.args.modelset_dir + 'aiplanner.' + unit + '-' + spias + suffix
+        model_prefix = expanduser(self.server.args.modelset_dir) + '/aiplanner.' + unit + '-' + spias + suffix
 
         return model_prefix
 
@@ -334,6 +334,7 @@ class ModelRunner(object):
         for process, temp_name in processes:
             if process.wait() != 0:
                 fail = True
+            makedirs(model_dir, exist_ok = True)
             move(temp_name, model_dir + '/train.log')
 
         if fail:
@@ -583,7 +584,7 @@ def main():
     # HTTP options.
     parser.add_argument('--host', default = 'localhost')
     parser.add_argument('--port', type = int, default = 3000)
-    parser.add_argument('--modelset-dir', default = './')
+    parser.add_argument('--modelset-dir', default = '~/aiplanner-data/models')
     parser.add_argument('--modelset-suffix')
     parser.add_argument('--eval-prelim-num-timesteps', type = int, default = 20000)
 
