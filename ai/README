@@ -97,6 +97,10 @@ notification that models have been trained.
         Mailbox size limit: 0
         Address extension: +
         Internet protocols: all
+    sudo <edit> /etc/postfix/main.cf
+        Change: myhostname = <...>
+        To: myhostname = aiplanner.com
+    sudo /etc/init.d/postfix reload
 
 You may also need to add an SPF record for the site so messages from
 it don't end up in the spam folder. Something like:
@@ -106,7 +110,19 @@ it don't end up in the spam folder. Something like:
     Value: v=spf1 ip4:18.206.41.110 ~all
     TTL: 3600
 
-Consult your domain provider for details of how to do this.
+You should also add a MX record so the server can receive and forward
+bounce messages addressed to root. Something like:
+
+    Type: MX
+    Host: @
+    Priority: 1
+    Value: ec2-18-206-41-110.compute-1.amazonaws.com
+    TTL: 3600
+
+Consult your domain provider for details of how to do these steps.
+
+Finally you may need to create a firewall rule to allow inbound SMTP
+connections on port 25. Consult your service provider for details.
 
 Performing site health checks
 -----------------------------
