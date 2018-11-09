@@ -8,8 +8,6 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-master_consume_clip = 0
-
 master_sex2 = 'male'
 master_life_expectancy_additional = 3 # Investors tend to be in better health than the average retiree.
 master_life_expectancy_additional2 = 3

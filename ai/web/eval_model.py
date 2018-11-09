@@ -12,7 +12,7 @@
 
 from csv import writer
 from json import dumps
-from os import chmod, environ, mkdir
+from os import chmod, environ, getpriority, mkdir, PRIO_PROCESS, setpriority
 from subprocess import run
 
 import tensorflow as tf
@@ -25,7 +25,7 @@ from baselines.common.misc_util import set_global_seeds
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 
-def eval_model(eval_model_params, *, eval_seed, eval_num_timesteps, eval_render, model_dir, result_dir, num_trace_episodes, num_environments, pdf_buckets):
+def eval_model(eval_model_params, *, eval_seed, eval_num_timesteps, eval_render, nice, model_dir, result_dir, num_trace_episodes, num_environments, pdf_buckets):
 
     try:
         mkdir(result_dir)
@@ -35,6 +35,10 @@ def eval_model(eval_model_params, *, eval_seed, eval_num_timesteps, eval_render,
     prefix = result_dir + '/aiplanner'
 
     try:
+
+        priority = getpriority(PRIO_PROCESS, 0)
+        priority += nice
+        setpriority(PRIO_PROCESS, 0, priority)
 
         eval_seed += 1000000 # Use a different seed than might have been used during training.
         set_global_seeds(eval_seed)

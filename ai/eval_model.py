@@ -11,6 +11,7 @@
 # PURPOSE.
 
 from math import ceil, exp, sqrt
+from os import getpriority, PRIO_PROCESS, setpriority
 
 import tensorflow as tf
 
@@ -49,7 +50,11 @@ def pi_merton(env, obs, continuous_time = False):
         consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / env.params.time_period
     return consume_fraction, stocks_allocation
 
-def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_timesteps, eval_render, model_dir, search_consume_initial_around):
+def run(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_timesteps, eval_render, nice, model_dir, search_consume_initial_around):
+
+    priority = getpriority(PRIO_PROCESS, 0)
+    priority += nice
+    setpriority(PRIO_PROCESS, 0, priority)
 
     assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize)) <= 1
     model = not (merton or samuelson or annuitize)

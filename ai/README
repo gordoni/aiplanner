@@ -72,20 +72,30 @@ it don't end up in the spam folder. Something like:
 
 Consult your domain provider for details of how to do this.
 
+Performing site health checks
+-----------------------------
+
+Uptime robot, or some other serivce should be used to perform periodic
+HTTP GET /healthcheck requests to port 3000 of the production server.
+After about 10 seconds, the string "OK" should be returned as the body
+to indicate the system appears to be operating normally, any other
+result indicates a problem.
+
 Development
 -----------
 
-Run the API server (the Angular server will proxy to it when handling
-/api requests):
+The model server has four functions:
+    - respond to the Angular server proxying to it to handle HTTP /api requests
+    - execute the run queue to perform long running model training and evaluations
+    - purge old results from the directory ~/aiplanner-data
+    - respond to HTTP /healthcheck requests
+
+The model server can be run in development as follows:
 
     cd aiplanner/ai/web
-    ./serve_model.py --serve http
-
-On the same machine in a separate shell window run the runq server
-(which performs running long running model traning and evaluations):
-
-    cd aiplanner/ai/web
-    nice ./serve_model.py --serve runq --admin-email=<you@yourdomain> \
+    ./serve_model.py \
+        --base-url=<http://thishost:4200/> \
+        --admin-email=<you@yourdomain> \
         --notify-email=<you@yourdomain> --notify-name="<FirstName> <LastName>"
 
 On the same machine in another shell window run the Angular server:

@@ -92,6 +92,7 @@ def fin_arg_parse(parser, *, training = True, evaluate = True, dump = True, args
             # Above value is good for computing the true policy certainty equivalence to within perhaps 0.1%.
             # A lower value such as 10000 may be more appropriate when performing inter-run comparisons, as the evaluation episodes are identical for each run.
         boolean_flag(parser, 'eval-render', default = False)
+    parser.add_argument('--nice', type = int, default = 0)
     parser.add_argument('--model-dir', default = 'aiplanner.tf')
 
     model_params = ModelParams()

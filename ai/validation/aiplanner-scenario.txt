@@ -8,6 +8,9 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+train_consume_clip = 5000 # Prevent learning very negative rewards.
+eval_consume_clip = 0
+
 master_sex = 'female'
 master_life_table_date = '2020-01-01'
 master_life_expectancy_additional = 3 # Investors tend to be in better health than the average retiree.

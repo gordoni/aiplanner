@@ -12,7 +12,7 @@
 
 # Code based on baselines/ppo1/run_mujoco.py
 
-from os import mkdir
+from os import getpriority, mkdir, PRIO_PROCESS, setpriority
 from shutil import rmtree
 
 import tensorflow as tf
@@ -27,7 +27,12 @@ from gym_fin.envs.model_params import dump_params_file
 
 def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_minibatch_size,
           train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps, train_seed,
-          eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, model_dir):
+          eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, nice, model_dir):
+
+    priority = getpriority(PRIO_PROCESS, 0)
+    priority += nice
+    setpriority(PRIO_PROCESS, 0, priority)
+
     while model_dir and model_dir[-1] == '/':
         model_dir = model_dir[:-1]
     assert model_dir.endswith('.tf')
@@ -35,6 +40,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
         rmtree(model_dir)
     except FileNotFoundError:
         pass
+
     from baselines.ppo1 import mlp_policy, pposgd_simple
     set_global_seeds(train_seed)
     session = U.make_session(num_cpu=1).__enter__()

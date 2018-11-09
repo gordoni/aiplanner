@@ -14,15 +14,16 @@ from argparse import ArgumentParser
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from json import dumps, loads
-from os import chmod, listdir, makedirs, remove, scandir
+from os import chmod, listdir, makedirs, remove, scandir, stat, statvfs
 from os.path import expanduser, isdir
 from re import match
-from shutil import copyfile, move
+from shutil import copyfile, move, rmtree
 from socketserver import ThreadingMixIn
+from statistics import stdev
 from subprocess import PIPE, Popen
 from tempfile import mkdtemp, mkstemp
 from threading import BoundedSemaphore, Lock, Thread
-from time import sleep
+from time import sleep, time
 from traceback import print_tb
 
 from gym_fin.envs.model_params import dump_params_file, load_params_file
@@ -144,7 +145,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         }
         results = self.get_results(request)
 
-        assert 40000 < results['ce'] < 50000 # Generically trained model doesn't allow for SPIAs past 85. Hence worse CE than self trained model below.
+        assert 40000 < results['ce'] < 50000
+            # Generically trained model continues past age 100 and doesn't allow for SPIAs past 85. Hence it delivers a worse CE than self trained model below.
 
         dir = self.server.args.results_dir + '/' + id
         model_runner = ModelRunner(dir, args)
@@ -233,6 +235,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         dir = self.server.args.results_dir + '/' + id + '/' + mode
 
+        ces = []
         best_ce = float('-inf')
         model_seed = 0
         while True:
@@ -255,16 +258,23 @@ class RequestHandler(BaseHTTPRequestHandler):
             results = dict(initial, **final)
             results['data_dir'] = '/api/data/' + dir_seed[len(self.server.args.results_dir) + 1:]
 
-            if results['ce'] > best_ce:
-                best_ce = results['ce']
+            ce = results['ce']
+            ces.append(ce)
+            if ce > best_ce:
+                best_ce = ce
                 best_results = results
 
             model_seed += 1
 
-        if model_seed == 0:
-            return {'error': 'Results not found.'}
+        if not ces:
+            results = {'error': 'Results not found.'}
         else:
-            return best_results
+            results = dict(
+                best_results,
+                models_ce_stderr = 0 if len(ces) == 1 else stdev(ces),
+            )
+
+        return results
 
     def run_full(self, request):
 
@@ -287,10 +297,11 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 class ModelRunner(object):
 
-    def __init__(self, dir, args):
+    def __init__(self, dir, args, priority = 0):
 
         self.dir = dir
         self.args = args
+        self.priority = priority
 
     def eval_models(self, mode, model_prefix):
 
@@ -343,6 +354,7 @@ class ModelRunner(object):
         return Popen(('./eval_model.py',
             '--result-dir', dir_seed,
             '--model-dir', model_dir,
+            '--nice', str(self.priority),
             '-c', model_dir + '/assets.extra/params.txt',
             '-c', '../market_data.txt',
             '-c', self.dir + '/aiplanner-scenario.txt',
@@ -358,6 +370,7 @@ class ModelRunner(object):
         temp, temp_name = mkstemp(prefix = 'train')
         process = Popen(('../train_ppo1.py',
             '--model-dir', model_dir,
+            '--nice', str(self.priority),
             '-c', '../aiplanner-scenario.txt',
             '-c', '../market_data.txt',
             '-c', self.dir + '/aiplanner-scenario.txt',
@@ -408,7 +421,7 @@ class RunQueueServer(object):
                 self.run_queue_lock.release()
                 if oldest_id:
                     id = oldest_id
-                    thread = Thread(target = self.serve_thread, args = (id, ), daemon = True)
+                    thread = Thread(target = self.serve_thread, args = (id, ))
                     self.log('Starting', id)
                     self.running[id] = thread
                     thread.start()
@@ -422,8 +435,6 @@ class RunQueueServer(object):
             except Exception as e:
                 self.report_exception(e)
                 sleep(10)
-            except KeyboardInterrupt:
-                break
 
     def log(self, *args):
 
@@ -459,7 +470,7 @@ class RunQueueServer(object):
 
         try:
             dir = self.args.results_dir + '/' + id
-            model_runner = ModelRunner(dir, self.args)
+            model_runner = ModelRunner(dir, self.args, priority = 10)
             model_runner.train_eval_models(name)
             self.notify(email, name, id, True)
         except Exception as e:
@@ -501,12 +512,66 @@ JobRef: ''' + id + '''
 
         assert mta.wait() == 0
 
+class PurgeQueueServer(object):
+
+    def __init__(self, args):
+
+        self.args = args
+
+    def report_exception(self, e):
+
+        print('----------------------------------------')
+        print_tb(e.__traceback__)
+        print(e.__class__.__name__ + ': ' + str(e))
+        print('----------------------------------------')
+
+    def serve_forever(self):
+
+        while True:
+            try:
+                self.purgeq()
+                sleep(self.args.purge_frequency)
+            except Exception as e:
+                self.report_exception(e)
+                sleep(10)
+
+    def purgeq(self):
+
+        entries = list(scandir(self.args.results_dir))
+        entries.sort(key = lambda entry: entry.stat(follow_symlinks = False).st_mtime)
+
+        for entry in entries:
+
+            age = time() - entry.stat(follow_symlinks = False).st_mtime
+
+            if age <= self.args.purge_keep_time:
+                break
+
+            dir = self.args.results_dir + '/' + entry.name
+            s = statvfs(self.args.results_dir)
+            free = float(s.f_bavail) / s.f_blocks
+            ifree = float(s.f_favail) / s.f_files
+
+            if entry.name.startswith('healthcheck-'):
+                purge_time = self.args.purge_time_healthcheck
+            else:
+                try:
+                    stat(dir + '/models')
+                    purge_time = self.args.purge_time_full
+                except IOError:
+                    purge_time = self.args.purge_time_prelim
+
+            if free < self.args.purge_keep_free or ifree < self.args.purge_keep_free or age >= purge_time:
+                def rmfail(function, path, excinfo):
+                    print('Error purging file:', path)
+                rmtree(dir, onerror = rmfail)
+
 def main():
 
     parser = ArgumentParser()
 
     # Generic options.
-    parser.add_argument('--serve', default='http', choices=('http', 'runq'))
+    parser.add_argument('--serve', action = 'append', default = [], choices=('http', 'runq', 'purgeq'))
     parser.add_argument('--root-dir', default = '~/aiplanner-data')
     parser.add_argument('--num-concurrent-jobs', type = int, default = 1) # Each job represents the concurrent execution of num_models models in a single scenario.
     parser.add_argument('--num-models', type = int, default = 10)
@@ -530,6 +595,14 @@ def main():
     parser.add_argument('--train-num-timesteps', type = int, default = 10000000)
     parser.add_argument('--eval-full-num-timesteps', type = int, default = 2000000)
 
+    # purgeq options.
+    parser.add_argument('--purge-frequency', type = int, default = 3600) # Purge the run queue of old files every this many seconds.
+    parser.add_argument('--purge-keep-free', type = float, default = 0.02) # Keep this much proportion of disk space/inodes free.
+    parser.add_argument('--purge-keep-time', type = int, default = 3600) # Keep directories around for this long regardless.
+    parser.add_argument('--purge-time-healthcheck', type = int, default = 3600) # Delete healthcheck scenarios after this long.
+    parser.add_argument('--purge-time-prelim', type = int, default = 30 * 86400) # Delete prelim run only scenarios after this long.
+    parser.add_argument('--purge-time-full', type = int, default = 365 * 86400) # Delete full run scenarios after this long.
+
     args = parser.parse_args()
     root_dir = expanduser(args.root_dir)
     args.results_dir = root_dir + '/results'
@@ -538,11 +611,23 @@ def main():
     makedirs(args.results_dir, exist_ok = True)
     makedirs(args.run_queue, exist_ok = True)
 
-    if args.serve == 'http':
+    if not args.serve or 'http' in args.serve:
         server = ApiHTTPServer(args)
-    else:
+        Thread(target = server.serve_forever, daemon = True).start()
+
+    if not args.serve or 'runq' in args.serve:
         server = RunQueueServer(args)
-    server.serve_forever()
+        Thread(target = server.serve_forever, daemon = True).start()
+
+    if not args.serve or 'purgeq' in args.serve:
+        server = PurgeQueueServer(args)
+        Thread(target = server.serve_forever, daemon = True).start()
+
+    try:
+        while True:
+            sleep(86400)
+    except KeyboardInterrupt:
+        pass
 
 if __name__ == '__main__':
     main()

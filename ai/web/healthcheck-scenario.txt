@@ -8,23 +8,29 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-master_life_expectancy_additional = 3 # Investors tend to be in better health than the average retiree.
-master_age_start = 50
+master_display_returns = False
 
-master_age_retirement = 65
+# Make lifespan short, so model is quicker to train.
+master_age_start = 90
+master_age_retirement = 92
+master_age_end = 100
 
 master_income_preretirement = 6e4
-master_consume_preretirement = 3e4
+master_consume_preretirement = 4e4
+
+master_have_401k = True
+master_nominal_spias = True
+master_spias_permitted_to_age = 100
 
 master_defined_benefits = '[{"owner": "self", "age": null, "payout": 16e3, "source_of_funds": "taxable"}]'
 master_p_tax_free = 0
-master_p_tax_deferred = 0
+master_p_tax_deferred = 200000
 master_p_taxable_stocks = 0
 master_p_taxable_nominal_bonds = 0
 master_p_taxable_stocks_basis_fraction = 0.5
 
 master_stocks_price = 1
+master_real_short_rate = None
+master_inflation_short_rate = None
 
 master_gamma = 3.0
-
-eval_num_timesteps = 2000000
