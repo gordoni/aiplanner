@@ -1218,9 +1218,9 @@ class FinEnv(Env):
         couple = int(self.couple)
 
         if couple:
-            num_401k = int(self.params.have401k) + int(self.params.have401k2)
+            num_401k = int(self.params.have_401k) + int(self.params.have_401k2)
         else:
-            num_401k = int(self.params.have401k2) if self.only_alive2 else int(self.params.have401k)
+            num_401k = int(self.params.have_401k2) if self.only_alive2 else int(self.params.have_401k)
 
         one_on_gamma = 1 / self.gamma
         life_expectancy_both = self.life_expectancy_both[self.episode_length]
@@ -1228,10 +1228,10 @@ class FinEnv(Env):
         final_spias_purchase = int(self.final_spias_purchase)
 
         if couple:
-            income_preretirement_first_annualized = self.income_pre_retirement_anualized
-            income_preretirement_second_annualized = self.income_pre_retirement2_anualized
+            income_preretirement_first_annualized = self.income_preretirement_annualized
+            income_preretirement_second_annualized = self.income_preretirement2_annualized
         else:
-            income_preretirement_first_annualized = self.income_pre_retirement2_anualized if self.only_alive2 else self.income_pre_retirement_anualized
+            income_preretirement_first_annualized = self.income_preretirement2_annualized if self.only_alive2 else self.income_preretirement_annualized
             income_preretirement_second_annualized = 0
 
         if self.params.stocks_mean_reversion_rate != 0:
@@ -1252,7 +1252,7 @@ class FinEnv(Env):
         observe = (couple, num_401k, one_on_gamma, life_expectancy_both, life_expectancy_one, self.preretirement_years, final_spias_purchase,
             self.income['tax_free'], self.income['tax_deferred'], self.income['taxable'],
             self.wealth_as_income['tax_free'], self.wealth_as_income['tax_deferred'], self.wealth_as_income['taxable'],
-            income_preretirement_first_annualized, income_preretirement2_second_annualized, self.consume_preretirement_annualized,
+            income_preretirement_first_annualized, income_preretirement_second_annualized, self.consume_preretirement_annualized,
             self.taxable_basis, stocks_price, real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')
 
