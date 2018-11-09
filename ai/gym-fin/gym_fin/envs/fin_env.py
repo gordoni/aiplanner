@@ -66,7 +66,7 @@ class FinEnv(Env):
         dead2 = self.params.sex2 == None
         dead_at = random()
         dead_at2 = random()
-        first_dies_first = False
+        only_alive2 = False
 
         alive_count = [2 if self.params.sex2 else 1] # Mock count of number of individuals alive. Only used for plots, for computations use alive_single probability.
         _alive_count = 2 if self.params.sex2 else 1
@@ -93,7 +93,7 @@ class FinEnv(Env):
                     _alive_single = 0
                     _alive_count = 0
                 elif dead:
-                    first_dies_first = True
+                    only_alive2 = True
                     _alive_single = q_fract ** ((dead_at - _alive) / (prev_alive - _alive))
                     _alive_count = 1
                 elif dead2:
@@ -160,7 +160,7 @@ class FinEnv(Env):
         alive_single.append(0)
         alive_count.append(0)
 
-        return first_dies_first, alive_years, tuple(alive_single), tuple(alive_count), \
+        return only_alive2, alive_years, tuple(alive_single), tuple(alive_count), \
             tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
 
     def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
@@ -177,13 +177,13 @@ class FinEnv(Env):
             # PPO1 implementation ignores size and assumes [-inf, inf] output.
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple in baselines/baselines/ppo1/mlp_policy.py.
-            # couple, 1 / gamma, life-expectancy both, life-expectancy one, preretirement years, final spias purchase,
+            # couple, number of 401(k)'s available, 1 / gamma, life-expectancy both, life-expectancy one, preretirement years, final spias purchase,
             # income present value annualized: tax_free, tax_deferred, taxable,
             # wealth annualized: tax_free, tax_deferred, taxable,
             # first person preretirement income annualized, second person preretirement income annualized, consume annualized, taxable basis annualized,
             # stock price on fair value, short real interest rate, short inflation rate
-            low  = np.array((0, 0,  0,  0,  0, 0,   0,   0,   0,   0,  0,   0,   0,   0,   0,   0,  0.5, -0.05, 0.0)),
-            high = np.array((1, 1, 50, 50, 50, 1, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2,    0.05, 0.05)),
+            low  = np.array((0, 0, 0,  0,  0,  0, 0,   0,   0,   0,   0,  0,   0,   0,   0,   0,   0,  0.5, -0.05, 0.0)),
+            high = np.array((1, 2, 1, 50, 50, 50, 1, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2,    0.05, 0.05)),
             dtype = 'float32'
         )
 
@@ -304,7 +304,7 @@ class FinEnv(Env):
         if self.params.sex2:
             life_table2 = LifeTable(self.params.life_table_spia, self.params.sex2, self.age2, ae = 'aer2005_08-summary')
             if not self.couple:
-                if self.first_dies_first:
+                if self.only_alive2:
                     life_table = life_table2
                 life_table2 = None
         else:
@@ -325,7 +325,7 @@ class FinEnv(Env):
             db = defined_benefits[key]
         except KeyError:
 
-            owner_single = 'spouse' if self.first_dies_first else 'self'
+            owner_single = 'spouse' if self.only_alive2 else 'self'
             db = {'owner': owner, 'owner_single': owner_single}
             defined_benefits[key] = db
 
@@ -337,7 +337,7 @@ class FinEnv(Env):
                 life_table = self.life_table if owner == 'self' else self.life_table2
                 life_table2 = self.life_table2 if owner == 'self' else self.life_table
             else:
-                life_table = self.life_table2 if self.first_dies_first else self.life_table
+                life_table = self.life_table2 if self.only_alive2 else self.life_table
                 life_table2 = None
             payout_delay = 0
             sched = [0] * episodes
@@ -348,7 +348,7 @@ class FinEnv(Env):
 
             if self.couple:
 
-                life_table = self.life_table2 if self.first_dies_first else self.life_table
+                life_table = self.life_table2 if self.only_alive2 else self.life_table
                 sched_single = [0] * episodes
                 db['sched_single'] = sched_single
                 schedule = lambda y: sched_single[int(y)]
@@ -402,7 +402,7 @@ class FinEnv(Env):
             payout *= self.cpi
             exclusion_amount *= self.cpi
 
-        if joint or ((owner == 'self') == self.first_dies_first):
+        if joint or ((owner == 'self') == self.only_alive2):
             actual_payout_fraction = payout_fraction
         else:
             actual_payout_fraction = 1
@@ -477,7 +477,7 @@ class FinEnv(Env):
             self.life_table2.age = self.age2
         vital_stats = self._compute_vital_stats(self.age, self.age2, self.le_add, self.le_add2, self.preretirement_years)
         if vital_stats:
-            self.first_dies_first, self.alive_years, self.alive_single, self.alive_count, \
+            self.only_alive2, self.alive_years, self.alive_single, self.alive_count, \
             self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = vital_stats
 
         self.couple = self.alive_single[0] == None
@@ -714,7 +714,7 @@ class FinEnv(Env):
             min_age = min(self.age, self.age2)
             max_age = max(self.age, self.age2)
         else:
-            min_age = max_age = self.age2 if self.first_dies_first else self.age
+            min_age = max_age = self.age2 if self.only_alive2 else self.age
 
         spias_allowed = (self.params.couple_spias or not self.couple) and \
             min_age >= self.params.spias_permitted_from_age and max_age <= self.params.spias_permitted_to_age
@@ -871,7 +871,7 @@ class FinEnv(Env):
 
     def add_spias(self, inflation_adjustment, tax_free_spias, tax_deferred_spias, taxable_spias):
 
-        owner = 'self' if self.couple or not self.first_dies_first else 'spouse'
+        owner = 'self' if self.couple or not self.only_alive2 else 'spouse'
         age = self.age if owner == 'self' else self.age2
         age += 1
         payout_fraction = 1 / (1 + self.params.consume_additional)
@@ -1074,7 +1074,7 @@ class FinEnv(Env):
         if self.couple:
             max_age = max(self.age, self.age2)
         else:
-            max_age = self.age2 if self.first_dies_first else self.age
+            max_age = self.age2 if self.only_alive2 else self.age
         self.final_spias_purchase = max_age <= self.params.spias_permitted_to_age < max_age + self.params.time_period
 
         self.date = (self.date_start + timedelta(days = self.episode_length * self.params.time_period * 365.25)).date().isoformat()
@@ -1216,10 +1216,23 @@ class FinEnv(Env):
     def _observe(self):
 
         couple = int(self.couple)
+
+        if couple:
+            num_401k = int(self.params.have401k) + int(self.params.have401k2)
+        else:
+            num_401k = int(self.params.have401k2) if self.only_alive2 else int(self.params.have401k)
+
         one_on_gamma = 1 / self.gamma
         life_expectancy_both = self.life_expectancy_both[self.episode_length]
         life_expectancy_one = self.life_expectancy_one[self.episode_length]
         final_spias_purchase = int(self.final_spias_purchase)
+
+        if couple:
+            income_preretirement_first_annualized = self.income_pre_retirement_anualized
+            income_preretirement_second_annualized = self.income_pre_retirement2_anualized
+        else:
+            income_preretirement_first_annualized = self.income_pre_retirement2_anualized if self.only_alive2 else self.income_pre_retirement_anualized
+            income_preretirement_second_annualized = 0
 
         if self.params.stocks_mean_reversion_rate != 0:
             stocks_price, = self.stocks.observe()
@@ -1236,16 +1249,16 @@ class FinEnv(Env):
         else:
             inflation_rate = 0
 
-        observe = (couple, one_on_gamma, life_expectancy_both, life_expectancy_one, self.preretirement_years, final_spias_purchase,
+        observe = (couple, num_401k, one_on_gamma, life_expectancy_both, life_expectancy_one, self.preretirement_years, final_spias_purchase,
             self.income['tax_free'], self.income['tax_deferred'], self.income['taxable'],
             self.wealth_as_income['tax_free'], self.wealth_as_income['tax_deferred'], self.wealth_as_income['taxable'],
-            self.income_preretirement_annualized, self.income_preretirement2_annualized, self.consume_preretirement_annualized,
+            income_preretirement_first_annualized, income_preretirement2_second_annualized, self.consume_preretirement_annualized,
             self.taxable_basis, stocks_price, real_interest_rate, inflation_rate)
         return np.array(observe, dtype = 'float32')
 
     def decode_observation(self, obs):
 
-        couple, one_on_gamma, life_expectancy_both, life_expectancy_one, preretirement_years, final_spias_purchase, \
+        couple, num_401k, one_on_gamma, life_expectancy_both, life_expectancy_one, preretirement_years, final_spias_purchase, \
             income_tax_free, income_tax_deferred, income_taxable, \
             wealth_tax_free, wealth_tax_deferred, wealth_taxable, \
             income_preretirement, income_preretirement2, consume_preretirement, \
@@ -1253,6 +1266,7 @@ class FinEnv(Env):
 
         return {
             'couple': couple,
+            'num_401k': num_401k,
             'one_on_gamma': one_on_gamma,
             'life_expectancy_both': life_expectancy_both,
             'life_expectancy_one': life_expectancy_one,
