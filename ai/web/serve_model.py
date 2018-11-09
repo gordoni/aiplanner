@@ -271,6 +271,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         else:
             results = dict(
                 best_results,
+                model_count = len(ces),
                 models_ce_stderr = 0 if len(ces) == 1 else stdev(ces),
             )
 

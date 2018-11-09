@@ -38,13 +38,14 @@ PURPOSE.
     <p>
       Current recommended retirement plan contribution: {{results.retirement_contribution}}
     </p>
-    <p>
+    <div>
       Certainty equivalent retirement consumption: {{results.ce}}
-      <br>
-      Standard error of measurement of CE for chosen best model: {{results.ce_stderr}}
-      <br>
-      Standard error of CE across differently seeded models: {{results.models_ce_stderr}}
-    </p>
+      <div class="small-font">
+        Standard error of measurement of CE for chosen best model: {{results.ce_stderr}}
+        <br>
+        Standard error of CE across {{results.model_count}} differently seeded models: {{results.models_ce_stderr}}
+      </div>
+    </div>
     <p>
       Probability retirement consumption below {{results.consume_preretirement}}: {{results.preretirement_ppf}}
       <br>

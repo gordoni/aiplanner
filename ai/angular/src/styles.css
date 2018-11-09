@@ -15,6 +15,10 @@
     color: red;
 }
 
+.small-font {
+    font-size: 70%;
+}
+
 .center, .title {
     text-align: center;
 }
