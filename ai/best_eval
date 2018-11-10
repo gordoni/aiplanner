@@ -42,14 +42,14 @@ evals.sort()
 
 try:
     sd = stdev(ces)
-    se = sd / sqrt(len(ces) - 1)
+    se = sd / sqrt(len(ces))
 except StatisticsError:
     sd = float('nan')
     se = float('nan')
 
-print('Certainty equivalent distribution: {:f} +/- {:f} (standard error {:f})'.format(mean(ces), sd, se))
-
 print('Best certainty equivalent: {:f} (standard error {:f})'.format(evals[-1][0], evals[-1][1]))
+
+print('Certainty equivalent distribution: {:f} +/- {:f} (standard error {:f})'.format(mean(ces), sd, se))
 
 print('Best result:', evals[-1][2])
 print(evals[-1][3])
