@@ -1083,7 +1083,6 @@ class FinEnv(Env):
 
         self._pre_calculate()
         observation = self._observe()
-        done = self.episode_length >= len(self.alive_single) - 1
         done = self.alive_single[self.episode_length] == 0
         info = {}
         if done:

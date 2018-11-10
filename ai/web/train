@@ -26,11 +26,15 @@ else
 fi
 CONFIG_FILE=$AI_DIR/aiplanner-scenario.txt
 TRAIN_FILE=$AI_DIR/aiplanner-scenario-train.txt
+SINGLE_EVAL_FILE=$AI_DIR/aiplanner-scenario-single-eval.txt
+COUPLE_EVAL_FILE=$AI_DIR/aiplanner-scenario-couple-eval.txt
 
 if [ "$PARALLEL" = True ]; then
     TRAIN=train_parallel
+    EVALUATE=evaluate_parallel
 else
     TRAIN=train
+    EVALUATE=evaluate
 fi
 
 train () {
@@ -45,6 +49,21 @@ train () {
         TEMPFILE=`tempfile -p train`
         $AI_DIR/train_ppo1.py -c $CONFIG_FILE -c $TRAIN_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
         mv $TEMPFILE $MODEL_DIR/train.log
+        SEED=`expr $SEED + 1`
+    done
+}
+
+eval () {
+
+    MODEL_NAME=$1
+    EVAL_NAME=$2
+    ARGS=$3
+
+    SEED=0
+    set -o pipefail
+    while [ $SEED -lt $SEEDS ]; do
+        MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
+        $AI_DIR/eval_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EXTRA_ARGS 2>&1 | tee $MODEL_DIR/eval-$EVAL_NAME.log || exit 1
         SEED=`expr $SEED + 1`
     done
 }
@@ -71,6 +90,21 @@ train_parallel () {
         mv ${TEMPFILES[$SEED]} $MODEL_DIR/train.log
         SEED=`expr $SEED + 1`
     done
+}
+
+evaluate_parallel () {
+
+    MODEL_NAME=$1
+    EVAL_NAME=$2
+    ARGS=$3
+
+    SEED=0
+    while [ $SEED -lt $SEEDS ]; do
+        MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
+        $AI_DIR/eval_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EXTRA_ARGS > $MODEL_DIR/eval-$EVAL_NAME.log 2>&1 &
+        SEED=`expr $SEED + 1`
+    done
+    wait
 }
 
 # Variable scenarios.
