@@ -182,6 +182,9 @@ class FinEnv(Env):
             # wealth annualized: tax_free, tax_deferred, taxable,
             # first person preretirement income annualized, second person preretirement income annualized, consume annualized, taxable basis annualized,
             # stock price on fair value, short real interest rate, short inflation rate
+            #
+            # Values listed below are intended as an indicative ranges, not the absolute range limits.
+            # Values are not used by ppo1. It is only the length that matters.
             low  = np.array((0, 0, 0,  0,  0,  0, 0,   0,   0,   0,   0,  0,   0,   0,   0,   0,   0,  0.5, -0.05, 0.0)),
             high = np.array((1, 2, 1, 50, 50, 50, 1, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2,    0.05, 0.05)),
             dtype = 'float32'
