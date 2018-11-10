@@ -52,8 +52,11 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
         evaluator = Evaluator([eval_env], eval_seed, eval_num_timesteps, render = eval_render, eval_batch_monitor = True)
         global next_eval_timestep
         next_eval_timestep = 0
-        def eval_callback(l, g):
+        def callback(l, g):
             global next_eval_timestep
+            if env.unwrapped.env_single_timesteps >= train_single_num_timesteps and \
+                (not couple or env.unwrapped.env_couple_timesteps >= train_couple_num_timesteps):
+                return True
             if l['timesteps_so_far'] < next_eval_timestep:
                 return False
             next_eval_timestep = l['timesteps_so_far'] + eval_frequency
@@ -66,11 +69,9 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
             return False
     else:
         eval_env = None
-        eval_callback = None
-        def eval_callback(l, g):
-            if env.unwrapped.env_single_timesteps >= train_single_num_timesteps and (not couple or env.unwrapped.env_couple_timesteps >= train_couple_num_timesteps):
-                l['timesteps_so_far'] = train_num_timesteps # Leads to termination of training.
-            return False
+        def callback(l, g):
+            return env.unwrapped.env_single_timesteps >= train_single_num_timesteps and \
+                (not couple or env.unwrapped.env_couple_timesteps >= train_couple_num_timesteps)
 
     def policy_fn(name, ob_space, ac_space):
         return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space,
@@ -82,7 +83,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
         clip_param=0.2, entcoeff=0.0,
         optim_epochs=10, optim_stepsize=3e-4, optim_batchsize=train_minibatch_size,
         gamma=1, lam=0.95, schedule='linear',
-        callback=eval_callback
+        callback=callback
     )
 
     env.close()

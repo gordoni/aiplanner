@@ -37,12 +37,12 @@ master_consume_preretirement_high = 1e5
 master_consume_income_ratio_max = 0.7
 
 master_defined_benefits = '''[
-    {"owner": "self",   "age": null, "payout": [1e3, 1e5], "source_of_funds": "tax_free"},
-    {"owner": "self",   "age": null, "payout": [1e3, 1e5], "source_of_funds": "tax_deferred"},
-    {"owner": "self",   "age": null, "payout": [1e3, 1e5], "source_of_funds": "taxable"},
-    {"owner": "spouse", "age": null, "payout": [1e3, 1e5], "source_of_funds": "tax_free"},
-    {"owner": "spouse", "age": null, "payout": [1e3, 1e5], "source_of_funds": "tax_deferred"},
-    {"owner": "spouse", "age": null, "payout": [1e3, 1e5], "source_of_funds": "taxable"}
+    {"owner": "self",   "age": null, "payout": [1e2, 1e5], "source_of_funds": "tax_free"},
+    {"owner": "self",   "age": null, "payout": [1e2, 1e5], "source_of_funds": "tax_deferred"},
+    {"owner": "self",   "age": null, "payout": [1e2, 1e5], "source_of_funds": "taxable"},
+    {"owner": "spouse", "age": null, "payout": [1e2, 1e5], "source_of_funds": "tax_free"},
+    {"owner": "spouse", "age": null, "payout": [1e2, 1e5], "source_of_funds": "tax_deferred"},
+    {"owner": "spouse", "age": null, "payout": [1e2, 1e5], "source_of_funds": "taxable"}
 ]'''
 master_p_tax_free_low = 1e3
 master_p_tax_free_high = 2e6
