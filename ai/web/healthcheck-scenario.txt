@@ -12,6 +12,7 @@ master_display_returns = False
 
 # Make lifespan short, so model is quicker to train.
 master_age_start = 90
+master_life_expectancy_additional = 0
 master_age_retirement = 92
 master_age_end = 100
 

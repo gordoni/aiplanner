@@ -8,7 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+export AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 AI_DIR=$AIPLANNER_HOME/ai
 PYTHONPATH_ADD=$AI_DIR/baselines:$AI_DIR/gym-fin:$AIPLANNER_HOME/spia
 if [ -z "$PYTHONPATH" ]; then
@@ -16,3 +16,4 @@ if [ -z "$PYTHONPATH" ]; then
 else
     export PYTHONPATH=$PYTHONPATH_ADD:$PYTHONPATH
 fi
+unset PYTHONPATH_ADD

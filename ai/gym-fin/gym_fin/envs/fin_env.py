@@ -447,8 +447,8 @@ class FinEnv(Env):
 
         self.age = uniform(self.params.age_start_low, self.params.age_start_high)
         self.age2 = uniform(self.params.age_start2_low, self.params.age_start2_high)
-        self.le_add = uniform(self.params.life_expectancy_additional_low, self.params.life_expectancy_additional_high)
-        self.le_add2 = uniform(self.params.life_expectancy_additional2_low, self.params.life_expectancy_additional2_high)
+        le_add = uniform(self.params.life_expectancy_additional_low, self.params.life_expectancy_additional_high)
+        le_add2 = uniform(self.params.life_expectancy_additional2_low, self.params.life_expectancy_additional2_high)
         self.age_retirement = uniform(self.params.age_retirement_low, self.params.age_retirement_high)
         self.preretirement_years = max(0, self.age_retirement - self.age)
         if self.params.income_preretirement_age_end != None:
@@ -463,7 +463,7 @@ class FinEnv(Env):
         death_age = self.params.age_end - self.params.time_period
         if self.age != self.life_table_age:
             self.life_table = LifeTable(self.params.life_table, self.params.sex, self.age,
-                death_age = death_age, le_add = self.le_add, date_str = self.params.life_table_date)
+                death_age = death_age, le_add = le_add, date_str = self.params.life_table_date)
             self.life_table_age = self.age
         else:
             self.life_table.age = self.age # Undo hack (value gets messed with below).
@@ -471,11 +471,11 @@ class FinEnv(Env):
             self.life_table2 = None
         elif self.age2 != self.life_table2_age:
             self.life_table2 = LifeTable(self.params.life_table, self.params.sex2, self.age2,
-                death_age = death_age, le_add = self.params.le_add2, date_str = self.params.life_table_date)
+                death_age = death_age, le_add = le_add2, date_str = self.params.life_table_date)
             self.life_table2_age = self.age2
         else:
             self.life_table2.age = self.age2
-        vital_stats = self._compute_vital_stats(self.age, self.age2, self.le_add, self.le_add2, self.preretirement_years)
+        vital_stats = self._compute_vital_stats(self.age, self.age2, le_add, le_add2, self.preretirement_years)
         if vital_stats:
             self.only_alive2, self.alive_years, self.alive_single, self.alive_count, \
             self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = vital_stats
@@ -573,12 +573,9 @@ class FinEnv(Env):
         return self._observe()
 
     def encode_direct_action(self, consume_fraction, *, real_spias_fraction = None, nominal_spias_fraction = None,
-        stocks = None, real_bonds = None, nominal_bonds = None, iid_bonds = None, bills = None,
-        real_bonds_duration = None, nominal_bonds_duration = None):
+            real_bonds_duration = None, nominal_bonds_duration = None, **kwargs):
 
-        return (consume_fraction, real_spias_fraction, nominal_spias_fraction,
-            AssetAllocation(stocks = stocks, real_bonds = real_bonds, nominal_bonds = nominal_bonds, iid_bonds = iid_bonds, bills = bills),
-            real_bonds_duration, nominal_bonds_duration)
+        return (consume_fraction, real_spias_fraction, nominal_spias_fraction, AssetAllocation(**kwargs), real_bonds_duration, nominal_bonds_duration)
 
     def decode_action(self, action):
 
@@ -860,7 +857,9 @@ class FinEnv(Env):
 
     def interpret_action(self, action):
 
-        if action is None:
+        if self.direct_action:
+            decoded_action = action
+        elif action is None:
             decoded_action = None
         else:
             decoded_action = self.decode_action(action)

@@ -10,107 +10,32 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-# Code based on validate/run-ai.
-
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
-PARALLEL=${PARALLEL:-True}  # Set to "False" to run seeds sequentially rather than in parallel.
-SEEDS=${SEEDS:-10}
 
-EXTRA_ARGS=$*
-AI_DIR=$AIPLANNER_HOME/ai
-PYTHONPATH_ADD=$AI_DIR/baselines:$AI_DIR/gym-fin:$AIPLANNER_HOME/spia
-if [ -z "$PYTHONPATH" ]; then
-    export PYTHONPATH=$PYTHONPATH_ADD
-else
-    export PYTHONPATH=$PYTHONPATH_ADD:$PYTHONPATH
-fi
-CONFIG_FILE=$AI_DIR/aiplanner-scenario.txt
-TRAIN_FILE=$AI_DIR/aiplanner-scenario-train.txt
-SINGLE_EVAL_FILE=$AI_DIR/aiplanner-scenario-single-eval.txt
-COUPLE_EVAL_FILE=$AI_DIR/aiplanner-scenario-couple-eval.txt
+source $AIPLANNER_HOME/ai/helpers.bash
 
-if [ "$PARALLEL" = True ]; then
-    TRAIN=train_parallel
-    EVALUATE=evaluate_parallel
-else
-    TRAIN=train
-    EVALUATE=evaluate
-fi
+evaluate single-spias-timesteps_1m test "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5 --master-nominal-spias --eval-num-timesteps=10000"
+exit
 
-train () {
+evaluate single-spias-timesteps_1m age_start50-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5 --master-nominal-spias"
+evaluate single-spias-timesteps_1m age_start50-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5 --master-nominal-spias"
+evaluate single-spias-timesteps_1m age_start50-defined_benefits16e3-taxable_stocks5e5 "-c $SINGLE_EVAL_FILE --master-p-taxable-stocks=5e5 --master-nominal-spias"
+evaluate single-spias-timesteps_1m retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5 --master-nominal-spias"
+evaluate single-spias-timesteps_500k age_start50-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5 --master-nominal-spias"
+evaluate single-spias-timesteps_500k age_start50-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5 --master-nominal-spias"
+evaluate single-spias-timesteps_500k age_start50-defined_benefits16e3-taxable_stocks5e5 "-c $SINGLE_EVAL_FILE --master-p-taxable-stocks=5e5 --master-nominal-spias"
+evaluate single-spias-timesteps_500k retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5 --master-nominal-spias"
+wait
+exit
 
-    MODEL_NAME=$1
-    ARGS=$2
-
-    SEED=0
-    set -o pipefail
-    while [ $SEED -lt $SEEDS ]; do
-        MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
-        TEMPFILE=`tempfile -p train`
-        $AI_DIR/train_ppo1.py -c $CONFIG_FILE -c $TRAIN_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
-        mv $TEMPFILE $MODEL_DIR/train.log
-        SEED=`expr $SEED + 1`
-    done
-}
-
-eval () {
-
-    MODEL_NAME=$1
-    EVAL_NAME=$2
-    ARGS=$3
-
-    SEED=0
-    set -o pipefail
-    while [ $SEED -lt $SEEDS ]; do
-        MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
-        $AI_DIR/eval_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EXTRA_ARGS 2>&1 | tee $MODEL_DIR/eval-$EVAL_NAME.log || exit 1
-        SEED=`expr $SEED + 1`
-    done
-}
-
-train_parallel () {
-
-    MODEL_NAME=$1
-    ARGS=$2
-
-    SEED=0
-    while [ $SEED -lt $SEEDS ]; do
-        MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
-        # Output directory must not exist when tensorflow save() is called to save the model hence we can't write the log within it; instead log to a tempfile.
-        TEMPFILE=`tempfile -p train`
-        TEMPFILES[$SEED]=$TEMPFILE
-        $AI_DIR/train_ppo1.py -c $CONFIG_FILE -c $TRAIN_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $EXTRA_ARGS > $TEMPFILE 2>&1 &
-        SEED=`expr $SEED + 1`
-    done
-    wait
-
-    SEED=0
-    while [ $SEED -lt $SEEDS ]; do
-        MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
-        mv ${TEMPFILES[$SEED]} $MODEL_DIR/train.log
-        SEED=`expr $SEED + 1`
-    done
-}
-
-evaluate_parallel () {
-
-    MODEL_NAME=$1
-    EVAL_NAME=$2
-    ARGS=$3
-
-    SEED=0
-    while [ $SEED -lt $SEEDS ]; do
-        MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
-        $AI_DIR/eval_model.py -c $CONFIG_FILE --model-dir=$MODEL_DIR $ARGS $EXTRA_ARGS > $MODEL_DIR/eval-$EVAL_NAME.log 2>&1 &
-        SEED=`expr $SEED + 1`
-    done
-    wait
-}
+train single-spias-timesteps_1m '--master-nominal-spias'
+train single-spias-timesteps_500k '--master-nominal-spias --train-single-num-timesteps=500000'
+exit
 
 # Variable scenarios.
 
-$TRAIN single-no_spias
-$TRAIN single-spias '--master-nominal-spias'
+train single-no_spias
+train single-spias '--master-nominal-spias'
 
-$TRAIN couple-no_spias '--master-sex2=male'
-$TRAIN couple-spias '--master-sex2=male --master-nominal-spias'
+train couple-no_spias '--master-sex2=male'
+train couple-spias '--master-sex2=male --master-nominal-spias'

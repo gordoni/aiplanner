@@ -173,7 +173,7 @@ class Evaluator(object):
             unit_low = indiv_low = utility.inverse(weighted_percentile(rewards, 10))
             unit_high = indiv_high = utility.inverse(weighted_percentile(rewards, 90))
 
-            utility_preretirement = utility.utility(envs[0].params.consume_preretirement)
+            utility_preretirement = utility.utility(envs[0].params.consume_preretirement_low)
             self.preretirement_ppf = weighted_ppf(rewards, utility_preretirement) / 100
 
             u_min = utility.inverse(weighted_percentile(rewards, 2))
@@ -202,9 +202,9 @@ class Evaluator(object):
                 unit_ce_stderr *= 1 + env[0].params.consume_additional
                 unit_low *= 1 + env[0].params.consume_additional
                 unit_high *= 1 + env[0].params.consume_additional
-                logger.info('Couple certainty equivalent: ', unit_ce, ' +/- ', unit_ce_stderr, ' (80% confidence interval: ', unit_low, ' - ', unit_high, ')')
+                print('Couple certainty equivalent:', unit_ce, '+/-', unit_ce_stderr, '(80% confidence interval:', unit_low, '-', str(unit_high) + ')')
 
-            logger.info('Evaluation certainty equivalent: ', indiv_ce, ' +/- ', indiv_ce_stderr, ' (80% confidence interval: ', indiv_low, ' - ', indiv_high, ')')
+            print('Evaluation certainty equivalent:', indiv_ce, '+/-', indiv_ce_stderr, '(80% confidence interval:', indiv_low, '-', str(indiv_high) + ')')
 
             if self.eval_batch_monitor:
                 batchrew = sum((v * w for v, w in erewards))

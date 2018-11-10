@@ -14,7 +14,7 @@ from argparse import ArgumentParser
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from json import dumps, loads
-from os import chmod, listdir, makedirs, remove, scandir, stat, statvfs
+from os import chmod, environ, listdir, makedirs, remove, scandir, stat, statvfs
 from os.path import expanduser, isdir
 from re import match
 from shutil import copyfile, move, rmtree
@@ -272,7 +272,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             results = dict(
                 best_results,
                 model_count = len(ces),
-                models_ce_stderr = 0 if len(ces) == 1 else stdev(ces),
+                models_stdev = 0 if len(ces) == 1 else stdev(ces),
             )
 
         return results
@@ -353,7 +353,7 @@ class ModelRunner(object):
         num_timesteps = str(self.args.eval_prelim_num_timesteps) if mode == 'prelim' else str(self.args.eval_full_num_timesteps)
 
         eval_log = open(dir_seed + '/eval.log', 'w')
-        return Popen(('./eval_model.py',
+        return Popen((environ['AIPLANNER_HOME'] + '/ai/eval_model.py',
             '--result-dir', dir_seed,
             '--model-dir', model_dir,
             '--nice', str(self.priority),
@@ -370,7 +370,7 @@ class ModelRunner(object):
     def train_model(self, name, model_dir, model_seed):
 
         temp, temp_name = mkstemp(prefix = 'train')
-        process = Popen(('../train_ppo1.py',
+        process = Popen((environ['AIPLANNER_HOME'] + '/ai/train_ppo1.py',
             '--model-dir', model_dir,
             '--nice', str(self.priority),
             '-c', '../aiplanner-scenario.txt',
