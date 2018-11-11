@@ -47,7 +47,7 @@ class FinEnv(Env):
 
         key = (age_start, age_start2, le_add, le_add2, preretirement)
         if self.vs_cache == key:
-            return
+            return self.vs_cache_results
         self.vs_cache = key
 
         start_date = datetime.strptime(self.params.life_table_date, '%Y-%m-%d')
@@ -160,8 +160,9 @@ class FinEnv(Env):
         alive_single.append(0)
         alive_count.append(0)
 
-        return only_alive2, alive_years, tuple(alive_single), tuple(alive_count), \
+        self.vs_cache_results = only_alive2, alive_years, tuple(alive_single), tuple(alive_count), \
             tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
+        return self.vs_cache_results
 
     def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
 
@@ -479,8 +480,7 @@ class FinEnv(Env):
         else:
             self.life_table2.age = self.age2
         vital_stats = self._compute_vital_stats(self.age, self.age2, le_add, le_add2, self.preretirement_years)
-        if vital_stats:
-            self.only_alive2, self.alive_years, self.alive_single, self.alive_count, \
+        self.only_alive2, self.alive_years, self.alive_single, self.alive_count, \
             self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = vital_stats
 
         self.couple = self.alive_single[0] == None

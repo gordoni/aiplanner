@@ -22,6 +22,6 @@ set yrange [0:*]
 unset ytics
 
 set output 'risk_aversion_pdf.svg'
-plot 'risk_aversion_1_pdf.csv' using 1:2 with lines title 'RRA = 1', \
-    'risk_aversion_3_pdf.csv' using 1:2 with lines title 'RRA = 3', \
-    'risk_aversion_6_pdf.csv' using 1:2 with lines title 'RRA = 6'
+plot 'risk_aversion_1_pdf.csv' using 1:2 with lines title 'RRA coefficient = 1', \
+    'risk_aversion_3_pdf.csv' using 1:2 with lines title 'RRA coefficient = 3', \
+    'risk_aversion_6_pdf.csv' using 1:2 with lines title 'RRA coefficient = 6'

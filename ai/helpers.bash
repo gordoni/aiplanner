@@ -18,7 +18,7 @@ SEEDS=${SEEDS:-10}
 AI_DIR=$AIPLANNER_HOME/ai
 source $AI_DIR/setenv
 
-EXTRA_ARGS=$*
+EXTRA_ARGS="$@"
 CONFIG_FILE=${CONFIG_FILE:-$AI_DIR/aiplanner-scenario.txt}
 TRAIN_FILE=${TRAIN_FILE:-$AI_DIR/aiplanner-scenario-train.txt}
 SINGLE_EVAL_FILE=$AI_DIR/aiplanner-scenario-single-eval.txt

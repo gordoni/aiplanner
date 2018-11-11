@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+AIPLANNER_DATA=~/aiplanner-data
+
+mkdir -p $AIPLANNER_DATA/webroot.new
+
+(cd $AIPLANNER_HOME/ai/angular/dist/angular && tar cf - .) | (cd $AIPLANNER_DATA/webroot.new && tar xf -) || exit 1
+
+rm -rf $AIPLANNER_DATA/webroot.old
+if [ -d $AIPLANNER_DATA/webroot ]; then
+    mv $AIPLANNER_DATA/webroot $AIPLANNER_DATA/webroot.old || exit 1
+fi
+mv $AIPLANNER_DATA/webroot.new $AIPLANNER_DATA/webroot || exit 1

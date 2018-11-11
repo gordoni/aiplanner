@@ -43,7 +43,7 @@ Installing additional required components on Amazon Deep Learning AMI
     pip install gym
 
     [ Get latest Node.js per https://nodejs.org/en/download/ ]
-    cd
+    cd ~/
     curl https://nodejs.org/dist/v8.11.3/node-v8.11.3-linux-x64.tar.xz | tar xJf -
     export PATH=$HOME/node-v8.11.3-linux-x64/bin:$PATH
 
@@ -63,7 +63,7 @@ Training the generic nueral network models
 
 Training the neural network models will take 10-20 hours:
 
-    cd aiplanner/ai/web
+    cd ~/aiplanner/ai/web
     ./train
 
 The models should then be installed:
@@ -76,8 +76,54 @@ Generating required assets (images)
 
 Generate the images required for the website:
 
-    cd aiplanner/ai/angular/src/assets.generate
+    cd ~/aiplanner/ai/angular/src/assets.generate
     ./run
+
+Build the website files
+-----------------------
+
+Angular provides a single webpage app for interacting with the models.
+
+Build the website:
+
+    export PATH=$HOME/node-v8.11.3-linux-x64/bin:$PATH
+    cd ~/aiplanner/ai/angular
+    ng build --prod
+
+Install the website:
+
+    cd ~/aiplanner/ai/web
+    ./install
+
+Set up the website
+------------------
+
+    sudo apt install apache2
+    a2enmod ssl proxy proxy_http
+    Ubuntu 18.04:
+        sudo apt install python3-certbot-apache
+    Ubuntu 16.04:
+        sudo add-apt-repository ppa:certbot/certbot
+        sudo apt update
+        sudo apt install python3-certbot-apache
+    certbot --apache certonly
+    Email: <you@yourdomain>
+    If serving for www.<thisdomain>
+        Domain: <thishost.thisdomain>
+    If serving for a particular host:
+        Domain: <thishost.thisdomain>
+
+    Select appropriate <site-ssl.conf> file:
+        sudo cp aiplanner/ai/web/sites-examples/<sample-site-ssl.conf> /etc/apache2/sites-available/<site-ssl.conf>
+    Edit site.conf appropriately:
+        sudo <edit> /etc/apache2/sites-available/<site-ssl.conf>
+    sudo a2ensite <site-ssl>
+    sudo service apache2 reload
+
+    Repeat installing <site.conf> or <site-ssl.conf> for additional
+    sites to be served if desired, so that http://www.<site>/,
+    http://<site>/, and https://<site>/ all point to
+    https://www.<site>/.
 
 Installing an outbound mailer
 -----------------------------
@@ -88,9 +134,9 @@ notifications that their long running models have been trained.
     sudo apt install postfix
     sudo dpkg-reconfigure postfix
         Config type: Internet Site
-        Site: aiplanner.com
-        Root mail: gordoni@gordoni.com
-        Accept mail for: aiplanner.com
+        Site: <thisdomain>
+        Root mail: <you@yourdomain>
+        Accept mail for: <thisdomain>
         Synchronous updates: no
         Local networks: <leave as is>
         Mailbox size limit: 0
@@ -143,16 +189,16 @@ The model server has four functions:
 
 The model server can be run in development as follows:
 
-    cd aiplanner/ai/web
+    cd ~/aiplanner/ai/web
     ./server
-        --base-url=<http://thishost:4200/> \
+        --base-url=<http://thishost.thisdomain:4200/> \
         --admin-email=<you@yourdomain> \
         --notify-email=<you@yourdomain> --notify-name="<FirstName> <LastName>"
 
 On the same machine in another shell window run the Angular server:
 
     export PATH=$HOME/node-v8.11.3-linux-x64/bin:$PATH
-    cd aiplanner/ai/angular
+    cd ~/aiplanner/ai/angular
     ng serve --host 0.0.0.0 --public-host dev.aiplanner.com
 
 Connect to the front end using a browser (need to open port 4200 of
