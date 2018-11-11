@@ -198,10 +198,10 @@ class Evaluator(object):
                 self.consume_pdf.append((unit_consume, w / w_tot))
 
             if envs[0].params.sex2 != None:
-                unit_ce *= 1 + env[0].params.consume_additional
-                unit_ce_stderr *= 1 + env[0].params.consume_additional
-                unit_low *= 1 + env[0].params.consume_additional
-                unit_high *= 1 + env[0].params.consume_additional
+                unit_ce *= 1 + envs[0].params.consume_additional
+                unit_ce_stderr *= 1 + envs[0].params.consume_additional
+                unit_low *= 1 + envs[0].params.consume_additional
+                unit_high *= 1 + envs[0].params.consume_additional
                 print('Couple certainty equivalent:', unit_ce, '+/-', unit_ce_stderr, '(80% confidence interval:', unit_low, '-', str(unit_high) + ')')
 
             print('Evaluation certainty equivalent:', indiv_ce, '+/-', indiv_ce_stderr, '(80% confidence interval:', indiv_low, '-', str(indiv_high) + ')')
