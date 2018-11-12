@@ -92,7 +92,7 @@ Build the website:
 
 Install the website:
 
-    cd ~/aiplanner/ai/web
+    cd ~/aiplanner/ai/angular
     ./install
 
 Set up the website
@@ -109,7 +109,7 @@ Set up the website
     certbot --apache certonly
     Email: <you@yourdomain>
     If serving for www.<thisdomain>
-        Domain: <thishost.thisdomain>
+        Domain: <thisdomain>
     If serving for a particular host:
         Domain: <thishost.thisdomain>
 
@@ -199,9 +199,9 @@ On the same machine in another shell window run the Angular server:
 
     export PATH=$HOME/node-v8.11.3-linux-x64/bin:$PATH
     cd ~/aiplanner/ai/angular
-    ng serve --host 0.0.0.0 --public-host dev.aiplanner.com
+    ng serve --host 0.0.0.0 --public-host <thishost.thisdomain>
 
 Connect to the front end using a browser (need to open port 4200 of
 development machine firewall unless doing development on localhost):
 
-    http://dev.aiplanner.com:4200/
+    http://<thishost.thisdomain>:4200/

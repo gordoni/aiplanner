@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+
+AIPlanner - Deep Learning Financial Planner
+Copyright (C) 2018 Gordon Irlam
+
+All rights reserved. This program may not be used, copied, modified,
+or redistributed without permission.
+
+This program is distributed WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE.
+
+-->
+
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" viewBox="0 0 64 64" version="1.0">
+    <g>
+        <polyline points="0,12 52,12 52,60 4,60 4,12" stroke="yellow" stroke-width="8" fill="none"/>
+        <polyline points="16,32 24,52 59,3" stroke="red" stroke-width="12" fill="none"/>
+    </g>
+</svg>

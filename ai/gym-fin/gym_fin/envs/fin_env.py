@@ -1255,7 +1255,11 @@ class FinEnv(Env):
             self.wealth_as_income['tax_free'], self.wealth_as_income['tax_deferred'], self.wealth_as_income['taxable'],
             income_preretirement_first_annualized, income_preretirement_second_annualized, self.consume_preretirement_annualized,
             self.taxable_basis, stocks_price, real_interest_rate, inflation_rate)
-        return np.array(observe, dtype = 'float32')
+        obs = np.array(observe, dtype = 'float32')
+        if np.any(np.isnan(obs)) or np.any(np.isinf(obs)):
+            print(obs, observe)
+            assert False
+        return obs
 
     def decode_observation(self, obs):
 
