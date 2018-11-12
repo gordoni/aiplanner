@@ -46,6 +46,10 @@ train () {
             local SEED=0
             while [ $SEED -lt $SEEDS ]; do
                 local MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
+                if [ ! -d $MODEL_DIR ]; then
+                    echo "Training failed: $MODEL_DIR" >&2
+                fi
+                mkdir -p $MODEL_DIR
                 mv ${TEMPFILES[$SEED]} $MODEL_DIR/train.log
                 SEED=`expr $SEED + 1`
             done
