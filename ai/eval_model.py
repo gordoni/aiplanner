@@ -115,6 +115,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_seed, ev
                 action = None
             interp = env.interpret_action(action)
 
+        interp['asset_classes'] = interp['asset_allocation'].classes()
         interp['asset_allocation'] = interp['asset_allocation'].as_list()
         interp['name'] = env.params.name
         interp_str = dumps(interp)

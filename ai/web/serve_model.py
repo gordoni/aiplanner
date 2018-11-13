@@ -81,9 +81,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         if self.path == '/healthcheck':
 
             if self.healthcheck():
-                data = 'OK'
+                data = 'OK\n'
             else:
-                data = 'FAIL'
+                data = 'FAIL\n'
 
             data = data.encode('utf-8')
 
@@ -237,23 +237,22 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         ces = []
         best_ce = float('-inf')
-        model_seed = 0
-        while True:
+        for model_seed in range(self.server.args.num_models):
 
             dir_seed = dir + '/' + str(model_seed)
-
-            if not isdir(dir_seed):
-                break
 
             try:
                 final = loads(open(dir_seed + '/aiplanner-final.json').read())
             except IOError:
-                return {'error': 'Results not found.'}
+                continue
 
             if final['error'] != None:
-                return final
+                continue
 
-            initial = loads(open(dir_seed + '/aiplanner-initial.json').read())
+            try:
+                initial = loads(open(dir_seed + '/aiplanner-initial.json').read())
+            except IOError:
+                continue
 
             results = dict(initial, **final)
             results['data_dir'] = '/api/data/' + dir_seed[len(self.server.args.results_dir) + 1:]
@@ -263,8 +262,6 @@ class RequestHandler(BaseHTTPRequestHandler):
             if ce > best_ce:
                 best_ce = ce
                 best_results = results
-
-            model_seed += 1
 
         if not ces:
             results = {'error': 'Results not found.'}

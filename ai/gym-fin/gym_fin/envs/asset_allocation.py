@@ -10,6 +10,8 @@
 
 class AssetAllocation(object):
 
+    ASSET_CLASSES = ('stocks', 'real_bonds', 'nominal_bonds', 'iid_bonds', 'bills')
+
     def __init__(self, *, fractional = True, **kwargs):
 
         self.aa = {**kwargs}
@@ -18,10 +20,19 @@ class AssetAllocation(object):
 
             assert abs(sum(self.aa.values()) - 1) < 1e-15
 
+    def classes(self):
+
+        l = []
+        for ac in self.ASSET_CLASSES:
+            if ac in self.aa:
+                l.append(ac)
+
+        return l
+
     def as_list(self):
 
         l = []
-        for ac in ('stocks', 'real_bonds', 'nominal_bonds', 'iid_bonds', 'bills'):
+        for ac in self.ASSET_CLASSES:
             if ac in self.aa:
                 l.append(self.aa[ac])
 

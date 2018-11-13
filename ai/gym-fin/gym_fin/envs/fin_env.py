@@ -11,7 +11,7 @@
 from datetime import datetime, timedelta
 from json import loads
 from math import atanh, ceil, exp, floor, isinf, isnan, log, sqrt, tanh
-from random import seed, random, uniform, lognormvariate
+from random import seed, randint, random, uniform, lognormvariate
 
 import numpy as np
 
@@ -44,11 +44,6 @@ class FinEnv(Env):
     metadata = {'render.modes': ['human']}
 
     def _compute_vital_stats(self, age_start, age_start2, le_add, le_add2, preretirement):
-
-        key = (age_start, age_start2, le_add, le_add2, preretirement)
-        if self.vs_cache == key:
-            return self.vs_cache_results
-        self.vs_cache = key
 
         start_date = datetime.strptime(self.params.life_table_date, '%Y-%m-%d')
         this_year = datetime(start_date.year, 1, 1)
@@ -160,9 +155,8 @@ class FinEnv(Env):
         alive_single.append(0)
         alive_count.append(0)
 
-        self.vs_cache_results = only_alive2, alive_years, tuple(alive_single), tuple(alive_count), \
+        return only_alive2, alive_years, tuple(alive_single), tuple(alive_count), \
             tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
-        return self.vs_cache_results
 
     def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
 
@@ -491,6 +485,9 @@ class FinEnv(Env):
             max_age = self.age
         self.final_spias_purchase = max_age <= self.params.spias_permitted_to_age < max_age + self.params.time_period
 
+        self.have_401k = bool(randint(int(self.params.have_401k_low), int(self.params.have_401k_high)))
+        self.have_401k2 = bool(randint(int(self.params.have_401k2_low), int(self.params.have_401k2_high)))
+
         self.gamma = self.log_uniform(self.params.gamma_low, self.params.gamma_high)
         self.utility = Utility(self.gamma, self.params.consume_utility_floor)
 
@@ -801,8 +798,8 @@ class FinEnv(Env):
             assert p_tax_free / self.p_sum() > -1e-15
             p_tax_free = 0
 
-        retirement_contribution = contribution_limit(self.income_preretirement, self.age, self.params.have_401k, self.params.time_period) \
-            + contribution_limit(self.income_preretirement2, self.age2, self.params.have_401k2, self.params.time_period)
+        retirement_contribution = contribution_limit(self.income_preretirement, self.age, self.have_401k, self.params.time_period) \
+            + contribution_limit(self.income_preretirement2, self.age2, self.have_401k2, self.params.time_period)
         retirement_contribution = min(retirement_contribution, p_taxable)
         p_taxable -= retirement_contribution
         p_tax_deferred += retirement_contribution
@@ -1219,9 +1216,9 @@ class FinEnv(Env):
         couple = int(self.couple)
 
         if couple:
-            num_401k = int(self.params.have_401k) + int(self.params.have_401k2)
+            num_401k = int(self.have_401k) + int(self.have_401k2)
         else:
-            num_401k = int(self.params.have_401k2) if self.only_alive2 else int(self.params.have_401k)
+            num_401k = int(self.have_401k2) if self.only_alive2 else int(self.have_401k)
 
         one_on_gamma = 1 / self.gamma
         life_expectancy_both = self.life_expectancy_both[self.episode_length]

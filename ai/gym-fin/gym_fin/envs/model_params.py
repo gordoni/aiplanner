@@ -141,8 +141,8 @@ class ModelParams(object):
         self._param('consume-preretirement', (0, 0), 0) # Annual pre-retirement consumption.
         self._param('consume-income-ratio-max', float('inf')) # Maximum allowed value of consume_preretirement / (income_preretirement + income_preretirement2).
 
-        self._boolean_flag('have_401k', True) # 401(k) available to first individual.
-        self._boolean_flag('have_401k2', True) # 401(k) available to second individual.
+        self._param('have_401k', (True, True), True, tp = bool) # 401(k) available to first individual.
+        self._param('have_401k2', (True, True), True, tp = bool) # 401(k) available to second individual.
 
         self._param('time-period', 1) # Rebalancing time interval in years.
         self._param('gamma', (3, 3), 3) # Coefficient of relative risk aversion.
@@ -314,7 +314,7 @@ class ModelParams(object):
 
         Values may be a tuple to specify a range of values: (low, high).'''
 
-        if tp in (float, int):
+        if tp in (float, int, bool):
 
             try:
                 _, _ = train_val

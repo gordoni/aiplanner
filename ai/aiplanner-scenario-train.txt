@@ -36,6 +36,11 @@ master_consume_preretirement_low = 1e4
 master_consume_preretirement_high = 1e5
 master_consume_income_ratio_max = 0.7
 
+master_have_401k_low = False
+master_have_401k_high = True
+master_have_401k2_low = False
+master_have_401k2_high = True
+
 master_defined_benefits = '''[
     {"owner": "self",   "age": null, "payout": [1e2, 1e5], "source_of_funds": "tax_free"},
     {"owner": "self",   "age": null, "payout": [1e2, 1e5], "source_of_funds": "tax_deferred"},

@@ -20,6 +20,9 @@ master_income_preretirement = 6e4
 master_income_preretirement2 = 6e4
 master_consume_preretirement = 4.8e4
 
+master_have_401k = True
+master_have_401k2 = True
+
 master_defined_benefits = '''[
     {"owner": "self", "age": null, "payout": 16e3, "source_of_funds": "taxable"},
     {"owner": "spouse", "age": null, "payout": 16e3, "source_of_funds": "taxable"}
