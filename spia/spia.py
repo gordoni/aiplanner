@@ -232,7 +232,7 @@ class IncomeAnnuity(object):
             payout_amount = payout_fraction
             if self.schedule:
                 try:
-                    payout_amount *= self.schedule[round(y * self.frequency)]
+                    payout_amount *= self.schedule[int(y * self.frequency + 0.5)]
                 except TypeError:
                     payout_amount *= self.schedule(y)
             payout_value = payout_amount / math.exp(spot * y_eff)
