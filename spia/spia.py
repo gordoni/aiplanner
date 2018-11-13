@@ -49,7 +49,7 @@ class IncomeAnnuity(object):
 
         'joint_contingent' is True for a joint annuity. Payout is
         reduced on the death of either annuitant. False for a
-        coningent annuity. Payout is reduced only on the death of the
+        contingent annuity. Payout is reduced only on the death of the
         first annuitant.
 
         'period_certain' is the period for which payment is guaranteed
@@ -77,10 +77,11 @@ class IncomeAnnuity(object):
         to compute the annuity's value. The default is to use the same
         date as the yield curve.
 
-        'schedule' is an optional function of one parameter, the time
-        offset from the date used to compute the annuity's value
-        specified in years. It should return a multiplicative factor
-        to be applied to each payout.
+        'schedule' is either an optional function of one parameter,
+        the time offset from the date used to compute the annuity's
+        value specified in years, or an array indexed by the time
+        offset in years divided by 'frequency'. It should yield a
+        multiplicative factor to be applied to each payout.
 
         '''
 
@@ -142,7 +143,7 @@ class IncomeAnnuity(object):
         alive_array.append(0)
         joint_array.append(0)
 
-        return start, alive_array, joint_array
+        return start, tuple(alive_array), tuple(joint_array)
 
     def set_age(self, age, *, calcs = False):
         '''Recompute income annuity prices.
@@ -201,11 +202,12 @@ class IncomeAnnuity(object):
             if index + 1 >= len(self.alive_array) or prev_combined < target_combined:
                 break
             if period >= self.period_certain:
-                alive = ((1 - fract) * self.alive_array[index] + fract * self.alive_array[index + 1]) / alive0
-                if self.life_table2:
-                    joint = ((1 - fract) * self.joint_array[index] + fract * self.joint_array[index + 1]) / alive0
+                if fract == 0:
+                    alive = self.alive_array[index] / alive0
+                    joint = self.joint_array[index] / alive0 if self.life_table2 else 0
                 else:
-                    joint = 0
+                    alive = ((1 - fract) * self.alive_array[index] + fract * self.alive_array[index + 1]) / alive0
+                    joint = ((1 - fract) * self.joint_array[index] + fract * self.joint_array[index + 1]) / alive0 if self.life_table2 else 0
             else:
                 alive = 1
                 joint = 0
@@ -218,7 +220,7 @@ class IncomeAnnuity(object):
                 y_eff = y
                 months_since_adjust -= 12
             if self.percentile is None:
-                if self.yield_curve.interest_rate == 'le' and i == 0:
+                if i == 0 and self.yield_curve.interest_rate == 'le':
                     payout_fraction = 0  # No credit for first payout.
                 else:
                     payout_fraction = combined
@@ -229,7 +231,10 @@ class IncomeAnnuity(object):
                     payout_fraction = (prev_combined - target_combined) / (prev_combined - combined)
             payout_amount = payout_fraction
             if self.schedule:
-                payout_amount *= self.schedule(y)
+                try:
+                    payout_amount *= self.schedule[round(y * self.frequency)]
+                except TypeError:
+                    payout_amount *= self.schedule(y)
             payout_value = payout_amount / math.exp(spot * y_eff)
             price += payout_value
             duration += y * payout_value
