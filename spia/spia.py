@@ -115,8 +115,8 @@ class IncomeAnnuity(object):
         start = start_year + start_month / 12 + offset
         alive1 = 1.0
         alive2 = 1.0
-        alive_array = [1.0]
-        joint_array = [0.0]
+        alive1_array = [1.0]
+        alive2_array = [0.0]
         i = 0
         while True:
             y = float(i)
@@ -127,23 +127,14 @@ class IncomeAnnuity(object):
             for _ in range(self.frequency):
                 alive1 *= (1 - q1) ** (1.0 / self.frequency)
                 alive2 *= (1 - q2) ** (1.0 / self.frequency)
-                if alive2 == 0:
-                    alive = alive1  # Logically not needed, but provides for precise floating point compatibility with Opal.
-                    joint = 0
-                else:
-                    alive = alive1
-                    joint = alive2 * (1 - alive1)
-                    if self.joint_contingent:
-                        alive -= alive1 * (1 - alive2)
-                        joint += alive1 * (1 - alive2)
-                alive_array.append(alive)
-                joint_array.append(joint)
+                alive1_array.append(alive1)
+                alive2_array.append(alive2)
             i += 1
 
-        alive_array.append(0)
-        joint_array.append(0)
+        alive1_array.append(0)
+        alive2_array.append(0)
 
-        return start, tuple(alive_array), tuple(joint_array)
+        return start, tuple(alive1_array), tuple(alive2_array)
 
     def set_age(self, age, *, calcs = False):
         '''Recompute income annuity prices.
@@ -167,7 +158,7 @@ class IncomeAnnuity(object):
             recompute = True
 
         if recompute:
-            self.start, self.alive_array, self.joint_array = self._compute_vital_stats(age)
+            self.start, self.alive1_array, self.alive2_array = self._compute_vital_stats(age)
             self.current_age1 = age
             index_offset = 0
         else:
@@ -181,10 +172,21 @@ class IncomeAnnuity(object):
         total_payout = 0
         if calcs:
             calculations = []
-        target_combined = 1 - self.percentile / 100.0 if self.percentile is not None else -1
-        alive0 = self.alive_array[index_offset]
-        if alive0 == 0:
-            alive0 = 1 # Prevent divide by zero later on.
+        if self.percentile == None:
+            target_combined = -1
+        else:
+            assert self.schedule == None
+            target_combined = 1 - self.percentile / 100.0
+        try:
+            alive1_init = self.alive1_array[index_offset]
+            alive2_init = self.alive2_array[index_offset]
+        except IndexError:
+            alive1_init = 0
+            alive2_init = 0
+        if alive1_init == 0:
+            alive1_init = 1 # Prevent divide by zero later on.
+        if alive2_init == 0:
+            alive2_init = 1
         i = 0
         prev_combined = 1.0
         delay = self.payout_delay / 12.0
@@ -199,15 +201,36 @@ class IncomeAnnuity(object):
             index = index_offset + y * self.frequency
             fract = index % 1
             index = int(index)
-            if index + 1 >= len(self.alive_array) or prev_combined < target_combined:
+            if index + 1 >= len(self.alive1_array) or prev_combined < target_combined:
                 break
+            if self.schedule:
+                try:
+                    scehdule = self.schedule[int(y * self.frequency + 0.5)]
+                except TypeError:
+                    schedule = self.schedule(y)
+                if schedule == 0:
+                    i += 1
+                    continue
+            else:
+                schedule = 1
             if period >= self.period_certain:
-                if fract == 0:
-                    alive = self.alive_array[index] / alive0
-                    joint = self.joint_array[index] / alive0 if self.life_table2 else 0
+                if self.life_table2 == None:
+                    alive = self.alive1_array[index] / alive1_init
+                    if fract != 0:
+                        alive1 = self.alive1_array[index + 1] / alive1_init
+                        alive = (1 - fract) * alive + fract * alive1
+                    joint = 0
                 else:
-                    alive = ((1 - fract) * self.alive_array[index] + fract * self.alive_array[index + 1]) / alive0
-                    joint = ((1 - fract) * self.joint_array[index] + fract * self.joint_array[index + 1]) / alive0 if self.life_table2 else 0
+                    alive1 = self.alive1_array[index] / alive1_init
+                    alive2 = self.alive2_array[index] / alive2_init
+                    alive = alive1 * alive2
+                    joint = alive1 + alive2 - 2 * alive
+                    if fract != 0:
+                        alive1 = self.alive1_array[index + 1] / alive1_init
+                        alive2 = self.alive2_array[index + 1] / alive2_init
+                        alive_both = alive1 * alive2
+                        alive = (1 - fract) * alive + fract * alive_both
+                        joint = (1 - fract) * joint + fract * (alive1 + alive2 - 2 * alive_both)
             else:
                 alive = 1
                 joint = 0
@@ -215,10 +238,12 @@ class IncomeAnnuity(object):
             if self.yield_curve.interest_rate != 'real' or self.cpi_adjust == 'all':
                 spot = self.yield_curve.spot(y)
                 y_eff = y
-            elif months_since_adjust >= 12:
-                spot = self.yield_curve.spot(y)
-                y_eff = y
-                months_since_adjust -= 12
+            else:
+                if months_since_adjust >= 12:
+                    spot = self.yield_curve.spot(y)
+                    y_eff = y
+                    months_since_adjust -= 12
+                months_since_adjust += 12.0 / self.frequency
             if self.percentile is None:
                 if i == 0 and self.yield_curve.interest_rate == 'le':
                     payout_fraction = 0  # No credit for first payout.
@@ -229,12 +254,7 @@ class IncomeAnnuity(object):
                     payout_fraction = 1.0
                 else:
                     payout_fraction = (prev_combined - target_combined) / (prev_combined - combined)
-            payout_amount = payout_fraction
-            if self.schedule:
-                try:
-                    payout_amount *= self.schedule[int(y * self.frequency + 0.5)]
-                except TypeError:
-                    payout_amount *= self.schedule(y)
+            payout_amount = payout_fraction * schedule
             payout_value = payout_amount / math.exp(spot * y_eff)
             price += payout_value
             duration += y * payout_value
@@ -246,13 +266,11 @@ class IncomeAnnuity(object):
                 calculations.append(calc)
             i += 1
             prev_combined = combined
-            months_since_adjust += 12.0 / self.frequency
 
         if self.yield_curve.interest_rate == 'le' and self.percentile is None:
+            assert not self.schedule
             payout_fraction = 0.5  # Half credit after last payout.
             payout_amount = payout_fraction
-            if self.schedule:
-                payout_amount *= self.schedule(y)
             payout_value = payout_amount / math.exp(spot * y_eff)
             price += payout_value
             duration += y * payout_value
