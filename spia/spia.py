@@ -205,7 +205,7 @@ class IncomeAnnuity(object):
                 break
             if self.schedule:
                 try:
-                    scehdule = self.schedule[int(y * self.frequency + 0.5)]
+                    schedule = self.schedule[int(y * self.frequency + 0.5)]
                 except TypeError:
                     schedule = self.schedule(y)
                 if schedule == 0:
