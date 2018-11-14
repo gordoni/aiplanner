@@ -18,14 +18,14 @@ from shutil import rmtree
 import tensorflow as tf
 
 from baselines import logger
-from baselines.common import tf_util as U
+from baselines.common import boolean_flag, tf_util as U
 from baselines.common.misc_util import set_global_seeds
 
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 from gym_fin.envs.model_params import dump_params_file
 
-def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_minibatch_size,
+def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_minibatch_size, train_couple_net,
           train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps, train_seed,
           eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, nice, model_dir):
 
@@ -46,6 +46,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     session = U.make_session(num_cpu=1).__enter__()
     env = make_fin_env(action_space_unbounded=True, training=True, **training_model_params)
     couple = training_model_params['sex2'] != None
+    couple_net = couple and train_couple_net
     if evaluation:
         eval_seed += 1000000 # Use a different seed than might have been used during training.
         eval_env = make_fin_env(action_space_unbounded=True, training=False, **eval_model_params)
@@ -76,7 +77,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     def policy_fn(name, ob_space, ac_space):
         return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space,
             hid_size=train_hidden_layer_size, num_hid_layers=train_num_hidden_layers,
-            couple=couple)
+            couple=couple_net)
     pposgd_simple.learn(env, policy_fn,
         max_timesteps=train_num_timesteps,
         timesteps_per_actorbatch=2048,
@@ -103,6 +104,7 @@ def main():
     parser.add_argument('--train-num-hidden-layers', type=int, default=2)
     parser.add_argument('--train-hidden-layer-size', type=int, default=64)
     parser.add_argument('--train-minibatch-size', type=int, default=128)
+    boolean_flag(parser, 'train-couple-net', default = True)
     training_model_params, eval_model_params, args = fin_arg_parse(parser)
     logger.configure()
     train(training_model_params, eval_model_params, **args)
