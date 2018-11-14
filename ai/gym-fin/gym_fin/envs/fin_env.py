@@ -125,38 +125,36 @@ class FinEnv(Env):
 
         alive_years = (2 * sum(alive_both[retired_index:]) + sum(alive_one[retired_index:])) * self.params.time_period
 
-        life_expectancy_both = []
-        for y in range(len(alive_both)):
-            try:
-                le = sum(alive_both[max(y, retired_index):]) / alive_both[y] * self.params.time_period
-            except ZeroDivisionError:
-                le = 0
-            life_expectancy_both.append(le)
-        life_expectancy_both.append(0)
-        life_expectancy_one = []
-        for y in range(len(alive_one)):
-            try:
-                le = sum(alive_one[max(y, retired_index):]) / (alive_both[y] + alive_one[y]) * self.params.time_period
-            except ZeroDivisionError:
-                le = 0
-            life_expectancy_one.append(le)
-        life_expectancy_one.append(0)
-        life_expectancy_single = []
-        for y in range(len(alive_single)):
-            try:
-                le = sum(alive_single[max(y, retired_index):]) / alive_single[y] * self.params.time_period
-            except TypeError:
-                le = None
-            except ZeroDivisionError:
-                le = 0
-            life_expectancy_single.append(le)
-        life_expectancy_single.append(0)
+        life_expectancy_both = self.sums_to_end(alive_both, retired_index, alive_both)
+        life_expectancy_one = self.sums_to_end(alive_one, retired_index, tuple(alive_one[i] + alive_both[i] for i in range(len(alive_one))))
+        life_expectancy_single = self.sums_to_end(alive_single, retired_index, alive_single)
 
         alive_single.append(0)
         alive_count.append(0)
 
         return only_alive2, alive_years, tuple(alive_single), tuple(alive_count), \
             tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
+
+    def sums_to_end(self, l, start, divl):
+
+        r = [0]
+        s = 0
+        for i in range(len(l) - 1, -1, -1):
+            if i >= start:
+                try:
+                    s += l[i]
+                except TypeError:
+                    s = None
+            try:
+                v = s / divl[i] * self.params.time_period
+            except TypeError:
+                v = None
+            except ZeroDivisionError:
+                assert s == 0
+                v = 0
+            r.insert(0, v)
+
+        return r
 
     def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
 
@@ -310,9 +308,9 @@ class FinEnv(Env):
         schedule = lambda y: 1 if inflation_adjustment == 'cpi' else (1 + inflation_adjustment) ** y
 
         spia = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint_contingent = True,
-                             joint_payout_fraction = payout_fraction, frequency = 1, cpi_adjust = 'all', date_str = self.date, schedule = schedule)
+            joint_payout_fraction = payout_fraction, frequency = round(1 / self.params.time_period), cpi_adjust = 'all', date_str = self.date, schedule = schedule)
 
-        payout = spia.payout(premium, mwr = mwr)
+        payout = spia.payout(premium, mwr = mwr) / self.params.time_period
 
         return payout
 
@@ -328,7 +326,7 @@ class FinEnv(Env):
             defined_benefits[key] = db
 
             younger = self.age if self.params.sex2 == None else min(self.age, self.age2)
-            episodes = ceil(self.params.age_end - younger)
+            episodes = ceil((self.params.age_end - younger) / self.params.time_period)
 
             bonds = YieldCurve('fixed', self.date) if inflation_adjustment == 'cpi' else self.bonds.inflation
             if self.couple:
@@ -338,20 +336,19 @@ class FinEnv(Env):
                 life_table = self.life_table2 if self.only_alive2 else self.life_table
                 life_table2 = None
             payout_delay = 0
-            sched = [0] * episodes
-            db['sched'] = sched
-            schedule = lambda y: sched[int(y)]
+            schedule = [0] * episodes
+            db['sched'] = schedule
             db['spia'] = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint_contingent = joint,
-                joint_payout_fraction = payout_fraction, frequency = 1, cpi_adjust = 'all', date_str = self.date, schedule = schedule)
+                joint_payout_fraction = payout_fraction, frequency = round(1 / self.params.time_period),
+                cpi_adjust = 'all', date_str = self.date, schedule = schedule)
 
             if self.couple:
 
                 life_table = self.life_table2 if self.only_alive2 else self.life_table
-                sched_single = [0] * episodes
-                db['sched_single'] = sched_single
-                schedule = lambda y: sched_single[int(y)]
+                schedule = [0] * episodes
+                db['sched_single'] = schedule
                 db['spia_single'] = IncomeAnnuity(bonds, life_table, payout_delay = 12 * payout_delay,
-                    frequency = 1, cpi_adjust = 'all', date_str = self.date, schedule = schedule)
+                    frequency = round(1 / self.params.time_period), cpi_adjust = 'all', date_str = self.date, schedule = schedule)
 
         return db
 
@@ -359,13 +356,17 @@ class FinEnv(Env):
 
         #print('add_sched:', start, end, payout, payout_fraction, inflation_adjustment)
 
-        for e in range(ceil(max(start, 0)), floor(min(end, len(db['sched'])))):
+        payout /= self.params.time_period
+        for e in range(ceil(max(start, 0) / self.params.time_period), floor(min(end, len(db['sched'])) / self.params.time_period)):
             adjustment = 1 if inflation_adjustment == 'cpi' else (1 + inflation_adjustment) ** e
             db['sched'][e] += payout * adjustment
             try:
                 db['sched_single'][e] += payout * payout_fraction * adjustment
             except KeyError:
                 pass
+
+        if 'sched_single' in db and payout_fraction > 0:
+            db['sched_single_non_zero'] = True
 
     def add_db(self, defined_benefits, type = 'Income Annuity', owner = 'self', age = None, premium = None, payout = None,
         inflation_adjustment = 'cpi', joint = False, payout_fraction = 0, source_of_funds = 'tax_deferred', exclusion_period = 0, exclusion_amount = 0):
@@ -432,6 +433,12 @@ class FinEnv(Env):
             self.add_db(defined_benefits, **db)
         return defined_benefits
 
+    def age_uniform(self, low, high):
+        if low == high:
+            return low # Allow fractional ages.
+        else:
+            return randint(low, high) # SPIA module runs faster with non-fractional ages.
+
     def log_uniform(self, low, high):
         if low == high:
             return low # Handles low == high == 0.
@@ -443,8 +450,8 @@ class FinEnv(Env):
         if self.params.reproduce_episode != None:
             self._reproducable_seed(self.params.reproduce_episode, 0, 0)
 
-        self.age = uniform(self.params.age_start_low, self.params.age_start_high)
-        self.age2 = uniform(self.params.age_start2_low, self.params.age_start2_high)
+        self.age = self.age_uniform(self.params.age_start_low, self.params.age_start_high)
+        self.age2 = self.age_uniform(self.params.age_start2_low, self.params.age_start2_high)
         le_add = uniform(self.params.life_expectancy_additional_low, self.params.life_expectancy_additional_high)
         le_add2 = uniform(self.params.life_expectancy_additional2_low, self.params.life_expectancy_additional2_high)
         self.age_retirement = uniform(self.params.age_retirement_low, self.params.age_retirement_high)
@@ -461,7 +468,7 @@ class FinEnv(Env):
         death_age = self.params.age_end - self.params.time_period
         if self.age != self.life_table_age:
             self.life_table = LifeTable(self.params.life_table, self.params.sex, self.age,
-                death_age = death_age, le_add = le_add, date_str = self.params.life_table_date)
+                                        death_age = death_age, le_add = le_add, date_str = self.params.life_table_date, interpolate_q = False)
             self.life_table_age = self.age
         else:
             self.life_table.age = self.age # Undo hack (value gets messed with below).
@@ -469,7 +476,7 @@ class FinEnv(Env):
             self.life_table2 = None
         elif self.age2 != self.life_table2_age:
             self.life_table2 = LifeTable(self.params.life_table, self.params.sex2, self.age2,
-                death_age = death_age, le_add = le_add2, date_str = self.params.life_table_date)
+                                         death_age = death_age, le_add = le_add2, date_str = self.params.life_table_date, interpolate_q = False)
             self.life_table2_age = self.age2
         else:
             self.life_table2.age = self.age2
@@ -870,9 +877,8 @@ class FinEnv(Env):
 
     def add_spias(self, inflation_adjustment, tax_free_spias, tax_deferred_spias, taxable_spias):
 
-        owner = 'self' if self.couple or not self.only_alive2 else 'spouse'
-        age = self.age if owner == 'self' else self.age2
-        age += 1
+        owner = 'self' # Owner doesn't matter for joint SPIAs. Doing things this way reduces the number of db objects required for couples.
+        age = self.age + self.params.time_period
         payout_fraction = 1 / (1 + self.params.consume_additional)
         if tax_free_spias > 0:
             self.add_db(self.defined_benefits, owner = owner, age = age, premium = tax_free_spias, inflation_adjustment = inflation_adjustment, joint = True, \
@@ -1047,6 +1053,7 @@ class FinEnv(Env):
             self.life_expectancy_both = [0] * len(self.life_expectancy_both)
             self.life_expectancy_one = self.life_expectancy_single
 
+            self.defined_benefits = {key: db for key, db in self.defined_benefits.items() if 'sched_single_non_zero' in db}
             for db in self.defined_benefits.values():
                 db['spia'] = db['spia_single']
                 db['sched'] = db['sched_single']

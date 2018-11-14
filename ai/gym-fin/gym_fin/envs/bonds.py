@@ -66,7 +66,7 @@ class Bonds(object):
         self.t = 0
         self.oup = OUProcess(self.time_period, self.a, self.sigma, mu = self.sir_init, x = self.sir0) # Underlying random movement in short interest rates.
 
-        self._sir_cache = {}
+        self._lpv_cache = None
 
     def _log_p(self, t):
         '''Return the log present value of a zero coupon bound paying 1 at
@@ -91,17 +91,13 @@ class Bonds(object):
 
         '''
 
-        cache_t = self.t + int(next) * self.time_period
-        try:
-            sir = self._sir_cache[cache_t]
-        except KeyError:
-            if len(self._sir_cache) >= 100:
-                self._sir_cache = {}
-            if next:
-                sir = self._short_interest_rate(self.oup.next_x)
-            else:
-                sir = self._short_interest_rate(self.oup.x)
-            self._sir_cache[cache_t] = sir
+        if next:
+            sir = self._short_interest_rate(next = True)
+        elif self._lpv_cache != None:
+            sir = self._lpv_cache
+        else:
+            sir = self._short_interest_rate()
+            self._lpv_cache = sir
 
         #  https://en.wikipedia.org/wiki/Hull%E2%80%93White_model P(0, T).
         B = (1 - exp(- self.a * t)) / self.a
@@ -115,7 +111,7 @@ class Bonds(object):
 
         '''
 
-        return - self._log_present_value(t) / t if t > 0 else self._short_interest_rate(self.oup.x)
+        return - self._log_present_value(t) / t if t > 0 else self._short_interest_rate()
 
     def _yield(self, t):
         '''Return the current continuously compounded yield of a zero coupon
@@ -123,7 +119,7 @@ class Bonds(object):
 
         '''
 
-        return - self._log_present_value(t) / t if t > 0 else self._short_interest_rate(self.oup.x)
+        return - self._log_present_value(t) / t if t > 0 else self._short_interest_rate()
 
     def sample(self, duration = 7):
         '''Current real return for a zero coupon bond with duration
@@ -138,6 +134,7 @@ class Bonds(object):
     def step(self):
 
         self.t += self.time_period
+        self._lpv_cache = None
         self.oup.step()
 
     def _report(self):
@@ -232,7 +229,7 @@ class Bonds(object):
         print('sample returns')
         print('short_interest_rate 20_year_real_return 20_year_yield')
         for _ in range(50):
-            print(self._short_interest_rate(self.oup.next_x), self.sample(20), self._yield(20))
+            print(self._short_interest_rate(next = True), self.sample(20), self._yield(20))
             self.step()
 
         self.reset()
@@ -264,9 +261,9 @@ class RealBonds(Bonds):
 
         super().__init__(a = a, sigma = sigma, yield_curve = yield_curve, r0 = r0, standard_error = standard_error, time_period = time_period)
 
-    def _short_interest_rate(self, oup_x):
+    def _short_interest_rate(self, *, next = False):
         '''Return the annualized continuously compounded current short
-        interest rate given the underlying OU process value, oup_x.
+        interest rate given the underlying OU process.
 
         The term structure reveals an investor preference for shorter
         durations rather than true expectations of future rates and so
@@ -274,11 +271,14 @@ class RealBonds(Bonds):
 
         '''
 
-        return oup_x
+        if next:
+            return self.oup.next_x
+        else:
+            return self.oup.x
 
     def observe(self):
 
-        return (self._short_interest_rate(self.oup.x), )
+        return (self._short_interest_rate(), )
 
     def _deflate(self, yield_curve):
 
@@ -398,16 +398,23 @@ class BreakEvenInflation(Bonds):
         # https://www.math.nyu.edu/~benartzi/Slides10.3.pdf page 11.
         return self.yield_curve.forward(t) + (sigma * (1 - exp(- a * t)) / a) ** 2 / 2
 
-    def _short_interest_rate(self, oup_x):
+    def _short_interest_rate(self, *, next = False):
         '''Return the annualized continuously compounded current short
-        interest rate given the underlying OU process value, oup_x.
+        interest rate given the underlying OU process.
 
         The term structure reveals the true expectation of future
         inflation and so is incorporated.
 
         '''
 
-        return self._sir(self.t, self.a, self.sigma) + oup_x - self.sir_init
+        if next:
+            t = self.t + self.time_period
+            x = self.oup.next_x
+        else:
+            t = self.t
+            x = self.oup.x
+
+        return self._sir(t, self.a, self.sigma) + x - self.sir_init
 
     def _model_short_interest_rate(self):
         '''Current short interest rate based on fitting the inflation model,
@@ -452,22 +459,6 @@ class BreakEvenInflation(Bonds):
 
         return 1
 
-class OUProcessTuple(object):
-
-    def __init__(self, *oups):
-
-        self.oups = oups
-
-    @property
-    def x(self):
-
-        return tuple(oup.x for oup in self.oups)
-
-    @property
-    def next_x(self):
-
-        return tuple(oup.next_x for oup in self.oups)
-
 # Annual inflation rate, needed for manual calibration of Hull-White parameters.
 inflation_rate = {
     2004: 0.027,
@@ -505,11 +496,9 @@ class NominalBonds(Bonds):
         self.real_bonds.reset()
         self.inflation.reset()
 
-        self.oup = OUProcessTuple(self.real_bonds.oup, self.inflation.oup)
+    def _short_interest_rate(self, *, next = False):
 
-    def _short_interest_rate(self, oup_x):
-
-        return self.real_bonds._short_interest_rate(oup_x[0]) + self.inflation._short_interest_rate(oup_x[1])
+        return self.real_bonds._short_interest_rate(next = next) + self.inflation._short_interest_rate(next = next)
 
     def _log_present_value(self, t, *, next = False):
 
@@ -564,11 +553,9 @@ class BondsMeasuredInNominalTerms(Bonds):
         self.bonds.reset()
         self.inflation.reset()
 
-        self.oup = OUProcessTuple(self.bonds.oup, self.inflation.oup)
+    def _short_interest_rate(self, *, next = False):
 
-    def _short_interest_rate(self, oup_x):
-
-        return self.bonds._short_interest_rate(oup_x[0]) + self.inflation._short_interest_rate(oup_x[1])
+        return self.bonds._short_interest_rate(next = next) + self.inflation._short_interest_rate(next = next)
 
     def _yield(self, t):
 
