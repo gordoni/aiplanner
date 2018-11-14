@@ -232,6 +232,8 @@ class YieldCurve(object):
         self.date_low = date_str_low
         self.adjust = adjust
 
+        self._spot_cache = {}
+
         cached = False
 
         if cache and date_str_low:
@@ -398,17 +400,24 @@ class YieldCurve(object):
     def spot(self, y):
         '''Return the continuously compounded annual spot rate.'''
 
-        if self.interest_rate == 'fixed':
-            return math.log(1 + self.adjust)
-        elif self.interest_rate == 'le':
-            return 0
-        else:
-            # Spot rates do not match spot rates at
-            # https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/TNC-YC.aspx
-            # because the PchipInterpolator is not being used here and
-            # the input par rates of the daily quotes used here differ
-            # from the end of month quotes reported there.
-            return self.monotone_convex.spot(y)
+        try:
+            spt = self._spot_cache[y]
+        except KeyError:
+            if self.interest_rate == 'fixed':
+                spt = math.log(1 + self.adjust)
+            elif self.interest_rate == 'le':
+                spt = 0
+            else:
+                # Spot rates do not match spot rates at
+                # https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/TNC-YC.aspx
+                # because the PchipInterpolator is not being used here and
+                # the input par rates of the daily quotes used here differ
+                # from the end of month quotes reported there.
+                spt = self.monotone_convex.spot(y)
+            if len(self._spot_cache) < 1000:
+                self._spot_cache[y] = spt
+
+        return spt
 
     def forward(self, y):
         '''Return the continuously compounded annual forward rate.'''
