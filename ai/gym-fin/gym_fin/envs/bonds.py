@@ -67,6 +67,7 @@ class Bonds(object):
         self.oup = OUProcess(self.time_period, self.a, self.sigma, mu = self.sir_init, x = self.sir0) # Underlying random movement in short interest rates.
 
         self._lpv_cache = None
+        self._spot_cache = {}
 
     def _log_p(self, t):
         '''Return the log present value of a zero coupon bound paying 1 at
@@ -111,7 +112,14 @@ class Bonds(object):
 
         '''
 
-        return - self._log_present_value(t) / t if t > 0 else self._short_interest_rate()
+        try:
+            spt = self._spot_cache[t]
+        except KeyError:
+            spt = - self._log_present_value(t) / t if t > 0 else self._short_interest_rate()
+            if len(self._spot_cache) < 1000:
+                self._spot_cache[t] = spt
+
+        return spt
 
     def _yield(self, t):
         '''Return the current continuously compounded yield of a zero coupon
@@ -135,6 +143,7 @@ class Bonds(object):
 
         self.t += self.time_period
         self._lpv_cache = None
+        self._spot_cache = {}
         self.oup.step()
 
     def _report(self):
@@ -496,6 +505,8 @@ class NominalBonds(Bonds):
         self.real_bonds.reset()
         self.inflation.reset()
 
+        self._spot_cache = {}
+
     def _short_interest_rate(self, *, next = False):
 
         return self.real_bonds._short_interest_rate(next = next) + self.inflation._short_interest_rate(next = next)
@@ -521,6 +532,8 @@ class NominalBonds(Bonds):
 
         self.real_bonds.step()
         self.inflation.step()
+
+        self._spot_cache = {}
 
     def observe(self):
 
