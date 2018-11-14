@@ -171,12 +171,12 @@ def spia(request):
 
                 scenario = Scenario(yield_curve, payout_delay, premium, payout, 0, life_table, life_table2 = life_table2, \
                     joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, period_certain = period_certain, \
-                    frequency = frequency, cpi_adjust = cpi_adjust, mwr = mwr)
+                                    frequency = frequency, cpi_adjust = cpi_adjust, mwr = mwr, calcs = True)
                 price = scenario.price() * frequency
 
                 self_insure_scenario = Scenario(yield_curve, payout_delay, premium, payout, 0, life_table, life_table2 = life_table2, \
                     joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, period_certain = period_certain, \
-                    frequency = frequency, cpi_adjust = cpi_adjust, percentile = percentile)
+                                                frequency = frequency, cpi_adjust = cpi_adjust, percentile = percentile, calcs = True)
                 self_insure_price = self_insure_scenario.price() * frequency
 
                 results['fair'] = (mwr == 1)

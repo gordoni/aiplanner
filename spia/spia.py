@@ -28,7 +28,7 @@ class IncomeAnnuity(object):
     def __init__(self, yield_curve, life_table1, *, life_table2 = None, payout_delay = 0, tax = 0,
                  joint_payout_fraction = 1, joint_contingent = True, period_certain = 0,
                  frequency = 12, cpi_adjust = 'calendar', percentile = None, date_str = None,
-                 schedule = None):
+                 schedule = None, calcs = False):
         '''Initialize an object representing a Single Premium Immediate
         Annuity or a Deferred Income Annuity.
 
@@ -83,6 +83,9 @@ class IncomeAnnuity(object):
         offset in years divided by 'frequency'. It should yield a
         multiplicative factor to be applied to each payout.
 
+        'calcs' indicates whether to make a record of the
+        calculations performed.
+
         '''
 
         self.yield_curve = yield_curve
@@ -102,7 +105,7 @@ class IncomeAnnuity(object):
 
         self.calcs = None
         self.current_age1 = None
-        self.set_age(self.life_table1.age, calcs = True)
+        self.set_age(self.life_table1.age, calcs = calcs)
 
     def _compute_vital_stats(self, current_age1):
 

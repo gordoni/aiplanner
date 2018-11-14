@@ -848,10 +848,14 @@ class LifeTable(object):
         age_lo = 0
         age_hi = 200
         for _ in range(50):
+            if not self.interpolate_q:
+                done = int(age_lo + 0.5) == int(age_hi + 0.5)
             self.age = (age_lo + age_hi) / 2.0
             scenario = Scenario(yield_curve, 0, None, None, 0, self)
             compute_le = scenario.price()
-            if abs(le / compute_le - 1) < 1e-4:
+            if self.interpolate_q:
+                done = abs(le / compute_le - 1) < 1e-4
+            if done:
                 self.age_add = self.age - age
                 self.age = age
                 return
