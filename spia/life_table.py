@@ -861,55 +861,56 @@ class LifeTable(object):
                 age_hi = self.age
         raise self.UnableToAdjust('Unable to adjust life expectancy.')
 
-    def _iam_q(self, year, age, contract_age):
-        year = int(year)
-        if age >= len(iam2012_basic_1000_q[self.sex]):
-            return 1
-        q = iam2012_basic_1000_q[self.sex][age] / 1000.0;
-        g2 = projection_scale_g2[self.sex][age];
-        contract_year = contract_age + 1  # AER starts at year 1.
-        if self.ae != 'none':
-            if contract_year > max(aer2014_years):
-                c = aer2014_years.index(max(aer2014_years))
-            else:
-                c = aer2014_years.index(max(cy for cy in aer2014_years if cy <= contract_year))
-            if self.ae == 'aer2005_08-summary':
-                ae = aer2014_actual_expected[self.sex]['all'][c]
-            else:
-                age_5 = int(age / 5) * 5
-                ascending_ae = (aer2014_actual_expected[self.sex].get(a, (None, ) * 4)[c] for a in range(age_5, 121, 5))
-                try:
-                    ae = next(ratio for ratio in ascending_ae if ratio is not None)
-                except StopIteration:
-                    descending_ae = (aer2014_actual_expected[self.sex].get(a, (None, ) * 4)[c] for a in range(age_5, -1, -5))
-                    ae = next(ratio for ratio in descending_ae if ratio is not None)
-        else:
-            ae = 1
-        return q * (1 - g2) ** (year - iam2012_date) * ae
-
-    def _ssa_cohort_q(self, cohort, age):
-        cohort -= 0.5  # Cohort is people born in a given year.
-        cohort_fract = (cohort % 10) / 10
-        cohort_year = int(cohort / 10) * 10
-        if age >= len(ssa_as120_q[self.sex][cohort_year]):
-            return 1
-        return (1 - cohort_fract) * ssa_as120_q[self.sex][cohort_year][age] + cohort_fract * ssa_as120_q[self.sex][cohort_year + 10][age]
-
-    def _ssa_period_q(self, age):
-        if age >= len(ssa2010_q[self.sex]):
-            return 1
-        return ssa2010_q[self.sex][age]
-
     def _q_int(self, year, age, contract_age):
-        if self.table == 'fixed':
-            q = 0
-        elif self.table == 'iam2012-basic':
-            q = self._iam_q(year, age, contract_age)
+        if self.table == 'iam2012-basic':
+            year = int(year)
+            try:
+                q = iam2012_basic_1000_q[self.sex][age] / 1000.0
+                g2 = projection_scale_g2[self.sex][age]
+            except IndexError:
+                q = 1
+            else:
+                contract_year = contract_age + 1  # AER starts at year 1.
+                if self.ae != 'none':
+                    c = 0
+                    for cy in aer2014_years:
+                        if cy > contract_year:
+                            break
+                        c += 1
+                    c -= 1
+                    if self.ae == 'aer2005_08-summary':
+                        ae = aer2014_actual_expected[self.sex]['all'][c]
+                    else:
+                        age_5 = int(age / 5) * 5
+                        ascending_ae = (aer2014_actual_expected[self.sex].get(a, (None, ) * 4)[c] for a in range(age_5, 121, 5))
+                        try:
+                            ae = next(ratio for ratio in ascending_ae if ratio is not None)
+                        except StopIteration:
+                            descending_ae = (aer2014_actual_expected[self.sex].get(a, (None, ) * 4)[c] for a in range(age_5, -1, -5))
+                            ae = next(ratio for ratio in descending_ae if ratio is not None)
+                else:
+                    ae = 1
+                q *= (1 - g2) ** (year - iam2012_date) * ae
         elif self.table == 'ssa-cohort':
             cohort = year - age
-            q = self._ssa_cohort_q(cohort, age)
+            cohort -= 0.5  # Cohort is people born in a given year.
+            cohort /= 10
+            cohort_fract = cohort % 1
+            cohort_year = int(cohort) * 10
+            table = ssa_as120_q[self.sex]
+            table1 = table[cohort_year]
+            table2 = table[cohort_year + 10]
+            try:
+                q = (1 - cohort_fract) * table1[age] + cohort_fract * table2[age]
+            except IndexError:
+                q = 1
+        elif self.table == 'fixed':
+            q = 0
         else:
-            q = self._ssa_period_q(age)
+            try:
+                q = ssa2010_q[self.sex][age]
+            except IndexError:
+                q = 1
         return min(q, 1)
 
     def q(self, age, *, year = None, contract_age = None):
@@ -934,7 +935,10 @@ class LifeTable(object):
         if self.interpolate_q:
             fract = age % 1
             age = int(age)
-            return (1 - fract) * self._q_int(year, age, contract_age) + fract * self._q_int(year, age + 1, contract_age)
+            q = (1 - fract) * self._q_int(year, age, contract_age)
+            if fract != 0:
+                q += fract * self._q_int(year, age + 1, contract_age)
+            return q
         else:
             age += 0.5
             age = int(age)
