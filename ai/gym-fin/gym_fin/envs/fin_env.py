@@ -207,6 +207,7 @@ class FinEnv(Env):
             inflation_standard_error = self.params.inflation_standard_error if self.params.returns_standard_error else 0,
             time_period = self.params.time_period)
         self.bonds_stepper = self.bonds.nominal
+        self.bonds_zero = YieldCurve('fixed', self.params.life_table_date)
 
         if self.params.iid_bonds:
             if self.params.iid_bonds_type == 'real':
@@ -328,7 +329,7 @@ class FinEnv(Env):
             younger = self.age if self.params.sex2 == None else min(self.age, self.age2)
             episodes = ceil((self.params.age_end - younger) / self.params.time_period)
 
-            bonds = YieldCurve('fixed', self.date) if inflation_adjustment == 'cpi' else self.bonds.inflation
+            bonds = self.bonds_zero if inflation_adjustment == 'cpi' else self.bonds.inflation
             if self.couple:
                 life_table = self.life_table if owner == 'self' else self.life_table2
                 life_table2 = self.life_table2 if owner == 'self' else self.life_table
