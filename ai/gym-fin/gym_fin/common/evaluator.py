@@ -169,7 +169,7 @@ class Evaluator(object):
                 # Here we are incorrectly assuming each episode carries equal weight.
             utility = envs[0].utility
             unit_ce = indiv_ce = utility.inverse(rew)
-            unit_ce_stderr = indiv_ce_stderr = utility.inverse(rew + stderr) - indiv_ce
+            unit_ce_stderr = indiv_ce_stderr = indiv_ce - utility.inverse(rew - stderr)
             unit_low = indiv_low = utility.inverse(weighted_percentile(rewards, 10))
             unit_high = indiv_high = utility.inverse(weighted_percentile(rewards, 90))
 
