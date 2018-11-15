@@ -12,6 +12,7 @@
 
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 
-. $AIPLANNER_HOME/ai/setenv
+AI_DIR=$AIPLANNER_HOME/ai
 
-$AIPLANNER_HOME/ai/web/server.py "$@"
+$AI_DIR/plot.py || exit 1
+$AI_DIR/plot.gnuplot || exit 1

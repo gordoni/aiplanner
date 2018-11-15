@@ -24,6 +24,9 @@ PURPOSE.
     </p>
   </div>
   <div *ngIf="results.error == null">
+    <div class="float-right">
+      <img src="{{results.data_dir}}/aiplanner-asset_allocation.svg" height="200">
+    </div>
     <p>
       Current recommended after tax consumption: {{results.consume}}
     </p>
@@ -51,9 +54,14 @@ PURPOSE.
       <br>
       10% chance of annual retirement consumption below: {{results.ce_low}}
     </p>
-    <img src="{{results.data_dir}}/aiplanner-consume-pdf.svg" width="50%"/>
-    <img src="{{results.data_dir}}/aiplanner-paths-consume.svg" width="50%"/>
-    <img src="{{results.data_dir}}/aiplanner-paths-gi.svg" width="50%"/>
-    <img src="{{results.data_dir}}/aiplanner-paths-p.svg" width="50%"/>
+    <div class="float-clear"></div>
+    <div>
+      <img src="{{results.data_dir}}/aiplanner-consume-pdf.svg" width="50%"/>
+      <img src="{{results.data_dir}}/aiplanner-paths-consume.svg" width="50%"/>
+    </div>
+    <div>
+      <img src="{{results.data_dir}}/aiplanner-paths-gi.svg" width="50%"/>
+      <img src="{{results.data_dir}}/aiplanner-paths-p.svg" width="50%"/>
+    </div>
   </div>
 </div>

@@ -281,7 +281,7 @@ def plot(prefix, traces, consume_pdf):
         csv_writer.writerows(consume_pdf)
 
     environ['AIPLANNER_FILE_PREFIX'] = prefix
-    run([environ['AIPLANNER_HOME'] + '/ai/plot.gnuplot'], check = True)
+    run([environ['AIPLANNER_HOME'] + '/ai/plot'], check = True)
 
 def main():
     parser = arg_parser()

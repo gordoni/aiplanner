@@ -12,6 +12,12 @@
 
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 
-. $AIPLANNER_HOME/ai/setenv
+if [ "$1" != "--result-dir" ]; then
+    echo '--result-dir must be first argument' >&2
+    exit 1
+fi
+RESULT_DIR=$2
 
-$AIPLANNER_HOME/ai/web/server.py "$@"
+AI_DIR=$AIPLANNER_HOME/ai
+
+$AI_DIR/eval_model.py $* > "$RESULT_DIR/eval.log" 2>&1 || exit 1
