@@ -31,10 +31,10 @@ PURPOSE.
       Current recommended after tax consumption: {{results.consume}}
     </p>
     <p *ngIf="results.nominal_spias_purchase != null">
-      Recommended SPIA purchase amount: {{ results.nominal_spias_purchase }}
+      Recommended SPIA purchase amount: {{results.nominal_spias_purchase}}
     </p>
     <p>
-      Recommended [{{results.asset_classes}}] investment asset allocation: [{{results.asset_allocation}}]
+      Recommended {{results.asset_classes}} investment asset allocation: {{results.asset_allocation}}
       <br>
       Bonds duration: {{results.nominal_bonds_duration}} years ({{(results.nominal_bonds_duration <= 9) ? ((results.nominal_bonds_duration <= 2) ? "short" : "intermediate") : "long"}} term)
     </p>
@@ -50,7 +50,7 @@ PURPOSE.
       </div>
     </div>
     <p>
-      Probability retirement consumption below {{results.consume_preretirement}}: {{results.preretirement_ppf}}
+      Probability retirement consumption below {{results.consume_preretirement}}: {{results.preretirement_ppf}}%
       <br>
       10% chance of annual retirement consumption below: {{results.ce_low}}
     </p>
