@@ -18,7 +18,7 @@ PARALLEL=${PARALLEL:-True}
     # "False": run seeds of a job sequentially rather than in parallel.
     # "True": run seeds of a job in parallel.
     # "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
-SEED_START={$SEED_START:-0}
+SEED_START=${SEED_START:-0}
 SEEDS=${SEEDS:-10}
 TRAINER=${TRAINER:-$AI_DIR/train_ppo1.py}
 EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py}
