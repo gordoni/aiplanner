@@ -21,9 +21,9 @@ for ALGORITHM in ppo1 td3 sac trpo ppo ddpg vpg; do
     pushd results/$ALGORITHM
 
     if [ $ALGORITHM == ppo1 ]; then
-        TRAINER="$AI_DIR/train_ppo1"
+        TRAINER="$AI_DIR/train_ppo1.py"
     else
-        TRAINER="$AI_DIR/train_spinup.py --algorithm=$ALGORITHM"
+        TRAINER="$AI_DIR/train_spinup.py --train-algorithm=$ALGORITHM"
     fi
     TRAINER="$TRAINER --train-num-timesteps=1000000"
     EVALUATOR="$AI_DIR/eval_model.py --master-consume-clip=5000"
