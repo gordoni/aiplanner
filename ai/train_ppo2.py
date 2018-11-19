@@ -42,11 +42,13 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
                             intra_op_parallelism_threads=ncpu,
                             inter_op_parallelism_threads=ncpu)
     session = tf.Session(config=config).__enter__()
+    training_model_params['action_space_unbounded'] = eval_model_params['action_space_unbounded'] = True
+    training_model_params['observation_space_ignores_range'] = False
     def policy_fn(sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
         return MlpPolicy(sess=sess, ob_space=ob_space, ac_space=ac_space,
             nbatch=nbatch, nsteps=nsteps, reuse=reuse, hid_size=train_hidden_layer_size)
     def make_env():
-        env = make_fin_env(action_space_unbounded=True, training=True, **training_model_params)
+        env = make_fin_env(training=True, **training_model_params)
         return env
     env = DummyVecEnv([make_env])
     env = VecNormalize(env)

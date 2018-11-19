@@ -22,7 +22,7 @@ train single-spias '--master-nominal-spias'
 train couple-no_spias '--master-sex2=male'
 train couple-spias '--master-sex2=male --master-nominal-spias'
 
-# For evaluations use something similar to the follow:
+# For evaluations use something similar to the follow (use 5e5 amounts for single):
 #
 # train couple-spias '--master-sex2=male --master-nominal-spias'
 # PARALLEL=Jobs

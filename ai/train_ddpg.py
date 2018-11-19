@@ -39,6 +39,8 @@ def run(training_model_params, eval_model_params, *, seed, noise_type, layer_nor
         logger.set_level(logger.DISABLED)
 
     # Create envs.
+    training_model_params['action_space_unbounded'] = False
+    training_model_params['observation_space_ignores_range'] = True
     env = FinEnv(**training_model_params)
     env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank)), info_keywords = ('certainty_equivalent', ))
 

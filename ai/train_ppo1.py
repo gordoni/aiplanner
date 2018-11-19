@@ -44,12 +44,14 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     from baselines.ppo1 import mlp_policy, pposgd_simple
     set_global_seeds(train_seed)
     session = U.make_session(num_cpu=1).__enter__()
-    env = make_fin_env(action_space_unbounded=True, training=True, **training_model_params)
+    training_model_params['action_space_unbounded'] = eval_model_params['action_space_unbounded'] = True
+    training_model_params['observation_space_ignores_range'] = False
+    env = make_fin_env(training=True, **training_model_params)
     couple = training_model_params['sex2'] != None
     couple_net = couple and train_couple_net
     if evaluation:
         eval_seed += 1000000 # Use a different seed than might have been used during training.
-        eval_env = make_fin_env(action_space_unbounded=True, training=False, **eval_model_params)
+        eval_env = make_fin_env(training=False, **eval_model_params)
         evaluator = Evaluator([eval_env], eval_seed, eval_num_timesteps, render = eval_render, eval_batch_monitor = True)
         global next_eval_timestep
         next_eval_timestep = 0

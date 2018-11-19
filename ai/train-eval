@@ -14,57 +14,53 @@ AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 
 source $AIPLANNER_HOME/ai/helpers.bash
 
-# Specific benchmarks.
+PARALLEL=Jobs
+for ALGORITHM in ppo1 td3 sac trpo ppo ddpg vpg; do
 
-train no_tax-retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-no-tax --master-age-start=65 --master-p-tax-free=5e5"
-    # Eval parameters will override train parameters by virtue of being specified last and/or not containing low/high values.
-evaluate no_tax-retired65-defined_benefits16e3-tax_free5e5 specific "-c $SINGLE_EVAL_FILE --master-no-tax --master-age-start=65 --master-p-tax-free=5e5"
-train no_tax-no_income_aggregate-retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-no-tax --master-no-income-aggregate --master-age-start=65 --master-p-tax-free=5e5"
-evaluate no_tax-no_income_aggregate-retired65-defined_benefits16e3-tax_free5e5 specific "-c $SINGLE_EVAL_FILE --master-no-tax --master-no-income-aggregate --master-age-start=65 --master-p-tax-free=5e5"
-train age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5"
-evaluate age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 specific "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5"
-train age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5"
-evaluate age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 specific "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5"
-train age_start50-age_retirement65-defined_benefits16e3-taxable_stocks5e5 "-c $SINGLE_EVAL_FILE --master-p-taxable-stocks=5e5"
-evaluate age_start50-age_retirement65-defined_benefits16e3-taxable_stocks5e5 specific "-c $SINGLE_EVAL_FILE --master-p-taxable-stocks=5e5"
-train retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5"
-evaluate retired65-defined_benefits16e3-tax_free5e5 specific "-c $SINGLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5"
+    mkdir -p results/$ALGORITHM
+    pushd results/$ALGORITHM
 
-# Variable scenario, fixed gamma.
+    if [ $ALGORITHM == ppo1 ]; then
+        TRAINER=$AI_DIR/train_ppo1
+    else
+        TRAINER=$AI_DIR/train_spinup.py --algorithm=$ALGORITHM
+    fi
+    TRAINER=$TRAINER --train-num-timesteps=1000000
+    EVALUATOR=$AI_DIR/eval_model.py --master-consume-clip=5000
 
-train no_tax-gamma3 '--master-no-tax --master-gamma=3'
-train no_tax-no_income_aggregate-gamma3 '--master-no-tax --master-no-income-aggregate --master-gamma=3'
-train gamma3 '--master-gamma=3'
+    echo Training $ALGORITHM
 
-evaluate no_tax-gamma3 retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-no-tax --master-gamma=3 --master-age-start=65 --master-p-tax-free=5e5"
-evaluate no_tax-no_income_aggregate-gamma3 retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-no-tax --master-no-income-aggregate --master-gamma=3 --master-age-start=65 --master-p-tax-free=5e5"
-evaluate gamma3 age_start50-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-p-tax-free=5e5"
-evaluate gamma3 age_start50-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-p-tax-deferred=5e5"
-evaluate gamma3 age_start50-defined_benefits16e3-taxable_stocks5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-p-taxable-stocks=5e5"
-evaluate gamma3 retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-age-start=65 --master-p-tax-free=5e5"
+    train age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5"
+    train age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5"
+    train age_start50-age_retirement65-defined_benefits16e3-taxable_stocks5e5 "-c $SINGLE_EVAL_FILE --master-p-taxable-stocks=5e5"
+    train retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5"
+    train gamma3 '--master-gamma=3'
+    train generic
 
-# Variable scenario, variable gamma.
+    wait
 
-train no_tax-generic '--master-no-tax'
-train no_tax-no_income_aggregate-generic '--master-no-tax --master-no-income-aggregate'
-train generic
+    echo Evaluating $ALGORITHM
 
-evaluate no_tax-generic retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-no-tax --master-age-start=65 --master-p-tax-free=5e5"
-evaluate no_tax-no_income_aggregate-generic retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-no-tax --master-no-income-aggregate --master-age-start=65 --master-p-tax-free=5e5"
-evaluate generic age_start50-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5"
-evaluate generic age_start50-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5"
-evaluate generic age_start50-defined_benefits16e3-taxable_stocks5e5 "-c $SINGLE_EVAL_FILE --master-p-taxable-stocks=5e5"
-evaluate generic retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5"
+    #evaluate age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 specific "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5"
+    #evaluate age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 specific "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5"
+    #evaluate age_start50-age_retirement65-defined_benefits16e3-taxable_stocks5e5 specific "-c $SINGLE_EVAL_FILE --master-p-taxable-stocks=5e5"
+    evaluate retired65-defined_benefits16e3-tax_free5e5 specific "-c $SINGLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5"
 
-# Couple. Specific benchmark.
+    evaluate gamma3 age_start50-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-p-tax-free=5e5"
+    evaluate gamma3 age_start50-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-p-tax-deferred=5e5"
+    evaluate gamma3 age_start50-defined_benefits16e3-taxable_stocks5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-p-taxable-stocks=5e5"
+    evaluate gamma3 retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-age-start=65 --master-p-tax-free=5e5"
 
-train couple-age_start50-age_retirement65-defined_benefits16e3-tax_deferred1e6 "-c $COUPLE_EVAL_FILE --master-p-tax-deferred=1e6"
-evaluate couple-age_start50-age_retirement65-defined_benefits16e3-tax_deferred1e6 specific "-c $COUPLE_EVAL_FILE --master-p-tax-deferred=1e6"
+    evaluate generic age_start50-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5"
+    evaluate generic age_start50-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5"
+    evaluate generic age_start50-defined_benefits16e3-taxable_stocks5e5 "-c $SINGLE_EVAL_FILE --master-p-taxable-stocks=5e5"
+    evaluate generic retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5"
 
-# Couple. Variable scenario.
+    wait
 
-train couple-generic '--master-sex2=male'
-evaluate couple-generic couple-age_start50-defined_benefits16e3-tax_deferred1e6 "-c $COUPLE_EVAL_FILE --master-p-tax-deferred=1e6"
+    popd
+
+done
 
 # Notes on tweaks that have been tried out:
 #

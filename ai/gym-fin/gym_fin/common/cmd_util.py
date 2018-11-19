@@ -23,15 +23,17 @@ from baselines.common import boolean_flag, set_global_seeds
 
 from gym_fin.envs import FinEnv, ModelParams
 
-def make_fin_env(action_space_unbounded = False, training = False, **kwargs):
+def make_fin_env(training = False, allow_early_resets=None, **kwargs):
     """
     Create a wrapped, monitored gym.Env for Fin.
     """
-    env = FinEnv(action_space_unbounded = action_space_unbounded, **kwargs)
+    env = FinEnv(**kwargs)
     filename = logger.get_dir()
     if filename:
         filename = os.path.join(filename, '' if training else 'gym_eval')
-    env = Monitor(env, filename, allow_early_resets=not training, info_keywords = ('ce', ))
+    if allow_early_resets == None:
+        allow_early_resets = not training
+    env = Monitor(env, filename, allow_early_resets=allow_early_resets, info_keywords = ('ce', ))
     return env
 
 def _config_parser():

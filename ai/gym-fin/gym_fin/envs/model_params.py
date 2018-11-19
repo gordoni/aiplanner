@@ -40,6 +40,11 @@ class ModelParams(object):
         self._boolean_flag('verbose', False) # Display relevant model information such as when stepping.
         self._boolean_flag('display-returns', True) # Display yield and return statistics.
 
+        self._boolean_flag('action_space_unbounded', None) # Whether the action space is unbounded, or bound to the range [-1, 1].
+            # This parameter is determined by the training algorithm, and can't be set by the user.
+        self._boolean_flag('observation_space_ignores_range', None) # Whether observation space needs to roughly be in the range [-1, 1], or in the range specified.
+            # This parameter is determined by the training algorithm, and can't be set by the user.
+
         self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
 
         self._param('consume-policy', 'rl', tp = string_type,
@@ -103,9 +108,8 @@ class ModelParams(object):
             # Similar role to reward_clip, but limit is specified in terms of consumption.
             # Evaluation clip should always be zero.
         self._param('consume-rescale', 'estimate_bounded', tp = string_type,
-            choices = ('direct', 'positive_direct', 'fraction_direct', 'fraction_biased', 'estimate_biased', 'estimate_bounded'))
+            choices = ('positive_direct', 'fraction_direct', 'fraction_biased', 'estimate_biased', 'estimate_bounded'))
             # Type of re-scaling applied to consume action.
-            #     "direct": consumption amount is consume action.
             #     "positive_direct": consumption amount is consume action (after exp).
             #     "fraction_direct": consumption fraction is a linear mapping of consume action (after tanh).
             #     "fraction_biased": consumption fraction is an exponential rescaling of consume action (after tanh).

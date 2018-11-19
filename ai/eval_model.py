@@ -18,7 +18,6 @@ from subprocess import run
 
 import tensorflow as tf
 
-#from baselines import logger
 from baselines.common import (
     tf_util as U,
     boolean_flag,
@@ -29,6 +28,10 @@ from gym_fin.envs.asset_allocation import AssetAllocation
 from gym_fin.envs.policies import policy
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
+
+from spinup.utils.logx import restore_tf_graph
+
+from gym_fin.envs.model_params import load_params_file
 
 def pi_merton(env, obs, continuous_time = False):
     observation = env.decode_observation(obs)
@@ -74,11 +77,20 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_seed, ev
 
         eval_seed += 1000000 # Use a different seed than might have been used during training.
         set_global_seeds(eval_seed)
+
+        if model:
+            assets_dir = model_dir + '/assets.extra'
+            train_model_params = load_params_file(assets_dir + '/params.txt')
+            eval_model_params['action_space_unbounded'] = train_model_params['action_space_unbounded']
+            eval_model_params['observation_space_ignores_range'] = train_model_params['observation_space_ignores_range']
+        else:
+            eval_model_params['action_space_unbounded'] = True
+            eval_model_params['observation_space_ignores_range'] = False
+
         envs = []
         for _ in range(num_environments):
-            envs.append(make_fin_env(**eval_model_params, action_space_unbounded = model, direct_action = not model))
+            envs.append(make_fin_env(**eval_model_params, direct_action = not model))
             eval_model_params['display_returns'] = False # Only have at most one env display returns.
-        obs = envs[0].reset()
         env = envs[0].unwrapped
 
         if env.params.consume_policy != 'rl' and env.params.annuitization_policy != 'rl' and env.params.asset_allocation_policy != 'rl' and \
@@ -103,16 +115,21 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_seed, ev
 
         else:
 
-            if model:
-                session = U.make_session(num_cpu = 1).__enter__()
+            session = U.make_session(num_cpu = 1).__enter__()
+            try:
+                model_graph = restore_tf_graph(session, model_dir + '/simple_save')
+                observation_tf = model_graph['x']
+                try:
+                    action_tf = model_graph['mu']
+                except KeyError:
+                    action_tf = model_graph['pi']
+            except IOError:
                 tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], model_dir)
                 g = tf.get_default_graph()
                 observation_tf = g.get_tensor_by_name('pi/ob:0')
                 action_tf = g.get_tensor_by_name('pi/action:0')
                 v_tf = g.get_tensor_by_name('pi/v:0')
-                action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
-            else:
-                action = None
+            action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
             interp = env.interpret_action(action)
 
         interp['asset_classes'] = interp['asset_allocation'].classes()
@@ -124,13 +141,13 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_seed, ev
 
         print()
         print('Initial properties for first episode:')
-        print('    Consume: ', interp['consume'])
-        print('    Asset allocation: ', interp['asset_allocation'])
-        print('    401(k)/IRA contribution: ', interp['retirement_contribution'])
-        print('    Real income annuities purchase: ', interp['real_spias_purchase'])
-        print('    Nominal income annuities purchase: ', interp['nominal_spias_purchase'])
-        print('    Real bonds duration: ', interp['real_bonds_duration'])
-        print('    Nominal bonds duration: ', interp['nominal_bonds_duration'])
+        print('    Consume:', interp['consume'])
+        print('    Asset allocation:', interp['asset_allocation'])
+        print('    401(k)/IRA contribution:', interp['retirement_contribution'])
+        print('    Real income annuities purchase:', interp['real_spias_purchase'])
+        print('    Nominal income annuities purchase:', interp['nominal_spias_purchase'])
+        print('    Real bonds duration:', interp['real_bonds_duration'])
+        print('    Nominal bonds duration:', interp['nominal_bonds_duration'])
 
         # if model:
 
@@ -295,7 +312,6 @@ def main():
     parser.add_argument('--num-environments', type = int, default = 10) # Number of parallel environments to use for a single model. Speeds up tensor flow.
     parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False)
-    #logger.configure()
     eval_model(eval_model_params, **args)
 
 if __name__ == '__main__':

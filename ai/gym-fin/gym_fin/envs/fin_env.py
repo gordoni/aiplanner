@@ -10,7 +10,7 @@
 
 from datetime import datetime, timedelta
 from json import loads
-from math import atanh, ceil, exp, floor, isinf, isnan, log, sqrt, tanh
+from math import atanh, ceil, copysign, exp, floor, isinf, isnan, log, sqrt, tanh
 from random import seed, randint, random, uniform, lognormvariate
 
 import numpy as np
@@ -156,9 +156,8 @@ class FinEnv(Env):
 
         return r
 
-    def __init__(self, action_space_unbounded = False, direct_action = False, **kwargs):
+    def __init__(self, direct_action = False, **kwargs):
 
-        self.action_space_unbounded = action_space_unbounded
         self.direct_action = direct_action
         self.params = AttributeObject(kwargs)
 
@@ -173,7 +172,7 @@ class FinEnv(Env):
             # couple, number of 401(k)'s available, 1 / gamma, life-expectancy both, life-expectancy one, preretirement years, final spias purchase,
             # income present value annualized: tax_free, tax_deferred, taxable,
             # wealth annualized: tax_free, tax_deferred, taxable,
-            # first person preretirement income annualized, second person preretirement income annualized, consume annualized, taxable basis annualized,
+            # first person preretirement income annualized, second person preretirement income annualized, consume preretirement annualized, taxable basis annualized,
             # stock price on fair value, short real interest rate, short inflation rate
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
@@ -182,6 +181,9 @@ class FinEnv(Env):
             high = np.array((1, 2, 1, 50, 50, 50, 1, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2e5, 2,    0.05, 0.05)),
             dtype = 'float32'
         )
+
+        assert self.params.action_space_unbounded in (False, True)
+        assert self.params.observation_space_ignores_range in (False, True)
 
         self.env_couple_timesteps = 0
         self.env_single_timesteps = 0
@@ -587,8 +589,16 @@ class FinEnv(Env):
 
     def decode_action(self, action):
 
+        action = action.reshape((-1, )) # Work around spinup returning a single element list of actions.
+
         if isnan(action[0]):
-            assert False # Detect bug in code interacting with model before it messes things up.
+            assert False, 'Action is nan.' # Detect bug in code interacting with model before it messes things up.
+
+        if not self.params.action_space_unbounded:
+            # Spinup SAC, and possibly other algorithms return bogus action values like -1.0000002 and 1.0000001. Possibly a bug in tf.tanh.
+            clipped_action = np.clip(action, -1, 1)
+            assert np.allclose(action, clipped_action, rtol = 0, atol= 3e-7), 'Out of range action: ' + str(action)
+            action = clipped_action
 
         try:
             action = action.tolist() # De-numpify if required.
@@ -599,39 +609,40 @@ class FinEnv(Env):
             stocks_action, real_bonds_action, nominal_bonds_action, iid_bonds_action, bills_action, \
             real_bonds_duration_action, nominal_bonds_duration_action = action
 
-        if self.action_space_unbounded:
+        def safe_atanh(x):
+            try:
+                return atanh(x)
+            except ValueError:
+                assert abs(x) == 1, 'Invalid value to atanh.'
+                return copysign(10, x) # Change to 20 if using float64.
+
+        if self.params.action_space_unbounded:
+            consume_action = tanh(consume_action / 5)
+                # Scaling back initial volatility of consume_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
+            spias_action = tanh(spias_action / 4)
+                # Scaling back initial volatility of spias_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
             real_spias_action = tanh(real_spias_action)
             real_bonds_duration_action = tanh(real_bonds_duration_action)
             nominal_bonds_duration_action = tanh(nominal_bonds_duration_action)
         else:
-            consume_action = atanh(consume_action)
-            spias_action = atanh(spias_action)
-            stocks_action = atanh(stocks_action)
-            real_bonds_action = atanh(real_bonds_action)
-            nominal_bonds_action = atanh(nominal_bonds_action)
-            iid_bonds_action = atanh(iid_bonds_action)
-            bills_action = atanh(bills_action)
+            stocks_action = safe_atanh(stocks_action)
+            real_bonds_action = safe_atanh(real_bonds_action)
+            nominal_bonds_action = safe_atanh(nominal_bonds_action)
+            iid_bonds_action = safe_atanh(iid_bonds_action)
+            bills_action = safe_atanh(bills_action)
 
-        if self.params.consume_rescale == 'direct':
+        if self.params.consume_rescale == 'positive_direct':
 
-            # Code interacting with model will fail, as can't handle -inf reward.
-
-            consume_fraction = consume_action / self.p_plus_income()
-
-        elif self.params.consume_rescale == 'positive_direct':
-
+            consume_action = atanh(consume_fraction)
             consume_action = exp(consume_action)
             consume_fraction = consume_action / self.p_plus_income()
 
         elif self.params.consume_rescale == 'fraction_direct':
 
-            consume_action = tanh(consume_action / 2)
-                # Scale back initial volatility of consume_action to improve run to run mean and reduce standard deviation of certainty equivalent.
             consume_fraction = (consume_action + 1) / 2
 
         elif self.params.consume_rescale == 'fraction_biased':
 
-            consume_action = tanh(consume_action)
             consume_action = (consume_action + 1) / 2
             # consume_action is in the range [0, 1]. Make consume_fraction also in the range [0, 1], but weight consume_fraction towards zero.
             # Otherwise the default is to consume 50% of assets each year. Quickly end up with few assets, making learning difficult.
@@ -647,8 +658,6 @@ class FinEnv(Env):
 
         elif self.params.consume_rescale == 'estimate_biased':
 
-            consume_action = tanh(consume_action / 10)
-                # Scale back initial volatility of consume_action to improve run to run mean and reduce standard deviation of certainty equivalent.
             consume_action = (consume_action + 1) / 2
             consume_estimate = self._income_estimate() / self.p_plus_income()
             consume_weight = 2 * log((1 + sqrt(1 - 4 * consume_estimate * (1 - consume_estimate))) / (2 * consume_estimate))
@@ -660,8 +669,6 @@ class FinEnv(Env):
 
         elif self.params.consume_rescale == 'estimate_bounded':
 
-            consume_action = tanh(consume_action / 5)
-                # Scaling back initial volatility of consume_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
             consume_action = (consume_action + 1) / 2
             # Define a consume floor and consume ceiling outside of which we won't consume.
             # The mid-point acts as a hint as to the initial consumption values to try.
@@ -690,8 +697,6 @@ class FinEnv(Env):
             # Try and make it easy to learn the optimal amount of guaranteed income,
             # so things function well with differing current amounts of guaranteed income.
 
-            spias_action = tanh(spias_action / 4)
-                # Scaling back initial volatility of spias_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
             spias_action = (spias_action + 1) / 2
             current_spias_fraction_estimate = sum(self.income.values()) / self._income_estimate()
             current_spias_fraction_estimate = max(0, min(current_spias_fraction_estimate, 1))
@@ -1259,11 +1264,18 @@ class FinEnv(Env):
             self.income['tax_free'], self.income['tax_deferred'], self.income['taxable'],
             self.wealth_as_income['tax_free'], self.wealth_as_income['tax_deferred'], self.wealth_as_income['taxable'],
             income_preretirement_first_annualized, income_preretirement_second_annualized, self.consume_preretirement_annualized,
-            self.taxable_basis, stocks_price, real_interest_rate, inflation_rate)
+                   self.taxable_basis, stocks_price, real_interest_rate, inflation_rate)
         obs = np.array(observe, dtype = 'float32')
+        obs = self.encode_observation(obs)
         if np.any(np.isnan(obs)) or np.any(np.isinf(obs)):
-            print(obs, observe)
-            assert False
+            print(observe, obs)
+            assert False, 'Invalid observation.'
+        return obs
+
+    def encode_observation(self, obs):
+
+        if self.params.observation_space_ignores_range:
+            obs = obs / np.maximum(abs(self.observation_space.low), abs(self.observation_space.high))
         return obs
 
     def decode_observation(self, obs):

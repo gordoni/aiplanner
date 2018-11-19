@@ -40,4 +40,4 @@ class AssetAllocation(object):
 
     def __str__(self):
 
-        s = str(self.as_list())
+        return str(self.as_list())
