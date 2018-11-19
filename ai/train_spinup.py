@@ -144,7 +144,6 @@ def train(training_model_params, *, train_algorithm, train_num_hidden_layers, tr
         'gamma': 1,
         'logger_kwargs': {'output_dir': model_dir},
         'save_freq': save_freq,
-        'start_steps': 0, #XXX
     }
 
     if train_algorithm == 'ddpg':
