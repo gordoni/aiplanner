@@ -18,19 +18,22 @@
 
 from argparse import ArgumentParser
 from xml.etree import ElementTree
-from os import devnull, remove, rename, stat
-from os.path import isfile
+from os import devnull, mkdir, remove, rename, stat
+from os.path import expanduser, isfile, join, normpath
 from re import match, sub
 from subprocess import call, check_call, check_output
+from sys import stderr
 from time import sleep
 from urllib.parse import quote
+
+datadir = '~/.spia'
 
 class Fetcher:
 
     last_year = 2050  # Prevent runaway process in event of bug.
 
     def last_check_file(self):
-        return self.dir + '/last_check.' + self.bond_type
+        return join(self.dir, 'last_check.' + self.bond_type)
 
     def curl_cmd(self, year, last_check):
 
@@ -50,22 +53,43 @@ class Fetcher:
             if isfile(self.csv_file(year)):
                  last_file_year = year
 
+        lock_file = self.last_check_file() + '.lock'
+        try:
+            open(lock_file, 'x').close()
+        except FileExistsError:
+            print('Waiting on lock file:', lock_file, file = stderr)
+            while isfile(lock_file):
+                sleep(1)
+            return
+                # Assume got updated by a concurrent process, no need to update.
+
+        sleep(5) # Prevent intra-machine clock skew problems.
+
         # Missing files.
         for year in range(self.start_year, last_file_year + self.year_step, self.year_step):
             if not isfile(self.csv_file(year)):
                 self.fetch_year(year, False)
-
-        open(self.last_check_file() + '.tmp', 'w').close()
-        sleep(10)  # Prevent clock skew problems.
 
         self.fetch_year(last_file_year, True)
         for year in range(last_file_year + self.year_step, self.last_year, self.year_step):
             if not self.fetch_year(year, False):
                 break
 
-        rename(self.last_check_file() + '.tmp', self.last_check_file())
+        rename(lock_file, self.last_check_file())
 
-def fetcher_factory(bond_type, dir):
+def fetch_yield_curve(bond_type, dir = None):
+
+    if dir == None:
+        dir = normpath(expanduser(datadir))
+        try:
+            mkdir(dir)
+        except FileExistsError:
+            pass
+        dir = join(dir, bond_type)
+        try:
+            mkdir(dir)
+        except FileExistsError:
+            pass
 
     if bond_type == 'corporate':
         return CorporateFetcher(dir)
@@ -180,7 +204,7 @@ class TreasuryFetcher(Fetcher):
         filename = self.csv_file(fetch_year)
         out = open(filename + '.tmp', 'w')
 
-        out.write('# ' + bond_type + ' CMT yield curve\n')
+        out.write('# ' + self.bond_type + ' CMT yield curve\n')
         out.write('DATE,' + ','.join(years) + '\n')
         for date in sorted(rates.keys()):
             out.write(date + ',' + ','.join(rates[date].get(year, '') for year in years) + '\n')
@@ -211,10 +235,10 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('-t', '--type', choices=('corporate', 'nominal', 'real'), required=True)
-    parser.add_argument('-d', '--directory', required=True)
+    parser.add_argument('-d', '--directory', default=None)
     args = parser.parse_args()
 
     dir = args.directory
     bond_type = args.type
 
-    fetcher_factory(bond_type, dir)
+    fetch_yield_curve(bond_type, dir)

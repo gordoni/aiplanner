@@ -4,47 +4,45 @@ life tables with interest rate yield curves. The lifetables are hard
 coded, while the interest rate data is obtained from the U.S. Treasury
 using the fetch_yield_curve script.
 
-The module comprises the following files:
+The package comprises the following files:
 
-    spia.py - SPIAs
+    __init__.py - exported package definitions
+    income_annuity.py - SPIAs and DIAs
     life_table.py - mortality table
     yield_curve.py - interest rate yield curve
     monotone_convex.py - yield curve interpolation
-    fetch_yield_curve - yield curve data file retrieval
+    fetch_yield_curve.py - yield curve data file retrieval
+    test.py
+    test
     README
     LICENSE
     agpl-3.0.txt
 
-fetch_yield_curve depends on scipy for yield curve interpolation and
-the catdoc xls2csv program to obtain the corporate interest rate.
+They should normally all be stored in the directory spia .
+
+The package depends on scipy for yield curve interpolation and the
+catdoc xls2csv program to obtain the corporate interest rate.
 
 On Ubuntu, to obtain these modules:
 
     sudo apt-get install python3-scipy catdoc
 
-Then to fetch the yield curves for all time to the current directory
-(this could take a while):
+Then to fetch the yield curves for all time and store the results in
+the directory ~/.spia (this could take a while):
 
-    chmod +x fetch_yield_curve
+    chmod +x fetch_yield_curve.py
+    ./fetch_yield_curve.py -t nominal
+    ./fetch_yield_curve.py -t real
+    ./fetch_yield_curve.py -t corporate
 
-    mkdir -p ~/aacalc/opal/data/public/hqm
-    ./fetch_yield_curve -t corporate -d .
-
-    mkdir -p ~/aacalc/opal/data/public/cmt
-    ./fetch_yield_curve -t nominal -d .
-
-    mkdir -p ~/aacalc/opal/data/public/rcmt
-    ./fetch_yield_curve -t real -d .
-
-Subsequent runs of fetch_yield_curve will only download updates to the
+Subsequent runs of fetch_yield_curve.py will only download updates to the
 data.
 
-spia.py can then be run to compute, as an example, the payout
+The module can then be run to compute, as an example, the payout
 associated with a given premium and money's worth ratio:
 
-    chmod +x spia.py
-
-    ./spia.py -d .
+    chmod +x test
+    ./test
 
 Full details of all the options available are contained in the source
 code.

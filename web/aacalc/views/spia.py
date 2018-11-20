@@ -22,8 +22,9 @@ from math import isnan
 from django.forms.utils import ErrorList
 from django.shortcuts import render
 
+from spia import LifeTable, Scenario, YieldCurve
+
 from aacalc.forms import SpiaForm
-from aacalc.spia import LifeTable, Scenario, YieldCurve
 
 def default_spia_params():
 

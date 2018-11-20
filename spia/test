@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cd ..
+python3 -m spia.test "$@"
