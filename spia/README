@@ -25,7 +25,7 @@ catdoc xls2csv program to obtain the corporate interest rate.
 
 On Ubuntu, to obtain these modules:
 
-    sudo apt-get install python3-scipy catdoc
+    sudo apt install python3-scipy catdoc
 
 Then to fetch the yield curves for all time and store the results in
 the directory ~/.spia (this could take a while):
