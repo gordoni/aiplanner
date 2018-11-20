@@ -56,8 +56,8 @@ def pi_merton(env, obs, continuous_time = False):
         consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / env.params.time_period
     return consume_fraction, stocks_allocation
 
-def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_timesteps, eval_render, nice, model_dir, search_consume_initial_around, \
-    result_dir, num_trace_episodes, num_environments, pdf_buckets):
+def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_timesteps, eval_render, nice, num_cpu, model_dir, \
+    search_consume_initial_around, result_dir, num_trace_episodes, num_environments, pdf_buckets):
 
     try:
         mkdir(result_dir)
@@ -115,7 +115,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_seed, ev
 
         else:
 
-            session = U.make_session(num_cpu = 1).__enter__()
+            session = U.make_session(num_cpu = num_cpu).__enter__()
             try:
                 model_graph = restore_tf_graph(session, model_dir + '/simple_save')
                 observation_tf = model_graph['x']

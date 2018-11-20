@@ -49,7 +49,10 @@ def weighted_stdev(value_weights):
         n += weight
         s += weight * value
         ss += weight * value ** 2
-    return sqrt(n0 / (n0 - 1) * (n * ss - s ** 2) / (n ** 2))
+    try:
+        return sqrt(n0 / (n0 - 1) * (n * ss - s ** 2) / (n ** 2))
+    except ValueError:
+        return 0
 
 def weighted_ppf(value_weights, q):
     n = 0

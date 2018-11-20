@@ -57,3 +57,5 @@ master_bills = False
 
 train_single_num_timesteps = 1000000 # No observed advantage from longer, may produce worse CE if 500000.
 train_couple_num_timesteps = 2000000
+
+num_cpu = 1 # Makes Tensorflow deterministic, reduces aggregate cpu usage, and doesn't increase elapsed time very much.

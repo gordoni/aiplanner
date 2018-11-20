@@ -71,9 +71,9 @@ def couple_actor_critic(actor_critic):
     return couple_single
 
 def train(training_model_params, *, train_algorithm, train_num_hidden_layers, train_hidden_layer_size, train_couple_net,
-          train_steps_per_epoch, train_epochs_per_model_save,
+          train_timesteps_per_epoch, train_epochs_per_model_save,
           train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps, train_seed,
-          nice, model_dir):
+          nice, num_cpu, model_dir):
 
     priority = getpriority(PRIO_PROCESS, 0)
     priority += nice
@@ -131,19 +131,20 @@ def train(training_model_params, *, train_algorithm, train_num_hidden_layers, tr
     if train_hidden_layer_size:
         ac_kwargs['hidden_sizes'] = [train_hidden_layer_size] * train_num_hidden_layers
 
-    epochs = ceil(train_num_timesteps / train_steps_per_epoch)
+    epochs = ceil(train_num_timesteps / train_timesteps_per_epoch)
 
     save_freq = epochs if train_epochs_per_model_save == None else train_epochs_per_model_save
 
     common_args = {
         'actor_critic': actor_critic,
         'ac_kwargs': ac_kwargs,
-        'steps_per_epoch': train_steps_per_epoch,
+        'steps_per_epoch': train_timesteps_per_epoch,
         'epochs': epochs + 1, # Results from final epoch don't get saved.
         'seed': train_seed,
         'gamma': 1,
         'logger_kwargs': {'output_dir': model_dir},
         'save_freq': save_freq,
+        'num_cpu': num_cpu,
     }
 
     if train_algorithm == 'ddpg':
@@ -167,7 +168,7 @@ def main():
     parser.add_argument('--train-num-hidden-layers', type=int, default=2)
     parser.add_argument('--train-hidden-layer-size', type=int, default=None)
     boolean_flag(parser, 'train-couple-net', default=True)
-    parser.add_argument('--train-steps-per-epoch', type=int, default=5000)
+    parser.add_argument('--train-timesteps-per-epoch', type=int, default=5000)
     parser.add_argument('--train-epochs-per-model-save', type=int, default=None)
     training_model_params, _, args = fin_arg_parse(parser, evaluate=False)
     train(training_model_params, **args)

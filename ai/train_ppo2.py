@@ -28,7 +28,7 @@ from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 
 def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_num_timesteps, train_seed,
-          eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, model_dir):
+          eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, nice, num_cpu, model_dir):
     assert train_num_hidden_layers == 2
     assert model_dir.endswith('.tf')
     try:
@@ -37,10 +37,9 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
         pass
     from baselines.ppo1 import mlp_policy, pposgd_simple
     set_global_seeds(train_seed)
-    ncpu = 1
     config = tf.ConfigProto(allow_soft_placement=True,
-                            intra_op_parallelism_threads=ncpu,
-                            inter_op_parallelism_threads=ncpu)
+                            intra_op_parallelism_threads=num_cpu,
+                            inter_op_parallelism_threads=num_cpu)
     session = tf.Session(config=config).__enter__()
     training_model_params['action_space_unbounded'] = eval_model_params['action_space_unbounded'] = True
     training_model_params['observation_space_ignores_range'] = False

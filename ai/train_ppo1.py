@@ -27,7 +27,7 @@ from gym_fin.envs.model_params import dump_params_file
 
 def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_minibatch_size, train_couple_net,
           train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps, train_seed,
-          eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, nice, model_dir):
+          eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, nice, num_cpu, model_dir):
 
     priority = getpriority(PRIO_PROCESS, 0)
     priority += nice
@@ -43,7 +43,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
 
     from baselines.ppo1 import mlp_policy, pposgd_simple
     set_global_seeds(train_seed)
-    session = U.make_session(num_cpu=1).__enter__()
+    session = U.make_session(num_cpu=num_cpu).__enter__()
     training_model_params['action_space_unbounded'] = eval_model_params['action_space_unbounded'] = True
     training_model_params['observation_space_ignores_range'] = False
     env = make_fin_env(training=True, **training_model_params)
