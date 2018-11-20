@@ -21,11 +21,14 @@ from django.http import Http404, HttpResponse
 files = {
     'README': ('spia/README', 'text/plain'),
     'agpl-3.0.txt': ('spia/agpl-3.0.txt', 'text/plain'),
-    'spia.py': ('spia/spia.py', 'application/octet-stream'),
+    '__init__.py': ('spia/__init__.py', 'application/octet-stream'),
+    'income_annuity.py': ('spia/income_annuity.py', 'application/octet-stream'),
     'life_table.py': ('spia/life_table.py', 'application/octet-stream'),
     'yield_curve.py': ('spia/yield_curve.py', 'application/octet-stream'),
     'monotone_convex.py': ('spia/monotone_convex.py', 'application/octet-stream'),
-    'fetch_yield_curve': ('spia/fetch_yield_curve', 'application/octet-stream'),
+    'fetch_yield_curve.py': ('spia/fetch_yield_curve.py', 'application/octet-stream'),
+    'test.py': ('spia/test.py', 'application/octet-stream'),
+    'test': ('spia/test', 'application/octet-stream'),
 }
 
 def file(request, file):

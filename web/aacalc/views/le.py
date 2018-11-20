@@ -18,8 +18,9 @@ from datetime import datetime
 from decimal import Decimal
 from django.shortcuts import render
 
+from spia import LifeTable, Scenario, YieldCurve
+
 from aacalc.forms import LeForm
-from aacalc.spia import LifeTable, Scenario, YieldCurve
 
 le_percentiles = (None, 80, 90, 95, 98, 99, )
 

@@ -30,8 +30,9 @@ from os.path import expanduser, isdir, join, normpath
 from scipy.stats import lognorm, norm
 from subprocess import check_call
 
+from spia import LifeTable, Scenario, YieldCurve
+
 from aacalc.forms import AllocAaForm, AllocNumberForm, AllocRetireForm
-from aacalc.spia import LifeTable, Scenario, YieldCurve
 from settings import ROOT, STATIC_ROOT, STATIC_URL
 
 datapath = ('~/aacalc/opal/data/public', '~ubuntu/aacalc/opal/data/public')

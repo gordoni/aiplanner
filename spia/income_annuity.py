@@ -20,9 +20,6 @@ from argparse import ArgumentParser
 from calendar import monthrange
 import math
 
-from life_table import LifeTable
-from yield_curve import YieldCurve
-
 class IncomeAnnuity(object):
 
     def __init__(self, yield_curve, life_table1, *, life_table2 = None, payout_delay = 0, tax = 0,
@@ -358,23 +355,3 @@ class Scenario(IncomeAnnuity):
     def price(self):
         '''Legagy function.'''
         return self._unit_price / (self.frequency * self.scenario_mwr)
-
-if __name__ == '__main__':
-
-    parser = ArgumentParser()
-    parser.add_argument('-d', '--datadir')
-    args = parser.parse_args()
-
-    kwargs = {}
-    if args.datadir != None:
-        kwargs['datapath'] = (args.datadir, )
-
-    yield_curve = YieldCurve('real', '2018-01-01', **kwargs)
-    life_table = LifeTable('iam2012-basic', 'male', 65)
-    income_annuity = IncomeAnnuity(yield_curve, life_table, payout_delay = 1.5)
-    payout = income_annuity.payout(100000, mwr = 1)
-    print('Monthly payout for a $100,000 premium:', payout)
-    premium = income_annuity.premium(payout, mwr = 1)
-    assert abs(premium - 100000) < 1e-6
-    mwr = income_annuity.mwr(premium, payout)
-    assert abs(mwr - 1) < 1e-9

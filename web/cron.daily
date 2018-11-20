@@ -1,10 +1,12 @@
-#!/bin/sh
+#!/bin/bash
 
 DIR=/home/ubuntu/aacalc/spia
-DATADIR=/home/ubuntu/aacalc/opal/data
+DATADIR=/home/ubuntu/.spia
 
-$DIR/fetch_yield_curve -t corporate -d $DATADIR/public/hqm
-$DIR/fetch_yield_curve -t real -d $DATADIR/public/rcmt
-$DIR/fetch_yield_curve -t nominal -d $DATADIR/public/cmt
+mkdir -p $DATADIR/{nominal,real,corporate}
+
+$DIR/fetch_yield_curve.py -t nominal -d $DATADIR/nominal
+$DIR/fetch_yield_curve.py -t real -d $DATADIR/real
+$DIR/fetch_yield_curve.py -t corporate -d $DATADIR/corporate
 
 #$DIR/gen_sample

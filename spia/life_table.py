@@ -16,6 +16,9 @@
 
 import math
 
+from .income_annuity import Scenario
+from .yield_curve import YieldCurve
+
 iam2012_date = 2012
 
 iam2012_basic_1000_q = {
@@ -836,9 +839,6 @@ class LifeTable(object):
         self.age_add = 0
         if le_set == None and le_add == 0:
             return
-
-        from spia import Scenario
-        from yield_curve import YieldCurve
 
         yield_curve = YieldCurve('le', date_str)
         if le_set == None:
