@@ -31,8 +31,7 @@ for ALGORITHM in ppo1 td3 sac trpo ppo ddpg vpg; do
     TRAINER="$TRAINER --train-num-timesteps=1000000"
     EVALUATOR="$AI_DIR/eval_model.py --master-consume-clip=5000"
 
-    date
-    echo Training $ALGORITHM
+    echo `date` Training $ALGORITHM
 
     train age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5"
     train age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5"
@@ -43,8 +42,7 @@ for ALGORITHM in ppo1 td3 sac trpo ppo ddpg vpg; do
 
     wait
 
-    date
-    echo Evaluating $ALGORITHM
+    echo `date` Evaluating $ALGORITHM
 
     evaluate age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 specific "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5"
     evaluate age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 specific "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5"
@@ -63,11 +61,11 @@ for ALGORITHM in ppo1 td3 sac trpo ppo ddpg vpg; do
 
     wait
 
-    date
-
     cd ..
 
 done
+
+echo `date` Done
 
 # Notes on tweaks that have been tried out:
 #

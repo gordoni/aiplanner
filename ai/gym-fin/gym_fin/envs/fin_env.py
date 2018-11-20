@@ -18,9 +18,7 @@ import numpy as np
 from gym import Env
 from gym.spaces import Box
 
-from life_table import LifeTable
-from spia import IncomeAnnuity
-from yield_curve import YieldCurve
+from spia import IncomeAnnuity, LifeTable, YieldCurve
 
 from gym_fin.envs.asset_allocation import AssetAllocation
 from gym_fin.envs.bonds import BondsSet

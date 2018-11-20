@@ -12,7 +12,7 @@ from math import exp, log
 from random import normalvariate, seed
 from statistics import mean, stdev
 
-from yield_curve import YieldCurve
+from spia import YieldCurve
 
 from gym_fin.envs.ou_process import OUProcess
 
@@ -264,7 +264,7 @@ class RealBonds(Bonds):
         '''
 
         if yield_curve == None:
-            yield_curve = YieldCurve('real', '2017-12-31', date_str_low = '2005-01-01', adjust = 0)
+            yield_curve = YieldCurve('real', '2017-12-31', date_str_low = '2005-01-01', adjust = 0, permit_stale_days = 2)
 
         self.interest_rate = 'real'
 
@@ -368,7 +368,7 @@ class BreakEvenInflation(Bonds):
 
         '''
         if nominal_yield_curve == None:
-            nominal_yield_curve = YieldCurve('nominal', '2017-12-31', date_str_low = '2005-01-01', adjust = 0)
+            nominal_yield_curve = YieldCurve('nominal', '2017-12-31', date_str_low = '2005-01-01', adjust = 0, permit_stale_days = 2)
 
         self.inflation_a = inflation_a
         self.inflation_sigma = inflation_sigma

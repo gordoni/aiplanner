@@ -10,7 +10,7 @@
 
 export AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 AI_DIR=$AIPLANNER_HOME/ai
-PYTHONPATH_ADD=$AI_DIR/baselines:$AI_DIR/gym-fin:$AIPLANNER_HOME/spia
+PYTHONPATH_ADD=$AI_DIR/baselines:$AI_DIR/gym-fin:$AIPLANNER_HOME
 if [ -z "$PYTHONPATH" ]; then
     export PYTHONPATH=$PYTHONPATH_ADD
 else

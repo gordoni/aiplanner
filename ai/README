@@ -29,7 +29,7 @@ Installing additional required components on Ubuntu 18.04 (currently
 not workable):
 
     sudo
-    apt install python3-pip python3-dev python3-mpi4py nodejs npm
+    apt install catdoc python3-pip python3-dev python3-mpi4py nodejs npm
     pip3 install tensorflow
     pip3 install gym
     exit
@@ -37,6 +37,7 @@ not workable):
 Installing additional required components on Amazon Deep Learning AMI
 (Ubuntu):
 
+    sudo apt install catdoc
     source activate tensorflow_p36
     pip install mpi4py
     pip install joblib
