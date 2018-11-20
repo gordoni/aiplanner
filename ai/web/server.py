@@ -221,8 +221,9 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         unit = 'single' if request['sex2'] == None else 'couple'
         spias = 'spias' if request['spias'] else 'no_spias'
+        gamma = 'gamma' + str(request['gamma'])
         suffix = '' if self.server.args.modelset_suffix == None else '-' + self.server.args.modelset_suffix
-        model_prefix = expanduser(self.server.args.modelset_dir) + '/aiplanner.' + unit + '-' + spias + suffix
+        model_prefix = expanduser(self.server.args.modelset_dir) + '/aiplanner.' + unit + '-' + spias + '-' + gamma + suffix
 
         return model_prefix
 

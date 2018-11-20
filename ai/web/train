@@ -14,13 +14,29 @@ AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 
 source $AIPLANNER_HOME/ai/helpers.bash
 
-# Variable scenarios.
+PARALEL=Jobs
 
-train single-no_spias
-train single-spias '--master-nominal-spias'
+GAMMAS="6 3 1.5 1"
 
-train couple-no_spias '--master-sex2=male'
-train couple-spias '--master-sex2=male --master-nominal-spias'
+for GAMMA in $GAMMAS; do
+    train single-no_spias-gamma$GAMMA "--gamma=$GAMMA"
+done
+wait
+
+for GAMMA in $GAMMAS; do
+    train single-spias-gamma$GAMMA "--master-nominal-spias --gamma=$GAMMA"
+done
+wait
+
+for GAMMA in $GAMMAS; do
+    train couple-no_spias-gamma$GAMMA "--master-sex2=male --gamma=$GAMMA"
+done
+wait
+
+for GAMMA in $GAMMAS; do
+    train couple-spias-gamma$GAMMA "--master-sex2=male --master-nominal-spias --gamma=$GAMMA"
+done
+wait
 
 # For evaluations use something similar to the follow (use 5e5 amounts for single):
 #

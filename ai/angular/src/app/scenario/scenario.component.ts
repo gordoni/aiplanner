@@ -47,7 +47,7 @@ export class ScenarioComponent implements OnInit {
   public have401k2 = true;
   public spias = true;
 
-  public gamma: number = 3;
+  public gamma: string = "3";
 
   private result_id: string = null;
 
@@ -169,7 +169,7 @@ export class ScenarioComponent implements OnInit {
         'have_401k2': this.have401k2,
         'spias': this.spias,
 
-        'gamma': this.gamma,
+        'gamma': Number(this.gamma),
     };
 
     this.errorMessage = null;

@@ -232,7 +232,7 @@ PURPOSE.
     <p>
       The coefficient of relative risk aversion determines how much
       risk to take. The lower the coefficient the higher the expected
-      consumption, but also the higher the variability in realized
+      consumption, but also the higher the uncertainty in realized
       consumption. This is illustrated in the table and graph below.
     </p>
     <div class="crra">
@@ -240,7 +240,7 @@ PURPOSE.
         <tr>
           <td> RRA coefficient </td>
           <td> Extra consumption </td>
-          <td> Consumption variability </td>
+          <td> Consumption uncertainty </td>
         </tr>
         <tr>
           <td> &infin; </td>
@@ -248,17 +248,22 @@ PURPOSE.
           <td> 0 </td>
         </tr>
         <tr>
-          <td> 6 </td>
+          <td> 6.0 </td>
           <td> 1% </td>
           <td> 4% </td>
         </tr>
         <tr>
-          <td> 3 </td>
+          <td> 3.0 </td>
           <td> 3% </td>
-          <td> 13% </td>
+          <td> 9% </td>
         </tr>
         <tr>
-          <td> 1 </td>
+          <td> 1.5 </td>
+          <td> 6% </td>
+          <td> 18% </td>
+        </tr>
+        <tr>
+          <td> 1.0 </td>
           <td> 10% </td>
           <td> 29% </td>
         </tr>
@@ -269,10 +274,12 @@ PURPOSE.
     </div>
     <br>
     <div>
-      Coefficient of relative risk aversion: <input type="number" class="small-numeric" required name="scenarioGamma" #scenarioGamma="ngModel" [(ngModel)]="gamma">
-        <div class="error" *ngIf="scenarioGamma.invalid">
-          Invalid numeric value.
-        </div>
+      Coefficient of relative risk aversion: <select type="select" name="scenarioGamma" [(ngModel)]="gamma">
+        <option value="6">6.0</option>
+        <option value="3">3.0</option>
+        <option value="1.5">1.5</option>
+        <option value="1">1.0</option>
+      </select>
     </div>
     <div>
       <div class="main-button float-left">
