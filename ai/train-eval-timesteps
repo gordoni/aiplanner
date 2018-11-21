@@ -27,10 +27,10 @@ for TIMESTEPS in 500000 1000000 2000000 5000000; do
             TRAINARGS="--train-num-timesteps=$TIMESTEPS"
             ARGS="--master-gamma=$GAMMA"
             if [ $UNIT = couple ]; then
-                ARGS="$TRAINARGS --sex2=male"
+                ARGS="$ARGS --master-sex2=male"
             fi
             if [ $SPIAS = spias ]; then
-                ARGS="$TRAINARGS --master-nominal-spias"
+                ARGS="$ARGS --master-nominal-spias"
             fi
 
             EPISODE="$ALGORITHM-$UNIT-$SPIAS-gamma$GAMMA-timesteps$TIMESTEPS"
