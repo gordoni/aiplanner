@@ -81,7 +81,7 @@ class FinEnv(Env):
             _alive2 *= q_fract2
             if not (dead or dead2):
                 dead = _alive < dead_at
-                dead2 = _alive2 < dead_at2
+                dead2 = dead if self.params.couple_death_concordant else _alive2 < dead_at2
                 if dead and dead2:
                     _alive_single = 0
                     _alive_count = 0
