@@ -109,3 +109,32 @@ evaluate () {
 
     fi
 }
+
+train_eval () {
+
+    local EPISODE="$1"
+
+    echo `date` Training $EPISODE
+
+    train age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5"
+    train age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5"
+    train age_start50-age_retirement65-defined_benefits16e3-taxable_stocks5e5 "-c $SINGLE_EVAL_FILE --master-p-taxable-stocks=5e5"
+    train retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5"
+    train gamma3 '--master-gamma=3'
+
+    wait
+
+    echo `date` Evaluating $EPISODE
+
+    evaluate age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 specific "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5"
+    evaluate age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 specific "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5"
+    evaluate age_start50-age_retirement65-defined_benefits16e3-taxable_stocks5e5 specific "-c $SINGLE_EVAL_FILE --master-p-taxable-stocks=5e5"
+    evaluate retired65-defined_benefits16e3-tax_free5e5 specific "-c $SINGLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5"
+
+    evaluate gamma3 age_start50-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-p-tax-free=5e5"
+    evaluate gamma3 age_start50-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-p-tax-deferred=5e5"
+    evaluate gamma3 age_start50-defined_benefits16e3-taxable_stocks5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-p-taxable-stocks=5e5"
+    evaluate gamma3 retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-age-start=65 --master-p-tax-free=5e5"
+
+    wait
+}

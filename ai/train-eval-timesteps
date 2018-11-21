@@ -18,50 +18,49 @@ mkdir -p results
 cd results
 
 PARALLEL=Jobs
-for ALGORITHM in ppo1 td3 sac trpo ppo ddpg vpg; do
+ALGORITHM=ppo1
+GAMMA=3
+for TIMESTEPS in 500000 1000000 2000000; do
+    for UNIT in single couple; do
+        for SPIAS in no_spias spias; do
 
-    mkdir -p $ALGORITHM
-    cd $ALGORITHM
+            TRAINARGS="--train-num-timesteps=$TIMESTEPS"
+            ARGS="--master-gamma=$GAMMA"
+            if [ $UNIT = couple ]; then
+                ARGS="$TRAINARGS --sex2=male"
+            fi
+            if [ $SPIAS = spias ]; then
+                ARGS="$TRAINARGS --master-nominal-spias"
+            fi
 
-    if [ $ALGORITHM == ppo1 ]; then
-        TRAINER="$AI_DIR/train_ppo1.py"
-    else
-        TRAINER="$AI_DIR/train_spinup.py --train-algorithm=$ALGORITHM"
-    fi
-    TRAINER="$TRAINER --train-num-timesteps=1000000"
-    EVALUATOR="$AI_DIR/eval_model.py --master-consume-clip=5000"
+            EPISODE="$ALGORITHM-$UNIT-$SPIAS-gamma$GAMMA-timesteps$TIMESTEPS"
 
-    echo `date` Training $ALGORITHM
+            mkdir -p $EPISODE
+            cd $EPISODE
 
-    train age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5"
-    train age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5"
-    train age_start50-age_retirement65-defined_benefits16e3-taxable_stocks5e5 "-c $SINGLE_EVAL_FILE --master-p-taxable-stocks=5e5"
-    train retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5"
-    train gamma3 '--master-gamma=3'
+            if [ $ALGORITHM == ppo1 ]; then
+                TRAINER="$AI_DIR/train_ppo1.py"
+            else
+                TRAINER="$AI_DIR/train_spinup.py --train-algorithm=$ALGORITHM"
+            fi
+            TRAINER="$TRAINER $TRAINARGS $ARGS"
+            EVALUATOR="$AI_DIR/eval_model.py $ARGS"
 
-    wait
+            train_eval $EPISODE
 
-    echo `date` Evaluating $ALGORITHM
+            cd ..
 
-    evaluate age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 specific "-c $SINGLE_EVAL_FILE --master-p-tax-free=5e5"
-    evaluate age_start50-age_retirement65-defined_benefits16e3-tax_deferred5e5 specific "-c $SINGLE_EVAL_FILE --master-p-tax-deferred=5e5"
-    evaluate age_start50-age_retirement65-defined_benefits16e3-taxable_stocks5e5 specific "-c $SINGLE_EVAL_FILE --master-p-taxable-stocks=5e5"
-    evaluate retired65-defined_benefits16e3-tax_free5e5 specific "-c $SINGLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=5e5"
-
-    evaluate gamma3 age_start50-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-p-tax-free=5e5"
-    evaluate gamma3 age_start50-defined_benefits16e3-tax_deferred5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-p-tax-deferred=5e5"
-    evaluate gamma3 age_start50-defined_benefits16e3-taxable_stocks5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-p-taxable-stocks=5e5"
-    evaluate gamma3 retired65-defined_benefits16e3-tax_free5e5 "-c $SINGLE_EVAL_FILE --master-gamma=3 --master-age-start=65 --master-p-tax-free=5e5"
-
-    wait
-
-    cd ..
-
+        done
+    done
 done
 
 echo `date` Done
 
-# Notes on tweaks that have been tried out:
+# PPO1:
+#     Specific gamma for variable scenario performs 2-3% worse than specific scenario.
+#     Generic gamma for variable scenario perform 2-3% worse than specific gamma for variable scenario.
+#
+# Notes on PPO1 tweaks that have been tried out (single with no nominal SPIAs):
 #
 # --train-single-num-timesteps=500000
 #    Produced 0.0% better generic results than 1m timesteps both pposgd_simple.learn(optim_batchsize=64).
