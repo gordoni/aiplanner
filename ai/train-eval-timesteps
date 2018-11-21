@@ -46,7 +46,11 @@ for TIMESTEPS in 500000 1000000 2000000 5000000; do
             TRAINER="$TRAINER $TRAINARGS $ARGS"
             EVALUATOR="$AI_DIR/eval_model.py $ARGS"
 
-            train_eval $EPISODE
+            if [ $UNIT = single ]; then
+                train_eval_single $EPISODE
+            else
+                train_eval_couple $EPISODE
+            fi
 
             cd ..
 
@@ -97,3 +101,29 @@ echo `date` Done
 #
 # --train-num-hidden-layers=3
 #    Produced 0.4% worse generic results than 2 hidden layers both pposgd_simple.learn(optim_batchsize=128)
+#
+# Notes on PPO1 tweaks that have been tried out (single/couple with nominal SPIAs):
+#
+# --master-nominal-spias --train-single-num-timesteps=1000000
+#    Produced 2.1% worse generic results than 2m timesteps.
+#
+# --master-nominal-spias --train-single-num-timesteps=5000000
+#    Produced 0.8% worse generic results than 2m timesteps.
+#
+# --master-nominal-spias --train-single-num-timesteps=2000000 --hidden-layer-size=128
+#    Produced 3.0% worse generic results than size 64.
+#
+# --master-sex2=male --master-nominal-spias --train-num-timesteps=2000000
+#    Produced 3.0% worse generic results than --train-single-num-timesteps=2000000 --train-couple-num-timesteps=2000000
+#
+# --master-sex2=male --master-nominal-spias --train-single-num-timesteps=2000000 --train-couple-num-timesteps=2000000 --no-train-couple-net
+#    Produced 10.3% worse generic results than the default, --train-couple-net.
+#
+# --master-sex2=male --master-nominal-spias --train-single-num-timesteps=2000000 --train-couple-num-timesteps=2000000 --master-gamma=3
+#    Produced 8.4% worse generic results than variable gamma.
+#
+# --master-sex2=male --master-nominal-spias --train-single-num-timesteps=2000000 --train-couple-num-timesteps=2000000 --master-nomal-bonds-duration=15
+#    Produced 3.4% better generic results than variable bonds duration.
+#
+# --master-sex2=male --master-nominal-spias --train-single-num-timesteps=5000000 --train-couple-num-timesteps=5000000
+#    Not tried.
