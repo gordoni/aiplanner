@@ -19,7 +19,7 @@ cd results
 
 PARALLEL=Jobs
 ALGORITHM=ppo1
-GAMMA=3
+GAMMA=3 # train_eval can currently only generate a generic model with a gamma of 3.
 for TIMESTEPS in 500000 1000000 2000000 5000000; do
     for UNIT in single couple; do
         for SPIAS in no_spias spias; do
