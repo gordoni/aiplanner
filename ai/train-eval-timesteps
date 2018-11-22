@@ -60,18 +60,28 @@ done
 
 echo `date` Done
 
+# PPO1 average improvement relative to prior timesteps average of 4 scenarios (with 2m timestep evaluations):
+#     train_num_timesteps        500k   1m      2m      5m
+#     specific single no-spias     -   1.6%    0.4%    0.1%
+#     specific single  spias       -   3.1%    1.9%    0.6%
+#     specific couple no-spias     -   4.1%    5.7%
+#     specific couple  spias       -   5.6%    5.4%
+#     generic  single  spias       -   4.6%    1.2%    0.4%
+#     generic  single  spias       -   5.8%    4.3%    0.4%
+#     generic  couple no-spias     -   6.7%    4.0%
+#     generic  couple  spias       -   2.8%    6.6%
+#
+# PPO1 5m timestep generic results as a fraction 5m timestep specific results average of 4 scenarios (with 2m timestep evaluations):
+#     single no-spias   97.9%
+#     single  spias     95.1%
+#     couple no-spias
+#     couple  spias
+#
 # PPO1:
 #     Specific gamma for variable scenario performs 2-3% worse than specific scenario.
 #     Generic gamma for variable scenario perform 2-3% worse than specific gamma for variable scenario.
 #
 # Notes on PPO1 tweaks that have been tried out (single with no nominal SPIAs):
-#
-# --train-single-num-timesteps=500000
-#    Produced 0.0% better generic results than 1m timesteps both pposgd_simple.learn(optim_batchsize=64).
-#    SUGGESTS COULD CUT TRAINING TIME IN HALF BUT MIGHT NOT WORK FOR MORE COMPLEX ENVIRONMENTS SUCH AS SPIAS.
-#
-# --train-single-num-timesteps=2000000
-#    Produced 0.7% worse generic results than 1m timesteps both pposgd_simple.learn(optim_batchsize=64).
 #
 # --train-hidden-layer-size=128
 #    Produced 0.2% worse generic results than hidden layer size 64 both pposgd_simple.learn(optim_batchsize=64).
@@ -86,6 +96,7 @@ echo `date` Done
 # pposgd_simple.learn(optim_batchsize=128)
 # pposgd_simple.learn(optim_batchsize=256)
 #    Produced 0.3% better and 0.3% generic results than optim_batchsize=64.
+#    WE NOW DEFAULT TO AN optim_batchsize of 128 COMPARED TO THE ORIGINAL VALUE OF 64.
 #
 # pposgd_simple.learn(adam_epsilon=1e-6)
 #    Produced 0.1% worse generic results than adam_epsilon=1e-5 default both pposgd_simple.learn(optim_batchsize=64).
@@ -104,12 +115,6 @@ echo `date` Done
 #
 # Notes on PPO1 tweaks that have been tried out (single/couple with nominal SPIAs):
 #
-# --master-nominal-spias --train-single-num-timesteps=1000000
-#    Produced 2.1% worse generic results than 2m timesteps.
-#
-# --master-nominal-spias --train-single-num-timesteps=5000000
-#    Produced 0.8% worse generic results than 2m timesteps.
-#
 # --master-nominal-spias --train-single-num-timesteps=2000000 --hidden-layer-size=128
 #    Produced 3.0% worse generic results than size 64.
 #
@@ -124,6 +129,3 @@ echo `date` Done
 #
 # --master-sex2=male --master-nominal-spias --train-single-num-timesteps=2000000 --train-couple-num-timesteps=2000000 --master-nomal-bonds-duration=15
 #    Produced 3.4% better generic results than variable bonds duration.
-#
-# --master-sex2=male --master-nominal-spias --train-single-num-timesteps=5000000 --train-couple-num-timesteps=5000000
-#    Not tried.

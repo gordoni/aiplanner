@@ -23,6 +23,12 @@ import { ResultComponent } from '../result/result.component';
 export class ScenarioComponent implements OnInit {
 
   public step: number = 0;
+  public doneMarket: boolean = false;
+
+  public stocksPricePct: number;
+  public nominalShortRatePct: string;
+  public inflationShortRatePct: string;
+
   public sex: string = "female";
   public age: number = 50;
   public lifeExpectancyAdditional: number = 3;
@@ -40,12 +46,12 @@ export class ScenarioComponent implements OnInit {
   public pTaxableStocksBasis: number = 0;
 
   public ageRetirement: number = 66;
-  public incomePreretirement = 60000;
-  public incomePreretirement2 = 60000;
-  public consumePreretirement = 40000;
-  public have401k = true;
-  public have401k2 = true;
-  public spias = true;
+  public incomePreretirement: number = 60000;
+  public incomePreretirement2: number = 60000;
+  public consumePreretirement: number = 40000;
+  public have401k: boolean = true;
+  public have401k2: boolean = true;
+  public spias: boolean = true;
 
   public gamma: string = "3";
 
@@ -146,6 +152,10 @@ export class ScenarioComponent implements OnInit {
     }
 
     var scenario = {
+        'stocks_price': this.stocksPricePct / 100,
+        'real_short_rate': Math.log(1 + Number(this.nominalShortRatePct) / 100) - Math.log(1 + Number(this.inflationShortRatePct) / 100),
+        'nominal_short_rate': Math.log(1 + Number(this.nominalShortRatePct) / 100),
+
         'sex': this.sex,
         'sex2': (this.sex2 == 'none') ? null : this.sex2,
         'age_start': this.age,
@@ -207,12 +217,24 @@ export class ScenarioComponent implements OnInit {
     this.run_queue_length = results['run_queue_length']
   }
 
+  doMarket(results) {
+    this.stocksPricePct = Math.round(results.stocks_price * 100);
+    this.nominalShortRatePct = ((Math.exp(results.nominal_short_rate) - 1) * 100).toFixed(1);
+    this.inflationShortRatePct = ((Math.exp(results.nominal_short_rate - results.real_short_rate) - 1) * 100).toFixed(1);
+    this.doneMarket = true;
+  }
+
   handleError(error) {
     this.errorMessage = error.message;
-    this.step--;
+    if (this.step > 0)
+      this.step--;
   }
 
   ngOnInit() {
+    this.apiService.get('market', {}).subscribe(
+      results => this.doMarket(results),
+      error => this.handleError(error)
+    );
     var db: DefinedBenefit = new DefinedBenefit(this, 'Social Security', null);
     db.amountPer = 1300;
     this.definedBenefits.push(db);

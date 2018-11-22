@@ -21,6 +21,10 @@ export class ApiService {
     private http: HttpClient
   ) { }
 
+  get(method, params) {
+    return this.http.get('/api/' + method, params);
+  }
+
   post(method, params) {
     return this.http.post('/api/' + method, params);
   }

@@ -28,6 +28,8 @@ from traceback import print_tb
 
 from gym_fin.envs.model_params import dump_params_file, load_params_file
 
+from spia import YieldCurve
+
 class AttributeObject(object):
 
     def __init__(self, dict):
@@ -42,6 +44,15 @@ class ApiHTTPServer(ThreadingMixIn, HTTPServer):
         self.run_lock = BoundedSemaphore(self.args.num_concurrent_jobs)
 
 class RequestHandler(BaseHTTPRequestHandler):
+
+    def send_result(self, result_bytes, mime_type):
+
+        self.send_response(200)
+        self.send_header('Content-Type', mime_type)
+        self.send_header('Content-Length', len(result_bytes))
+        self.send_header('Connection', 'close')
+        self.end_headers()
+        self.wfile.write(result_bytes)
 
     def do_POST(self):
 
@@ -65,12 +76,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             if result:
 
                 result_bytes = dumps(result).encode('utf-8')
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Content-Length', len(result_bytes))
-                self.send_header('Connection', 'close')
-                self.end_headers()
-                self.wfile.write(result_bytes)
+                self.send_result(result_bytes, 'application/json')
 
             return
 
@@ -86,13 +92,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 data = 'FAIL\n'
 
             data = data.encode('utf-8')
-
-            self.send_response(200)
-            self.send_header('Content-Type', 'text/plain')
-            self.send_header('Content-Length', len(data))
-            self.send_header('Connection', 'close')
-            self.end_headers()
-            self.wfile.write(data)
+            self.send_result(data, 'text/plain')
             return
 
         elif self.path.startswith('/api/data/'):
@@ -112,13 +112,14 @@ class RequestHandler(BaseHTTPRequestHandler):
                     except IOError:
                         pass
                     else:
-                        self.send_response(200)
-                        self.send_header('Content-Type', filetype)
-                        self.send_header('Content-Length', len(data))
-                        self.send_header('Connection', 'close')
-                        self.end_headers()
-                        self.wfile.write(data)
+                        self.send_result(data, filetype)
                         return
+
+        elif self.path == '/api/market':
+
+            result_bytes = dumps(self.market()).encode('utf-8')
+            self.send_result(result_bytes, 'application/json')
+            return
 
         self.send_error(404)
 
@@ -160,6 +161,18 @@ class RequestHandler(BaseHTTPRequestHandler):
         assert 45000 < results['ce'] < 50000
 
         return True
+
+    def market(self):
+
+        now = datetime.utcnow().date().isoformat()
+        real_short_rate = YieldCurve('real', now, permit_stale_days = 7).spot(0)
+        nominal_short_rate = YieldCurve('nominal', now, permit_stale_days = 7).spot(0)
+
+        return {
+            'stocks_price': self.server.args.stocks_price,
+            'real_short_rate': real_short_rate,
+            'nominal_short_rate': nominal_short_rate,
+        }
 
     def run_models_with_lock(self, request):
 
@@ -356,7 +369,6 @@ class ModelRunner(object):
             '--model-dir', model_dir,
             '--nice', str(self.priority),
             '-c', model_dir + '/assets.extra/params.txt',
-            '-c', '../market_data.txt',
             '-c', self.dir + '/aiplanner-scenario.txt',
             '--master-consume-clip', '0',
             '--eval-num-timesteps', num_timesteps,
@@ -372,7 +384,6 @@ class ModelRunner(object):
             '--model-dir', model_dir,
             '--nice', str(self.priority),
             '-c', '../aiplanner-scenario.txt',
-            '-c', '../market_data.txt',
             '-c', self.dir + '/aiplanner-scenario.txt',
             '--master-name', name,
             '--train-seed', str(model_seed),
@@ -582,6 +593,7 @@ def main():
     # HTTP options.
     parser.add_argument('--host', default = 'localhost')
     parser.add_argument('--port', type = int, default = 3000)
+    parser.add_argument('--stocks-price', type = float, default = 1)
     parser.add_argument('--modelset-dir', default = '~/aiplanner-data/models')
     parser.add_argument('--modelset-suffix')
     parser.add_argument('--eval-prelim-num-timesteps', type = int, default = 20000)

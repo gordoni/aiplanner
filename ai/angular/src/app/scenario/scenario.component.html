@@ -21,8 +21,14 @@ PURPOSE.
       reinforcement learning</a> to compute the optimal spending and
       investment strategy to maximize lifetime well-being.
     </p>
-    <div class="main-button">
+    <div class="center small-font" *ngIf="!doneMarket">
+      [Loading market data]
+    </div>
+    <div class="main-button" *ngIf="doneMarket">
       <button class="button" (click)="nextStep()">Start</button>
+    </div>
+    <div class="error" *ngIf="errorMessage">
+      {{errorMessage}}
     </div>
   </div>
 
@@ -216,7 +222,33 @@ PURPOSE.
     Allow income annuity purchases: <input type="checkbox" name="spias" [(ngModel)]="spias">
   </div>
 
-  <div *ngIf="1 <= step && step < 4">
+  <div *ngIf="step == 4">
+    <h1 class="title">Market conditions</h1>
+    <p>
+      It is often a judgement call as to whether the market is fairly
+      valued. You can enter your personal opinion here. The remainder
+      of this section should normally be left alone.
+    </p>
+    Current stock market price relative to fair price:
+      <input type="number" class="small-numeric" required name="scenarioStocksPricePct" #scenarioStocksPricePct="ngModel" [(ngModel)]="stocksPricePct">%
+      <div class="error" *ngIf="scenarioStocksPricePct.invalid">
+        Invalid numeric value.
+      </div>
+    <br>
+    Current short term interest rate:
+      <input type="number" class="small-numeric" required name="scenarioNominalShortRatePct" #scenarioNominalShortRatePct="ngModel" [(ngModel)]="nominalShortRatePct">%
+      <div class="error" *ngIf="scenarioNominalShortRatePct.invalid">
+        Invalid numeric value.
+      </div>
+    <br>
+    Current break-even inflation rate:
+      <input type="number" class="small-numeric" required name="scenarioInflationShortRatePct" #scenarioInflationShortRatePct="ngModel" [(ngModel)]="inflationShortRatePct">%
+      <div class="error" *ngIf="scenarioInflationShortRatePct.invalid">
+        Invalid numeric value.
+      </div>
+  </div>
+
+  <div *ngIf="1 <= step && step < 5">
     <div class="main-button float-left">
       <button class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
     </div>
@@ -227,7 +259,7 @@ PURPOSE.
     </div>
   </div>
 
-  <div *ngIf="step == 4">
+  <div *ngIf="step == 5">
     <h1 class="title">Well being</h1>
     <p>
       The coefficient of relative risk aversion determines how much
@@ -296,7 +328,7 @@ PURPOSE.
     </div>
   </div>
 
-  <div *ngIf="step == 5">
+  <div *ngIf="step == 6">
     <h1 class="title">Calculating</h1>
     <p>
       Please wait 20 seconds.
@@ -306,7 +338,7 @@ PURPOSE.
 
 </form>
 
-<div *ngIf="step == 6">
+<div *ngIf="step == 7">
   <div class="small-font">
     [Temporary <a href="/result/{{result_id}}" target="_blank" rel="noopener">link</a>]
   </div>
@@ -320,7 +352,7 @@ PURPOSE.
 </div>
 
 <form class="scenario-form" #fullForm="ngForm">
-  <div *ngIf="step == 7">
+  <div *ngIf="step == 8">
     <h1 class="title">Full Results</h1>
     <p>
       Full results are more accurate, but are computationally
@@ -353,7 +385,7 @@ PURPOSE.
   </div>
 </form>
 
-<div class="scenario-form" *ngIf="step == 8">
+<div class="scenario-form" *ngIf="step == 9">
   <h1 class="title">Calculating Full Results</h1>
   <p>
     Thank you. Your request has been received.
