@@ -21,22 +21,28 @@ PARALEL=Jobs
 
 GAMMAS="6 3 1.5 1"
 
+echo `date` Training single no_spias
 for GAMMA in $GAMMAS; do
     train single-no_spias-gamma$GAMMA "--gamma=$GAMMA"
 done
 wait
 
+echo `date` Training single spias
 for GAMMA in $GAMMAS; do
     train single-spias-gamma$GAMMA "--master-nominal-spias --gamma=$GAMMA"
 done
 wait
 
+echo `date` Training couple no_spias
 for GAMMA in $GAMMAS; do
     train couple-no_spias-gamma$GAMMA "--master-sex2=male --gamma=$GAMMA"
 done
 wait
 
+echo `date` Training couple spias
 for GAMMA in $GAMMAS; do
     train couple-spias-gamma$GAMMA "--master-sex2=male --master-nominal-spias --gamma=$GAMMA"
 done
 wait
+
+echo `date` Done
