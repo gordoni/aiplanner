@@ -17,7 +17,7 @@ source $AIPLANNER_HOME/ai/helpers.bash
 mkdir -p models
 cd models
 
-PARALEL=Jobs
+PARALLEL=Jobs
 
 GAMMAS="6 3 1.5 1"
 
