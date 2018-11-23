@@ -60,22 +60,34 @@ done
 
 echo `date` Done
 
-# PPO1 average improvement relative to prior timesteps average of 4 scenarios (with 2m timestep evaluations):
+# PPO1 average improvement relative to prior timesteps average of 4 scenarios (with nominal_bonds_duration=None and 2m timestep evaluations):
 #     train_num_timesteps        500k   1m      2m      5m
 #     specific single no-spias     -   1.6%    0.4%    0.1%
 #     specific single  spias       -   3.1%    1.9%    0.6%
-#     specific couple no-spias     -   4.1%    5.7%
-#     specific couple  spias       -   5.6%    5.4%
-#     generic  single  spias       -   4.6%    1.2%    0.4%
+#     specific couple no-spias     -   4.1%    5.7%    0.4%
+#     specific couple  spias       -   5.6%    5.4%   -0.5%
+#     generic  single no-spias     -   4.6%    1.2%    0.4%
 #     generic  single  spias       -   5.8%    4.3%    0.4%
-#     generic  couple no-spias     -   6.7%    4.0%
-#     generic  couple  spias       -   2.8%    6.6%
+#     generic  couple no-spias     -   6.7%    4.0%    3.7% (large model to model standard deviation probably means 2m results were unlucky)
+#     generic  couple  spias       -   2.8%    6.6%    0.0%
+# train_num_timesteps=2000000 IS THUS THE DEFAULT
 #
-# PPO1 5m timestep generic results as a fraction 5m timestep specific results average of 4 scenarios (with 2m timestep evaluations):
+# PPO1 5m timestep generic results as a fraction 5m timestep specific results average of 4 scenarios (with nominal_bonds_duration=None and 2m timestep evaluations):
 #     single no-spias   97.9%
 #     single  spias     95.1%
-#     couple no-spias
-#     couple  spias
+#     couple no-spias  102.5%
+#     couple  spias     97.4%
+#
+# PPO1 nominal_bonds_duration=15 improvement relative to nominal_bonds_duration=None average of 4 scenarios (with 2m timestep evaluation):
+#     specific single no-spias    0.2%
+#     specific single  spias      0.4%
+#     specific couple no-spias    1.5%
+#     specific couple  spias      2.3%
+#     generic  single no-spias    1.1%
+#     generic  single  spias     -0.7%
+#     generic  couple no-spias    1.0%
+#     generic  couple  spias      1.3%
+# nominal_bonds_duration=15 IS THUS NOW THE DEFAULT
 #
 # PPO1:
 #     Specific gamma for variable scenario performs 2-3% worse than specific scenario.
@@ -112,6 +124,11 @@ echo `date` Done
 #
 # --train-num-hidden-layers=3
 #    Produced 0.4% worse generic results than 2 hidden layers both pposgd_simple.learn(optim_batchsize=128)
+#
+# Notes on PPO1 tweaks that have been tried out (couple with no nominal SPIAs):
+#
+# --train-num-timesteps=5000000 --eval-consume-clip=5000
+#    Produced identical results to eval_consume_clip=0.
 #
 # Notes on PPO1 tweaks that have been tried out (single/couple with nominal SPIAs):
 #

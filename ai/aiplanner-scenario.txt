@@ -48,6 +48,7 @@ master_stocks_price_high = 2.0
 master_stocks_standard_error = 0.016
 master_real_bonds = False
 master_nominal_bonds = True
+master_nominal_bonds_duration = 15 # Hardwiring the duration gives slightly better, and less inconsistent, results; 15 years is typical for a long term bond fund.
 master_iid_bonds = False
 #master_iid_bonds_return = 0.024
 #master_iid_bonds_volatility = 0.112
@@ -55,4 +56,7 @@ master_bonds_standard_error = 0.010
 master_inflation_standard_error = 0.004
 master_bills = False
 
-num_cpu = 1 # Makes Tensorflow deterministic, reduces aggregate cpu usage, and doesn't increase elapsed time very much.
+train_num_timesteps = 2000000 # Little is gained by going to 5m.
+eval_num_timesteps = 2000000 # Produces a 0.1-0.2% CE standard error.
+
+num_cpu = 1 # Makes Tensorflow deterministic, reduces aggregate cpu usage, and doesn't increase the elapsed time very much.

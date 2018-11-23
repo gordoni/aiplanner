@@ -41,5 +41,10 @@ done
 
 echo `date` Done
 
+# Notes.
+#
 # Single with no nominal spias:
 #     PPO1 outperforms all spinnup algorithms.
+#
+# ppo with issue 50 fixed:
+#     Very small improvement in performance.
