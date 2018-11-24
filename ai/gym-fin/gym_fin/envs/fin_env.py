@@ -103,16 +103,9 @@ class FinEnv(Env):
             remaining_fract -= fract
             y += fract
             if y >= a_y:
-                if self.params.probabilistic_life_expectancy:
-                    alive_both.append(_alive * _alive2)
-                    alive_one.append(1 - _alive * _alive2 - (1 - _alive) * (1 - _alive2))
-                    alive_single.append(_alive_single)
-                else:
-                    if _alive_count == 0:
-                        break
-                    alive_both.append(int(_alive_count == 2))
-                    alive_one.append(int(_alive_count == 1))
-                    alive_single.append(None if _alive_count == 2 else _alive_count)
+                alive_both.append(_alive * _alive2)
+                alive_one.append(1 - _alive * _alive2 - (1 - _alive) * (1 - _alive2))
+                alive_single.append(_alive_single)
                 alive_count.append(_alive_count)
                 a_y += self.params.time_period
             if y - q_y >= 1:
@@ -136,6 +129,9 @@ class FinEnv(Env):
 
         alive_single.append(0)
         alive_count.append(0)
+
+        if not self.params.probabilistic_life_expectancy:
+            alive_single = tuple(None if _alive_count == 2 else _alive_count for _alive_count in alive_count)
 
         return only_alive2, alive_years, tuple(alive_single), tuple(alive_count), \
             tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
