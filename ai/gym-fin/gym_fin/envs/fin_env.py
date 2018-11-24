@@ -87,10 +87,10 @@ class FinEnv(Env):
                     _alive_count = 0
                 elif dead:
                     only_alive2 = True
-                    _alive_single = q_fract ** ((dead_at - _alive) / (prev_alive - _alive))
+                    _alive_single = q_fract2 ** ((dead_at - _alive) / (prev_alive - _alive))
                     _alive_count = 1
                 elif dead2:
-                    _alive_single = q_fract2 ** ((dead_at2 - _alive2) / (prev_alive2 - _alive2))
+                    _alive_single = q_fract ** ((dead_at2 - _alive2) / (prev_alive2 - _alive2))
                     _alive_count = 1
             elif dead:
                 _alive_single *= q_fract2
@@ -103,9 +103,16 @@ class FinEnv(Env):
             remaining_fract -= fract
             y += fract
             if y >= a_y:
-                alive_both.append(_alive * _alive2)
-                alive_one.append(1 - _alive * _alive2 - (1 - _alive) * (1 - _alive2))
-                alive_single.append(_alive_single)
+                if self.params.probabilistic_life_expectancy:
+                    alive_both.append(_alive * _alive2)
+                    alive_one.append(1 - _alive * _alive2 - (1 - _alive) * (1 - _alive2))
+                    alive_single.append(_alive_single)
+                else:
+                    if _alive_count == 0:
+                        break
+                    alive_both.append(int(_alive_count == 2))
+                    alive_one.append(int(_alive_count == 1))
+                    alive_single.append(None if _alive_count == 2 else _alive_count)
                 alive_count.append(_alive_count)
                 a_y += self.params.time_period
             if y - q_y >= 1:

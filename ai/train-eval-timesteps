@@ -72,6 +72,8 @@ echo `date` Done
 #     generic  couple  spias       -   2.8%    6.6%    0.0%
 # train_num_timesteps=2000000 IS THUS THE DEFAULT
 #
+# COUPLE RESULTS FOR 2m TIMESTEPS DISPLAY A VERY LARGE CE STANDARD DEVIATION AND ASSET ALLOCATION RANGE ACROSS MODELS.
+#
 # PPO1 5m timestep generic results as a fraction 5m timestep specific results average of 4 scenarios (with nominal_bonds_duration=None and 2m timestep evaluations):
 #     single no-spias   97.9%
 #     single  spias     95.1%
@@ -129,6 +131,23 @@ echo `date` Done
 #
 # --train-num-timesteps=5000000 --eval-consume-clip=5000
 #    Produced identical results to eval_consume_clip=0.
+#
+# Notes on PPO1 tweaks that have been tried out (couple with no nominal SPIAs and nomnal_bonds_duration15):
+#
+# optim_epochs=50
+#    Produced 9.9% worse generic results than optim_epochs=10.
+#
+# optim_stepsize=1e-4
+#    Produced 9.7% worse generic results than optim_stepsize=3e-4.
+#
+# --train-miniibatch-size=512
+#    Produced 11.6% worse generic results than train_minibatch_size=128.
+#
+# timesteps_per_actor_batch=8192
+#    Produced 8.8% worse results than timesteps_per_actor_batch=2048, but with around 1/3 the CE standard deviation.
+#
+# timesteps_per_actor_batch=8192 --train-num-timesteps=5000000
+#    Produced 2.0% worse results than timesteps_per_actor_batch=2048 --train-num-timesteps=2000000, with similar CE standard deviaiton, but no failed runs.
 #
 # Notes on PPO1 tweaks that have been tried out (single/couple with nominal SPIAs):
 #

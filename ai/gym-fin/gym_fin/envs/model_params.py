@@ -131,6 +131,10 @@ class ModelParams(object):
         self._param('age-retirement', (65, 65), 65) # Assess and optimize consumption from when first individual reaches this age.
         self._param('consume-additional', 0.6)
             # When a second individual is present we consume this fraction more than a single individual for the same per individual utility.
+        self._param('probabilistic-life-expectancy', True)
+            # This flag is useful for debugging.
+            # Whether to the extent possible to simulate life expectancy probabilistically, or whether to use random roll outs.
+            # For a couple, the first to die always uses random rollouts.
         self._boolean_flag('couple-death-concordant', False) # Whether second member of couple dies at the same time as first.
             # This flag may be used to assess the modeling performance differential between a couple and two individuals.
             # When doing so it is important that consume_additiional=1, both members have the same sex, age, and defined benefits, and the assets are doubled.
