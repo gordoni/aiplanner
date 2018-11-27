@@ -405,7 +405,7 @@ class BreakEvenInflation(Bonds):
     def _sir(self, t, a, sigma):
 
         # https://www.math.nyu.edu/~benartzi/Slides10.3.pdf page 11.
-        return self.yield_curve.forward(t) + (sigma * (1 - exp(- a * t)) / a) ** 2 / 2
+        return self.adjust + self.yield_curve.forward(t) + (sigma * (1 - exp(- a * t)) / a) ** 2 / 2
 
     def _short_interest_rate(self, *, next = False):
         '''Return the annualized continuously compounded current short

@@ -56,7 +56,10 @@ def pi_merton(env, obs, continuous_time = False):
         consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / env.params.time_period
     return consume_fraction, stocks_allocation
 
-def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_seed, eval_num_timesteps, eval_render, nice, num_cpu, model_dir, \
+def is_couple(ob):
+    return ob[0] == 1
+
+def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_couple_net, eval_seed, eval_num_timesteps, eval_render, nice, num_cpu, model_dir, \
     search_consume_initial_around, result_dir, num_trace_episodes, num_environments, pdf_buckets):
 
     try:
@@ -118,18 +121,47 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_seed, ev
             session = U.make_session(num_cpu = num_cpu).__enter__()
             try:
                 model_graph = restore_tf_graph(session, model_dir + '/simple_save')
-                observation_tf = model_graph['x']
+                observation_sigle_tf = observation_couple_tf = model_graph['x']
                 try:
-                    action_tf = model_graph['mu']
+                    action_single_tf = action_couple_tf = model_graph['mu']
                 except KeyError:
-                    action_tf = model_graph['pi']
+                    action_single_tf = action_couple_tf = model_graph['pi']
             except IOError:
                 tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], model_dir)
                 g = tf.get_default_graph()
-                observation_tf = g.get_tensor_by_name('pi/ob:0')
-                action_tf = g.get_tensor_by_name('pi/action:0')
-                v_tf = g.get_tensor_by_name('pi/v:0')
-            action, = session.run(action_tf, feed_dict = {observation_tf: [obs]})
+                observation_single_tf = g.get_tensor_by_name('single/ob:0')
+                action_single_tf = g.get_tensor_by_name('single/action:0')
+                try:
+                    observation_couple_tf = g.get_tensor_by_name('couple/ob:0')
+                    action_couple_tf = g.get_tensor_by_name('couple/action:0')
+                except KeyError:
+                    observation_couple_tf = action_couple_tf = None
+                #v_tf = g.get_tensor_by_name('single/pi/v:0')
+
+            def run_tf(obss):
+                single_obss = []
+                couple_obss = []
+                single_idx = []
+                couple_idx = []
+                for i, obs in enumerate(obss):
+                    if is_couple(obs) and eval_couple_net:
+                        couple_obss.append(obs)
+                        couple_idx.append(i)
+                    else:
+                        single_obss.append(obs)
+                        single_idx.append(i)
+                action = [None] * len(obss)
+                if single_obss:
+                    single_action = session.run(action_single_tf, feed_dict = {observation_single_tf: single_obss})
+                    for i, act in zip(single_idx, single_action):
+                        action[i] = act
+                if couple_obss:
+                    couple_action = session.run(action_couple_tf, feed_dict = {observation_couple_tf: couple_obss})
+                    for i, act in zip(couple_idx, couple_action):
+                        action[i] = act
+                return action
+
+            action, = run_tf([obs])
             interp = env.interpret_action(action)
 
         interp['asset_classes'] = interp['asset_allocation'].classes()
@@ -164,7 +196,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_seed, ev
 
             if model:
 
-                action = session.run(action_tf, feed_dict = {observation_tf: obss})
+                action = run_tf(obss)
                 return action
 
             elif merton or samuelson:
@@ -305,6 +337,7 @@ def main():
     boolean_flag(parser, 'merton', default = False)
     boolean_flag(parser, 'samuelson', default = False)
     boolean_flag(parser, 'annuitize', default = False)
+    boolean_flag(parser, 'eval-couple-net', default = True)
     parser.add_argument('--search-consume-initial-around', type = float)
         # Search for the initial consumption that maximizes the certainty equivalent using the supplied value as a hint as to where to search.
     parser.add_argument('--result-dir', default = './')

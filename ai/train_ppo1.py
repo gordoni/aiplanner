@@ -42,7 +42,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     except FileNotFoundError:
         pass
 
-    from baselines.ppo1 import mlp_policy, pposgd_simple
+    from baselines.ppo1 import mlp_policy, pposgd_dual
     set_global_seeds(train_seed)
     session = U.make_session(num_cpu=num_cpu).__enter__()
     training_model_params['action_space_unbounded'] = eval_model_params['action_space_unbounded'] = True
@@ -79,9 +79,8 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
 
     def policy_fn(name, ob_space, ac_space):
         return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space,
-            hid_size=train_hidden_layer_size, num_hid_layers=train_num_hidden_layers,
-            couple=couple_net)
-    pposgd_simple.learn(env, policy_fn,
+            hid_size=train_hidden_layer_size, num_hid_layers=train_num_hidden_layers)
+    pposgd_dual.learn(env, policy_fn, couple_net,
         max_timesteps=train_num_timesteps,
         timesteps_per_actorbatch=train_batch_size,
         clip_param=0.2, entcoeff=0.0,
@@ -94,10 +93,10 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     if eval_env:
         eval_env.close()
     g = tf.get_default_graph()
-    action_tf = g.get_tensor_by_name('pi/action:0')
-    v_tf = g.get_tensor_by_name('pi/v:0')
-    observation_tf = g.get_tensor_by_name('pi/ob:0')
-    tf.saved_model.simple_save(session, model_dir, {'observation': observation_tf}, {'action': action_tf, 'value': v_tf})
+    observation_tf = g.get_tensor_by_name('single/ob:0')
+    action_tf = g.get_tensor_by_name('single/action:0')
+    #v_tf = g.get_tensor_by_name('single/pi/v:0')
+    tf.saved_model.simple_save(session, model_dir, {'observation': observation_tf}, {'action': action_tf})
     assets_dir = model_dir + '/assets.extra'
     mkdir(assets_dir)
     dump_params_file(assets_dir + '/params.txt', training_model_params)
@@ -107,7 +106,8 @@ def main():
     parser.add_argument('--train-num-hidden-layers', type=int, default=2)
     parser.add_argument('--train-hidden-layer-size', type=int, default=64)
     parser.add_argument('--train-batch-size', type=int, default=2048)
-    parser.add_argument('--train-minibatch-size', type=int, default=128)
+    parser.add_argument('--train-minibatch-size', type=int, default=128) # Canonical PPO1 defaults to 64.
+        # May do better with a larger value due to stochastic nature of the problem.
     parser.add_argument('--train-optimizer-epochs', type=int, default=10)
     parser.add_argument('--train-optimizer-step-size', type=float, default=3e-4)
     parser.add_argument('--train-gae-lambda', type=float, default=0.95)

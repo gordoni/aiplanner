@@ -34,6 +34,8 @@ master_p_taxable_nominal_bonds = 0
 master_p_taxable_stocks_basis_fraction = 0.5
 
 master_stocks_price = 1
+master_real_short_rate = 0.011
+master_inflation_short_rate = 0.016
 
 master_gamma = 3.0
 

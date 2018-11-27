@@ -169,7 +169,7 @@ class FinEnv(Env):
             # DDPG implementation assumes [-x, x] symmetric actions.
             # PPO1 implementation ignores size and assumes [-inf, inf] output.
         self.observation_space = Box(
-            # Note: Couple status must be observation[0], or else change is_couple in baselines/baselines/ppo1/mlp_policy.py.
+            # Note: Couple status must be observation[0], or else change is_couple() in eval_model.py and baselines/baselines/ppo1/pposgd_dual.py.
             # couple, number of 401(k)'s available, 1 / gamma, life-expectancy both, life-expectancy one, preretirement years, final spias purchase,
             # income present value annualized: tax_free, tax_deferred, taxable,
             # wealth annualized: tax_free, tax_deferred, taxable,
