@@ -6,50 +6,35 @@ from baselines.common.distributions import make_pdtype
 
 class MlpPolicy(object):
     recurrent = False
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name, ob_space, *args, **kwargs):
+        phc_scope = tf.get_variable_scope().name
+        sequence_length = None
+        self.ob = U.get_placeholder(phc_scope=phc_scope, name="ob", dtype=tf.float32, shape=[sequence_length] + list(ob_space.shape))
         with tf.variable_scope(name):
-            self._init(*args, **kwargs)
+            self._init(ob_space, *args, **kwargs)
             self.scope = tf.get_variable_scope().name
 
-    def _init(self, ob_space, ac_space, hid_size, num_hid_layers, gaussian_fixed_var=True, couple=False):
+    def _init(self, ob_space, ac_space, hid_size, num_hid_layers, gaussian_fixed_var=True):
         assert isinstance(ob_space, gym.spaces.Box)
 
         self.pdtype = pdtype = make_pdtype(ac_space)
-        sequence_length = None
 
-        ob = U.get_placeholder(name="ob", dtype=tf.float32, shape=[sequence_length] + list(ob_space.shape))
+        ob = self.ob
 
         with tf.variable_scope("obfilter"):
             self.ob_rms = RunningMeanStd(shape=ob_space.shape)
 
-        def hidden_layers(last_out):
-            for i in range(num_hid_layers):
-                last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="fc%i"%(i+1), kernel_initializer=U.normc_initializer(1.0)))
-            return last_out
-
-        is_couple = tf.cast(ob[:, 0], tf.bool, name="is_couple")
-
         with tf.variable_scope('vf'):
             obz = tf.clip_by_value((ob - self.ob_rms.mean) / self.ob_rms.std, -5.0, 5.0)
-            with tf.variable_scope('single'):
-                single_tf = hidden_layers(obz)
-            if couple:
-                with tf.variable_scope('couple'):
-                    couple_tf = hidden_layers(obz)
-                last_out = tf.where(is_couple, couple_tf, single_tf)
-            else:
-                last_out = single_tf
+            last_out = obz
+            for i in range(num_hid_layers):
+                last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name="fc%i"%(i+1), kernel_initializer=U.normc_initializer(1.0)))
             self.vpred = tf.layers.dense(last_out, 1, name='final', kernel_initializer=U.normc_initializer(1.0))[:,0]
 
         with tf.variable_scope('pol'):
-            with tf.variable_scope('single'):
-                single_tf = hidden_layers(obz)
-            if couple:
-                with tf.variable_scope('couple'):
-                    couple_tf = hidden_layers(obz)
-                last_out = tf.where(is_couple, couple_tf, single_tf)
-            else:
-                last_out = single_tf
+            last_out = obz
+            for i in range(num_hid_layers):
+                last_out = tf.nn.tanh(tf.layers.dense(last_out, hid_size, name='fc%i'%(i+1), kernel_initializer=U.normc_initializer(1.0)))
             if gaussian_fixed_var and isinstance(ac_space, gym.spaces.Box):
                 mean = tf.layers.dense(last_out, pdtype.param_shape()[0]//2, name='final', kernel_initializer=U.normc_initializer(0.01))
                 logstd = tf.get_variable(name="logstd", shape=[1, pdtype.param_shape()[0]//2], initializer=tf.zeros_initializer())
@@ -65,10 +50,8 @@ class MlpPolicy(object):
         false = tf.constant(False, dtype=tf.bool, shape=())
         stochastic = tf.placeholder_with_default(false, shape=())
         ac = U.switch(stochastic, self.pd.sample(), self.pd.mode())
+        self.ac = ac
         self._act = U.function([stochastic, ob], [ac, self.vpred])
-
-        tf.identity(ac, name='action')
-        tf.identity(self.vpred, name='v')
 
     def act(self, stochastic, ob):
         ac1, vpred1 =  self._act(stochastic, ob[None])
