@@ -244,20 +244,20 @@ class GetFlat(object):
     def __call__(self):
         return tf.get_default_session().run(self.op)
 
-_PLACEHOLDER_CACHE = {}  # name -> (placeholder, dtype, shape)
+_PLACEHOLDER_CACHE = {}  # (phc_scope, name) -> (placeholder, dtype, shape)
 
-def get_placeholder(name, dtype, shape):
-    if name in _PLACEHOLDER_CACHE:
-        out, dtype1, shape1 = _PLACEHOLDER_CACHE[name]
+def get_placeholder(name, dtype, shape, phc_scope=None):
+    if (phc_scope, name) in _PLACEHOLDER_CACHE:
+        out, dtype1, shape1 = _PLACEHOLDER_CACHE[(phc_scope, name)]
         assert dtype1 == dtype and shape1 == shape
         return out
     else:
         out = tf.placeholder(dtype=dtype, shape=shape, name=name)
-        _PLACEHOLDER_CACHE[name] = (out, dtype, shape)
+        _PLACEHOLDER_CACHE[(phc_scope, name)] = (out, dtype, shape)
         return out
 
-def get_placeholder_cached(name):
-    return _PLACEHOLDER_CACHE[name][0]
+def get_placeholder_cached(name, phc_scope=None):
+    return _PLACEHOLDER_CACHE[(phc_scope, name)][0]
 
 def flattenallbut0(x):
     return tf.reshape(x, [-1, intprod(x.get_shape().as_list()[1:])])
