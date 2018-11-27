@@ -25,8 +25,8 @@ from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 from gym_fin.envs.model_params import dump_params_file
 
-def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_batch_size, train_minibatch_size,
-          train_optimizer_epochs, train_optimizer_step_size, train_gae_lambda,
+def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_batch_size,
+          train_single_minibatch_size, train_couple_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_gae_lambda,
           train_couple_net, train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps, train_seed,
           eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, nice, num_cpu, model_dir):
 
@@ -84,7 +84,8 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
         max_timesteps=train_num_timesteps,
         timesteps_per_actorbatch=train_batch_size,
         clip_param=0.2, entcoeff=0.0,
-        optim_epochs=train_optimizer_epochs, optim_stepsize=train_optimizer_step_size, optim_batchsize=train_minibatch_size,
+        optim_epochs=train_optimizer_epochs, optim_stepsize=train_optimizer_step_size,
+        optim_single_batchsize=train_single_minibatch_size, optim_couple_batchsize=train_couple_minibatch_size,
         gamma=1, lam=train_gae_lambda, schedule='linear',
         callback=callback
     )
@@ -106,8 +107,8 @@ def main():
     parser.add_argument('--train-num-hidden-layers', type=int, default=2)
     parser.add_argument('--train-hidden-layer-size', type=int, default=64)
     parser.add_argument('--train-batch-size', type=int, default=2048)
-    parser.add_argument('--train-minibatch-size', type=int, default=128) # Canonical PPO1 defaults to 64.
-        # May do better with a larger value due to stochastic nature of the problem.
+    parser.add_argument('--train-single-minibatch-size', type=int, default=128) # Canonical PPO1 defaults to 64. Use larger value because problem is stochastic.
+    parser.add_argument('--train-couple-minibatch-size', type=int, default=512) # Couple uses an even larger value because first death is non-probabilistic.
     parser.add_argument('--train-optimizer-epochs', type=int, default=10)
     parser.add_argument('--train-optimizer-step-size', type=float, default=3e-4)
     parser.add_argument('--train-gae-lambda', type=float, default=0.95)

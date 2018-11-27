@@ -189,7 +189,7 @@ class DualPolicyFn:
 def learn(env, policy_fn, couple_net, *,
         timesteps_per_actorbatch, # timesteps per actor per update
         clip_param, entcoeff, # clipping parameter epsilon, entropy coeff
-        optim_epochs, optim_stepsize, optim_batchsize,# optimization hypers
+          optim_epochs, optim_stepsize, optim_single_batchsize, optim_couple_batchsize, # optimization hypers
         gamma, lam, # advantage estimation
         max_timesteps=0, max_episodes=0, max_iters=0, max_seconds=0,  # time constraint
         callback=None, # you can do anything in the callback, since it takes locals(), globals()
@@ -201,10 +201,10 @@ def learn(env, policy_fn, couple_net, *,
     ob_space = env.observation_space
     ac_space = env.action_space
     single_ac = ActorCritic('single', policy_fn, ob_space, ac_space, clip_param, entcoeff,
-        optim_epochs, optim_stepsize, optim_batchsize, gamma, lam, adam_epsilon)
+        optim_epochs, optim_stepsize, optim_single_batchsize, gamma, lam, adam_epsilon)
     if couple_net:
         couple_ac = ActorCritic('couple', policy_fn, ob_space, ac_space, clip_param, entcoeff,
-            optim_epochs, optim_stepsize, optim_batchsize, gamma, lam, adam_epsilon)
+            optim_epochs, optim_stepsize, optim_couple_batchsize, gamma, lam, adam_epsilon)
         pi = DualPolicyFn(single_ac.pi, couple_ac.pi)
     else:
         pi = single_ac.pi
