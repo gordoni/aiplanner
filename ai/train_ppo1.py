@@ -106,7 +106,7 @@ def main():
     parser = arg_parser()
     parser.add_argument('--train-num-hidden-layers', type=int, default=2)
     parser.add_argument('--train-hidden-layer-size', type=int, default=64)
-    parser.add_argument('--train-batch-size', type=int, default=2048)
+    parser.add_argument('--train-batch-size', type=int, default=4096) # Canonical PPO1 defaults to 2048. Increase to accomodate default train_couple_minibatch_size.
     parser.add_argument('--train-single-minibatch-size', type=int, default=128) # Canonical PPO1 defaults to 64. Use larger value because problem is stochastic.
     parser.add_argument('--train-couple-minibatch-size', type=int, default=512) # Couple uses an even larger value because first death is non-probabilistic.
     parser.add_argument('--train-optimizer-epochs', type=int, default=10)
