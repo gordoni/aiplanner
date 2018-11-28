@@ -44,10 +44,10 @@ master_have_401k2_high = True
 master_defined_benefits = '''[
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [1e3, 1e5], "source_of_funds": "tax_free"},
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [1e3, 1e5], "source_of_funds": "tax_deferred"},
-    {"owner": "self",   "age": null, "probability": 0.9, "payout": [1e3, 1e5], "source_of_funds": "taxable"},
+    {"owner": "self",   "age": null, "probability": 1.0, "payout": [1e3, 1e5], "source_of_funds": "taxable"},
     {"owner": "spouse", "age": null, "probability": 0.2, "payout": [1e3, 1e5], "source_of_funds": "tax_free"},
     {"owner": "spouse", "age": null, "probability": 0.2, "payout": [1e3, 1e5], "source_of_funds": "tax_deferred"},
-    {"owner": "spouse", "age": null, "probability": 0.9, "payout": [1e3, 1e5], "source_of_funds": "taxable"}
+    {"owner": "spouse", "age": null, "probability": 1.0, "payout": [1e3, 1e5], "source_of_funds": "taxable"}
 ]'''
 master_p_tax_free_low = 1e3
 master_p_tax_free_high = 2e6

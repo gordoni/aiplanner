@@ -702,7 +702,10 @@ class FinEnv(Env):
             # so things function well with differing current amounts of guaranteed income.
 
             spias_action = (spias_action + 1) / 2
-            current_spias_fraction_estimate = sum(self.income.values()) / self._income_estimate()
+            try:
+                current_spias_fraction_estimate = sum(self.income.values()) / self._income_estimate()
+            except ZeroDivisionError:
+                current_spias_fraction_estimate = 0
             current_spias_fraction_estimate = max(0, min(current_spias_fraction_estimate, 1))
             # Might like to pass on any more SPIAs when spias_action <= current_spias_fraction_estimate,
             # but that might then make learning to increase spias_action difficult.

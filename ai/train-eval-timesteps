@@ -58,35 +58,36 @@ done
 echo `date` Done
 
 # PPO1 average improvement relative to prior timesteps average of 4 scenarios (with nominal_bonds_duration=None/15 (single/couple) and 2m timestep evaluations):
-#     train_num_timesteps        500k   1m      2m      5m
-#     specific single no-spias     -   1.6%    0.4%    0.1%
-#     specific single  spias       -   3.1%    1.9%    0.6%
-#     specific couple no-spias     -   4.7%    5.0%    5.7%
+#     train_num_timesteps        500k   1m      2m      5m     10m
+#     specific single no-spias     -   1.6%    0.4%    0.1%     ?   no probabilistic defined benefits
+#     specific single  spias       -   3.1%    1.9%    0.6%     ?   no probabilistic defined benefits
+#     specific couple no-spias     -   4.7%    5.0%    5.7%     ?   no probabilistic defined benefits
 #     specific couple  spias       -  x1.8%   x4.9%  x10.1%
-#     generic  single no-spias     -   4.6%    1.2%    0.4%
-#     generic  single  spias       -   5.8%    4.3%    0.4%
-#     generic  couple no-spias     -   8.2%    8.4%    3.9%
+#     generic  single no-spias     -   4.6%    1.2%    0.4%     ?   no probabilistic defined benefits
+#     generic  single  spias       -   5.8%    4.3%    0.4%     ?   no probabilistic defined benefits
+#     generic  couple no-spias     -   8.2%    8.4%    3.9%     ?   no probabilistic defined benefits
 #     generic  couple  spias       -  x5.0%   x7.5%  x11.6%
 # train_num_timesteps=2000000 IS THUS THE DEFAULT
 #
 # PPO1 5m timestep generic results as a fraction 5m timestep specific results average of 4 scenarios
 #     (with nominal_bonds_duration=None/15 (single/couple) and 2m timestep evaluations):
-#     single no-spias   97.9%
-#     single  spias     95.1%
-#     couple no-spias  102.0%
+#     single no-spias   97.9%  no probabilistic defined benefits
+#     single  spias     95.1%  no probabilistic defined benefits
+#     couple no-spias  102.0%  no probabilistic defined benefits
 #     couple  spias   x103.7%
 #
 # PPO1 5m timestep no spias results as a fraction of spia results average of 4 scenarios
 #     (with nominal_bonds_duration=None/15 (single/couple) and 2m timestep evaluations):
-#     specific single                   94.0%
-#     specific couple  couple-spias    103.4%
+#     specific single                   94.0%  no probabilistic defined benefits
+#     specific couple  couple-spias    103.4%  no probabilistic defined benefits
 #     specific couple no-couple-spias
-#     generic  single                   96.8%
-#     generic  couple  couple-spias    101.8%
+#     generic  single                   96.8%  no probabilistic defined benefits
+#     generic  couple  couple-spias    101.8%  no probabilistic defined benefits
 #     generic  couple no-couple-spias
-# couple_spias=False IS THUS THE DEFAULT
+# couple_spias=False IS THUS NOW THE DEFAULT
 #
-# PPO1 nominal_bonds_duration=15 improvement relative to duration=None average of 4 scenarios (old couple model, 2m timesteps, and 2m timestep evaluation):
+# PPO1 nominal_bonds_duration=15 improvement relative to duration=None average of 4 scenarios
+#     (old couple model, no probabilistic defined benefits, 2m timesteps, and 2m timestep evaluation):
 #     specific single no-spias    0.2%
 #     specific single  spias      0.4%
 #     specific couple no-spias    1.5%
