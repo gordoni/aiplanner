@@ -189,7 +189,7 @@ class DualPolicyFn:
 def learn(env, policy_fn, couple_net, *,
         timesteps_per_actorbatch, # timesteps per actor per update
         clip_param, entcoeff, # clipping parameter epsilon, entropy coeff
-          optim_epochs, optim_stepsize, optim_single_batchsize, optim_couple_batchsize, # optimization hypers
+        optim_epochs, optim_stepsize, optim_single_batchsize, optim_couple_batchsize, # optimization hypers
         gamma, lam, # advantage estimation
         max_timesteps=0, max_episodes=0, max_iters=0, max_seconds=0,  # time constraint
         callback=None, # you can do anything in the callback, since it takes locals(), globals()
@@ -211,6 +211,8 @@ def learn(env, policy_fn, couple_net, *,
 
     U.initialize()
     single_ac.adam.sync()
+    if couple_net:
+        couple_ac.adam.sync()
 
     # Prepare for rollouts
     # ----------------------------------------

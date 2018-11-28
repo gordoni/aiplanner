@@ -17,3 +17,10 @@ else
     export PYTHONPATH=$PYTHONPATH_ADD:$PYTHONPATH
 fi
 unset PYTHONPATH_ADD
+
+# Typically we run tensorflow with intra/inter_op_parallelism_threads=1 for better throughput.
+# Here we set some environment variables, which in some cases, have been found to make a significant performance difference.
+export OMP_NUM_THREADS=1
+    # Most processes running in parallel show up as suspended unless have a single OMP thread, not sure why.
+export KMP_AFFINITY=none
+    # Binding threads to physical resources can be problematic when runnning multiple jobs in parallel.
