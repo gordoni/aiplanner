@@ -29,8 +29,6 @@ from gym_fin.envs.policies import policy
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 
-from spinup.utils.logx import restore_tf_graph
-
 from gym_fin.envs.model_params import load_params_file
 
 def pi_merton(env, obs, continuous_time = False):
@@ -120,13 +118,14 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_couple_n
 
             session = U.make_session(num_cpu = num_cpu).__enter__()
             try:
+                from spinup.utils.logx import restore_tf_graph
                 model_graph = restore_tf_graph(session, model_dir + '/simple_save')
                 observation_sigle_tf = observation_couple_tf = model_graph['x']
                 try:
                     action_single_tf = action_couple_tf = model_graph['mu']
                 except KeyError:
                     action_single_tf = action_couple_tf = model_graph['pi']
-            except IOError:
+            except (ModuleNotFoundError, IOError):
                 tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], model_dir)
                 g = tf.get_default_graph()
                 observation_single_tf = g.get_tensor_by_name('single/ob:0')
