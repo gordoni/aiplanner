@@ -149,7 +149,7 @@ train_eval_couple () {
     train age_start50-age_retirement65-defined_benefits32e3-tax_deferred1e6 "-c $COUPLE_EVAL_FILE --master-p-tax-deferred=1e6"
     train age_start50-age_retirement65-defined_benefits32e3-taxable_stocks1e6 "-c $COUPLE_EVAL_FILE --master-p-taxable-stocks=1e6"
     train retired65-defined_benefits32e3-tax_free1e6 "-c $COUPLE_EVAL_FILE --master-age-start=65 --master-p-tax-free=1e6"
-    train gamma3 '--master-gamma=3'
+    train gamma3 '--master-sex2=male --master-gamma=3'
 
     wait
 

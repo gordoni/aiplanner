@@ -56,6 +56,8 @@ master_bonds_standard_error = 0.010
 master_inflation_standard_error = 0.004
 master_bills = False
 
+master_couple_spias = False # Better results if disabled.
+
 train_num_timesteps = 2000000 # Little is gained by going to 5m.
 eval_num_timesteps = 2000000 # Produces a 0.1-0.2% CE standard error.
 
