@@ -372,13 +372,16 @@ class FinEnv(Env):
         if 'sched_single' in db and payout_fraction > 0:
             db['sched_single_non_zero'] = True
 
-    def add_db(self, defined_benefits, type = 'Income Annuity', owner = 'self', age = None, premium = None, payout = None,
+    def add_db(self, defined_benefits, type = 'Income Annuity', owner = 'self', age = None, probability = 1, premium = None, payout = None,
         inflation_adjustment = 'cpi', joint = False, payout_fraction = 0, source_of_funds = 'tax_deferred', exclusion_period = 0, exclusion_amount = 0):
 
         assert owner in ('self', 'spouse')
         assert (premium == None) != (payout == None)
 
         if owner == 'spouse' and self.params.sex2 == None:
+            return
+
+        if random() >= probability:
             return
 
         db = self.get_db(defined_benefits, type, owner, inflation_adjustment, joint, payout_fraction, source_of_funds)

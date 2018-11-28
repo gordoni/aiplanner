@@ -164,6 +164,7 @@ class ModelParams(object):
             #     "type": Type of defined benefit. Arbitrary string. Default "Income Annuity". A value of "Social Security" may in the future be taxed specially.
             #     "owner": Value "self" or "spouse". Default "self".
             #     "age": Starting age in years of owner for benefit. Default starts when first individual reaches age_retirement.
+            #     "probability": Probability of this defined benefit being present. Used when generating different random scenarios. Default 1.
             #     "payout": Annual payment amount in today's dollars. May be a array of length 2 for stochastic log range. Required.
             #     "inflation_adjustment": Annual inflation increase fraction from today, or "cpi" for adjustment to reflect the CPI value. Default "cpi".
             #     "joint": true if payout drops on death of either self or spouse, false if value payout drops only on death of owner. Default false.
