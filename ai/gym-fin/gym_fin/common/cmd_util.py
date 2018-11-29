@@ -23,7 +23,7 @@ from baselines.common import boolean_flag, set_global_seeds
 
 from gym_fin.envs import FinEnv, ModelParams
 
-def make_fin_env(training = False, allow_early_resets=None, **kwargs):
+def make_fin_env(training = False, allow_early_resets = None, **kwargs):
     """
     Create a wrapped, monitored gym.Env for Fin.
     """

@@ -41,7 +41,7 @@ class FinEnv(Env):
 
     metadata = {'render.modes': ['human']}
 
-    def _compute_vital_stats(self, age_start, age_start2, le_add, le_add2, preretirement):
+    def _compute_vital_stats(self, age_start, age_start2, preretirement):
 
         start_date = datetime.strptime(self.params.life_table_date, '%Y-%m-%d')
         this_year = datetime(start_date.year, 1, 1)
@@ -133,7 +133,9 @@ class FinEnv(Env):
         if not self.params.probabilistic_life_expectancy:
             alive_single = tuple(None if _alive_count == 2 else _alive_count for _alive_count in alive_count)
 
-        return only_alive2, alive_years, tuple(alive_single), tuple(alive_count), \
+        self.only_alive2, self.alive_years, self.alive_single, self.alive_count, \
+            self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = \
+            only_alive2, alive_years, tuple(alive_single), tuple(alive_count), \
             tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
 
     def sums_to_end(self, l, start, divl):
@@ -169,7 +171,7 @@ class FinEnv(Env):
             # DDPG implementation assumes [-x, x] symmetric actions.
             # PPO1 implementation ignores size and assumes [-inf, inf] output.
         self.observation_space = Box(
-            # Note: Couple status must be observation[0], or else change is_couple() in eval_model.py and baselines/baselines/ppo1/pposgd_dual.py.
+            # Note: Couple status must be observation[0], or else change is_couple() in gym-fin/gym_fin/common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
             # couple, number of 401(k)'s available, 1 / gamma, life-expectancy both, life-expectancy one, preretirement years, final spias purchase,
             # income present value annualized: tax_free, tax_deferred, taxable,
             # wealth annualized: tax_free, tax_deferred, taxable,
@@ -440,6 +442,23 @@ class FinEnv(Env):
             self.add_db(defined_benefits, **db)
         return defined_benefits
 
+    def _compute_initial_income(self):
+
+        self.defined_benefits = self.parse_defined_benefits()
+        for db in self.defined_benefits.values():
+            db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2) # Pick up non-zero schedule for observe.
+
+        if self.params.income_preretirement_age_end != None:
+            self.income_preretirement_years = max(0, self.params.income_preretirement_age_end - self.age)
+        else:
+            self.income_preretirement_years = self.preretirement_years
+        if self.params.income_preretirement_age_end2 != None:
+            self.income_preretirement_years2 = max(0, self.params.income_preretirement_age_end2 - self.age2)
+        else:
+            self.income_preretirement_years2 = self.preretirement_years
+        self.income_preretirement = self.start_income_preretirement if self.income_preretirement_years > 0 else 0
+        self.income_preretirement2 = self.start_income_preretirement2 if self.couple and self.income_preretirement_years2 > 0 else 0
+
     def age_uniform(self, low, high):
         if low == high:
             return low # Allow fractional ages.
@@ -457,20 +476,12 @@ class FinEnv(Env):
         if self.params.reproduce_episode != None:
             self._reproducable_seed(self.params.reproduce_episode, 0, 0)
 
-        self.age = self.age_uniform(self.params.age_start_low, self.params.age_start_high)
-        self.age2 = self.age_uniform(self.params.age_start2_low, self.params.age_start2_high)
+        self.age = self.age_start = self.age_uniform(self.params.age_start_low, self.params.age_start_high)
+        self.age2 = self.age_start2 = self.age_uniform(self.params.age_start2_low, self.params.age_start2_high)
         le_add = uniform(self.params.life_expectancy_additional_low, self.params.life_expectancy_additional_high)
         le_add2 = uniform(self.params.life_expectancy_additional2_low, self.params.life_expectancy_additional2_high)
         self.age_retirement = uniform(self.params.age_retirement_low, self.params.age_retirement_high)
         self.preretirement_years = max(0, self.age_retirement - self.age)
-        if self.params.income_preretirement_age_end != None:
-            self.income_preretirement_years = max(0, self.params.income_preretirement_age_end - self.age)
-        else:
-            self.income_preretirement_years = self.preretirement_years
-        if self.params.income_preretirement_age_end2 != None:
-            self.income_preretirement_years2 = max(0, self.params.income_preretirement_age_end2 - self.age2)
-        else:
-            self.income_preretirement_years2 = self.preretirement_years
 
         death_age = self.params.age_end - self.params.time_period
         if self.age != self.life_table_age:
@@ -487,9 +498,7 @@ class FinEnv(Env):
             self.life_table2_age = self.age2
         else:
             self.life_table2.age = self.age2
-        vital_stats = self._compute_vital_stats(self.age, self.age2, le_add, le_add2, self.preretirement_years)
-        self.only_alive2, self.alive_years, self.alive_single, self.alive_count, \
-            self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = vital_stats
+        self._compute_vital_stats(self.age, self.age2, self.preretirement_years)
 
         self.couple = self.alive_single[0] == None
 
@@ -523,14 +532,9 @@ class FinEnv(Env):
         for _ in range(1000):
 
             self.consume_preretirement = self.log_uniform(self.params.consume_preretirement_low, self.params.consume_preretirement_high)
-            self.defined_benefits = self.parse_defined_benefits()
-            for db in self.defined_benefits.values():
-                db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2) # Pick up non-zero schedule for observe.
-
-            self.income_preretirement = self.log_uniform(self.params.income_preretirement_low, self.params.income_preretirement_high) \
-                if self.income_preretirement_years > 0 else 0
-            self.income_preretirement2 = self.log_uniform(self.params.income_preretirement2_low, self.params.income_preretirement2_high) \
-                if self.couple and self.income_preretirement_years2 > 0 else 0
+            self.start_income_preretirement = self.log_uniform(self.params.income_preretirement_low, self.params.income_preretirement_high)
+            self.start_income_preretirement2 = self.log_uniform(self.params.income_preretirement2_low, self.params.income_preretirement2_high)
+            self._compute_initial_income()
 
             self.p_tax_free = self.log_uniform(self.params.p_tax_free_low, self.params.p_tax_free_high)
             self.p_tax_deferred = self.log_uniform(self.params.p_tax_deferred_low, self.params.p_tax_deferred_high)
@@ -917,8 +921,7 @@ class FinEnv(Env):
         taxable_remaining = p_taxable
 
         tax_efficient_order = ('stocks', 'bills', 'iid_bonds', 'nominal_bonds', 'real_bonds')
-        tax_inefficient_order = list(tax_efficient_order)
-        tax_inefficient_order.reverse()
+        tax_inefficient_order = reversed(tax_efficient_order)
 
         tax_free = AssetAllocation(fractional = False)
         for ac in tax_inefficient_order:
@@ -1133,28 +1136,45 @@ class FinEnv(Env):
 
             self.bonds_stepper.step()
 
-    def goto(self, step, real_oup_x, inflation_oup_x, gi_real, gi_nominal, p_tax_free):
-        '''Goto a reproducable time step. Useful for benchmarking.'''
+    def goto(self, step = None, age = None, real_oup_x = None, inflation_oup_x = None, p_tax_free = None, p_tax_deferred = None, p_taxable = None):
+        '''Goto a reproducable time step. Useful for benchmarking and plotting surfaces.'''
 
-        assert self.params.sex2 == None
+        assert (step == None) != (age == None)
 
         self.reset()
 
-        if step > 0:
+        if step != None:
 
             self.age += step * self.params.time_period
             self.episode_length += step
 
+        if age != None:
+
+            self.episode_length = round((age - self.age_start) / self.params.time_period)
+            self.age2 = self.age_start2 + (age - self.age_start)
+            self.age = age
+
+        self.life_table.age = self.age
+        try:
+            self.life_table2.age = self.age2
+        except AttributeError:
+            pass
+
+        assert (real_oup_x == None) == (inflation_oup_x == None)
+
+        if real_oup_x != None:
             self.bonds.real.oup.next_x = real_oup_x
             assert self.bonds.inflation.inflation_a == self.bonds.inflation.bond_a and self.bonds.inflation.inflation_sigma == self.bonds.inflation.bond_sigma
             self.bonds.inflation.oup.next_x = inflation_oup_x
             self.bonds.inflation.inflation_oup.next_x = inflation_oup_x
             self._step_bonds()
 
-        self.gi_real = gi_real
-        self.gi_nominal = gi_nominal
-        self.p_tax_free = p_tax_free
+        if p_tax_free != None: self.p_tax_free = p_tax_free
+        if p_tax_deferred != None: self.p_tax_deferred = p_tax_deferred
+        if p_taxable != None: self.p_taxable = p_taxable
 
+        self.preretirement_years = max(0, self.age_retirement - self.age)
+        self._compute_initial_income()
         self._pre_calculate()
         return self._observe()
 

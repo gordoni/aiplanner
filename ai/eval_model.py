@@ -16,20 +16,15 @@ from math import ceil, exp, sqrt
 from os import chmod, environ, getpriority, mkdir, PRIO_PROCESS, setpriority
 from subprocess import run
 
-import tensorflow as tf
-
-from baselines.common import (
-    tf_util as U,
-    boolean_flag,
-)
+from baselines.common import boolean_flag
 from baselines.common.misc_util import set_global_seeds
 
 from gym_fin.envs.asset_allocation import AssetAllocation
+from gym_fin.envs.model_params import load_params_file
 from gym_fin.envs.policies import policy
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
-
-from gym_fin.envs.model_params import load_params_file
+from gym_fin.common.tf_util import TFRunner
 
 def pi_merton(env, obs, continuous_time = False):
     observation = env.decode_observation(obs)
@@ -53,9 +48,6 @@ def pi_merton(env, obs, continuous_time = False):
         t = ceil(life_expectancy / env.params.time_period) - 1
         consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / env.params.time_period
     return consume_fraction, stocks_allocation
-
-def is_couple(ob):
-    return ob[0] == 1
 
 def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_couple_net, eval_seed, eval_num_timesteps, eval_render, nice, num_cpu, model_dir, \
     search_consume_initial_around, result_dir, num_trace_episodes, num_environments, pdf_buckets):
@@ -116,51 +108,9 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_couple_n
 
         else:
 
-            session = U.make_session(num_cpu = num_cpu).__enter__()
-            try:
-                from spinup.utils.logx import restore_tf_graph
-                model_graph = restore_tf_graph(session, model_dir + '/simple_save')
-                observation_sigle_tf = observation_couple_tf = model_graph['x']
-                try:
-                    action_single_tf = action_couple_tf = model_graph['mu']
-                except KeyError:
-                    action_single_tf = action_couple_tf = model_graph['pi']
-            except (ModuleNotFoundError, IOError):
-                tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], model_dir)
-                g = tf.get_default_graph()
-                observation_single_tf = g.get_tensor_by_name('single/ob:0')
-                action_single_tf = g.get_tensor_by_name('single/action:0')
-                try:
-                    observation_couple_tf = g.get_tensor_by_name('couple/ob:0')
-                    action_couple_tf = g.get_tensor_by_name('couple/action:0')
-                except KeyError:
-                    observation_couple_tf = action_couple_tf = None
-                #v_tf = g.get_tensor_by_name('single/pi/v:0')
+            runner = TFRunner(model_dir = model_dir, couple_net = eval_couple_net, num_cpu = num_cpu)
 
-            def run_tf(obss):
-                single_obss = []
-                couple_obss = []
-                single_idx = []
-                couple_idx = []
-                for i, obs in enumerate(obss):
-                    if is_couple(obs) and eval_couple_net:
-                        couple_obss.append(obs)
-                        couple_idx.append(i)
-                    else:
-                        single_obss.append(obs)
-                        single_idx.append(i)
-                action = [None] * len(obss)
-                if single_obss:
-                    single_action = session.run(action_single_tf, feed_dict = {observation_single_tf: single_obss})
-                    for i, act in zip(single_idx, single_action):
-                        action[i] = act
-                if couple_obss:
-                    couple_action = session.run(action_couple_tf, feed_dict = {observation_couple_tf: couple_obss})
-                    for i, act in zip(couple_idx, couple_action):
-                        action[i] = act
-                return action
-
-            action, = run_tf([obs])
+            action, = runner.run([obs])
             interp = env.interpret_action(action)
 
         interp['asset_classes'] = interp['asset_allocation'].classes()
@@ -195,7 +145,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_couple_n
 
             if model:
 
-                action = run_tf(obss)
+                action = runner.run(obss)
                 return action
 
             elif merton or samuelson:
