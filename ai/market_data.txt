@@ -9,7 +9,7 @@
 # PURPOSE.
 
 # This file is only used if it is explicitly named as a config file,
-# otherwise the default fair price, historical average rate,
+# otherwise the default fair price, historical average current rate,
 # assumptions are used.
 
 # It should normally be sufficient to train with the defalt
@@ -21,7 +21,9 @@ master_stocks_price = 1.25 # Rough estimate of current stock market price to lon
     # For 1950-2017 the harmonic mean S&P 500 P/E ratio (not CAPE) was 14.85 (based on Shiller's data).
     # This compares to a TTM P/E of 21.65 as of 2018-11-21, and a 12 month forward P/E of 15.6 (FactSet 2018-11-16).
     # Thus two reasonable estimates are the market is 5% and 46% overvalued.
-master_real_short_rate = 0.011
+master_real_short_rate_type = 'value'
+master_real_short_rate_value = 0.011
     # 2018-11-21 5 year rate - https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=realyield
-master_inflation_short_rate = 0.016
+master_inflation_short_rate_type = 'value'
+master_inflation_short_rate_value = 0.016
     # 2018-11-21 1 year nominal less real short rate above - https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=yield

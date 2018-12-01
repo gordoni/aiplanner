@@ -8,7 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-from math import exp, log
+from math import exp, log, sqrt
 from random import normalvariate, seed
 from statistics import mean, stdev
 
@@ -16,13 +16,13 @@ from spia import YieldCurve
 
 from gym_fin.envs.ou_process import OUProcess
 
-class Bonds(object):
+class Bonds:
     '''Short rate models - https://en.wikipedia.org/wiki/Short-rate_model .
 
     Hull-White one-factor model - https://en.wikipedia.org/wiki/Hull%E2%80%93White_model .
     '''
 
-    def __init__(self, *, a, sigma, yield_curve, r0, standard_error, time_period):
+    def __init__(self, *, a, sigma, yield_curve, r0_type, r0, standard_error, time_period):
         '''Initialize a bonds object.
 
         "a" interest rate mean reversion rate. Default value chosen to
@@ -36,8 +36,13 @@ class Bonds(object):
         "yield_curve" interest rate YieldCurve object representing the
         typical yield curve to use.
 
-        "r0" time zero annualized continuously compounded interest
-        rate, or none to use the yield curve short interest rate.
+        "r0_type" determines the time zero annualized continuously
+        compounded interest rate: 'sample' to sample from possible far
+        future short interest rates, 'current' to use the current
+        yield curve derived short interest rate, or 'value' to use a
+        specific value.
+
+        "r0" is the specific value to use for "r0_type" 'value'.
 
         "standard_error" is the standard error of the estimated
         continuously compounded annual yield curve yield.
@@ -49,6 +54,7 @@ class Bonds(object):
         self.a = a # Alpha in Wikipedia and hibbert.
         self.sigma = sigma
         self.yield_curve = yield_curve
+        self.r0_type = r0_type
         self.r0 = r0
         self.standard_error = standard_error
         self.time_period = time_period
@@ -61,7 +67,14 @@ class Bonds(object):
 
         self.adjust = normalvariate(0, self.standard_error)
         self.sir_init = self.yield_curve.spot(0) + self.adjust
-        self.sir0 = self.sir_init if self.r0 == None else self.r0
+        if self.r0_type == 'current':
+            self.sir0 = self.sir_init
+        elif self.r0_type == 'sample':
+            self.sir0 = normalvariate(self.sir_init, self.sigma / sqrt(2 * self.a))
+        elif self.r0_type == 'value':
+            self.sir0 = self.r0
+        else:
+            assert False
 
         self.t = 0
         self.oup = OUProcess(self.time_period, self.a, self.sigma, mu = self.sir_init, x = self.sir0) # Underlying random movement in short interest rates.
@@ -245,7 +258,7 @@ class Bonds(object):
 
 class RealBonds(Bonds):
 
-    def __init__(self, *, a = 0.13, sigma = 0.011, yield_curve = None, r0 = None, standard_error = 0, time_period = 1):
+    def __init__(self, *, a = 0.13, sigma = 0.011, yield_curve = None, r0_type = 'current', r0 = None, standard_error = 0, time_period = 1):
         '''Chosen value of sigma, 0.011, intended to produce a short term real
         yield volatility of 0.9-1.0%. The measured value over
         2005-2017 was 1.00%. Obtained value is 1.00%.
@@ -268,7 +281,7 @@ class RealBonds(Bonds):
 
         self.interest_rate = 'real'
 
-        super().__init__(a = a, sigma = sigma, yield_curve = yield_curve, r0 = r0, standard_error = standard_error, time_period = time_period)
+        super().__init__(a = a, sigma = sigma, yield_curve = yield_curve, r0_type = r0_type, r0 = r0, standard_error = standard_error, time_period = time_period)
 
     def _short_interest_rate(self, *, next = False):
         '''Return the annualized continuously compounded current short
@@ -301,7 +314,7 @@ class RealBonds(Bonds):
 
         return 1
 
-class YieldCurveSum(object):
+class YieldCurveSum:
 
     def __init__(self, yield_curve1, yield_curve2, *, weight = 1):
 
@@ -328,7 +341,8 @@ class YieldCurveSum(object):
 class BreakEvenInflation(Bonds):
 
     def __init__(self, real_bonds, *, inflation_a = 0.13, inflation_sigma = 0.014, bond_a = 0.13, bond_sigma = 0.014, model_bond_volatility = True,
-        nominal_yield_curve = None, inflation_risk_premium = 0, real_liquidity_premium = 0, r0 = None, standard_error = 0, time_period = 1):
+        nominal_yield_curve = None, inflation_risk_premium = 0, real_liquidity_premium = 0, r0_type = 'current', r0 = None, standard_error = 0,
+        time_period = 1):
         '''Keeping inflation parameters the same as the bond parameters
         simplifies the model.
 
@@ -391,7 +405,8 @@ class BreakEvenInflation(Bonds):
 
         self.interest_rate = 'inflation'
 
-        super().__init__(a = a, sigma = sigma, yield_curve = deflated_yield_curve, r0 = r0, standard_error = standard_error, time_period = time_period)
+        super().__init__(a = a, sigma = sigma, yield_curve = deflated_yield_curve, r0_type = r0_type, r0 = r0, standard_error = standard_error,
+            time_period = time_period)
 
         self.reset()
 
@@ -598,10 +613,10 @@ class BondsMeasuredInNominalTerms(Bonds):
 
         return self.bonds._inflation_adjust_annual(year)
 
-class BondsSet(object):
+class BondsSet:
 
     def __init__(self, need_real = True, need_nominal = True, need_inflation = True, fixed_real_bonds_rate = None, fixed_nominal_bonds_rate = None,
-        real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
+        real_r0_type = 'current', inflation_r0_type = 'current', real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
         '''Returns a BondsSet object having attributes "real",
         "nominal", and "inflation" representing a bond and
         inflation model. They are each either None if they are not
@@ -665,13 +680,13 @@ class BondsSet(object):
 
         if need_real:
             yield_curve = YieldCurve('fixed', '2017-12-31', adjust = fixed_real_bonds_rate) if fixed_real_bonds_rate else None
-            self.real = RealBonds(yield_curve = yield_curve, standard_error = real_standard_error, time_period = time_period)
+            self.real = RealBonds(yield_curve = yield_curve, r0_type = real_r0_type, standard_error = real_standard_error, time_period = time_period)
         else:
             self.real = None
 
         if need_inflation:
             nominal_yield_curve = YieldCurve('fixed', '2017-12-31', adjust = fixed_nominal_bonds_rate) if fixed_nominal_bonds_rate else None
-            self.inflation = BreakEvenInflation(self.real, nominal_yield_curve = nominal_yield_curve,
+            self.inflation = BreakEvenInflation(self.real, nominal_yield_curve = nominal_yield_curve, r0_type = inflation_r0_type,
                 standard_error = inflation_standard_error, time_period = time_period)
         else:
             self.inflation = None

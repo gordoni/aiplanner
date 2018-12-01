@@ -8,7 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-class AssetAllocation(object):
+class AssetAllocation:
 
     ASSET_CLASSES = ('stocks', 'real_bonds', 'nominal_bonds', 'iid_bonds', 'bills')
 

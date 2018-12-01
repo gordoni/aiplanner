@@ -120,7 +120,6 @@ class ModelParams(object):
         self._param('life-table-date', '2020-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
         self._param('life-expectancy-additional', (0, 0), 0) # Initial age adjustment for first individual.
             # Shift initial age so as to add this many years to the life expectancy of the first individual.
-            # Compute time will suffer if value is non-zero and age-start is variable rather than fixed.
         self._param('life-expectancy-additional2', (0, 0), 0) # Initial age adjustment for second individual.
         self._param('life-table-spia', 'iam2012-basic', tp = string_type) # Life expectancy table to use for pricing spia purchases.
         self._param('sex', 'female', tp = string_type, choices = ('male', 'female')) # Sex of first individual. Helps determine life expectancy table.
@@ -226,7 +225,7 @@ class ModelParams(object):
         self._boolean_flag('stocks', True) # Whether to model stocks.
         self._param('stocks-return', 0.065) # Annual real return for stocks prior to effects of mean reversion.
         self._param('stocks-volatility', 0.174) # Annual real volatility for stocks prior to effects of mean reversion.
-        self._param('stocks-price', (0.5, 2.0)) # Initial price of stocks relative to fair price. Used in the case of mean reversion.
+        self._param('stocks-price', (0.5, 2.0), 1) # Initial price of stocks relative to fair price. Used in the case of mean reversion.
         self._param('stocks-mean-reversion-rate', 0) # Mean reversion rate, - d(return percentage)/d(overvalued percentage).
             # Set to zero for independent identically distributed stock returns.
             # Set to non-zero for mean reverting stock returns.
@@ -246,9 +245,15 @@ class ModelParams(object):
         self._param('iid-bonds-return', 0.024) # Annual real return for iid bonds when lognormal.
         self._param('iid-bonds-volatility', 0.112) # Annual real volatility for iid bonds when lognormal.
         self._param('bonds-standard-error', 0.010) # Standard error of log real return for bonds.
-        self._param('real-short-rate', None) # Initial short real interest rate when using model, or None to use the average model value.
+        self._param('real-short-rate-type', 'sample', 'current', tp =string_type, choices = ('sample', 'current', 'value'))
+            # Initial short real interest rate when using model.
+            # 'sample' chooses initial value at random, 'current' uses the average model value, 'value' uses a specific value.
+        self._param('real-short-rate-value', None) # Initial short real interest rate for type 'value'.
         self._param('inflation-standard-error', 0.004) # Standard error of log inflation.
-        self._param('inflation-short-rate', None) # Initial inflation rate when using model, or None to use the average model value.
+        self._param('inflation-short-rate-type', 'sample','current', tp =string_type, choices = ('sample', 'current', 'value'))
+            # Initial inflation rate when using model.
+            # 'sample' chooses initial value at random, 'current' uses the average model value, 'value' uses a specific value.
+        self._param('inflation-short-rate-value', None) # Initial inflation rate for type 'value'.
         self._boolean_flag('bills', True) # Whether to model stochastic bills (without any interest rate model).
         self._param('bills-return', 0.009) # Annual real return for bill asset class.
         self._param('bills-volatility', 0.004) # Annual real return for bill asset class.
@@ -294,7 +299,7 @@ class ModelParams(object):
                 if get_param(base) == None:
                     low = get_param(base + '_low')
                     high = get_param(base + '_high')
-                    assert low <= high
+                    assert low <= high, 'Bad range: ' + base
                 else:
                     params[base + '_low'] = params[base + '_high'] = get_param(base)
 

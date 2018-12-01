@@ -204,10 +204,11 @@ class FinEnv(Env):
         self.bills = Returns(self.params.bills_return, self.params.bills_volatility, 1, 1, 0,
             self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
 
-        self.bonds = BondsSet(fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate)
+        self.bonds = BondsSet(fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate,
+            real_r0_type = self.params.real_short_rate_type, inflation_r0_type = self.params.inflation_short_rate_type)
         self.bonds.update(
             fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate,
-            real_short_rate = self.params.real_short_rate, inflation_short_rate = self.params.inflation_short_rate,
+            real_short_rate = self.params.real_short_rate_value, inflation_short_rate = self.params.inflation_short_rate_value,
             real_standard_error = self.params.bonds_standard_error if self.params.returns_standard_error else 0,
             inflation_standard_error = self.params.inflation_standard_error if self.params.returns_standard_error else 0,
             time_period = self.params.time_period)
@@ -463,7 +464,7 @@ class FinEnv(Env):
         if low == high:
             return low # Allow fractional ages.
         else:
-            return randint(low, high) # SPIA module runs faster with non-fractional ages.
+            return randint(floor(low), ceil(high)) # SPIA module runs faster with non-fractional ages.
 
     def log_uniform(self, low, high):
         if low == high:
@@ -808,9 +809,9 @@ class FinEnv(Env):
             consume = consume_fraction_period * p
         p -= consume
         assert p >= 0
-        if p < 0:
-            assert p / self.p_sum() > -1e-15
-            p = 0
+        #if p < 0:
+        #    assert p / self.p_sum() > -1e-15
+        #    p = 0
 
         p_taxable = self.p_taxable + (p - self.p_sum())
         p_tax_deferred = self.p_tax_deferred + min(p_taxable, 0)
@@ -1023,8 +1024,6 @@ class FinEnv(Env):
             reward_annual = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
             if self.params.verbose and reward_annual != utility:
                 print('Reward out of range - age, p_sum, consume_fraction, utility:', self.age, self.p_sum(), consume_fraction, utility)
-            if isinf(reward_annual):
-                print('Infinite reward')
             return reward_annual
 
         if self.couple:
@@ -1040,6 +1039,8 @@ class FinEnv(Env):
             reward = 0
         else:
             reward = self.reward_weight * self.reward_value
+            if isinf(reward):
+                print('Infinite reward')
 
         self.age += self.params.time_period
         self.age2 += self.params.time_period
@@ -1150,6 +1151,7 @@ class FinEnv(Env):
 
         if age != None:
 
+            assert age >= self.age_start
             self.episode_length = round((age - self.age_start) / self.params.time_period)
             self.age2 = self.age_start2 + (age - self.age_start)
             self.age = age
