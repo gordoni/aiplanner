@@ -372,23 +372,23 @@ public class VitalStats
                 if (le_add != 0)
                 {
                         double le_target = life_expectancy(death_cohort, age) + le_add;
-                        double lo = 0;
-                        double hi = 10;
+                        double age_lo = 0;
+                        double age_hi = 200;
                         Double[] death_add = null;
                         int i;
                         for (i = 0; i < 50; i++)
                         {
-                                double adjust = (lo + hi) / 2;
-                                death_add = death_cohort.clone();
+                                int age_try = (int) ((age_lo + age_hi) / 2);
+                                death_add = new Double[death_cohort.length];
                                 for (int j = age; j < death_add.length; j++)
-                                        death_add[j] = Math.min(death_add[j] * adjust, 1);
+                                        death_add[j] = (j + age_try - age < death_cohort.length) ? death_cohort[j + age_try - age] : 1;
                                 double le_found = life_expectancy(death_add, age);
-                                if (Math.abs(le_found - le_target) < 1e-6)
+                                if (age_hi - age_lo <= 1)
                                         break;
-                                if (le_found < le_target)
-                                        hi = adjust;
+                                if (le_found >= le_target)
+                                        age_lo = age_try;
                                 else
-                                        lo = adjust;
+                                        age_hi = age_try;
                         }
                         if (i == 50)
                                 assert(false); // Failed to adjust.
