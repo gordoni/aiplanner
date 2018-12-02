@@ -42,7 +42,7 @@ class Returns(object):
     def sample(self):
         '''Sample the returns, also of necessity steps the returns.'''
 
-        sample = lognormvariate(self.period_mu, self.period_sigma) # Caution: If switch to using numpy need to get/set numpy state in fin_evaluate().
+        sample = lognormvariate(self.period_mu, self.period_sigma) # Caution: If switch to using numpy need to get/set numpy state in evaluator.py:evaluate().
 
         self.above_trend *= sample / exp(self.period_mu)
         reversion = self.above_trend ** (- self.period_mean_reversion_rate)

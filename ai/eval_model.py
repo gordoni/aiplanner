@@ -10,7 +10,8 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-from csv import writer
+from bisect import bisect
+from csv import reader, writer
 from json import dumps
 from math import ceil, exp, sqrt
 from os import chmod, environ, getpriority, mkdir, PRIO_PROCESS, setpriority
@@ -49,8 +50,28 @@ def pi_merton(env, obs, continuous_time = False):
         consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / env.params.time_period
     return consume_fraction, stocks_allocation
 
-def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_couple_net, eval_seed, eval_num_timesteps, eval_render, nice, num_cpu, model_dir, \
-    search_consume_initial_around, result_dir, num_trace_episodes, num_environments, pdf_buckets):
+def pi_opal(opal_data, env, obs):
+    # obs is currently ignored in favor of direcct env lookups.
+    age = env.age
+    age_data = opal_data[age]
+    p = env.p_sum()
+    i = bisect(age_data['p'], p)
+    try:
+        p_hi = age_data['p'][i]
+    except IndexError:
+        print('Extrapolating out of range portfolio lookup:', age, p)
+        i -= 1
+        p_hi = age_data['p'][i]
+    p_lo = age_data['p'][i - 1]
+    consume = ((p_hi - p) * age_data['consume'][i - 1] + (p - p_lo) * age_data['consume'][i]) / (p_hi - p_lo)
+    stocks = ((p_hi - p) * age_data['stocks'][i - 1] + (p - p_lo) * age_data['stocks'][i]) / (p_hi - p_lo)
+    consume_fraction = consume / env.p_plus_income()
+    stocks = max(0, min(stocks, 1))
+    consume_fraction = max(0, min(consume_fraction, 1 / env.params.time_period))
+    return consume_fraction, stocks
+
+def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_file, eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
+    nice, num_cpu, model_dir, search_consume_initial_around, result_dir, num_trace_episodes, num_environments, pdf_buckets):
 
     try:
         mkdir(result_dir)
@@ -65,8 +86,8 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_couple_n
         priority += nice
         setpriority(PRIO_PROCESS, 0, priority)
 
-        assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize)) <= 1
-        model = not (merton or samuelson or annuitize)
+        assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize, opal)) <= 1
+        model = not (merton or samuelson or annuitize or opal)
 
         eval_seed += 1000000 # Use a different seed than might have been used during training.
         set_global_seeds(eval_seed)
@@ -77,6 +98,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_couple_n
             eval_model_params['action_space_unbounded'] = train_model_params['action_space_unbounded']
             eval_model_params['observation_space_ignores_range'] = train_model_params['observation_space_ignores_range']
         else:
+            num_environments = 1
             eval_model_params['action_space_unbounded'] = True
             eval_model_params['observation_space_ignores_range'] = False
 
@@ -106,6 +128,33 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_couple_n
             asset_allocation = AssetAllocation(stocks = 1)
             interp = env.interpret_spending(consume_fraction_initial, asset_allocation, real_spias_fraction = 1)
 
+        elif opal:
+
+            opal_dat = {}
+            with open(opal_file) as f:
+                r = reader(f)
+                for row in r:
+                    if row:
+                        age, p, _, _, _, _, consume, _, stocks, _ = row
+                        age = float(age)
+                        p = float(p)
+                        consume = float(consume)
+                        stocks = float(stocks)
+                        try:
+                            l = opal_dat[age]
+                        except KeyError:
+                            l = []
+                            opal_dat[age] = l
+                        l.append((p, consume, stocks))
+            opal_data = {}
+            for age, data in opal_dat.items():
+                p, consume, stocks = zip(*sorted(data))
+                opal_data[age] = {'p': p, 'consume': consume, 'stocks': stocks}
+
+            consume_fraction, stocks_allocation = pi_opal(opal_data, env, obs)
+            asset_allocation = AssetAllocation(stocks = stocks_allocation, iid_bonds = 1 - stocks_allocation)
+            interp = env.interpret_spending(consume_fraction, asset_allocation)
+
         else:
 
             runner = TFRunner(model_dir = model_dir, couple_net = eval_couple_net, num_cpu = num_cpu)
@@ -129,13 +178,6 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_couple_n
         print('    Nominal income annuities purchase:', interp['nominal_spias_purchase'])
         print('    Real bonds duration:', interp['real_bonds_duration'])
         print('    Nominal bonds duration:', interp['nominal_bonds_duration'])
-
-        # if model:
-
-        #     v, = session.run(v_tf, feed_dict = {observation_tf: [obs]})
-        #     print('    Predicted certainty equivalent: ', env.utility.inverse(v / env.alive_years))
-        #         # Only valid if train and eval have identical age_start and life table.
-        #         # Otherwise need to simulate to determine CE; this also provides percentile ranges.
 
         print()
 
@@ -168,6 +210,14 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, eval_couple_n
                 for obs in obss:
                     consume_fraction = consume_fraction_initial if env.episode_length == 0 else 1 / env.params.time_period
                     results.append(env.encode_direct_action(consume_fraction, stocks = 1, real_spias_fraction = 1))
+                return results
+
+            elif opal:
+
+                results = []
+                for obs in obss:
+                    consume_fraction, stocks_allocation = pi_opal(opal_data, env, obs)
+                    results.append(env.encode_direct_action(consume_fraction, stocks = stocks_allocation, iid_bonds = 1 - stocks_allocation))
                 return results
 
             else:
@@ -286,6 +336,8 @@ def main():
     boolean_flag(parser, 'merton', default = False)
     boolean_flag(parser, 'samuelson', default = False)
     boolean_flag(parser, 'annuitize', default = False)
+    boolean_flag(parser, 'opal', default = False)
+    parser.add_argument('--opal-file', default = 'opal-linear.csv')
     boolean_flag(parser, 'eval-couple-net', default = True)
     parser.add_argument('--search-consume-initial-around', type = float)
         # Search for the initial consumption that maximizes the certainty equivalent using the supplied value as a hint as to where to search.
