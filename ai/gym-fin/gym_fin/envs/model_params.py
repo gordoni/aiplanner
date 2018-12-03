@@ -126,7 +126,7 @@ class ModelParams(object):
         self._param('sex2', None, tp = string_type, choices = ('male', 'female', None)) # Sex of second individual, None if none.
         self._param('age-start', (65, 65), 65) # Age of first individual.
         self._param('age-start2', (65, 65), 65) # Age of second individual.
-        self._param('age-end', 120) # Model done when individuals reach this age.
+        self._param('age-end', 121) # Model done when individuals reach this age.
         self._param('age-retirement', (65, 65), 65) # Assess and optimize consumption from when first individual reaches this age.
         self._param('consume-additional', 0.6)
             # When a second individual is present we consume this fraction more than a single individual for the same per individual utility.
