@@ -366,10 +366,12 @@ public class VitalStats
                         }
                 }
 
+                Double[] death_terminal = new Double[death_cohort.length + 1];
                 for (int i = 0; i < death_cohort.length; i++)
-                        death_cohort[i] = Math.min(death_cohort[i] * (1 + config.mortality_load) * q_adjust, 1);
+                        death_terminal[i] = Math.min(death_cohort[i] * (1 + config.mortality_load) * q_adjust, 1);
+                death_terminal[death_terminal.length - 1] = 1.0;
 
-                return death_cohort;
+                return death_terminal;
         }
 
         public Double[] get_q(String table, String sex, double birth_year, double le_add, int age, boolean age_nearest_birthday, double q_adjust)
