@@ -234,7 +234,7 @@ public class VitalStats
                 return nearest;
         }
 
-        public Double[] get_q(String table, String sex, double birth_year, double le_add, int age, boolean age_nearest_birthday, double q_adjust)
+        private Double[] get_q_table(String table, String sex, double birth_year, int age, boolean age_nearest_birthday)
         {
                 boolean age_nearest = false;
                 boolean annuity_table = false;
@@ -369,26 +369,34 @@ public class VitalStats
                 for (int i = 0; i < death_cohort.length; i++)
                         death_cohort[i] = Math.min(death_cohort[i] * (1 + config.mortality_load) * q_adjust, 1);
 
+                return death_cohort;
+        }
+
+        public Double[] get_q(String table, String sex, double birth_year, double le_add, int age, boolean age_nearest_birthday, double q_adjust)
+        {
+                Double[] death_cohort = get_q_table(table, sex, birth_year, age, age_nearest_birthday);
+
                 if (le_add != 0)
                 {
                         double le_target = life_expectancy(death_cohort, age) + le_add;
-                        double age_lo = 0;
-                        double age_hi = 200;
+                        int age_add_lo = -50;
+                        int age_add_hi = 50;
                         Double[] death_add = null;
                         int i;
                         for (i = 0; i < 50; i++)
                         {
-                                int age_try = (int) ((age_lo + age_hi) / 2);
+                                int age_add = (int) Math.floor(((age_add_lo + age_add_hi) / 2.0));
+                                Double[] death_try = get_q_table(table, sex, birth_year - age_add, age + age_add, age_nearest_birthday);
                                 death_add = new Double[death_cohort.length];
-                                for (int j = age; j < death_add.length; j++)
-                                        death_add[j] = (j + age_try - age < death_cohort.length) ? death_cohort[j + age_try - age] : 1;
+                                for (int j = age; j < death_try.length; j++)
+                                        death_add[j] = (j + age_add < death_try.length) ? death_try[j + age_add] : 1;
                                 double le_found = life_expectancy(death_add, age);
-                                if (age_hi - age_lo <= 1)
+                                if (age_add_hi - age_add_lo <= 1)
                                         break;
                                 if (le_found >= le_target)
-                                        age_lo = age_try;
+                                        age_add_lo = age_add;
                                 else
-                                        age_hi = age_try;
+                                        age_add_hi = age_add;
                         }
                         if (i == 50)
                                 assert(false); // Failed to adjust.
