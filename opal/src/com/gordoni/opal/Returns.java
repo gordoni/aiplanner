@@ -151,7 +151,6 @@ public class Returns implements Cloneable
                 int month_count = (end_year == null) ? (hist.stock.size() - start) : (int) ((end_year - start_year + 1) * 12);
                 assert(month_count % Math.round(12 / time_periods) == 0);
                 int count = month_count / (int) Math.round(12 / time_periods);
-                assert(start + month_count <= hist.stock.size());
 
                 double cash_mean = -1;
                 List<Double> t1_returns = null;
@@ -168,7 +167,7 @@ public class Returns implements Cloneable
                 List<Double> stock_returns = null;
                 double stock_mean = 0;
                 double stock_geomean = 1;
-                if (start >= 0)
+                if (start >= 0 && start + month_count <= hist.stock.size())
                 {
                         stock_returns = reduce_returns(hist.stock.subList(start, start + month_count), (int) Math.round(12 / time_periods));
                         stock_mean = Utils.mean(stock_returns);
