@@ -16,7 +16,7 @@
 
 import math
 
-from .income_annuity import Scenario
+from .income_annuity import IncomeAnnuity
 from .yield_curve import YieldCurve
 
 iam2012_date = 2012
@@ -842,29 +842,28 @@ class LifeTable(object):
 
         yield_curve = YieldCurve('le', date_str)
         if le_set == None:
-            scenario = Scenario(yield_curve, 0, None, None, 0, self)
-            le_set = scenario.price()
+            income_annuity = IncomeAnnuity(yield_curve, self, frequency = 1)
+            le_set = income_annuity.premium(1)
         le = le_set + le_add
-        age_lo = 0
-        age_hi = 200
-        for _ in range(50):
-            self.age = (age_lo + age_hi) / 2.0
-            if not self.interpolate_q:
-                self.age = int(self.age)
-            scenario = Scenario(yield_curve, 0, None, None, 0, self)
-            compute_le = scenario.price()
-            if self.interpolate_q:
-                done = abs(le / compute_le - 1) < 1e-4
-            else:
-                done = age_hi - age_lo <= 1
-            if done:
-                self.age_add = self.age - age
-                self.age = age
-                return
-            if compute_le >= le:
-                age_lo = self.age
-            else:
-                age_hi = self.age
+        if le > 0:
+            age_add_lo = age_add_lo_start = -50
+            age_add_hi = age_add_hi_start = 50
+            for _ in range(50):
+                self.age_add = (age_add_lo + age_add_hi) / 2
+                if not self.interpolate_q:
+                    self.age_add = math.floor(self.age_add)
+                income_annuity = IncomeAnnuity(yield_curve, self, frequency = 1)
+                compute_le = income_annuity.premium(1)
+                if self.interpolate_q:
+                    done = abs(le / compute_le - 1) < 1e-4
+                else:
+                    done = age_add_hi - age_add_lo <= 1 and age_add_lo != age_add_lo_start and age_add_hi != age_add_hi_start
+                if done:
+                    return
+                if compute_le >= le:
+                    age_add_lo = self.age_add
+                else:
+                    age_add_hi = self.age_add
         raise self.UnableToAdjust('Unable to adjust life expectancy.')
 
     def _q_int(self, year, age, contract_age):
