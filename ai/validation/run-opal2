@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+AI_DIR=$AIPLANNER_HOME/ai
+
+EXTRA_ARGS="$@"
+export CLASSPATH=$AIPLANNER_HOME/opal/classes/'*'
+OPAL='java -ea com.gordoni.opal.OPAL'
+
+validate () {
+
+    MODEL_NAME=$1
+    ARGS=$2
+
+    MODEL_DIR=run.opal.$MODEL_NAME
+
+    mkdir -p $MODEL_DIR
+    $OPAL -c $AI_DIR/validation/opal-scenario2.txt -e "prefix='$MODEL_DIR/opal'" $ARGS $EXTRA_ARGS 2>&1 | tee $MODEL_DIR/opal.log
+}
+
+validate ssa_40_plus_3_female-iid_bonds.eval
+validate ssa_40_plus_3_female-iid_bonds.plot '-e gnuplot_tp=1000000 -e gnuplot_steps=30'
+
+MODEL_DIR=$AI_DIR/validation/run.opal.ssa_40_plus_3_female-iid_bonds.eval
+$AI_DIR/eval_model.py -c aiplanner-scenario2.txt --opal --opal-file=$MODEL_DIR/opal-linear.csv --result-dir=$MODEL_DIR --eval-num-timeteps=20000000 | \
+    tee $MODEL_DIR/eval.log

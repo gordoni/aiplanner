@@ -1,0 +1,55 @@
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+sex = 'female'
+birth_year = 1980
+le_add = 3 # Investors tend to be in better health than the average retiree.
+
+start_age = 40
+retirement_age = 65
+
+defined_benefit = 16000 # Mean Social Secuity is $16,075 as of March, 2018 - https://www.ssa.gov/policy/docs/quickfacts/stat_snapshot/
+start_tp = 200000
+
+utility_eta = 3.0
+consume_discount_rate = 0
+
+asset_classes = ('synthetic', 'synthetic2')
+
+synthetic_ret = 0.065
+synthetic_vol = 0.174
+synthetic2_ret = 0.024
+synthetic2_vol = 0.112
+
+# Generate using 1000 synthetic samples. This is sufficient to validate against a much larger sample size.
+generate_start_year = 1
+validate_start_year = 1
+generate_end_year = 1000
+validate_end_year = 100000
+
+# By chance synthetic return pairs may be partially correlated, effecting the resulting metrics.
+# The following seeds are observed to yield correlations of -5.1e-4 and 1.7e-4, and covariances of -1.0e-5 and 3.4e-6 respectively.
+# For these seeds the effect should thus be minimal.
+generate_seed = 1
+validate_returns_seed = 2
+skip_corr = False
+skip_cov = False
+
+# opal-linear.csv parameters. More detail doesn't improve eval_model.py results.
+gnuplot_tp=25000000
+gnuplot_steps=5000
+
+# Parameters for Opal self validation to work.
+ret_resample = None
+validate_draw = 'bootstrap'
+ret_bootstrap_block_size = 0
+map_headroom = null
+
+num_sequences_validate = 10000000

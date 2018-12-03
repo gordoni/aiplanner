@@ -1,0 +1,68 @@
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+train_consume_clip = 5000 # Prevent learning very negative rewards.
+eval_consume_clip = 0
+
+master_sex = 'female'
+master_life_table_date = '2020-01-01'
+
+master_tax = False
+
+master_returns_standard_error = False
+master_stocks = True
+master_stocks_return = 0.065
+master_stocks_volatility = 0.174
+master_stocks_mean_reversion_rate = 0
+master_real_bonds = False
+master_nominal_bonds = False
+master_iid_bonds = True
+master_iid_bonds_return = 0.024
+master_iid_bonds_volatility = 0.112
+master_bills = False
+
+master_age_start = 40
+master_life_expectancy_additional = 3
+
+master_age_retirement = 65
+
+master_income_preretirement = 0
+master_consume_preretirement = 0
+
+master_defined_benefits = '''[
+    {"owner": "self",   "age": null, "probability": 1.0, "payout": 16e3, "source_of_funds": "taxable"}
+]'''
+
+train_p_taxable_stocks_low = 1e2
+train_p_taxable_stocks_high = 2e6
+eval_p_taxable_stocks = 200000
+
+master_p_tax_free = 0
+master_p_tax_deferred = 0
+master_p_taxable_real_bonds = 0
+master_p_taxable_nominal_bonds = 0
+master_p_taxable_iid_bonds = 0
+master_p_taxable_bills = 0
+
+master_p_taxable_stocks_basis_fraction = 0
+
+master_gamma = 3.0
+
+# Normally will matter, but will not matter for mean reversion less stocks and iid_bonds model.
+#eval_stocks_price = 1
+#eval_real_short_rate_type = 'value'
+#eval_real_short_rate_value = 0.011
+#eval_inflation_short_rate_type = 'value'
+#eval_inflation_short_rate_value = 0.016
+
+train_num_timesteps = 2000000
+eval_num_timesteps = 2000000
+
+num_cpu = 1

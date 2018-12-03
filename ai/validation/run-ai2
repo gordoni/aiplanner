@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+
+source $AIPLANNER_HOME/ai/helpers.bash
+
+CONFIG_FILE=$AI_DIR/validation/aiplanner-scenario2.txt
+TRAIN_FILE=$AI_DIR/validation/aiplanner-scenario2.txt
+
+SEEDS=2
+train ssa_40_plus_3_female-iid_bonds
+evaluate ssa_40_plus_3_female-iid_bonds
+for MODEL_DIR in aiplanner.ssa_40_plus_3_female-iid_bonds-seed0.tf aiplanner.ssa_40_plus_3_female-iid_bonds-seed1.tf; do
+    $AI_DIR/extract_model.py --model-dir=$MODEL_DIR -o $MODEL_DIR/aiplanner-linear.csv --age-range 40 100 --num-age-steps 60
+done
