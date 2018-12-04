@@ -95,9 +95,7 @@ def train(training_model_params, *, train_algorithm, train_num_hidden_layers, tr
     training_model_params['observation_space_ignores_range'] = True
 
     mkdir(model_dir)
-    assets_dir = model_dir + '/assets.extra'
-    mkdir(assets_dir)
-    dump_params_file(assets_dir + '/params.txt', training_model_params)
+    dump_params_file(model_dir + '/params.txt', training_model_params)
 
     allow_early_resets = train_algorithm in ('ppo', 'trpo', 'vpg')
     env = make_fin_env(training=True, allow_early_resets=allow_early_resets, **training_model_params)
@@ -133,6 +131,7 @@ def train(training_model_params, *, train_algorithm, train_num_hidden_layers, tr
 
     epochs = ceil(train_num_timesteps / train_timesteps_per_epoch)
 
+    output_dir = model_dir + '/tensorflow'
     save_freq = epochs if train_epochs_per_model_save == None else train_epochs_per_model_save
 
     common_args = {
@@ -142,7 +141,7 @@ def train(training_model_params, *, train_algorithm, train_num_hidden_layers, tr
         'epochs': epochs + 1, # Results from final epoch don't get saved.
         'seed': train_seed,
         'gamma': 1,
-        'logger_kwargs': {'output_dir': model_dir},
+        'logger_kwargs': {'output_dir': output_dir},
         'save_freq': save_freq,
         'num_cpu': num_cpu,
     }

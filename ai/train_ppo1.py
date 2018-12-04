@@ -25,10 +25,16 @@ from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 from gym_fin.envs.model_params import dump_params_file
 
+def save_model(dir, session):
+    g = tf.get_default_graph()
+    observation_tf = g.get_tensor_by_name('single/ob:0')
+    action_tf = g.get_tensor_by_name('single/action:0')
+    tf.saved_model.simple_save(session, dir, {'observation': observation_tf}, {'action': action_tf})
+
 def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_batch_size,
-          train_single_minibatch_size, train_couple_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_gae_lambda,
-          train_couple_net, train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps, train_seed,
-          eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, nice, num_cpu, model_dir):
+    train_single_minibatch_size, train_couple_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_gae_lambda,
+    train_schedule, train_save_frequency, train_couple_net, train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps, train_seed,
+    eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, nice, num_cpu, model_dir):
 
     priority = getpriority(PRIO_PROCESS, 0)
     priority += nice
@@ -41,6 +47,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
         rmtree(model_dir)
     except FileNotFoundError:
         pass
+    mkdir(model_dir)
 
     from baselines.ppo1 import mlp_policy, pposgd_dual
     set_global_seeds(train_seed)
@@ -50,6 +57,15 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     env = make_fin_env(training=True, **training_model_params)
     couple = training_model_params['sex2'] != None
     couple_net = couple and train_couple_net
+    global next_save_timestep
+    next_save_timestep = 0 if train_save_frequency != None else float('inf')
+    def save_and_done_callback(l, g):
+        global next_save_timestep
+        while l['timesteps_so_far'] >= next_save_timestep:
+            save_model(model_dir + ('/tensorflow%09d' % next_save_timestep), session)
+            next_save_timestep += train_save_frequency
+        return env.unwrapped.env_single_timesteps >= train_single_num_timesteps and \
+            (not couple or env.unwrapped.env_couple_timesteps >= train_couple_num_timesteps)
     if evaluation:
         eval_seed += 1000000 # Use a different seed than might have been used during training.
         eval_env = make_fin_env(training=False, **eval_model_params)
@@ -58,8 +74,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
         next_eval_timestep = 0
         def callback(l, g):
             global next_eval_timestep
-            if env.unwrapped.env_single_timesteps >= train_single_num_timesteps and \
-                (not couple or env.unwrapped.env_couple_timesteps >= train_couple_num_timesteps):
+            if save_and_done_callback(l, g):
                 return True
             if l['timesteps_so_far'] < next_eval_timestep:
                 return False
@@ -73,9 +88,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
             return False
     else:
         eval_env = None
-        def callback(l, g):
-            return env.unwrapped.env_single_timesteps >= train_single_num_timesteps and \
-                (not couple or env.unwrapped.env_couple_timesteps >= train_couple_num_timesteps)
+        callback = save_and_done_callback
 
     def policy_fn(name, ob_space, ac_space):
         return mlp_policy.MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space,
@@ -86,21 +99,15 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
         clip_param=0.2, entcoeff=0.0,
         optim_epochs=train_optimizer_epochs, optim_stepsize=train_optimizer_step_size,
         optim_single_batchsize=train_single_minibatch_size, optim_couple_batchsize=train_couple_minibatch_size,
-        gamma=1, lam=train_gae_lambda, schedule='linear',
+        gamma=1, lam=train_gae_lambda, schedule=train_schedule,
         callback=callback
     )
 
     env.close()
     if eval_env:
         eval_env.close()
-    g = tf.get_default_graph()
-    observation_tf = g.get_tensor_by_name('single/ob:0')
-    action_tf = g.get_tensor_by_name('single/action:0')
-    #v_tf = g.get_tensor_by_name('single/pi/v:0')
-    tf.saved_model.simple_save(session, model_dir, {'observation': observation_tf}, {'action': action_tf})
-    assets_dir = model_dir + '/assets.extra'
-    mkdir(assets_dir)
-    dump_params_file(assets_dir + '/params.txt', training_model_params)
+    save_model(model_dir + '/tensorflow', session)
+    dump_params_file(model_dir + '/params.txt', training_model_params)
 
 def main():
     parser = arg_parser()
@@ -112,6 +119,8 @@ def main():
     parser.add_argument('--train-optimizer-epochs', type=int, default=10)
     parser.add_argument('--train-optimizer-step-size', type=float, default=3e-4)
     parser.add_argument('--train-gae-lambda', type=float, default=0.95)
+    parser.add_argument('--train-schedule', default = 'linear', choices = ('constant', 'linear'))
+    parser.add_argument('--train-save-frequency', type=int, default=None)
     boolean_flag(parser, 'train-couple-net', default = True)
     training_model_params, eval_model_params, args = fin_arg_parse(parser)
     logger.configure()

@@ -55,12 +55,12 @@ master_p_taxable_stocks_basis_fraction = 0
 
 master_gamma = 3.0
 
-# Normally will matter, but will not matter for mean reversion less stocks and iid_bonds model.
-#eval_stocks_price = 1
-#eval_real_short_rate_type = 'value'
-#eval_real_short_rate_value = 0.011
-#eval_inflation_short_rate_type = 'value'
-#eval_inflation_short_rate_value = 0.016
+# Normally will matter, but should not matter for mean reversion less stocks and iid_bonds model.
+eval_stocks_price = 1
+eval_real_short_rate_type = 'value'
+eval_real_short_rate_value = 0.011
+eval_inflation_short_rate_type = 'value'
+eval_inflation_short_rate_value = 0.016
 
 train_num_timesteps = 2000000
 eval_num_timesteps = 2000000

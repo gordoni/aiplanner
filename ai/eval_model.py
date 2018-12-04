@@ -93,8 +93,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
         set_global_seeds(eval_seed)
 
         if model:
-            assets_dir = model_dir + '/assets.extra'
-            train_model_params = load_params_file(assets_dir + '/params.txt')
+            train_model_params = load_params_file(model_dir + '/params.txt')
             eval_model_params['action_space_unbounded'] = train_model_params['action_space_unbounded']
             eval_model_params['observation_space_ignores_range'] = train_model_params['observation_space_ignores_range']
         else:
@@ -157,7 +156,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
 
         else:
 
-            runner = TFRunner(model_dir = model_dir, couple_net = eval_couple_net, num_cpu = num_cpu)
+            runner = TFRunner(tf_dir = model_dir + '/tensorflow', couple_net = eval_couple_net, num_cpu = num_cpu).__enter__()
 
             action, = runner.run([obs])
             interp = env.interpret_action(action)
@@ -251,6 +250,8 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
 
         ce, ce_stderr, low, high = evaluator.evaluate(pi)
 
+        runner.__exit__(None, None, None)
+
         plot(prefix, evaluator.trace, evaluator.consume_pdf)
 
         final_data = {
@@ -310,7 +311,7 @@ def gss(f, a, b):
 
 def plot(prefix, traces, consume_pdf):
 
-    with open(prefix + '-trace.csv', 'w') as f:
+    with open(prefix + '-paths.csv', 'w') as f:
         csv_writer = writer(f)
         for trace in traces:
             for i, step in enumerate(trace):

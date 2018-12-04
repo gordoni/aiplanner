@@ -18,8 +18,18 @@ CONFIG_FILE=$AI_DIR/validation/aiplanner-scenario2.txt
 TRAIN_FILE=$AI_DIR/validation/aiplanner-scenario2.txt
 
 SEEDS=2
-train ssa_40_plus_3_female-iid_bonds
-evaluate ssa_40_plus_3_female-iid_bonds
-for MODEL_DIR in aiplanner.ssa_40_plus_3_female-iid_bonds-seed0.tf aiplanner.ssa_40_plus_3_female-iid_bonds-seed1.tf; do
-    $AI_DIR/extract_model.py --model-dir=$MODEL_DIR -o $MODEL_DIR/aiplanner-linear.csv --age-range 40 100 --num-age-steps 60
+train ssa_40_plus_3_female-iid_bonds '--train-save-frequency=10000'
+evaluate ssa_40_plus_3_female-iid_bonds specific
+SEED=0
+while [ $SEED -lt $SEEDS ]; do
+    MODEL_DIR=aiplanner.ssa_40_plus_3_female-iid_bonds-seed_$SEED.tf
+    $AI_DIR/extract_model.py -c aiplanner-scenario2.txt --model-dir=$MODEL_DIR --age-range 40 100 --num-age-steps 60 > $MODEL_DIR/extract.log 2>&1
+    for AIPLANNER_LINEAR in $MODEL_DIR/aiplanner-linear*.csv; do
+        export AIPLANNER_PREFIX=$MODEL_DIR/aiplanner
+        export AIPLANNER_TIMESTEPS=`echo $AIPLANNER_LINEAR | sed 's/^.*-linear\([0-9]*\)\.csv$/\1/'`
+        ./plot2.gnuplot
+    done
+    convert -delay 5 -loop 0 $MODEL_DIR/aiplanner-consume[0-9]*.gif  $MODEL_DIR/aiplanner-consume-animated.gif
+    convert -delay 5 -loop 0 $MODEL_DIR/aiplanner-stocks[0-9]*.gif  $MODEL_DIR/aiplanner-stocks-animated.gif
+    SEED=`expr $SEED + 1`
 done

@@ -364,7 +364,7 @@ class FinEnv(Env):
         #print('add_sched:', start, end, payout, payout_fraction, inflation_adjustment)
 
         payout /= self.params.time_period
-        for e in range(ceil(max(start, 0) / self.params.time_period), floor(min(end, len(db['sched'])) / self.params.time_period)):
+        for e in range(ceil(max(start / self.params.time_period, 0)), floor(min(end / self.params.time_period + 1, len(db['sched'])))):
             adjustment = 1 if inflation_adjustment == 'cpi' else (1 + inflation_adjustment) ** e
             db['sched'][e] += payout * adjustment
             try:
@@ -443,23 +443,6 @@ class FinEnv(Env):
             self.add_db(defined_benefits, **db)
         return defined_benefits
 
-    def _compute_initial_income(self):
-
-        self.defined_benefits = self.parse_defined_benefits()
-        for db in self.defined_benefits.values():
-            db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2) # Pick up non-zero schedule for observe.
-
-        if self.params.income_preretirement_age_end != None:
-            self.income_preretirement_years = max(0, self.params.income_preretirement_age_end - self.age)
-        else:
-            self.income_preretirement_years = self.preretirement_years
-        if self.params.income_preretirement_age_end2 != None:
-            self.income_preretirement_years2 = max(0, self.params.income_preretirement_age_end2 - self.age2)
-        else:
-            self.income_preretirement_years2 = self.preretirement_years
-        self.income_preretirement = self.start_income_preretirement if self.income_preretirement_years > 0 else 0
-        self.income_preretirement2 = self.start_income_preretirement2 if self.couple and self.income_preretirement_years2 > 0 else 0
-
     def age_uniform(self, low, high):
         if low == high:
             return low # Allow fractional ages.
@@ -509,6 +492,10 @@ class FinEnv(Env):
             max_age = self.age
         self.final_spias_purchase = max_age <= self.params.spias_permitted_to_age < max_age + self.params.time_period
 
+        self.defined_benefits = self.parse_defined_benefits()
+        for db in self.defined_benefits.values():
+            db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2) # Pick up non-zero schedule for observe.
+
         self.have_401k = bool(randint(int(self.params.have_401k_low), int(self.params.have_401k_high)))
         self.have_401k2 = bool(randint(int(self.params.have_401k2_low), int(self.params.have_401k2_high)))
 
@@ -535,7 +522,17 @@ class FinEnv(Env):
             self.consume_preretirement = self.log_uniform(self.params.consume_preretirement_low, self.params.consume_preretirement_high)
             self.start_income_preretirement = self.log_uniform(self.params.income_preretirement_low, self.params.income_preretirement_high)
             self.start_income_preretirement2 = self.log_uniform(self.params.income_preretirement2_low, self.params.income_preretirement2_high)
-            self._compute_initial_income()
+
+            if self.params.income_preretirement_age_end != None:
+                self.income_preretirement_years = max(0, self.params.income_preretirement_age_end - self.age)
+            else:
+                self.income_preretirement_years = self.preretirement_years
+            if self.params.income_preretirement_age_end2 != None:
+                self.income_preretirement_years2 = max(0, self.params.income_preretirement_age_end2 - self.age2)
+            else:
+                self.income_preretirement_years2 = self.preretirement_years
+            self.income_preretirement = self.start_income_preretirement if self.income_preretirement_years > 0 else 0
+            self.income_preretirement2 = self.start_income_preretirement2 if self.couple and self.income_preretirement_years2 > 0 else 0
 
             self.p_tax_free = self.log_uniform(self.params.p_tax_free_low, self.params.p_tax_free_high)
             self.p_tax_deferred = self.log_uniform(self.params.p_tax_deferred_low, self.params.p_tax_deferred_high)
@@ -1042,66 +1039,9 @@ class FinEnv(Env):
             if isinf(reward):
                 print('Infinite reward')
 
-        self.age += self.params.time_period
-        self.age2 += self.params.time_period
-        self.life_table.age = self.age # Hack.
-        try:
-            self.life_table2.age = self.age2
-        except AttributeError:
-            pass
-        self.preretirement_years = max(0, self.preretirement_years - self.params.time_period)
-        self.income_preretirement_years = max(0, self.income_preretirement_years - self.params.time_period)
-        self.income_preretirement_years2 = max(0, self.income_preretirement_years2 - self.params.time_period)
-
-        if self.income_preretirement_years > 0:
-            self.income_preretirement *= lognormvariate(self.params.income_preretirement_mu * self.params.time_period,
-                self.params.income_preretirement_sigma * sqrt(self.params.time_period))
-        else:
-            self.income_preretirement = 0
-        if self.income_preretirement_years2 > 0:
-            self.income_preretirement2 *= lognormvariate(self.params.income_preretirement_mu2 * self.params.time_period,
-                self.params.income_preretirement_sigma2 * sqrt(self.params.time_period))
-        else:
-            self.income_preretirement2 = 0
-
-        couple_became_single = self.couple and self.alive_single[self.episode_length + 1] != None
-        if couple_became_single:
-
-            self.life_expectancy_both = [0] * len(self.life_expectancy_both)
-            self.life_expectancy_one = self.life_expectancy_single
-
-            self.defined_benefits = {key: db for key, db in self.defined_benefits.items() if 'sched_single_non_zero' in db}
-            for db in self.defined_benefits.values():
-                db['spia'] = db['spia_single']
-                db['sched'] = db['sched_single']
-                del db['sched_single']
-                db['owner'] = db['owner_single']
-
-        for db in self.defined_benefits.values():
-            db['sched'].pop(0)
-            try:
-                db['sched_single'].pop(0)
-            except KeyError:
-                pass
-            db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2)
-
         self.episode_reward_sum += reward
-        self.episode_length += 1
-        if self.couple:
-            self.env_couple_timesteps += 1
-        else:
-            self.env_single_timesteps += 1
 
-        self.couple = self.alive_single[self.episode_length] == None
-
-        if self.couple:
-            max_age = max(self.age, self.age2)
-        else:
-            max_age = self.age2 if self.only_alive2 else self.age
-        self.final_spias_purchase = max_age <= self.params.spias_permitted_to_age < max_age + self.params.time_period
-
-        self.date = (self.date_start + timedelta(days = self.episode_length * self.params.time_period * 365.25)).date().isoformat()
-
+        self._step()
         self._step_bonds()
 
         self._pre_calculate()
@@ -1124,6 +1064,69 @@ class FinEnv(Env):
 
         return observation, reward, done, info
 
+    def _step(self, steps = 1):
+
+        self.age += steps
+        self.age2 += steps
+        self.life_table.age = self.age # Hack.
+        try:
+            self.life_table2.age = self.age2
+        except AttributeError:
+            pass
+        self.preretirement_years = max(0, self.preretirement_years - steps)
+        self.income_preretirement_years = max(0, self.income_preretirement_years - steps)
+        self.income_preretirement_years2 = max(0, self.income_preretirement_years2 - steps)
+
+        if self.income_preretirement_years > 0:
+            for _ in range(steps):
+                self.income_preretirement *= lognormvariate(self.params.income_preretirement_mu * self.params.time_period,
+                    self.params.income_preretirement_sigma * sqrt(self.params.time_period))
+        else:
+            self.income_preretirement = 0
+        if self.income_preretirement_years2 > 0:
+            for _ in range(steps):
+                self.income_preretirement2 *= lognormvariate(self.params.income_preretirement_mu2 * self.params.time_period,
+                    self.params.income_preretirement_sigma2 * sqrt(self.params.time_period))
+        else:
+            self.income_preretirement2 = 0
+
+        couple_became_single = self.couple and self.alive_single[self.episode_length + steps] != None
+        if couple_became_single:
+
+            self.life_expectancy_both = [0] * len(self.life_expectancy_both)
+            self.life_expectancy_one = self.life_expectancy_single
+
+            self.defined_benefits = {key: db for key, db in self.defined_benefits.items() if 'sched_single_non_zero' in db}
+            for db in self.defined_benefits.values():
+                db['spia'] = db['spia_single']
+                db['sched'] = db['sched_single']
+                del db['sched_single']
+                db['owner'] = db['owner_single']
+
+        for db in self.defined_benefits.values():
+            del db['sched'][:steps]
+            try:
+                del db['sched_single'][:steps]
+            except KeyError:
+                pass
+            db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2)
+
+        self.episode_length += steps
+        if self.couple:
+            self.env_couple_timesteps += steps
+        else:
+            self.env_single_timesteps += steps
+
+        self.couple = self.alive_single[self.episode_length] == None
+
+        if self.couple:
+            max_age = max(self.age, self.age2)
+        else:
+            max_age = self.age2 if self.only_alive2 else self.age
+        self.final_spias_purchase = max_age <= self.params.spias_permitted_to_age < max_age + self.params.time_period
+
+        self.date = (self.date_start + timedelta(days = self.episode_length * self.params.time_period * 365.25)).date().isoformat()
+
     def _reproducable_seed(self, episode, episode_length, substep):
 
         seed(episode * 1000000 + episode_length * 1000 + substep, version = 2)
@@ -1142,25 +1145,17 @@ class FinEnv(Env):
 
         assert (step == None) != (age == None)
 
-        self.reset()
-
         if step != None:
+            age = self.age_start + step / self.params.time_period
 
-            self.age += step * self.params.time_period
-            self.episode_length += step
+        if age < self.age:
+            self.reset()
 
-        if age != None:
+        step = round((age - self.age) / self.params.time_period)
+        assert step >= 0
 
-            assert age >= self.age_start
-            self.episode_length = round((age - self.age_start) / self.params.time_period)
-            self.age2 = self.age_start2 + (age - self.age_start)
-            self.age = age
-
-        self.life_table.age = self.age
-        try:
-            self.life_table2.age = self.age2
-        except AttributeError:
-            pass
+        if step != 0:
+            self._step(step)
 
         assert (real_oup_x == None) == (inflation_oup_x == None)
 
@@ -1175,8 +1170,6 @@ class FinEnv(Env):
         if p_tax_deferred != None: self.p_tax_deferred = p_tax_deferred
         if p_taxable != None: self.p_taxable = p_taxable
 
-        self.preretirement_years = max(0, self.age_retirement - self.age)
-        self._compute_initial_income()
         self._pre_calculate()
         return self._observe()
 

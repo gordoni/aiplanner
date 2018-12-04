@@ -38,7 +38,7 @@ train () {
         local SEED=$SEED_START
         while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
             local MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
-            # Output directory must not exist when tensorflow save() is called to save the model hence we can't write the log within it; instead log to a tempfile.
+            # Output directory gets deleted hence we can't write the log within it; instead log to a tempfile.
             local TEMPFILE=`tempfile -p train`
             local TEMPFILES[$SEED]=$TEMPFILE
             $TRAINER -c $CONFIG_FILE -c $TRAIN_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $EXTRA_ARGS > $TEMPFILE 2>&1 &
