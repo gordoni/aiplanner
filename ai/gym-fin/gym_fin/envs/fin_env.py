@@ -169,10 +169,11 @@ class FinEnv(Env):
             # stocks_action, real_bonds_action, nominal_bonds_action, iid_bonds_action, bills_action,
             # real_bonds_duration_action, nominal_bonds_duration_action,
             # DDPG implementation assumes [-x, x] symmetric actions.
-            # PPO1 implementation ignores size and assumes [-inf, inf] output.
+            # PPO1 implementation ignores size and very roughly initially assumes N(0, 0.05) actions, but potentially trainable to any value.
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple() in gym-fin/gym_fin/common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
-            # couple, number of 401(k)'s available, 1 / gamma, life-expectancy both, life-expectancy one, preretirement years, final spias purchase,
+            # couple, number of 401(k)'s available, 1 / gamma
+            # retirment life-expectancy both, retirement life-expectancy one, preretirement years, final spias purchase,
             # income present value annualized: tax_free, tax_deferred, taxable,
             # wealth annualized: tax_free, tax_deferred, taxable,
             # first person preretirement income annualized, second person preretirement income annualized, consume preretirement annualized, taxable basis annualized,
@@ -492,10 +493,6 @@ class FinEnv(Env):
             max_age = self.age
         self.final_spias_purchase = max_age <= self.params.spias_permitted_to_age < max_age + self.params.time_period
 
-        self.defined_benefits = self.parse_defined_benefits()
-        for db in self.defined_benefits.values():
-            db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2) # Pick up non-zero schedule for observe.
-
         self.have_401k = bool(randint(int(self.params.have_401k_low), int(self.params.have_401k_high)))
         self.have_401k2 = bool(randint(int(self.params.have_401k2_low), int(self.params.have_401k2_high)))
 
@@ -518,6 +515,10 @@ class FinEnv(Env):
         found = False
         preretirement_ok = False
         for _ in range(1000):
+
+            self.defined_benefits = self.parse_defined_benefits()
+            for db in self.defined_benefits.values():
+                db['spia'].set_age(self.age if db['owner'] == 'self' else self.age2) # Pick up non-zero schedule for observe.
 
             self.consume_preretirement = self.log_uniform(self.params.consume_preretirement_low, self.params.consume_preretirement_high)
             self.start_income_preretirement = self.log_uniform(self.params.income_preretirement_low, self.params.income_preretirement_high)
