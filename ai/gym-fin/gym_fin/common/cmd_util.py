@@ -33,7 +33,7 @@ def make_fin_env(training = False, allow_early_resets = None, **kwargs):
         filename = os.path.join(filename, '' if training else 'gym_eval')
     if allow_early_resets == None:
         allow_early_resets = not training
-    env = Monitor(env, filename, allow_early_resets=allow_early_resets, info_keywords = ('ce', ))
+    env = Monitor(env, filename, allow_early_resets=allow_early_resets)
     return env
 
 def _config_parser():

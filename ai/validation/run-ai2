@@ -24,7 +24,7 @@ evaluate ssa_40_plus_3_female-iid_bonds specific
 SEED=0
 while [ $SEED -lt $SEEDS ]; do
     MODEL_DIR=aiplanner.ssa_40_plus_3_female-iid_bonds-seed_$SEED.tf
-    $AI_DIR/extract_model.py -c aiplanner-scenario2.txt --model-dir=$MODEL_DIR --age-range 40 100 --num-age-steps 60 > $MODEL_DIR/extract.log 2>&1 &
+    $AI_DIR/extract_model.py -c aiplanner-scenario2.txt --model-dir=$MODEL_DIR --age-range 40 100 --num-age-steps=60 --p-type=tax_free > $MODEL_DIR/extract.log 2>&1 &
     SEED=`expr $SEED + 1`
 done
 wait

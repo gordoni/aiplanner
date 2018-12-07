@@ -136,10 +136,13 @@ class Evaluator(object):
                 for i, (eval_env, env, action) in enumerate(zip(self.eval_envs, envs, actions)):
                     if not finished[i]:
                         obs, r, done, info = eval_env.step(action)
-                        erews[i] += r
-                        eweights[i] += env.reward_weight
+                        reward = env.reward_value
+                        weight = env.reward_weight
+                        erews[i] += reward * weight
+                        eweights[i] += weight
                         s += 1
-                        rewards.append((env.reward_value, env.reward_weight))
+                        if weight != 0:
+                            rewards.append((reward, weight))
                         if done:
                             if i == 0 and et < self.num_trace_episodes:
                                 self.trace_step(env, None, done)

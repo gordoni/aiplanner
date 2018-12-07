@@ -54,6 +54,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     session = U.make_session(num_cpu=num_cpu).__enter__()
     training_model_params['action_space_unbounded'] = eval_model_params['action_space_unbounded'] = True
     training_model_params['observation_space_ignores_range'] = False
+    dump_params_file(model_dir + '/params.txt', training_model_params)
     env = make_fin_env(training=True, **training_model_params)
     couple = training_model_params['sex2'] != None
     couple_net = couple and train_couple_net
@@ -107,7 +108,6 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     if eval_env:
         eval_env.close()
     save_model(model_dir + '/tensorflow', session)
-    dump_params_file(model_dir + '/params.txt', training_model_params)
 
 def main():
     parser = arg_parser()
