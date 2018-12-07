@@ -22,7 +22,7 @@ set yrange [0:1000000]
 set format y "%.1s%c"
 set yrange [0:1000000]
 
-set xrange [65:100.001]
+set xrange [65.999:100.001]
 set zlabel "consumption"
 set zrange [0:*]
 set format z "%.0s%c"
