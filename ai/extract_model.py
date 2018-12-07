@@ -38,8 +38,25 @@ def extract_model(eval_model_params, *, eval_couple_net, eval_seed, eval_num_tim
                         p = p_range[0] + p_index * (p_range[1] - p_range[0]) / num_p_steps
                         p_tax_free = p if p_type == 'tax_free' else None
                         p_tax_deferred = p if p_type == 'tax_deferred' else None
-                        p_taxable = p if p_type == 'taxable' else None
-                        obs = env.goto(age = age, p_tax_free = p_tax_free, p_tax_deferred = p_tax_deferred, p_taxable = p_taxable)
+                        if p_type.startswit('taxable_'):
+                            assets = {}
+                            if env.params.stocks:
+                                assets['stocks'] = p if p_type == 'taxable_stocks' else 0
+                            if env.params.real_bonds:
+                                assets['real_bonds'] = p if p_type == 'taxable_real_bonds' else 0
+                            if env.params.nominal_bonds:
+                                assets['nominal_bonds'] = p if p_type == 'taxable_nominal_bonds' else 0
+                            if env.params.iid_bonds:
+                                assets['iid_bonds'] = p if p_type == 'taxable_iid_bonds' else 0
+                            if env.params.bills:
+                                assets['bills'] = p if p_type == 'taxable_bills' else 0
+                            p_taxable_assets = AssetAllocation(fractional = False, **assets)
+                            assert env.params.p_taxable_stocks_basis_fraction_low == env.params.p_taxable_stocks_basis_fraction_high
+                            p_taxable_stocks_basis_fraction = env.params.p_taxable_stocks_basis_fraction_low
+                        else:
+                            taxable_assets = None
+                        obs = env.goto(age = age, p_tax_free = p_tax_free, p_tax_deferred = p_tax_deferred, p_taxable_assets = p_taxable_assets,
+                            p_taxable_stocks_basis_fraction = p_taxable_stocks_basis_fraction)
                         action, = runner.run([obs])
                         act = env.interpret_action(action)
                         c.writerow((age, p, act['consume'], act['retirement_contribution'], act['real_spias_purchase'], act['nominal_spias_purchase'],
@@ -69,9 +86,8 @@ def main():
     parser.add_argument('--num-p-steps', type = int, default = 30)
     parser.add_argument('--age-range', type = float, nargs = 2, default = (20, 100))
     parser.add_argument('--p-range', type = float, nargs = 2, default = (0, int(1e6)))
-    parser.add_argument('--p-type', default = 'taxable', choices = ('tax_free', 'tax_deferred', 'taxable'))
-        # Caution: For p_type 'taxable', the stock basis is determined by the p_taxable_stocks and p_taxable_stocks_basis_fraction parameters,
-        # and is independent of the p_range values.
+    parser.add_argument('--p-type', default = 'tax_free',
+        choices = ('tax_free', 'tax_deferred', 'taxable_stocks', 'taxable_real_bonds', 'taxable_nominal_bonds', 'taxable_iid_bonds', 'taxable_bills'))
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, evaluate = True)
     extract_model(eval_model_params, **args)
 

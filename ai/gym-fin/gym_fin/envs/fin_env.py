@@ -1105,7 +1105,8 @@ class FinEnv(Env):
 
             self.bonds_stepper.step()
 
-    def goto(self, step = None, age = None, real_oup_x = None, inflation_oup_x = None, p_tax_free = None, p_tax_deferred = None, p_taxable = None):
+    def goto(self, step = None, age = None, real_oup_x = None, inflation_oup_x = None, p_tax_free = None, p_tax_deferred = None, p_taxable_assets = None,
+             p_taxable_stocks_basis_fraction = None, taxes_due = None):
         '''Goto a reproducable time step. Useful for benchmarking and plotting surfaces.'''
 
         assert (step == None) != (age == None)
@@ -1133,7 +1134,13 @@ class FinEnv(Env):
 
         if p_tax_free != None: self.p_tax_free = p_tax_free
         if p_tax_deferred != None: self.p_tax_deferred = p_tax_deferred
-        if p_taxable != None: self.p_taxable = p_taxable
+        if p_taxable_assets == None:
+            assert p_taxable_stocks_basis_fraction == None
+        else:
+            self.p_taxable = sum(p_taxable_assets.aa.values())
+            self.taxes = Taxes(self, taxable_assets, p_taxable_stocks_basis_fraction)
+        if taxes_due != None:
+            self.taxes_due = 0
 
         self._pre_calculate()
         return self._observe()
