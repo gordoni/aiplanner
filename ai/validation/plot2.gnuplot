@@ -24,7 +24,7 @@ set yrange [0:1000000]
 
 set xrange [65.999:100.001]
 set zlabel "consumption"
-set zrange [0:*]
+set zrange [0:200000]
 set format z "%.0s%c"
 set output prefix . "-consume" . timesteps . ".gif"
 splot prefix . "-linear" . timesteps . ".csv" using 1:2:3 every :2 with lines title "AIPlanner timestep " . timesteps

@@ -51,3 +51,4 @@ run () {
 
 run ssa_40_plus_3_female-iid_bonds
 run ssa_40_plus_3_female-iid_bonds-gamma6 '--master-gamma=6'
+run ssa_40_plus_3_female-iid_bonds-stocks_return0.05 '--master-stocks-return=0.05'
