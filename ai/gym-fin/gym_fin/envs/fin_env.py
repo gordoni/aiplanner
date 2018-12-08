@@ -174,7 +174,7 @@ class FinEnv(Env):
             # Note: Couple status must be observation[0], or else change is_couple() in gym-fin/gym_fin/common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
             # couple, number of 401(k)'s available, 1 / gamma
             # retirment life-expectancy both, retirement life-expectancy one, preretirement years,
-            # final spias purchase, expected utility level of episode, total income level in remaining retirement,
+            # final spias purchase, expected total income level of episode, total income level in remaining retirement,
             # income present value as a fraction of total wealth: tax_free, tax_deferred, taxable,
             # wealth as a fraction of total wealth: tax_free, tax_deferred, taxable,
             # first person preretirement income as a fraction of total wealth, second person preretirement income as a fraction of total wealth,
@@ -580,8 +580,9 @@ class FinEnv(Env):
             else:
                 raise FinError('Insufficient pre-retirement wages and wealth to support pre-retirement consumption.')
 
-        _, self.reward_expect = self.raw_reward(self.consume_estimate_individual)
-        _, self.reward_zero_point = self.raw_reward(self.params.reward_zero_point_factor * self.consume_estimate_individual)
+        self.consume_expect_individual = self.consume_estimate_individual
+        _, self.reward_expect = self.raw_reward(self.consume_expect_individual)
+        _, self.reward_zero_point = self.raw_reward(self.params.reward_zero_point_factor * self.consume_expect_individual)
 
         self.prev_asset_allocation = None
         self.prev_taxable_assets = taxable_assets
@@ -1000,7 +1001,7 @@ class FinEnv(Env):
             self.reward_weight, self.reward_value = self.raw_reward(consume_rate)
             # Scale returned reward based on distance from zero point and initial expected reward value.
             # Ensures equal optimization emphasis placed on episodes with high and low expected reward value.
-            # But this also means we need to observe the initial expected reward level, as the observed reward is now a function of it.
+            # But this also means we need to observe the initial expected consumption level, as the observed reward is now a function of it.
             reward = self.reward_weight * (self.reward_value - self.reward_zero_point) / (self.reward_expect - self.reward_zero_point)
             if isinf(reward):
                 print('Infinite reward')
@@ -1255,7 +1256,7 @@ class FinEnv(Env):
             inflation_rate = 0
 
         observe = (couple, num_401k, one_on_gamma, life_expectancy_both, life_expectancy_one, self.preretirement_years,
-            final_spias_purchase, self.reward_expect, self.consume_estimate_individual,
+            final_spias_purchase, self.consume_expect_individual, self.consume_estimate_individual,
             self.pv_income['tax_free'] / tw, self.pv_income['tax_deferred'] / tw, self.pv_income['taxable'] / tw,
             self.wealth['tax_free'] / tw, self.wealth['tax_deferred'] / tw, self.wealth['taxable'] / tw,
             pv_income_preretirement_first / tw, pv_income_preretirement_second / tw, self.pv_consume_preretirement / tw,
@@ -1276,7 +1277,7 @@ class FinEnv(Env):
     def decode_observation(self, obs):
 
         items = ('couple', 'num_401k', 'one_on_gamma', 'life_expectancy_both', 'life_expectancy_one', 'preretirement_years',
-            'final_spias_purchase', 'reward_expect', 'consume_estimate_individual',
+            'final_spias_purchase', 'consume_expect_individual', 'consume_estimate_individual',
             'income_tax_free', 'income_tax_deferred', 'income_taxable',
             'wealth_tax_free', 'wealth_tax_deferred', 'wealth_taxable',
             'income_preretirement', 'income_preretirement2', 'consume_preretirement',

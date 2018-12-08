@@ -42,9 +42,9 @@ validate_returns_seed = 2
 skip_corr = False
 skip_cov = False
 
-# opal-linear.csv parameters. More detail doesn't improve eval_model.py results.
-gnuplot_tp=25000000
-gnuplot_steps=5000
+# opal-linear.csv parameters for plotting.
+gnuplot_tp=1000000
+gnuplot_steps=30
 
 # Parameters for Opal self validation to work.
 ret_resample = None

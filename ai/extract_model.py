@@ -38,23 +38,29 @@ def extract_model(eval_model_params, *, eval_couple_net, eval_seed, eval_num_tim
                         p = p_range[0] + p_index * (p_range[1] - p_range[0]) / num_p_steps
                         p_tax_free = p if p_type == 'tax_free' else None
                         p_tax_deferred = p if p_type == 'tax_deferred' else None
-                        if p_type.startswit('taxable_'):
+                        if p_type.startswith('taxable_'):
                             assets = {}
                             if env.params.stocks:
-                                assets['stocks'] = p if p_type == 'taxable_stocks' else 0
+                                assert env.params.p_taxable_stocks_low == env.params.p_taxable_stocks_high
+                                assets['stocks'] = p if p_type == 'taxable_stocks' else env.params.p_taxable_stocks_low
                             if env.params.real_bonds:
-                                assets['real_bonds'] = p if p_type == 'taxable_real_bonds' else 0
+                                assert env.params.p_taxable_real_bonds_low == env.params.p_taxable_real_bonds_high
+                                assets['real_bonds'] = p if p_type == 'taxable_real_bonds' else env.params.p_taxable_real_bonds_low
                             if env.params.nominal_bonds:
-                                assets['nominal_bonds'] = p if p_type == 'taxable_nominal_bonds' else 0
+                                assert env.params.p_taxable_nominal_bonds_low == env.params.p_taxable_nominal_bonds_high
+                                assets['nominal_bonds'] = p if p_type == 'taxable_nominal_bonds' else env.params.p_taxable_nominal_bonds_low
                             if env.params.iid_bonds:
-                                assets['iid_bonds'] = p if p_type == 'taxable_iid_bonds' else 0
+                                assert env.params.p_taxable_iid_bonds_low == env.params.p_taxable_iid_bonds_high
+                                assets['iid_bonds'] = p if p_type == 'taxable_iid_bonds' else env.params.p_taxable_iid_bonds_low
                             if env.params.bills:
-                                assets['bills'] = p if p_type == 'taxable_bills' else 0
+                                assert env.params.p_taxable_bills_low == env.params.p_taxable_bills_high
+                                assets['bills'] = p if p_type == 'taxable_bills' else env.params.p_taxable_bills_low
                             p_taxable_assets = AssetAllocation(fractional = False, **assets)
                             assert env.params.p_taxable_stocks_basis_fraction_low == env.params.p_taxable_stocks_basis_fraction_high
                             p_taxable_stocks_basis_fraction = env.params.p_taxable_stocks_basis_fraction_low
                         else:
-                            taxable_assets = None
+                            p_taxable_assets = None
+                            p_taxable_stocks_basis_fraction = None
                         obs = env.goto(age = age, p_tax_free = p_tax_free, p_tax_deferred = p_tax_deferred, p_taxable_assets = p_taxable_assets,
                             p_taxable_stocks_basis_fraction = p_taxable_stocks_basis_fraction)
                         action, = runner.run([obs])

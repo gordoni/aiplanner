@@ -107,9 +107,10 @@ class ModelParams(object):
         self._param('consume-clip', 0, 0) # Minimum allowed consumption level.
             # Similar role to reward_clip, but limit is specified in terms of consumption.
             # Evaluation clip should always be zero.
-        self._param('reward-zero-point-factor', 0.9) # Scale utility of [reward_zero_point_factor * expected consume, expected consume] onto rewards [0, 1].
+        self._param('reward-zero-point-factor', 0.5) # Scale utility of [reward_zero_point_factor * expected consume, expected consume] onto rewards [0, 1].
             # Utility needs to possibly be roughly scaled to an average absolute value of 1 for DDPG implementation (presumably due to optimizer step size).
-            # For PPO1 value should only really matter in ensuring equal optimization weight is placed on different episodes when gamma is variable.
+            # For PPO1 value will matter in ensuring equal optimization weight is placed on different episodes when gamma is variable.
+            # For PPO1 increasing this value is associated with an increase in the standard deviation of measured CEs across models.
         self._param('consume-rescale', 'estimate_bounded', tp = string_type, choices = ('estimate_biased', 'estimate_bounded'))
             # Type of re-scaling applied to consume action.
             #     "estimate_biased": consumption fraction is an exponential rescaling of consume action based on expected consumption (after tanh).

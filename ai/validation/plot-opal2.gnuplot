@@ -24,14 +24,16 @@ set xrange [65.999:100.001]
 set zlabel "consumption"
 set zrange [0:*]
 set format z "%.0s%c"
-set output "run.opal.ssa_40_plus_3_female-iid_bonds.plot/opal-consume.svg"
-splot "run.opal.ssa_40_plus_3_female-iid_bonds.plot/opal-linear.csv" using 1:2:7 every :2 with lines title "Stochastic dynamic programming"
-# "aiplanner.ssa_40_plus_3_female-iid_bonds-seed_0.tf/aiplanner-linear.csv" using 1:2:3 every :2 with lines title "AIPlanner seed 0", \
+set output "run.opal.ssa_40_plus_3_female-iid_bonds/opal-consume.svg"
+splot "run.opal.ssa_40_plus_3_female-iid_bonds/opal-linear.csv" using 1:2:7 every :2 with lines title "Stochastic dynamic programming"
+set output "run.opal.ssa_40_plus_3_female-iid_bonds-gamma6/opal-consume.svg"
+splot "run.opal.ssa_40_plus_3_female-iid_bonds-gamma6/opal-linear.csv" using 1:2:7 every :2 with lines title "Stochastic dynamic programming"
 
 set xrange [40:100.001]
 set zlabel "stocks"
 set zrange [0:100]
 set format z "%g%%"
-set output "run.opal.ssa_40_plus_3_female-iid_bonds.plot/opal-stocks.svg"
-splot "run.opal.ssa_40_plus_3_female-iid_bonds.plot/opal-linear.csv" using 1:2:($9 * 100) every :2 with lines title "Stochastic dynamic programming"
-# "aiplanner.ssa_40_plus_3_female-iid_bonds-seed_0.tf/aiplanner-linear.csv" using 1:2:($9 * 100) every :2 with lines title "AIPlanner seed 0"
+set output "run.opal.ssa_40_plus_3_female-iid_bonds/opal-stocks.svg"
+splot "run.opal.ssa_40_plus_3_female-iid_bonds/opal-linear.csv" using 1:2:($9 * 100) every :2 with lines title "Stochastic dynamic programming"
+set output "run.opal.ssa_40_plus_3_female-iid_bonds-gamma6/opal-stocks.svg"
+splot "run.opal.ssa_40_plus_3_female-iid_bonds-gamma6/opal-linear.csv" using 1:2:($9 * 100) every :2 with lines title "Stochastic dynamic programming"

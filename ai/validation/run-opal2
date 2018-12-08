@@ -30,9 +30,11 @@ validate () {
     $OPAL -c $AI_DIR/validation/opal-scenario2.txt -e "prefix='$MODEL_DIR/opal'" $ARGS $EXTRA_ARGS 2>&1 | tee $MODEL_DIR/opal.log
 }
 
-validate ssa_40_plus_3_female-iid_bonds.eval
-validate ssa_40_plus_3_female-iid_bonds.plot '-e gnuplot_tp=1000000 -e gnuplot_steps=30'
+validate ssa_40_plus_3_female-iid_bonds-gamma6 '-e utility_eta=6'
+exit
+validate ssa_40_plus_3_female-iid_bonds
 
+validate ssa_40_plus_3_female-iid_bonds.eval '-e gnuplot_tp=25000000 -e gnuplot_steps=5000' # More detail doesn't improve eval_model.py results.
 MODEL_DIR=$AI_DIR/validation/run.opal.ssa_40_plus_3_female-iid_bonds.eval
 $AI_DIR/eval_model.py -c aiplanner-scenario2.txt --opal --opal-file=$MODEL_DIR/opal-linear.csv --result-dir=$MODEL_DIR --eval-num-timesteps=20000000 | \
     tee $MODEL_DIR/eval.log
