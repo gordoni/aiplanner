@@ -121,8 +121,6 @@ class FinEnv(Env):
 
         retired_index = ceil(preretirement / self.params.time_period)
 
-        alive_years = (2 * sum(alive_both[retired_index:]) + sum(alive_one[retired_index:])) * self.params.time_period
-
         life_expectancy_both = self.sums_to_end(alive_both, retired_index, alive_both)
         life_expectancy_one = self.sums_to_end(alive_one, retired_index, tuple(alive_one[i] + alive_both[i] for i in range(len(alive_one))))
         life_expectancy_single = self.sums_to_end(alive_single, retired_index, alive_single)
@@ -133,9 +131,9 @@ class FinEnv(Env):
         if not self.params.probabilistic_life_expectancy:
             alive_single = tuple(None if _alive_count == 2 else _alive_count for _alive_count in alive_count)
 
-        self.only_alive2, self.alive_years, self.alive_single, self.alive_count, \
+        self.only_alive2, self.alive_single, self.alive_count, \
             self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = \
-            only_alive2, alive_years, tuple(alive_single), tuple(alive_count), \
+            only_alive2, tuple(alive_single), tuple(alive_count), \
             tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
 
     def sums_to_end(self, l, start, divl):
