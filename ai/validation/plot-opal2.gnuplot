@@ -17,8 +17,6 @@ set xlabel "age"
 set ylabel "investments"
 set yrange [0:1000000]
 set format y "%.1s%c"
-set yrange [33333:1000000] # Opal aa varies randomly at zero.
-set ytics 200000
 
 set xrange [65.999:100.001]
 set zlabel "consumption"
@@ -32,6 +30,8 @@ set output "run.opal.ssa_40_plus_3_female-iid_bonds-stocks_return0.05/opal-consu
 splot "run.opal.ssa_40_plus_3_female-iid_bonds-stocks_return0.05/opal-linear.csv" using 1:2:7 every :2 with lines title "Stochastic dynamic programming"
 
 set xrange [40:100.001]
+set yrange [33333:1000000] # Opal aa varies randomly at zero.
+set ytics 200000
 set zlabel "stocks"
 set zrange [0:100]
 set format z "%g%%"
