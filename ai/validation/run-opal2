@@ -30,11 +30,16 @@ validate () {
     $OPAL -c $AI_DIR/validation/opal-scenario2.txt -e "prefix='$MODEL_DIR/opal'" $ARGS $EXTRA_ARGS 2>&1 | tee $MODEL_DIR/opal.log
 }
 
-validate ssa_40_plus_3_female-iid_bonds
-validate ssa_40_plus_3_female-iid_bonds-gamma6 '-e utility_eta=6'
-validate ssa_40_plus_3_female-iid_bonds-stocks_return0.05 '-e synthetic_ret=0.05'
+validate ssa_40_plus_3_female-iid_bonds-p_tax_free200000 '-e start_tp=200000'
+validate ssa_40_plus_3_female-iid_bonds-gamma6-p_tax_free200000 '-e utility_eta=6 -e start_tp=200000'
+validate ssa_40_plus_3_female-iid_bonds-stocks_return0.05-p_tax_free200000 '-e synthetic_ret=0.05 -e start_tp=200000'
 
-validate ssa_40_plus_3_female-iid_bonds.eval '-e gnuplot_tp=25000000 -e gnuplot_steps=5000' # More detail doesn't improve eval_model.py results.
-MODEL_DIR=$AI_DIR/validation/run.opal.ssa_40_plus_3_female-iid_bonds.eval
+validate ssa_40_plus_3_female-iid_bonds-p_tax_free1000000 '-e start_tp=1000000'
+validate ssa_40_plus_3_female-iid_bonds-gamma6-p_tax_free1000000 '-e utility_eta=6 -e start_tp=1000000'
+validate ssa_40_plus_3_female-iid_bonds-stocks_return0.05-p_tax_free1000000 '-e synthetic_ret=0.05 -e start_tp=1000000'
+
+validate ssa_40_plus_3_female-iid_bonds-p_tax_free200000.eval '-e start_tp=200000 -e gnuplot_tp=25000000 -e gnuplot_steps=5000'
+    # More detail doesn't improve eval_model.py results.
+MODEL_DIR=$AI_DIR/validation/run.opal.ssa_40_plus_3_female-iid_bonds-p_tax_free200000.eval
 $AI_DIR/eval_model.py -c aiplanner-scenario2.txt --opal --opal-file=$MODEL_DIR/opal-linear.csv --result-dir=$MODEL_DIR --eval-num-timesteps=20000000 | \
     tee $MODEL_DIR/eval.log

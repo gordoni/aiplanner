@@ -173,7 +173,8 @@ class FinEnv(Env):
             # Note: Couple status must be observation[0], or else change is_couple() in gym-fin/gym_fin/common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
             # couple, number of 401(k)'s available, 1 / gamma
             # preretirement years, average asset years,
-            # final spias purchase, expected total income level of episode, total income level in remaining retirement,
+            # average age, average health, final spias purchase,
+            # expected total income level of episode, total income level in remaining retirement,
             # portfolio wealth on total wealth, total wealth on portfolio wealth,
             # income present value as a fraction of total wealth: tax_deferred, taxable,
             # portfolio wealth as a fraction of total wealth: tax_deferred, taxable,
@@ -183,8 +184,8 @@ class FinEnv(Env):
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            low  = np.array((0, 0, 0,  0,   0, 0,   0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.05, 0.0)),
-            high = np.array((1, 2, 1, 50, 100, 1, 5e5, 5e5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,  0.05, 0.05)),
+            low  = np.array((0, 0, 0,  0,   0,   0, -10, 0,   0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.05, 0.0)),
+            high = np.array((1, 2, 1, 50, 100, 100,  10, 1, 5e5, 5e5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,  0.05, 0.05)),
             dtype = 'float32'
         )
 
@@ -409,12 +410,15 @@ class FinEnv(Env):
                 self.income_preretirement_years = max(0, self.params.income_preretirement_age_end - self.age)
             else:
                 self.income_preretirement_years = self.preretirement_years
-            if self.params.income_preretirement_age_end2 != None:
-                self.income_preretirement_years2 = max(0, self.params.income_preretirement_age_end2 - self.age2)
+            if self.couple:
+                if self.params.income_preretirement_age_end2 != None:
+                    self.income_preretirement_years2 = max(0, self.params.income_preretirement_age_end2 - self.age2)
+                else:
+                    self.income_preretirement_years2 = self.preretirement_years
             else:
-                self.income_preretirement_years2 = self.preretirement_years
+                self.income_preretirement_years2 = 0
             self.income_preretirement = self.start_income_preretirement if self.income_preretirement_years > 0 else 0
-            self.income_preretirement2 = self.start_income_preretirement2 if self.couple and self.income_preretirement_years2 > 0 else 0
+            self.income_preretirement2 = self.start_income_preretirement2 if self.income_preretirement_years2 > 0 else 0
 
             self.p_tax_free = self.log_uniform(self.params.p_tax_free_low, self.params.p_tax_free_high)
             self.p_tax_deferred = self.log_uniform(self.params.p_tax_deferred_low, self.params.p_tax_deferred_high)
@@ -918,9 +922,25 @@ class FinEnv(Env):
             self.life_table2.age = self.age2
         except AttributeError:
             pass
+
         self.preretirement_years = max(0, self.preretirement_years - steps)
         self.income_preretirement_years = max(0, self.income_preretirement_years - steps)
         self.income_preretirement_years2 = max(0, self.income_preretirement_years2 - steps)
+
+        couple_became_single = self.couple and self.alive_single[self.episode_length + steps] != None
+        if couple_became_single:
+
+            if self.only_alive2:
+                self.income_preretirement_years = 0
+            else:
+                self.income_preretirement_years2 = 0
+
+            self.life_expectancy_both = [0] * len(self.life_expectancy_both)
+            self.life_expectancy_one = self.life_expectancy_single
+
+            self.defined_benefits = {key: db for key, db in self.defined_benefits.items() if not db.sched_single_zero}
+            for db in self.defined_benefits.values():
+                db.couple_became_single()
 
         if self.income_preretirement_years > 0:
             for _ in range(steps):
@@ -934,16 +954,6 @@ class FinEnv(Env):
                     self.params.income_preretirement_sigma2 * sqrt(self.params.time_period))
         else:
             self.income_preretirement2 = 0
-
-        couple_became_single = self.couple and self.alive_single[self.episode_length + steps] != None
-        if couple_became_single:
-
-            self.life_expectancy_both = [0] * len(self.life_expectancy_both)
-            self.life_expectancy_one = self.life_expectancy_single
-
-            self.defined_benefits = {key: db for key, db in self.defined_benefits.items() if not db.sched_single_zero}
-            for db in self.defined_benefits.values():
-                db.couple_became_single()
 
         for db in self.defined_benefits.values():
             db.step(steps)
@@ -1065,12 +1075,6 @@ class FinEnv(Env):
         except ZeroDivisionError:
             self.consume_p_estimate = float('inf')
 
-        if self.couple:
-            max_age = max(self.age, self.age2)
-        else:
-            max_age = self.age2 if self.only_alive2 else self.age
-        self.final_spias_purchase = max_age <= self.params.spias_permitted_to_age < max_age + self.params.time_period
-
     def _observe(self):
 
         couple = int(self.couple)
@@ -1083,7 +1087,23 @@ class FinEnv(Env):
         one_on_gamma = 1 / self.gamma
         average_asset_years = self.preretirement_years + self.years_retired / 2
             # Consumption amount in retirement and thus expected reward to go is likely a function of average asset age.
-        final_spias_purchase = int(self.final_spias_purchase)
+
+        if (self.params.real_spias or self.params.nominal_spias) and (self.params.couple_spias or not self.couple):
+            if self.couple:
+                max_age = max(self.age, self.age2) # Determines age cut-off and thus final purchase signal for the purchase of SPIAs.
+                average_age = (self.age + self.age2) / 2 # SPIAs should become more desirable as average age increases.
+                average_health = (self.params.life_expectancy_additional + self.params.life_expectancy_additional2) / 2
+                    # Use of life_expectancy_additional as a health indicator for the desirability of the purchase of SPIAs is imperfect
+                    # as its value depends on the initial age, not the current age, and we typically only train with young initial ages.
+            else:
+                max_age = average_age = self.age2 if self.only_alive2 else self.age
+                average_health =  self.params.life_expectancy_additional2 if self.only_alive2 else self.params.life_expectancy_additional
+            final_spias_purchase = max_age <= self.params.spias_permitted_to_age < max_age + self.params.time_period
+            final_spias_purchase = int(final_spias_purchase)
+        else:
+            average_age = 0
+            average_health = 0
+            final_spias_purchase = 0
 
         tw = self.total_wealth
         if tw == 0:
@@ -1105,13 +1125,6 @@ class FinEnv(Env):
         #     # Arbitrarily cap wealth ratio, so that PPO1 can reasonably compute mean and standard deviation.
         #     # Chosen cap gives good performance for a gamma of 6.
 
-        if couple:
-            pv_income_preretirement_first = self.pv_income_preretirement
-            pv_income_preretirement_second = self.pv_income_preretirement2
-        else:
-            pv_income_preretirement_first = 0 if self.only_alive2 else self.pv_income_preretirement
-            pv_income_preretirement_second = self.pv_income_preretirement2 if self.only_alive2 else 0
-
         if self.params.stocks_mean_reversion_rate != 0:
             stocks_price, = self.stocks.observe()
         else:
@@ -1128,11 +1141,11 @@ class FinEnv(Env):
             inflation_rate = 0
 
         observe = (couple, num_401k, one_on_gamma, self.preretirement_years, average_asset_years,
-            final_spias_purchase, self.consume_expect_individual, self.consume_estimate_individual,
-            w / tw,
+            average_age, average_health, final_spias_purchase,
+            self.consume_expect_individual, self.consume_estimate_individual, w / tw,
             self.pv_income['tax_deferred'] / tw, self.pv_income['taxable'] / tw,
             self.wealth['tax_deferred'] / tw, self.wealth['taxable'] / tw,
-            pv_income_preretirement_first / tw, pv_income_preretirement_second / tw, self.pv_consume_preretirement / tw,
+            self.pv_income_preretirement / tw, self.pv_income_preretirement2 / tw, self.pv_consume_preretirement / tw,
             self.taxable_basis / tw, stocks_price, real_interest_rate, inflation_rate)
             # No need to observe tax free wealth or income as this represents the baseline case.
         obs = np.array(observe, dtype = 'float32')
@@ -1151,8 +1164,8 @@ class FinEnv(Env):
     def decode_observation(self, obs):
 
         items = ('couple', 'num_401k', 'one_on_gamma', 'preretirement_years', 'average_asset_years',
-            'final_spias_purchase', 'consume_expect_individual', 'consume_estimate_individual',
-            'wealth_fraction', 'wealth_ratio',
+            'average_age', 'average_health', 'final_spias_purchase',
+            'consume_expect_individual', 'consume_estimate_individual', 'wealth_fraction',
             'income_tax_deferred_fraction', 'income_taxable_fraction',
             'wealth_tax_deferred_fraction', 'wealth_taxable_fraction',
             'income_preretirement_fraction', 'income_preretirement2_fraction', 'consume_preretirement_fraction',

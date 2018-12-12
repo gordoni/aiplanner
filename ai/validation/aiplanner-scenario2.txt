@@ -28,14 +28,24 @@ master_iid_bonds_return = 0.024
 master_iid_bonds_volatility = 0.112
 master_bills = False
 
-master_age_start = 40
-master_life_expectancy_additional = 3
+train_age_start = 30 # We will encounter all subsequent ages as we step.
+eval_age_start = 40
 
-master_age_retirement = 65
+train_life_expectancy_additional_low = -5
+train_life_expectancy_additional_high = 5
+
+eval_life_expectancy_additional = 3
+
+train_age_retirement_low = 50
+train_age_retirement_high = 75
+
+eval_age_retirement = 65
 
 master_income_preretirement = 0
 master_consume_preretirement = 0
 
+# Make tax_free rather than taxable the common case as a means of estimating performance gap from optimal for taxable scenario.
+# (The optimal performance for the tax_free scenario can be computed via stochastic dynamic programming.)
 train_defined_benefits = '''[
     {"owner": "self",   "age": null, "probability": 1.0, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
@@ -61,7 +71,7 @@ eval_p_tax_free = 200000
 eval_p_tax_deferred = 0
 eval_p_taxable_stocks = 0
 eval_p_taxable_iid_bonds = 0
-eval_p_taxable_stocks_basis_fraction = 0
+eval_p_taxable_stocks_basis_fraction = 1
 
 master_p_taxable_real_bonds = 0
 master_p_taxable_nominal_bonds = 0
@@ -69,7 +79,7 @@ master_p_taxable_bills = 0
 
 master_gamma = 3.0
 
-# Normally will matter, but should not matter for mean reversion less stocks and iid_bonds model.
+# Normally the following parameters will matter, but should only possibly matter as observation noise for mean reversion less stocks and iid_bonds model.
 eval_stocks_price = 1
 eval_real_short_rate_type = 'value'
 eval_real_short_rate_value = 0.011
@@ -79,4 +89,4 @@ eval_inflation_short_rate_value = 0.016
 train_num_timesteps = 2000000
 eval_num_timesteps = 2000000
 
-num_cpu = 1
+num_cpu = 1 # Makes Tensorflow deterministic, reduces aggregate cpu usage, and doesn't increase the elapsed time very much.
