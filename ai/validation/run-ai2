@@ -28,12 +28,6 @@ run () {
     # EVAL_ARGS='--eval-defined-benefits=[{"owner":"self","age":null,"probability":1.0,"payout":80e3,"source_of_funds":"tax_free"}]'
     # evaluate $MODEL_NAME defined_benefits_tax_free80000-p_tax_free1000000 "--eval-p-tax-free=1000000 $EVAL_ARGS $ARGS"
 
-    EVAL_ARGS='--master-age-start=40 --master-life-expectancy-additional=3 --master-age-retirement=65 --master-defined-benefits=[{"owner":"self","age":null,"probability":1.0,"payout":16e3,"source_of_funds":"tax_free"}] --master-p_tax-deferred=0 --master-p_taxable-stocks=0 --master-p_taxable-iid_bonds=0'
-    train $MODEL_NAME-p_tax_free200000 "--master-p-tax-free=200000 $EVAL_ARGS $ARGS"
-    evaluate $MODEL_NAME-p_tax_free200000 p_tax_free200000 "--eval-p-tax-free=200000 $EVAL_ARGS $ARGS"
-    train $MODEL_NAME-p_tax_free1000000 "--master-p-tax-free=1000000 $EVAL_ARGS $ARGS"
-    evaluate $MODEL_NAME-p_tax_free1000000 p_tax_free1000000 "--eval-p-tax-free=1000000 $EVAL_ARGS $ARGS"
-
     SEED=0
     while [ $SEED -lt $SEEDS ]; do
         MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
@@ -55,6 +49,12 @@ run () {
         convert -delay 5 -loop 0 $MODEL_DIR/aiplanner-stocks[0-9]*.gif  $MODEL_DIR/aiplanner-stocks-animated.gif
         SEED=`expr $SEED + 1`
     done
+
+    EVAL_ARGS='--master-age-start=40 --master-life-expectancy-additional=3 --master-age-retirement=65 --master-defined-benefits=[{"owner":"self","age":null,"probability":1.0,"payout":16e3,"source_of_funds":"tax_free"}] --master-p-tax-deferred=0 --master-p-taxable-stocks=0 --master-p-taxable-iid-bonds=0'
+    train $MODEL_NAME-p_tax_free200000 "--master-p-tax-free=200000 $EVAL_ARGS $ARGS"
+    evaluate $MODEL_NAME-p_tax_free200000 p_tax_free200000 "--eval-p-tax-free=200000 $EVAL_ARGS $ARGS"
+    train $MODEL_NAME-p_tax_free1000000 "--master-p-tax-free=1000000 $EVAL_ARGS $ARGS"
+    evaluate $MODEL_NAME-p_tax_free1000000 p_tax_free1000000 "--eval-p-tax-free=1000000 $EVAL_ARGS $ARGS"
 }
 
 run ssa_40_plus_3_female-iid_bonds

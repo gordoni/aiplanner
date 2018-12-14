@@ -163,12 +163,13 @@ class FinEnv(Env):
         self.direct_action = direct_action
         self.params = AttributeObject(kwargs)
 
-        self.action_space = Box(low = -1.0, high = 1.0, shape = (10, ), dtype = 'float32')
+        self.action_space = Box(low = -1.0, high = 1.0, shape = (15, ), dtype = 'float32')
             # consume_action, spias_action, real_spias_action,
             # stocks_action, real_bonds_action, nominal_bonds_action, iid_bonds_action, bills_action,
+            # stocks_curvature_action, real_bonds_curvature_action, nominal_bonds_curvature_action, iid_bonds_curvature_action, bills_curvature_action,
             # real_bonds_duration_action, nominal_bonds_duration_action,
             # DDPG implementation assumes [-x, x] symmetric actions.
-            # PPO1 implementation ignores size and very roughly initially assumes N(0, 0.05) actions, but potentially trainable to any value.
+            # PPO1 implementation ignores size and very roughly initially assumes N(0, 1) actions, but potentially trainable to any value.
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple() in gym-fin/gym_fin/common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
             # couple, number of 401(k)'s available, 1 / gamma
@@ -502,6 +503,7 @@ class FinEnv(Env):
 
         consume_action, spias_action, real_spias_action, \
             stocks_action, real_bonds_action, nominal_bonds_action, iid_bonds_action, bills_action, \
+            stocks_curvature_action, real_bonds_curvature_action, nominal_bonds_curvature_action, iid_bonds_curvature_action, bills_curvature_action, \
             real_bonds_duration_action, nominal_bonds_duration_action = action
 
         def safe_atanh(x):
@@ -519,17 +521,22 @@ class FinEnv(Env):
             real_spias_action = tanh(real_spias_action)
             real_bonds_duration_action = tanh(real_bonds_duration_action)
             nominal_bonds_duration_action = tanh(nominal_bonds_duration_action)
-            stocks_action *= 2 # Make it easier for ppo1 asset class actions to achieve softmax saturation levels when appropriate.
-            real_bonds_action *= 2
-            nominal_bonds_action *= 2
-            iid_bonds_action *= 2
-            bills_action *= 2
+            # stocks_action *= 2 # Make it easier for ppo1 asset class actions to achieve softmax saturation levels when appropriate.
+            # real_bonds_action *= 2
+            # nominal_bonds_action *= 2
+            # iid_bonds_action *= 2
+            # bills_action *= 2
         else:
             stocks_action = safe_atanh(stocks_action)
             real_bonds_action = safe_atanh(real_bonds_action)
             nominal_bonds_action = safe_atanh(nominal_bonds_action)
             iid_bonds_action = safe_atanh(iid_bonds_action)
             bills_action = safe_atanh(bills_action)
+            stocks_curvature_action = safe_atanh(stocks_curvature_action)
+            real_bonds_curvature_action = safe_atanh(real_bonds_curvature_action)
+            nominal_bonds_curvature_action = safe_atanh(nominal_bonds_curvature_action)
+            iid_bonds_curvature_action = safe_atanh(iid_bonds_curvature_action)
+            bills_curvature_action = safe_atanh(bills_curvature_action)
 
         if self.params.consume_rescale == 'estimate_biased':
 
@@ -605,12 +612,60 @@ class FinEnv(Env):
         if not self.params.nominal_spias or not spias_allowed:
             nominal_spias_fraction = None
 
-        # Softmax.
-        stocks = exp(stocks_action) if self.params.stocks else 0
-        real_bonds = exp(real_bonds_action) if self.params.real_bonds else 0
-        nominal_bonds = exp(nominal_bonds_action) if self.params.nominal_bonds else 0
-        iid_bonds = exp(iid_bonds_action) if self.params.iid_bonds else 0
-        bills = exp(bills_action) if self.params.bills else 0
+        # It is too much to expect optimization to compute the precise asset allocation surface.
+        # Instead we provide guidelines as to what the surface might look like, and allow optimization to tune within those guidelines.
+        #
+        # Assuming defined benefits are risk free, for stocks and risk free portfolio assets using CRRA utility according to Merton's portfolio problem we expect:
+        #     stocks * wealth / total_wealth = const
+        # Re-arranging gives:
+        #     stocks = total_wealth / wealth * const
+        # And so:
+        #     risk free = 1 - total_wealth / wealth * const
+        # This suggests more generally equations of the form:
+        #     asset class = y + (x - y) * total_wealth / wealth for x, y in [0, 1].
+        # may be helpful to determining the stock allocation.
+
+        # Softmax x's, the alocations when wealth is total_wealth (no defined benefits).
+        stocks_action = exp(stocks_action) if self.params.stocks else 0
+        real_bonds_action = exp(real_bonds_action) if self.params.real_bonds else 0
+        nominal_bonds_action = exp(nominal_bonds_action) if self.params.nominal_bonds else 0
+        iid_bonds_action = exp(iid_bonds_action) if self.params.iid_bonds else 0
+        bills_action = exp(bills_action) if self.params.bills else 0
+        total = stocks_action + real_bonds_action + nominal_bonds_action + iid_bonds_action + bills_action
+        stocks_action /= total
+        real_bonds_action /= total
+        nominal_bonds_action /= total
+        iid_bonds_action /= total
+        bills_action /= total
+
+        # Softax y's, so that when we fit to the curve (below) the allocations sum to one.
+        stocks_curvature_action = exp(stocks_curvature_action) if self.params.stocks else 0
+        real_bonds_curvature_action = exp(real_bonds_curvature_action) if self.params.real_bonds else 0
+        nominal_bonds_curvature_action = exp(nominal_bonds_curvature_action) if self.params.nominal_bonds else 0
+        iid_bonds_curvature_action = exp(iid_bonds_curvature_action) if self.params.iid_bonds else 0
+        bills_curvature_action = exp(bills_curvature_action) if self.params.bills else 0
+        total = stocks_curvature_action + real_bonds_curvature_action + nominal_bonds_curvature_action + iid_bonds_curvature_action + bills_curvature_action
+        stocks_curvature_action /= total
+        real_bonds_curvature_action /= total
+        nominal_bonds_curvature_action /= total
+        iid_bonds_curvature_action /= total
+        bills_curvature_action /= total
+
+        # Fit to curve.
+        stocks = stocks_curvature_action + (stocks_action - stocks_curvature_action) * self.wealth_ratio
+        real_bonds = real_bonds_curvature_action + (real_bonds_action - real_bonds_curvature_action) * self.wealth_ratio
+        nominal_bonds = nominal_bonds_curvature_action + (nominal_bonds_action - nominal_bonds_curvature_action) * self.wealth_ratio
+        iid_bonds = iid_bonds_curvature_action + (iid_bonds_action - iid_bonds_curvature_action) * self.wealth_ratio
+        bills = bills_curvature_action + (bills_action - bills_curvature_action) * self.wealth_ratio
+
+        # Asset classes will sum to one since actions and curvature actions each sum to one.
+        # However individual asset classes may not be in the range [0, 1]. This needs to be fixed.
+        # Softmax again.
+        stocks = exp(stocks) if self.params.stocks else 0
+        real_bonds = exp(real_bonds) if self.params.real_bonds else 0
+        nominal_bonds = exp(nominal_bonds) if self.params.nominal_bonds else 0
+        iid_bonds = exp(iid_bonds) if self.params.iid_bonds else 0
+        bills = exp(bills) if self.params.bills else 0
         total = stocks + real_bonds + nominal_bonds + iid_bonds + bills
         stocks /= total
         real_bonds /= total
@@ -1059,6 +1114,10 @@ class FinEnv(Env):
         self.total_wealth = sum(self.pv_income.values()) + sum(self.wealth.values()) \
             + self.pv_income_preretirement + self.pv_income_preretirement2 - self.pv_consume_preretirement
 
+        w = sum(self.wealth.values())
+        self.wealth_ratio = self.total_wealth / w if w > 0 else float('inf')
+        self.wealth_ratio = min(self.wealth_ratio, 50) # Cap so that exp(wealth_ratio) doesn't overflow.
+
         self.p_plus_income = self.p_sum() + self.gi_sum() * self.params.time_period
         self.taxes_paid = min(self.taxes_due, 0.9 * self.p_plus_income) # Don't allow taxes to consume all of p.
         self.p_plus_income -= self.taxes_paid
@@ -1109,21 +1168,6 @@ class FinEnv(Env):
         if tw == 0:
             tw = sum(self.pv_income.values())
         w = sum(self.wealth.values())
-
-        # We do not observe the wealth ratio (shown below), as it is simply the inverse of the wealth fraction which we do observe.
-        # Generally we get better results observing the wealth fraction than the wealth ratio (although possibly not for a gamma of 6).
-        # Observing the wealth fraction we get downward slopping stock allocations with portfolio size, which we do not get when we observe the wealth ratio.
-        # Observing them both decreases the results as we get an average of the two approaches.
-        #
-        # # For CRRA utillity we might roughly expect:
-        # #     stocks * wealth / total_wealth = const
-        # # Re-arranging gives:
-        # #     stocks = total_wealth / wealth * const
-        # # This suggests the ratio total_wealth / wealth may be relevant to determining the stock allocation.
-        # wealth_ratio = tw / w if w > 0 else float('inf')
-        # wealth_ratio = min(wealth_ratio, 200)
-        #     # Arbitrarily cap wealth ratio, so that PPO1 can reasonably compute mean and standard deviation.
-        #     # Chosen cap gives good performance for a gamma of 6.
 
         if self.params.stocks_mean_reversion_rate != 0:
             stocks_price, = self.stocks.observe()
