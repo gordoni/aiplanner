@@ -175,9 +175,8 @@ class FinEnv(Env):
             # couple, number of 401(k)'s available, 1 / gamma
             # preretirement years, average asset years,
             # average age, average health, final spias purchase,
-            # expected total income level of episode, total income level in remaining retirement,
-            # portfolio wealth on total wealth, total wealth on portfolio wealth,
-            # income present value as a fraction of total wealth: tax_deferred, taxable,
+            # reward to go estimate, expected total income level of episode, total income level in remaining retirement,
+            # portfolio wealth on total wealth, income present value as a fraction of total wealth: tax_deferred, taxable,
             # portfolio wealth as a fraction of total wealth: tax_deferred, taxable,
             # first person preretirement income as a fraction of total wealth, second person preretirement income as a fraction of total wealth,
             # consume preretirement as a fraction of total wealth, taxable basis as a fraction of total wealth,
@@ -185,8 +184,8 @@ class FinEnv(Env):
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            low  = np.array((0, 0, 0,  0,   0,   0, -10, 0,   0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.05, 0.0)),
-            high = np.array((1, 2, 1, 50, 100, 100,  10, 1, 5e5, 5e5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,  0.05, 0.05)),
+            low  = np.array((0, 0, 0,  0,   0,   0, -10, 0, -100,   0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.05, 0.0)),
+            high = np.array((1, 2, 1, 50, 100, 100,  10, 1,  100, 5e5, 5e5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,  0.05, 0.05)),
             dtype = 'float32'
         )
 
@@ -1137,13 +1136,12 @@ class FinEnv(Env):
     def _observe(self):
 
         couple = int(self.couple)
-
         if couple:
             num_401k = int(self.have_401k) + int(self.have_401k2)
         else:
             num_401k = int(self.have_401k2) if self.only_alive2 else int(self.have_401k)
-
         one_on_gamma = 1 / self.gamma
+
         average_asset_years = self.preretirement_years + self.years_retired / 2
             # Consumption amount in retirement and thus expected reward to go is likely a function of average asset age.
 
@@ -1164,6 +1162,10 @@ class FinEnv(Env):
             average_health = 0
             final_spias_purchase = 0
 
+        reward_weight = (2 * self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length]) * self.params.time_period
+        _, reward_value = self.raw_reward(self.consume_estimate_individual)
+        reward_estimate = reward_weight * (reward_value - self.reward_zero_point) / (self.reward_expect - self.reward_zero_point)
+
         tw = self.total_wealth
         if tw == 0:
             tw = sum(self.pv_income.values())
@@ -1173,25 +1175,34 @@ class FinEnv(Env):
             stocks_price, = self.stocks.observe()
         else:
             stocks_price = 1 # Avoid observing spurious noise for better training.
-
         if self.params.observe_interest_rate:
             real_interest_rate, = self.bonds.real.observe()
         else:
             real_interest_rate = 0
-
         if self.params.observe_inflation_rate:
             inflation_rate, = self.bonds.inflation.observe()
         else:
             inflation_rate = 0
 
-        observe = (couple, num_401k, one_on_gamma, self.preretirement_years, average_asset_years,
+        observe = (
+            # Scenario description observations.
+            couple, num_401k, one_on_gamma,
+            # Nature of lifespan observations.
+            0 * self.preretirement_years, average_asset_years,
+            # Annuitization related observations.
             average_age, average_health, final_spias_purchase,
-            self.consume_expect_individual, self.consume_estimate_individual, w / tw,
-            self.pv_income['tax_deferred'] / tw, self.pv_income['taxable'] / tw,
+            # Value function related observations.
+            # Best results (especially when gamma=6) if provide both reward estimate and reward estimate components: consume expect and consume estimate.
+            reward_estimate, self.consume_expect_individual, self.consume_estimate_individual,
+            # Nature of wealth/income observations.
+            # Obseve fractionality to hopefully take advantage of iso-elasticity of utility.
+            # No need to observe tax free wealth or income as this represents the baseline case.
+            w / tw, self.pv_income['tax_deferred'] / tw, self.pv_income['taxable'] / tw,
             self.wealth['tax_deferred'] / tw, self.wealth['taxable'] / tw,
             self.pv_income_preretirement / tw, self.pv_income_preretirement2 / tw, self.pv_consume_preretirement / tw,
-            self.taxable_basis / tw, stocks_price, real_interest_rate, inflation_rate)
-            # No need to observe tax free wealth or income as this represents the baseline case.
+            self.taxable_basis / tw,
+            # Market condition obsevations.
+            stocks_price, real_interest_rate, inflation_rate)
         obs = np.array(observe, dtype = 'float32')
         obs = self.encode_observation(obs)
         if np.any(np.isnan(obs)) or np.any(np.isinf(obs)):
@@ -1207,12 +1218,14 @@ class FinEnv(Env):
 
     def decode_observation(self, obs):
 
-        items = ('couple', 'num_401k', 'one_on_gamma', 'preretirement_years', 'average_asset_years',
+        items = ('couple', 'num_401k', 'one_on_gamma',
+            'preretirement_years', 'average_asset_years',
             'average_age', 'average_health', 'final_spias_purchase',
-            'consume_expect_individual', 'consume_estimate_individual', 'wealth_fraction',
-            'income_tax_deferred_fraction', 'income_taxable_fraction',
+            'reward_estimate', 'consume_expect_individual', 'consume_estimate_individual',
+            'wealth_fraction', 'income_tax_deferred_fraction', 'income_taxable_fraction',
             'wealth_tax_deferred_fraction', 'wealth_taxable_fraction',
             'income_preretirement_fraction', 'income_preretirement2_fraction', 'consume_preretirement_fraction',
-            'taxable_basis', 'stocks_price', 'real_interest_rate', 'inflation_rate')
+            'taxable_basis',
+            'stocks_price', 'real_interest_rate', 'inflation_rate')
 
         return {item: value for item, value in zip(items, obs.tolist())}
