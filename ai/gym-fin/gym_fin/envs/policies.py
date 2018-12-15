@@ -28,7 +28,7 @@ def policy(env, action):
 
     if env.params.consume_policy == 'constant':
 
-        consume_fraction = env.params.consume_initial / env.p_plus_income()
+        consume_fraction = env.params.consume_initial / env.p_plus_income
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     elif env.params.consume_policy == 'guyton_rule2':
@@ -41,7 +41,7 @@ def policy(env, action):
             consume = consume_prev / env.prev_inflation
         consume_prev = consume
         consume += env.gi_sum() * env.params.time_period
-        consume_fraction = consume / env.p_plus_income()
+        consume_fraction = consume / env.p_plus_income
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     elif env.params.consume_policy == 'guyton_klinger':
@@ -63,7 +63,7 @@ def policy(env, action):
                 consume /= env.prev_inflation
         consume_prev = consume
         consume += env.gi_sum() * env.params.time_period
-        consume_fraction = consume / env.p_plus_income()
+        consume_fraction = consume / env.p_plus_income
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     elif env.params.consume_policy == 'target_percentage':
@@ -83,7 +83,7 @@ def policy(env, action):
             consume = consume_prev / env.prev_inflation
         consume_prev = consume
         consume += env.gi_sum() * env.params.time_period
-        consume_fraction = consume / env.p_plus_income()
+        consume_fraction = consume / env.p_plus_income
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     elif env.params.consume_policy == 'extended_rmd':
@@ -160,7 +160,7 @@ def policy(env, action):
         assert env.alive_single[env.episode_length] != None or env.age == env.age2
         rmd_period = extended_rmd_table[min(int(env.age), max(extended_rmd_table.keys()))]
         consume = (env.gi_sum() + env.p_sum() / rmd_period) * env.params.time_period
-        consume_fraction = consume / env.p_plus_income()
+        consume_fraction = consume / env.p_plus_income
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     elif env.params.consume_policy == 'pmt':
@@ -171,7 +171,7 @@ def policy(env, action):
             life_expectancy = env.params.consume_policy_life_expectancy - env.episode_length * env.params.time_period
         life_expectancy = max(1, life_expectancy)
         consume = env.gi_sum() * env.params.time_period + _pmt(env.params.consume_policy_return, life_expectancy, env.p_sum())
-        consume_fraction = consume / env.p_plus_income()
+        consume_fraction = consume / env.p_plus_income
         consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     if env.params.annuitization_policy == 'age_real':

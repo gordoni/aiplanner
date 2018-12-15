@@ -173,7 +173,7 @@ class FinEnv(Env):
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple() in gym-fin/gym_fin/common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
             # couple, number of 401(k)'s available, 1 / gamma
-            # preretirement years, average asset years,
+            # average asset years,
             # average age, average health, final spias purchase,
             # reward to go estimate, expected total income level of episode, total income level in remaining retirement,
             # portfolio wealth on total wealth, income present value as a fraction of total wealth: tax_deferred, taxable,
@@ -184,8 +184,8 @@ class FinEnv(Env):
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            low  = np.array((0, 0, 0,  0,   0,   0, -10, 0, -100,   0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.05, 0.0)),
-            high = np.array((1, 2, 1, 50, 100, 100,  10, 1,  100, 5e5, 5e5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,  0.05, 0.05)),
+            low  = np.array((0, 0, 0,   0,   0, -10, 0, -100,   0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.05, 0.0)),
+            high = np.array((1, 2, 1, 100, 100,  10, 1,  100, 5e5, 5e5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,  0.05, 0.05)),
             dtype = 'float32'
         )
 
@@ -1188,7 +1188,7 @@ class FinEnv(Env):
             # Scenario description observations.
             couple, num_401k, one_on_gamma,
             # Nature of lifespan observations.
-            0 * self.preretirement_years, average_asset_years,
+            average_asset_years,
             # Annuitization related observations.
             average_age, average_health, final_spias_purchase,
             # Value function related observations.
