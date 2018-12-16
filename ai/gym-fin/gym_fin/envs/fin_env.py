@@ -520,11 +520,6 @@ class FinEnv(Env):
             real_spias_action = tanh(real_spias_action)
             real_bonds_duration_action = tanh(real_bonds_duration_action)
             nominal_bonds_duration_action = tanh(nominal_bonds_duration_action)
-            # stocks_action *= 2 # Make it easier for ppo1 asset class actions to achieve softmax saturation levels when appropriate.
-            # real_bonds_action *= 2
-            # nominal_bonds_action *= 2
-            # iid_bonds_action *= 2
-            # bills_action *= 2
         else:
             stocks_action = safe_atanh(stocks_action)
             real_bonds_action = safe_atanh(real_bonds_action)

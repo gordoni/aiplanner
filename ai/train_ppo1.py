@@ -32,7 +32,7 @@ def save_model(dir, session):
     tf.saved_model.simple_save(session, dir, {'observation': observation_tf}, {'action': action_tf})
 
 def train(training_model_params, eval_model_params, *, train_num_hidden_layers, train_hidden_layer_size, train_batch_size,
-    train_single_minibatch_size, train_couple_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_gae_lambda,
+    train_single_minibatch_size, train_couple_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_optimizer_final_step_size, train_gae_lambda,
     train_schedule, train_save_frequency, train_couple_net, train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps, train_seed,
     eval_seed, evaluation, eval_num_timesteps, eval_frequency, eval_render, nice, num_cpu, model_dir):
 
@@ -98,7 +98,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
         max_timesteps=train_num_timesteps,
         timesteps_per_actorbatch=train_batch_size,
         clip_param=0.2, entcoeff=0.0,
-        optim_epochs=train_optimizer_epochs, optim_stepsize=train_optimizer_step_size,
+        optim_epochs=train_optimizer_epochs, optim_stepsize=train_optimizer_step_size, optim_final_stepsize=train_optimizer_final_step_size,
         optim_single_batchsize=train_single_minibatch_size, optim_couple_batchsize=train_couple_minibatch_size,
         gamma=1, lam=train_gae_lambda, schedule=train_schedule,
         callback=callback
@@ -118,8 +118,9 @@ def main():
     parser.add_argument('--train-couple-minibatch-size', type=int, default=512) # Couple uses an even larger value because first death is non-probabilistic.
     parser.add_argument('--train-optimizer-epochs', type=int, default=10)
     parser.add_argument('--train-optimizer-step-size', type=float, default=3e-4)
+    parser.add_argument('--train-optimizer-final-step-size', type=float, default=1e-5) # For use with exponential schedule only.
     parser.add_argument('--train-gae-lambda', type=float, default=0.95)
-    parser.add_argument('--train-schedule', default = 'linear', choices = ('constant', 'linear'))
+    parser.add_argument('--train-schedule', default = 'linear', choices = ('constant', 'linear', 'exponential'))
     parser.add_argument('--train-save-frequency', type=int, default=None)
     boolean_flag(parser, 'train-couple-net', default = True)
     training_model_params, eval_model_params, args = fin_arg_parse(parser)
