@@ -21,8 +21,16 @@ master_age_start2 = 65
 
 master_consume_additional = 0.6
 
-master_defined_benefits = '[{"payout": 16000}]' # Mean Social Secuity is $16,075 as of March, 2018 - https://www.ssa.gov/policy/docs/quickfacts/stat_snapshot/
+master_defined_benefits = '[{"payout": 16000, "source_of_funds": "tax_free"}]'
+    # Mean Social Secuity is $16,075 as of March, 2018 - https://www.ssa.gov/policy/docs/quickfacts/stat_snapshot/
 master_p_tax_free = 500000
+master_p_tax_deferred = 0
+master_p_taxable_stocks = 0
+master_p_taxable_real_bonds = 0
+master_p_taxable_nominal_bonds = 0
+master_p_taxable_iid_bonds = 0
+master_p_taxable_bills = 0
+master_p_taxable_stocks_basis_fraction = 1
 
 master_tax = False
 
