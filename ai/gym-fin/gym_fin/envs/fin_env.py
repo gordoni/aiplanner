@@ -1204,14 +1204,14 @@ class FinEnv(Env):
                     self.life_expectancy_one[self.episode_length] / (1 + self.params.consume_additional)
                 try:
                     life_expectancy_later = self.life_expectancy_both[later] + self.life_expectancy_one[later] / (1 + self.params.consume_additional)
-                except KeyError:
+                except IndexError:
                     life_expectancy_later = 0
             else:
                 max_age = self.age2 if self.only_alive2 else self.age
                 life_expectancy_now = self.life_expectancy_one[self.episode_length]
                 try:
                     life_expectancy_later = self.life_expectancy_one[later]
-                except KeyError:
+                except IndexError:
                     life_expectancy_later = 0
             spia_years_now = self._spia_years(0)
             spia_years_later = self._spia_years(10)
