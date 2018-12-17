@@ -43,7 +43,7 @@ class DefinedBenefit:
         self.sched = schedule
         self.spia = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint_contingent = joint,
             joint_payout_fraction = payout_fraction, frequency = round(1 / self.env.params.time_period),
-            cpi_adjust = 'all', date_str = self.env.date, schedule = schedule)
+            cpi_adjust = 'all', date_str = self.env.date.isoformat(), schedule = schedule)
 
         if self.env.couple:
 
@@ -51,7 +51,7 @@ class DefinedBenefit:
             schedule = [0] * episodes
             self.sched_single = schedule
             self.spia_single = IncomeAnnuity(bonds, life_table, payout_delay = 12 * payout_delay,
-                frequency = round(1 / self.env.params.time_period), cpi_adjust = 'all', date_str = self.env.date, schedule = schedule)
+                frequency = round(1 / self.env.params.time_period), cpi_adjust = 'all', date_str = self.env.date.isoformat(), schedule = schedule)
             self.sched_single_zero = True
 
         else:
@@ -111,19 +111,11 @@ class DefinedBenefit:
     def _spia_payout(self, payout_delay, adjustment, payout_fraction, premium, mwr):
 
         bonds = self.env.bonds.real if self.real else self.env.bonds.nominal
-        life_table = LifeTable(self.env.params.life_table_spia, self.env.params.sex, self.env.age, ae = 'aer2005_08-summary')
-        if self.env.params.sex2:
-            life_table2 = LifeTable(self.env.params.life_table_spia, self.env.params.sex2, self.env.age2, ae = 'aer2005_08-summary')
-            if not self.env.couple:
-                if self.env.only_alive2:
-                    life_table = life_table2
-                life_table2 = None
-        else:
-            life_table2 = None
+        life_table, life_table2 = self.env.spia_life_tables(self.env.age, self.env.age2)
         schedule = lambda y: (1 + adjustment) ** y
 
         spia = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint_contingent = True,
-            joint_payout_fraction = payout_fraction, frequency = round(1 / self.env.params.time_period), cpi_adjust = 'all', date_str = self.env.date,
+            joint_payout_fraction = payout_fraction, frequency = round(1 / self.env.params.time_period), cpi_adjust = 'all', date_str = self.env.date.isoformat(),
             schedule = schedule)
 
         payout = spia.payout(premium, mwr = mwr) / self.env.params.time_period

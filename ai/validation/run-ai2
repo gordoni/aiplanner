@@ -47,8 +47,9 @@ run () {
             export AIPLANNER_TIMESTEPS=`echo $AIPLANNER_LINEAR | sed 's/^.*-linear\([0-9]*\)\.csv$/\1/'`
             $AI_DIR/validation/plot2.gnuplot
         done
-        convert -delay 5 -loop 0 $MODEL_DIR/aiplanner-consume[0-9]*.gif  $MODEL_DIR/aiplanner-consume-animated.gif
-        convert -delay 5 -loop 0 $MODEL_DIR/aiplanner-stocks[0-9]*.gif  $MODEL_DIR/aiplanner-stocks-animated.gif
+        for WHAT in consume real_spias_purchase nominal_spias_purchase stocks; do
+            convert -delay 5 -loop 0 $MODEL_DIR/aiplanner-$WHAT[0-9]*.gif $MODEL_DIR/aiplanner-$WHAT-animated.gif
+        done
         SEED=`expr $SEED + 1`
     done
 

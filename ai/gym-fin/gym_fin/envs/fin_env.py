@@ -18,7 +18,7 @@ import numpy as np
 from gym import Env
 from gym.spaces import Box
 
-from spia import LifeTable, YieldCurve
+from spia import LifeTable, YieldCurve, IncomeAnnuity
 
 from gym_fin.envs.asset_allocation import AssetAllocation
 from gym_fin.envs.bonds import BondsSet
@@ -120,11 +120,15 @@ class FinEnv(Env):
                 if q == q2 == 1:
                     break
 
-        retired_index = ceil(preretirement / self.params.time_period)
+        alive_either = tuple(alive_one[i] + alive_both[i] for i in range(len(alive_one)))
 
-        life_expectancy_both = self.sums_to_end(alive_both, retired_index, alive_both)
-        life_expectancy_one = self.sums_to_end(alive_one, retired_index, tuple(alive_one[i] + alive_both[i] for i in range(len(alive_one))))
-        life_expectancy_single = self.sums_to_end(alive_single, retired_index, alive_single)
+        life_expectancy_both = self.sums_to_end(alive_both, 0, alive_both)
+        life_expectancy_one = self.sums_to_end(alive_one, 0, alive_either)
+
+        retired_index = ceil(preretirement / self.params.time_period)
+        retirement_expectancy_both = self.sums_to_end(alive_both, retired_index, alive_both)
+        retirement_expectancy_one = self.sums_to_end(alive_one, retired_index, alive_either)
+        retirement_expectancy_single = self.sums_to_end(alive_single, retired_index, alive_single)
 
         alive_single.append(0)
         alive_count.append(0)
@@ -132,10 +136,10 @@ class FinEnv(Env):
         if not self.params.probabilistic_life_expectancy:
             alive_single = tuple(None if _alive_count == 2 else _alive_count for _alive_count in alive_count)
 
-        self.only_alive2, self.alive_single, self.alive_count, \
-            self.life_expectancy_both, self.life_expectancy_one, self.life_expectancy_single = \
-            only_alive2, tuple(alive_single), tuple(alive_count), \
-            tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_expectancy_single)
+        self.only_alive2, self.alive_single, self.alive_count, self.life_expectancy_both, self.life_expectancy_one, \
+            self.retirement_expectancy_both, self.retirement_expectancy_one, self.retirement_expectancy_single = \
+            only_alive2, tuple(alive_single), tuple(alive_count), tuple(life_expectancy_both), tuple(life_expectancy_one), \
+            tuple(retirement_expectancy_both), tuple(retirement_expectancy_one), tuple(retirement_expectancy_single)
 
     def sums_to_end(self, l, start, divl):
 
@@ -174,7 +178,7 @@ class FinEnv(Env):
             # Note: Couple status must be observation[0], or else change is_couple() in gym-fin/gym_fin/common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
             # couple, number of 401(k)'s available, 1 / gamma
             # average asset years,
-            # average age, average health, final spias purchase,
+            # mortality return for spia, spia delay cost, final spias purchase,
             # reward to go estimate, expected total income level of episode, total income level in remaining retirement,
             # portfolio wealth on total wealth, income present value as a fraction of total wealth: tax_deferred, taxable,
             # portfolio wealth as a fraction of total wealth: tax_deferred, taxable,
@@ -184,8 +188,8 @@ class FinEnv(Env):
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            low  = np.array((0, 0, 0,   0,   0, -10, 0, -100,   0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.05, 0.0)),
-            high = np.array((1, 2, 1, 100, 100,  10, 1,  100, 5e5, 5e5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,  0.05, 0.05)),
+            low  = np.array((0, 0, 0,   0, -1, -1, 0, -100,   0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.05, 0.0)),
+            high = np.array((1, 2, 1, 100,  1,  1, 1,  100, 5e5, 5e5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,  0.05, 0.05)),
             dtype = 'float32'
         )
 
@@ -358,18 +362,20 @@ class FinEnv(Env):
         self.preretirement_years = max(0, self.age_retirement - self.age)
 
         death_age = self.params.age_end - self.params.time_period
-        if self.age != self.life_table_age:
+        if self.age != self.life_table_age or le_add != self.life_table_le_add:
             self.life_table = LifeTable(self.params.life_table, self.params.sex, self.age,
                                         death_age = death_age, le_add = le_add, date_str = self.params.life_table_date, interpolate_q = False)
             self.life_table_age = self.age
+            self.life_table_le_add = le_add
         else:
             self.life_table.age = self.age # Undo hack (value gets messed with below).
         if self.params.sex2 == None:
             self.life_table2 = None
-        elif self.age2 != self.life_table2_age:
+        elif self.age2 != self.life_table2_age or le_add2 != self.life_table_le_add2:
             self.life_table2 = LifeTable(self.params.life_table, self.params.sex2, self.age2,
                                          death_age = death_age, le_add = le_add2, date_str = self.params.life_table_date, interpolate_q = False)
             self.life_table2_age = self.age2
+            self.life_table_le_add2 = le_add2
         else:
             self.life_table2.age = self.age2
         self._compute_vital_stats(self.age, self.age2, self.preretirement_years)
@@ -382,8 +388,8 @@ class FinEnv(Env):
         self.gamma = self.log_uniform(self.params.gamma_low, self.params.gamma_high)
         self.utility = Utility(self.gamma, self.params.consume_utility_floor)
 
-        self.date = self.params.life_table_date
-        self.date_start = datetime.strptime(self.date, '%Y-%m-%d')
+        self.date_start = datetime.strptime(self.params.life_table_date, '%Y-%m-%d').date()
+        self.date = self.date_start
         self.cpi = 1
 
         self.stocks.reset()
@@ -565,7 +571,7 @@ class FinEnv(Env):
         consume_fraction = max(1e-6, min(consume_fraction, 1 / self.params.time_period))
             # Don't allow consume_fraction of zero as have problems with -inf utility.
 
-        if self.params.real_spias or self.params.nominal_spias:
+        if self.spias:
 
             # Try and make it easy to learn the optimal amount of guaranteed income,
             # so things function well with differing current amounts of guaranteed income.
@@ -593,17 +599,9 @@ class FinEnv(Env):
                 real_spias_fraction *= (real_spias_action + 1) / 2
             nominal_spias_fraction = spias_fraction - real_spias_fraction
 
-        if self.couple:
-            min_age = min(self.age, self.age2)
-            max_age = max(self.age, self.age2)
-        else:
-            min_age = max_age = self.age2 if self.only_alive2 else self.age
-
-        spias_allowed = (self.params.couple_spias or not self.couple) and \
-            min_age >= self.params.spias_permitted_from_age and max_age <= self.params.spias_permitted_to_age
-        if not self.params.real_spias or not spias_allowed:
+        if not self.params.real_spias or not self.spias:
             real_spias_fraction = None
-        if not self.params.nominal_spias or not spias_allowed:
+        if not self.params.nominal_spias or not self.spias:
             nominal_spias_fraction = None
 
         # It is too much to expect optimization to compute the precise asset allocation surface.
@@ -811,7 +809,7 @@ class FinEnv(Env):
             self.add_db(owner = owner, age = age, premium = tax_deferred_spias, inflation_adjustment = inflation_adjustment, joint = True, \
                 payout_fraction = payout_fraction, source_of_funds = 'tax_deferred')
         if taxable_spias > 0:
-            exclusion_period = ceil(self.preretirement_years + self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length])
+            exclusion_period = ceil(self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length])
                 # Highly imperfect, but total exclusion amount will be correct.
             if inflation_adjustment in ('cpi', 0):
                 exclusion_amount = taxable_spias / exclusion_period
@@ -984,8 +982,8 @@ class FinEnv(Env):
             else:
                 self.income_preretirement_years2 = 0
 
-            self.life_expectancy_both = [0] * len(self.life_expectancy_both)
-            self.life_expectancy_one = self.life_expectancy_single
+            self.retirement_expectancy_both = [0] * len(self.retirement_expectancy_both)
+            self.retirement_expectancy_one = self.retirement_expectancy_single
 
             self.defined_benefits = {key: db for key, db in self.defined_benefits.items() if not db.sched_single_zero}
             for db in self.defined_benefits.values():
@@ -1015,7 +1013,7 @@ class FinEnv(Env):
 
         self.couple = self.alive_single[self.episode_length] == None
 
-        self.date = (self.date_start + timedelta(days = self.episode_length * self.params.time_period * 365.25)).date().isoformat()
+        self.date = self.date_start + timedelta(days = self.episode_length * self.params.time_period * 365.25)
 
     def _reproducable_seed(self, episode, episode_length, substep):
 
@@ -1116,17 +1114,73 @@ class FinEnv(Env):
         self.taxes_paid = min(self.taxes_due, 0.9 * self.p_plus_income) # Don't allow taxes to consume all of p.
         self.p_plus_income -= self.taxes_paid
 
+        self.spias = (self.params.real_spias or self.params.nominal_spias) and (self.params.couple_spias or not self.couple)
+        if self.spias:
+            if self.couple:
+                min_age = min(self.age, self.age2)
+                max_age = max(self.age, self.age2)
+            else:
+                min_age = max_age = self.age2 if self.only_alive2 else self.age
+            self.spias = min_age >= self.params.spias_permitted_from_age and max_age <= self.params.spias_permitted_to_age
+
         if self.couple:
-            self.years_retired = self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length] / (1 + self.params.consume_additional)
+            self.years_retired = self.retirement_expectancy_both[self.episode_length] + \
+                self.retirement_expectancy_one[self.episode_length] / (1 + self.params.consume_additional)
             self.consume_estimate_individual = self.total_wealth / self.years_retired / (1 + self.params.consume_additional)
         else:
-            self.years_retired = self.life_expectancy_one[self.episode_length]
+            self.years_retired = self.retirement_expectancy_one[self.episode_length]
             self.consume_estimate_individual = self.total_wealth / self.years_retired
 
         try:
             self.consume_p_estimate = self.total_wealth / self.years_retired / self.p_plus_income
         except ZeroDivisionError:
             self.consume_p_estimate = float('inf')
+
+    def spia_life_tables(self, age, age2):
+
+        life_table = LifeTable(self.params.life_table_spia, self.params.sex, age, ae = 'aer2005_08-summary')
+        if self.params.sex2:
+            life_table2 = LifeTable(self.params.life_table_spia, self.params.sex2, age2, ae = 'aer2005_08-summary')
+            if not self.couple:
+                if self.only_alive2:
+                    life_table = life_table2
+                life_table2 = None
+        else:
+            life_table2 = None
+
+        return life_table, life_table2
+
+    _spia_years_cache = {}
+
+    def _spia_years(self, offset_years):
+
+        age = k_age = self.age + offset_years
+        age2 = k_age2 = self.age2 + offset_years
+        date = (self.date + timedelta(days = offset_years * 365)).isoformat()
+        if self.params.sex2:
+            if not self.couple:
+                if self.only_alive2:
+                    k_age = None
+                else:
+                    k_age2 = None
+        else:
+            k_age2 = None
+        key = (k_age, k_age2, date)
+
+        try:
+            duration = FinEnv._spia_years_cache[key]
+        except KeyError:
+            life_table, life_table2 = self.spia_life_tables(age, age2)
+            payout_delay = 0
+            payout_fraction = 1 / (1 + self.params.consume_additional)
+            spia = IncomeAnnuity(self.bonds_zero, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint_contingent = True,
+                joint_payout_fraction = payout_fraction, frequency = round(1 / self.params.time_period), date_str = date)
+
+            duration = spia.premium(1) * self.params.time_period
+
+            FinEnv._spia_years_cache[key] = duration
+
+        return duration
 
     def _observe(self):
 
@@ -1140,24 +1194,37 @@ class FinEnv(Env):
         average_asset_years = self.preretirement_years + self.years_retired / 2
             # Consumption amount in retirement and thus expected reward to go is likely a function of average asset age.
 
-        if (self.params.real_spias or self.params.nominal_spias) and (self.params.couple_spias or not self.couple):
+        if self.spias:
+            # We siplify by comparing life expectancies and SPIA payouts rather than retirement expectancies and DIA payouts.
+            # DIA payouts depend on retirement age, which would make the _spia_years_cache sigificiantly larger and less effective.
+            later = self.episode_length + round(10 / self.params.time_period)
             if self.couple:
                 max_age = max(self.age, self.age2) # Determines age cut-off and thus final purchase signal for the purchase of SPIAs.
-                average_age = (self.age + self.age2) / 2 # SPIAs should become more desirable as average age increases.
-                average_health = (self.params.life_expectancy_additional + self.params.life_expectancy_additional2) / 2
-                    # Use of life_expectancy_additional as a health indicator for the desirability of the purchase of SPIAs is imperfect
-                    # as its value depends on the initial age, not the current age, and we typically only train with young initial ages.
+                life_expectancy_now = self.life_expectancy_both[self.episode_length] + \
+                    self.life_expectancy_one[self.episode_length] / (1 + self.params.consume_additional)
+                try:
+                    life_expectancy_later = self.life_expectancy_both[later] + self.life_expectancy_one[later] / (1 + self.params.consume_additional)
+                except KeyError:
+                    life_expectancy_later = 0
             else:
-                max_age = average_age = self.age2 if self.only_alive2 else self.age
-                average_health =  self.params.life_expectancy_additional2 if self.only_alive2 else self.params.life_expectancy_additional
+                max_age = self.age2 if self.only_alive2 else self.age
+                life_expectancy_now = self.life_expectancy_one[self.episode_length]
+                try:
+                    life_expectancy_later = self.life_expectancy_one[later]
+                except KeyError:
+                    life_expectancy_later = 0
+            spia_years_now = self._spia_years(0)
+            spia_years_later = self._spia_years(10)
+            spia_mortality_return = life_expectancy_now / spia_years_now - 1 # Fraction by which outlive SPIA mortality.
+            spia_delay_cost = ((life_expectancy_now - spia_years_now) - (life_expectancy_later - spia_years_later)) # Cost of delaying SPIA purchase by 10 years.
             final_spias_purchase = max_age <= self.params.spias_permitted_to_age < max_age + self.params.time_period
             final_spias_purchase = int(final_spias_purchase)
         else:
-            average_age = 0
-            average_health = 0
+            spia_mortality_return = 0
+            spia_delay_cost = 0
             final_spias_purchase = 0
 
-        reward_weight = (2 * self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length]) * self.params.time_period
+        reward_weight = (2 * self.retirement_expectancy_both[self.episode_length] + self.retirement_expectancy_one[self.episode_length]) * self.params.time_period
         _, reward_value = self.raw_reward(self.consume_estimate_individual)
         reward_estimate = reward_weight * (reward_value - self.reward_zero_point) / (self.reward_expect - self.reward_zero_point)
 
@@ -1185,7 +1252,7 @@ class FinEnv(Env):
             # Nature of lifespan observations.
             average_asset_years,
             # Annuitization related observations.
-            average_age, average_health, final_spias_purchase,
+            spia_mortality_return, spia_delay_cost, final_spias_purchase,
             # Value function related observations.
             # Best results (especially when gamma=6) if provide both reward estimate and reward estimate components: consume expect and consume estimate.
             reward_estimate, self.consume_expect_individual, self.consume_estimate_individual,
@@ -1215,7 +1282,7 @@ class FinEnv(Env):
 
         items = ('couple', 'num_401k', 'one_on_gamma',
             'preretirement_years', 'average_asset_years',
-            'average_age', 'average_health', 'final_spias_purchase',
+            'spia_mortality_return', 'spia_delay_cost', 'final_spias_purchase',
             'reward_estimate', 'consume_expect_individual', 'consume_estimate_individual',
             'wealth_fraction', 'income_tax_deferred_fraction', 'income_taxable_fraction',
             'wealth_tax_deferred_fraction', 'wealth_taxable_fraction',

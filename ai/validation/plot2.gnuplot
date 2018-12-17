@@ -26,7 +26,18 @@ set zlabel "consumption"
 set zrange [0:200000]
 set format z "%.0s%c"
 set output prefix . "-consume" . timesteps . ".gif"
-splot prefix . "-linear" . timesteps . ".csv" using 1:2:3 every :2 with lines title "AIPlanner timestep " . timesteps
+splot prefix . "-linear" . timesteps . ".csv" using 1:2:3 with lines title "AIPlanner timestep " . timesteps
+
+set xrange [40:85.001]
+set zlabel "SPIA purchase"
+set zrange [0:1000000]
+set format z "%.0s%c"
+set output prefix . "-real_spias_purchase" . timesteps . ".gif"
+splot prefix . "-linear" . timesteps . ".csv" using 1:2:5 with lines title "AIPlanner timestep " . timesteps
+
+set zlabel "SPIA purchase"
+set output prefix . "-nominal_spias_purchase" . timesteps . ".gif"
+splot prefix . "-linear" . timesteps . ".csv" using 1:2:6 with lines title "AIPlanner timestep " . timesteps
 
 set xrange [40:100.001]
 set yrange [33333:1000000] # AIPlanner aa may vary randomly at zero.
