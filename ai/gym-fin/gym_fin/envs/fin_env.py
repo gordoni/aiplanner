@@ -356,8 +356,8 @@ class FinEnv(Env):
 
         self.age = self.age_start = self.age_uniform(self.params.age_start_low, self.params.age_start_high)
         self.age2 = self.age_start2 = self.age_uniform(self.params.age_start2_low, self.params.age_start2_high)
-        le_add = uniform(self.params.life_expectancy_additional_low, self.params.life_expectancy_additional_high)
-        le_add2 = uniform(self.params.life_expectancy_additional2_low, self.params.life_expectancy_additional2_high)
+        le_add = self.age_uniform(self.params.life_expectancy_additional_low, self.params.life_expectancy_additional_high)
+        le_add2 = self.age_uniform(self.params.life_expectancy_additional2_low, self.params.life_expectancy_additional2_high)
         self.age_retirement = uniform(self.params.age_retirement_low, self.params.age_retirement_high)
         self.preretirement_years = max(0, self.age_retirement - self.age)
 
