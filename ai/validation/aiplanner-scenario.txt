@@ -36,6 +36,7 @@ master_tax = False
 
 master_gamma = 3.0
 
+master_life_table_spia = 'ssa-cohort'
 master_real_spias_mwr = 0.94 # Based on 2015 pricing with California annuity guarantee association tax.
 master_nominal_spias_mwr = 1.0 # Based on 2015 pricing exceeding 100%.
 master_spias_permitted_to_age = 1000
