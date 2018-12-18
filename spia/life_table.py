@@ -741,10 +741,12 @@ ssa2010_q = {
     ),
 }
 
-class LifeTable(object):
+class LifeTable:
 
     class UnableToAdjust(Exception):
         pass
+
+    _age_add_cache = {}
 
     def __init__(self, table, sex, age, *, death_age = float('inf'), ae = 'aer2005_08-summary',
                  le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
@@ -828,8 +830,8 @@ class LifeTable(object):
             # 'aer2005_08-summary' - Use this value for compatibility with Opal.
             # 'aer2005_08-full' - Alters values 5% at age 85.
         assert(ae in ('none', 'aer2005_08-summary', 'aer2005_08-full'))
-        self.le_set = le_set # Used to make life expectancy match personal expected life expectancy, then use value to compute fair SPIA price.
-        self.le_add = le_add # Used by asset allocator to ensure plan for living longer than average because running out of money is very bad.
+        self.le_set = le_set
+        self.le_add = le_add
         self.date_str = date_str
         self.interpolate_q = interpolate_q  # Interpolation makes 0.5% difference for fractional ages. Set to false for compatibility with Opal.
         self.alpha = alpha
@@ -840,31 +842,42 @@ class LifeTable(object):
         if le_set == None and le_add == 0:
             return
 
-        yield_curve = YieldCurve('le', date_str)
-        if le_set == None:
-            income_annuity = IncomeAnnuity(yield_curve, self, frequency = 1)
-            le_set = income_annuity.premium(1)
-        le = le_set + le_add
-        if le > 0:
-            age_add_lo = age_add_lo_start = -50
-            age_add_hi = age_add_hi_start = 50
-            for _ in range(50):
-                self.age_add = (age_add_lo + age_add_hi) / 2
-                if not self.interpolate_q:
-                    self.age_add = math.floor(self.age_add)
+        key = (table, sex, age, death_age, ae, le_set, le_add, date_str, interpolate_q, alpha, m, b)
+
+        try:
+
+            self.age_add = LifeTable._age_add_cache[key]
+            return
+
+        except KeyError:
+
+            yield_curve = YieldCurve('le', date_str)
+            if le_set == None:
                 income_annuity = IncomeAnnuity(yield_curve, self, frequency = 1)
-                compute_le = income_annuity.premium(1)
-                if self.interpolate_q:
-                    done = abs(le / compute_le - 1) < 1e-4
-                else:
-                    done = age_add_hi - age_add_lo <= 1 and age_add_lo != age_add_lo_start and age_add_hi != age_add_hi_start
-                if done:
-                    return
-                if compute_le >= le:
-                    age_add_lo = self.age_add
-                else:
-                    age_add_hi = self.age_add
-        raise self.UnableToAdjust('Unable to adjust life expectancy.')
+                le_set = income_annuity.premium(1)
+            le = le_set + le_add
+            if le > 0:
+                age_add_lo = age_add_lo_start = -50
+                age_add_hi = age_add_hi_start = 50
+                for _ in range(50):
+                    self.age_add = (age_add_lo + age_add_hi) / 2
+                    if not self.interpolate_q:
+                        self.age_add = math.floor(self.age_add)
+                    income_annuity = IncomeAnnuity(yield_curve, self, frequency = 1)
+                    compute_le = income_annuity.premium(1)
+                    if self.interpolate_q:
+                        done = abs(le / compute_le - 1) < 1e-4
+                    else:
+                        done = age_add_hi - age_add_lo <= 1 and age_add_lo != age_add_lo_start and age_add_hi != age_add_hi_start
+                    if done:
+                        if len(LifeTable._age_add_cache) < 1000:
+                            LifeTable._age_add_cache[key] = self.age_add
+                        return
+                    if compute_le >= le:
+                        age_add_lo = self.age_add
+                    else:
+                        age_add_hi = self.age_add
+            raise self.UnableToAdjust('Unable to adjust life expectancy.')
 
     def _q_int(self, year, age, contract_age):
         if self.table == 'iam2012-basic':
