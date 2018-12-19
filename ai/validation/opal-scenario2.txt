@@ -28,6 +28,23 @@ synthetic_vol = 0.174
 synthetic2_ret = 0.024
 synthetic2_vol = 0.112
 
+# Annuity related parameters.
+search = 'memory' # Use memory even though runs slower.
+# Surface being optimized doesn't appear smooth. This is a possible bug.
+# Setting finer scaling factors or annuity steps fails to Opal self validate.
+search_neighbour = True
+scaling_factor = 1.05
+annuity_scaling_factor = 1.05
+annuity_steps = 100
+annuity_time_periods = 1
+annuity_real_mwr1 = 0.94
+annuity_real_mwr2 = 0.94
+annuity_real_yield_curve = 'special-average-2005-01-01-2017-12-31'
+annuity_payout_delay = 12
+annuity_table = 'iam2012-basic'
+annuity_mortality_experience = 'aer2005_08-summary'
+ria_high = 100000
+
 # Generate using 1000 synthetic samples. This is sufficient to validate against a much larger sample size.
 generate_start_year = 1
 validate_start_year = 1

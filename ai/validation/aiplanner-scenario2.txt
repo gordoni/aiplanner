@@ -16,6 +16,12 @@ master_life_table_date = '2020-01-01'
 
 master_tax = True
 
+master_life_table_spia = 'iam2012-basic'
+master_static_bonds = True
+master_real_spias_mwr = 0.94 # Based on 2015 pricing with California annuity guarantee association tax.
+master_nominal_spias_mwr = 1.0 # Based on 2015 pricing exceeding 100%.
+master_spias_permitted_to_age = 1000
+
 master_returns_standard_error = False
 master_stocks = True
 master_stocks_return = 0.065
