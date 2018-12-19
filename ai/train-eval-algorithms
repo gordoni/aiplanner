@@ -18,6 +18,7 @@ mkdir -p results
 cd results
 
 PARALLEL=Jobs
+GAMMA=3
 for ALGORITHM in ppo1 td3 sac trpo ppo ddpg vpg; do
 
     mkdir -p $ALGORITHM
@@ -33,7 +34,7 @@ for ALGORITHM in ppo1 td3 sac trpo ppo ddpg vpg; do
         # We specify a consume clip so that we don't overlook algorithms that assume it from training.
         # Should later confirm it isn't needed by running tests on the chosen algorithm without it.
 
-    train_eval_single $ALGORITHM
+    train_eval single $GAMMA $ALGORITHM
 
     cd ..
 
