@@ -178,7 +178,7 @@ class FinEnv(Env):
             # Note: Couple status must be observation[0], or else change is_couple() in gym-fin/gym_fin/common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
             # couple, number of 401(k)'s available, 1 / gamma
             # average asset years,
-            # mortality return for spia, spia delay cost, final spias purchase,
+            # mortality return for spia, final spias purchase,
             # reward to go estimate, expected total income level of episode, total income level in remaining retirement,
             # portfolio wealth on total wealth, income present value as a fraction of total wealth: tax_deferred, taxable,
             # portfolio wealth as a fraction of total wealth: tax_deferred, taxable,
@@ -1202,26 +1202,15 @@ class FinEnv(Env):
                 max_age = max(self.age, self.age2) # Determines age cut-off and thus final purchase signal for the purchase of SPIAs.
                 life_expectancy_now = self.life_expectancy_both[self.episode_length] + \
                     self.life_expectancy_one[self.episode_length] / (1 + self.params.consume_additional)
-                try:
-                    life_expectancy_later = self.life_expectancy_both[later] + self.life_expectancy_one[later] / (1 + self.params.consume_additional)
-                except IndexError:
-                    life_expectancy_later = 0
             else:
                 max_age = self.age2 if self.only_alive2 else self.age
                 life_expectancy_now = self.life_expectancy_one[self.episode_length]
-                try:
-                    life_expectancy_later = self.life_expectancy_one[later]
-                except IndexError:
-                    life_expectancy_later = 0
             spia_years_now = self._spia_years(0)
-            spia_years_later = self._spia_years(10)
             spia_mortality_return = life_expectancy_now / spia_years_now - 1 # Fraction by which outlive SPIA mortality.
-            spia_delay_cost = ((life_expectancy_now - spia_years_now) - (life_expectancy_later - spia_years_later)) # Cost of delaying SPIA purchase by 10 years.
             final_spias_purchase = max_age <= self.params.spias_permitted_to_age < max_age + self.params.time_period
             final_spias_purchase = int(final_spias_purchase)
         else:
             spia_mortality_return = 0
-            spia_delay_cost = 0
             final_spias_purchase = 0
 
         reward_weight = (2 * self.retirement_expectancy_both[self.episode_length] + self.retirement_expectancy_one[self.episode_length]) * self.params.time_period
@@ -1252,7 +1241,7 @@ class FinEnv(Env):
             # Nature of lifespan observations.
             average_asset_years,
             # Annuitization related observations.
-            spia_mortality_return, spia_delay_cost, final_spias_purchase,
+            spia_mortality_return, final_spias_purchase,
             # Value function related observations.
             # Best results (especially when gamma=6) if provide both reward estimate and reward estimate components: consume expect and consume estimate.
             reward_estimate, self.consume_expect_individual, self.consume_estimate_individual,
@@ -1282,7 +1271,7 @@ class FinEnv(Env):
 
         items = ('couple', 'num_401k', 'one_on_gamma',
             'preretirement_years', 'average_asset_years',
-            'spia_mortality_return', 'spia_delay_cost', 'final_spias_purchase',
+            'spia_mortality_return', 'final_spias_purchase',
             'reward_estimate', 'consume_expect_individual', 'consume_estimate_individual',
             'wealth_fraction', 'income_tax_deferred_fraction', 'income_taxable_fraction',
             'wealth_tax_deferred_fraction', 'wealth_taxable_fraction',

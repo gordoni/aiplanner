@@ -44,16 +44,18 @@ MODEL_DIR=$AI_DIR/validation/run.opal.ssa_40_plus_3_female-iid_bonds-p_tax_free2
 $AI_DIR/eval_model.py -c aiplanner-scenario2.txt --opal --opal-file=$MODEL_DIR/opal-linear.csv --result-dir=$MODEL_DIR --eval-num-timesteps=20000000 | \
     tee $MODEL_DIR/eval.log
 
-validate ssa_65_plus_3_female-iid_bonds-static_real_spias-p_tax_free200000 \
-    "-e start_age=65 -e start_tp=200000 -e generate_end_year=200 -e generate_seed=48 -e start_ria=0"
-validate ssa_65_plus_3_female-iid_bonds-static_real_spias-gamma6-p_tax_free200000 \
-    "-e utility_eta=6 -e start_age=65 -e start_tp=200000 -e generate_end_year=200 -e generate_seed=48 -e start_ria=0"
-validate ssa_65_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05-p_tax_free200000 \
-    "-e synthetic_ret=0.05 -e start_age=65 -e start_tp=200000 -e generate_end_year=200 -e generate_seed=48 -e start_ria=0"
-
-validate ssa_65_plus_3_female-iid_bonds-static_real_spias-p_tax_free1000000 \
-    "-e start_age=65 -e start_tp=1000000 -e generate_end_year=200 -e generate_seed=48 -e start_ria=0 -e ria_high=500000"
-validate ssa_65_plus_3_female-iid_bonds-static_real_spias-gamma6-p_tax_free1000000 \
-    "-e utility_eta=6 -e start_age=65 -e start_tp=1000000 -e generate_end_year=200 -e generate_seed=48 -e start_ria=0 -e ria_high=500000"
-validate ssa_65_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05-p_tax_free1000000 \
-    "-e synthetic_ret=0.05 -e start_age=65 -e start_tp=1000000 -e generate_end_year=200 -e generate_seed=48 -e start_ria=0 -e ria_high=500000"
+# Commented out because results fail to Opal self-validate.
+#
+# validate ssa_65_plus_3_female-iid_bonds-static_real_spias-p_tax_free200000 \
+#          "-e start_age=65 -e start_tp=200000 -e generate_end_year=200 -e generate_seed=48 -e start_ria=0"
+# validate ssa_65_plus_3_female-iid_bonds-static_real_spias-gamma6-p_tax_free200000 \
+#     "-e utility_eta=6 -e start_age=65 -e start_tp=200000 -e generate_end_year=200 -e generate_seed=48 -e start_ria=0"
+# validate ssa_65_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05-p_tax_free200000 \
+#     "-e synthetic_ret=0.05 -e start_age=65 -e start_tp=200000 -e generate_end_year=200 -e generate_seed=48 -e start_ria=0"
+#
+# validate ssa_65_plus_3_female-iid_bonds-static_real_spias-p_tax_free1000000 \
+#     "-e start_age=65 -e start_tp=1000000 -e generate_end_year=200 -e generate_seed=48 -e start_ria=0 -e ria_high=500000"
+# validate ssa_65_plus_3_female-iid_bonds-static_real_spias-gamma6-p_tax_free1000000 \
+#     "-e utility_eta=6 -e start_age=65 -e start_tp=1000000 -e generate_end_year=200 -e generate_seed=48 -e start_ria=0 -e ria_high=500000"
+# validate ssa_65_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05-p_tax_free1000000 \
+#     "-e synthetic_ret=0.05 -e start_age=65 -e start_tp=1000000 -e generate_end_year=200 -e generate_seed=48 -e start_ria=0 -e ria_high=500000"

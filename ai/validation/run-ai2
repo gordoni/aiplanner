@@ -64,6 +64,11 @@ run ssa_40_plus_3_female-iid_bonds
 run ssa_40_plus_3_female-iid_bonds-gamma6 '--master-gamma=6'
 run ssa_40_plus_3_female-iid_bonds-stocks_return0.05 '--master-stocks-return=0.05'
 
-run ssa_65_plus_3_female-iid_bonds-static_real_spias '--master-real-spias' '' '--eval-age-start=65'
-run ssa_65_plus_3_female-iid_bonds-static_real_spias-gamma6 '--master-gamma=6 --master-real-spias' '' '--eval-age-start=65'
-run ssa_65_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05 '--master-stocks-return=0.05 --master-real-spias' '' '--eval-age-start=65'
+run ssa_40_plus_3_female-iid_bonds-static_real_spias '--master-real-spias'
+run ssa_40_plus_3_female-iid_bonds-static_real_spias-gamma6 '--master-gamma=6 --master-real-spias'
+run ssa_40_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05 '--master-stocks-return=0.05 --master-real-spias'
+
+# Commented out because can't get corresponding Opal results to self-validate.
+# run ssa_65_plus_3_female-iid_bonds-static_real_spias '--master-real-spias' '' '--eval-age-start=65'
+# run ssa_65_plus_3_female-iid_bonds-static_real_spias-gamma6 '--master-gamma=6 --master-real-spias' '' '--eval-age-start=65'
+# run ssa_65_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05 '--master-stocks-return=0.05 --master-real-spias' '' '--eval-age-start=65'
