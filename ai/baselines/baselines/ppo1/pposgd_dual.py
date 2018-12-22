@@ -151,10 +151,12 @@ class ActorCritic:
         if hasattr(self.pi, "ob_rms"): self.pi.ob_rms.update(ob) # update running mean/std for policy
 
         self.assign_old_eq_new() # set old parameter values to new parameter values
+        optim_batchsize = min(self.optim_batchsize, d.n)
+        if optim_batchsize == 0:
+            return
         logger.log("Optimizing...")
         logger.log(fmt_row(13, self.loss_names))
         # Here we do a bunch of optimization epochs over the data
-        optim_batchsize = min(self.optim_batchsize, d.n)
         for _ in range(self.optim_epochs):
             losses = [] # list of tuples, each of which gives the loss for a minibatch
             for batch in d.iterate_once(optim_batchsize):

@@ -20,15 +20,15 @@ TRAIN_FILE=$AI_DIR/validation/aiplanner-scenario2.txt
 run () {
 
     local MODEL_NAME=$1
-    local ARGS=$2
-    local TRAIN_ARGS=$3
-    local EVAL_ARGS=$4
+    local P_VALUES=$2
+    local ARGS=$3
+    local TRAIN_ARGS=$4
+    local EVAL_ARGS=$5
 
     train $MODEL_NAME "--train-save-frequency=10000 $TRAIN_ARGS $ARGS"
-    evaluate $MODEL_NAME p_tax_free200000 "--eval-p-tax-free=200000 $EVAL_ARGS $ARGS"
-    evaluate $MODEL_NAME p_tax_free1000000 "--eval-p-tax-free=1000000 $EVAL_ARGS $ARGS"
-    # MODEL_ARGS='--eval-defined-benefits=[{"owner":"self","age":null,"probability":1.0,"payout":80e3,"source_of_funds":"tax_free"}]'
-    # evaluate $MODEL_NAME defined_benefits_tax_free80000-p_tax_free1000000 "--eval-p-tax-free=1000000 $MODEL_ARGS $EVAL_ARGS $ARGS"
+    for P_VALUE in $P_VALUES; do
+        evaluate $MODEL_NAME p_tax_free$P_VALUE "--eval-p-tax-free=$P_VALUE $EVAL_ARGS $ARGS"
+    done
 
     SEED=0
     while [ $SEED -lt $SEEDS ]; do
@@ -53,22 +53,22 @@ run () {
         SEED=`expr $SEED + 1`
     done
 
-    MODEL_ARGS='--master-age-start=40 --master-life-expectancy-additional=3 --master-age-retirement=65 --master-defined-benefits=[{"owner":"self","age":null,"probability":1.0,"payout":16e3,"source_of_funds":"tax_free"}] --master-p-tax-deferred=0 --master-p-taxable-stocks=0 --master-p-taxable-iid-bonds=0'
-    train $MODEL_NAME-p_tax_free200000 "--master-p-tax-free=200000 $MODEL_ARGS $TRAIN_ARGS $ARGS"
-    evaluate $MODEL_NAME-p_tax_free200000 p_tax_free200000 "--eval-p-tax-free=200000 $MODEL_ARGS $EVAL_ARGS $ARGS"
-    train $MODEL_NAME-p_tax_free1000000 "--master-p-tax-free=1000000 $MODEL_ARGS $TRAIN_ARGS $ARGS"
-    evaluate $MODEL_NAME-p_tax_free1000000 p_tax_free1000000 "--eval-p-tax-free=1000000 $MODEL_ARGS $EVAL_ARGS $ARGS"
+    # MODEL_ARGS='--master-age-start=40 --master-life-expectancy-additional=3 --master-age-retirement=65 --master-defined-benefits=[{"owner":"self","age":null,"probability":1.0,"payout":16e3,"source_of_funds":"tax_free"}] --master-p-tax-deferred=0 --master-p-taxable-stocks=0 --master-p-taxable-iid-bonds=0'
+    # for P_VALUE in PVALUES; do
+    #     train $MODEL_NAME-p_tax_free$P_VALUE "--master-p-tax-free=$P_VALUE $MODEL_ARGS $TRAIN_ARGS $ARGS"
+    #     evaluate $MODEL_NAME-p_tax_free$P_VALUE p_tax_free$P_VALUE "--eval-p-tax-free=$P_VALUE $MODEL_ARGS $EVAL_ARGS $ARGS"
+    # done
 }
 
-run ssa_40_plus_3_female-iid_bonds
-run ssa_40_plus_3_female-iid_bonds-gamma6 '--master-gamma=6'
-run ssa_40_plus_3_female-iid_bonds-stocks_return0.05 '--master-stocks-return=0.05'
+run ssa_40_plus_3_female-iid_bonds '200000 1000000'
+run ssa_40_plus_3_female-iid_bonds-gamma6 '200000 1000000' '--master-gamma=6'
+run ssa_40_plus_3_female-iid_bonds-stocks_return0.05 '200000 1000000' '--master-stocks-return=0.05'
 
-run ssa_40_plus_3_female-iid_bonds-static_real_spias '--master-real-spias'
-run ssa_40_plus_3_female-iid_bonds-static_real_spias-gamma6 '--master-gamma=6 --master-real-spias'
-run ssa_40_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05 '--master-stocks-return=0.05 --master-real-spias'
+run ssa_40_plus_3_female-iid_bonds-static_real_spias '200000 1000000' '--master-real-spias'
+run ssa_40_plus_3_female-iid_bonds-static_real_spias-gamma6 '200000 1000000' '--master-gamma=6 --master-real-spias'
+run ssa_40_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05 '200000 1000000' '--master-stocks-return=0.05 --master-real-spias'
 
 # Commented out because can't get corresponding Opal results to self-validate.
-# run ssa_65_plus_3_female-iid_bonds-static_real_spias '--master-real-spias' '' '--eval-age-start=65'
-# run ssa_65_plus_3_female-iid_bonds-static_real_spias-gamma6 '--master-gamma=6 --master-real-spias' '' '--eval-age-start=65'
-# run ssa_65_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05 '--master-stocks-return=0.05 --master-real-spias' '' '--eval-age-start=65'
+# run ssa_65_plus_3_female-iid_bonds-static_real_spias '200000 1000000' '--master-real-spias' '' '--eval-age-start=65'
+# run ssa_65_plus_3_female-iid_bonds-static_real_spias-gamma6 '200000 1000000' '--master-gamma=6 --master-real-spias' '' '--eval-age-start=65'
+# run ssa_65_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05 '200000 1000000' '--master-stocks-return=0.05 --master-real-spias' '' '--eval-age-start=65'

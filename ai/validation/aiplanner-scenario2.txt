@@ -8,7 +8,9 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-train_consume_clip = 5000 # Prevent learning very negative rewards.
+master_consume_floor = 1e4 # Train for scenarios with this consumption and larger.
+
+train_consume_clip = 5e3 # Prevent learning very negative rewards.
 eval_consume_clip = 0
 
 master_sex = 'female'
@@ -35,12 +37,21 @@ master_iid_bonds_volatility = 0.112
 master_bills = False
 
 train_age_start = 30 # We will encounter all subsequent ages as we step.
+train_age_start2_low = 30
+train_age_start2_high = 50
 eval_age_start = 40
+eval_age_start2 = 40
 
 train_life_expectancy_additional_low = -5
 train_life_expectancy_additional_high = 5
+train_life_expectancy_additional2_low = -5
+train_life_expectancy_additional2_high = 5
 
 eval_life_expectancy_additional = 3
+eval_life_expectancy_additional2 = 3
+
+master_couple_death_concordant = True
+master_consume_additional = 1
 
 train_age_retirement_low = 50
 train_age_retirement_high = 75
@@ -48,6 +59,7 @@ train_age_retirement_high = 75
 eval_age_retirement = 65
 
 master_income_preretirement = 0
+master_income_preretirement2 = 0
 master_consume_preretirement = 0
 
 # Make tax_free rather than taxable the common case as a means of estimating performance gap from optimal for taxable scenario.
@@ -55,11 +67,15 @@ master_consume_preretirement = 0
 train_defined_benefits = '''[
     {"owner": "self",   "age": null, "probability": 1.0, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
-    {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"}
+    {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"},
+    {"owner": "spouse", "age": null, "probability": 1.0, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
+    {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
+    {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"}
 ]'''
 
 eval_defined_benefits = '''[
-    {"owner": "self",   "age": null, "probability": 1.0, "payout": 16e3, "source_of_funds": "tax_free"}
+    {"owner": "self",   "age": null, "probability": 1.0, "payout": 16e3, "source_of_funds": "tax_free"},
+    {"owner": "spouse", "age": null, "probability": 1.0, "payout": 16e3, "source_of_funds": "tax_free"}
 ]'''
 
 train_p_tax_free_low = 1e3
