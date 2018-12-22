@@ -221,7 +221,7 @@ class NominalFetcher(TreasuryFetcher):
 
     start_year = 1990
 
-    url_base = 'http://data.treasury.gov/feed.svc/DailyTreasuryYieldCurveRateData?$filter='
+    url_base = 'https://data.treasury.gov/feed.svc/DailyTreasuryYieldCurveRateData?$filter='
 
 class RealFetcher(TreasuryFetcher):
 
@@ -229,7 +229,7 @@ class RealFetcher(TreasuryFetcher):
 
     start_year = 2003
 
-    url_base = 'http://data.treasury.gov/feed.svc/DailyTreasuryRealYieldCurveRateData?$filter='
+    url_base = 'https://data.treasury.gov/feed.svc/DailyTreasuryRealYieldCurveRateData?$filter='
 
 if __name__ == '__main__':
 
