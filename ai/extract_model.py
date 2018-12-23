@@ -62,7 +62,7 @@ def extract_model(eval_model_params, *, eval_couple_net, eval_seed, eval_num_tim
                             p_taxable_assets = None
                             p_taxable_stocks_basis_fraction = None
                         obs = env.goto(age = age, p_tax_free = p_tax_free, p_tax_deferred = p_tax_deferred, p_taxable_assets = p_taxable_assets,
-                            p_taxable_stocks_basis_fraction = p_taxable_stocks_basis_fraction)
+                            p_taxable_stocks_basis_fraction = p_taxable_stocks_basis_fraction, force_family_unit = True, forced_family_unit_couple = env.couple)
                         action, = runner.run([obs])
                         act = env.interpret_action(action)
                         c.writerow((age, p, act['consume'], act['retirement_contribution'], act['real_spias_purchase'], act['nominal_spias_purchase'],

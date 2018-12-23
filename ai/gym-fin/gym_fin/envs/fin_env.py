@@ -960,7 +960,7 @@ class FinEnv(Env):
 
         return observation, reward, done, info
 
-    def _step(self, steps = 1):
+    def _step(self, steps = 1, force_family_unit = False, forced_family_unit_couple = True):
 
         self.age += steps
         self.age2 += steps
@@ -974,7 +974,9 @@ class FinEnv(Env):
         self.income_preretirement_years = max(0, self.income_preretirement_years - steps)
         self.income_preretirement_years2 = max(0, self.income_preretirement_years2 - steps)
 
-        couple_became_single = self.couple and self.alive_single[self.episode_length + steps] != None
+        force_to_single = force_family_unit and not forced_family_unit_couple
+        keep_as_couple = force_family_unit and forced_family_unit_couple
+        couple_became_single = self.couple and (self.alive_single[self.episode_length + steps] != None or force_to_single) and not keep_as_couple
         if couple_became_single:
 
             if self.only_alive2:
@@ -1011,7 +1013,7 @@ class FinEnv(Env):
         else:
             self.env_single_timesteps += steps
 
-        self.couple = self.alive_single[self.episode_length] == None
+        self.couple = self.alive_single[self.episode_length] == None and not force_to_single or keep_as_couple
 
         self.date = self.date_start + timedelta(days = self.episode_length * self.params.time_period * 365.25)
 
@@ -1029,7 +1031,7 @@ class FinEnv(Env):
             self.bonds_stepper.step()
 
     def goto(self, step = None, age = None, real_oup_x = None, inflation_oup_x = None, p_tax_free = None, p_tax_deferred = None, p_taxable_assets = None,
-             p_taxable_stocks_basis_fraction = None, taxes_due = None):
+             p_taxable_stocks_basis_fraction = None, taxes_due = None, force_family_unit = False, forced_family_unit_couple = True):
         '''Goto a reproducable time step. Useful for benchmarking and plotting surfaces.'''
 
         assert (step == None) != (age == None)
@@ -1037,14 +1039,15 @@ class FinEnv(Env):
         if step != None:
             age = self.age_start + step / self.params.time_period
 
-        if age < self.age:
+        if age < self.age or force_family_unit and not self.couple and forced_family_unit_couple:
             self.reset()
+            assert not force_family_unit or self.couple or not forced_family_unit_couple
 
         step = round((age - self.age) / self.params.time_period)
         assert step >= 0
 
         if step != 0:
-            self._step(step)
+            self._step(step, force_family_unit, forced_family_unit_couple)
 
         assert (real_oup_x == None) == (inflation_oup_x == None)
 
@@ -1220,6 +1223,8 @@ class FinEnv(Env):
         tw = self.total_wealth
         if tw == 0:
             tw = sum(self.pv_income.values())
+            if tw == 0:
+                tw = 1 # To avoid divide by zero later.
         w = sum(self.wealth.values())
 
         if self.params.stocks_mean_reversion_rate != 0:
