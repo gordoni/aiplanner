@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # AACalc - Asset Allocation Calculator
 # Copyright (C) 2016 Gordon Irlam
@@ -19,9 +19,9 @@
 from os import getenv
 from sys import path
 
-path.append('../web/aacalc')
+path.append('..')
 
-from spia import LifeTable, Scenario, YieldCurve
+from spia import IncomeAnnuity, LifeTable, YieldCurve
 
 prefix = getenv('OPAL_FILE_PREFIX', 'opal')
 
@@ -31,7 +31,7 @@ with open(prefix + '-lm_bonds-params.py') as f:
 life_table_params = params['life_table']
 life_table2_params = params['life_table2']
 yield_curve_params = params['yield_curve']
-scenario_params = params['scenario']
+income_annuity_params = params['income_annuity']
 
 with open(prefix + '-lm_bonds.csv', 'w') as f:
 
@@ -44,14 +44,13 @@ with open(prefix + '-lm_bonds.csv', 'w') as f:
         yield_curve_zero = YieldCurve(**dict(yield_curve_params, interest_rate = 'fixed'))
 
         date_str = str(params['now_year'] + year) + '-01-01'
-        scenario = Scenario(yield_curve_real, life_table1 = life_table, life_table2 = life_table2, date_str = date_str, **scenario_params)
-        scenario.price()
-        lm_bonds_ret = scenario.annual_return
-        lm_bonds_duration = scenario.duration
-        print >> f, "%d,%f,%f" % (year, lm_bonds_ret, lm_bonds_duration)
+        income_annuity = IncomeAnnuity(yield_curve_real, life_table1 = life_table, life_table2 = life_table2, date_str = date_str, **income_annuity_params)
+        lm_bonds_ret = income_annuity.annual_return
+        lm_bonds_duration = income_annuity.duration
+        f.write("%d,%f,%f\n" % (year, lm_bonds_ret, lm_bonds_duration))
 
         life_table_params['age'] += 1
         if life_table2_params:
             life_table2_params['age'] += 1
 
-        scenario_params['payout_delay'] = max(0, scenario_params['payout_delay'] - 12)
+        income_annuity_params['payout_delay'] = max(0, income_annuity_params['payout_delay'] - 12)
