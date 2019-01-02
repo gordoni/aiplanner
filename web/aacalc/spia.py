@@ -858,6 +858,7 @@ class YieldCurve(object):
         if date_year < 1984:
             raise self.NoData
 
+        date_yr = int(date_str.split('-')[0])
         date_month = int(date_str.split('-')[1])
         assert(1 <= date_month <= 12)
 
@@ -889,7 +890,8 @@ class YieldCurve(object):
                     if maturity == 0:
                         while line[-1] == '':
                             line.pop()
-                        offset = min(len(line) - 1, 2 + file_year_offset * 12 + date_month - 1)
+                        year_offset = file_year_offset + (date_yr - date_year)
+                        offset = min(len(line) - 1, 2 + year_offset * 12 + date_month - 1)
                         spot_year = file_year + (offset - 2) / 12
                         if spot_year < file_year:
                             raise self.NoData
