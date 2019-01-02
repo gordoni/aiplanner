@@ -82,7 +82,7 @@ public class AnnuityStats
 
                 String yield_curve_date = (bond_type.equals("real") ? config.annuity_real_yield_curve : config.annuity_nominal_treasury_yield_curve);
                 String year = yield_curve_date.substring(0, yield_curve_date.indexOf("-"));
-                String dir = hist.find_subdir(bond_type.equals("real") ? "rcmt" : "cmt"); // R-CMT = real - constant maturity treasuries.
+                String dir = System.getProperty("user.home") + "/.spia/" + bond_type;
                 String fname = dir + "/" + bond_type + "-" + year + ".csv";
                 String outname = ss.cwd + "/" + config.prefix + "-yield_curve-" + bond_type + ".csv";
                 ss.subprocess("yield_curve.R", config.prefix, "--args", fname, yield_curve_date, outname);

@@ -31,8 +31,9 @@ import java.util.Map;
 public class HistReturns
 {
         private String data = Utils.home_dir() + "/data"; // Prefix to use for data files.
+        private String home_dir = System.getProperty("user.home");
 
-        private List<String> search_dirs = Arrays.asList("/private/", "/public/"); // Sub-directories to search for data files.
+        private List<String> search_dirs = Arrays.asList(home_dir + "/.spia/", data + "/private/", data + "/public/"); // Directories to search for data files.
 
         public int initial_year;
 
@@ -118,8 +119,8 @@ public class HistReturns
         {
                 for (String dir : search_dirs)
                 {
-                        if (new File(data + dir + filename).exists())
-                                return data + dir + filename;
+                        if (new File(dir + filename).exists())
+                                return dir + filename;
                 }
 
                 System.err.println("Data file not found (might not be needed): " + filename);
@@ -713,7 +714,7 @@ public class HistReturns
         // http://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/Corp-Yield-Bond-Curve-Papers.aspx
         private void load_hqm(String filename) throws IOException
         {
-                BufferedReader in = buffered_reader("hqm/" + filename);
+                BufferedReader in = buffered_reader("corporate/" + filename);
                 String line = in.readLine();
                 line = in.readLine();
                 line = in.readLine();
@@ -830,7 +831,7 @@ public class HistReturns
                         for (File file : new File(dir).listFiles())
                                 if (file.isDirectory())
                                         load_immediateannuities(file.getName());
-                if ((dir = find_subdir("hqm")) != null)
+                if ((dir = find_subdir("corporate")) != null)
                         for (File file : new File(dir).listFiles())
                                 if (file.getName().endsWith(".csv"))
                                         load_hqm(file.getName());

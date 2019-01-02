@@ -357,11 +357,9 @@ public class Scenario
                 {
                         out.println("'life_table2': None,");
                 }
-                out.println("'scenario': {");
+                out.println("'income_annuity': {");
                 int payout_delay = Math.max(0, (config.retirement_age - config.start_age) * 12);
                 out.println("'payout_delay': " + payout_delay + ",");
-                out.println("'premium': None,");
-                out.println("'payout': None,");
                 out.println("'tax': 0,");
                 out.println("'joint_payout_fraction': " + config.couple_consume + ",");
                 out.println("'joint_contingent': True,");
