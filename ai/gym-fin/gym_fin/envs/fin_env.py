@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -205,11 +205,11 @@ class FinEnv(Env):
         self.life_table2_age = None
 
         self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.stocks_price_low, self.params.stocks_price_high,
-            self.params.stocks_mean_reversion_rate,
+            self.params.stocks_price_noise_sigma, self.params.stocks_mean_reversion_rate,
             self.params.stocks_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
-        self.iid_bonds = Returns(self.params.iid_bonds_return, self.params.iid_bonds_volatility, 1, 1, 0,
+        self.iid_bonds = Returns(self.params.iid_bonds_return, self.params.iid_bonds_volatility, 1, 1, 0, 0,
             self.params.bonds_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
-        self.bills = Returns(self.params.bills_return, self.params.bills_volatility, 1, 1, 0,
+        self.bills = Returns(self.params.bills_return, self.params.bills_volatility, 1, 1, 0, 0,
             self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
 
         self.bonds = BondsSet(fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate,

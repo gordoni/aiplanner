@@ -72,3 +72,7 @@ run ssa_40_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05 '200000 1
 # run ssa_65_plus_3_female-iid_bonds-static_real_spias '200000 1000000' '--master-real-spias' '' '--eval-age-start=65'
 # run ssa_65_plus_3_female-iid_bonds-static_real_spias-gamma6 '200000 1000000' '--master-gamma=6 --master-real-spias' '' '--eval-age-start=65'
 # run ssa_65_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05 '200000 1000000' '--master-stocks-return=0.05 --master-real-spias' '' '--eval-age-start=65'
+
+run ssa_40_plus_3_female_female-iid_bonds '400000 2000000' '--master-sex2=female'
+run ssa_40_plus_3_female_female-iid_bonds-gamma6 '400000 2000000' '--master-sex2=female --master-gamma=6'
+run ssa_40_plus_3_female_female-iid_bonds-stocks_return0.05 '400000 2000000' '--master-sex2=female --master-stocks-return=0.05'

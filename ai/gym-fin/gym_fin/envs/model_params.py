@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -225,7 +225,9 @@ class ModelParams(object):
         self._boolean_flag('stocks', True) # Whether to model stocks.
         self._param('stocks-return', 0.065) # Annual real return for stocks prior to effects of mean reversion.
         self._param('stocks-volatility', 0.174) # Annual real volatility for stocks prior to effects of mean reversion.
-        self._param('stocks-price', (0.5, 2.0), 1) # Initial price of stocks relative to fair price. Used in the case of mean reversion.
+        self._param('stocks-price', (0.5, 2.0), 1) # Initial observed price of stocks relative to fair price. Used in the case of mean reversion.
+        self._param('stocks-price-noise-sigma', 0.2) # Sigma of lognormal noise inherent in observation of stock price relative to fair price.
+            # Used in the case of mean reversion.
         self._param('stocks-mean-reversion-rate', 0) # Mean reversion rate, - d(return percentage)/d(overvalued percentage).
             # Set to zero for independent identically distributed stock returns.
             # Set to non-zero for mean reverting stock returns.

@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -16,7 +16,7 @@
 # assumptions, and then evaluate using this file. Training a generic
 # model with this file shouldn't be necessary.
 
-master_stocks_price = 1.25 # Rough estimate of current stock market price to long term fair price.
+master_stocks_price = 1.25 # Rough estimate of current observed stock market price to fair price.
     # The U.S. market is presently often considered to be somewhat overvalued. To get a handle on this we examined P/E ratios.
     # For 1950-2017 the harmonic mean S&P 500 P/E ratio (not CAPE) was 14.85 (based on Shiller's data).
     # This compares to a TTM P/E of 21.65 as of 2018-11-21, and a 12 month forward P/E of 15.6 (FactSet 2018-11-16).

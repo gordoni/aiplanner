@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -42,6 +42,7 @@ master_returns_standard_error = True
 master_stocks = True
 master_stocks_return = 0.067 # Generate 6.5% return in presence of mean reversion in the absence of returns_standard_error.
 master_stocks_volatility = 0.189 # Generate 17.4% volatility in presence of mean reversion in the absence of returns_standard_error.
+master_stocks_price_noise_sigma = 0.2 # Rough estimate of noise in stock price to fair price observations.
 master_stocks_mean_reversion_rate = 0.1 # Rough estimate of mean reversion rate based on Shiller data.
 master_stocks_price_low = 0.5
 master_stocks_price_high = 2.0

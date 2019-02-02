@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -14,12 +14,13 @@ from statistics import mean, stdev
 
 class Returns(object):
 
-    def __init__(self, ret, vol, price_low, price_high, mean_reversion_rate, standard_error, time_period):
+    def __init__(self, ret, vol, price_low, price_high, price_noise_sigma, mean_reversion_rate, standard_error, time_period):
 
         self.ret = ret
         self.vol = vol
         self.price_low = price_low
         self.price_high = price_high
+        self.price_noise_sigma = price_noise_sigma
         self.mean_reversion_rate = mean_reversion_rate
         self.standard_error = standard_error
         self.time_period = time_period
@@ -27,6 +28,8 @@ class Returns(object):
         self.reset()
 
     def reset(self):
+
+        self.price_noise = lognormvariate(0, self.price_noise_sigma)
 
         m = 1 + self.ret
         self.mu = log(m / sqrt(1 + (self.vol / m) ** 2))
@@ -36,7 +39,7 @@ class Returns(object):
 
         self.period_mu = mu * self.time_period
         self.period_sigma = self.sigma * sqrt(self.time_period)
-        self.above_trend = uniform(self.price_low, self.price_high)
+        self.above_trend = uniform(self.price_low, self.price_high) / self.price_noise
         self.period_mean_reversion_rate = self.mean_reversion_rate * self.time_period
 
     def sample(self):
@@ -49,11 +52,13 @@ class Returns(object):
 
         self.above_trend *= reversion
 
+        self.price_noise = lognormvariate(0, self.price_noise_sigma)
+
         return sample * reversion
 
     def observe(self):
 
-        return (self.above_trend, )
+        return (self.above_trend * self.price_noise, )
 
 def _report(name, rets):
 
