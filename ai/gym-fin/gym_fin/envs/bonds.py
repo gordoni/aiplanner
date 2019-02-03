@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -258,7 +258,7 @@ class Bonds:
 
 class RealBonds(Bonds):
 
-    def __init__(self, *, a = 0.13, sigma = 0.011, yield_curve = None, r0_type = 'current', r0 = None, standard_error = 0, time_period = 1):
+    def __init__(self, *, a = 0.13, sigma = 0.011, yield_curve, r0_type = 'current', r0 = None, standard_error = 0, time_period = 1):
         '''Chosen value of sigma, 0.011, intended to produce a short term real
         yield volatility of 0.9-1.0%. The measured value over
         2005-2017 was 1.00%. Obtained value is 1.00%.
@@ -275,9 +275,6 @@ class RealBonds(Bonds):
         present era.
 
         '''
-
-        if yield_curve == None:
-            yield_curve = YieldCurve('real', '2017-12-31', date_str_low = '2005-01-01', adjust = 0, permit_stale_days = 2)
 
         self.interest_rate = 'real'
 
@@ -341,7 +338,7 @@ class YieldCurveSum:
 class BreakEvenInflation(Bonds):
 
     def __init__(self, real_bonds, *, inflation_a = 0.13, inflation_sigma = 0.014, bond_a = 0.13, bond_sigma = 0.014, model_bond_volatility = True,
-        nominal_yield_curve = None, inflation_risk_premium = 0, real_liquidity_premium = 0, r0_type = 'current', r0 = None, standard_error = 0,
+        nominal_yield_curve, inflation_risk_premium = 0, real_liquidity_premium = 0, r0_type = 'current', r0 = None, standard_error = 0,
         time_period = 1):
         '''Keeping inflation parameters the same as the bond parameters
         simplifies the model.
@@ -381,9 +378,6 @@ class BreakEvenInflation(Bonds):
         present era.
 
         '''
-        if nominal_yield_curve == None:
-            nominal_yield_curve = YieldCurve('nominal', '2017-12-31', date_str_low = '2005-01-01', adjust = 0, permit_stale_days = 2)
-
         self.inflation_a = inflation_a
         self.inflation_sigma = inflation_sigma
         self.bond_a = bond_a
@@ -616,12 +610,24 @@ class BondsMeasuredInNominalTerms(Bonds):
 class BondsSet:
 
     def __init__(self, need_real = True, need_nominal = True, need_inflation = True, fixed_real_bonds_rate = None, fixed_nominal_bonds_rate = None,
+        date_str = '2017-12-31', date_str_low = '2005-01-01',
         real_r0_type = 'current', inflation_r0_type = 'current', real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
-        '''Returns a BondsSet object having attributes "real",
-        "nominal", and "inflation" representing a bond and
-        inflation model. They are each either None if they are not
-        needed and have not been computed or provide the following
-        methods:
+        '''Create a BondsSet.
+
+            fixed_real_bonds_rate and fixed_nominal_bonds_rate:
+
+                If not None use for a constant yield curve. Does not
+                supress random Hull-White temporal variability.
+
+            date_str and date_str_low:
+
+                Last and first date to use in construcing the typical
+                yield curve to use.
+
+        Returns a BondsSet object having attributes "real", "nominal",
+        and "inflation" representing a bond and inflation model. They
+        are each either None if they are not needed and have not been
+        computed or provide the following methods:
 
             reset()
 
@@ -679,13 +685,19 @@ class BondsSet:
             need_real = True
 
         if need_real:
-            yield_curve = YieldCurve('fixed', '2017-12-31', adjust = fixed_real_bonds_rate) if fixed_real_bonds_rate else None
+            if fixed_real_bonds_rate:
+                yield_curve = YieldCurve('fixed', '2017-12-31', adjust = fixed_real_bonds_rate)
+            else:
+                yield_curve = YieldCurve('real', date_str, date_str_low = date_str_low, adjust = 0, permit_stale_days = 2)
             self.real = RealBonds(yield_curve = yield_curve, r0_type = real_r0_type, standard_error = real_standard_error, time_period = time_period)
         else:
             self.real = None
 
         if need_inflation:
-            nominal_yield_curve = YieldCurve('fixed', '2017-12-31', adjust = fixed_nominal_bonds_rate) if fixed_nominal_bonds_rate else None
+            if fixed_nominal_bonds_rate:
+                nominal_yield_curve = YieldCurve('fixed', '2017-12-31', adjust = fixed_nominal_bonds_rate)
+            else:
+                nominal_yield_curve = YieldCurve('nominal', date_str, date_str_low = date_str_low, adjust = 0, permit_stale_days = 2)
             self.inflation = BreakEvenInflation(self.real, nominal_yield_curve = nominal_yield_curve, r0_type = inflation_r0_type,
                 standard_error = inflation_standard_error, time_period = time_period)
         else:

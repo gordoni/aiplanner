@@ -193,8 +193,11 @@ class ModelParams(object):
 
         self._boolean_flag('static-bonds', False)
             # Whether to model real bonds and inflation and thus nominal bonds and SPIAs as static (that is using a yield curve that does not vary over time).
+            # Does not remove effects of potential for temporal variability in bond prices; simply does not step bonds over time.
         self._param('fixed-real-bonds-rate', None) # Rate to model real bonds with a fixed mean yield curve (does not favor duration).
         self._param('fixed-nominal-bonds-rate', None) # Rate to model nominal bonds in determining inflation with a fixed mean yield curve (does not favor duration).
+        self._param('bonds-date', '2018-12-31', tp = string_type) # Date to use for typical bond yield curve if not fixed.
+        self._param('bonds-date-low', None, tp = string_type) # Optional date to use for low end of date range for average typical bond yield curve if not fixed.
 
         self._boolean_flag('real-spias', False) # Enable purchase of real SPIAs.
         self._param('real-spias-mwr', 0.94) # Money's Worth Ratio for real SPIAs (after any guarantee association tax).

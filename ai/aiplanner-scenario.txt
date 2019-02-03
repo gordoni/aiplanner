@@ -27,6 +27,11 @@ master_p_taxable_bills = 0
 
 master_tax = True
 
+master_bonds_date = '2018-12-31'
+    # Date of the typical yield curve, not the initial yield curve.
+    # Initial yield curve is determined by the initial short rate, the typical yield curve, and the Hull-White parameters.
+master_bonds_date_low = None
+
 master_real_spias = False
 master_nominal_spias = False
 master_nominal_spias_mwr = 1.0 # Based on 2015 pricing exceeding 100%.

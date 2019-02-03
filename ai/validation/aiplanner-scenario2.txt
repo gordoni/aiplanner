@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -19,7 +19,9 @@ master_life_table_date = '2020-01-01'
 master_tax = True
 
 master_life_table_spia = 'iam2012-basic'
-master_static_bonds = True
+master_static_bonds = True # XXX Imperfect. Bond pricing still includes potential for temporal variability.
+master_bonds_date = '2017-12-31'
+master_bonds_date_low = '2005-01-01'
 master_real_spias_mwr = 0.94 # Based on 2015 pricing with California annuity guarantee association tax.
 master_nominal_spias_mwr = 1.0 # Based on 2015 pricing exceeding 100%.
 master_spias_permitted_to_age = 1000
