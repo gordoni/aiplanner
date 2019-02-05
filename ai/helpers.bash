@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -20,6 +20,7 @@ PARALLEL=${PARALLEL:-True}
     # "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
 SEED_START=${SEED_START:-0}
 SEEDS=${SEEDS:-10}
+POLICY=${POLICY:-False}
 TRAINER=${TRAINER:-$AI_DIR/train_ppo1.py}
 EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py}
 CONFIG_FILE=${CONFIG_FILE:-$AI_DIR/aiplanner-scenario.txt}
@@ -110,11 +111,30 @@ evaluate () {
     fi
 }
 
+evaluate_with_policy () {
+
+    local MODEL_NAME=$1
+    local EVAL_NAME=$2
+    local ARGS=$3
+
+    evaluate $MODEL_NAME $EVAL_NAME "$ARGS"
+
+    if [ $POLICY != False ]; then
+        local OLD_SEEDS=$SEEDS
+        SEEDS=1
+        evaluate $MODEL_NAME $EVAL_NAME-pmt0-stocks0.5 "$ARGS --master-consume-policy=pmt --master-consume-policy-return=0 "'--master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5}'
+        evaluate $MODEL_NAME $EVAL_NAME-pmt0-stocks0.75 "$ARGS --master-consume-policy=pmt --master-consume-policy-return=0 "'--master-asset-allocation-policy={"stocks":0.75,"nominal_bonds":0.25}'
+        evaluate $MODEL_NAME $EVAL_NAME-pmt0-stocks1 "$ARGS --master-consume-policy=pmt --master-consume-policy-return=0 "'--master-asset-allocation-policy={"stocks":1,"nominal_bonds":0}'
+        SEEDS=$OLD_SEEDS
+    fi
+}
+
 train_eval () {
 
-    local UNIT=$1
-    local GAMMA=$2
-    local EPISODE=$3
+    local TRAINING=$1
+    local UNIT=$2
+    local GAMMA=$3
+    local EPISODE=$4
 
     local ARGS="--master-gamma=$GAMMA"
     if [ $UNIT = single ]; then
@@ -126,25 +146,35 @@ train_eval () {
 
     echo `date` Training $EPISODE
 
-    train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE $ARGS --master-p-tax-free=5e5"
-    train gamma$GAMMA-retired65-defined_benefits16e3-tax_free2e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-free=2e5"
-    train gamma$GAMMA-retired65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-free=5e5"
-    train gamma$GAMMA-retired65-defined_benefits16e3-tax_free1e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-free=1e6"
-    train gamma$GAMMA "$ARGS"
+    if [ $TRAINING = both -o $TRAINING = specific ]; then
+        train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=5e5"
+        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=2e5"
+        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
+        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+    fi
+    if [ $TRAINING = both -o $TRAINING = generic ]; then
+        train gamma$GAMMA "$ARGS"
+    fi
 
     wait
 
     echo `date` Evaluating $EPISODE
 
-    evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_free5e5 age_start50-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE $ARGS --master-p-tax-free=5e5"
-    evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_free2e5 retired65-defined_benefits16e3-tax_free2e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-free=2e5"
-    evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_free5e5 retired65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-free=5e5"
-    evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_free1e6 retired65-defined_benefits16e3-tax_free1e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-free=1e6"
+    if [ $TRAINING = both -o $TRAINING = specific ]; then
+        evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 age_start50-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=5e5"
+        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e5 retired65-defined_benefits16e3-tax_deferrred2e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=2e5"
+        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred5e5 retired65-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
+        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred1e6 retired65-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+    fi
 
-    evaluate gamma3 age_start50-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE $ARGS --master-p-tax-free=5e5"
-    evaluate gamma3 retired65-defined_benefits16e3-tax_free2e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-free=2e5"
-    evaluate gamma3 retired65-defined_benefits16e3-tax_free5e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-free=5e5"
-    evaluate gamma3 retired65-defined_benefits16e3-tax_free1e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-free=1e6"
+    if [ $TRAINING = both -o $TRAINING = generic ]; then
+        evaluate_with_policy gamma$GAMMA age_start50-defined_benefits16e3-tax_deferrred2e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=2e5"
+        evaluate_with_policy gamma$GAMMA age_start50-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=5e5"
+        evaluate_with_policy gamma$GAMMA age_start50-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=1e6"
+        evaluate_with_policy gamma$GAMMA retired65-defined_benefits16e3-tax_deferrred2e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=2e5"
+        evaluate_with_policy gamma$GAMMA retired65-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
+        evaluate_with_policy gamma$GAMMA retired65-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+    fi
 
     wait
 }

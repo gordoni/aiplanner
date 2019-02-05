@@ -60,6 +60,26 @@ run () {
     # done
 }
 
+policy_only () {
+
+    local MODEL_NAME=$1
+    local P_VALUES=$2
+    local ARGS=$3
+    local TRAIN_ARGS=$4
+    local EVAL_ARGS=$5
+
+    SEEDS=1
+    train $MODEL_NAME "--train-num-timesteps=1 $ARGS" # Dummy training.
+    PARALLEL=Jobs
+    for P_VALUE in $P_VALUES; do
+        evaluate $MODEL_NAME pmt0-stocks0.5-p_tax_free$P_VALUE '--master-consume-policy=pmt --master-consume-policy-return=0 --master-asset-allocation-policy={"stocks":0.5,"iid_bonds":0.5}'" --eval-p-tax-free=$P_VALUE $ARGS"
+        evaluate $MODEL_NAME pmt0-stocks0.75-p_tax_free$P_VALUE '--master-consume-policy=pmt --master-consume-policy-return=0 --master-asset-allocation-policy={"stocks":0.75,"iid_bonds":0.25}'" --eval-p-tax-free=$P_VALUE $ARGS"
+        evaluate $MODEL_NAME pmt0-stocks1-p_tax_free$P_VALUE '--master-consume-policy=pmt --master-consume-policy-return=0 --master-asset-allocation-policy={"stocks":1,"iid_bonds":0}'" --eval-p-tax-free=$P_VALUE $ARGS"
+    done
+    wait
+    PARALLEL=True
+}
+
 run ssa_40_plus_3_female-iid_bonds '200000 1000000'
 run ssa_40_plus_3_female-iid_bonds-gamma6 '200000 1000000' '--master-gamma=6'
 run ssa_40_plus_3_female-iid_bonds-stocks_return0.05 '200000 1000000' '--master-stocks-return=0.05'
@@ -76,3 +96,8 @@ run ssa_40_plus_3_female-iid_bonds-static_real_spias-stocks_return0.05 '200000 1
 run ssa_40_plus_3_female_female-iid_bonds '400000 2000000' '--master-sex2=female'
 run ssa_40_plus_3_female_female-iid_bonds-gamma6 '400000 2000000' '--master-sex2=female --master-gamma=6'
 run ssa_40_plus_3_female_female-iid_bonds-stocks_return0.05 '400000 2000000' '--master-sex2=female --master-stocks-return=0.05'
+
+# Comment out because policy only performance not relevant to validation.
+#policy_only ssa_40_plus_3_female_female-iid_bonds '400000 2000000' '--master-sex2=female'
+#policy_only ssa_40_plus_3_female_female-iid_bonds-gamma6 '400000 2000000' '--master-sex2=female --master-gamma=6'
+#policy_only ssa_40_plus_3_female_female-iid_bonds-stocks_return0.05 '400000 2000000' '--master-sex2=female --master-stocks-return=0.05'

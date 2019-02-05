@@ -61,7 +61,7 @@ class ModelParams(object):
             # "target_percentage": initially consume_initial, then no investment portfolio withdrawal inflation adjustment for periods where investment
             #     portfolio is below expected value based upon consume_policy_life_expectancy and consume_policy_annual_return.
             # "extended_rmd": consume according to IRS Required Minimum Distribution table extended to start from age 50.
-            # "pmt": payout with life expectancy consume_policy_life_expectancy and return amount consume_policy_annual_return.
+            # "pmt": payout with life expectancy consume_policy_life_expectancy and return amount consume_policy_return.
         self._param('consume-initial', 0) # Initial consumption amount for particular consumption policies.
         self._param('consume-policy-life-expectancy', None) # Assumed life expectancy for particular consumption policies, or None to use actual life expectancy.
         self._param('consume-policy-return', 0) # Assumed annual return for particular consumption policies.

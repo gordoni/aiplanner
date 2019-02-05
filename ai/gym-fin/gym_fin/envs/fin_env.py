@@ -654,11 +654,17 @@ class FinEnv(Env):
         # Asset classes will sum to one since actions and curvature actions each sum to one.
         # However individual asset classes may not be in the range [0, 1]. This needs to be fixed.
         # Softmax again.
-        stocks = exp(stocks) if self.params.stocks else 0
-        real_bonds = exp(real_bonds) if self.params.real_bonds else 0
-        nominal_bonds = exp(nominal_bonds) if self.params.nominal_bonds else 0
-        iid_bonds = exp(iid_bonds) if self.params.iid_bonds else 0
-        bills = exp(bills) if self.params.bills else 0
+        stocks = stocks if self.params.stocks else -1e100
+        real_bonds = real_bonds if self.params.real_bonds else -1e100
+        nominal_bonds = nominal_bonds if self.params.nominal_bonds else -1e100
+        iid_bonds = iid_bonds if self.params.iid_bonds else -1e100
+        bills = bills if self.params.bills else -1e100
+        maximum = max(stocks, real_bonds, nominal_bonds, iid_bonds, bills) # Prevent exp() overflow.
+        stocks = exp(stocks / maximum) if self.params.stocks else 0
+        real_bonds = exp(real_bonds / maximum) if self.params.real_bonds else 0
+        nominal_bonds = exp(nominal_bonds / maximum) if self.params.nominal_bonds else 0
+        iid_bonds = exp(iid_bonds / maximum) if self.params.iid_bonds else 0
+        bills = exp(bills / maximum) if self.params.bills else 0
         total = stocks + real_bonds + nominal_bonds + iid_bonds + bills
         stocks /= total
         real_bonds /= total

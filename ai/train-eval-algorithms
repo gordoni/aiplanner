@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -34,7 +34,7 @@ for ALGORITHM in ppo1 td3 sac trpo ppo ddpg vpg; do
         # We specify a consume clip so that we don't overlook algorithms that assume it from training.
         # Should later confirm it isn't needed by running tests on the chosen algorithm without it.
 
-    train_eval single $GAMMA $ALGORITHM
+    train_eval both single $GAMMA $ALGORITHM
 
     cd ..
 
