@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018-2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+
+source $AIPLANNER_HOME/ai/helpers.bash
+
+mkdir -p results
+cd results
+
+PARALLEL=Jobs
+POLICY=True
+ALGORITHM=ppo1
+UNIT=single
+SPIAS=no_spias
+TIMESTEPS=2000000
+GAMMA=3
+for GAMMA in 1.5 3 6; do
+
+    TRAINARGS="--train-num-timesteps=$TIMESTEPS"
+    ARGS=""
+    if [ $SPIAS = spias ]; then
+        ARGS="$ARGS --master-nominal-spias"
+    fi
+
+    EPISODE="$ALGORITHM-$UNIT-$SPIAS-gamma$GAMMA-timesteps$TIMESTEPS"
+
+    mkdir -p $EPISODE
+    cd $EPISODE
+
+    if [ $ALGORITHM == ppo1 ]; then
+        TRAINER="$AI_DIR/train_ppo1.py"
+    else
+        TRAINER="$AI_DIR/train_spinup.py --train-algorithm=$ALGORITHM"
+    fi
+    TRAINER="$TRAINER $TRAINARGS $ARGS"
+    EVALUATOR="$AI_DIR/eval_model.py $ARGS"
+
+    train_eval generic $UNIT $GAMMA $EPISODE
+
+    cd ..
+
+done
+
+echo `date` Done

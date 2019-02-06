@@ -122,9 +122,11 @@ evaluate_with_policy () {
     if [ $POLICY != False ]; then
         local OLD_SEEDS=$SEEDS
         SEEDS=1
-        evaluate $MODEL_NAME $EVAL_NAME-pmt0-stocks0.5 "$ARGS --master-consume-policy=pmt --master-consume-policy-return=0 "'--master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5}'
-        evaluate $MODEL_NAME $EVAL_NAME-pmt0-stocks0.75 "$ARGS --master-consume-policy=pmt --master-consume-policy-return=0 "'--master-asset-allocation-policy={"stocks":0.75,"nominal_bonds":0.25}'
-        evaluate $MODEL_NAME $EVAL_NAME-pmt0-stocks1 "$ARGS --master-consume-policy=pmt --master-consume-policy-return=0 "'--master-asset-allocation-policy={"stocks":1,"nominal_bonds":0}'
+        for PMT_RETURN in -0.07 -0.06 -0.05 -0.04 -0.03 -0.02 -0.01; do
+            evaluate $MODEL_NAME $EVAL_NAME-pmt$PMT_RETURN-stocks0.5 "$ARGS --master-consume-policy=pmt --master-consume-policy-return=$PMT_RETURN "'--master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5}'
+            evaluate $MODEL_NAME $EVAL_NAME-pmt$PMT_RETURN-stocks0.75 "$ARGS --master-consume-policy=pmt --master-consume-policy-return=$PMT_RETURN "'--master-asset-allocation-policy={"stocks":0.75,"nominal_bonds":0.25}'
+            evaluate $MODEL_NAME $EVAL_NAME-pmt$PMT_RETURN-stocks1 "$ARGS --master-consume-policy=pmt --master-consume-policy-return=$PMT_RETURN "'--master-asset-allocation-policy={"stocks":1,"nominal_bonds":0}'
+        done
         SEEDS=$OLD_SEEDS
     fi
 }

@@ -1113,8 +1113,8 @@ class FinEnv(Env):
         self.pv_income_preretirement2 = self.income_preretirement2 * self.income_preretirement_years2
         self.pv_consume_preretirement = self.consume_preretirement * self.preretirement_years
 
-        self.total_wealth = sum(self.pv_income.values()) + sum(self.wealth.values()) \
-            + self.pv_income_preretirement + self.pv_income_preretirement2 - self.pv_consume_preretirement
+        self.total_wealth = sum(self.pv_income.values()) \
+            + max(0, sum(self.wealth.values()) + self.pv_income_preretirement + self.pv_income_preretirement2 - self.pv_consume_preretirement)
 
         w = sum(self.wealth.values())
         self.wealth_ratio = self.total_wealth / w if w > 0 else float('inf')
