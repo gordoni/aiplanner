@@ -654,17 +654,18 @@ class FinEnv(Env):
         # Asset classes will sum to one since actions and curvature actions each sum to one.
         # However individual asset classes may not be in the range [0, 1]. This needs to be fixed.
         # Softmax again.
-        stocks = stocks if self.params.stocks else -1e100
-        real_bonds = real_bonds if self.params.real_bonds else -1e100
-        nominal_bonds = nominal_bonds if self.params.nominal_bonds else -1e100
-        iid_bonds = iid_bonds if self.params.iid_bonds else -1e100
-        bills = bills if self.params.bills else -1e100
-        maximum = max(stocks, real_bonds, nominal_bonds, iid_bonds, bills) # Prevent exp() overflow.
-        stocks = exp(stocks / maximum) if self.params.stocks else 0
-        real_bonds = exp(real_bonds / maximum) if self.params.real_bonds else 0
-        nominal_bonds = exp(nominal_bonds / maximum) if self.params.nominal_bonds else 0
-        iid_bonds = exp(iid_bonds / maximum) if self.params.iid_bonds else 0
-        bills = exp(bills / maximum) if self.params.bills else 0
+        stocks = stocks if self.params.stocks else float('-inf')
+        real_bonds = real_bonds if self.params.real_bonds else float('-inf')
+        nominal_bonds = nominal_bonds if self.params.nominal_bonds else float('-inf')
+        iid_bonds = iid_bonds if self.params.iid_bonds else float('-inf')
+        bills = bills if self.params.bills else float('-inf')
+        maximum = max(stocks, real_bonds, nominal_bonds, iid_bonds, bills) # Prevent power overflow.
+        base = 100 # Ensure able to reach 99% stocks for wealth_ratio = 1; stocks = 1.
+        stocks = base ** (stocks / maximum) if self.params.stocks else 0
+        real_bonds = base ** (real_bonds / maximum) if self.params.real_bonds else 0
+        nominal_bonds = base ** (nominal_bonds / maximum) if self.params.nominal_bonds else 0
+        iid_bonds = base ** (iid_bonds / maximum) if self.params.iid_bonds else 0
+        bills = base ** (bills / maximum) if self.params.bills else 0
         total = stocks + real_bonds + nominal_bonds + iid_bonds + bills
         stocks /= total
         real_bonds /= total
