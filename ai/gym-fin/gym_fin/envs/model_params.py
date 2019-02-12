@@ -229,7 +229,7 @@ class ModelParams(object):
         self._param('stocks-return', 0.065) # Annual real return for stocks prior to effects of mean reversion.
         self._param('stocks-volatility', 0.174) # Annual real volatility for stocks prior to effects of mean reversion.
         self._param('stocks-price', (0.5, 2.0), 1) # Initial observed price of stocks relative to fair price. Used in the case of mean reversion.
-        self._param('stocks-price-noise-sigma', 0.2) # Sigma of lognormal noise inherent in observation of stock price relative to fair price.
+        self._param('stocks-price-noise-sigma', 0.2) # Sigma of lognormal noise inherent in observation of stocks price relative to fair price.
             # Used in the case of mean reversion.
         self._param('stocks-mean-reversion-rate', 0) # Mean reversion rate, - d(return percentage)/d(overvalued percentage).
             # Set to zero for independent identically distributed stock returns.
@@ -264,6 +264,7 @@ class ModelParams(object):
         self._param('bills-volatility', 0.004) # Annual real return for bill asset class.
         self._param('bills-standard-error', 0.004) # Standard error of log real return for bills.
 
+        self._boolean_flag('observe-stocks-price', True) # Whether to observe stocks price relative to fair price pus noise.
         self._boolean_flag('observe-interest-rate', True) # Whether model reveals the short real interest rate to observers.
         self._boolean_flag('observe-inflation-rate', True) # Whether model reveals the short inflation rate to observers.
 

@@ -471,9 +471,7 @@ class FinEnv(Env):
             else:
                 raise FinError('Insufficient pre-retirement wages and wealth to support pre-retirement consumption.')
 
-        self.consume_expect_individual = self.consume_estimate_individual
-        _, self.reward_expect = self.raw_reward(self.consume_expect_individual)
-        _, self.reward_zero_point = self.raw_reward(self.params.reward_zero_point_factor * self.consume_expect_individual)
+        self.set_reward_level()
 
         self.prev_asset_allocation = None
         self.prev_taxable_assets = taxable_assets
@@ -484,8 +482,14 @@ class FinEnv(Env):
 
         return self._observe()
 
+    def set_reward_level(self):
+
+        self.consume_expect_individual = self.consume_estimate_individual
+        _, self.reward_expect = self.raw_reward(self.consume_expect_individual)
+        _, self.reward_zero_point = self.raw_reward(self.params.reward_zero_point_factor * self.consume_expect_individual)
+
     def encode_direct_action(self, consume_fraction, *, real_spias_fraction = None, nominal_spias_fraction = None,
-            real_bonds_duration = None, nominal_bonds_duration = None, **kwargs):
+        real_bonds_duration = None, nominal_bonds_duration = None, **kwargs):
 
         return (consume_fraction, real_spias_fraction, nominal_spias_fraction, AssetAllocation(**kwargs), real_bonds_duration, nominal_bonds_duration)
 
@@ -615,7 +619,7 @@ class FinEnv(Env):
         # And so:
         #     risk free = 1 - total_wealth / wealth * const
         # This suggests more generally equations of the form:
-        #     asset class = y + (x - y) * total_wealth / wealth for x, y in [0, 1].
+        #     asset class = x * total_wealth / wealth
         # may be helpful to determining the stock allocation.
 
         # Softmax x's, the alocations when wealth is total_wealth (no defined benefits).
@@ -631,47 +635,24 @@ class FinEnv(Env):
         iid_bonds_action /= total
         bills_action /= total
 
-        # Softax y's, so that when we fit to the curve (below) the allocations sum to one.
-        stocks_curvature_action = exp(stocks_curvature_action) if self.params.stocks else 0
-        real_bonds_curvature_action = exp(real_bonds_curvature_action) if self.params.real_bonds else 0
-        nominal_bonds_curvature_action = exp(nominal_bonds_curvature_action) if self.params.nominal_bonds else 0
-        iid_bonds_curvature_action = exp(iid_bonds_curvature_action) if self.params.iid_bonds else 0
-        bills_curvature_action = exp(bills_curvature_action) if self.params.bills else 0
-        total = stocks_curvature_action + real_bonds_curvature_action + nominal_bonds_curvature_action + iid_bonds_curvature_action + bills_curvature_action
-        stocks_curvature_action /= total
-        real_bonds_curvature_action /= total
-        nominal_bonds_curvature_action /= total
-        iid_bonds_curvature_action /= total
-        bills_curvature_action /= total
-
         # Fit to curve.
-        stocks = stocks_curvature_action + (stocks_action - stocks_curvature_action) * self.wealth_ratio
-        real_bonds = real_bonds_curvature_action + (real_bonds_action - real_bonds_curvature_action) * self.wealth_ratio
-        nominal_bonds = nominal_bonds_curvature_action + (nominal_bonds_action - nominal_bonds_curvature_action) * self.wealth_ratio
-        iid_bonds = iid_bonds_curvature_action + (iid_bonds_action - iid_bonds_curvature_action) * self.wealth_ratio
-        bills = bills_curvature_action + (bills_action - bills_curvature_action) * self.wealth_ratio
-
-        # Asset classes will sum to one since actions and curvature actions each sum to one.
-        # However individual asset classes may not be in the range [0, 1]. This needs to be fixed.
-        # Softmax again.
-        stocks = stocks if self.params.stocks else float('-inf')
-        real_bonds = real_bonds if self.params.real_bonds else float('-inf')
-        nominal_bonds = nominal_bonds if self.params.nominal_bonds else float('-inf')
-        iid_bonds = iid_bonds if self.params.iid_bonds else float('-inf')
-        bills = bills if self.params.bills else float('-inf')
-        maximum = max(stocks, real_bonds, nominal_bonds, iid_bonds, bills) # Prevent power overflow.
-        base = 100 # Ensure able to reach 99% stocks for wealth_ratio = 1; stocks = 1.
-        stocks = base ** (stocks / maximum) if self.params.stocks else 0
-        real_bonds = base ** (real_bonds / maximum) if self.params.real_bonds else 0
-        nominal_bonds = base ** (nominal_bonds / maximum) if self.params.nominal_bonds else 0
-        iid_bonds = base ** (iid_bonds / maximum) if self.params.iid_bonds else 0
-        bills = base ** (bills / maximum) if self.params.bills else 0
-        total = stocks + real_bonds + nominal_bonds + iid_bonds + bills
-        stocks /= total
-        real_bonds /= total
-        nominal_bonds /= total
-        iid_bonds /= total
-        bills /= total
+        alloc = 1
+        stocks = min(stocks_action * self.wealth_ratio, alloc)
+        alloc -= stocks
+        real_bonds = min(real_bonds_action * self.wealth_ratio, alloc)
+        alloc -= real_bonds
+        nominal_bonds = min(nominal_bonds_action * self.wealth_ratio, alloc)
+        alloc -= nominal_bonds
+        iid_bonds = min(iid_bonds_action * self.wealth_ratio, alloc)
+        alloc -= iid_bonds
+        if self.params.bills:
+            bills = alloc
+        elif self.params.iid_bonds:
+            iid_bonds = alloc
+        elif self.params.nominal_bonds:
+            nominal_bonds = alloc
+        elif self.params.real_bonds:
+            real_bonds = alloc
 
         asset_allocation = AssetAllocation(fractional = False)
         if self.params.stocks:
@@ -1077,6 +1058,7 @@ class FinEnv(Env):
             self.taxes_due = 0
 
         self._pre_calculate()
+        self.set_reward_level()
         return self._observe()
 
     def set_reproduce_episode(self, episode):
@@ -1119,7 +1101,7 @@ class FinEnv(Env):
 
         w = sum(self.wealth.values())
         self.wealth_ratio = self.total_wealth / w if w > 0 else float('inf')
-        self.wealth_ratio = min(self.wealth_ratio, 50) # Cap so that exp(wealth_ratio) doesn't overflow.
+        self.wealth_ratio = min(self.wealth_ratio, 1e100) # Cap so that not calculating with inf.
 
         self.p_plus_income = self.p_sum() + self.gi_sum() * self.params.time_period
         self.taxes_paid = min(self.taxes_due, 0.9 * self.p_plus_income) # Don't allow taxes to consume all of p.
@@ -1226,7 +1208,10 @@ class FinEnv(Env):
 
         reward_weight = (2 * self.retirement_expectancy_both[self.episode_length] + self.retirement_expectancy_one[self.episode_length]) * self.params.time_period
         _, reward_value = self.raw_reward(self.consume_estimate_individual)
-        reward_estimate = reward_weight * (reward_value - self.reward_zero_point) / (self.reward_expect - self.reward_zero_point)
+        if reward_value == self.reward_zero_point:
+            reward_estimate = 0 # Handles -inf reward_value correctly.
+        else:
+            reward_estimate = reward_weight * (reward_value - self.reward_zero_point) / (self.reward_expect - self.reward_zero_point)
 
         tw = self.total_wealth
         if tw == 0:
@@ -1235,10 +1220,11 @@ class FinEnv(Env):
                 tw = 1 # To avoid divide by zero later.
         w = sum(self.wealth.values())
 
-        if self.params.stocks_mean_reversion_rate != 0:
+        # When mean reversion rate is zero, avoid observing spurious noise for better training.
+        if self.params.observe_stocks_price and self.params.stocks_mean_reversion_rate != 0:
             stocks_price, = self.stocks.observe()
         else:
-            stocks_price = 1 # Avoid observing spurious noise for better training.
+            stocks_price = 1
         if self.params.observe_interest_rate:
             real_interest_rate, = self.bonds.real.observe()
         else:

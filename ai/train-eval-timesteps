@@ -40,10 +40,10 @@ for TIMESTEPS in 500000 1000000 2000000 5000000; do
             else
                 TRAINER="$AI_DIR/train_spinup.py --train-algorithm=$ALGORITHM"
             fi
-            TRAINER="$TRAINER $TRAINARGS $ARGS"
-            EVALUATOR="$AI_DIR/eval_model.py $ARGS"
+            TRAINER="$TRAINER $TRAINARGS"
+            EVALUATOR="$AI_DIR/eval_model.py"
 
-            train_eval both $UNIT $GAMMA $EPISODE
+            train_eval both $UNIT $GAMMA $EPISODE "$ARGS"
 
             cd ..
 

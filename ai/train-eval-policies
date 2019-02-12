@@ -42,10 +42,10 @@ for GAMMA in 1.5 3 6; do
     else
         TRAINER="$AI_DIR/train_spinup.py --train-algorithm=$ALGORITHM"
     fi
-    TRAINER="$TRAINER $TRAINARGS $ARGS"
-    EVALUATOR="$AI_DIR/eval_model.py $ARGS"
+    TRAINER="$TRAINER $TRAINARGS"
+    EVALUATOR="$AI_DIR/eval_model.py"
 
-    train_eval generic $UNIT $GAMMA $EPISODE
+    train_eval generic $UNIT $GAMMA $EPISODE "$ARGS"
 
     cd ..
 

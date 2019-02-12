@@ -137,8 +137,9 @@ train_eval () {
     local UNIT=$2
     local GAMMA=$3
     local EPISODE=$4
+    local ARGS=$5
 
-    local ARGS="--master-gamma=$GAMMA"
+    ARGS="$ARGS --master-gamma=$GAMMA"
     if [ $UNIT = single ]; then
         local EVAL_FILE=$SINGLE_EVAL_FILE
     else
