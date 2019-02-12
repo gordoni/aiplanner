@@ -34,8 +34,12 @@ def extract_model(eval_model_params, *, eval_couple_net, eval_seed, eval_num_tim
                 c = writer(f)
                 for age_index in range(num_age_steps + 1):
                     for p_index in range(num_p_steps + 1):
-                        age = age_range[0] + age_index * (age_range[1] - age_range[0]) / num_age_steps
-                        p = p_range[0] + p_index * (p_range[1] - p_range[0]) / num_p_steps
+                        age = age_range[0]
+                        if num_age_steps > 0:
+                            age += age_index * (age_range[1] - age_range[0]) / num_age_steps
+                        p = p_range[0]
+                        if num_p_steps > 0:
+                            p += p_index * (p_range[1] - p_range[0]) / num_p_steps
                         p_tax_free = p if p_type == 'tax_free' else None
                         p_tax_deferred = p if p_type == 'tax_deferred' else None
                         if p_type.startswith('taxable_'):

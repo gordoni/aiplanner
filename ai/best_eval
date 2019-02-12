@@ -32,6 +32,8 @@ for path in args.directory:
 
         s = f.read()
         m = search(r'(Initial properties for first episode:(.*\n)+)?Evaluation certainty equivalent: (\d+\.\d+) \+/- (\d+\.\d+).*', s)
+        if not m:
+            raise Exception('Invalid evaluation log: ' + path)
         properties = m.group(0)
         ce = float(m.group(3))
         ce_se = float(m.group(4))
