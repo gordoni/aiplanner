@@ -289,13 +289,13 @@ class FinEnv(Env):
 
         self.reset()
 
-    def gi_sum(self, source = ('tax_free', 'tax_deferred', 'taxable')):
+    def gi_sum(self, type = None, source = ('tax_free', 'tax_deferred', 'taxable')):
 
         gi = 0
-        if 'taxable' in source:
+        if type in (None, 'Preretirement Income') and 'taxable' in source:
             gi += self.income_preretirement + self.income_preretirement2
         for db in self.defined_benefits.values():
-            if db.type_of_funds in source:
+            if type in (None, db.type) and db.type_of_funds in source:
                 gi += db.payout()
 
         return gi
@@ -873,6 +873,8 @@ class FinEnv(Env):
                 print('Negative regular income:', regular_income)
                     # Possible if taxable SPIA non-taxable amount exceeds payout due to deflation.
             regular_income = 0
+        social_security = self.gi_sum(type = 'Social Security')
+        social_security = min(regular_income, social_security)
 
         inflation = self.bonds.inflation.inflation()
         self.cpi *= inflation
@@ -910,7 +912,7 @@ class FinEnv(Env):
         self.p_tax_deferred = p_tax_deferred
         self.p_taxable = p_taxable
 
-        self.taxes_due += self.taxes.tax(regular_income, not self.couple, inflation) - self.taxes_paid
+        self.taxes_due += self.taxes.tax(regular_income, social_security, not self.couple, inflation) - self.taxes_paid
 
         if self.age < self.age_retirement:
             self.reward_weight = 0

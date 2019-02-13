@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -8,49 +8,11 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-# 2018 Nominal tax brackets and rates. Amounts treated as real on the assumption that over the long run brackets will be adjusted for inflation.
+# Nominal tax brackets and rates. Amounts treated as real since brackets get adjusted for inflation.
 # Assume take standard deduction.
-# Social Security treated as fully taxable.
-# Income from SPIA treated as fully taxable.
 # Net Investment Income Tax (NIIT) not considered.
 # Alternative minimum tax not considered.
-
-federal_standard_deduction_single = 12000
-federal_standard_deduction_joint = 24000
-
-federal_table_single = (
-    (9525, 0.1),
-    (38700, 0.12),
-    (82500, 0.22),
-    (157500, 0.24),
-    (200000, 0.32),
-    (500000, 0.35),
-    (float('inf'), 0.37),
-)
-
-federal_table_joint = (
-    (19050, 0.1),
-    (77400, 0.12),
-    (165000, 0.22),
-    (315000, 0.24),
-    (400000, 0.32),
-    (600000, 0.35),
-    (float('inf'), 0.37),
-)
-
-federal_long_term_gains_single = (
-    (38600, 0),
-    (425800, 0.15),
-    (float('inf'), 0.2),
-)
-
-federal_long_term_gains_joint = (
-    (77200, 0),
-    (479000, 0.15),
-    (float('inf'), 0.2),
-)
-
-federal_max_capital_loss = 3000
+# Average-cost cost basis method used for asset class sales.
 
 class Taxes(object):
 
@@ -59,11 +21,104 @@ class Taxes(object):
         self.env = env
         self.value = dict(taxable_assets.aa)
         self.basis = {ac: p_taxable_stocks_basis_fraction * value if ac == 'stocks' else value for ac, value in taxable_assets.aa.items()}
+        self.cpi = 1
         self.cg_carry = 0
         self.capital_gains = 0
         self.qualified_dividends = 0
         self.non_qualified_dividends = 0
-        
+
+        if self.env.params.tax_table_year == '2018':
+
+            self.federal_standard_deduction_single = 12000
+            self.federal_standard_deduction_joint = 24000
+
+            self.federal_table_single = (
+                (9525, 0.1),
+                (38700, 0.12),
+                (82500, 0.22),
+                (157500, 0.24),
+                (200000, 0.32),
+                (500000, 0.35),
+                (float('inf'), 0.37),
+            )
+
+            self.federal_table_joint = (
+                (19050, 0.1),
+                (77400, 0.12),
+                (165000, 0.22),
+                (315000, 0.24),
+                (400000, 0.32),
+                (600000, 0.35),
+                (float('inf'), 0.37),
+            )
+
+            self.federal_long_term_gains_single = (
+                (38600, 0),
+                (425800, 0.15),
+                (float('inf'), 0.2),
+            )
+
+            self.federal_long_term_gains_joint = (
+                (77200, 0),
+                (479000, 0.15),
+                (float('inf'), 0.2),
+            )
+
+        elif self.env.params.tax_table_year == '2019' or self.env.params.tax_table_year == None:
+
+            self.federal_standard_deduction_single = 12200
+            self.federal_standard_deduction_joint = 24400
+
+            self.federal_table_single = (
+                (9700, 0.1),
+                (39475, 0.12),
+                (84200, 0.22),
+                (160725, 0.24),
+                (204100, 0.32),
+                (510300, 0.35),
+                (float('inf'), 0.37),
+            )
+
+            self.federal_table_joint = (
+                (19400, 0.1),
+                (78950, 0.12),
+                (168400, 0.22),
+                (321450, 0.24),
+                (408200, 0.32),
+                (612350, 0.35),
+                (float('inf'), 0.37),
+            )
+
+            self.federal_long_term_gains_single = (
+                (39375, 0),
+                (434550, 0.15),
+                (float('inf'), 0.2),
+            )
+
+            self.federal_long_term_gains_joint = (
+                (78750, 0),
+                (488850, 0.15),
+                (float('inf'), 0.2),
+            )
+
+        else:
+            assert False, 'No tax table for: ' + self.env.tax_table_year
+
+        self.federal_max_capital_loss = 3000 # Limit not inflation adjusted.
+
+        # Social Security brackets are not inflation adjusted.
+        self.ss_taxable_single = (
+            (25000, 0),
+            (34000, 0.5),
+            (float('inf'), 0.85),
+        )
+
+        self.ss_taxable_couple = (
+            (32000, 0),
+            (44000, 0.5),
+            (float('inf'), 0.85),
+        )
+
     def buy_sell(self, ac, amount, new_value, ret, dividend_yield, qualified):
 
         if amount > 0:
@@ -91,13 +146,23 @@ class Taxes(object):
 
         return tax
 
-    def tax(self, regular_income, single, inflation):
+    def marginal_rate(self, table, income):
 
+        for limit, rate in table:
+            limit *= self.env.params.time_period
+            if income < limit:
+                break
+
+        return rate
+
+    def tax(self, regular_income, social_security, single, inflation):
+
+        regular_income -= social_security
         assert regular_income >= 0
 
         regular_income += self.non_qualified_dividends
         capital_gains = self.cg_carry + self.capital_gains + self.qualified_dividends
-        current_capital_gains = max(capital_gains, - min(federal_max_capital_loss, regular_income))
+        current_capital_gains = max(capital_gains, - min(self.federal_max_capital_loss / self.cpi, regular_income))
         self.cg_carry = capital_gains - current_capital_gains
         regular_income += min(current_capital_gains, 0)
         capital_gains = max(current_capital_gains, 0)
@@ -105,13 +170,20 @@ class Taxes(object):
             self.basis[ac] /= inflation
         self.cg_carry /= inflation
 
-        taxable_regular_income = regular_income - (federal_standard_deduction_single if single else federal_standard_deduction_joint)
+        relevant_income = regular_income + social_security / 2
+        ss_table = self.ss_taxable_single if single else self.ss_taxable_couple
+        social_security_taxable = min(self.tax_table(ss_table, relevant_income * self.cpi, 0) / self.cpi,
+            self.marginal_rate(ss_table, relevant_income * self.cpi) * social_security)
+        regular_income += social_security_taxable
+
+        taxable_regular_income = regular_income - (self.federal_standard_deduction_single if single else self.federal_standard_deduction_joint)
         taxable_capital_gains = capital_gains + min(taxable_regular_income, 0)
         taxable_regular_income = max(taxable_regular_income, 0)
         taxable_capital_gains = max(taxable_capital_gains, 0)
 
-        regular_tax = self.tax_table(federal_table_single if single else federal_table_joint, taxable_regular_income, 0)
-        capital_gains_tax = self.tax_table(federal_long_term_gains_single if single else federal_long_term_gains_joint, taxable_capital_gains, taxable_regular_income)
+        regular_tax = self.tax_table(self.federal_table_single if single else self.federal_table_joint, taxable_regular_income, 0)
+        capital_gains_tax = self.tax_table(self.federal_long_term_gains_single if single else self.federal_long_term_gains_joint,
+            taxable_capital_gains, taxable_regular_income)
         state_tax = (taxable_regular_income + taxable_capital_gains) * self.env.params.tax_state
 
         self.capital_gains = 0
@@ -122,6 +194,8 @@ class Taxes(object):
             tax = regular_tax + capital_gains_tax + state_tax
         else:
             tax = 0
+
+        self.cpi *= inflation
 
         return tax
 

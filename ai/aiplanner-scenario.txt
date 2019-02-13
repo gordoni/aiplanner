@@ -26,6 +26,7 @@ master_p_taxable_iid_bonds = 0
 master_p_taxable_bills = 0
 
 master_tax = True
+master-tax-table-year = '2018'
 
 master_bonds_date = '2018-12-31'
     # Date of the typical yield curve, not the initial yield curve.

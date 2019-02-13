@@ -142,9 +142,12 @@ train_eval () {
     ARGS="$ARGS --master-gamma=$GAMMA"
     if [ $UNIT = single ]; then
         local EVAL_FILE=$SINGLE_EVAL_FILE
-    else
+    elif [ $UNIT = couple ]; then
         local EVAL_FILE=$COUPLE_EVAL_FILE
         ARGS="$ARGS --master-sex2=male"
+    else
+        local EVAL_FILE=$COUPLE_EVAL_FILE
+        ARGS="$ARGS --master-sex2=female --master-couple-death-concordant --master-consume-additional=1"
     fi
 
     echo `date` Training $EPISODE
@@ -171,12 +174,21 @@ train_eval () {
     fi
 
     if [ $TRAINING = both -o $TRAINING = generic ]; then
-        evaluate_with_policy gamma$GAMMA age_start50-defined_benefits16e3-tax_deferrred2e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=2e5"
-        evaluate_with_policy gamma$GAMMA age_start50-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=5e5"
-        evaluate_with_policy gamma$GAMMA age_start50-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=1e6"
-        evaluate_with_policy gamma$GAMMA retired65-defined_benefits16e3-tax_deferrred2e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=2e5"
-        evaluate_with_policy gamma$GAMMA retired65-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
-        evaluate_with_policy gamma$GAMMA retired65-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+        if [ $UNIT = concordant ]; then
+            evaluate_with_policy gamma$GAMMA age_start50-defined_benefits16e3-tax_deferrred4e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=4e5"
+            evaluate_with_policy gamma$GAMMA age_start50-defined_benefits16e3-tax_deferrred5e6 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=1e6"
+            evaluate_with_policy gamma$GAMMA age_start50-defined_benefits16e3-tax_deferrred2e6 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=2e6"
+            evaluate_with_policy gamma$GAMMA retired65-defined_benefits16e3-tax_deferrred4e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=4e5"
+            evaluate_with_policy gamma$GAMMA retired65-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+            evaluate_with_policy gamma$GAMMA retired65-defined_benefits16e3-tax_deferrred2e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
+        else
+            evaluate_with_policy gamma$GAMMA age_start50-defined_benefits16e3-tax_deferrred2e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=2e5"
+            evaluate_with_policy gamma$GAMMA age_start50-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=5e5"
+            evaluate_with_policy gamma$GAMMA age_start50-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=1e6"
+            evaluate_with_policy gamma$GAMMA retired65-defined_benefits16e3-tax_deferrred2e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=2e5"
+            evaluate_with_policy gamma$GAMMA retired65-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
+            evaluate_with_policy gamma$GAMMA retired65-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+        fi
     fi
 
     wait
