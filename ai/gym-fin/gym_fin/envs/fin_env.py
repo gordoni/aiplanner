@@ -982,17 +982,20 @@ class FinEnv(Env):
             for db in self.defined_benefits.values():
                 db.couple_became_single()
 
-        if self.income_preretirement_years > 0:
-            for _ in range(steps):
-                self.income_preretirement *= lognormvariate(self.params.income_preretirement_mu * self.params.time_period,
-                    self.params.income_preretirement_sigma * sqrt(self.params.time_period))
-        else:
+        for _ in range(steps):
+            income_fluctuation = lognormvariate(self.params.income_preretirement_mu * self.params.time_period,
+                self.params.income_preretirement_sigma * sqrt(self.params.time_period))
+            if self.income_preretirement_years > 0:
+                self.income_preretirement *= income_fluctuation
+            if self.income_preretirement_years2 > 0:
+                if self.params.income_preretirement_concordant:
+                    self.income_preretirement2 *= income_fluctuation
+                else:
+                    self.income_preretirement2 *= lognormvariate(self.params.income_preretirement_mu2 * self.params.time_period,
+                        self.params.income_preretirement_sigma2 * sqrt(self.params.time_period))
+        if not self.income_preretirement_years > 0:
             self.income_preretirement = 0
-        if self.income_preretirement_years2 > 0:
-            for _ in range(steps):
-                self.income_preretirement2 *= lognormvariate(self.params.income_preretirement_mu2 * self.params.time_period,
-                    self.params.income_preretirement_sigma2 * sqrt(self.params.time_period))
-        else:
+        if not self.income_preretirement_years2 > 0:
             self.income_preretirement2 = 0
 
         for db in self.defined_benefits.values():
