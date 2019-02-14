@@ -137,7 +137,7 @@ class ModelParams(object):
         self._boolean_flag('couple-death-concordant', False) # Whether second member of couple dies at the same time as first.
             # This flag may be used to assess the modeling performance differential between a couple and two individuals.
             # When doing so it is important that consume_additiional=1, income-concordant is specified, both members have the same sex, age, and defined benefits,
-            # and the assets are doubled.
+            # and the assets and consume_preretirement are doubled.
 
         self._param('income-preretirement', (0, 0), 0) # Annual pre-tax pre-retirement income for first individual.
         self._param('income-preretirement2', (0, 0), 0) # Annual pre-tax pre-retirement income for second individual.

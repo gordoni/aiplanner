@@ -648,11 +648,13 @@ class FinEnv(Env):
         if self.params.bills:
             bills = alloc
         elif self.params.iid_bonds:
-            iid_bonds = alloc
+            iid_bonds += alloc
         elif self.params.nominal_bonds:
-            nominal_bonds = alloc
+            nominal_bonds += alloc
         elif self.params.real_bonds:
-            real_bonds = alloc
+            real_bonds += alloc
+        else:
+            stocks += alloc
 
         asset_allocation = AssetAllocation(fractional = False)
         if self.params.stocks:

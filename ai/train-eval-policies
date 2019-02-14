@@ -51,4 +51,6 @@ for GAMMA in 1.5 3 6; do
 
 done
 
+wait
+
 echo `date` Done
