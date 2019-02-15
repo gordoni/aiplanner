@@ -736,7 +736,7 @@ public class AAMapGenerate extends AAMap
                         me.aa = generate_aa(config.aa_strategy, config.start_age + period / returns.time_periods, me.rps);
                 if (!search_consume)
                 {
-                        me.aa[scenario.consume_index] = vw_spend_fract(config.start_age + period / returns.time_periods, me.rps) * me.rps[scenario.tp_index];
+                    me.aa[scenario.consume_index] = vw_spend(config.start_age + period / returns.time_periods, me.rps);
                 }
 
                 if (dimensions.size() == 0)
@@ -1025,7 +1025,7 @@ public class AAMapGenerate extends AAMap
                 }
         }
 
-        private double vw_spend_fract(double age, double[] p)
+        private double vw_spend(double age, double[] p)
         {
                 if (age < config.retirement_age)
                         return 0;
@@ -1038,7 +1038,7 @@ public class AAMapGenerate extends AAMap
                 double wealth = p[scenario.tp_index] + income;
                 double inc_pct = 0;
                 if (wealth > 0)
-                    inc_pct = income / wealth;
+                        inc_pct = income / wealth;
 
                 int period = (int) Math.round((age - config.start_age) * config.generate_time_periods);
                 double le;
@@ -1110,9 +1110,9 @@ public class AAMapGenerate extends AAMap
                 if (scenario.vw_strategy.equals("amount") || scenario.vw_strategy.equals("retirement_amount"))
                         return 0;
                 else if (scenario.vw_strategy.equals("percentage") || scenario.vw_strategy.equals("merton") || scenario.vw_strategy.equals("vpw") || scenario.vw_strategy.equals("flra") || scenario.vw_strategy.equals("slra"))
-                        return Math.min(pct * (1 - inc_pct) + inc_pct, 1);
+                        return Math.min(pct * (1 - inc_pct) + inc_pct, 1) * wealth;
                 else if (scenario.vw_strategy.equals("rmd") || scenario.vw_strategy.equals("life") || scenario.vw_strategy.equals("discounted_life"))
-                        return Math.min(life_pct * (1 - inc_pct) + inc_pct, 1);
+                        return Math.min(life_pct * (1 - inc_pct) + inc_pct, 1) * wealth;
                 else
                         assert(false);
                 return Double.NaN;
