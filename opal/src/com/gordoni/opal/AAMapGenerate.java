@@ -1061,6 +1061,8 @@ public class AAMapGenerate extends AAMap
                                 le = generate_stats.raw_sum_avg_alive[period] / generate_stats.raw_alive[period];
                         else
                                 le = config.couple_weight1 * generate_stats.vital_stats1.raw_sum_avg_alive[period] / generate_stats.vital_stats1.raw_alive[period] + (1 - config.couple_weight1) * generate_stats.vital_stats2.raw_sum_avg_alive[period] / generate_stats.vital_stats2.raw_alive[period];
+                        if (Double.isNaN(le))
+                            le = 0.0;
                         le /= scenario.ss.generate_stats.time_periods;
                 }
                 le = Math.max(le, config.vw_le_min);
@@ -1110,9 +1112,9 @@ public class AAMapGenerate extends AAMap
                 if (scenario.vw_strategy.equals("amount") || scenario.vw_strategy.equals("retirement_amount"))
                         return 0;
                 else if (scenario.vw_strategy.equals("percentage") || scenario.vw_strategy.equals("merton") || scenario.vw_strategy.equals("vpw") || scenario.vw_strategy.equals("flra") || scenario.vw_strategy.equals("slra"))
-                        return Math.min(pct * (1 - inc_pct) + inc_pct, 1) * wealth;
+                        return Math.min(pct * (1 - inc_pct) + inc_pct, 1 - 1e-15) * wealth;
                 else if (scenario.vw_strategy.equals("rmd") || scenario.vw_strategy.equals("life") || scenario.vw_strategy.equals("discounted_life"))
-                        return Math.min(life_pct * (1 - inc_pct) + inc_pct, 1) * wealth;
+                        return Math.min(life_pct * (1 - inc_pct) + inc_pct, 1 - 1e-15) * wealth;
                 else
                         assert(false);
                 return Double.NaN;
