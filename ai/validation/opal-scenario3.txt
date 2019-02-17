@@ -1,0 +1,61 @@
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2018-2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+sex = 'female'
+birth_year = 1955
+#generate_life_table='fixed_mortality'
+#validate_life_table='fixed_mortality' 
+le_add = 3
+
+start_age = 65
+retirement_age = 65
+
+fixed_deceased_age = 95 # Applies when life_table is 'fixed_mortality'.
+
+defined_benefit = 16000 # Mean Social Secuity is $16,075 as of March, 2018 - https://www.ssa.gov/policy/docs/quickfacts/stat_snapshot/
+start_tp = 1000000
+
+utility_eta = 6.0
+consume_discount_rate = 0
+
+asset_classes = ('synthetic', 'synthetic2')
+
+# See justification in aiplanner-scenario.conf .
+synthetic_ret = 0.065
+synthetic_vol = 0.174
+synthetic2_ret = 0.013 # Chosen to match 15 year nominal bonds.
+synthetic2_vol = 0.112
+
+#aa_strategy = 'fixed_aa'
+#fixed_aa = [1, 0]
+#vw_strategy = 'life'
+#public_assistance = 1
+
+# Produce 1000 synthetic samples. Increasing beyond this doesn't effect generated CE.
+generate_start_year = 1
+validate_start_year = 1
+generate_end_year = 1000
+validate_end_year = 1000
+
+# By chance synthetic return pairs may be partially correlated, effecting the resulting metrics.
+# The following seed is observed to yield a correlation of -5.5e-4, and a covariance of -1.1e-5.
+# For this seed the effect should thus be minimal.
+generate_seed = 1
+validate_returns_seed = 1
+skip_corr = False
+skip_cov = False
+
+# Parameters for Opal self validation to work.
+ret_resample = None
+validate_draw = 'bootstrap'
+ret_bootstrap_block_size = 0
+map_headroom = null
+
+num_sequences_validate = 1000000
