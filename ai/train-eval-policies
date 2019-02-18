@@ -18,12 +18,11 @@ mkdir -p results
 cd results
 
 PARALLEL=Jobs
-POLICY=True
+POLICY=none
 ALGORITHM=ppo1
 UNIT=single
 SPIAS=no_spias
 TIMESTEPS=2000000
-GAMMA=3
 for GAMMA in 1.5 3 6; do
 
     TRAINARGS="--train-num-timesteps=$TIMESTEPS"
@@ -46,6 +45,15 @@ for GAMMA in 1.5 3 6; do
     EVALUATOR="$AI_DIR/eval_model.py"
 
     train_eval generic $UNIT $GAMMA $EPISODE "$ARGS"
+
+    if [ $POLICY == age_nominal ]; then
+        local OLD_SEEDS=$SEEDS
+        SEEDS=1
+        for AGE in 65 75 85; do
+            train_eval generic $UNIT $GAMMA "$EPISODE-age_nominal$AGE" "$ARGS --master-annuitization-policy=age_nominal --master-annuitization-policy-age=$AGE"
+        done
+        SEEDS=$OLD_SEEDS
+    fi
 
     cd ..
 

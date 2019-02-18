@@ -179,7 +179,7 @@ class FinEnv(Env):
             # couple, number of 401(k)'s available, 1 / gamma
             # average asset years,
             # mortality return for spia, final spias purchase,
-            # reward to go estimate, expected total income level of episode, total income level in remaining retirement,
+            # reward to go estimate, individual CE in remaining retirement,
             # portfolio wealth on total wealth, income present value as a fraction of total wealth: tax_deferred, taxable,
             # portfolio wealth as a fraction of total wealth: tax_deferred, taxable,
             # first person preretirement income as a fraction of total wealth, second person preretirement income as a fraction of total wealth,
@@ -188,8 +188,8 @@ class FinEnv(Env):
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            low  = np.array((0, 0, 0,   0, -1, 0, -100,   0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.05, 0.0)),
-            high = np.array((1, 2, 1, 100,  1, 1,  100, 5e5, 5e5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,  0.05, 0.05)),
+            low  = np.array((0, 0, 0,   0, -1, 0, -100, -10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.05, 0.0)),
+            high = np.array((1, 2, 1, 100,  1, 1,  100,  10, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,  0.05, 0.05)),
             dtype = 'float32'
         )
 
@@ -401,6 +401,19 @@ class FinEnv(Env):
 
         self.episode_length = 0
 
+        # Able to improve consumption and CE estimates by borrowing from Merton's portfolio problem.
+        # Compute Samuelson's a parameter for later use.
+        if self.params.stocks:
+            r = 0 # Might not have risk free, but a zero return it if we did is probably a close enough estimate to use.
+            mu_r = log(1 + r)
+            pi = (self.stocks.mu + self.stocks.sigma ** 2 / 2 - mu_r) / (self.stocks.sigma ** 2 * self.gamma)
+            pi = max(0, min(pi, 1))
+            mu = pi * self.stocks.mu + (1 - pi) * mu_r
+            sigma = sqrt(pi) * self.stocks.sigma
+            self.a = exp(mu * (1 - self.gamma) + sigma ** 2 * (1 - self.gamma) ** 2 / 2) ** (-1 / self.gamma)
+        else:
+            self.a = 1
+
         found = False
         preretirement_ok = False
         for _ in range(1000):
@@ -461,7 +474,7 @@ class FinEnv(Env):
 
             preretirement_ok = True
 
-            found = self.params.consume_floor <= self.consume_estimate_individual <= self.params.consume_ceiling
+            found = self.params.consume_floor <= self.ce_estimate_individual <= self.params.consume_ceiling
             if found:
                 break
 
@@ -484,9 +497,9 @@ class FinEnv(Env):
 
     def set_reward_level(self):
 
-        self.consume_expect_individual = self.consume_estimate_individual
-        _, self.reward_expect = self.raw_reward(self.consume_expect_individual)
-        _, self.reward_zero_point = self.raw_reward(self.params.reward_zero_point_factor * self.consume_expect_individual)
+        self.ce_expect_individual = self.ce_estimate_individual
+        _, self.reward_expect = self.raw_reward(self.ce_expect_individual)
+        _, self.reward_zero_point = self.raw_reward(self.params.reward_zero_point_factor * self.ce_expect_individual)
 
     def encode_direct_action(self, consume_fraction, *, real_spias_fraction = None, nominal_spias_fraction = None,
         real_bonds_duration = None, nominal_bonds_duration = None, **kwargs):
@@ -769,8 +782,9 @@ class FinEnv(Env):
             'consume': consume / self.params.time_period,
             'asset_allocation': asset_allocation,
             'retirement_contribution': retirement_contribution / self.params.time_period,
-            'real_spias_purchase': real_tax_free_spias + real_tax_deferred_spias + real_taxable_spias if self.params.real_spias else None,
-            'nominal_spias_purchase': nominal_tax_free_spias + nominal_tax_deferred_spias + nominal_taxable_spias if self.params.nominal_spias else None,
+            'real_spias_purchase': real_tax_free_spias + real_tax_deferred_spias + real_taxable_spias if self.params.real_spias and self.spias else None,
+            'nominal_spias_purchase':
+                nominal_tax_free_spias + nominal_tax_deferred_spias + nominal_taxable_spias if self.params.nominal_spias and self.spias else None,
             'real_bonds_duration': real_bonds_duration,
             'nominal_bonds_duration': nominal_bonds_duration,
         }
@@ -1126,13 +1140,24 @@ class FinEnv(Env):
         if self.couple:
             self.years_retired = self.retirement_expectancy_both[self.episode_length] + \
                 self.retirement_expectancy_one[self.episode_length] / (1 + self.params.consume_additional)
-            self.consume_estimate_individual = self.total_wealth / self.years_retired / (1 + self.params.consume_additional)
+            couple_weight = 1 + self.params.consume_additional
         else:
             self.years_retired = self.retirement_expectancy_one[self.episode_length]
-            self.consume_estimate_individual = self.total_wealth / self.years_retired
+            couple_weight = 1
+
+        # Consumption and CE fraction estimates, see https://www.gordoni.com/lifetime_portfolio_selection.pdf .
+        t = self.years_retired
+        try:
+            c = self.a ** t * (self.a - 1) / (self.a ** (t + 1) - 1) # Consume fraction.
+        except ZeroDivisionError:
+            c = 1 / t
+        b = (t * c ** self.gamma) ** (1 / (self.gamma - 1)) # CE fraction.
+            # Fails to take into account pre-retirement.
+
+        self.ce_estimate_individual = b * self.total_wealth / couple_weight
 
         try:
-            self.consume_p_estimate = self.total_wealth / self.years_retired / self.p_plus_income
+            self.consume_p_estimate = c * self.total_wealth / self.p_plus_income
         except ZeroDivisionError:
             self.consume_p_estimate = float('inf')
 
@@ -1214,7 +1239,7 @@ class FinEnv(Env):
             final_spias_purchase = 0
 
         reward_weight = (2 * self.retirement_expectancy_both[self.episode_length] + self.retirement_expectancy_one[self.episode_length]) * self.params.time_period
-        _, reward_value = self.raw_reward(self.consume_estimate_individual)
+        _, reward_value = self.raw_reward(self.ce_estimate_individual)
         if reward_value == self.reward_zero_point:
             reward_estimate = 0 # Handles -inf reward_value correctly.
         else:
@@ -1249,8 +1274,8 @@ class FinEnv(Env):
             # Annuitization related observations.
             spia_mortality_return, final_spias_purchase,
             # Value function related observations.
-            # Best results (especially when gamma=6) if provide both reward estimate and reward estimate components: consume expect and consume estimate.
-            reward_estimate, self.consume_expect_individual, self.consume_estimate_individual,
+            # Best results (especially when gamma=6) if provide both reward estimate and CE estimate.
+            reward_estimate, self.ce_estimate_individual,
             # Nature of wealth/income observations.
             # Obseve fractionality to hopefully take advantage of iso-elasticity of utility.
             # No need to observe tax free wealth or income as this represents the baseline case.
@@ -1278,7 +1303,7 @@ class FinEnv(Env):
         items = ('couple', 'num_401k', 'one_on_gamma',
             'preretirement_years', 'average_asset_years',
             'spia_mortality_return', 'final_spias_purchase',
-            'reward_estimate', 'consume_expect_individual', 'consume_estimate_individual',
+            'reward_estimate', 'ce_estimate_individual',
             'wealth_fraction', 'income_tax_deferred_fraction', 'income_taxable_fraction',
             'wealth_tax_deferred_fraction', 'wealth_taxable_fraction',
             'income_preretirement_fraction', 'income_preretirement2_fraction', 'consume_preretirement_fraction',

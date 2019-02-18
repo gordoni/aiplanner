@@ -65,12 +65,13 @@ class ModelParams(object):
         self._param('consume-initial', 0) # Initial consumption amount for particular consumption policies.
         self._param('consume-policy-life-expectancy', None) # Assumed life expectancy for particular consumption policies, or None to use actual life expectancy.
         self._param('consume-policy-return', 0) # Assumed annual return for particular consumption policies.
-        self._param('annuitization-policy', 'rl', tp = string_type, choices = ('rl', 'age_real', 'none'))
+        self._param('annuitization-policy', 'rl', tp = string_type, choices = ('rl', 'age_real', 'age_nominal', 'none'))
             # Annuitization policy.
             # "rl": reinforcement learning.
-            # "age_real": fully annuitize starting at annuitization_policy_age_real.
+            # "age_real": fully annuitize using real SPIAs starting at annuitization_policy_age.
+            # "age_nominal": fully annuitize using nominal SPIAs starting at annuitization_policy_age.
             # 'none': no SPIA purchases.
-        self._param('annuitization-policy-age-real', 0) # Age (of youngest party) at which to switch from no annuitization to fully real annuitized.
+        self._param('annuitization-policy-age', 0) # Age (of youngest party) at which to switch from no annuitization to fully annuitized.
         self._param('asset-allocation-policy', 'rl', tp = string_type)
             # Asset allocation policy.
             # "rl": reinforcement learning.

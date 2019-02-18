@@ -20,7 +20,7 @@ PARALLEL=${PARALLEL:-True}
     # "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
 SEED_START=${SEED_START:-0}
 SEEDS=${SEEDS:-10}
-POLICY=${POLICY:-False}
+POLICY=${POLICY:-none}
 TRAINER=${TRAINER:-$AI_DIR/train_ppo1.py}
 EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py}
 CONFIG_FILE=${CONFIG_FILE:-$AI_DIR/aiplanner-scenario.txt}
@@ -121,10 +121,10 @@ evaluate_with_policy () {
 
     evaluate $MODEL_NAME $EVAL_NAME "$ARGS"
 
-    if [ $POLICY != False ]; then
+    if [ $POLICY = pmt-stocks ]; then
         local OLD_SEEDS=$SEEDS
         SEEDS=1
-        for PMT_RETURN in -0.07 -0.06 -0.05 -0.04 -0.03 -0.02 -0.01 0; do
+        for PMT_RETURN in -0.08 -0.06 -0.04 -0.02 0 0.02; do
             if expr $GAMMA '>=' 6 > /dev/null; then
                 evaluate $MODEL_NAME $EVAL_NAME-pmt$PMT_RETURN-stocks0.5 "$ARGS --master-consume-policy=pmt --master-consume-policy-return=$PMT_RETURN "'--master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5}'
             fi

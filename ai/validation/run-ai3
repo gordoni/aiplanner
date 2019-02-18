@@ -17,7 +17,7 @@ AI_DIR=$AIPLANNER_HOME/ai
 
 # Compute performance of fixed policy.
 # Need to enable fixed policy in opal-scenario3.txt to compare.
-ARGS="--master-stocks-mean-reversion-rate=0 --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.013 --master-iid-bonds-volatility=0.112 --master-no-returns-standard-error --master-no-tax"
+ARGS="--master-stocks-mean-reversion-rate=0 --master-no-observe-stocks-price --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.013 --master-iid-bonds-volatility=0.112 --master-no-returns-standard-error --master-no-tax"
 ARGS="$ARGS --master-asset-allocation-policy='{"stocks":0.5,"iid_bonds":0.5}' --master-consume-policy=pmt"
 
 ../train_ppo1.py --model-dir=aiplanner.run3.tf --train-num-timesteps=1
