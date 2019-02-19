@@ -323,7 +323,8 @@ def plot(prefix, traces, consume_pdf):
                         single_plot = True
                 except KeyError:
                     pass
-                csv_writer.writerow((step['age'], int(couple_plot), int(single_plot), step['gi_sum'], step['p_sum'], step['consume']))
+                csv_writer.writerow((step['age'], int(couple_plot), int(single_plot), step['gi_sum'], step['p_sum'], step['consume'],
+                    step['real_spais_purchase'], step['nominal_spais_purchase'], *step['asset_allocation'].as_list()))
             csv_writer.writerow(())
 
     with open(prefix + '-consume-pdf.csv', 'w') as f:

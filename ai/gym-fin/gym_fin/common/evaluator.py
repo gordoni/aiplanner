@@ -100,6 +100,9 @@ class Evaluator(object):
             'gi_sum': env.gi_sum() if not done else None,
             'p_sum': env.p_sum(),
             'consume': decoded_action['consume'] if not done else None,
+            'real_spias_purchase': decoded_action['real_spias_purchase'] if not done else None,
+            'nominal_spias_purchase': decoded_action['nominal_spias_purchase'] if not done else None,
+            'asset_allocation': decoded_action['asset_allocation'] if not done else None,
         })
 
         if done:

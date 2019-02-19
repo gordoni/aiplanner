@@ -21,13 +21,15 @@ PARALLEL=Jobs
 POLICY=none
 ALGORITHM=ppo1
 UNIT=single
-SPIAS=no_spias
+SPIAS=nominal
 TIMESTEPS=2000000
 for GAMMA in 1.5 3 6; do
 
     TRAINARGS="--train-num-timesteps=$TIMESTEPS"
     ARGS=""
-    if [ $SPIAS = spias ]; then
+    if [ $SPIAS = real ]; then
+        ARGS="$ARGS --master-real-spias"
+    elif [ $SPIAS = nominal ]; then
         ARGS="$ARGS --master-nominal-spias"
     fi
 
@@ -46,16 +48,17 @@ for GAMMA in 1.5 3 6; do
 
     train_eval generic $UNIT $GAMMA $EPISODE "$ARGS"
 
-    if [ $POLICY == age_nominal ]; then
-        local OLD_SEEDS=$SEEDS
-        SEEDS=1
-        for AGE in 65 75 85; do
-            train_eval generic $UNIT $GAMMA "$EPISODE-age_nominal$AGE" "$ARGS --master-annuitization-policy=age_nominal --master-annuitization-policy-age=$AGE"
-        done
-        SEEDS=$OLD_SEEDS
-    fi
-
     cd ..
+
+    if [ $POLICY == age_nominal ]; then
+        for AGE in 65 75 85; do
+            EP="$EPISODE-age_nominal$AGE"
+            mkdir -p $EP
+            cd $EP
+            train_eval generic $UNIT $GAMMA $EP "$ARGS --master-annuitization-policy=age_nominal --master-annuitization-policy-age=$AGE"
+            cd ..
+        done
+    fi
 
 done
 

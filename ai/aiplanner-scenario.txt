@@ -35,6 +35,7 @@ master_bonds_date_start = None
 
 master_real_spias = False
 master_nominal_spias = False
+master_real_spias_mwr = 0.94 # Based on 2015 pricing.
 master_nominal_spias_mwr = 1.0 # Based on 2015 pricing exceeding 100%.
 master_nominal_spias_adjust = 0.02
 master_spias_min_purchase_fraction = 0.1
@@ -54,6 +55,7 @@ master_stocks_price_low = 0.5
 master_stocks_price_high = 2.0
 master_stocks_standard_error = 0.016
 master_real_bonds = False
+master_real_bonds_duration = 15
 master_nominal_bonds = True
 master_nominal_bonds_duration = 15 # Hardwiring the duration gives slightly better, and less inconsistent, results; 15 years is typical for a long term bond fund.
 master_iid_bonds = False

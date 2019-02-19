@@ -728,7 +728,7 @@ class FinEnv(Env):
         p_taxable = max(p_taxable, 0)
         p_tax_deferred = max(p_tax_deferred, 0)
         if p_tax_free < 0:
-            assert p_tax_free / self.p_sum() > -1e-15
+            assert p_tax_free / self.p_plus_income > -1e-15
             p_tax_free = 0
 
         retirement_contribution = contribution_limit(self.income_preretirement, self.age, self.have_401k, self.params.time_period) \
@@ -765,7 +765,7 @@ class FinEnv(Env):
         nominal_taxable_spias = nominal_spias - nominal_tax_deferred_spias
         p_taxable -= real_taxable_spias + nominal_taxable_spias
         if p_taxable < 0:
-            assert p_taxable / self.p_sum() > -1e-15
+            assert p_taxable / self.p_plus_income > -1e-15
             p_taxable = 0
 
         return p_tax_free, p_tax_deferred, p_taxable, consume, retirement_contribution, \
