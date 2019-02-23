@@ -125,6 +125,21 @@ class FinEnv(Env):
         life_expectancy_both = self.sums_to_end(alive_both, 0, alive_both)
         life_expectancy_one = self.sums_to_end(alive_one, 0, alive_either)
 
+        percentile = 0.8
+        alive_weighted = list(alive_one[i] + alive_both[i] * (1 + self.params.consume_additional) for i in range(len(alive_one)))
+        alive_weighted.append(0)
+        life_percentile = []
+        j = len(alive_weighted) - 1
+        for i in range(len(alive_weighted) - 1, -1, -1):
+            target = (1 - percentile) * alive_weighted[i]
+            while alive_weighted[j] <= target and j >= i:
+                j -= 1
+            try:
+                partial = (alive_weighted[j] - target) / (alive_weighted[j] - alive_weighted[j + 1])
+            except (IndexError, ZeroDivisionError):
+                partial = 0
+            life_percentile.insert(0, (j - i + 1 + partial) * self.params.time_period)
+
         retired_index = ceil(preretirement / self.params.time_period)
         retirement_expectancy_both = self.sums_to_end(alive_both, retired_index, alive_both)
         retirement_expectancy_one = self.sums_to_end(alive_one, retired_index, alive_either)
@@ -136,9 +151,9 @@ class FinEnv(Env):
         if not self.params.probabilistic_life_expectancy:
             alive_single = tuple(None if _alive_count == 2 else _alive_count for _alive_count in alive_count)
 
-        self.only_alive2, self.alive_single, self.alive_count, self.life_expectancy_both, self.life_expectancy_one, \
+        self.only_alive2, self.alive_single, self.alive_count, self.life_expectancy_both, self.life_expectancy_one, self.life_percentile, \
             self.retirement_expectancy_both, self.retirement_expectancy_one, self.retirement_expectancy_single = \
-            only_alive2, tuple(alive_single), tuple(alive_count), tuple(life_expectancy_both), tuple(life_expectancy_one), \
+            only_alive2, tuple(alive_single), tuple(alive_count), tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_percentile), \
             tuple(retirement_expectancy_both), tuple(retirement_expectancy_one), tuple(retirement_expectancy_single)
 
     def sums_to_end(self, l, start, divl):
@@ -1074,7 +1089,7 @@ class FinEnv(Env):
             assert p_taxable_stocks_basis_fraction == None
         else:
             self.p_taxable = sum(p_taxable_assets.aa.values())
-            self.taxes = Taxes(self, taxable_assets, p_taxable_stocks_basis_fraction)
+            self.taxes = Taxes(self, p_taxable_assets, p_taxable_stocks_basis_fraction)
         if taxes_due != None:
             self.taxes_due = 0
 
@@ -1222,16 +1237,12 @@ class FinEnv(Env):
         if self.spias:
             # We siplify by comparing life expectancies and SPIA payouts rather than retirement expectancies and DIA payouts.
             # DIA payouts depend on retirement age, which would make the _spia_years_cache sigificiantly larger and less effective.
-            later = self.episode_length + round(10 / self.params.time_period)
             if self.couple:
                 max_age = max(self.age, self.age2) # Determines age cut-off and thus final purchase signal for the purchase of SPIAs.
-                life_expectancy_now = self.life_expectancy_both[self.episode_length] + \
-                    self.life_expectancy_one[self.episode_length] / (1 + self.params.consume_additional)
             else:
                 max_age = self.age2 if self.only_alive2 else self.age
-                life_expectancy_now = self.life_expectancy_one[self.episode_length]
             spia_years_now = self._spia_years(0)
-            spia_mortality_return = life_expectancy_now / spia_years_now - 1 # Fraction by which outlive SPIA mortality.
+            spia_mortality_return = self.life_percentile[self.episode_length] / spia_years_now - 1
             final_spias_purchase = max_age <= self.params.spias_permitted_to_age < max_age + self.params.time_period
             final_spias_purchase = int(final_spias_purchase)
         else:
