@@ -1172,8 +1172,11 @@ class FinEnv(Env):
             c = self.a ** t * (self.a - 1) / (self.a ** (t + 1) - 1) # Consume fraction.
         except ZeroDivisionError:
             c = 1 / t
-        b = (t * c ** self.gamma) ** (1 / (self.gamma - 1)) # CE fraction.
-            # Fails to take into account pre-retirement.
+        try:
+            b = (t * c ** self.gamma) ** (1 / (self.gamma - 1)) # CE fraction.
+                # Fails to take into account pre-retirement.
+        except ZeroDivisionError:
+            b = 1 / t
 
         self.ce_estimate_individual = b * self.total_wealth / couple_weight
 
