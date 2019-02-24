@@ -21,7 +21,7 @@ PARALLEL=Jobs
 POLICY=none
 ALGORITHM=ppo1
 UNIT=single
-SPIAS=nominal
+SPIAS=no_spias
 TIMESTEPS=2000000
 for GAMMA in 1.5 3 6; do
 
