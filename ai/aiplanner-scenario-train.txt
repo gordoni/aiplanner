@@ -34,7 +34,7 @@ master_income_preretirement2_low = 1e4
 master_income_preretirement2_high = 2e5
 master_consume_preretirement_low = 1e4
 master_consume_preretirement_high = 1e5
-master_consume_income_ratio_max = 0.7
+master_consume_income_ratio_max = 1
 
 master_have_401k_low = False
 master_have_401k_high = True
@@ -44,19 +44,19 @@ master_have_401k2_high = True
 master_defined_benefits = '''[
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
-    {"owner": "self",   "age": null, "probability": 1.0, "payout": [5e3, 1e5], "source_of_funds": "taxable"},
+    {"owner": "self",   "age": null, "probability": 1.0, "payout": [5e3, 1e5], "source_of_funds": "taxable", type: "Social Security"},
     {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
     {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
-    {"owner": "spouse", "age": null, "probability": 1.0, "payout": [5e3, 1e5], "source_of_funds": "taxable"}
+    {"owner": "spouse", "age": null, "probability": 1.0, "payout": [5e3, 1e5], "source_of_funds": "taxable", type: "Social Security"}
 ]'''
 master_p_tax_free_low = 1e3
-master_p_tax_free_high = 2e6
+master_p_tax_free_high = 5e6
 master_p_tax_deferred_low = 1e3
-master_p_tax_deferred_high = 2e6
+master_p_tax_deferred_high = 5e6
 master_p_taxable_stocks_low = 1e3
-master_p_taxable_stocks_high = 2e6
+master_p_taxable_stocks_high = 5e6
 master_p_taxable_nominal_bonds_low = 1e3
-master_p_taxable_nominal_bonds_high = 2e6
+master_p_taxable_nominal_bonds_high = 5e6
 master_p_taxable_stocks_basis_fraction_low = 0
 master_p_taxable_stocks_basis_fraction_high = 2
 

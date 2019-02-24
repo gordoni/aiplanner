@@ -16,16 +16,16 @@ master_age_start2 = 50
 
 master_age_retirement = 65
 
-master_income_preretirement = 6e4
-master_income_preretirement2 = 6e4
+master_income_preretirement = 4e4
+master_income_preretirement2 = 4e4
 master_consume_preretirement = 4.8e4
 
 master_have_401k = True
 master_have_401k2 = True
 
 master_defined_benefits = '''[
-    {"owner": "self",   "age": null, "payout": 16e3, "source_of_funds": "taxable"},
-    {"owner": "spouse", "age": null, "payout": 16e3, "source_of_funds": "taxable"}
+    {"owner": "self",   "age": null, "payout": 16e3, "source_of_funds": "taxable", type: "Social Security"},
+    {"owner": "spouse", "age": null, "payout": 16e3, "source_of_funds": "taxable", type: "Social Security"}
 ]'''
 master_p_tax_free = 0
 master_p_tax_deferred = 0
@@ -35,7 +35,7 @@ master_p_taxable_stocks_basis_fraction = 0.5
 
 master_stocks_price = 1
 master_real_short_rate_type = 'value'
-master_real_short_rate_value = 0.011
+master_real_short_rate_value = 0.010
 master_inflation_short_rate_type = 'value'
 master_inflation_short_rate_value = 0.016
 
