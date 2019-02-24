@@ -24,8 +24,8 @@ master_have_401k = True
 master_have_401k2 = True
 
 master_defined_benefits = '''[
-    {"owner": "self",   "age": null, "payout": 16e3, "source_of_funds": "taxable", type: "Social Security"},
-    {"owner": "spouse", "age": null, "payout": 16e3, "source_of_funds": "taxable", type: "Social Security"}
+    {"owner": "self",   "age": null, "payout": 16e3, "source_of_funds": "taxable", "type": "Social Security"},
+    {"owner": "spouse", "age": null, "payout": 16e3, "source_of_funds": "taxable", "type": "Social Security"}
 ]'''
 master_p_tax_free = 0
 master_p_tax_deferred = 0
