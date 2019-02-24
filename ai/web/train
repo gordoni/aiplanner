@@ -37,7 +37,7 @@ for UNIT in single couple; do
             TIMESTEPS=`timesteps $UNIT $SPIAS`
             ARGS="$ARGS --train-num-timesteps=$TIMESTEPS"
 
-            train $UNIT-$SPIAS-gamma$GAMMA $ARGS
+            train $UNIT-$SPIAS-gamma$GAMMA "$ARGS"
 
         done
         wait
