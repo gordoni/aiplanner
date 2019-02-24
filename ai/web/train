@@ -19,30 +19,29 @@ cd models
 
 PARALLEL=Jobs
 
-GAMMAS="6 3 1.5 1"
+for UNIT in single couple; do
 
-echo `date` Training single no_spias
-for GAMMA in $GAMMAS; do
-    train single-no_spias-gamma$GAMMA "--master-gamma=$GAMMA"
-done
-wait
+    for SPIAS in no_spias spias; do
 
-echo `date` Training single spias
-for GAMMA in $GAMMAS; do
-    train single-spias-gamma$GAMMA "--master-nominal-spias --master-gamma=$GAMMA"
-done
-wait
+        echo `date` Training $UNIT $SPIAS
 
-echo `date` Training couple no_spias
-for GAMMA in $GAMMAS; do
-    train couple-no_spias-gamma$GAMMA "--master-sex2=male --master-gamma=$GAMMA"
-done
-wait
+        for GAMMA in 1 1.5 3 6; do
 
-echo `date` Training couple spias
-for GAMMA in $GAMMAS; do
-    train couple-spias-gamma$GAMMA "--master-sex2=male --master-nominal-spias --master-gamma=$GAMMA"
+            ARGS="--master-gamma=$GAMMA"
+            if [ $UNIT = couple ]; then
+                ARGS="$ARGS --master-sex2=male"
+            fi
+            if [ $SPIAS = spias ]; then
+                ARGS="$ARGS --master-nominal-spias"
+            fi
+            TIMESTEPS=`timesteps $UNIT $SPIAS`
+            ARGS="$ARGS --train-num-timesteps=$TIMESTEPS"
+
+            train $UNIT-$SPIAS-gamma$GAMMA $ARGS
+
+        done
+        wait
+    done
 done
-wait
 
 echo `date` Done

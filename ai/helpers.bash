@@ -192,3 +192,19 @@ train_eval () {
 
     wait
 }
+
+timesteps () {
+
+    local UNIT=$1
+    local SPIAS=$2
+
+    if [ $UNIT = single ]; then
+        if [ $SPIAS = no_spias ]; then
+            echo 2000000
+        else
+            echo 5000000
+        fi
+    elif [ $UNIT = couple ]; then
+        echo 10000000
+    fi
+}
