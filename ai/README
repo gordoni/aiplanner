@@ -69,8 +69,12 @@ Training the neural network models will take 10-20 hours:
 
 The models should then be installed:
 
-    mkdir -p ~/aiplanner-data/models
-    mv aiplanner.*.tf ~/aiplanner-data/models
+    mkdir -p ~/aiplanner-data
+    rm -rf ~/aiplanner-data/models.old  # Delete prior model backups if required.
+    mv ~/aiplaner-data/models ~/aiplanner-data/models.old  # Save prior models if any as a backup.
+
+    cd ~/aiplanner/ai/web
+    cp -rp models ~/aiplanner-data
 
 Generating required assets (images)
 -----------------------------------

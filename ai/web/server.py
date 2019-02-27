@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -368,7 +368,7 @@ class ModelRunner(object):
             '--result-dir', dir_seed,
             '--model-dir', model_dir,
             '--nice', str(self.priority),
-            '-c', model_dir + '/assets.extra/params.txt',
+            '-c', model_dir + '/params.txt',
             '-c', self.dir + '/aiplanner-scenario.txt',
             '--master-consume-clip', '0',
             '--eval-num-timesteps', num_timesteps,

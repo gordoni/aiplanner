@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -165,6 +165,9 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
         interp['asset_classes'] = interp['asset_allocation'].classes()
         interp['asset_allocation'] = interp['asset_allocation'].as_list()
         interp['name'] = env.params.name
+        interp['pv_guaranteed_income'] = sum(env.pv_income.values())
+        interp['p'] = env.p_sum()
+        interp['pv_preretirement'] = env.pv_income_preretirement + env.pv_income_preretirement2 - env.pv_consume_preretirement
         interp_str = dumps(interp)
         with open(result_dir + '/aiplanner-initial.json', 'w') as w:
             w.write(interp_str)
@@ -323,8 +326,10 @@ def plot(prefix, traces, consume_pdf):
                         single_plot = True
                 except KeyError:
                     pass
+                aa = step['asset_allocation']
+                aa = () if aa == None else aa.as_list()
                 csv_writer.writerow((step['age'], int(couple_plot), int(single_plot), step['gi_sum'], step['p_sum'], step['consume'],
-                    step['real_spias_purchase'], step['nominal_spias_purchase'], *step['asset_allocation'].as_list()))
+                                     step['real_spias_purchase'], step['nominal_spias_purchase'], *aa))
             csv_writer.writerow(())
 
     with open(prefix + '-consume-pdf.csv', 'w') as f:

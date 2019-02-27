@@ -1,5 +1,5 @@
 /* AIPlanner - Deep Learning Financial Planner
- * Copyright (C) 2018 Gordon Irlam
+ * Copyright (C) 2018-2019 Gordon Irlam
  *
  * All rights reserved. This program may not be used, copied, modified,
  * or redistributed without permission.
@@ -153,8 +153,10 @@ export class ScenarioComponent implements OnInit {
 
     var scenario = {
         'stocks_price': this.stocksPricePct / 100,
-        'real_short_rate': Math.log(1 + Number(this.nominalShortRatePct) / 100) - Math.log(1 + Number(this.inflationShortRatePct) / 100),
-        'nominal_short_rate': Math.log(1 + Number(this.nominalShortRatePct) / 100),
+        'real_short_rate_type': 'value',
+        'real_short_rate_value': Math.log(1 + Number(this.nominalShortRatePct) / 100) - Math.log(1 + Number(this.inflationShortRatePct) / 100),
+        'inflation_short_rate_type': 'value',
+        'inflation_short_rate_value': Math.log(1 + Number(this.inflationShortRatePct) / 100),
 
         'sex': this.sex,
         'sex2': (this.sex2 == 'none') ? null : this.sex2,
