@@ -614,20 +614,13 @@ class FinEnv(Env):
                 spias_action = (spias_action + 1) / 2
                 current_spias_fraction_estimate = sum(self.pv_income.values()) / self.total_wealth
                 current_spias_fraction_estimate = max(0, min(current_spias_fraction_estimate, 1))
-                # Might like to pass on any more SPIAs when spias_action <= current_spias_fraction_estimate,
-                # but that might then make learning to increase spias_action difficult.
-                # We thus use a variant of the leaky ReLU.
-                def leaky_lu(x):
-                    '''x in [-1, 1]. Result in [0, 1].'''
-                    leak = 0 # Disable leak for now as it results in unwanted SPIA purchases.
-                    return leak + x * (1 - leak) if x > 0 else leak * (1 + x)
                 try:
-                    spias_fraction = leaky_lu(spias_action - current_spias_fraction_estimate) / leaky_lu(1 - current_spias_fraction_estimate)
+                    spias_fraction = (spias_action - current_spias_fraction_estimate) * self.total_wealth / self.p_plus_income
                 except ZeroDivisionError:
                     spias_fraction = 0
                 if spias_action - current_spias_fraction_estimate < self.params.spias_min_purchase_fraction:
                     spias_fraction = 0
-                assert 0 <= spias_fraction <= 1
+                spias_fraction = min(spias_fraction, 1)
 
             else:
 
