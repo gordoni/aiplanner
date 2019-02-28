@@ -24,7 +24,7 @@ from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 from gym_fin.common.tf_util import TFRunner
 
-def extract_model(eval_model_params, *, eval_couple_net, eval_seed, eval_num_timesteps, eval_render, nice, num_cpu, model_dir,
+def extract_model(eval_model_params, *, result_dir, eval_couple_net, eval_seed, eval_num_timesteps, eval_render, nice, num_cpu, model_dir,
     num_age_steps, num_p_steps, age_range, p_range, p_type):
 
     def extract_timestep(tf_dir, output_fname):
@@ -82,15 +82,17 @@ def extract_model(eval_model_params, *, eval_couple_net, eval_seed, eval_num_tim
     env = make_fin_env(**eval_model_params)
     env = env.unwrapped
 
-    #extract_timestep(model_dir + '/tensorflow', model_dir + '/aiplanner-linear.csv')
+    if result_dir == None:
+        result_dir = model_dir
     with scandir(model_dir) as iter:
         for entry in iter:
             if entry.name.startswith('tensorflow'):
                 suffix = entry.name[len('tensorflow'):]
-                extract_timestep(model_dir + '/' + entry.name, model_dir + '/aiplanner-linear' + suffix + '.csv')
+                extract_timestep(model_dir + '/' + entry.name, result_dir + '/aiplanner-linear' + suffix + '.csv')
 
 def main():
     parser = arg_parser()
+    parser.add_argument('--result-dir')
     boolean_flag(parser, 'eval-couple-net', default = True)
     parser.add_argument('--num-age-steps', type = int, default = 30)
     parser.add_argument('--num-p-steps', type = int, default = 30)
