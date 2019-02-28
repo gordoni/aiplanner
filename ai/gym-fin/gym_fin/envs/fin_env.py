@@ -198,13 +198,13 @@ class FinEnv(Env):
             # portfolio wealth on total wealth, income present value as a fraction of total wealth: tax_deferred, taxable,
             # portfolio wealth as a fraction of total wealth: tax_deferred, taxable,
             # first person preretirement income as a fraction of total wealth, second person preretirement income as a fraction of total wealth,
-            # consume preretirement as a fraction of total wealth, taxable basis as a fraction of total wealth,
+            # consume preretirement as a fraction of total wealth, taxable wealth less basis as a fraction of total wealth,
             # stock price on fair value, short real interest rate, short inflation rate
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            low  = np.array((0, 0, 0,   0, -1, 0, -100, -10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.05, 0.0)),
-            high = np.array((1, 2, 1, 100,  1, 1,  100,  10, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,  0.05, 0.05)),
+            low  = np.array((0, 0, 0,   0, -1, 0, -100, -10, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, -0.05, 0.0)),
+            high = np.array((1, 2, 1, 100,  1, 1,  100,  10, 1, 1, 1, 1, 1, 1, 1, 1,  1, 2,  0.05, 0.05)),
             dtype = 'float32'
         )
 
@@ -1264,6 +1264,7 @@ class FinEnv(Env):
             if tw == 0:
                 tw = 1 # To avoid divide by zero later.
         w = sum(self.wealth.values())
+        taxable_wealth = self.wealth['taxable'] - self.taxable_basis
 
         # When mean reversion rate is zero, avoid observing spurious noise for better training.
         if self.params.observe_stocks_price and self.params.stocks_mean_reversion_rate != 0:
@@ -1295,7 +1296,7 @@ class FinEnv(Env):
             w / tw, self.pv_income['tax_deferred'] / tw, self.pv_income['taxable'] / tw,
             self.wealth['tax_deferred'] / tw, self.wealth['taxable'] / tw,
             self.pv_income_preretirement / tw, self.pv_income_preretirement2 / tw, self.pv_consume_preretirement / tw,
-            self.taxable_basis / tw,
+            taxable_wealth / tw,
             # Market condition obsevations.
             stocks_price, real_interest_rate, inflation_rate)
         obs = np.array(observe, dtype = 'float32')
