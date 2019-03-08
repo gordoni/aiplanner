@@ -712,11 +712,11 @@ class FinEnv(Env):
             reward_weight = self.alive_single[self.episode_length] * self.params.time_period
         consume = max(consume_rate, self.params.consume_clip)
         if self.params.verbose and consume != consume_rate:
-            print('Consumption out of range - age, p_sum, consume_fraction, consume_rate:', self.age, self.p_sum(), consume_fraction, consume_rate)
+            print('Consumption out of range - age, p_sum, consume_rate:', self.age, self.p_sum(), consume_rate)
         utility = self.utility.utility(consume)
         reward_annual = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
         if self.params.verbose and reward_annual != utility:
-            print('Reward out of range - age, p_sum, consume_fraction, utility:', self.age, self.p_sum(), consume_fraction, utility)
+            print('Reward out of range - age, p_sum, utility:', self.age, self.p_sum(), utility)
 
         return reward_weight, reward_annual
 
