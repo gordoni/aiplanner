@@ -44,6 +44,8 @@ class ModelParams(object):
             # This parameter is determined by the training algorithm, and can't be set by the user.
         self._boolean_flag('observation_space_ignores_range', None) # Whether observation space needs to roughly be in the range [-1, 1], or in the range specified.
             # This parameter is determined by the training algorithm, and can't be set by the user.
+        self._param('algorithm', None) # For rllib only, the training algorithm being used.
+            # This parameter is determined by the training algorithm, and can't be set by the user.
 
         self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
 

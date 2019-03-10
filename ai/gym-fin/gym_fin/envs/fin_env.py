@@ -214,6 +214,10 @@ class FinEnv(Env):
         self.env_couple_timesteps = 0
         self.env_single_timesteps = 0
 
+        self._init_done = False
+
+    def _init(self):
+
         self.vs_cache = None
 
         self.life_table_age = None
@@ -302,7 +306,7 @@ class FinEnv(Env):
                 returns_report('inflation', self.bonds.inflation,
                     duration = self.params.time_period, stepper = self.bonds_stepper, time_period = self.params.time_period)
 
-        self.reset()
+        self._init_done = True
 
     def gi_sum(self, type = None, source = ('tax_free', 'tax_deferred', 'taxable')):
 
@@ -366,6 +370,9 @@ class FinEnv(Env):
             return exp(uniform(log(low), log(high)))
 
     def reset(self):
+
+        if not self._init_done:
+            self._init()
 
         if self.params.reproduce_episode != None:
             self._reproducable_seed(self.params.reproduce_episode, 0, 0)
@@ -869,6 +876,10 @@ class FinEnv(Env):
 
     def step(self, action):
 
+        if not self._init_done:
+            self._init()
+            self.reset()
+
         if self.params.reproduce_episode != None:
             self._reproducable_seed(self.params.reproduce_episode, self.episode_length, 1)
 
@@ -962,7 +973,7 @@ class FinEnv(Env):
 
         done = self.alive_single[self.episode_length] == 0
         if done:
-            observation = None
+            observation = np.repeat(np.nan, self.observation_space.shape)
         else:
             self._pre_calculate()
             observation = self._observe()
@@ -1164,12 +1175,12 @@ class FinEnv(Env):
         try:
             c = self.a ** t * (self.a - 1) / (self.a ** (t + 1) - 1) # Consume fraction.
         except ZeroDivisionError:
-            c = 1 / t
+            c = 1 / (t + 1)
         try:
-            b = (t * c ** self.gamma) ** (1 / (self.gamma - 1)) # CE fraction.
+            b = ((t + 1) * c ** self.gamma) ** (1 / (self.gamma - 1)) # CE fraction.
                 # Fails to take into account pre-retirement.
         except ZeroDivisionError:
-            b = 1 / t
+            b = 1 / (t + 1)
 
         self.ce_estimate_individual = b * self.total_wealth / couple_weight
 

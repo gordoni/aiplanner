@@ -12,9 +12,11 @@
 
 from bisect import bisect
 from csv import reader, writer
+from glob import glob
 from json import dumps
 from math import ceil, exp, sqrt
 from os import chmod, environ, getpriority, mkdir, PRIO_PROCESS, setpriority
+from os.path import exists
 from subprocess import run
 
 from baselines.common import boolean_flag
@@ -156,7 +158,12 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
 
         else:
 
-            tf_dir = tensorflow_dir if tensorflow_dir else model_dir + '/tensorflow'
+            if tensorflow_dir:
+                tf_dir = tensorflow_dir
+            else:
+                tf_dir = model_dir + '/tensorflow'
+                if not exists(tf_dir):
+                    tf_dir, = glob(model_dir + '/rllib/*/checkpoint_*')
             runner = TFRunner(tf_dir = tf_dir, couple_net = eval_couple_net, num_cpu = num_cpu).__enter__()
 
             action, = runner.run([obs])
