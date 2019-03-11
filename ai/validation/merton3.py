@@ -10,11 +10,15 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-from math import log, sqrt
+# Compute optimal asset allocation, consumption fraction, and CE
+# fraction for various iid bond returns and gamma values.
+
+from math import exp, log, sqrt
+from statistics import mean
+from random import lognormvariate, seed
 
 from numpy import array
 from numpy.linalg import inv, LinAlgError
-
 
 def mu_sigma(m, vol):
     
@@ -44,6 +48,10 @@ def solve_merton_no_r(gamma, sigma_matrix, alpha):
 
 if __name__ == '__main__':
 
+    time_periods = 30
+
+    num_samples = 1000000 # Should ideally be larger for accuraate results, but then run time becomes large.
+
     stocks_mu, stocks_sigma = mu_sigma(1.065, 0.174)
     bonds = {
         1: (1.011, 0.023),
@@ -51,6 +59,8 @@ if __name__ == '__main__':
         5: (1.009, 0.057),
         15: (1.013, 0.112),
     }
+
+    seed(0)
 
     for duration in (1, 2, 5, 15):
 
@@ -65,4 +75,22 @@ if __name__ == '__main__':
 
             w = solve_merton_no_r(gamma, sigma_matrix, alpha)
 
-            print(duration, gamma, w[0])
+            pi = w[0] # Asset allocation to stocks assuming continuous rebalancing.
+                # Empirically difference from asset allocation computed using discrete rebalancing using SDP is less than 1%.
+            pi_c = max(0, min(pi, 1)) # Allocation is constrained.
+
+            # Consumption and CE fraction estimates, see https://www.gordoni.com/lifetime_portfolio_selection.pdf .
+            t = time_periods - 1
+            gam = gamma
+            if gam == 1:
+                gam += 1e-6
+            e = mean(((pi_c * lognormvariate(stocks_mu, stocks_sigma) + (1 - pi_c) * lognormvariate(bonds_mu, bonds_sigma)) ** (1 - gam) for _ in range(num_samples)))
+            a = e ** (-1 / gam) # Sauelson's a parameter.
+
+            try:
+                c = a ** t * (a - 1) / (a ** (t + 1) - 1) # Consume fraction.
+            except ZeroDivisionError:
+                c = 1 / (t + 1)
+            b = ((t + 1) * c ** gam) ** (1 / (gam - 1)) # CE fraction.
+
+            print(duration, gamma, pi, pi_c, c, b)

@@ -425,14 +425,17 @@ class FinEnv(Env):
 
         # Able to improve consumption and CE estimates by borrowing from Merton's portfolio problem.
         # Compute Samuelson's a parameter for later use.
+        self.gamma_adjusted = self.gamma
+        if self.gamma_adjusted == 1:
+            self.gamma_adjusted += 1e-6 # Avoids divide by zero in b later.
         if self.params.stocks:
-            r = 0 # Might not have risk free, but a zero return it if we did is probably a close enough estimate to use.
+            r = 0 # Might not have risk free, but a zero return for it if we did is probably a close enough estimate to use.
             mu_r = log(1 + r)
             pi = (self.stocks.mu + self.stocks.sigma ** 2 / 2 - mu_r) / (self.stocks.sigma ** 2 * self.gamma)
             pi = max(0, min(pi, 1))
             mu = pi * self.stocks.mu + (1 - pi) * mu_r
             sigma = sqrt(pi) * self.stocks.sigma
-            self.a = exp(mu * (1 - self.gamma) + sigma ** 2 * (1 - self.gamma) ** 2 / 2) ** (-1 / self.gamma)
+            self.a = exp(mu * (1 - self.gamma_adjusted) + sigma ** 2 * (1 - self.gamma_adjusted) ** 2 / 2) ** (-1 / self.gamma_adjusted)
         else:
             self.a = 1
 
@@ -1171,16 +1174,13 @@ class FinEnv(Env):
             couple_weight = 1
 
         # Consumption and CE fraction estimates, see https://www.gordoni.com/lifetime_portfolio_selection.pdf .
-        t = self.years_retired
+        t = self.years_retired - self.params.time_period
         try:
             c = self.a ** t * (self.a - 1) / (self.a ** (t + 1) - 1) # Consume fraction.
         except ZeroDivisionError:
             c = 1 / (t + 1)
-        try:
-            b = ((t + 1) * c ** self.gamma) ** (1 / (self.gamma - 1)) # CE fraction.
-                # Fails to take into account pre-retirement.
-        except ZeroDivisionError:
-            b = 1 / (t + 1)
+        b = ((t + 1) * c ** self.gamma_adjusted) ** (1 / (self.gamma_adjusted - 1)) # CE fraction.
+            # Fails to take into account pre-retirement.
 
         self.ce_estimate_individual = b * self.total_wealth / couple_weight
 
