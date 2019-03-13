@@ -40,12 +40,11 @@ class ModelParams(object):
         self._boolean_flag('verbose', False) # Display relevant model information such as when stepping.
         self._boolean_flag('display-returns', True) # Display yield and return statistics.
 
-        self._boolean_flag('action_space_unbounded', None) # Whether the action space is unbounded, or bound to the range [-1, 1].
-            # This parameter is determined by the training algorithm, and can't be set by the user.
-        self._boolean_flag('observation_space_ignores_range', None) # Whether observation space needs to roughly be in the range [-1, 1], or in the range specified.
-            # This parameter is determined by the training algorithm, and can't be set by the user.
-        self._param('algorithm', None) # For rllib only, the training algorithm being used.
-            # This parameter is determined by the training algorithm, and can't be set by the user.
+        # This following parameters are determined by the training algorithm, and can't be set by the user.
+        self._boolean_flag('action-space-unbounded', None) # Whether the action space is unbounded, or bound to the range [-1, 1].
+        self._param('observation-space-clip', float('inf')) # Clip observation space to this factor of the expected range.
+        self._boolean_flag('observation-space-ignores-range', None) # Whether observation space needs to roughly be in the range [-1, 1], or in the range specified.
+        self._param('algorithm', None, tp = string_type) # For RLlib only, the training algorithm being used.
 
         self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
 

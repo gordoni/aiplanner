@@ -17,22 +17,17 @@ source $AIPLANNER_HOME/ai/helpers.bash
 mkdir -p results
 cd results
 
+echo `date` Done
 PARALLEL=Jobs
 GAMMA=3
+TRAIN_ARGS="$TRAIN_ARGS --train-num-timesteps=1000000"
+EVALUATOR="$EVALUATOR --master-consume-clip=5000"
+    # We specify a consume clip so that we don't overlook algorithms that assume it from training.
+    # Should later confirm it isn't needed by running tests on the chosen algorithm without it.
 for ALGORITHM in ppo1 td3 sac trpo ppo ddpg vpg; do
 
     mkdir -p $ALGORITHM
     cd $ALGORITHM
-
-    if [ $ALGORITHM == ppo1 ]; then
-        TRAINER="$AI_DIR/train_ppo1.py"
-    else
-        TRAINER="$AI_DIR/train_spinup.py --train-algorithm=$ALGORITHM"
-    fi
-    TRAINER="$TRAINER --train-num-timesteps=1000000"
-    EVALUATOR="$AI_DIR/eval_model.py --master-consume-clip=5000"
-        # We specify a consume clip so that we don't overlook algorithms that assume it from training.
-        # Should later confirm it isn't needed by running tests on the chosen algorithm without it.
 
     train_eval both single $GAMMA $ALGORITHM
 

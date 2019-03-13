@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -24,7 +24,7 @@ if [ -z "$PYTHONPATH" ]; then
 else
     export PYTHONPATH=$PYTHONPATH_ADD:$PYTHONPATH
 fi
-CONFIG_FILE=$AI_DIR/validation/aiplanner-scenario.txt
+CONFIG_ARGS="-c $AI_DIR/validation/aiplanner-scenario.txt"
 
 validate () {
 
@@ -34,9 +34,9 @@ validate () {
     MODEL_DIR=run.compare.$MODEL_NAME
     mkdir -p $MODEL_DIR
     if [ "$PARALLEL" = True ]; then
-        $AI_DIR/eval_model.py -c $CONFIG_FILE $ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS > $MODEL_DIR/eval.log 2>&1 &
+        $AI_DIR/eval_model.py $CONFIG_ARGS $ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS > $MODEL_DIR/eval.log 2>&1 &
     else
-        $AI_DIR/eval_model.py -c $CONFIG_FILE $ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS 2>&1 | tee $MODEL_DIR/eval.log
+        $AI_DIR/eval_model.py $CONFIG_ARGS $ARGS $EXTRA_ARGS $EXTRA_EVAL_ARGS 2>&1 | tee $MODEL_DIR/eval.log
     fi
 }
 

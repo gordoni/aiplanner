@@ -53,7 +53,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     set_global_seeds(train_seed)
     session = U.make_session(num_cpu=num_cpu).__enter__()
     training_model_params['action_space_unbounded'] = eval_model_params['action_space_unbounded'] = True
-    training_model_params['observation_space_ignores_range'] = False
+    training_model_params['observation_space_ignores_range'] = True
     dump_params_file(model_dir + '/params.txt', training_model_params)
     env = make_fin_env(training=True, **training_model_params)
     couple = training_model_params['sex2'] != None

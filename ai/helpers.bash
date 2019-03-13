@@ -21,18 +21,40 @@ PARALLEL=${PARALLEL:-True}
 SEED_START=${SEED_START:-0}
 SEEDS=${SEEDS:-10}
 POLICY=${POLICY:-none}
-TRAINER=${TRAINER:-$AI_DIR/train_ppo1.py}
+ALGORITHM=${ALGORITHM:-ppo1}
 EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py}
-CONFIG_FILE=${CONFIG_FILE:-$AI_DIR/aiplanner-scenario.txt}
-TRAIN_FILE=${TRAIN_FILE:-$AI_DIR/aiplanner-scenario-train.txt}
+BASE_ARGS=${BASE_ARGS:--c $AI_DIR/aiplanner-scenario.txt}
+TRAIN_ARGS=${TRAIN_ARGS:--c $AI_DIR/aiplanner-scenario-train.txt}
 
-SINGLE_EVAL_FILE=$AI_DIR/aiplanner-scenario-single-eval.txt
-COUPLE_EVAL_FILE=$AI_DIR/aiplanner-scenario-couple-eval.txt
+SINGLE_EVAL_ARGS="-c $AI_DIR/aiplanner-scenario-single-eval.txt"
+COUPLE_EVAL_ARGS="-c $AI_DIR/aiplanner-scenario-couple-eval.txt"
 
 train () {
 
     local MODEL_NAME=$1
     local ARGS=$2
+
+    case $ALGORITHM in
+        PPO)
+            local TRAINER="$AI_DIR/train_rllib.py --train-algorithm=$ALGORITHM"
+            ;;
+        ppo1)
+            local TRAINER=$AI_DIR/train_ppo1.py
+            ;;
+        td3)
+            ;&
+        sac)
+            ;&
+        trpo)
+            ;&
+        ppo)
+            ;&
+        ddpg)
+            ;&
+        vpg)
+            local TRAINER="$AI_DIR/train_spinup.py --train-algorithm=$ALGORITHM"
+            ;;
+    esac
 
     if [ $PARALLEL = True -o $PARALLEL = Jobs ]; then
 
@@ -42,7 +64,7 @@ train () {
             # Output directory gets deleted hence we can't write the log within it; instead log to a tempfile.
             local TEMPFILE=`tempfile -p train`
             local TEMPFILES[$SEED]=$TEMPFILE
-            $TRAINER -c $CONFIG_FILE -c $TRAIN_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $EXTRA_ARGS > $TEMPFILE 2>&1 &
+            $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $EXTRA_ARGS > $TEMPFILE 2>&1 &
             SEED=`expr $SEED + 1`
         done
 
@@ -67,7 +89,7 @@ train () {
         while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
             local MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
             local TEMPFILE=`tempfile -p train`
-            $TRAINER -c $CONFIG_FILE -c $TRAIN_FILE --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
+            $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
             mv $TEMPFILE $MODEL_DIR/train.log
             SEED=`expr $SEED + 1`
         done
@@ -88,7 +110,7 @@ evaluate () {
             local MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
             local RESULT_DIR=$MODEL_DIR/$EVAL_NAME
             mkdir $RESULT_DIR 2> /dev/null
-            $EVALUATOR -c $CONFIG_FILE --model-dir=$MODEL_DIR --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS > $RESULT_DIR/eval.log 2>&1 &
+            $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS > $RESULT_DIR/eval.log 2>&1 &
             SEED=`expr $SEED + 1`
         done
 
@@ -104,7 +126,7 @@ evaluate () {
             local MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
             local RESULT_DIR=$MODEL_DIR/$EVAL_NAME
             mkdir $RESULT_DIR 2> /dev/null
-            $EVALUATOR -c $CONFIG_FILE --model-dir=$MODEL_DIR --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS 2>&1 | tee $RESULT_DIR/eval.log || exit 1
+            $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS 2>&1 | tee $RESULT_DIR/eval.log || exit 1
             SEED=`expr $SEED + 1`
         done
 
@@ -147,22 +169,22 @@ train_eval () {
 
     ARGS="$ARGS --master-gamma=$GAMMA"
     if [ $UNIT = single ]; then
-        local EVAL_FILE=$SINGLE_EVAL_FILE
+        local EVAL_ARGS=$SINGLE_EVAL_ARGS
     elif [ $UNIT = couple ]; then
-        local EVAL_FILE=$COUPLE_EVAL_FILE
+        local EVAL_ARGS=$COUPLE_EVAL_ARGS
         ARGS="$ARGS --master-sex2=male"
     else
-        local EVAL_FILE=$COUPLE_EVAL_FILE
+        local EVAL_ARGS=$COUPLE_EVAL_ARGS
         ARGS="$ARGS --master-sex2=female --master-couple-death-concordant --master-income-preretirement-concordant --master-consume-preretirement=6e4 --master-consume-additional=1"
     fi
 
     echo `date` Training $EPISODE
 
     if [ $TRAINING = both -o $TRAINING = specific ]; then
-        train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=5e5"
-        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=2e5"
-        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
-        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+        train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
+        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e5"
+        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
+        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
     fi
     if [ $TRAINING = both -o $TRAINING = generic ]; then
         train gamma$GAMMA "$ARGS"
@@ -173,21 +195,21 @@ train_eval () {
     echo `date` Evaluating $EPISODE
 
     if [ $TRAINING = both -o $TRAINING = specific ]; then
-        evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 age_start50-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=5e5"
-        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e5 retired65-defined_benefits16e3-tax_deferrred2e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=2e5"
-        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred5e5 retired65-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
-        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred1e6 retired65-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+        evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 age_start50-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
+        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e5 retired65-defined_benefits16e3-tax_deferrred2e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e5"
+        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred5e5 retired65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
+        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred1e6 retired65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
     fi
 
     if [ $TRAINING = both -o $TRAINING = generic ]; then
-        evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred2.5e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=2.5e5"
-        evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=5e5"
-        evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=1e6"
-        evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred2e6 "-c $EVAL_FILE $ARGS --master-p-tax-deferred=2e6"
-        evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred2.5e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=2.5e5"
-        evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred5e5 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
-        evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred1e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
-        evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred2e6 "-c $EVAL_FILE $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
+        evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
+        evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
+        evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=1e6"
+        evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2e6"
+        evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2.5e5"
+        evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
+        evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+        evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
     fi
 
     wait

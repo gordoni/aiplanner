@@ -21,8 +21,8 @@ ARGS="$ARGS --master-age-start=65 --master-life-table=ssa-cohort --master-life-t
 # Compute initial aa known by Merton's portfolio problem to be 53/47.
 # See merton3.py for calculation.
 # Then compare performance of computed consume/aa to consume/fixed_aa.
-CONFIG_FILE=/dev/null
-TRAIN_FILE=/dev/null
+BASE_ARGS=
+TRAIN_ARGS=
 known_aa () {
 
     local ARGS="$ARGS --master-gamma=6 --master-p-tax-deferred=1000000 --master-defined-benefits=[]"

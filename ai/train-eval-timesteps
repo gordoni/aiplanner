@@ -20,11 +20,12 @@ cd results
 PARALLEL=Jobs
 ALGORITHM=ppo1
 GAMMA=3
+TRAINARGS=$TRAIN_ARGS
 for TIMESTEPS in 500000 1000000 2000000 5000000; do
     for UNIT in single couple; do
         for SPIAS in no_spias spias; do
 
-            TRAINARGS="--train-num-timesteps=$TIMESTEPS"
+            TRAIN_ARGS="$TRAINARGS --train-num-timesteps=$TIMESTEPS"
             ARGS=""
             if [ $SPIAS = spias ]; then
                 ARGS="$ARGS --master-nominal-spias"
@@ -34,14 +35,6 @@ for TIMESTEPS in 500000 1000000 2000000 5000000; do
 
             mkdir -p $EPISODE
             cd $EPISODE
-
-            if [ $ALGORITHM == ppo1 ]; then
-                TRAINER="$AI_DIR/train_ppo1.py"
-            else
-                TRAINER="$AI_DIR/train_spinup.py --train-algorithm=$ALGORITHM"
-            fi
-            TRAINER="$TRAINER $TRAINARGS"
-            EVALUATOR="$AI_DIR/eval_model.py"
 
             train_eval both $UNIT $GAMMA $EPISODE "$ARGS"
 

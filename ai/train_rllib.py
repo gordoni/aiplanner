@@ -15,7 +15,7 @@ from os.path import abspath
 from shutil import rmtree
 
 from baselines.common import boolean_flag
-from baselines.common.misc_util import set_global_seeds
+#from baselines.common.misc_util import set_global_seeds
 
 import ray
 from ray.tune import run_experiments, function
@@ -47,10 +47,12 @@ def train(training_model_params, *, train_couple_net,
     except FileNotFoundError:
         pass
 
-    set_global_seeds(train_seed) # Despite best efforts, training is non-deterministic.
+    #set_global_seeds(train_seed)
+        # Training is currently non-deterministic.
+        # Would probably need to call rllib.utils.seed.seed() from rllib.agents.agent.__init__() with a triply repeated config["seed"] parameter to fix.
 
     training_model_params['action_space_unbounded'] = True
-    training_model_params['observation_space_ignores_range'] = False
+    training_model_params['observation_space_ignores_range'] = True
 
     mkdir(model_dir)
     dump_params_file(model_dir + '/params.txt', training_model_params)
@@ -60,37 +62,46 @@ def train(training_model_params, *, train_couple_net,
 
     ray.init()
 
-    if num_cpu == None:
-        num_cpu = 1 # Empirically gives slightly faster run time and significiantly higher throughput, and possibly even determinism.
+    algorithm = training_model_params['algorithm']
+
+    agent_config = {
+
+        'PPO.default': {
+            'observation_filter': 'MeanStdFilter',
+        },
+
+        'PPO': {
+
+            'model': {
+                'fcnet_hiddens': (64, 64),
+            },
+
+            'lambda': 0.95,
+            'sample_batch_size': 256,
+            'train_batch_size': train_timesteps_per_epoch,
+            'sgd_minibatch_size': 128,
+            'num_sgd_iter': 10,
+            'lr_schedule': (
+                (0, 3e-4),
+                (train_num_timesteps, 0)
+            ),
+            'clip_param': 0.2,
+            'vf_clip_param': float('inf'),
+            'batch_mode': 'complete_episodes',
+            'observation_filter': 'NoFilter',
+        },
+    }[algorithm]
 
     run_experiments({
         'rllib': {
 
-            'run': training_model_params['algorithm'],
+            'run': algorithm,
 
-            'config': {
+            'config': dict({
                 'env': RayFinEnv,
                 'env_config': training_model_params,
-                'observation_filter': 'MeanStdFilter',
                 'clip_actions': False,
                 'gamma': 1,
-
-                'model': {
-                    'fcnet_hiddens': (64, 64),
-                },
-                    
-                'lambda': 0.95,
-                'sample_batch_size': 256,
-                'train_batch_size': train_timesteps_per_epoch,
-                'sgd_minibatch_size': 128,
-                'num_sgd_iter': 10,
-                'clip_param': 0.2,
-                'vf_clip_param': float('inf'),
-                'batch_mode': 'complete_episodes',
-                'lr_schedule': (
-                    (0, 3e-4),
-                    (train_num_timesteps, 0)
-                ),
 
                 'num_workers': 0,
                 'num_envs_per_worker': 1,
@@ -98,7 +109,7 @@ def train(training_model_params, *, train_couple_net,
                     'intra_op_parallelism_threads': num_cpu,
                     'inter_op_parallelism_threads': num_cpu,
                 }
-            },
+            }, **agent_config),
 
             'stop': {
                 'timesteps_total': train_num_timesteps,

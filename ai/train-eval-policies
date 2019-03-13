@@ -23,9 +23,9 @@ ALGORITHM=ppo1
 UNIT=single
 SPIAS=no_spias
 TIMESTEPS=2000000
+TRAIN_ARGS="$TRAIN_ARGS --train-num-timesteps=$TIMESTEPS"
 for GAMMA in 1.5 3 6; do
 
-    TRAINARGS="--train-num-timesteps=$TIMESTEPS"
     ARGS=""
     if [ $SPIAS = real ]; then
         ARGS="$ARGS --master-real-spias"
@@ -37,14 +37,6 @@ for GAMMA in 1.5 3 6; do
 
     mkdir -p $EPISODE
     cd $EPISODE
-
-    if [ $ALGORITHM == ppo1 ]; then
-        TRAINER="$AI_DIR/train_ppo1.py"
-    else
-        TRAINER="$AI_DIR/train_spinup.py --train-algorithm=$ALGORITHM"
-    fi
-    TRAINER="$TRAINER $TRAINARGS"
-    EVALUATOR="$AI_DIR/eval_model.py"
 
     train_eval generic $UNIT $GAMMA $EPISODE "$ARGS"
 

@@ -203,8 +203,8 @@ class FinEnv(Env):
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            low  = np.array((0, 0, 0,   0, -1, 0, -100, -10, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, -0.05, 0.0)),
-            high = np.array((1, 2, 1, 100,  1, 1,  100,  10, 1, 1, 1, 1, 1, 1, 1, 1,  1, 2,  0.05, 0.05)),
+            low  = np.array((0, 0, 0,   0, -1, 0, -100,   0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, -0.05, 0.0)),
+            high = np.array((1, 2, 1, 100,  1, 1,  100, 2e5, 1, 1, 1, 1, 1, 1, 1, 1,  1, 2,  0.05, 0.05)),
             dtype = 'float32'
         )
 
@@ -1319,9 +1319,15 @@ class FinEnv(Env):
 
     def encode_observation(self, obs):
 
+        high = self.observation_space.high
+        low = self.observation_space.low
+        rnge = high - low
+        clipped_obs = np.clip(obs, high - self.params.observation_space_clip * rnge, low + self.params.observation_space_clip * rnge)
+        if self.params.verbose and not np.array_equal(clipped_obs, obs):
+            print('Observation clipped:', obs, obs_clipped)
         if self.params.observation_space_ignores_range:
-            obs = obs / np.maximum(abs(self.observation_space.low), abs(self.observation_space.high))
-        return obs
+            clipped_obs = -1 + 2 * (clipped_obs - low) / rnge
+        return clipped_obs
 
     def decode_observation(self, obs):
 
