@@ -42,7 +42,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
                             inter_op_parallelism_threads=num_cpu)
     session = tf.Session(config=config).__enter__()
     training_model_params['action_space_unbounded'] = eval_model_params['action_space_unbounded'] = True
-    training_model_params['observation_space_ignores_range'] = False
+    training_model_params['observation_space_ignores_range'] = True
     def policy_fn(sess, ob_space, ac_space, nbatch, nsteps, reuse=False):
         return MlpPolicy(sess=sess, ob_space=ob_space, ac_space=ac_space,
             nbatch=nbatch, nsteps=nsteps, reuse=reuse, hid_size=train_hidden_layer_size)

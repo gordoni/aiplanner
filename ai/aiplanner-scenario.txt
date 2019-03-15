@@ -41,10 +41,11 @@ master_nominal_spias_adjust = 0.02
 master_spias_min_purchase_fraction = 0.1
 master_spias_permitted_to_age = 85
 
-# Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
-    # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.1%).
-    # For nominal government bonds the reported real return is 2.4% +/- 11.2%, standard error 1.0% (geometric 1.8%).
-    # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%).
+# Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2019 for 1900-2018.
+    # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.0%).
+    # For nominal government bonds the reported real return is 2.5% +/- 11.0%, standard error 1.0% (geometric 1.9%).
+    # For nominal government bonds the reported real return is 2.4% +/- 11.2%, standard error 1.0% (geometric 1.8%) [from 2017 Yearbook].
+    # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%) [from 2017 Yearbook].
 master_returns_standard_error = True
 master_stocks = True
 master_stocks_return = 0.067 # Generate 6.5% return in presence of mean reversion in the absence of returns_standard_error.

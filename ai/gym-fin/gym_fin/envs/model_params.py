@@ -225,11 +225,11 @@ class ModelParams(object):
         self._param('spias-permitted-to-age', 85) # Maximum age (of oldest party) at which able to purchase SPIAs.
             # Age at which availability of quotes starts to decrease.
 
-        # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2017 for 1900-2016.
-            # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.1%).
-            # For nominal government bonds the reported real return is 2.4% +/- 11.2%, standard error 1.0% (geometric 1.8%).
-            # For U.S. Treasury bills the reported real return is 0.9% +/- 0.4%, standard error 0.4% (geometric 0.8%).
-            # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%).
+        # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2019 for 1900-2018.
+            # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.0%).
+            # For nominal government bonds the reported real return is 2.5% +/- 11.0%, standard error 1.0% (geometric 1.9%).
+            # For U.S. Treasury bills the reported real return is 0.9% +/- 0.4%, standard error 0.4% (geometric 0.8%) [from 2017 Yearbook].
+            # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%) [from 2017 Yearbook].
         self._boolean_flag('returns-standard-error', True) # Whether to model the standard error of returns.
         self._boolean_flag('stocks', True) # Whether to model stocks.
         self._param('stocks-return', 0.065) # Annual real return for stocks prior to effects of mean reversion.
@@ -253,8 +253,8 @@ class ModelParams(object):
         self._param('iid-bonds-type', None, tp = string_type, choices = ('real', 'nominal', None))
             # Derive iid bond returns from the specified bond model, or None if iid bond returns are lognormally distributed.
         self._param('iid-bonds-duration', 15) # Duration to use when deriving iid bond returns from the bond model.
-        self._param('iid-bonds-return', 0.024) # Annual real return for iid bonds when lognormal.
-        self._param('iid-bonds-volatility', 0.112) # Annual real volatility for iid bonds when lognormal.
+        self._param('iid-bonds-return', 0.025) # Annual real return for iid bonds when lognormal.
+        self._param('iid-bonds-volatility', 0.110) # Annual real volatility for iid bonds when lognormal.
         self._param('bonds-standard-error', 0.010) # Standard error of log real return for bonds.
         self._param('real-short-rate-type', 'sample', 'current', tp =string_type, choices = ('sample', 'current', 'value'))
             # Initial short real interest rate when using model.

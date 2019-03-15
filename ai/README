@@ -9,18 +9,22 @@ the generic nueral networks.
 
 For development a much smaller c5.large, or even a t3.micro instance,
 can often be used, provided the SEEDS=1 environment variable is set
-and the --num-models=1 flag is passed to serve_model.py .
+and the --num-models=1 flag is passed to web/server .
 
 Tensorflow
 ----------
 
 Tensorflow is the deep learning framework used. Would like to run on
 Ubuntu 18.04, but Ubuntu 18.04 has CUDA 9.1.  Google won't be
-releasing tensorflow for CUDA 9.1, will release for 9.2.
+releasing tensorflow for CUDA 9.1, will release for 9.2. Would thus
+need to manually install CUDA, which based on the tensorflow docs, is
+messy.
 
-Hence for time being using Amazon Deep Learning AMI (Ubuntu) Version
-8.0 based on Ubuntu 16.04 - CUDA 9 - ami-dff741a0 with tensorflow
-pre-installed.
+Hence for time being using Amazon's Deep Learning AMI (Ubuntu) Version
+21.2 based on Ubuntu 16.04 - CUDA 9 - with tensorflow pre-installed.
+In the us-east-1 region this is AMI ami-0d96d570269578cd7. For this
+instance 100G of storage is recommended. The default of 75G only
+leaves 8G for AIPlanner.
 
 Obtaining additional required components
 ----------------------------------------
@@ -34,8 +38,8 @@ not workable):
     pip3 install gym
     exit
 
-Installing additional required components on Amazon Deep Learning AMI
-(Ubuntu):
+Installing additional required components on Amazon's Deep Learning
+AMI (Ubuntu):
 
     sudo apt install catdoc
     source activate tensorflow_p36

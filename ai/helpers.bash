@@ -35,7 +35,19 @@ train () {
     local ARGS=$2
 
     case $ALGORITHM in
+        A2C)
+            ;&
+        A3C)
+            ;&
+        PG)
+            ;&
+        DDPG)
+            ;&
+        APPO)
+            ;&
         PPO)
+            ;&
+        PPO.baselines)
             local TRAINER="$AI_DIR/train_rllib.py --train-algorithm=$ALGORITHM"
             ;;
         ppo1)

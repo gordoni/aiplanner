@@ -60,17 +60,32 @@ def train(training_model_params, *, train_couple_net,
     couple = training_model_params['sex2'] != None
     couple_net = couple and train_couple_net
 
-    ray.init()
+    ray.init(num_gpus=1)
+    #ray.init(object_store_memory=int(2e9))
 
     algorithm = training_model_params['algorithm']
 
     agent_config = {
 
-        'PPO.default': {
-            'observation_filter': 'MeanStdFilter',
+        'A2C': {
+        },
+
+        'A3C': {
+        },
+
+        'PG': {
+        },
+
+        'DDPG': {
+        },
+
+        'APPO': {
         },
 
         'PPO': {
+        },
+
+        'PPO.baselines': {
 
             'model': {
                 'fcnet_hiddens': (64, 64),
@@ -79,7 +94,7 @@ def train(training_model_params, *, train_couple_net,
             'lambda': 0.95,
             'sample_batch_size': 256,
             'train_batch_size': train_timesteps_per_epoch,
-            'sgd_minibatch_size': 128,
+            #'sgd_minibatch_size': 128,
             'num_sgd_iter': 10,
             'lr_schedule': (
                 (0, 3e-4),
@@ -88,14 +103,17 @@ def train(training_model_params, *, train_couple_net,
             'clip_param': 0.2,
             'vf_clip_param': float('inf'),
             'batch_mode': 'complete_episodes',
-            'observation_filter': 'NoFilter',
+            #'observation_filter': 'NoFilter',
         },
+
     }[algorithm]
+
+    run = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
 
     run_experiments({
         'rllib': {
 
-            'run': algorithm,
+            'run': run,
 
             'config': dict({
                 'env': RayFinEnv,
@@ -103,8 +121,13 @@ def train(training_model_params, *, train_couple_net,
                 'clip_actions': False,
                 'gamma': 1,
 
-                'num_workers': 0,
+                'num_gpus': 1,
+                #'num_cpus_for_driver': 1,
+                'num_workers': 1 if algorithm in ('A3C', 'APPO') else 0,
                 'num_envs_per_worker': 1,
+                #'num_cpus_per_worker': 1,
+                #'num_gpus_per_worker': 1,
+
                 'local_evaluator_tf_session_args': {
                     'intra_op_parallelism_threads': num_cpu,
                     'inter_op_parallelism_threads': num_cpu,

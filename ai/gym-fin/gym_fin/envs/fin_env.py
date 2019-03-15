@@ -660,11 +660,18 @@ class FinEnv(Env):
         # may be helpful to determining the stock allocation.
 
         # Softmax x's, the alocations when wealth is total_wealth (no defined benefits).
-        stocks_action = exp(stocks_action) if self.params.stocks else 0
-        real_bonds_action = exp(real_bonds_action) if self.params.real_bonds else 0
-        nominal_bonds_action = exp(nominal_bonds_action) if self.params.nominal_bonds else 0
-        iid_bonds_action = exp(iid_bonds_action) if self.params.iid_bonds else 0
-        bills_action = exp(bills_action) if self.params.bills else 0
+        maximum = max(
+            stocks_action if self.params.stocks else float('-inf'),
+            real_bonds_action if self.params.real_bonds else float('-inf'),
+            nominal_bonds_action if self.params.nominal_bonds else float('-inf'),
+            iid_bonds_action if self.params.iid_bonds else float('-inf'),
+            bills_action if self.params.bills else float('-inf'),
+        )
+        stocks_action = exp(stocks_action - maximum) if self.params.stocks else 0
+        real_bonds_action = exp(real_bonds_action - maximum) if self.params.real_bonds else 0
+        nominal_bonds_action = exp(nominal_bonds_action - maximum) if self.params.nominal_bonds else 0
+        iid_bonds_action = exp(iid_bonds_action - maximum) if self.params.iid_bonds else 0
+        bills_action = exp(bills_action - maximum) if self.params.bills else 0
         total = stocks_action + real_bonds_action + nominal_bonds_action + iid_bonds_action + bills_action
         stocks_action /= total
         real_bonds_action /= total

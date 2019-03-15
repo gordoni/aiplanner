@@ -40,7 +40,17 @@ echo `date` Done
 # Notes.
 #
 # Single with no nominal spias:
-#     PPO1 outperforms all spinnup algorithms.
+#     RLLib PPO and PPO.baselines outperforms baselines ppo1 (not sure why).
+#     RLlib PPO outperforms all other continuous action space RLlib algorithms:
+#         A2C - gave 0/100% stocks allocation; likely a bug.
+#         A3C - not tested; A3C asynchronous variant (reportedly inferior).
+#         PG - presumed inferior.
+#         DDPG - ran too slowly (50,000 timesteps per CPU hour without GPU).
+#         APPO - not tested; PPO asychronous variant.
+#         APEX-DDPG - not tested; DDPG variant.
+#         ES, ARS - not tested; need rollouts, which would be very expensive.
+#         MARWEL - not tested; offline algorithm.
+#     Baselines ppo1 outperforms all spinnup algorithms (td3, sac, trpo, ppo, ddpg, and vpg).
 #
 # ppo with issue 50 fixed:
 #     Very small improvement in performance.
