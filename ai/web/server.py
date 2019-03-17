@@ -331,22 +331,22 @@ class ModelRunner(object):
 
     def train_eval_models(self, name):
 
-        dir_model = self.dir + '/models'
-        model_prefix = dir_model + '/aiplanner'
+        model_prefix = self.dir + '/models/aiplanner'
+        model_dir = model_prefix + '.tf'
 
-        makedirs(dir_model, exist_ok = True)
+        makedirs(model_dir, exist_ok = True)
 
         processes = []
         for model_seed in range(self.args.num_models):
-            model_dir = model_prefix + '-seed_' + str(model_seed) + '.tf'
             processes.append(self.train_model(name, model_dir, model_seed))
 
         fail = False
         for process, temp_name in processes:
             if process.wait() != 0:
                 fail = True
-            makedirs(model_dir, exist_ok = True)
-            move(temp_name, model_dir + '/train.log')
+            model_seed_dir = model_dir + '/seed_' + str(train_seed)
+            makedirs(model_seed_dir, exist_ok = True)
+            move(temp_name, model_seed_dir + '/train.log')
 
         if fail:
             raise Exception('Model training failed: ' + self.dir)
@@ -356,7 +356,7 @@ class ModelRunner(object):
 
     def eval_model(self, mode, model_prefix, model_seed):
 
-        model_dir = model_prefix + '-seed_' + str(model_seed) + '.tf'
+        model_dir = model_prefix + '.tf/seed_' + str(model_seed)
         dir_seed = self.dir + '/' + mode + '/' + str(model_seed)
 
         makedirs(dir_seed, exist_ok = True)

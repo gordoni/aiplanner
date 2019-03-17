@@ -131,7 +131,9 @@ def train(training_model_params, *, train_algorithm, train_num_hidden_layers, tr
 
     epochs = ceil(train_num_timesteps / train_timesteps_per_epoch)
 
-    output_dir = model_dir + '/tensorflow'
+    model_seed_dir = model_dir + '/seed_' + str(train_seed)
+    mkdir(model_seed_dir)
+    output_dir = model_seed_dir + '/tensorflow'
     save_freq = epochs if train_epochs_per_model_save == None else train_epochs_per_model_save
 
     common_args = {

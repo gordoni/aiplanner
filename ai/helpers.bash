@@ -72,7 +72,7 @@ train () {
 
         local SEED=$SEED_START
         while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
-            local MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
+            local MODEL_DIR=aiplanner.$MODEL_NAME.tf
             # Output directory gets deleted hence we can't write the log within it; instead log to a tempfile.
             local TEMPFILE=`tempfile -p train`
             local TEMPFILES[$SEED]=$TEMPFILE
@@ -84,12 +84,12 @@ train () {
             wait
             local SEED=$SEED_START
             while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
-                local MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
-                if [ ! -d $MODEL_DIR ]; then
-                    echo "Training failed: $MODEL_DIR" >&2
+                local MODEL_SEED_DIR=aiplanner.$MODEL_NAME.tf/seed_$SEED
+                if [ ! -d $MODEL_SEED_DIR ]; then
+                    echo "Training failed: $MODEL_SEED_DIR" >&2
+                    mkdir -p $MODEL_SEED_DIR
                 fi
-                mkdir -p $MODEL_DIR
-                mv ${TEMPFILES[$SEED]} $MODEL_DIR/train.log
+                mv ${TEMPFILES[$SEED]} $MODEL_SEED_DIR/train.log
                 SEED=`expr $SEED + 1`
             done
         fi
@@ -99,7 +99,7 @@ train () {
         local SEED=$SEED_START
         set -o pipefail
         while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
-            local MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
+            local MODEL_DIR=aiplanner.$MODEL_NAME.tf
             local TEMPFILE=`tempfile -p train`
             $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
             mv $TEMPFILE $MODEL_DIR/train.log

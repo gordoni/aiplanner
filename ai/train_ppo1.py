@@ -48,6 +48,8 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     except FileNotFoundError:
         pass
     mkdir(model_dir)
+    model_seed_dir = model_dir + '/seed_' + str(train_seed)
+    mkdir(model_seed_dir)
 
     from baselines.ppo1 import mlp_policy, pposgd_dual
     set_global_seeds(train_seed)
@@ -63,7 +65,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     def save_and_done_callback(l, g):
         global next_save_timestep
         while l['timesteps_so_far'] >= next_save_timestep:
-            save_model(model_dir + ('/tensorflow%09d' % next_save_timestep), session)
+            save_model(model_seed_dir + ('/tensorflow%09d' % next_save_timestep), session)
             next_save_timestep += train_save_frequency
         return env.unwrapped.env_single_timesteps >= train_single_num_timesteps and \
             (not couple or env.unwrapped.env_couple_timesteps >= train_couple_num_timesteps)
@@ -107,7 +109,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     env.close()
     if eval_env:
         eval_env.close()
-    save_model(model_dir + '/tensorflow', session)
+    save_model(model_seed_dir + '/tensorflow', session)
 
 def main():
     parser = arg_parser()

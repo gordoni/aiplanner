@@ -83,6 +83,15 @@ def train(training_model_params, *, train_couple_net,
         },
 
         'PPO': {
+            'lambda': 0.95, # Increasing lambda results in an increased stocks allocation.
+            'num_sgd_iter': 5, # If alter, might want to inversely alter learning rate.
+            'lr_schedule': (
+                (0, 1e-4),
+                (train_num_timesteps, 0)
+            ),
+            #'clip_param': 0.2,
+            'vf_clip_param': float('inf'),
+            'batch_mode': 'complete_episodes', # Observe poor CE if set to 'truncate_episodes'.
         },
 
         'PPO.baselines': {
@@ -110,6 +119,9 @@ def train(training_model_params, *, train_couple_net,
 
     run = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
 
+    model_seed_dir = model_dir + '/seed_' + str(train_seed)
+    mkdir(model_seed_dir)
+
     run_experiments({
         'rllib': {
 
@@ -121,12 +133,12 @@ def train(training_model_params, *, train_couple_net,
                 'clip_actions': False,
                 'gamma': 1,
 
-                'num_gpus': 1,
+                #'num_gpus': 0,
                 #'num_cpus_for_driver': 1,
                 'num_workers': 1 if algorithm in ('A3C', 'APPO') else 0,
-                'num_envs_per_worker': 1,
+                #'num_envs_per_worker': 1,
                 #'num_cpus_per_worker': 1,
-                #'num_gpus_per_worker': 1,
+                #'num_gpus_per_worker': 0,
 
                 'local_evaluator_tf_session_args': {
                     'intra_op_parallelism_threads': num_cpu,
@@ -138,7 +150,7 @@ def train(training_model_params, *, train_couple_net,
                 'timesteps_total': train_num_timesteps,
             },
 
-            'local_dir': abspath(model_dir),
+            'local_dir': abspath(model_seed_dir),
             'checkpoint_at_end': True,
         },
     })

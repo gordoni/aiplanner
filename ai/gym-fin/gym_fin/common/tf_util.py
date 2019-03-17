@@ -26,6 +26,9 @@ class TFRunner:
         rllib_checkpoints = glob(tf_dir + '/checkpoint-*[0-9]')
         if rllib_checkpoints:
 
+            num_checkpoint = {int(checkpoint.split('-')[-1]): checkpoint for checkpoint in rllib_checkpoints}
+            checkpoint = num_checkpoint[max(num_checkpoint)]
+
             # RLlib.
             import ray
             from ray.rllib.agents.registry import get_agent_class
@@ -41,7 +44,7 @@ class TFRunner:
             cls = get_agent_class(config['env_config']['algorithm'])
             config['sample_mode'] = True
             self.agent = cls(env = RayFinEnv, config = config)
-            self.agent.restore(rllib_checkpoints[0])
+            self.agent.restore(checkpoint)
 
         else:
 
@@ -94,7 +97,8 @@ class TFRunner:
 
         else:
 
-            return tuple(self.agent.compute_action(obs) for obs in obss)
+            #return tuple(self.agent.compute_action(obs) for obs in obss)
+            return self.agent.get_policy().compute_actions(obss)[0]
 
     def run(self, obss):
 
