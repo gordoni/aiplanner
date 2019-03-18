@@ -146,7 +146,8 @@ class DiagGaussian(ActionDistribution):
     second half the gaussian standard deviations.
     """
 
-    def __init__(self, inputs):
+    def __init__(self, inputs, *, mode):
+        self.mode = mode
         mean, log_std = tf.split(inputs, 2, axis=1)
         self.mean = mean
         self.log_std = log_std
@@ -177,7 +178,10 @@ class DiagGaussian(ActionDistribution):
 
     @override(ActionDistribution)
     def _build_sample_op(self):
-        return self.mean + self.std * tf.random_normal(tf.shape(self.mean))
+        if self.mode:
+            return self.mean
+        else:
+            return self.mean + self.std * tf.random_normal(tf.shape(self.mean))
 
 
 class Deterministic(ActionDistribution):

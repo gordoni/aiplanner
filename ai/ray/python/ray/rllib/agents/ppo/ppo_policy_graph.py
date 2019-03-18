@@ -183,7 +183,7 @@ class PPOPolicyGraph(LearningRateSchedule, TFPolicyGraph):
             dtype=tf.float32)
 
         self.logits = self.model.outputs
-        curr_action_dist = dist_cls(self.logits)
+        curr_action_dist = dist_cls(self.logits, mode=self.config['sample_mode'])
         self.sampler = curr_action_dist.sample()
         if self.config["use_gae"]:
             if self.config["vf_share_layers"]:

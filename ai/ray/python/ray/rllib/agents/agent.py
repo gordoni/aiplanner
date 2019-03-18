@@ -55,6 +55,10 @@ COMMON_CONFIG = {
     "model": MODEL_DEFAULTS,
     # Arguments to pass to the policy optimizer. These vary by optimizer.
     "optimizer": {},
+    # Whether sampled actions should represent the modal value or
+    # include a stochastic component. Only set to True if don't want
+    # any exploration to occur.
+    "sample_mode": False,
 
     # === Environment ===
     # Discount factor of the MDP
