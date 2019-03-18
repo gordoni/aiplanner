@@ -30,10 +30,10 @@ class RayFinEnv(FinEnv):
     def __init__(self, config):
         super().__init__(**config)
 
-def train(training_model_params, *, train_couple_net,
+def train(training_model_params, *, redis_address, train_seeds, train_couple_net,
           train_timesteps_per_epoch,
-          train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps, train_seed,
-          nice, num_cpu, model_dir, **dummy_kwargs):
+          train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
+          train_seed, nice, num_cpu, model_dir, **dummy_kwargs):
 
     priority = getpriority(PRIO_PROCESS, 0)
     priority += nice
@@ -60,7 +60,7 @@ def train(training_model_params, *, train_couple_net,
     couple = training_model_params['sex2'] != None
     couple_net = couple and train_couple_net
 
-    ray.init(num_gpus=1)
+    ray.init(redis_address=redis_address)
     #ray.init(object_store_memory=int(2e9))
 
     algorithm = training_model_params['algorithm']
@@ -85,10 +85,10 @@ def train(training_model_params, *, train_couple_net,
         'PPO': {
             'lambda': 0.95, # Increasing lambda results in an increased stocks allocation.
             'num_sgd_iter': 5, # If alter, might want to inversely alter learning rate.
-            'lr_schedule': (
-                (0, 1e-4),
-                (train_num_timesteps, 0)
-            ),
+            #'lr_schedule': (
+            #    (0, 1e-4),
+            #    (train_num_timesteps, 0)
+            #),
             #'clip_param': 0.2,
             'vf_clip_param': float('inf'),
             'batch_mode': 'complete_episodes', # Observe poor CE if set to 'truncate_episodes'.
@@ -119,44 +119,46 @@ def train(training_model_params, *, train_couple_net,
 
     run = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
 
-    model_seed_dir = model_dir + '/seed_' + str(train_seed)
-    mkdir(model_seed_dir)
+    run_experiments(
+        {
+            'seed_' + str(seed): {
 
-    run_experiments({
-        'rllib': {
+                'run': run,
 
-            'run': run,
+                'config': dict({
+                    'env': RayFinEnv,
+                    'env_config': training_model_params,
+                    'clip_actions': False,
+                    'gamma': 1,
 
-            'config': dict({
-                'env': RayFinEnv,
-                'env_config': training_model_params,
-                'clip_actions': False,
-                'gamma': 1,
+                    #'num_gpus': 0,
+                    #'num_cpus_for_driver': 1,
+                    #'num_workers': 1 if algorithm in ('A3C', 'APPO') else 0,
+                    #'num_envs_per_worker': 1,
+                    #'num_cpus_per_worker': 1,
+                    #'num_gpus_per_worker': 0,
 
-                #'num_gpus': 0,
-                #'num_cpus_for_driver': 1,
-                'num_workers': 1 if algorithm in ('A3C', 'APPO') else 0,
-                #'num_envs_per_worker': 1,
-                #'num_cpus_per_worker': 1,
-                #'num_gpus_per_worker': 0,
+                    'local_evaluator_tf_session_args': {
+                        'intra_op_parallelism_threads': num_cpu,
+                        'inter_op_parallelism_threads': num_cpu,
+                    }
+                }, **agent_config),
 
-                'local_evaluator_tf_session_args': {
-                    'intra_op_parallelism_threads': num_cpu,
-                    'inter_op_parallelism_threads': num_cpu,
-                }
-            }, **agent_config),
+                'stop': {
+                    'timesteps_total': train_num_timesteps,
+                },
 
-            'stop': {
-                'timesteps_total': train_num_timesteps,
-            },
-
-            'local_dir': abspath(model_seed_dir),
-            'checkpoint_at_end': True,
+                'local_dir': abspath(model_dir),
+                'checkpoint_at_end': True,
+            } for seed in range(train_seed, train_seed + train_seeds)
         },
-    })
+        queue_trials = redis_address != None
+    )
 
 def main():
     parser = make_parser(arg_parser)
+    parser.add_argument('--redis-address')
+    parser.add_argument('--train-seeds', type = int, default = 10) # Number of parallel seeds to train.
     boolean_flag(parser, 'train-couple-net', default=True)
     parser.add_argument('--train-timesteps-per-epoch', type=int, default=4096)
     training_model_params, _, args = fin_arg_parse(parser, evaluate=False)

@@ -95,7 +95,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
         set_global_seeds(eval_seed)
 
         if model:
-            train_model_params = load_params_file(model_dir + '/params.txt')
+            train_model_params = load_params_file(model_dir + '/../params.txt')
             eval_model_params['action_space_unbounded'] = train_model_params['action_space_unbounded']
             eval_model_params['observation_space_ignores_range'] = train_model_params['observation_space_ignores_range']
         else:
@@ -163,7 +163,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
             else:
                 tf_dir = model_dir + '/tensorflow'
                 if not exists(tf_dir):
-                    tf_dir, = glob(model_dir + '/rllib/*/checkpoint_*')
+                    tf_dir, = glob(model_dir + '/*/checkpoint_*')
             runner = TFRunner(tf_dir = tf_dir, couple_net = eval_couple_net, num_cpu = num_cpu).__enter__()
 
             action, = runner.run([obs])

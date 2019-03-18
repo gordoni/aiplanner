@@ -5,7 +5,7 @@ Server requirements
 
 AIPLanner runs well in production on an 8 core 16 thread Amazon
 c5.4xlarge instance. Such an instance is also necessary for training
-the generic nueral networks.
+the generic neural networks.
 
 For development a much smaller c5.large, or even a t3.micro instance,
 can often be used, provided the SEEDS=1 environment variable is set
@@ -34,18 +34,22 @@ not workable):
 
     sudo
     apt install catdoc python3-pip python3-dev python3-mpi4py nodejs npm
+    apt install python3-boto3
     pip3 install tensorflow
     pip3 install gym
+    pip3 install ray==0.6.4
     exit
 
 Installing additional required components on Amazon's Deep Learning
 AMI (Ubuntu):
 
     sudo apt install catdoc
+    sudo apt install python3-boto3
     source activate tensorflow_p36
     pip install mpi4py
     pip install joblib
     pip install gym
+    pip install ray==0.6.4
 
     [ Get latest Node.js per https://nodejs.org/en/download/ ]
     cd ~/
@@ -54,6 +58,61 @@ AMI (Ubuntu):
 
 npm install -g typescript
 npm install -g @angular/cli
+
+Cache the interest rate data
+----------------------------
+
+Failing to perform this step will result in the full historical yield
+curves getting downloaded from the Fed every time a cluster node
+starts up.
+
+    cd ~
+    ln -s aiplanner aacalc
+    ~/aiplanner/web/cron.daily
+
+Also install a daily refresh of this data in the ubuntu user's crontab:
+
+    crontab -e
+
+----
+# m h  dom mon dow   command
+MAILTO=<you@yourdomain>
+0 0 * * * perl -e '{sleep(rand(1000))}'; ~/aiplanner/web/cron.daily
+----
+
+Setting up the Ray compute cluster
+----------------------------------
+
+A Ray compute cluster is used to parallelize the task of training the
+neural network models.
+
+Place you aws credentials in ~/.aws/credentials as described in the
+boto3 docs.
+
+-----
+[default]
+aws_access_key_id=<aws_access_key_id>
+aws_secret_access_key=<aws_secret_access_key>
+-----
+
+Create a cluster config file:
+
+    cd ~/aiplanner/ai
+    cp cluster-example.yaml cluster.yaml
+    [edit] cluster.yaml
+
+Start the cluster:
+
+    cd ~/aiplanner/ai
+    ray up cluster.yaml
+
+The cluster can be reset by re-running:
+
+    ray up cluster.yaml
+
+Or torn down using:
+
+    ray down cluster.yaml
 
 Setting up environment variables
 --------------------------------

@@ -35,44 +35,36 @@ train () {
     local ARGS=$2
 
     case $ALGORITHM in
-        A2C)
-            ;&
-        A3C)
-            ;&
-        PG)
-            ;&
-        DDPG)
-            ;&
-        APPO)
-            ;&
-        PPO)
-            ;&
-        PPO.baselines)
-            local TRAINER="$AI_DIR/train_rllib.py --train-algorithm=$ALGORITHM"
+        A2C|A3C|PG|DDPG|APPO|PPO|PPO.baselines)
+            local TRAINER="$AI_DIR/train_ray --train-algorithm=$ALGORITHM"
+            local TRAINER_PARALLEL=True
             ;;
         ppo1)
             local TRAINER=$AI_DIR/train_ppo1.py
+            local TRAINER_PARALLEL=False
             ;;
-        td3)
-            ;&
-        sac)
-            ;&
-        trpo)
-            ;&
-        ppo)
-            ;&
-        ddpg)
-            ;&
-        vpg)
+        td3|sac|trpo|ppo|ddpg|vpg)
             local TRAINER="$AI_DIR/train_spinup.py --train-algorithm=$ALGORITHM"
+            local TRAINER_PARALLEL=False
             ;;
     esac
 
-    if [ $PARALLEL = True -o $PARALLEL = Jobs ]; then
+    local MODEL_DIR=aiplanner.$MODEL_NAME.tf
+
+    if [ $TRAINER_PARALLEL = True ]; then
+
+        local TEMPFILE=`tempfile -p train`
+        if [ $PARALLEL = Jobs ]; then
+            $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED_START --train-seeds=$SEEDS $EXTRA_ARGS > $TEMPFILE 2>&1 &
+        else
+            $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED_START --train-seeds=$SEEDS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
+            mv $TEMPFILE $MODEL_DIR/train.log
+        fi
+
+    elif [ $PARALLEL = True -o $PARALLEL = Jobs ]; then
 
         local SEED=$SEED_START
         while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
-            local MODEL_DIR=aiplanner.$MODEL_NAME.tf
             # Output directory gets deleted hence we can't write the log within it; instead log to a tempfile.
             local TEMPFILE=`tempfile -p train`
             local TEMPFILES[$SEED]=$TEMPFILE
@@ -84,7 +76,7 @@ train () {
             wait
             local SEED=$SEED_START
             while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
-                local MODEL_SEED_DIR=aiplanner.$MODEL_NAME.tf/seed_$SEED
+                local MODEL_SEED_DIR=$MODEL_DIR/seed_$SEED
                 if [ ! -d $MODEL_SEED_DIR ]; then
                     echo "Training failed: $MODEL_SEED_DIR" >&2
                     mkdir -p $MODEL_SEED_DIR
@@ -99,7 +91,6 @@ train () {
         local SEED=$SEED_START
         set -o pipefail
         while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
-            local MODEL_DIR=aiplanner.$MODEL_NAME.tf
             local TEMPFILE=`tempfile -p train`
             $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
             mv $TEMPFILE $MODEL_DIR/train.log
@@ -119,7 +110,7 @@ evaluate () {
 
         local SEED=$SEED_START
         while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
-            local MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
+            local MODEL_DIR=aiplanner.$MODEL_NAME.tf/seed_$SEED
             local RESULT_DIR=$MODEL_DIR/$EVAL_NAME
             mkdir $RESULT_DIR 2> /dev/null
             $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS > $RESULT_DIR/eval.log 2>&1 &
@@ -135,7 +126,7 @@ evaluate () {
         local SEED=$SEED_START
         set -o pipefail
         while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
-            local MODEL_DIR=aiplanner.$MODEL_NAME-seed_$SEED.tf
+            local MODEL_DIR=aiplanner.$MODEL_NAME.tf/seed_$SEED
             local RESULT_DIR=$MODEL_DIR/$EVAL_NAME
             mkdir $RESULT_DIR 2> /dev/null
             $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS 2>&1 | tee $RESULT_DIR/eval.log || exit 1
