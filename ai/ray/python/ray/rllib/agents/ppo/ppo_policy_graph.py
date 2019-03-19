@@ -65,7 +65,7 @@ class PPOLoss(object):
             return tf.reduce_mean(tf.boolean_mask(t, valid_mask))
 
         dist_cls, _ = ModelCatalog.get_action_dist(action_space, {})
-        prev_dist = dist_cls(logits)
+        prev_dist = dist_cls(logits, mode=False)
         # Make loss functions.
         logp_ratio = tf.exp(
             curr_action_dist.logp(actions) - prev_dist.logp(actions))
