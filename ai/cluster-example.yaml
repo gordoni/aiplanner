@@ -56,15 +56,16 @@ auth:
 # For more documentation on available fields, see:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 head_node:
-    InstanceType: m5.xlarge
-    #ImageId: ami-0c835d91df905128e  # Default Ubuntu 16.04 AMI - https://cloud-images.ubuntu.com/locator/ec2/ hvm:ebs-ssd.
+    #InstanceType: p2.xlarge # Use a GPU instance if building a GPU AMI
+    InstanceType: m5.large
+    #ImageId: ami-0c835d91df905128e # Default Ubuntu 16.04 AMI - https://cloud-images.ubuntu.com/locator/ec2/ hvm:ebs-ssd
     ImageId: ami-0d96d570269578cd7 # Deep Learning AMI (Ubuntu) Version 21.2
 
     # You can provision additional disk space with a conf as follows
     BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
-              VolumeSize: 80
+              VolumeSize: 75
 
     # Additional options in the boto docs.
 
@@ -79,7 +80,7 @@ worker_nodes:
     BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
-              VolumeSize: 80
+              VolumeSize: 75
 
     # Run workers on spot by default. Comment this out to use on-demand.
     InstanceMarketOptions:
@@ -107,7 +108,11 @@ setup_commands:
     # Note: if you're developing Ray, you probably want to create an AMI that
     # has your Ray repo pre-cloned. Then, you can replace the pip installs
     # below with a git checkout <your_sha> (and possibly a recompile).
-    - grep -q anaconda3 ~/.bashrc || echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
+    # - sudo apt update
+    # - wget https://repo.continuum.io/archive/Anaconda3-5.0.1-Linux-x86_64.sh || true
+    # - bash Anaconda3-5.0.1-Linux-x86_64.sh -b -p $HOME/anaconda3/envs/tensorflow_p36 || true
+    - grep -q tensorflow_p36 ~/.dlamirc || echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.dlamirc
+    - grep -q tensorflow_p36 ~/.profile || echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.profile
     - grep -q aiplanner ~/.bashrc || echo '. ~/aiplanner/ai/setenv' >> ~/.bashrc
     # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.7.0.dev1-cp27-cp27mu-manylinux1_x86_64.whl
     # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.7.0.dev1-cp35-cp35m-manylinux1_x86_64.whl
@@ -116,18 +121,30 @@ setup_commands:
     - pip install -U 'gym[atari]'
     - pip install -U opencv-python-headless
     - pip install -U lz4
+    # Replace ray.rllib by locally modified version
+    - RAY=`pip show ray | grep Location | awk '{print $2}'`/ray; [ ! -f $RAY/rllib.old ] && mv $RAY/rllib $RAY/rllib.old && ln -s ~/aiplanner/ai/ray/python/ray/rllib $RAY/rllib
+    # Pre-build tensorflow
+    - source activate tensorflow_p36
+    - python3 -c 'import tensorflow'
     # Consider uncommenting these if you also want to run apt-get commands during setup
     # - sudo pkill -9 apt-get || true
     # - sudo pkill -9 dpkg || true
     # - sudo dpkg --configure -a
-    # XXX Need to use my rllib; link to it XXX
+    # Only bother with remining commands if building a custom AMI
+    # - sudo apt update
+    # - sudo apt upgrade -y
+    # Free up 25G (takes 8 minutes; so only do if building a custom AMI)
+    # - rm -rf ~/anaconda3/envs/{[a-su-z]*,theano*,tensorflow_p27}
 
 # Custom commands that will be run on the head node after common setup.
 head_setup_commands:
-    - pip install boto3==1.4.8  # 1.4.8 adds InstanceMarketOptions
+    - pip install 'boto3>=1.4.8'  # 1.4.8 adds InstanceMarketOptions
 
 # Custom commands that will be run on worker nodes after common setup.
 worker_setup_commands: []
+    # If using a non-GPU AMI on a GPU instance switch to the GPU based tensorflow
+    # - pip uninstall tensorflow
+    # - pip install tensorflow-gpu==1.12.0
 
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:
