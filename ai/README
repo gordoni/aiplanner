@@ -4,7 +4,7 @@ Server requirements
 -------------------
 
 AIPLanner runs well in production on an 8 core 16 thread Amazon
-c5.4xlarge instance. Such an instance is also necessary for training
+m5.4xlarge instance. Such an instance is also necessary for training
 the generic neural networks.
 
 For development a much smaller c5.large, or even a t3.micro instance,
@@ -51,6 +51,17 @@ AMI (Ubuntu):
     pip install gym
     pip install ray==0.6.4
 
+Hack Ray to use our version of RLlib, not the default version:
+
+    RAY=`pip show ray | grep Location | awk '{print $2}'`/ray
+    mv $RAY/rllib $RAY/rllib.old
+    ln -s ~/aiplanner/ai/ray/python/ray/rllib $RAY/rllib
+
+Note, you may need to disable this link if upgrading Ray to prevent
+pip clobbering the repository.
+
+Install requuired components for the Angular website:
+
     [ Get latest Node.js per https://nodejs.org/en/download/ ]
     cd ~/
     curl https://nodejs.org/dist/v8.11.3/node-v8.11.3-linux-x64.tar.xz | tar xJf -
@@ -83,8 +94,11 @@ MAILTO=<you@yourdomain>
 Setting up the Ray compute cluster
 ----------------------------------
 
-A Ray compute cluster is used to parallelize the task of training the
-neural network models.
+This step is optional.
+
+A Ray compute cluster can be used to parallelize the task of training
+the neural network models, and allows them to be trained on cheaper
+spot instances rather than on demand instances.
 
 Place you aws credentials in ~/.aws/credentials as described in the
 boto3 docs.
@@ -121,6 +135,11 @@ Various environment variables need to be set up for production or
 development tasks:
 
     source activate tensorflow_p36
+
+If you have set up a Ray compute cluster indicate you want to use it
+during training:
+
+    export RAY=True
 
 Training the generic nueral network models
 ------------------------------------------

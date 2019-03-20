@@ -17,11 +17,12 @@ EXTRA_ARGS="$@"
 PARALLEL=${PARALLEL:-True}
     # "False": run seeds of a job sequentially rather than in parallel.
     # "True": run seeds of a job in parallel.
-    # "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
+# "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
+RAY=${RAY:-False} # Set to "True" to perform training on a Ray compute cluster.
 SEED_START=${SEED_START:-0}
 SEEDS=${SEEDS:-10}
 POLICY=${POLICY:-none}
-ALGORITHM=${ALGORITHM:-ppo1}
+ALGORITHM=${ALGORITHM:-PPO}
 EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py}
 BASE_ARGS=${BASE_ARGS:--c $AI_DIR/aiplanner-scenario.txt}
 TRAIN_ARGS=${TRAIN_ARGS:--c $AI_DIR/aiplanner-scenario-train.txt}
@@ -36,7 +37,11 @@ train () {
 
     case $ALGORITHM in
         A2C|A3C|PG|DDPG|APPO|PPO|PPO.baselines)
-            local TRAINER="$AI_DIR/train_ray --train-algorithm=$ALGORITHM"
+            if [ $RAY = True ]; then
+                local TRAINER="$AI_DIR/train_ray --train-algorithm=$ALGORITHM"
+            else
+                local TRAINER="$AI_DIR/train_rllib.py --train-algorithm=$ALGORITHM"
+            fi
             local TRAINER_PARALLEL=True
             ;;
         ppo1)
@@ -54,8 +59,12 @@ train () {
     if [ $TRAINER_PARALLEL = True ]; then
 
         local TEMPFILE=`tempfile -p train`
-        if [ $PARALLEL = Jobs ]; then
+        if [ $PARALLEL = True -o $PARALLEL = Jobs ]; then
             $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED_START --train-seeds=$SEEDS $EXTRA_ARGS > $TEMPFILE 2>&1 &
+            if [ $PARALLEL = True ]; then
+                wait
+                mv $TEMPFILE $MODEL_DIR/train.log
+            fi
         else
             $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED_START --train-seeds=$SEEDS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
             mv $TEMPFILE $MODEL_DIR/train.log
