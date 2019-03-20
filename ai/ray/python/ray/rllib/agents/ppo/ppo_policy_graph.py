@@ -1,3 +1,5 @@
+# Modified from Ray: ray/python/ray/rllib/agents/ppo/ppo_policy_graph.py
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
