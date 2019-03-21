@@ -72,7 +72,8 @@ def pi_opal(opal_data, env, obs):
     consume_fraction = max(0, min(consume_fraction, 1 / env.params.time_period))
     return consume_fraction, stocks
 
-def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_file, tensorflow_dir, eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
+def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_file, redis_address, tensorflow_dir,
+    eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
     nice, num_cpu, model_dir, search_consume_initial_around, result_dir, num_trace_episodes, num_environments, pdf_buckets):
 
     try:
@@ -164,6 +165,8 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
                 tf_dir = model_dir + '/tensorflow'
                 if not exists(tf_dir):
                     tf_dir, = glob(model_dir + '/*/checkpoint_*')
+                    import ray
+                    ray.init(redis_address = redis_address)
             runner = TFRunner(tf_dir = tf_dir, couple_net = eval_couple_net, num_cpu = num_cpu).__enter__()
 
             action, = runner.run([obs])
@@ -353,7 +356,8 @@ def main():
     boolean_flag(parser, 'annuitize', default = False)
     boolean_flag(parser, 'opal', default = False)
     parser.add_argument('--opal-file', default = 'opal-linear.csv')
-    parser.add_argument('--tensorflow-dir', default = None)
+    parser.add_argument('--redis-address')
+    parser.add_argument('--tensorflow-dir')
     boolean_flag(parser, 'eval-couple-net', default = True)
     parser.add_argument('--search-consume-initial-around', type = float)
         # Search for the initial consumption that maximizes the certainty equivalent using the supplied value as a hint as to where to search.

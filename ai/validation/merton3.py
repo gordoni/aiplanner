@@ -54,15 +54,18 @@ if __name__ == '__main__':
 
     stocks_mu, stocks_sigma = mu_sigma(1.065, 0.174)
     bonds = {
-        1: (1.011, 0.023),
-        2: (1.007, 0.028),
-        5: (1.009, 0.057),
-        15: (1.013, 0.112),
+        # # AIPlanner bond model.
+        # 1: (1.011, 0.023),
+        # 2: (1.007, 0.028),
+        # 5: (1.009, 0.057),
+        # 15: (1.013, 0.112),
+        # Current era.
+        15: (1.010, 0.110),
     }
 
     seed(0)
 
-    for duration in (1, 2, 5, 15):
+    for duration in bonds:
 
         for gamma in (1, 1.5, 3, 6):
 

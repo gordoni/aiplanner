@@ -30,11 +30,11 @@ asset_classes = ('synthetic', 'synthetic2')
 # See justification in aiplanner-scenario.conf .
 synthetic_ret = 0.065
 synthetic_vol = 0.174
-synthetic2_ret = 0.013 # Chosen to match 15 year nominal bonds.
-synthetic2_vol = 0.112
+synthetic2_ret = 0.010 # Chosen to match 15 year nominal bonds in the present era.
+synthetic2_vol = 0.110
 
 #aa_strategy = 'fixed_aa'
-#fixed_aa = [1, 0]
+#fixed_aa = [0.5, 0.5]
 #vw_strategy = 'life'
 #public_assistance = 1
 
@@ -45,7 +45,7 @@ generate_end_year = 1000
 validate_end_year = 1000
 
 # By chance synthetic return pairs may be partially correlated, effecting the resulting metrics.
-# The following seed is observed to yield a correlation of -5.5e-4, and a covariance of -1.1e-5.
+# The following seed is observed to yield a correlation of -5.0e-4, and a covariance of -9.5e-6.
 # For this seed the effect should thus be minimal.
 generate_seed = 1
 validate_returns_seed = 1

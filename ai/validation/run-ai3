@@ -15,17 +15,28 @@ AI_DIR=$AIPLANNER_HOME/ai
 
 source $AI_DIR/helpers.bash
 
-ARGS="--master-stocks-mean-reversion-rate=0 --master-no-observe-stocks-price --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.013 --master-iid-bonds-volatility=0.112 --master-no-bills --master-no-returns-standard-error --master-no-tax"
-ARGS="$ARGS --master-age-start=65 --master-life-table=ssa-cohort --master-life-table-date=2020-01-01 --master-life-expectancy-additional=3"
+mkdir -p run.ai.3
+cd run.ai.3
 
-# Compute initial aa known by Merton's portfolio problem to be 53/47.
-# See merton3.py for calculation.
-# Then compare performance of computed consume/aa to consume/fixed_aa.
+ARGS="--master-stocks-mean-reversion-rate=0 --master-no-observe-stocks-price --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.010 --master-iid-bonds-volatility=0.110 --master-no-bills --master-no-returns-standard-error --master-no-tax"
+
+PARALLEL=True
+for GAMMA in 3 6; do
+    train_eval both single $GAMMA gamma$GAMMA "$ARGS"
+done
+
+echo `date` train_eval done
+
 BASE_ARGS=
 TRAIN_ARGS=
+ARGS_SPECIFIC="$ARGS --master-age-start=65 --master-life-table=ssa-cohort --master-life-table-date=2020-01-01 --master-life-expectancy-additional=3"
+
+# Compute initial aa known by Merton's portfolio problem to be 54/46.
+# See merton3.py for calculation.
+# Then compare performance of computed consume/aa to consume/fixed_aa.
 known_aa () {
 
-    local ARGS="$ARGS --master-gamma=6 --master-p-tax-deferred=1000000 --master-defined-benefits=[]"
+    local ARGS="$ARGS_SPECIFIC --master-gamma=6 --master-p-tax-deferred=1000000 --master-defined-benefits=[]"
 
     train run3-gamma6 "$ARGS --train-consume-clip=100 --master-verbose --train-num-timesteps=2000000"
         # Reduce train-consume-clip from default value otherwise trained model relies on it being present and when it isn't gets a very poor CE.
@@ -38,7 +49,7 @@ known_aa () {
 # Need to enable fixed policy in opal-scenario3.txt to compare.
 fixed_policy() {
 
-    local ARGS="$ARGS --master-asset-allocation-policy='{"stocks":0.5,"iid_bonds":0.5}' --master-consume-policy=pmt"
+    local ARGS="$ARGS_SPECIFIC --master-asset-allocation-policy='{"stocks":0.5,"iid_bonds":0.5}' --master-consume-policy=pmt"
 
     ../train_ppo1.py --model-dir=aiplanner.run3.tf --train-num-timesteps=1
     ../eval_model.py --model-dir=aiplanner.run3.tf $ARGS --master-p-tax-deferred=1000000 --master-defined-benefits='[{"payout":16e3}]' --master-gamma=6 --eval-num-timesteps=2000000 | tee aiplanner.run3.tf/eval-p1000000.log
@@ -46,3 +57,5 @@ fixed_policy() {
 
 known_aa
 fixed_policy
+
+echo `date` Done

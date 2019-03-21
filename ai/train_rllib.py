@@ -83,18 +83,10 @@ def train(training_model_params, *, redis_address, train_seeds, train_couple_net
         },
 
         'PPO': {
-            'lambda': 0.95, # Increasing lambda results in an increased stocks allocation.
-            'num_sgd_iter': 5, # If alter, might want to inversely alter learning rate.
-            #'lr_schedule': (
-            #    (0, 1e-4),
-            #    (train_num_timesteps, 0)
-            #),
-            #'clip_param': 0.2,
-            'vf_clip_param': float('inf'),
-            'batch_mode': 'complete_episodes', # Observe poor CE if set to 'truncate_episodes'.
+            'lambda': 0.95, # Larger lambda results in too high of a stocks allocation. Not sure why.
         },
 
-        'PPO.baselines': {
+        'PPO.baselines': { # Compatible with AIPlanner's OpenAI baselines ppo1 implementation.
 
             'model': {
                 'fcnet_hiddens': (64, 64),
@@ -133,7 +125,7 @@ def train(training_model_params, *, redis_address, train_seeds, train_couple_net
 
                     #'num_gpus': 0,
                     #'num_cpus_for_driver': 1,
-                    #'num_workers': 1 if algorithm in ('A3C', 'APPO') else 0,
+                    'num_workers': 1 if algorithm in ('A3C', 'APPO') else 0,
                     #'num_envs_per_worker': 1,
                     #'num_cpus_per_worker': 1,
                     #'num_gpus_per_worker': 0,

@@ -30,12 +30,9 @@ class TFRunner:
             checkpoint = num_checkpoint[max(num_checkpoint)]
 
             # RLlib.
-            import ray
             from ray.rllib.agents.registry import get_agent_class
 
             from train_rllib import RayFinEnv
-
-            ray.init()
 
             config_path = join(tf_dir, '../params.pkl')
             with open(config_path, 'rb') as f:

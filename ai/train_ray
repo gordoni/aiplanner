@@ -43,6 +43,6 @@ case "$MODEL_DIR" in
 esac
 
 CLUSTER_MODEL_DIR="/tmp/model_dir.$$.tf"
-ray exec $CLUSTER "$AI_DIR/train_rllib.py --redis-address=localhost:6379 $ARGS --model-dir=$CLUSTER_MODEL_DIR"
+ray exec $CLUSTER "$AI_DIR/train_rllib.py $ARGS --model-dir=$CLUSTER_MODEL_DIR"
 ray rsync_down $CLUSTER $CLUSTER_MODEL_DIR'/*' "$MODEL_DIR"
 ray exec $CLUSTER "rm -r $CLUSTER_MODEL_DIR"

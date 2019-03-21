@@ -18,17 +18,30 @@ PARALLEL=${PARALLEL:-True}
     # "False": run seeds of a job sequentially rather than in parallel.
     # "True": run seeds of a job in parallel.
 # "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
-RAY=${RAY:-False} # Set to "True" to perform training on a Ray compute cluster.
+RAY_REMOTE=${RAY_REMOTE:-False} # Set to "True" to perform training on a remote Ray compute cluster accessed via ray exec.
+RAY_REDIS_ADDRESS=${RAY_REDIS_ADDRESS:-localhost:6379}
 SEED_START=${SEED_START:-0}
 SEEDS=${SEEDS:-10}
 POLICY=${POLICY:-none}
 ALGORITHM=${ALGORITHM:-PPO}
-EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py}
+EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py --redis-address=$RAY_REDIS_ADDRESS}
 BASE_ARGS=${BASE_ARGS:--c $AI_DIR/aiplanner-scenario.txt}
 TRAIN_ARGS=${TRAIN_ARGS:--c $AI_DIR/aiplanner-scenario-train.txt}
 
 SINGLE_EVAL_ARGS="-c $AI_DIR/aiplanner-scenario-single-eval.txt"
 COUPLE_EVAL_ARGS="-c $AI_DIR/aiplanner-scenario-couple-eval.txt"
+
+start_ray_if_needed() {
+
+    local HOST=`echo $RAY_REDIS_ADDRESS | sed 's/:.*//'`
+    local PORT=`echo $RAY_REDIS_ADDRESS | sed 's/.*://'`
+
+    nc -z $HOST $PORT && return
+
+    if [ $HOST = localhost ]; then
+        ray start --head --redis-port=$PORT
+    fi
+}
 
 train () {
 
@@ -37,12 +50,13 @@ train () {
 
     case $ALGORITHM in
         A2C|A3C|PG|DDPG|APPO|PPO|PPO.baselines)
-            if [ $RAY = True ]; then
-                local TRAINER="$AI_DIR/train_ray --train-algorithm=$ALGORITHM"
+            if [ $RAY_REMOTE = True ]; then
+                local TRAINER="$AI_DIR/train_ray --redis-address=$RAY_REDIS_ADDRESS --train-algorithm=$ALGORITHM"
             else
-                local TRAINER="$AI_DIR/train_rllib.py --train-algorithm=$ALGORITHM"
+                local TRAINER="$AI_DIR/train_rllib.py --redis-address=$RAY_REDIS_ADDRESS --train-algorithm=$ALGORITHM"
             fi
             local TRAINER_PARALLEL=True
+            start_ray_if_needed
             ;;
         ppo1)
             local TRAINER=$AI_DIR/train_ppo1.py
@@ -193,10 +207,14 @@ train_eval () {
     echo `date` Training $EPISODE
 
     if [ $TRAINING = both -o $TRAINING = specific ]; then
-        train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
-        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e5"
+        #train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
+        #train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
+        #train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=1e6"
+        #train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2e6"
+        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2.5e5"
         train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
         train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
     fi
     if [ $TRAINING = both -o $TRAINING = generic ]; then
         train gamma$GAMMA "$ARGS"
@@ -207,17 +225,21 @@ train_eval () {
     echo `date` Evaluating $EPISODE
 
     if [ $TRAINING = both -o $TRAINING = specific ]; then
-        evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 age_start50-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
-        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e5 retired65-defined_benefits16e3-tax_deferrred2e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e5"
+        #evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2.5e5 age_start50-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
+        #evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 age_start50-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
+        #evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred1e6 age_start50-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=1e6"
+        #evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2e6 age_start50-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2e6"
+        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2.5e5 retired65-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2.5e5"
         evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred5e5 retired65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
         evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred1e6 retired65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e6 retired65-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
     fi
 
     if [ $TRAINING = both -o $TRAINING = generic ]; then
-        evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
-        evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
-        evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=1e6"
-        evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2e6"
+        #evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
+        #evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
+        #evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=1e6"
+        #evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2e6"
         evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2.5e5"
         evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
         evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"

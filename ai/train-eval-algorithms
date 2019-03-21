@@ -17,8 +17,7 @@ source $AIPLANNER_HOME/ai/helpers.bash
 mkdir -p results
 cd results
 
-echo `date` Done
-PARALLEL=Jobs
+PARALLEL=True
 GAMMA=3
 TRAIN_ARGS="$TRAIN_ARGS --train-num-timesteps=1000000"
 EVALUATOR="$EVALUATOR --master-consume-clip=5000"

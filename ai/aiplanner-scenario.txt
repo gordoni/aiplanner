@@ -44,7 +44,6 @@ master_spias_permitted_to_age = 85
 # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2019 for 1900-2018.
     # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.0%).
     # For nominal government bonds the reported real return is 2.5% +/- 11.0%, standard error 1.0% (geometric 1.9%).
-    # For nominal government bonds the reported real return is 2.4% +/- 11.2%, standard error 1.0% (geometric 1.8%) [from 2017 Yearbook].
     # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%) [from 2017 Yearbook].
 master_returns_standard_error = True
 master_stocks = True
@@ -60,8 +59,8 @@ master_real_bonds_duration = 15
 master_nominal_bonds = True
 master_nominal_bonds_duration = 15 # Hardwiring the duration gives slightly better, and less inconsistent, results; 15 years is typical for a long term bond fund.
 master_iid_bonds = False
-#master_iid_bonds_return = 0.024
-#master_iid_bonds_volatility = 0.112
+master_iid_bonds_return = 0.010 # Use present era bond returns. This is the 15 year duration spot yield from the Treasury real yield curve on 2018-12-31.
+master_iid_bonds_volatility = 0.110
 master_bonds_standard_error = 0.010
 master_inflation_standard_error = 0.004
 master_bills = False

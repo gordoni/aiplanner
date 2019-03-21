@@ -139,7 +139,7 @@ development tasks:
 If you have set up a Ray compute cluster indicate you want to use it
 during training:
 
-    export RAY=True
+    export RAY_REMOTE=True
 
 Training the generic nueral network models
 ------------------------------------------
