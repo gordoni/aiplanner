@@ -20,7 +20,7 @@ cd run.ai.3
 
 ARGS="--master-stocks-mean-reversion-rate=0 --master-no-observe-stocks-price --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.010 --master-iid-bonds-volatility=0.110 --master-no-bills --master-no-returns-standard-error --master-no-tax"
 
-PARALLEL=True
+PARALLEL=Jobs
 for GAMMA in 3 6; do
     train_eval both single $GAMMA gamma$GAMMA "$ARGS"
 done
@@ -38,11 +38,11 @@ known_aa () {
 
     local ARGS="$ARGS_SPECIFIC --master-gamma=6 --master-p-tax-deferred=1000000 --master-defined-benefits=[]"
 
-    train run3-gamma6 "$ARGS --train-consume-clip=100 --master-verbose --train-num-timesteps=2000000"
+    train known_aa-gamma6 "$ARGS --train-consume-clip=100 --master-verbose --train-num-timesteps=2000000"
         # Reduce train-consume-clip from default value otherwise trained model relies on it being present and when it isn't gets a very poor CE.
         # Add verbose to see if consume clip is used.
-    evaluate run3-gamma6 p1000000 "$ARGS --eval-num-timesteps=2000000"
-    evaluate run3-gamma6 p1000000-stocks0.53 "$ARGS --eval-num-timesteps=2000000"' --master-asset-allocation-policy={"stocks":0.53,"iid_bonds":0.47}'
+    evaluate known_aa-gamma6 p1000000 "$ARGS --eval-num-timesteps=2000000"
+    evaluate known_aa-gamma6 p1000000-stocks0.54 "$ARGS --eval-num-timesteps=2000000"' --master-asset-allocation-policy={"stocks":0.54,"iid_bonds":0.46}'
 }
 
 # Compute performance of a fixed policy.
@@ -51,11 +51,11 @@ fixed_policy() {
 
     local ARGS="$ARGS_SPECIFIC --master-asset-allocation-policy='{"stocks":0.5,"iid_bonds":0.5}' --master-consume-policy=pmt"
 
-    ../train_ppo1.py --model-dir=aiplanner.run3.tf --train-num-timesteps=1
-    ../eval_model.py --model-dir=aiplanner.run3.tf $ARGS --master-p-tax-deferred=1000000 --master-defined-benefits='[{"payout":16e3}]' --master-gamma=6 --eval-num-timesteps=2000000 | tee aiplanner.run3.tf/eval-p1000000.log
+    ../train_ppo1.py --model-dir=aiplanner.fixed_policy.tf --train-num-timesteps=1
+    ../eval_model.py --model-dir=aiplanner.fixed_policy.tf $ARGS --master-p-tax-deferred=1000000 --master-defined-benefits='[{"payout":16e3}]' --master-gamma=6 --eval-num-timesteps=2000000 | tee aiplanner.run3.tf/eval-p1000000.log
 }
 
-known_aa
-fixed_policy
+#known_aa
+#fixed_policy
 
 echo `date` Done

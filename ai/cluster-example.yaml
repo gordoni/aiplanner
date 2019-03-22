@@ -74,7 +74,7 @@ head_node:
 # For more documentation on available fields, see:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 worker_nodes:
-    InstanceType: m5.4xlarge
+    InstanceType: c5.4xlarge
     ImageId: ami-0d96d570269578cd7 # Deep Learning AMI (Ubuntu) Version 21.2
 
     BlockDeviceMappings:
