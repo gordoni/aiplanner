@@ -14,8 +14,8 @@ AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 
 source $AIPLANNER_HOME/ai/helpers.bash
 
-mkdir -p models
-cd models
+mkdir -p ~/aiplanner-data/models.new
+cd ~/aiplanner-data/models.new
 
 PARALLEL=Jobs
 

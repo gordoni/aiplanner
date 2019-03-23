@@ -42,6 +42,7 @@ provider:
     # Nodes are currently spread between zones by a round-robin approach,
     # however this implementation detail should not be relied upon.
     availability_zone: us-east-1d
+    use_internal_ips: True
 
 # How Ray will authenticate with newly launched nodes.
 auth:
@@ -57,7 +58,7 @@ auth:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 head_node:
     #InstanceType: p2.xlarge # Use a GPU instance if building a GPU AMI
-    InstanceType: m5.large
+    InstanceType: c5.large
     #ImageId: ami-0c835d91df905128e # Default Ubuntu 16.04 AMI - https://cloud-images.ubuntu.com/locator/ec2/ hvm:ebs-ssd
     ImageId: ami-0d96d570269578cd7 # Deep Learning AMI (Ubuntu) Version 21.2
 

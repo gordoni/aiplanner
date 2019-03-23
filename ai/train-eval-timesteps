@@ -14,8 +14,8 @@ AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 
 source $AIPLANNER_HOME/ai/helpers.bash
 
-mkdir -p results
-cd results
+mkdir -p ~/aiplanner-data/train-results
+cd ~/aiplanner-data/train-results
 
 PARALLEL=Jobs
 ALGORITHM=ppo1

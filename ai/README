@@ -26,6 +26,15 @@ In the us-east-1 region this is AMI ami-0d96d570269578cd7. For this
 instance 100G of storage is recommended. The default of 75G only
 leaves 8G for AIPlanner.
 
+Obtain the source
+-----------------
+
+Set up an EC2 instance with tensorflow, ssh in to it, and obtain the
+sources:
+
+    cd ~
+    git clone <aiplanner-repository>
+
 Obtaining additional required components
 ----------------------------------------
 
@@ -60,7 +69,14 @@ Hack Ray to use our version of RLlib, not the default version:
 Note, you may need to disable this link if upgrading Ray to prevent
 pip clobbering the repository.
 
-Install requuired components for the Angular website:
+If you plan to use a Ray compute cluster (described later), you may
+need to install the following additional packages:
+
+    pip install opencv-python-headless
+    pip install lz4
+    pip install boto3
+
+Install required components for the Angular website:
 
     [ Get latest Node.js per https://nodejs.org/en/download/ ]
     cd ~/
@@ -115,17 +131,30 @@ Create a cluster config file:
     cp cluster-example.yaml cluster.yaml
     [edit] cluster.yaml
 
-Start the cluster:
+Rather than have separate cluster head and worker nodes, we are going
+to have the AIPlanner host act as the head node. This requires a
+little fancy footwork.
+
+Create the cluster IAM role, ssh key pair, and security group:
 
     cd ~/aiplanner/ai
     ray up cluster.yaml
+    <answer NO to "create new cluster">
 
-The cluster can be reset by re-running:
+From the EC2 console perform the actions to set the instance setting
+IAM role to ray-autoscaler-v1 and for the networking change security
+groups to add ray-autoscaler-default.
 
-    ray up cluster.yaml
+The cluster can be started using:
 
-Or torn down using:
+    cd ~/aiplaner/ai
+    ray start --head --redis-port=6379 --autoscaling-config=cluster.yaml
 
+Worker nodes will be created when needed.
+
+The cluster can be torn down using:
+
+    cd ~/aiplaner/ai
     ray down cluster.yaml
 
 Setting up environment variables
@@ -139,7 +168,7 @@ development tasks:
 If you have set up a Ray compute cluster indicate you want to use it
 during training:
 
-    export RAY_REMOTE=True
+    export RAY_USE_CLUSTER=True
 
 Training the generic nueral network models
 ------------------------------------------
@@ -149,14 +178,14 @@ Training the neural network models will take 10-20 hours:
     cd ~/aiplanner/ai/web
     ./train
 
+The trained models will be placed in ~/aiplanner-data/models.new .
+
 The models should then be installed:
 
-    mkdir -p ~/aiplanner-data
-    rm -rf ~/aiplanner-data/models.old  # Delete prior model backups if required.
-    mv ~/aiplaner-data/models ~/aiplanner-data/models.old  # Save prior models if any as a backup.
-
-    cd ~/aiplanner/ai/web
-    cp -rp models ~/aiplanner-data
+    cd ~/aiplanner-data
+    rm -rf models.old  # Delete prior model backups if required.
+    mv models models.old  # Save prior models if any as a backup.
+    mv models.new models
 
 Generating required assets (images)
 -----------------------------------
@@ -170,6 +199,15 @@ Build the website files
 -----------------------
 
 Angular provides a single webpage app for interacting with the models.
+
+Angular downloads 350MB of node modules in order to build the website.
+These files would slow down the process of synchronizing source trees
+when starting up a new Ray cluster node. Therefore if Ray is used it
+is recommended that the node modules be stored outside the source
+tree:
+
+    mkdir ~/node_modules
+    ln -s ~/node_modules ~/aiplanner/ai/angular/node_modules
 
 Build the website:
 

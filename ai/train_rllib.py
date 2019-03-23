@@ -150,7 +150,7 @@ def train(training_model_params, *, redis_address, train_seeds, train_couple_net
 def main():
     parser = make_parser(arg_parser)
     parser.add_argument('--redis-address')
-    parser.add_argument('--train-seeds', type = int, default = 10) # Number of parallel seeds to train.
+    parser.add_argument('--train-seeds', type = int, default = 1) # Number of parallel seeds to train.
     boolean_flag(parser, 'train-couple-net', default=True)
     parser.add_argument('--train-timesteps-per-epoch', type=int, default=4096)
     training_model_params, _, args = fin_arg_parse(parser, evaluate=False)

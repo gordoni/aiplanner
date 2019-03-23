@@ -15,8 +15,8 @@ AI_DIR=$AIPLANNER_HOME/ai
 
 source $AI_DIR/helpers.bash
 
-mkdir -p run.ai.3
-cd run.ai.3
+mkdir -p ~/aiplanner-data/validation/run.ai.3
+cd ~/aiplanner-data/validation/run.ai.3
 
 ARGS="--master-stocks-mean-reversion-rate=0 --master-no-observe-stocks-price --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.010 --master-iid-bonds-volatility=0.110 --master-no-bills --master-no-returns-standard-error --master-no-tax"
 

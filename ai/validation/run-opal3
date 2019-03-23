@@ -16,8 +16,8 @@ AI_DIR=$AIPLANNER_HOME/ai
 export CLASSPATH=$AIPLANNER_HOME/opal/classes/'*'
 OPAL='java -ea com.gordoni.opal.OPAL'
 
-mkdir -p run.opal.3
-cd run.opal.3
+mkdir -p ~/aiplanner-data/validation/run.opal.3
+cd ~/aiplanner-data/validation/run.opal.3
 
 validate () {
 
