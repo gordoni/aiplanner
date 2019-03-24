@@ -19,7 +19,8 @@ PARALLEL=${PARALLEL:-True}
     # "True": run seeds of a job in parallel.
 # "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
 RAY_CLUSTER=${RAY_CLUSTER:-$AI_DIR/cluster.yaml}
-RAY_USE_CLUSTER=${RAY_USE_CLUSTER:-False} # Set to "True" to perform training on a running Ray compute cluster accessed via the ray command and port 6379.
+RAY_AUTOSCALER=${RAY_AUTOSCALER:-False} # Set to "True" to perform training with the Ray autoscaler enabled.
+RAY_AUTOSCALER_USE_HEAD=${RAY_AUTOSCALER_USE_HEAD:-True} # Set to False to minimize computation on the head node.
 RAY_REDIS_ADDRESS=${RAY_REDIS_ADDRESS:-localhost:6379}
 SEED_START=${SEED_START:-0}
 SEEDS=${SEEDS:-10}
@@ -34,20 +35,25 @@ COUPLE_EVAL_ARGS="-c $AI_DIR/aiplanner-scenario-couple-eval.txt"
 
 start_ray_if_needed() {
 
-    if [ $RAY_USE_CLUSTER = True ]; then
+    local HOST=`echo $RAY_REDIS_ADDRESS | sed 's/:.*//'`
+    local PORT=`echo $RAY_REDIS_ADDRESS | sed 's/.*://'`
 
-        RAY_REDIS_ADDRESS=`ray get-head-ip $RAY_CLUSTER`:6379
+    nc -z $HOST $PORT && return
 
-    else
+    if [ $HOST = localhost ]; then
 
-        local HOST=`echo $RAY_REDIS_ADDRESS | sed 's/:.*//'`
-        local PORT=`echo $RAY_REDIS_ADDRESS | sed 's/.*://'`
-
-        nc -z $HOST $PORT && return
-
-        if [ $HOST = localhost ]; then
-            ray start --head --redis-port=$PORT
+        local ARGS
+        if [ $RAY_AUTOSCALER = True ]; then
+            ARGS="--autoscaling-config=$RAY_CLUSTER"
+            if [ $RAY_AUTOSCALER_USE_HEAD = False ]; then
+                ARGS="$ARGS --num-cpus=1 --num-gpus=0"
+                    # --num-cpus=0 results in a ray.tune.run_experiments() error.
+            fi
+        else
+            ARGS=
         fi
+
+        ray start --head --redis-port=$PORT $ARGS
 
     fi
 }

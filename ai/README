@@ -26,6 +26,19 @@ In the us-east-1 region this is AMI ami-0d96d570269578cd7. For this
 instance 100G of storage is recommended. The default of 75G only
 leaves 8G for AIPlanner.
 
+Set up hostname
+---------------
+
+This step is optional. It helps when using EC2 to give various
+instances meaningful names.
+
+sudo bash
+echo <unqualified-hostname> > /etc/hostname
+hostname -F /etc/hostname
+[edit] /etc/hosts
+modify: 127.0.0.1 localhost <unqualified-hostname>
+exit
+
 Obtain the source
 -----------------
 
@@ -33,7 +46,9 @@ Set up an EC2 instance with tensorflow, ssh in to it, and obtain the
 sources:
 
     cd ~
-    git clone <aiplanner-repository>
+    git clone <aiplanner-repository> aiplanner
+    cd ~/aiplanner
+    git checkout ai
 
 Obtaining additional required components
 ----------------------------------------
@@ -42,7 +57,7 @@ Installing additional required components on Ubuntu 18.04 (currently
 not workable):
 
     sudo
-    apt install catdoc python3-pip python3-dev python3-mpi4py nodejs npm
+    apt install catdoc gnuplot-nox python3-pip python3-dev python3-mpi4py nodejs npm
     apt install python3-boto3
     pip3 install tensorflow
     pip3 install gym
@@ -52,11 +67,10 @@ not workable):
 Installing additional required components on Amazon's Deep Learning
 AMI (Ubuntu):
 
-    sudo apt install catdoc
-    sudo apt install python3-boto3
+    sudo apt install catdoc gnuplot-nox
     source activate tensorflow_p36
-    pip install mpi4py
-    pip install joblib
+    #pip install mpi4py # only needed if using OpenAI baselines
+    #pip install joblib # only needed if using OpenAI baselines
     pip install gym
     pip install ray==0.6.4
 
@@ -74,14 +88,14 @@ need to install the following additional packages:
 
     pip install opencv-python-headless
     pip install lz4
-    pip install boto3
+    pip install 'boto3>=1.4.8'
 
 Install required components for the Angular website:
 
     [ Get latest Node.js per https://nodejs.org/en/download/ ]
-    cd ~/
-    curl https://nodejs.org/dist/v8.11.3/node-v8.11.3-linux-x64.tar.xz | tar xJf -
-    export PATH=$HOME/node-v8.11.3-linux-x64/bin:$PATH
+    cd ~
+    curl https://nodejs.org/dist/v10.15.3/node-v10.15.3-linux-x64.tar.xz | tar xJf -
+    export PATH=$HOME/node-v10.15.3-linux-x64/bin:$PATH
 
 npm install -g typescript
 npm install -g @angular/cli
@@ -112,9 +126,8 @@ Setting up the Ray compute cluster
 
 This step is optional.
 
-A Ray compute cluster can be used to parallelize the task of training
-the neural network models, and allows them to be trained on cheaper
-spot instances rather than on demand instances.
+A Ray compute cluster can be used to train the neural network models
+on cheaper spot instances rather than on demand instances.
 
 Place you aws credentials in ~/.aws/credentials as described in the
 boto3 docs.
@@ -132,30 +145,54 @@ Create a cluster config file:
     [edit] cluster.yaml
 
 Rather than have separate cluster head and worker nodes, we are going
-to have the AIPlanner host act as the head node. This requires a
-little fancy footwork.
+to have the AIPlanner host act as the head node. This allows the web
+server and jobs that use Ray to share result data directories, but it
+requires a little fancy footwork.
 
-Create the cluster IAM role, ssh key pair, and security group:
+Firstcreate the cluster IAM role, ssh key pair, and security group:
 
     cd ~/aiplanner/ai
     ray up cluster.yaml
     <answer NO to "create new cluster">
 
-From the EC2 console perform the actions to set the instance setting
-IAM role to ray-autoscaler-v1 and for the networking change security
+From the EC2 console perform actions on this host setting the instance
+setting IAM role to ray-autoscaler-v1 and networking change security
 groups to add ray-autoscaler-default.
 
-The cluster can be started using:
+Now add the following line to the "auth" section of cluster.yaml:
+
+----
+    ssh_private_key: /home/ubuntu/.ssh/ray-autoscaler_us-east-1.pem
+----
+
+And to the "worker_nodes" section add:
+
+----
+    SubnetIds:
+        - subnet-AAA
+    SecurityGroupIds:
+        - sg-AAA
+----
+
+where the subnet is the subnet in which you wish to create worker
+nodes, and the security group identifies ray-autoscaler-default.
+
+If desired, the cluster can now be manually started using:
 
     cd ~/aiplaner/ai
-    ray start --head --redis-port=6379 --autoscaling-config=cluster.yaml
+    ray start --head --redis-port=6379 --autoscaling-config=cluster.yaml --num-cpus=0
 
-Worker nodes will be created when needed.
+where --num-cpus=0 is optional, and will force all jobs to run on
+worker nodes. Worker nodes are created when needed, and terminated
+if idle for a while.
 
 The cluster can be torn down using:
 
     cd ~/aiplaner/ai
+    ray stop
+        # Stops Ray on the head node.
     ray down cluster.yaml
+        # Terimanates any running worker nodes.
 
 Setting up environment variables
 --------------------------------
@@ -168,7 +205,7 @@ development tasks:
 If you have set up a Ray compute cluster indicate you want to use it
 during training:
 
-    export RAY_USE_CLUSTER=True
+    export RAY_AUTOSCALER=True
 
 Training the generic nueral network models
 ------------------------------------------
@@ -211,7 +248,7 @@ tree:
 
 Build the website:
 
-    export PATH=$HOME/node-v8.11.3-linux-x64/bin:$PATH
+    export PATH=$HOME/node-v10.15.3-linux-x64/bin:$PATH
     cd ~/aiplanner/ai/angular
     ng build --prod
 
@@ -224,14 +261,14 @@ Set up the website
 ------------------
 
     sudo apt install apache2
-    a2enmod ssl proxy proxy_http
+    sudo a2enmod ssl proxy proxy_http
     Ubuntu 18.04:
         sudo apt install python3-certbot-apache
     Ubuntu 16.04:
         sudo add-apt-repository ppa:certbot/certbot
         sudo apt update
         sudo apt install python3-certbot-apache
-    certbot --apache certonly
+    sudo certbot --apache certonly
     Email: <you@yourdomain>
     If serving for www.<thisdomain>
         Domain: <thisdomain>
@@ -269,7 +306,7 @@ notifications that their long running models have been trained.
         Internet protocols: all
     sudo <edit> /etc/postfix/main.cf
         Change: myhostname = <...>
-        To: myhostname = aiplanner.com
+        To: myhostname = <thisdomain>
     sudo /etc/init.d/postfix reload
 
 You may also need to add an SPF record for the site so messages from
@@ -322,7 +359,7 @@ The model server can be run in development as follows:
 
 On the same machine in another shell window run the Angular server:
 
-    export PATH=$HOME/node-v8.11.3-linux-x64/bin:$PATH
+    export PATH=$HOME/node-v10.15.3-linux-x64/bin:$PATH
     cd ~/aiplanner/ai/angular
     ng serve --host 0.0.0.0 --public-host <thishost.thisdomain>
 
