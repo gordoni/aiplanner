@@ -80,7 +80,6 @@ def parse_args(parser, *, training = True, evaluate = True, args = None):
 def fin_arg_parse(parser, *, training = True, evaluate = True, dump = True, args = None):
 
     if training:
-        parser.add_argument('--train-seed', help = 'RNG seed', type = int, default = 0)
         parser.add_argument('--train-num-timesteps', type = int, default = int(1e6))
         parser.add_argument('--train-single-num-timesteps', type = int, default = int(1e9))
         parser.add_argument('--train-couple-num-timesteps', type = int, default = int(1e9))
@@ -89,7 +88,7 @@ def fin_arg_parse(parser, *, training = True, evaluate = True, dump = True, args
         parser.add_argument('--eval-frequency', type = int, default = 20000) # During training with evaluation on evaluate every this many env steps.
             # Should also set eval_num_timesteps to around 2000 for acceptable performance.
     if evaluate:
-        parser.add_argument('--eval-seed', help = 'evaluation RNG seed', type = int, default = 0)
+        parser.add_argument('--eval-seed', type = int, default = 0)
         parser.add_argument('--eval-num-timesteps', type = int, default = 1000000) # Per evaluation.
             # Above value is good for computing the true policy certainty equivalence to within perhaps 0.1%.
             # A lower value such as 10000 may be more appropriate when performing inter-run comparisons, as the evaluation episodes are identical for each run.
@@ -100,6 +99,7 @@ def fin_arg_parse(parser, *, training = True, evaluate = True, dump = True, args
         # Using a value of 1 appears to give slightly faster run times, significiantly higher throughput, and possibly even determinism.
 
     parser.add_argument('--model-dir', default = 'aiplanner.tf')
+    parser.add_argument('--train-seed', type = int, default = 0)
 
     model_params = ModelParams()
     model_params.add_arguments(parser, training = training, evaluate = evaluate)

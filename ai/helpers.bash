@@ -144,10 +144,10 @@ evaluate () {
 
         local SEED=$SEED_START
         while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
-            local MODEL_DIR=aiplanner.$MODEL_NAME.tf/seed_$SEED
-            local RESULT_DIR=$MODEL_DIR/$EVAL_NAME
+            local MODEL_DIR=aiplanner.$MODEL_NAME.tf
+            local RESULT_DIR=$MODEL_DIR/seed_$SEED/$EVAL_NAME
             mkdir $RESULT_DIR 2> /dev/null
-            $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS > $RESULT_DIR/eval.log 2>&1 &
+            $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --train-seed=$SEED --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS > $RESULT_DIR/eval.log 2>&1 &
             SEED=`expr $SEED + 1`
         done
 
@@ -160,10 +160,10 @@ evaluate () {
         local SEED=$SEED_START
         set -o pipefail
         while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
-            local MODEL_DIR=aiplanner.$MODEL_NAME.tf/seed_$SEED
-            local RESULT_DIR=$MODEL_DIR/$EVAL_NAME
+            local MODEL_DIR=aiplanner.$MODEL_NAME.tf
+            local RESULT_DIR=$MODEL_DIR/seed_$SEED/$EVAL_NAME
             mkdir $RESULT_DIR 2> /dev/null
-            $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS 2>&1 | tee $RESULT_DIR/eval.log || exit 1
+            $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --train-seed=$SEED --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS 2>&1 | tee $RESULT_DIR/eval.log || exit 1
             SEED=`expr $SEED + 1`
         done
 

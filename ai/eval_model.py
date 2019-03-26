@@ -74,7 +74,7 @@ def pi_opal(opal_data, env, obs):
 
 def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_file, redis_address, tensorflow_dir,
     eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
-    nice, num_cpu, model_dir, search_consume_initial_around, result_dir, num_trace_episodes, num_environments, pdf_buckets):
+    nice, num_cpu, model_dir, train_seed, search_consume_initial_around, result_dir, num_trace_episodes, num_environments, pdf_buckets):
 
     try:
         mkdir(result_dir)
@@ -96,7 +96,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
         set_global_seeds(eval_seed)
 
         if model:
-            train_model_params = load_params_file(model_dir + '/../params.txt')
+            train_model_params = load_params_file(model_dir + '/params.txt')
             eval_model_params['action_space_unbounded'] = train_model_params['action_space_unbounded']
             eval_model_params['observation_space_ignores_range'] = train_model_params['observation_space_ignores_range']
         else:
@@ -162,9 +162,10 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
             if tensorflow_dir:
                 tf_dir = tensorflow_dir
             else:
-                tf_dir = model_dir + '/tensorflow'
+                train_dir = model_dir + '/seed_' + str(train_seed)
+                tf_dir = train_dir + '/tensorflow'
                 if not exists(tf_dir):
-                    tf_dir, = glob(model_dir + '/*/checkpoint_*')
+                    tf_dir, = glob(train_dir + '/*/checkpoint_*')
                     import ray
                     ray.init(redis_address = redis_address)
             runner = TFRunner(tf_dir = tf_dir, couple_net = eval_couple_net, num_cpu = num_cpu).__enter__()

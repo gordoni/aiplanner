@@ -4,12 +4,13 @@ Server requirements
 -------------------
 
 AIPLanner runs well in production on an 8 core 16 thread Amazon
-m5.4xlarge instance. Such an instance is also necessary for training
+c5.4xlarge instance. Such an instance is also necessary for training
 the generic neural networks.
 
-For development a much smaller c5.large, or even a t3.micro instance,
-can often be used, provided the SEEDS=1 environment variable is set
-and the --num-models=1 flag is passed to web/server .
+For development a much smaller c5.large, or even a t3.small instance,
+can often be used, provided either a Ray compute cluster is configured
+or the SEEDS=1 environment variable is set and the --num-models=1 flag
+is passed to web/server .
 
 Tensorflow
 ----------
@@ -129,14 +130,9 @@ This step is optional.
 A Ray compute cluster can be used to train the neural network models
 on cheaper spot instances rather than on demand instances.
 
-Place you aws credentials in ~/.aws/credentials as described in the
-boto3 docs.
-
------
-[default]
-aws_access_key_id=<aws_access_key_id>
-aws_secret_access_key=<aws_secret_access_key>
------
+The cluster works most effectively if the head node and worker nodes
+are of the same instnace family. Otherwise jobs will execute at uneven
+rates.
 
 Create a cluster config file:
 
@@ -149,11 +145,109 @@ to have the AIPlanner host act as the head node. This allows the web
 server and jobs that use Ray to share result data directories, but it
 requires a little fancy footwork.
 
-Firstcreate the cluster IAM role, ssh key pair, and security group:
+First create the cluster IAM role, ssh key pair, and security group.
+
+The easy way to do this is risky as it involves giving full access to
+AWS to untrusted code. This may be acceptable if you don't have any
+other AWS resources.
+
+If you wish to use the easy risky way, place your AWS credentials in
+~/.aws/credentials as described in the boto3 docs.
+
+-----
+[default]
+aws_access_key_id=<aws_access_key_id>
+aws_secret_access_key=<aws_secret_access_key>
+-----
 
     cd ~/aiplanner/ai
     ray up cluster.yaml
     <answer NO to "create new cluster">
+
+This will create the ssh key pair, IAM role, and network security
+group.
+
+If you wish to use the difficult but secure method, first use EC2 to
+generate an EC2 key pair called ray-autoscaler_us-east-1.pem, and save
+it to the .ssh directory. Then create a security group tagged
+ray-autoscaler-default that allows all inbound traffic from itself,
+inbound ssh from the Internet if desired, and all outbound
+traffic. Finally generate an IAM role called ray-autoscaler-v1 with
+the following IAM policy atached (in which sg-AAA is replaced by the
+ray-autoscaler-default security group):
+
+{"Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowRunInstancesTagged",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:RunInstances"
+            ],
+            "Resource": "arn:aws:ec2:*:*:instance/*",
+            "Condition": {
+                "ForAnyValue:StringLike": {
+                    "aws:RequestTag/Name": "ray-default-*"
+                }
+            }
+        },
+        {
+            "Sid": "AllowRunInstances",
+            "Effect": "Allow",
+            "Action": "ec2:RunInstances",
+            "Resource": [
+                "arn:aws:ec2:*:*:subnet/*",
+                "arn:aws:ec2:*:*:security-group/sg-AAA",
+                "arn:aws:ec2:*:*:volume/*",
+                "arn:aws:ec2:*:*:network-interface/*",
+                "arn:aws:ec2:*::image/*"
+            ]
+        },
+        {
+            "Sid": "AllowCreateTagsWhenLaunching",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateTags"
+            ],
+            "Resource": [
+                "arn:aws:ec2:*:*:instance/*",
+                "arn:aws:ec2:*:*:volume/*"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "ec2:CreateAction": "RunInstances"
+                }
+            }
+        },
+        {
+            "Sid": "AllowActionTaggedInstances",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:TerminateInstances",
+                "ec2:CreateTags"
+            ],
+            "Resource": "arn:aws:ec2:*:*:instance/*",
+            "Condition": {
+                "StringLike": {
+                    "ec2:ResourceTag/Name": "ray-default-*"
+                }
+            }
+        },
+        {
+            "Sid": "AllowDescribeInstances",
+            "Effect": "Allow",
+            "Action": "ec2:DescribeInstances",
+            "Resource": "*"
+        }
+    ]
+}
+
+You may wish to further harden things by restricting the AWS image
+that can be used.
+
+Either way the required AWS resources have now been
+created. Additional work is required so that the AIPlanner host can
+act as the head node.
 
 From the EC2 console perform actions on this host setting the instance
 setting IAM role to ray-autoscaler-v1 and networking change security
@@ -180,11 +274,12 @@ nodes, and the security group identifies ray-autoscaler-default.
 If desired, the cluster can now be manually started using:
 
     cd ~/aiplaner/ai
-    ray start --head --redis-port=6379 --autoscaling-config=cluster.yaml --num-cpus=0
+    source activate tensorflow_p36
+    source ./setenv
+    ray start --head --redis-port=6379 --autoscaling-config=cluster.yaml
 
-where --num-cpus=0 is optional, and will force all jobs to run on
-worker nodes. Worker nodes are created when needed, and terminated
-if idle for a while.
+Worker nodes are created when needed, and terminated if idle for a
+while.
 
 The cluster can be torn down using:
 
