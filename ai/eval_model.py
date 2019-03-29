@@ -74,7 +74,7 @@ def pi_opal(opal_data, env, obs):
 
 def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_file, redis_address, tensorflow_dir,
     eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
-    nice, num_cpu, model_dir, train_seed, search_consume_initial_around, result_dir, num_trace_episodes, num_environments, pdf_buckets):
+    nice, num_cpu, model_dir, train_seed, search_consume_initial_around, result_dir, num_trace_episodes, num_workers, num_environments, pdf_buckets):
 
     try:
         mkdir(result_dir)
@@ -116,6 +116,8 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
             model = False
 
         obs = env.reset()
+
+        remote_evaluators = None
 
         if merton or samuelson:
 
@@ -168,9 +170,11 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
                     tf_dir, = glob(train_dir + '/*/checkpoint_*')
                     import ray
                     ray.init(redis_address = redis_address)
-            runner = TFRunner(tf_dir = tf_dir, couple_net = eval_couple_net, num_cpu = num_cpu).__enter__()
+            runner = TFRunner(tf_dir = tf_dir, eval_model_params = eval_model_params, couple_net = eval_couple_net,
+                num_workers = num_workers, num_cpu = num_cpu).__enter__()
+            remote_evaluators = runner.remote_evaluators
 
-            action, = runner.run([obs])
+            action, = runner.run([obs], policy_graph = runner.local_policy_graph)
             interp = env.interpret_action(action)
 
         interp['asset_classes'] = interp['asset_allocation'].classes()
@@ -195,13 +199,14 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
 
         print()
 
-        evaluator = Evaluator(envs, eval_seed, eval_num_timesteps, render = eval_render, num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets)
+        evaluator = Evaluator(envs, eval_seed, eval_num_timesteps,
+            remote_evaluators = remote_evaluators, render = eval_render, num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets)
 
         def pi(obss):
 
             if model:
 
-                action = runner.run(obss)
+                action = runner.run(obss, policy_graph = runner.local_policy_graph)
                 return action
 
             elif merton or samuelson:
@@ -364,6 +369,7 @@ def main():
         # Search for the initial consumption that maximizes the certainty equivalent using the supplied value as a hint as to where to search.
     parser.add_argument('--result-dir', default = './')
     parser.add_argument('--num-trace-episodes', type = int, default = 5)
+    parser.add_argument('--num-workers', type = int, default = 1) # Number of remote processes for Ray evaluation. Zero for local evaluation.
     parser.add_argument('--num-environments', type = int, default = 10) # Number of parallel environments to use for a single model. Speeds up tensor flow.
     parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False)

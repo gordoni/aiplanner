@@ -11,10 +11,11 @@
 import csv
 import json
 import os
+import time
+from itertools import chain
 from math import sqrt
 from random import getstate, seed, setstate
 from statistics import mean, stdev, StatisticsError
-import time
 
 import numpy as np
 
@@ -67,17 +68,22 @@ class Evaluator(object):
 
     LOGFILE = 'gym_eval_batch.monitor.csv'
 
-    def __init__(self, eval_envs, eval_seed, eval_num_timesteps, *, render = False, eval_batch_monitor = False, num_trace_episodes = 0, pdf_buckets = 10):
+    def __init__(self, eval_envs, eval_seed, eval_num_timesteps, *,
+        remote_evaluators = None, render = False, eval_batch_monitor = False, num_trace_episodes = 0, pdf_buckets = 10):
 
         self.tstart = time.time()
 
         self.eval_envs = eval_envs
         self.eval_seed = eval_seed
         self.eval_num_timesteps = eval_num_timesteps
+        self.remote_evaluators = remote_evaluators
         self.eval_render = render
         self.eval_batch_monitor = eval_batch_monitor
         self.num_trace_episodes = num_trace_episodes
         self.pdf_buckets = pdf_buckets
+
+        if self.remote_evaluators:
+            self.eval_num_timesteps /= len(self.remote_evaluators)
 
         self.trace = []
         self.episode = []
@@ -111,32 +117,25 @@ class Evaluator(object):
 
     def evaluate(self, pi):
 
-        if self.eval_envs == None:
+        def rollout(eval_envs, pi):
 
-            return False
-
-        else:
-
-            state = getstate()
-            seed(self.eval_seed)
-
-            envs = tuple(eval_env.unwrapped for eval_env in self.eval_envs)
+            envs = tuple(eval_env.unwrapped for eval_env in eval_envs)
             rewards = []
             erewards = []
-            obss = [eval_env.reset() for eval_env in self.eval_envs]
+            obss = [eval_env.reset() for eval_env in eval_envs]
             et = 0
             e = 0
             s = 0
-            erews = [0 for _ in self.eval_envs]
-            eweights = [0 for _ in self.eval_envs]
-            finished = [False for _ in self.eval_envs]
+            erews = [0 for _ in eval_envs]
+            eweights = [0 for _ in eval_envs]
+            finished = [False for _ in eval_envs]
             while True:
                 actions = pi(obss)
                 if et < self.num_trace_episodes:
                     self.trace_step(envs[0], actions[0], False)
                 if self.eval_render:
-                    self.eval_envs[0].render()
-                for i, (eval_env, env, action) in enumerate(zip(self.eval_envs, envs, actions)):
+                    eval_envs[0].render()
+                for i, (eval_env, env, action) in enumerate(zip(eval_envs, envs, actions)):
                     if not finished[i]:
                         obs, r, done, info = eval_env.step(action)
                         reward = env.reward_value
@@ -168,59 +167,91 @@ class Evaluator(object):
                 if all(finished):
                     break
 
-            rew = weighted_mean(erewards)
+            return rewards, erewards, self.trace
+
+        state = getstate()
+
+        if self.eval_envs == None:
+
+            return False
+
+        elif self.remote_evaluators:
+
+            # Have no control over the random seed used by each remote evaluator.
+            # If they are ever always the same, we would be restricted to a single remote evaluator.
+            # Currently the remote seed is random.
+
+            import ray
+
+            def make_pi(policy_graph):
+                return lambda obss: policy_graph.compute_actions(obss)[0]
+
+            rollouts = ray.get([e.apply.remote(lambda e: e.foreach_env(lambda env: rollout([env], make_pi(e.get_policy())))) for e in self.remote_evaluators])
+
+            rewards, erewards, trace = (tuple(chain(*l)) for l in zip(*chain(*rollouts))) # Flatten remote environments.
+
+            self.trace = trace[:self.num_trace_episodes]
+
+        else:
+
+            seed(self.eval_seed)
+
+            rewards, erewards, trace = rollout(self.eval_envs, pi)
+
+        rew = weighted_mean(erewards)
+        try:
+            std = weighted_stdev(erewards)
+        except ZeroDivisionError:
+            std = float('nan')
+        stderr = std / sqrt(len(erewards))
+            # Standard error is ill-defined for a weighted sample.
+            # Here we are incorrectly assuming each episode carries equal weight.
+        env = self.eval_envs[0].unwrapped
+        utility = env.utility
+        unit_ce = indiv_ce = utility.inverse(rew)
+        unit_ce_stderr = indiv_ce_stderr = indiv_ce - utility.inverse(rew - stderr)
+        unit_low = indiv_low = utility.inverse(weighted_percentile(rewards, 10))
+        unit_high = indiv_high = utility.inverse(weighted_percentile(rewards, 90))
+
+        utility_preretirement = utility.utility(env.params.consume_preretirement_low)
+        self.preretirement_ppf = weighted_ppf(rewards, utility_preretirement) / 100
+
+        u_min = utility.inverse(weighted_percentile(rewards, 2))
+        u_max = utility.inverse(weighted_percentile(rewards, 98))
+        pdf_bucket_weights = [0] * (self.pdf_buckets + 4)
+        w_tot = 0
+        for r, w in rewards:
             try:
-                std = weighted_stdev(erewards)
+                bucket = 2 + int((utility.inverse(r) - u_min) / (u_max - u_min) * self.pdf_buckets)
             except ZeroDivisionError:
-                std = float('nan')
-            stderr = std / sqrt(e)
-                # Standard error is ill-defined for a weighted sample.
-                # Here we are incorrectly assuming each episode carries equal weight.
-            utility = envs[0].utility
-            unit_ce = indiv_ce = utility.inverse(rew)
-            unit_ce_stderr = indiv_ce_stderr = indiv_ce - utility.inverse(rew - stderr)
-            unit_low = indiv_low = utility.inverse(weighted_percentile(rewards, 10))
-            unit_high = indiv_high = utility.inverse(weighted_percentile(rewards, 90))
+                bucket = 2
+            try:
+                pdf_bucket_weights[bucket] += w
+            except IndexError:
+                pass
+            w_tot += w
+        self.consume_pdf = []
+        for bucket, w in enumerate(pdf_bucket_weights):
+            unit_consume = u_min + (bucket - 1.5) * (u_max - u_min) / self.pdf_buckets
+            if env.params.sex2 != None:
+                unit_consume *= 1 + env.params.consume_additional
+            self.consume_pdf.append((unit_consume, w / w_tot))
 
-            utility_preretirement = utility.utility(envs[0].params.consume_preretirement_low)
-            self.preretirement_ppf = weighted_ppf(rewards, utility_preretirement) / 100
+        if env.params.sex2 != None:
+            unit_ce *= 1 + env.params.consume_additional
+            unit_ce_stderr *= 1 + env.params.consume_additional
+            unit_low *= 1 + env.params.consume_additional
+            unit_high *= 1 + env.params.consume_additional
+            print('Couple certainty equivalent:', unit_ce, '+/-', unit_ce_stderr, '(80% confidence interval:', unit_low, '-', str(unit_high) + ')')
 
-            u_min = utility.inverse(weighted_percentile(rewards, 2))
-            u_max = utility.inverse(weighted_percentile(rewards, 98))
-            pdf_bucket_weights = [0] * (self.pdf_buckets + 4)
-            w_tot = 0
-            for r, w in rewards:
-                try:
-                    bucket = 2 + int((utility.inverse(r) - u_min) / (u_max - u_min) * self.pdf_buckets)
-                except ZeroDivisionError:
-                    bucket = 2
-                try:
-                    pdf_bucket_weights[bucket] += w
-                except IndexError:
-                    pass
-                w_tot += w
-            self.consume_pdf = []
-            for bucket, w in enumerate(pdf_bucket_weights):
-                unit_consume = u_min + (bucket - 1.5) * (u_max - u_min) / self.pdf_buckets
-                if envs[0].params.sex2 != None:
-                    unit_consume *= 1 + envs[0].params.consume_additional
-                self.consume_pdf.append((unit_consume, w / w_tot))
+        print('Evaluation certainty equivalent:', indiv_ce, '+/-', indiv_ce_stderr, '(80% confidence interval:', indiv_low, '-', str(indiv_high) + ')')
 
-            if envs[0].params.sex2 != None:
-                unit_ce *= 1 + envs[0].params.consume_additional
-                unit_ce_stderr *= 1 + envs[0].params.consume_additional
-                unit_low *= 1 + envs[0].params.consume_additional
-                unit_high *= 1 + envs[0].params.consume_additional
-                print('Couple certainty equivalent:', unit_ce, '+/-', unit_ce_stderr, '(80% confidence interval:', unit_low, '-', str(unit_high) + ')')
+        if self.eval_batch_monitor:
+            batchrew = sum((v * w for v, w in erewards))
+            batchinfo = {'r': round(batchrew, 6), 'l': s, 't': round(time.time() - self.tstart, 6), 'ce': indiv_ce}
+            self.logger.writerow(batchinfo)
+            self.f.flush()
 
-            print('Evaluation certainty equivalent:', indiv_ce, '+/-', indiv_ce_stderr, '(80% confidence interval:', indiv_low, '-', str(indiv_high) + ')')
+        setstate(state)
 
-            if self.eval_batch_monitor:
-                batchrew = sum((v * w for v, w in erewards))
-                batchinfo = {'r': round(batchrew, 6), 'l': s, 't': round(time.time() - self.tstart, 6), 'ce': indiv_ce}
-                self.logger.writerow(batchinfo)
-                self.f.flush()
-
-            setstate(state)
-
-            return unit_ce, unit_ce_stderr, unit_low, unit_high
+        return unit_ce, unit_ce_stderr, unit_low, unit_high

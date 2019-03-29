@@ -18,10 +18,12 @@ from baselines.common import tf_util as U
 
 class TFRunner:
 
-    def __init__(self, *, tf_dir = 'aiplanner.tf/tensorflow', couple_net = True, num_cpu = None):
+    def __init__(self, *, tf_dir = 'aiplanner.tf/tensorflow', eval_model_params, couple_net = True, num_workers = 1, num_cpu = None):
 
         self.couple_net = couple_net
         self.session = None
+        self.local_policy_graph = None
+        self.remote_evaluators = None
 
         rllib_checkpoints = glob(tf_dir + '/checkpoint-*[0-9]')
         if rllib_checkpoints:
@@ -30,6 +32,7 @@ class TFRunner:
             checkpoint = num_checkpoint[max(num_checkpoint)]
 
             # RLlib.
+            import ray
             from ray.rllib.agents.registry import get_agent_class
 
             from train_rllib import RayFinEnv
@@ -39,9 +42,17 @@ class TFRunner:
                 config = load(f)
 
             cls = get_agent_class(config['env_config']['algorithm'])
+            config['env_config'] = eval_model_params
             config['sample_mode'] = True
-            self.agent = cls(env = RayFinEnv, config = config)
-            self.agent.restore(checkpoint)
+            agent = cls(env = RayFinEnv, config = config)
+            agent.restore(checkpoint)
+
+            self.local_policy_graph = agent.local_evaluator.get_policy()
+
+            self.remote_evaluators = agent.make_remote_evaluators(agent.env_creator, agent._policy_graph, num_workers)
+            weights = ray.put(agent.local_evaluator.get_weights())
+            for e in self.remote_evaluators:
+                e.set_weights.remote(weights)
 
         else:
 
@@ -84,7 +95,7 @@ class TFRunner:
     def is_couple(self, ob):
         return ob[0] == 1
 
-    def _run_unit(self, couple, obss):
+    def _run_unit(self, couple, obss, policy_graph):
 
         if self.session:
 
@@ -94,10 +105,9 @@ class TFRunner:
 
         else:
 
-            #return tuple(self.agent.compute_action(obs) for obs in obss)
-            return self.agent.get_policy().compute_actions(obss)[0]
+            return policy_graph.compute_actions(obss)[0]
 
-    def run(self, obss):
+    def run(self, obss, policy_graph = None):
 
         single_obss = []
         couple_obss = []
@@ -112,11 +122,11 @@ class TFRunner:
                 single_idx.append(i)
         action = [None] * len(obss)
         if single_obss:
-            single_action = self._run_unit(False, single_obss)
+            single_action = self._run_unit(False, single_obss, policy_graph)
             for i, act in zip(single_idx, single_action):
                 action[i] = act
         if couple_obss:
-            couple_action = self._run_unit(True, couple_obss)
+            couple_action = self._run_unit(True, couple_obss, policy_graph)
             for i, act in zip(couple_idx, couple_action):
                 action[i] = act
 

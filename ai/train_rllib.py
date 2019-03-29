@@ -130,6 +130,10 @@ def train(training_model_params, *, redis_address, train_seeds, train_couple_net
                     #'num_cpus_per_worker': 1,
                     #'num_gpus_per_worker': 0,
 
+                    'tf_session_args': {
+                        'intra_op_parallelism_threads': num_cpu,
+                        'inter_op_parallelism_threads': num_cpu,
+                    },
                     'local_evaluator_tf_session_args': {
                         'intra_op_parallelism_threads': num_cpu,
                         'inter_op_parallelism_threads': num_cpu,
