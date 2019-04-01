@@ -8,9 +8,9 @@ c5.4xlarge instance. Such an instance is also necessary for training
 the generic neural networks.
 
 For development a much smaller c5.large, or even a t3.small instance,
-can often be used, provided either a Ray compute cluster is configured
-or the SEEDS=1 environment variable is set and the --num-models=1 flag
-is passed to web/server .
+can often be used, provided in the first case a Ray compute cluster is
+configured or in the second case the SEEDS=1 environment variable is
+set and the --num-models=1 flag is passed to web/server .
 
 Tensorflow
 ----------
@@ -131,8 +131,8 @@ A Ray compute cluster can be used to train the neural network models
 on cheaper spot instances rather than on demand instances.
 
 The cluster works most effectively if the head node and worker nodes
-are of the same instnace family. Otherwise jobs will execute at uneven
-rates.
+are of similar instance families. Otherwise jobs will execute at
+uneven rates.
 
 Create a cluster config file:
 
@@ -253,7 +253,11 @@ From the EC2 console perform actions on this host setting the instance
 setting IAM role to ray-autoscaler-v1 and networking change security
 groups to add ray-autoscaler-default.
 
-Now add the following line to the "auth" section of cluster.yaml:
+For syncing worker node result directories create a link:
+
+    ln -s ~/.ssh/ray-autoscaler_us-east-1.pem ~/ray_bootstrap_key.pem
+
+Add the following line to the "auth" section of cluster.yaml:
 
 ----
     ssh_private_key: /home/ubuntu/.ssh/ray-autoscaler_us-east-1.pem

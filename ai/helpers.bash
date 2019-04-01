@@ -20,7 +20,7 @@ PARALLEL=${PARALLEL:-True}
 # "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
 RAY_CLUSTER=${RAY_CLUSTER:-$AI_DIR/cluster.yaml}
 RAY_AUTOSCALER=${RAY_AUTOSCALER:-False} # Set to "True" to perform training with the Ray autoscaler enabled.
-RAY_AUTOSCALER_USE_HEAD=${RAY_AUTOSCALER_USE_HEAD:-True} # Set to False to minimize computation on the head node.
+RAY_AUTOSCALER_USE_HEAD=${RAY_AUTOSCALER_USE_HEAD:-False} # Set to True to make use of the head node or False to minimize computation on the head node.
 RAY_REDIS_ADDRESS=${RAY_REDIS_ADDRESS:-localhost:6379}
 SEED_START=${SEED_START:-0}
 SEEDS=${SEEDS:-10}
@@ -140,14 +140,26 @@ evaluate () {
     local EVAL_NAME=$2
     local ARGS=$3
 
-    if [ $PARALLEL = True -o $PARALLEL = Jobs ]; then
+    local MODEL_DIR=aiplanner.$MODEL_NAME.tf
+    local RESULT_DIR=$MODEL_DIR/$EVAL_NAME
+
+    mkdir $RESULT_DIR 2> /dev/null
+
+    if [ "$MODEL_DIR/seed_*/tensorflow" == "$MODEL_DIR"'/seed_*/tensorflow' ]; then
+
+        start_ray_if_needed
+
+        $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --train-seed=$SEED_START --train-seeds=$SEEDS --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS \
+            > $RESULT_DIR/evaluate.log 2>&1 &
+        if [ $PARALLEL = True -o $PARALLEL = False ]; then
+            wait
+        fi
+
+    elif [ $PARALLEL = True -o $PARALLEL = Jobs ]; then
 
         local SEED=$SEED_START
         while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
-            local MODEL_DIR=aiplanner.$MODEL_NAME.tf
-            local RESULT_DIR=$MODEL_DIR/seed_$SEED/$EVAL_NAME
-            mkdir $RESULT_DIR 2> /dev/null
-            $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --train-seed=$SEED --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS > $RESULT_DIR/eval.log 2>&1 &
+            $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --train-seed=$SEED --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS > $RESULT_DIR/evaluate-seed_$SEED.log 2>&1 &
             SEED=`expr $SEED + 1`
         done
 
@@ -160,10 +172,8 @@ evaluate () {
         local SEED=$SEED_START
         set -o pipefail
         while [ $SEED -lt `expr $SEED_START + $SEEDS` ]; do
-            local MODEL_DIR=aiplanner.$MODEL_NAME.tf
-            local RESULT_DIR=$MODEL_DIR/seed_$SEED/$EVAL_NAME
-            mkdir $RESULT_DIR 2> /dev/null
-            $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --train-seed=$SEED --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS 2>&1 | tee $RESULT_DIR/eval.log || exit 1
+            $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --train-seed=$SEED --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS 2>&1 \
+                | tee $RESULT_DIR/evaluate-seed_$SEED.log || exit 1
             SEED=`expr $SEED + 1`
         done
 
@@ -227,9 +237,10 @@ train_eval () {
         train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
         train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
     fi
-    if [ $TRAINING = both -o $TRAINING = generic ]; then
-        train gamma$GAMMA "$ARGS"
-    fi
+
+    #if [ $TRAINING = both -o $TRAINING = generic ]; then
+    #    train gamma$GAMMA "$ARGS"
+    #fi
 
     wait
 
