@@ -206,7 +206,7 @@ evaluate_with_policy () {
     fi
 }
 
-train_eval () {
+train_scenarios () {
 
     local TRAINING=$1
     local UNIT=$2
@@ -225,8 +225,6 @@ train_eval () {
         ARGS="$ARGS --master-sex2=female --master-couple-death-concordant --master-income-preretirement-concordant --master-consume-preretirement=6e4 --master-consume-additional=1"
     fi
 
-    echo `date` Training $EPISODE
-
     if [ $TRAINING = both -o $TRAINING = specific ]; then
         #train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
         #train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
@@ -238,13 +236,19 @@ train_eval () {
         train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
     fi
 
-    #if [ $TRAINING = both -o $TRAINING = generic ]; then
-    #    train gamma$GAMMA "$ARGS"
-    #fi
+    if [ $TRAINING = both -o $TRAINING = generic ]; then
+        train gamma$GAMMA "$ARGS $TRAINARGS"
+    fi
 
-    wait
+}
 
-    echo `date` Evaluating $EPISODE
+eval_scenarios () {
+
+    local TRAINING=$1
+    local UNIT=$2
+    local GAMMA=$3
+    local EPISODE=$4
+    local ARGS=$5
 
     if [ $TRAINING = both -o $TRAINING = specific ]; then
         #evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2.5e5 age_start50-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
@@ -267,6 +271,23 @@ train_eval () {
         evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
         evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
     fi
+}
+
+train_eval () {
+
+    local TRAINING=$1
+    local UNIT=$2
+    local GAMMA=$3
+    local EPISODE=$4
+    local ARGS=$5
+
+    echo `date` Training $EPISODE
+    train_scenarios "$@"
+
+    wait
+
+    echo `date` Evaluating $EPISODE
+    eval_scenarios "$@"
 
     wait
 }

@@ -10,6 +10,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+from glob import glob
 from os import getpriority, mkdir, PRIO_PROCESS, setpriority
 from os.path import abspath
 from shutil import rmtree
@@ -30,10 +31,10 @@ class RayFinEnv(FinEnv):
     def __init__(self, config):
         super().__init__(**config)
 
-def train(training_model_params, *, redis_address, train_seeds, train_couple_net,
-          train_timesteps_per_epoch,
-          train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
-          train_seed, nice, num_cpu, model_dir, **dummy_kwargs):
+def train(training_model_params, *, redis_address, train_anneal_num_timesteps, train_seeds,
+    train_save_frequency, train_restore_dir, train_restore_checkpoint_name, train_couple_net,
+    train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
+    train_seed, nice, num_cpu, model_dir, **dummy_kwargs):
 
     priority = getpriority(PRIO_PROCESS, 0)
     priority += nice
@@ -84,6 +85,12 @@ def train(training_model_params, *, redis_address, train_seeds, train_couple_net
 
         'PPO': {
             'lambda': 0.95, # Larger lambda results in too high of a stocks allocation. Not sure why.
+            'train_batch_size': 4000, # Default value needs to be specified here in case --train-save-frequency is specified.
+            'lr_schedule': ( # Annealing phase once primary training phase is no longer generating improvements results in better CEs.
+                (0, 5e-5),
+                (max(0, train_num_timesteps - train_anneal_num_timesteps), 5e-5),
+                (train_num_timesteps, 0),
+            ),
         },
 
         'PPO.baselines': { # Compatible with AIPlanner's OpenAI baselines ppo1 implementation.
@@ -94,7 +101,7 @@ def train(training_model_params, *, redis_address, train_seeds, train_couple_net
 
             'lambda': 0.95,
             'sample_batch_size': 256,
-            'train_batch_size': train_timesteps_per_epoch,
+            'train_batch_size': 4096,
             #'sgd_minibatch_size': 128,
             'num_sgd_iter': 10,
             'lr_schedule': (
@@ -110,6 +117,21 @@ def train(training_model_params, *, redis_address, train_seeds, train_couple_net
     }[algorithm]
 
     run = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
+    checkpoint_freq = max(1, train_save_frequency // agent_config['train_batch_size']) if train_save_frequency != None else 0
+
+    def restore_dir(seed):
+
+        if train_restore_dir:
+            train_dir = train_restore_dir + '/seed_' + str(seed)
+            if train_restore_checkpoint_name:
+                checkpoint_name = train_restore_checkpoint_name
+            else:
+                ray_checkpoints = glob(train_dir + '/*/checkpoint_*')
+                checkpoint_name = 'checkpoint_' + str(sorted(int(ray_checkpoint.split('_')[-1]) for ray_checkpoint in ray_checkpoints)[-1])
+            rest_dir, = glob(train_dir + '/*/' + checkpoint_name)
+            return abspath(rest_dir)
+        else:
+            return None
 
     run_experiments(
         {
@@ -145,7 +167,9 @@ def train(training_model_params, *, redis_address, train_seeds, train_couple_net
                 },
 
                 'local_dir': abspath(model_dir),
+                'checkpoint_freq': checkpoint_freq,
                 'checkpoint_at_end': True,
+                'restore': restore_dir(seed),
             } for seed in range(train_seed, train_seed + train_seeds)
         },
         queue_trials = redis_address != None
@@ -154,9 +178,12 @@ def train(training_model_params, *, redis_address, train_seeds, train_couple_net
 def main():
     parser = make_parser(arg_parser)
     parser.add_argument('--redis-address')
+    parser.add_argument('--train-anneal-num-timesteps', type=int, default=500000)
     parser.add_argument('--train-seeds', type = int, default = 1) # Number of parallel seeds to train.
+    parser.add_argument('--train-save-frequency', type=int, default=None)
+    parser.add_argument('--train-restore-dir') # Restoring currently doesn't seem to work, and would be of limited use as modified trial parameters are ignored.
+    parser.add_argument('--train-restore-checkpoint-name')
     boolean_flag(parser, 'train-couple-net', default=True)
-    parser.add_argument('--train-timesteps-per-epoch', type=int, default=4096)
     training_model_params, _, args = fin_arg_parse(parser, evaluate=False)
     if not training_model_params['algorithm']:
          training_model_params['algorithm'] = 'PPO'

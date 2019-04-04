@@ -180,7 +180,7 @@ class Evaluator(object):
 
             # Have no control over the random seed used by each remote evaluator.
             # If they are ever always the same, we would be restricted to a single remote evaluator.
-            # Currently the remote seed is random.
+            # Currently the remote seed is random, and attempting to set it to something deterministic fails.
 
             def make_pi(policy_graph):
                 return lambda obss: policy_graph.compute_actions(obss)[0]

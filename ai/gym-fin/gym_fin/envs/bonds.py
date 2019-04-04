@@ -727,7 +727,7 @@ if __name__ == '__main__':
     seed(0)
 
     bonds = BondsSet()
-    modeled_inflation = BreakEvenInflation(bonds.real, model_bond_volatility = False)
+    modeled_inflation = BreakEvenInflation(bonds.real, nominal_yield_curve = bonds.nominal.yield_curve, model_bond_volatility = False)
     nominal_real_bonds = BondsMeasuredInNominalTerms(bonds.real, bonds.inflation)
     nominal_nominal_bonds = BondsMeasuredInNominalTerms(bonds.nominal, bonds.inflation)
 

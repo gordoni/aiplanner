@@ -18,35 +18,92 @@ mkdir -p ~/aiplanner-data/train-results
 cd ~/aiplanner-data/train-results
 
 PARALLEL=Jobs
-ALGORITHM=ppo1
-GAMMA=3
+GAMMA=6
 TRAINARGS=$TRAIN_ARGS
-for TIMESTEPS in 500000 1000000 2000000 5000000; do
-    for UNIT in single couple; do
-        for SPIAS in no_spias spias; do
+TIMESTEPS=5000000
+for UNIT in single couple; do
+    for SPIAS in no_spias spias; do
 
-            TRAIN_ARGS="$TRAINARGS --train-num-timesteps=$TIMESTEPS"
-            ARGS=""
-            if [ $SPIAS = spias ]; then
-                ARGS="$ARGS --master-nominal-spias"
-            fi
+        TRAIN_ARGS="$TRAINARGS --train-num-timesteps=$TIMESTEPS"
+        ARGS=""
+        if [ $SPIAS = spias ]; then
+            ARGS="$ARGS --master-nominal-spias"
+        fi
 
-            EPISODE="$ALGORITHM-$UNIT-$SPIAS-gamma$GAMMA-timesteps$TIMESTEPS"
+        EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal"
+        mkdir -p $EPISODE
+        cd $EPISODE
+        train_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS --train-anneal-timesteps=0 --train-save-frequency=500000"
+        cd ..
+        wait
+        for TS in 500000 1000000 2000000 5000000; do
+            mkdir -p $EPISODE-timesteps$TS/aiplanner.gamma$GAMMA.tf
+            cd $EPISODE-timesteps$TS/aiplanner.gamma$GAMMA.tf
+            for FILE in ../../$EPISODE/aiplanner.gamma$GAMMA.tf/{seed_*,params.txt}; do
+                ln -s $FILE 2> /dev/null
+            done
+            cd ..
+            CP=`expr $TS / 4000`
+            eval_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP"
+            cd ..
+        done
+        wait
 
+        # This following code won't work as restore is broken and changed experiment parameters are currently ignored by tune on restore.
+        # NATS=1000000
+        # ANNEALS="500000 1000000 2000000"
+        # for ANNEAL in $ANNEALS; do
+        #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
+        #     mkdir -p $EPISODE
+        #     cd $EPISODE
+        #     CP=`expr $NATS / 4000`
+        #     TS=`expr $NATS + $ANNEAL`
+        #     train_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS --train-restore-dir=../single-no_spias-gamma6-nonanneal/aiplanner.gamma6.tf --train-restore-checkpoint-name=checkpoint_$CP --train-num-timesteps=$TS --train-anneal-num-timesteps=$ANNEAL"
+        #     cd ..
+        # done
+        # wait
+        # for ANNEAL in $ANNEALS; do
+        #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
+        #     cd $EPISODE
+        #     eval_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS"
+        #     cd ..
+        # done
+        # wait
+
+        NATS=1000000
+        ANNEALS="500000 1000000 2000000"
+        for ANNEAL in $ANNEALS; do
+            EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
             mkdir -p $EPISODE
             cd $EPISODE
-
-            train_eval both $UNIT $GAMMA $EPISODE "$ARGS"
-
+            TS=`expr $NATS + $ANNEAL`
+            train_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS --train-num-timesteps=$TS --train-anneal-num-timesteps=$ANNEAL"
             cd ..
-
         done
+        wait
+        for ANNEAL in $ANNEALS; do
+            EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
+            cd $EPISODE
+            eval_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS"
+            cd ..
+        done
+        wait
+
+        exit
     done
 done
 
 echo `date` Done
 
-# PPO1 average improvement relative to prior timesteps average of 4 scenarios (with 2m timestep evaluations):
+# PPO improvement of best seed relative to prior timestep seed (or anneal=0 results) average of 4 scenarios (with 2m timestep evaluations):
+#     non-anneal timesteps          500k   1m      2m      5m     10m       recommended timesteps
+#     generic  single no-spias
+#         gamma=6
+#             anneal=0                -   1.0%   -0.4%    1.4%     ?           1.0m non-anneal   (all 4 scenarios improved at 1m; 3 degraded at 2m)
+#             anneal=0.5m                  +1.5%                               0.5m anneal       (all 4 scenarios improved over anneal=0)
+#             anneal=1m                    +1.1%
+#             anneal=2m                    +1.2%
+# ppo1
 #     train_num_timesteps        500k   1m      2m      5m     10m       recommended timesteps
 #     specific single no-spias     -   1.8%    0.7%    0.3%     ?                ?
 #     specific single  spias       -   6.8%    2.0%    1.2%     ?                ?
@@ -58,14 +115,14 @@ echo `date` Done
 #     generic  couple  spias       -  10.0%    1.6%    4.9%    3.6%             10m+
 # train_num_timesteps=5000000 IS THUS APPROPRIATE FOR A SPECIFIC INDIVIDUAL MODEL
 #
-# PPO1 5m/10m (single/couple) timestep generic results as a fraction specific results average of 4 scenarios (with 2m timestep evaluations):
+# ppo1 5m/10m (single/couple) timestep generic results as a fraction specific results average of 4 scenarios (with 2m timestep evaluations):
 #     single no-spias   98.7%
 #     single  spias     95.9%
 #     couple no-spias  100.7%
 #     couple  spias    100.8%
 # THUS IT WOULD APPEAR BETTER TO USE A GENERIC MODEL FOR A COUPLE, BUT TRAIN A SPECIFIC MODEL FOR AN INDIVIDUAL
 #
-# PPO1 5m/10m (single/couple) timestep no spias results as a fraction of spia results average of 4 scenarios (with 2m timestep evaluations):
+# ppo1 5m/10m (single/couple) timestep no spias results as a fraction of spia results average of 4 scenarios (with 2m timestep evaluations):
 #     specific single                   94.4%
 #     specific couple  couple-spias    103.4%  5m timesteps; no probabilistic defined benefits
 #     specific couple no-couple-spias   99.0%
@@ -74,7 +131,7 @@ echo `date` Done
 #     generic  couple no-couple-spias   98.8%
 # couple_spias=False IS THUS THE DEFAULT
 #
-# PPO1 nominal_bonds_duration=15 improvement relative to duration=None average of 4 scenarios
+# ppo1 nominal_bonds_duration=15 improvement relative to duration=None average of 4 scenarios
 #     (old couple model, no probabilistic defined benefits, 2m timesteps, and 2m timestep evaluation):
 #     specific single no-spias    0.2%
 #     specific single  spias      0.4%
@@ -86,11 +143,11 @@ echo `date` Done
 #     generic  couple  spias      1.3%
 # nominal_bonds_duration=15 IS THUS THE DEFAULT
 #
-# PPO1:
+# ppo1:
 #     Specific gamma for variable scenario performs 2-3% worse than specific scenario.
 #     Generic gamma for variable scenario perform 2-3% worse than specific gamma for variable scenario.
 #
-# Notes on PPO1 tweaks that have been tried out (single with no nominal SPIAs):
+# Notes on ppo1 tweaks that have been tried out (single with no nominal SPIAs):
 #
 # --train-hidden-layer-size=128
 #    Produced 0.2% worse generic results than hidden layer size 64 both pposgd_simple.learn(optim_batchsize=64).

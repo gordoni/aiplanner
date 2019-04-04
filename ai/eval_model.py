@@ -165,7 +165,7 @@ def eval_models(eval_model_params, *, train_seeds, nice, train_seed, model_dir, 
     if any_exception:
         raise any_exception
 
-def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_file, redis_address, tensorflow_dir,
+def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_file, redis_address, checkpoint_name,
     eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
     num_cpu, model_dir, train_seed, train_dir, search_consume_initial_around, result_seed_dir, out, num_trace_episodes, num_workers, num_environments, pdf_buckets):
 
@@ -241,15 +241,18 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
 
     else:
 
-        if tensorflow_dir:
-            tf_dir = tensorflow_dir
+        ray_checkpoints = glob(train_dir + '/*/checkpoint_*')
+        if ray_checkpoints:
+            if not checkpoint_name:
+                checkpoint_name = 'checkpoint_' + str(sorted(int(ray_checkpoint.split('_')[-1]) for ray_checkpoint in ray_checkpoints)[-1])
+            tf_dir, = glob(train_dir + '/*/' + checkpoint_name)
+            import ray
+            if not ray.is_initialized():
+                ray.init(redis_address = redis_address)
         else:
-            tf_dir = train_dir + '/tensorflow'
-            if not exists(tf_dir):
-                tf_dir, = glob(train_dir + '/*/checkpoint_*')
-                import ray
-                if not ray.is_initialized():
-                    ray.init(redis_address = redis_address)
+            if not checkpoint_name:
+                checkpoint_name = 'tensorflow'
+            tf_dir = train_dir + '/' + checkpoint_name
         runner = TFRunner(tf_dir = tf_dir, eval_model_params = eval_model_params, couple_net = eval_couple_net,
             num_workers = num_workers, num_cpu = num_cpu).__enter__()
         remote_evaluators = runner.remote_evaluators
@@ -417,7 +420,7 @@ def main():
     parser.add_argument('--opal-file', default = 'opal-linear.csv')
     parser.add_argument('--redis-address')
     parser.add_argument('--train-seeds', type = int, default = 1) # Number of possibly parallel seeds to evaluate.
-    parser.add_argument('--tensorflow-dir')
+    parser.add_argument('--checkpoint-name')
     boolean_flag(parser, 'eval-couple-net', default = True)
     parser.add_argument('--search-consume-initial-around', type = float)
         # Search for the initial consumption that maximizes the certainty equivalent using the supplied value as a hint as to where to search.
