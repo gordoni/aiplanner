@@ -279,7 +279,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
     print('    Real bonds duration:', interp['real_bonds_duration'], file = out)
     print('    Nominal bonds duration:', interp['nominal_bonds_duration'], file = out)
 
-    print(file = out)
+    print(file = out, flush = True)
 
     evaluator = Evaluator(envs, eval_seed, eval_num_timesteps,
         remote_evaluators = remote_evaluators, render = eval_render, num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets)

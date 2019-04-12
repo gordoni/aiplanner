@@ -250,6 +250,8 @@ eval_scenarios () {
     local EPISODE=$4
     local ARGS=$5
 
+    ARGS="$ARGS --master-gamma=$GAMMA"
+
     if [ $TRAINING = both -o $TRAINING = specific ]; then
         #evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2.5e5 age_start50-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
         #evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 age_start50-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"

@@ -25,7 +25,7 @@ def weighted_percentile(value_weights, pctl):
     assert value_weights
     tot = sum((w for v, w in value_weights))
     weight = 0
-    for v, w in sorted(value_weights):
+    for v, w in value_weights:
         weight += w
         if weight >= pctl / 100 * tot:
             return v
@@ -34,7 +34,7 @@ def weighted_percentile(value_weights, pctl):
 def weighted_mean(value_weights):
     n = 0
     s = 0
-    for value, weight in sorted(value_weights, key = lambda x: abs(x[1])):
+    for value, weight in value_weights:
         n += weight
         s += weight * value
     return s / n
@@ -44,7 +44,7 @@ def weighted_stdev(value_weights):
     n = 0
     s = 0
     ss = 0
-    for value, weight in sorted(value_weights, key = lambda x: abs(x[1])):
+    for value, weight in value_weights:
         if weight != 0:
             n0 += 1
         n += weight
@@ -58,11 +58,19 @@ def weighted_stdev(value_weights):
 def weighted_ppf(value_weights, q):
     n = 0
     ppf = 0
-    for value, weight in sorted(value_weights, key = lambda x: abs(x[1])):
+    for value, weight in value_weights:
         n += weight
         if value <= q:
             ppf += weight
     return ppf / n * 100
+
+def pack_value_weights(value_weights):
+
+    return tuple(np.array(x) for x in zip(*value_weights))
+
+def unpack_value_weights(value_weights):
+
+    return tuple(tuple(x) for x in zip(*value_weights))
 
 class Evaluator(object):
 
@@ -167,7 +175,7 @@ class Evaluator(object):
                 if all(finished):
                     break
 
-            return rewards, erewards, self.trace
+            return pack_value_weights(rewards), pack_value_weights(erewards), self.trace
 
         self.object_ids = None
         self.exception = None
@@ -212,15 +220,22 @@ class Evaluator(object):
 
             rollouts = ray.get(self.object_ids)
 
-            self.rewards, self.erewards, trace = (tuple(chain(*l)) for l in zip(*chain(*rollouts)))
+            rewards, erewards, trace = zip(*chain(*rollouts))
+            self.rewards = tuple(chain(*(unpack_value_weights(reward) for reward in rewards)))
+            self.erewards = tuple(chain(*(unpack_value_weights(ereward) for ereward in erewards)))
 
-            self.trace = trace[:self.num_trace_episodes]
+            self.trace = tuple(chain(*trace))[:self.num_trace_episodes]
 
         else:
 
             if self.exception:
                 raise self.exception
 
+            self.rewards = unpack_value_weights(self.rewards)
+            self.erewards = unpack_value_weights(self.erewards)
+
+        self.rewards = tuple(sorted(self.rewards))
+        self.erewards = tuple(sorted(self.erewards))
         rew = weighted_mean(self.erewards)
         try:
             std = weighted_stdev(self.erewards)

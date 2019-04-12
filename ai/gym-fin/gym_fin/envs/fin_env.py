@@ -193,7 +193,7 @@ class FinEnv(Env):
             # Note: Couple status must be observation[0], or else change is_couple() in gym-fin/gym_fin/common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
             # couple, number of 401(k)'s available, 1 / gamma
             # average asset years,
-            # mortality return for spia, final spias purchase,
+            # lifespan percentile years, spia expectancy years, final spias purchase,
             # reward to go estimate, individual CE in remaining retirement,
             # portfolio wealth on total wealth, income present value as a fraction of total wealth: tax_deferred, taxable,
             # portfolio wealth as a fraction of total wealth: tax_deferred, taxable,
@@ -203,8 +203,8 @@ class FinEnv(Env):
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            low  = np.array((0, 0, 0,   0, -1, 0, -100,   0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, -0.05, 0.0)),
-            high = np.array((1, 2, 1, 100,  1, 1,  100, 2e5, 1, 1, 1, 1, 1, 1, 1, 1,  1, 2,  0.05, 0.05)),
+            low  = np.array((0, 0, 0,   0,   0,   0, 0, -100,   0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, -0.05, 0.0)),
+            high = np.array((1, 2, 1, 100, 100, 100, 1,  100, 2e5, 1, 1, 1, 1, 1, 1, 1, 1,  1, 2,  0.05, 0.05)),
             dtype = 'float32'
         )
 
@@ -616,7 +616,11 @@ class FinEnv(Env):
 
         if self.spias:
 
-            if self.params.spias_partial:
+            if self.spias_required:
+
+                spias_fraction = 1
+
+            elif self.params.spias_partial:
 
                 # Try and make it easy to learn the optimal amount of guaranteed income,
                 # so things function well with differing current amounts of guaranteed income.
@@ -1163,14 +1167,17 @@ class FinEnv(Env):
         self.taxes_paid = min(self.taxes_due, 0.9 * self.p_plus_income) # Don't allow taxes to consume all of p.
         self.p_plus_income -= self.taxes_paid
 
-        self.spias = (self.params.real_spias or self.params.nominal_spias) and (self.params.couple_spias or not self.couple)
-        if self.spias:
+        self.spias_ever = (self.params.real_spias or self.params.nominal_spias) and (self.params.couple_spias or not self.couple)
+        if self.spias_ever:
             if self.couple:
                 min_age = min(self.age, self.age2)
                 max_age = max(self.age, self.age2)
             else:
                 min_age = max_age = self.age2 if self.only_alive2 else self.age
-            self.spias = min_age >= self.params.spias_permitted_from_age and max_age <= self.params.spias_permitted_to_age
+            self.spias_required = self.params.spias_at_age != None and max_age <= self.params.spias_at_age < max_age + self.params.time_period
+            self.spias = self.spias_required or min_age >= self.params.spias_permitted_from_age and max_age <= self.params.spias_permitted_to_age
+        else:
+            self.spias = False
 
         if self.couple:
             self.years_retired = self.retirement_expectancy_both[self.episode_length] + \
@@ -1254,19 +1261,20 @@ class FinEnv(Env):
         average_asset_years = self.preretirement_years + self.years_retired / 2
             # Consumption amount in retirement and thus expected reward to go is likely a function of average asset age.
 
-        if self.spias:
+        if self.spias_ever:
             # We siplify by comparing life expectancies and SPIA payouts rather than retirement expectancies and DIA payouts.
             # DIA payouts depend on retirement age, which would make the _spia_years_cache sigificiantly larger and less effective.
             if self.couple:
                 max_age = max(self.age, self.age2) # Determines age cut-off and thus final purchase signal for the purchase of SPIAs.
             else:
                 max_age = self.age2 if self.only_alive2 else self.age
-            spia_years_now = self._spia_years(0)
-            spia_mortality_return = self.life_percentile[self.episode_length] / spia_years_now - 1
+            life_percentile = self.life_percentile[self.episode_length]
+            spia_expectancy = self._spia_years(0)
             final_spias_purchase = max_age <= self.params.spias_permitted_to_age < max_age + self.params.time_period
             final_spias_purchase = int(final_spias_purchase)
         else:
-            spia_mortality_return = 0
+            life_percentile = 0
+            spia_expectancy = 0
             final_spias_purchase = 0
 
         reward_weight = (2 * self.retirement_expectancy_both[self.episode_length] + self.retirement_expectancy_one[self.episode_length]) * self.params.time_period
@@ -1304,7 +1312,7 @@ class FinEnv(Env):
             # Nature of lifespan observations.
             average_asset_years,
             # Annuitization related observations.
-            spia_mortality_return, final_spias_purchase,
+            life_percentile, spia_expectancy, final_spias_purchase,
             # Value function related observations.
             # Best results (especially when gamma=6) if provide both reward estimate and CE estimate.
             reward_estimate, self.ce_estimate_individual,
@@ -1340,7 +1348,7 @@ class FinEnv(Env):
 
         items = ('couple', 'num_401k', 'one_on_gamma',
             'preretirement_years', 'average_asset_years',
-            'spia_mortality_return', 'final_spias_purchase',
+            'lifespan_percentile_years', 'spia_expectancy_years', 'final_spias_purchase',
             'reward_estimate', 'ce_estimate_individual',
             'wealth_fraction', 'income_tax_deferred_fraction', 'income_taxable_fraction',
             'wealth_tax_deferred_fraction', 'wealth_taxable_fraction',

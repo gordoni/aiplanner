@@ -224,6 +224,7 @@ class ModelParams(object):
         self._param('spias-permitted-from-age', 0) # Minimum age (of youngest party) at which able to purchase SPIAs.
         self._param('spias-permitted-to-age', 85) # Maximum age (of oldest party) at which able to purchase SPIAs.
             # Age at which availability of quotes starts to decrease.
+        self._param('spias-at-age', None) # Age (of oldest party) at which must fully annuitize irrespective of whether age permitted.
 
         # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2019 for 1900-2018.
             # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.0%).
