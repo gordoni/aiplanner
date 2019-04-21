@@ -1238,7 +1238,7 @@ class FinEnv(Env):
             duration = FinEnv._spia_years_cache[key]
         except KeyError:
             life_table, life_table2 = self.spia_life_tables(age, age2)
-            payout_delay = 0
+            payout_delay = 0 # Observe better training for a generic model with a payout delay of 0 than self.params.time_period; not sure why.
             payout_fraction = 1 / (1 + self.params.consume_additional)
             spia = IncomeAnnuity(self.bonds_zero, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint_contingent = True,
                 joint_payout_fraction = payout_fraction, frequency = round(1 / self.params.time_period), date_str = date)
@@ -1347,7 +1347,7 @@ class FinEnv(Env):
     def decode_observation(self, obs):
 
         items = ('couple', 'num_401k', 'one_on_gamma',
-            'preretirement_years', 'average_asset_years',
+            'average_asset_years',
             'lifespan_percentile_years', 'spia_expectancy_years', 'final_spias_purchase',
             'reward_estimate', 'ce_estimate_individual',
             'wealth_fraction', 'income_tax_deferred_fraction', 'income_taxable_fraction',

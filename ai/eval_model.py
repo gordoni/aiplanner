@@ -130,7 +130,7 @@ def eval_models(eval_model_params, *, train_seeds, nice, train_seed, model_dir, 
                 if evaluator.couple:
                     print('Couple certainty equivalent:', ce, '+/-', ce_stderr, '(80% confidence interval:', low, '-', str(high) + ')', file = out)
                 print('Evaluation certainty equivalent:', evaluator.indiv_ce, '+/-', evaluator.indiv_ce_stderr,
-                    '(80% confidence interval:', evaluator.indiv_low, '-', str(evaluator.indiv_high) + ')', file = out)
+                    '(80% confidence interval:', evaluator.indiv_low, '-', str(evaluator.indiv_high) + ')', file = out, flush = True)
 
                 plot(prefix, evaluator.trace, evaluator.consume_pdf)
 

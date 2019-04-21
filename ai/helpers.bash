@@ -206,7 +206,7 @@ evaluate_with_policy () {
     fi
 }
 
-train_scenarios () {
+args () {
 
     local TRAINING=$1
     local UNIT=$2
@@ -216,14 +216,39 @@ train_scenarios () {
 
     ARGS="$ARGS --master-gamma=$GAMMA"
     if [ $UNIT = single ]; then
-        local EVAL_ARGS=$SINGLE_EVAL_ARGS
+        echo "$ARGS"
     elif [ $UNIT = couple ]; then
-        local EVAL_ARGS=$COUPLE_EVAL_ARGS
-        ARGS="$ARGS --master-sex2=male"
+        echo "$ARGS --master-sex2=male"
     else
-        local EVAL_ARGS=$COUPLE_EVAL_ARGS
-        ARGS="$ARGS --master-sex2=female --master-couple-death-concordant --master-income-preretirement-concordant --master-consume-preretirement=6e4 --master-consume-additional=1"
+        echo "$ARGS --master-sex2=female --master-couple-death-concordant --master-income-preretirement-concordant --master-consume-preretirement=6e4 --master-consume-additional=1"
     fi
+}
+
+eval_args () {
+
+    local TRAINING=$1
+    local UNIT=$2
+    local GAMMA=$3
+    local EPISODE=$4
+    local ARGS=$5
+
+    if [ $UNIT = single ]; then
+        echo "$SINGLE_EVAL_ARGS"
+    else
+        echo "$COUPLE_EVAL_ARGS"
+    fi
+}
+
+train_scenarios () {
+
+    local TRAINING=$1
+    local UNIT=$2
+    local GAMMA=$3
+    local EPISODE=$4
+    local ARGS=$5
+
+    ARGS=`args "$@"`
+    local EVAL_ARGS=`eval_args "$@"`
 
     if [ $TRAINING = both -o $TRAINING = specific ]; then
         #train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
@@ -250,7 +275,8 @@ eval_scenarios () {
     local EPISODE=$4
     local ARGS=$5
 
-    ARGS="$ARGS --master-gamma=$GAMMA"
+    ARGS=`args "$@"`
+    local EVAL_ARGS=`eval_args "$@"`
 
     if [ $TRAINING = both -o $TRAINING = specific ]; then
         #evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2.5e5 age_start50-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
