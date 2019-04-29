@@ -18,14 +18,16 @@ mkdir -p ~/aiplanner-data/train-results
 cd ~/aiplanner-data/train-results
 
 PARALLEL=Jobs
+SCENARIO_ARGS="--master-stocks-mean-reversion-rate=0 --master-no-observe-stocks-price --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.010 --master-iid-bonds-volatility=0.110 --master-no-bills --master-no-returns-standard-error --master-no-tax --master-static-bonds --master-fixed-real-bonds-rate=0.01 --master-fixed-nominal-bonds-rate=0.03 --master-real-short-rate-type=current --master-inflation-short-rate-type=current"
 GAMMA=6
 TRAINARGS=$TRAIN_ARGS
-TIMESTEPS=5000000
+TIMESTEPS=4000000
+BATCH_SIZE=100000
 for UNIT in single couple; do
     for SPIAS in no_spias spias; do
 
-        TRAIN_ARGS="$TRAINARGS --train-num-timesteps=$TIMESTEPS"
-        ARGS=""
+        TRAIN_ARGS="$TRAINARGS --train-num-timesteps=$TIMESTEPS --train-batch-size=$BATCH_SIZE"
+        ARGS=$SCENARIO_ARGS
         if [ $SPIAS = spias ]; then
             ARGS="$ARGS --master-nominal-spias"
         fi
@@ -33,25 +35,30 @@ for UNIT in single couple; do
         EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal"
         mkdir -p $EPISODE
         cd $EPISODE
-        train_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS --train-anneal-timesteps=0 --train-save-frequency=500000"
+        train_scenarios specific $UNIT $GAMMA $EPISODE "$ARGS --train-save-frequency=500000"
         cd ..
         wait
-        for TS in 500000 1000000 2000000 5000000; do
-            mkdir -p $EPISODE-timesteps$TS/aiplanner.gamma$GAMMA.tf
-            cd $EPISODE-timesteps$TS/aiplanner.gamma$GAMMA.tf
-            for FILE in ../../$EPISODE/aiplanner.gamma$GAMMA.tf/{seed_*,params.txt}; do
-                ln -s $FILE 2> /dev/null
+        for TS in 1000000 2000000 3000000 4000000; do
+            mkdir -p $EPISODE-timesteps$TS
+            cd $EPISODE-timesteps$TS
+            for TD in 2.5e5 5e5 1e6 2e6; do
+                TF=aiplanner.gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred$TD.tf
+                mkdir -p $TF
+                cd $TF
+                for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
+                    ln -s $FILE 2> /dev/null
+                done
+                cd ..
             done
-            cd ..
-            CP=`expr $TS / 4000`
-            eval_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP"
+            CP=`expr $TS / $BATCH_SIZE`
+            eval_scenarios specific $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP"
             cd ..
         done
         wait
 
         # This following code won't work as restore is broken and changed experiment parameters are currently ignored by tune on restore.
-        # NATS=1000000
-        # ANNEALS="500000 1000000 2000000"
+        # NATS=1500000
+        # ANNEALS="500000 1000000 1500000 2000000"
         # for ANNEAL in $ANNEALS; do
         #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
         #     mkdir -p $EPISODE
@@ -70,39 +77,75 @@ for UNIT in single couple; do
         # done
         # wait
 
-        NATS=1000000
-        ANNEALS="500000 1000000 2000000"
-        for ANNEAL in $ANNEALS; do
-            EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
-            mkdir -p $EPISODE
-            cd $EPISODE
-            TS=`expr $NATS + $ANNEAL`
-            train_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS --train-num-timesteps=$TS --train-anneal-num-timesteps=$ANNEAL"
-            cd ..
-        done
-        wait
-        for ANNEAL in $ANNEALS; do
-            EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
-            cd $EPISODE
-            eval_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS"
-            cd ..
-        done
-        wait
+        # TS=2000000
+        # ANNEALS="0 100000 200000 400000"
+        # for ANNEAL in $ANNEALS; do
+        #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-anneal$ANNEAL-timesteps$TS"
+        #     mkdir -p $EPISODE
+        #     cd $EPISODE
+        #     train_scenarios specific $UNIT $GAMMA $EPISODE "$ARGS --train-anneal-num-timesteps=$ANNEAL --train-num-timesteps=$TS"
+        #     cd ..
+        # done
+        # wait
+        # for ANNEAL in $ANNEALS; do
+        #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-anneal$ANNEAL-timesteps$TS"
+        #     cd $EPISODE
+        #     eval_scenarios specific $UNIT $GAMMA $EPISODE "$ARGS"
+        #     cd ..
+        # done
+        # wait
 
-        exit
     done
+    exit
 done
 
 echo `date` Done
 
-# PPO improvement of best seed relative to prior timestep seed (or anneal=0 results) average of 4 scenarios (with 2m timestep evaluations):
-#     non-anneal timesteps          500k   1m      2m      5m     10m       recommended timesteps
-#     generic  single no-spias
+exit
+
+# PPO examining 4 scenarios (with 2m timestep evaluations):
+#   batch_size=100000, entropy_coeff=1e-3, kl_target=1, optimizer_step_size=5e-5, optimizer_epochs=30, minibatch_size=128, lambda=1, anneal_num_timesteps=0
+# timesteps,mean CE,CE stderr (typically 20 experiments)
+# gamma=6 specific 2.5e5 single no-spias:
+1000000,27141.532122,11.211862
+2000000,27206.079839,4.808965
+3000000,27232.146407,5.596441
+4000000,27218.473246,7.722734
+5000000,27226.940843,4.746282
+6000000,27219.222059,6.661287
+# gamma=6 specific   5e5 single no-spias:
+1000000,35472.458452,17.010340
+2000000,35541.241878,14.200865
+3000000,35566.933734,11.121769
+4000000,35569.977472,13.034212
+5000000,35599.083056,12.960910
+6000000,35605.684595,19.288496
+# gamma=6 specific   1e6 single no-spias:
+1000000,50276.879059,69.842187
+2000000,50684.641252,60.190155
+3000000,50647.743870,67.201960
+4000000,50620.347223,64.823658
+5000000,50674.701332,76.814125
+6000000,50741.200447,111.217853
+# gamma=6 specific   2e6 single no-spias:
+1000000,74177.851710,233.260873
+2000000,78155.170028,254.238761
+3000000,78658.786315,210.772457
+4000000,79055.510560,165.534292
+5000000,79211.361832,148.667113
+6000000,79423.942598,208.876369
+
+#                                         0m anneal (insignificantly worse CE distribution if anneal)
+#         gamma=1.5
+#             anneal=0                -   1.1%  0.3%  0.0%  0.2%  0.0%  -0.1%   0.0%         1.5m non-anneal
+#     generic  single  spias
 #         gamma=6
-#             anneal=0                -   1.0%   -0.4%    1.4%     ?           1.0m non-anneal   (all 4 scenarios improved at 1m; 3 degraded at 2m)
-#             anneal=0.5m                  +1.5%                               0.5m anneal       (all 4 scenarios improved over anneal=0)
-#             anneal=1m                    +1.1%
-#             anneal=2m                    +1.2%
+#             anneal=0                -  -0.9%  0.6% -0.1% -0.5%  0.5%  -0.5%   0.7%         0.5m non-anneal
+#             anneal=250k                      +1.0%                                         500k anneal
+#             anneal=500k                      +1.5%
+#             anneal=750k                      +0.3%
+#             anneal=1m                        +0.7%
+#
 # ppo1
 #     train_num_timesteps        500k   1m      2m      5m     10m       recommended timesteps
 #     specific single no-spias     -   1.8%    0.7%    0.3%     ?                ?

@@ -53,7 +53,7 @@ start_ray_if_needed() {
             ARGS=
         fi
 
-        ray start --head --redis-port=$PORT $ARGS
+        (ulimit -n 65536; ray start --head --redis-port=$PORT $ARGS)
 
     fi
 }

@@ -80,7 +80,7 @@ def parse_args(parser, *, training = True, evaluate = True, args = None):
 def fin_arg_parse(parser, *, training = True, evaluate = True, dump = True, args = None):
 
     if training:
-        parser.add_argument('--train-num-timesteps', type = int, default = int(1e6))
+        parser.add_argument('--train-num-timesteps', type = int, default = int(1e7))
         parser.add_argument('--train-single-num-timesteps', type = int, default = int(1e9))
         parser.add_argument('--train-couple-num-timesteps', type = int, default = int(1e9))
     if evaluate and training:

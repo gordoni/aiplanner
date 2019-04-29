@@ -32,6 +32,7 @@ class RayFinEnv(FinEnv):
         super().__init__(**config)
 
 def train(training_model_params, *, redis_address, train_anneal_num_timesteps, train_seeds,
+          train_batch_size, train_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_entropy_coefficient,
     train_save_frequency, train_restore_dir, train_restore_checkpoint_name, train_couple_net,
     train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
     train_seed, nice, num_cpu, model_dir, **dummy_kwargs):
@@ -66,6 +67,16 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
 
     algorithm = training_model_params['algorithm']
 
+    lr_schedule = [
+        (0, train_optimizer_step_size),
+        (max(0, train_num_timesteps - train_anneal_num_timesteps), train_optimizer_step_size),
+    ]
+    # Exponentially decaying anneal phase. Not usually needed; at least not when entropy_coeff provide regularization.
+    #     Consider estimating the non-representativeness of the batch brought about by it being a sample from a larger universe.
+    #     4 samples would have a stderr of 1/2 the non-representativeness.
+    #     Thus every 4 batches would cut down the non-representativeness remaining to be cut down by a factor of 2.
+    while lr_schedule[-1][0] < train_num_timesteps:
+        lr_schedule.append((lr_schedule[-1][0] + train_batch_size, lr_schedule[-1][1] / 2 ** (1/4)))
     agent_config = {
 
         'A2C': {
@@ -80,17 +91,19 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
         'DDPG': {
         },
 
+        # APPO currently doesn't support action space Box. Hence currently not useful.
         'APPO': {
+            'train_batch_size': 500,
+            'lr_schedule': lr_schedule,
         },
 
         'PPO': {
-            'lambda': 0.95, # Larger lambda results in too high of a stocks allocation. Not sure why.
-            'train_batch_size': 4000, # Default value needs to be specified here in case --train-save-frequency is specified.
-            'lr_schedule': ( # Annealing phase once primary training phase is no longer generating improvements results in better CEs.
-                (0, 5e-5),
-                (max(0, train_num_timesteps - train_anneal_num_timesteps), 5e-5),
-                (train_num_timesteps, 0),
-            ),
+            'train_batch_size': train_batch_size,
+            'sgd_minibatch_size': train_minibatch_size,
+            'num_sgd_iter': train_optimizer_epochs,
+            'entropy_coeff': train_entropy_coefficient,
+            'kl_target': 1, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
+            'lr_schedule': lr_schedule,
         },
 
         'PPO.baselines': { # Compatible with AIPlanner's OpenAI baselines ppo1 implementation.
@@ -110,6 +123,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
             ),
             'clip_param': 0.2,
             'vf_clip_param': float('inf'),
+            'kl_target': 1,
             'batch_mode': 'complete_episodes',
             #'observation_filter': 'NoFilter',
         },
@@ -178,8 +192,24 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
 def main():
     parser = make_parser(arg_parser)
     parser.add_argument('--redis-address')
-    parser.add_argument('--train-anneal-num-timesteps', type=int, default=500000)
-    parser.add_argument('--train-seeds', type = int, default = 1) # Number of parallel seeds to train.
+    # --train-num-timesteps:
+        # Increased mean CE levels are likely for a large number of timesteps, but it is a case of diminishing returns.
+        # Eg. for a gamma of 6 and a large portfolio, going from 2m to 4m increases the CE by 1.1%, but going to 6m only increases it by a further 0.5%.
+    parser.add_argument('--train-anneal-num-timesteps', type=int, default=0)
+    parser.add_argument('--train-seeds', type=int, default = 1) # Number of parallel seeds to train.
+    parser.add_argument('--train-batch-size', type=int, default=100000)
+        # PPO default batch size is 4000. For a gamma of 6 and a large portfolio it results in asset allocation heavily biased in favor of stocks, and a poor mean CE.
+        # The poor CE is probably the result of each batch being non-representative of the overall situation given the stochastic nature of the problem.
+        # Inceasing value too 50000 or more improves performance and reduces the asset allocation bias, but never eliminates it.
+        # It would appear the larger the batch size the higher the mean CE, but also the larger the number of timesteps it takes to reach that CE level.
+        # A value of 100000 appears best for 3m to 7m timesteps.
+        # It appears only slightly sub-par compared to 50000 for 2m timesteps, or probably compared to 200000 for 8m timesteps.
+    parser.add_argument('--train-minibatch-size', type=int, default=128)
+    parser.add_argument('--train-optimizer-epochs', type=int, default=30)
+    parser.add_argument('--train-optimizer-step-size', type=float, default=5e-5)
+    parser.add_argument('--train-entropy-coefficient', type=float, default=1e-3)
+        # Value critical to getting optimal performance.
+        # Chosen value reduces CE stdev and increases CE mean for a 256x256 tf model on a Merton like model with stochastic life expectancy and guaranteed income.
     parser.add_argument('--train-save-frequency', type=int, default=None)
     parser.add_argument('--train-restore-dir') # Restoring currently doesn't seem to work, and would be of limited use as modified trial parameters are ignored.
     parser.add_argument('--train-restore-checkpoint-name')
