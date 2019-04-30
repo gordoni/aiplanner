@@ -22,7 +22,8 @@ import numpy as np
 from baselines import logger
 
 def weighted_percentile(value_weights, pctl):
-    assert value_weights
+    if not value_weights:
+        return float('nan')
     tot = sum((w for v, w in value_weights))
     weight = 0
     for v, w in value_weights:
@@ -37,7 +38,10 @@ def weighted_mean(value_weights):
     for value, weight in value_weights:
         n += weight
         s += weight * value
-    return s / n
+    try:
+        return s / n
+    except ZeroDivisionError:
+        return float('nan')
 
 def weighted_stdev(value_weights):
     n0 = 0
@@ -54,8 +58,12 @@ def weighted_stdev(value_weights):
         return sqrt(n0 / (n0 - 1) * (n * ss - s ** 2) / (n ** 2))
     except ValueError:
         return 0
+    except ZeroDivisionError:
+        return float('nan')
 
 def weighted_ppf(value_weights, q):
+    if not value_weights:
+        return float('nan')
     n = 0
     ppf = 0
     for value, weight in value_weights:
@@ -74,8 +82,6 @@ def unpack_value_weights(value_weights):
 
 class Evaluator(object):
 
-    LOGFILE = 'gym_eval_batch.monitor.csv'
-
     def __init__(self, eval_envs, eval_seed, eval_num_timesteps, *,
         remote_evaluators = None, render = False, eval_batch_monitor = False, num_trace_episodes = 0, pdf_buckets = 10):
 
@@ -86,7 +92,7 @@ class Evaluator(object):
         self.eval_num_timesteps = eval_num_timesteps
         self.remote_evaluators = remote_evaluators
         self.eval_render = render
-        self.eval_batch_monitor = eval_batch_monitor
+        self.eval_batch_monitor = eval_batch_monitor # Unused.
         self.num_trace_episodes = num_trace_episodes
         self.pdf_buckets = pdf_buckets
 
@@ -95,14 +101,6 @@ class Evaluator(object):
 
         self.trace = []
         self.episode = []
-
-        if eval_batch_monitor:
-            filename = os.path.join(logger.get_dir(), Evaluator.LOGFILE)
-            self.f = open(filename, "wt")
-            self.f.write('#%s\n'%json.dumps({"t_start": self.tstart, 'env_id' : self.eval_envs[0].spec and self.eval_envs[0].spec.id}))
-            self.logger = csv.DictWriter(self.f, fieldnames=('r', 'l', 't', 'ce'))
-            self.logger.writeheader()
-            self.f.flush()
 
     def trace_step(self, env, action, done):
 
@@ -136,7 +134,7 @@ class Evaluator(object):
             s = 0
             erews = [0 for _ in eval_envs]
             eweights = [0 for _ in eval_envs]
-            finished = [False for _ in eval_envs]
+            finished = [self.eval_num_timesteps == 0 for _ in eval_envs]
             while True:
                 actions = pi(obss)
                 if et < self.num_trace_episodes:
@@ -184,7 +182,7 @@ class Evaluator(object):
 
             return False
 
-        elif self.remote_evaluators:
+        elif self.remote_evaluators and self.eval_num_timesteps > 0:
 
             # Have no control over the random seed used by each remote evaluator.
             # If they are ever always the same, we would be restricted to a single remote evaluator.
@@ -241,9 +239,12 @@ class Evaluator(object):
             std = weighted_stdev(self.erewards)
         except ZeroDivisionError:
             std = float('nan')
-        stderr = std / sqrt(len(self.erewards))
-            # Standard error is ill-defined for a weighted sample.
-            # Here we are incorrectly assuming each episode carries equal weight.
+        try:
+            stderr = std / sqrt(len(self.erewards))
+                # Standard error is ill-defined for a weighted sample.
+                # Here we are incorrectly assuming each episode carries equal weight.
+        except ZeroDivisionError:
+            stderr = float('nan')
         env = self.eval_envs[0].unwrapped
         utility = env.utility
         unit_ce = self.indiv_ce = utility.inverse(rew)
@@ -275,7 +276,11 @@ class Evaluator(object):
             unit_consume = u_min + (bucket - 1.5) * (u_max - u_min) / self.pdf_buckets
             if env.params.sex2 != None:
                 unit_consume *= 1 + env.params.consume_additional
-            self.consume_pdf.append((unit_consume, w / w_tot))
+            try:
+                w_ratio = w / w_tot
+            except ZeroDivisionError:
+                w_ratio = float('nan')
+            self.consume_pdf.append((unit_consume, w_ratio))
 
         self.couple = env.params.sex2 != None
         if self.couple:
@@ -283,11 +288,5 @@ class Evaluator(object):
             unit_ce_stderr *= 1 + env.params.consume_additional
             unit_low *= 1 + env.params.consume_additional
             unit_high *= 1 + env.params.consume_additional
-
-        if self.eval_batch_monitor:
-            batchrew = sum((v * w for v, w in self.erewards))
-            batchinfo = {'r': round(batchrew, 6), 'l': s, 't': round(time.time() - self.tstart, 6), 'ce': indiv_ce}
-            self.logger.writerow(batchinfo)
-            self.f.flush()
 
         return unit_ce, unit_ce_stderr, unit_low, unit_high

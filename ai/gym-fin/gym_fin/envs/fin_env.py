@@ -182,11 +182,27 @@ class FinEnv(Env):
         self.direct_action = direct_action
         self.params = AttributeObject(kwargs)
 
-        self.action_space = Box(low = -1.0, high = 1.0, shape = (15, ), dtype = 'float32')
-            # consume_action, spias_action, real_spias_action,
-            # stocks_action, real_bonds_action, nominal_bonds_action, iid_bonds_action, bills_action,
-            # stocks_curvature_action, real_bonds_curvature_action, nominal_bonds_curvature_action, iid_bonds_curvature_action, bills_curvature_action,
-            # real_bonds_duration_action, nominal_bonds_duration_action,
+        actions = 1 # consume_action
+        if self.params.real_spias or self.params.nominal_spias:
+            actions += 1 # spias_action
+            if self.params.real_spias and self.params.nominal_spias:
+                actions += 1 # real_spias_action
+        if self.params.stocks:
+            actions += 1 # stocks_action
+        if self.params.real_bonds:
+            actions += 1 # real_bonds_action
+            if not self.params.real_bonds_duration:
+                actions += 1 # real_bonds_duration_action
+        if self.params.nominal_bonds:
+            actions += 1 # nominal_bonds_action
+            if not self.params.nominal_bonds_duration:
+                actions += 1 # nominal_bonds_duration_action
+        if self.params.iid_bonds:
+            actions += 1 # iid_bonds_action
+        if self.params.bills:
+            actions += 1 # bills_action
+
+        self.action_space = Box(low = -1.0, high = 1.0, shape = (actions, ), dtype = 'float32')
             # DDPG implementation assumes [-x, x] symmetric actions.
             # PPO1 implementation ignores size and very roughly initially assumes N(0, 1) actions, but potentially trainable to any value.
         self.observation_space = Box(
@@ -278,7 +294,7 @@ class FinEnv(Env):
             print('Real returns:')
 
             if self.params.stocks:
-                returns_report('stocks', self.stocks, time_period = self.params.time_period)
+                returns_report('stocks', self.stocks, time_period = self.params.time_period, sample_count = 5000)
 
             if self.params.real_bonds:
                 if self.params.real_bonds_duration:
@@ -549,10 +565,26 @@ class FinEnv(Env):
         except AttributeError:
             pass
 
-        consume_action, spias_action, real_spias_action, \
-            stocks_action, real_bonds_action, nominal_bonds_action, iid_bonds_action, bills_action, \
-            stocks_curvature_action, real_bonds_curvature_action, nominal_bonds_curvature_action, iid_bonds_curvature_action, bills_curvature_action, \
-            real_bonds_duration_action, nominal_bonds_duration_action = action
+        consume_action, *action = action
+        if self.params.real_spias or self.params.nominal_spias:
+            spias_action, *action = action
+            if self.params.real_spias and self.params.nominal_spias:
+                real_spias_action, *action = action
+        if self.params.stocks:
+            stocks_action, *action = action
+        if self.params.real_bonds:
+            real_bonds_action, *action = action
+            if not self.params.real_bonds_duration:
+                real_bonds_duration_action, *action = action
+        if self.params.nominal_bonds:
+            nominal_bonds_action, *action = action
+            if not self.params.nominal_bonds_duration:
+                nominal_bonds_duration_action, *action = action
+        if self.params.iid_bonds:
+            iid_bonds_action, *action = action
+        if self.params.bills:
+            bills_action, *action = action
+        assert not action
 
         def safe_atanh(x):
             try:
@@ -564,22 +596,26 @@ class FinEnv(Env):
         if self.params.action_space_unbounded:
             consume_action = tanh(consume_action / 5)
                 # Scaling back initial volatility of consume_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
-            spias_action = tanh(spias_action / 4)
-                # Scaling back initial volatility of spias_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
-            real_spias_action = tanh(real_spias_action)
-            real_bonds_duration_action = tanh(real_bonds_duration_action)
-            nominal_bonds_duration_action = tanh(nominal_bonds_duration_action)
+            if self.spias_ever:
+                spias_action = tanh(spias_action / 4)
+                    # Scaling back initial volatility of spias_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
+                if self.params.real_spias and self.params.nominal_spias:
+                    real_spias_action = tanh(real_spias_action)
+            if self.params.real_bonds and not self.params.real_bonds_duration:
+                real_bonds_duration_action = tanh(real_bonds_duration_action)
+            if self.params.nominal_bonds and not self.params.nominal_bonds_duration:
+                nominal_bonds_duration_action = tanh(nominal_bonds_duration_action)
         else:
-            stocks_action = safe_atanh(stocks_action)
-            real_bonds_action = safe_atanh(real_bonds_action)
-            nominal_bonds_action = safe_atanh(nominal_bonds_action)
-            iid_bonds_action = safe_atanh(iid_bonds_action)
-            bills_action = safe_atanh(bills_action)
-            stocks_curvature_action = safe_atanh(stocks_curvature_action)
-            real_bonds_curvature_action = safe_atanh(real_bonds_curvature_action)
-            nominal_bonds_curvature_action = safe_atanh(nominal_bonds_curvature_action)
-            iid_bonds_curvature_action = safe_atanh(iid_bonds_curvature_action)
-            bills_curvature_action = safe_atanh(bills_curvature_action)
+            if self.params_stocks:
+                stocks_action = safe_atanh(stocks_action)
+            if self.params.real_bonds:
+                real_bonds_action = safe_atanh(real_bonds_action)
+            if self.params.nominal_bonds:
+                nominal_bonds_action = safe_atanh(nominal_bonds_action)
+            if self.params.iid_bonds:
+                iid_bonds_action = safe_atanh(iid_bonds_action)
+            if self.params.bills:
+                bills_action = safe_atanh(bills_action)
 
         if self.params.consume_rescale == 'estimate_biased':
 
@@ -626,7 +662,10 @@ class FinEnv(Env):
                 # so things function well with differing current amounts of guaranteed income.
 
                 spias_action = (spias_action + 1) / 2
-                current_spias_fraction_estimate = sum(self.pv_income.values()) / self.total_wealth
+                try:
+                    current_spias_fraction_estimate = self.gi_wealth / self.total_wealth
+                except ZeroDivisionError:
+                    current_spias_fraction_estimate = 1
                 current_spias_fraction_estimate = max(0, min(current_spias_fraction_estimate, 1))
                 try:
                     spias_fraction = (spias_action - current_spias_fraction_estimate) * self.total_wealth / self.p_plus_income
@@ -641,7 +680,7 @@ class FinEnv(Env):
                 spias_fraction = 1 if spias_action > 0 else 0
 
             real_spias_fraction = spias_fraction if self.params.real_spias else 0
-            if self.params.nominal_spias:
+            if self.params.real_spias and self.params.nominal_spias:
                 real_spias_fraction *= (real_spias_action + 1) / 2
             nominal_spias_fraction = spias_fraction - real_spias_fraction
 
@@ -650,20 +689,7 @@ class FinEnv(Env):
         if not self.params.nominal_spias or not self.spias:
             nominal_spias_fraction = None
 
-        # It is too much to expect optimization to compute the precise asset allocation surface.
-        # Instead we provide guidelines as to what the surface might look like, and allow optimization to tune within those guidelines.
-        #
-        # Assuming defined benefits are risk free, for stocks and risk free portfolio assets using CRRA utility according to Merton's portfolio problem we expect:
-        #     stocks * wealth / total_wealth = const
-        # Re-arranging gives:
-        #     stocks = total_wealth / wealth * const
-        # And so:
-        #     risk free = 1 - total_wealth / wealth * const
-        # This suggests more generally equations of the form:
-        #     asset class = x * total_wealth / wealth
-        # may be helpful to determining the stock allocation.
-
-        # Softmax x's, the alocations when wealth is total_wealth (no defined benefits).
+        # Softmax the asset alocations when guaranteed_income is zero.
         maximum = max(
             stocks_action if self.params.stocks else float('-inf'),
             real_bonds_action if self.params.real_bonds else float('-inf'),
@@ -684,14 +710,47 @@ class FinEnv(Env):
         bills_action /= total
 
         # Fit to curve.
+        #
+        # It is too much to expect optimization to compute the precise asset allocation surface.
+        # Instead we provide guidelines as to what the surface might look like, and allow optimization to tune within those guidelines.
+        #
+        # If we just did stocks = stocks_action, there would be little incentive to increase stocks from say 98% to 100% in the region
+        # where the protfolio is small, which is precisely when this is required.
+        #
+        # In the absense of guaranteed income, for stocks, other assets, and risk free, using CRRA utility according to Merton's portfolio problem we expect:
+        #     stocks_fraction = const1
+        # The above should hold when guaranteed income is zero, or the investment portfolio approaches infinity.
+        # This suggests a more general equation of the form:
+        #     stocks_fraction = const1 + const2 * guaranteed_income_wealth / investment_wealth
+        # might be helpful to determining the stock allocation.
+        #
+        # Empirically for a single data value, stocks, we get better results training a single varaible, stocks_action,
+        # than trying to train two variables, stocks_action and stocks_curvature_action for one data value.
+        #
+        # For stocks and iid bonds using Merton's portfolio solution and dynamic programming for 16e3 of guaranteed income, female age 65 SSA+3, we have:
+        # stocks:
+        #    p  gamma=3   gamma=6  wealth_ratio
+        # 2.5e5  >100%      94%        1.57
+        #   5e5  >100%      79%        0.78
+        #   1e6    99%      70%        0.39
+        #   2e6    90%      64%        0.19
+        #   inf    77%      54%         -
+        # From which we can derive the following estimates of stocks_curvature:
+        #    p  gamma=3   gamma=6
+        # 2.5e5     -       0.3
+        #   5e5     -       0.3
+        #   1e6    0.6      0.4
+        #   2e6    0.7      0.5
+        # We thus use a curvature coefficient of 0.5, and allow stocks to depend on the observation to fine tune things from there.
+        stocks_curvature = real_bonds_curvature = nominal_bonds_curvature = iid_bonds_curvature = 0.5
         alloc = 1
-        stocks = min(stocks_action * self.wealth_ratio, alloc)
+        stocks = max(0, min(stocks_action + stocks_curvature * self.wealth_ratio, alloc)) if self.params.stocks else 0
         alloc -= stocks
-        real_bonds = min(real_bonds_action * self.wealth_ratio, alloc)
+        real_bonds = max(0, min(real_bonds_action + real_bonds_curvature * self.wealth_ratio, alloc)) if self.params.real_bonds else 0
         alloc -= real_bonds
-        nominal_bonds = min(nominal_bonds_action * self.wealth_ratio, alloc)
+        nominal_bonds = max(0, min(nominal_bonds_action + nominal_bonds_curvature * self.wealth_ratio, alloc)) if self.params.nominal_bonds else 0
         alloc -= nominal_bonds
-        iid_bonds = min(iid_bonds_action * self.wealth_ratio, alloc)
+        iid_bonds = max(0, min(iid_bonds_action + iid_bonds_curvature * self.wealth_ratio, alloc)) if self.params.iid_bonds else 0
         alloc -= iid_bonds
         if self.params.bills:
             bills = alloc
@@ -716,11 +775,13 @@ class FinEnv(Env):
         if self.params.bills:
             asset_allocation.aa['bills'] = bills
 
-        real_bonds_duration = self.params.time_period + \
-            (self.params.real_bonds_duration_max - self.params.time_period) * (real_bonds_duration_action + 1) / 2
+        real_bonds_duration = self.params.real_bonds_duration or \
+            self.params.time_period + (self.params.real_bonds_duration_max - self.params.time_period) * (real_bonds_duration_action + 1) / 2 \
+            if self.params.real_bonds else None
 
-        nominal_bonds_duration = self.params.time_period + \
-            (self.params.nominal_bonds_duration_max - self.params.time_period) * (nominal_bonds_duration_action + 1) / 2
+        nominal_bonds_duration = self.params.nominal_bonds_duration or \
+            self.params.time_period + (self.params.nominal_bonds_duration_max - self.params.time_period) * (nominal_bonds_duration_action + 1) / 2 \
+            if self.params.nominal_bonds else None
 
         return (consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration)
 
@@ -1156,19 +1217,20 @@ class FinEnv(Env):
         self.pv_income_preretirement2 = self.income_preretirement2 * self.income_preretirement_years2
         self.pv_consume_preretirement = self.consume_preretirement * self.preretirement_years
 
-        self.total_wealth = sum(self.pv_income.values()) \
-            + max(0, sum(self.wealth.values()) + self.pv_income_preretirement + self.pv_income_preretirement2 - self.pv_consume_preretirement)
+        self.gi_wealth = sum(self.pv_income.values())
+        self.p_wealth = sum(self.wealth.values())
+        self.income_wealth = self.pv_income_preretirement + self.pv_income_preretirement2 - self.pv_consume_preretirement
+        self.total_wealth = max(0, self.gi_wealth + self.p_wealth + self.income_wealth)
 
-        w = sum(self.wealth.values())
-        self.wealth_ratio = self.total_wealth / w if w > 0 else float('inf')
+        self.wealth_ratio = (self.gi_wealth + self.income_wealth) / self.p_wealth if self.p_wealth > 0 else float('inf')
         self.wealth_ratio = min(self.wealth_ratio, 1e100) # Cap so that not calculating with inf.
 
         self.p_plus_income = self.p_sum() + self.gi_sum() * self.params.time_period
         self.taxes_paid = min(self.taxes_due, 0.9 * self.p_plus_income) # Don't allow taxes to consume all of p.
         self.p_plus_income -= self.taxes_paid
 
-        self.spias_ever = (self.params.real_spias or self.params.nominal_spias) and (self.params.couple_spias or not self.couple)
-        if self.spias_ever:
+        self.spias_ever = self.params.real_spias or self.params.nominal_spias
+        if self.spias_ever and (self.params.couple_spias or not self.couple):
             if self.couple:
                 min_age = min(self.age, self.age2)
                 max_age = max(self.age, self.age2)
@@ -1286,10 +1348,9 @@ class FinEnv(Env):
 
         tw = self.total_wealth
         if tw == 0:
-            tw = sum(self.pv_income.values())
+            tw = max(0, self.gi_wealth + self.income_wealth)
             if tw == 0:
                 tw = 1 # To avoid divide by zero later.
-        w = sum(self.wealth.values())
         taxable_wealth = self.wealth['taxable'] - self.taxable_basis
 
         # When mean reversion rate is zero, avoid observing spurious noise for better training.
@@ -1319,7 +1380,7 @@ class FinEnv(Env):
             # Nature of wealth/income observations.
             # Obseve fractionality to hopefully take advantage of iso-elasticity of utility.
             # No need to observe tax free wealth or income as this represents the baseline case.
-            w / tw, self.pv_income['tax_deferred'] / tw, self.pv_income['taxable'] / tw,
+            self.p_wealth / tw, self.pv_income['tax_deferred'] / tw, self.pv_income['taxable'] / tw,
             self.wealth['tax_deferred'] / tw, self.wealth['taxable'] / tw,
             self.pv_income_preretirement / tw, self.pv_income_preretirement2 / tw, self.pv_consume_preretirement / tw,
             taxable_wealth / tw,

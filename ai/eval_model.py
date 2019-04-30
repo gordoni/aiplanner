@@ -110,7 +110,7 @@ def eval_models(eval_model_params, *, train_seeds, nice, train_seed, model_dir, 
     while object_ids:
 
         if all(type(id) == int for id in object_ids):
-            object_id = pop(object_ids)
+            object_id = object_ids.pop()
         else:
             import ray
             (object_id, ), object_ids = ray.wait(object_ids)

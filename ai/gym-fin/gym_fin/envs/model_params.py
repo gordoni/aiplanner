@@ -229,7 +229,7 @@ class ModelParams(object):
         # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2019 for 1900-2018.
             # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.0%).
             # For nominal government bonds the reported real return is 2.5% +/- 11.0%, standard error 1.0% (geometric 1.9%).
-            # For U.S. Treasury bills the reported real return is 0.9% +/- 0.4%, standard error 0.4% (geometric 0.8%) [from 2017 Yearbook].
+            # For U.S. Treasury bills the reported real return is 0.9% +/- 4.6%, standard error 0.4% (geometric 0.8%) [from 2017 Yearbook].
             # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%) [from 2017 Yearbook].
         self._boolean_flag('returns-standard-error', True) # Whether to model the standard error of returns.
         self._boolean_flag('stocks', True) # Whether to model stocks.
@@ -268,7 +268,7 @@ class ModelParams(object):
         self._param('inflation-short-rate-value', None) # Initial inflation rate for type 'value'.
         self._boolean_flag('bills', True) # Whether to model stochastic bills (without any interest rate model).
         self._param('bills-return', 0.009) # Annual real return for bill asset class.
-        self._param('bills-volatility', 0.004) # Annual real return for bill asset class.
+        self._param('bills-volatility', 0.046) # Annual real return for bill asset class.
         self._param('bills-standard-error', 0.004) # Standard error of log real return for bills.
 
         self._boolean_flag('observe-stocks-price', True) # Whether to observe stocks price relative to fair price pus noise.
