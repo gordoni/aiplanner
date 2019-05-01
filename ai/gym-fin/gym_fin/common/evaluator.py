@@ -21,21 +21,29 @@ import numpy as np
 
 from baselines import logger
 
-def weighted_percentile(value_weights, pctl):
-    if not value_weights:
-        return float('nan')
-    tot = sum((w for v, w in value_weights))
+def weighted_percentiles(value_weights, pctls):
+    if len(value_weights[0]) == 0:
+        return [float('nan')] * len(pctls)
+    results = []
+    pctls = list(pctls)
+    tot = sum(value_weights[1])
     weight = 0
-    for v, w in value_weights:
+    for v, w in zip(*value_weights):
         weight += w
-        if weight >= pctl / 100 * tot:
-            return v
-    return v
+        if weight >= pctls[0] / 100 * tot:
+            results.append(v)
+            pctls.pop(0)
+            if not pctls:
+                return results
+    while pctls:
+        results.append(v)
+        pctls.pop()
+    return results
 
 def weighted_mean(value_weights):
     n = 0
     s = 0
-    for value, weight in value_weights:
+    for value, weight in zip(*value_weights):
         n += weight
         s += weight * value
     try:
@@ -48,7 +56,7 @@ def weighted_stdev(value_weights):
     n = 0
     s = 0
     ss = 0
-    for value, weight in value_weights:
+    for value, weight in zip(*value_weights):
         if weight != 0:
             n0 += 1
         n += weight
@@ -62,11 +70,11 @@ def weighted_stdev(value_weights):
         return float('nan')
 
 def weighted_ppf(value_weights, q):
-    if not value_weights:
+    if len(value_weights[0]) == 0:
         return float('nan')
     n = 0
     ppf = 0
-    for value, weight in value_weights:
+    for value, weight in zip(*value_weights):
         n += weight
         if value <= q:
             ppf += weight
@@ -173,7 +181,7 @@ class Evaluator(object):
                 if all(finished):
                     break
 
-            return pack_value_weights(rewards), pack_value_weights(erewards), self.trace
+            return pack_value_weights(sorted(rewards)), pack_value_weights(sorted(erewards)), self.trace
 
         self.object_ids = None
         self.exception = None
@@ -222,8 +230,12 @@ class Evaluator(object):
             rollouts = ray.get(self.object_ids)
 
             rewards, erewards, trace = zip(*chain(*rollouts))
-            self.rewards = tuple(chain(*(unpack_value_weights(reward) for reward in rewards)))
-            self.erewards = tuple(chain(*(unpack_value_weights(ereward) for ereward in erewards)))
+            if len(rewards) > 1:
+                self.rewards = pack_value_weights(sorted(chain(*(unpack_value_weights(reward) for reward in rewards))))
+                self.erewards = pack_value_weights(sorted(chain(*(unpack_value_weights(ereward) for ereward in erewards))))
+            else:
+                self.rewards = rewards[0]
+                self.erewards = erewards[0]
 
             self.trace = tuple(chain(*trace))[:self.num_trace_episodes]
 
@@ -232,18 +244,13 @@ class Evaluator(object):
             if self.exception:
                 raise self.exception
 
-            self.rewards = unpack_value_weights(self.rewards)
-            self.erewards = unpack_value_weights(self.erewards)
-
-        self.rewards = tuple(sorted(self.rewards))
-        self.erewards = tuple(sorted(self.erewards))
         rew = weighted_mean(self.erewards)
         try:
             std = weighted_stdev(self.erewards)
         except ZeroDivisionError:
             std = float('nan')
         try:
-            stderr = std / sqrt(len(self.erewards))
+            stderr = std / sqrt(len(self.erewards[0]))
                 # Standard error is ill-defined for a weighted sample.
                 # Here we are incorrectly assuming each episode carries equal weight.
         except ZeroDivisionError:
@@ -252,31 +259,33 @@ class Evaluator(object):
         utility = env.utility
         unit_ce = self.indiv_ce = utility.inverse(rew)
         unit_ce_stderr = self.indiv_ce_stderr = self.indiv_ce - utility.inverse(rew - stderr)
-        unit_low = self.indiv_low = utility.inverse(weighted_percentile(self.rewards, 10))
-        unit_high = self.indiv_high = utility.inverse(weighted_percentile(self.rewards, 90))
+        ce_min, self.indiv_low, self.indiv_high, ce_max = (utility.inverse(u) for u in weighted_percentiles(self.rewards, [2, 10, 90, 98]))
+        unit_low = self.indiv_low
+        unit_high = self.indiv_high
 
         utility_preretirement = utility.utility(env.params.consume_preretirement_low)
         self.preretirement_ppf = weighted_ppf(self.rewards, utility_preretirement) / 100
 
         self.consume_preretirement = env.params.consume_preretirement_low
 
-        u_min = utility.inverse(weighted_percentile(self.rewards, 2))
-        u_max = utility.inverse(weighted_percentile(self.rewards, 98))
-        pdf_bucket_weights = [0] * (self.pdf_buckets + 4)
+        pdf_bucket_weights = []
         w_tot = 0
-        for r, w in self.rewards:
-            try:
-                bucket = 2 + int((utility.inverse(r) - u_min) / (u_max - u_min) * self.pdf_buckets)
-            except ZeroDivisionError:
-                bucket = 2
-            try:
-                pdf_bucket_weights[bucket] += w
-            except IndexError:
-                pass
+        ce_step = max((ce_max - ce_min) / self.pdf_buckets, ce_max * 1e-15)
+        u_floor = float('inf')
+        u_ceil = utility.utility(ce_min - ce_min * 1e-15)
+        for r, w in zip(*self.rewards):
+            while r >= u_ceil:
+                if len(pdf_bucket_weights) >= self.pdf_buckets:
+                    break
+                pdf_bucket_weights.append(0)
+                u_floor = u_ceil
+                u_ceil = utility.utility(ce_min + ce_step * len(pdf_bucket_weights))
+            if u_floor <= r < u_ceil:
+                pdf_bucket_weights[-1] += w
             w_tot += w
         self.consume_pdf = []
         for bucket, w in enumerate(pdf_bucket_weights):
-            unit_consume = u_min + (bucket - 1.5) * (u_max - u_min) / self.pdf_buckets
+            unit_consume = ce_min + ce_step * (bucket + 0.5)
             if env.params.sex2 != None:
                 unit_consume *= 1 + env.params.consume_additional
             try:
