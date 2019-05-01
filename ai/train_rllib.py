@@ -98,6 +98,16 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
         },
 
         'PPO': {
+            'model': {
+                # Changing the fully connected net size from 256x256 (the default) to 128x128 doesn't appear to appreciably alter CE values.
+                # At least not when the only actions are consumption and stock allocation with 4m timesteps.
+                # Keep at 256x256 in case need more net capacity for duration and SPIA decisions, or beyond 4m timesteps.
+                # Reducing size is unlikely to improve the run time performance as it is dominated by fixed overhead costs:
+                #     runner.run(obss, policy_graph = runner.local_policy_graph):
+                #         256x256 (r5.large): 1.1ms x 0.013ms x num_observations_in_batch
+                #         128x128 (r5.large): 1.1ms x 0.009ms x num_observations_in_batch
+                #'fcnet_hiddens': (128, 128),
+            },
             'train_batch_size': train_batch_size,
             'sgd_minibatch_size': train_minibatch_size,
             'num_sgd_iter': train_optimizer_epochs,
@@ -107,11 +117,9 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
         },
 
         'PPO.baselines': { # Compatible with AIPlanner's OpenAI baselines ppo1 implementation.
-
             'model': {
                 'fcnet_hiddens': (64, 64),
             },
-
             'lambda': 0.95,
             'sample_batch_size': 256,
             'train_batch_size': 4096,

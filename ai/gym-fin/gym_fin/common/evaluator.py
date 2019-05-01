@@ -191,7 +191,10 @@ class Evaluator(object):
             def make_pi(policy_graph):
                 return lambda obss: policy_graph.compute_actions(obss)[0]
 
-            self.object_ids = [e.apply.remote(lambda e: e.foreach_env(lambda env: rollout([env], make_pi(e.get_policy())))) for e in self.remote_evaluators]
+            # Rllib developer API way:
+            #     self.object_ids = [e.apply.remote(lambda e: e.foreach_env(lambda env: rollout([env], make_pi(e.get_policy())))) for e in self.remote_evaluators]
+            # Fast way (rollout() batches calls to policy when multiple envs):
+            self.object_ids = [e.apply.remote(lambda e: [rollout(e.async_env.get_unwrapped(), make_pi(e.get_policy()))]) for e in self.remote_evaluators]
 
             return self.object_ids
 

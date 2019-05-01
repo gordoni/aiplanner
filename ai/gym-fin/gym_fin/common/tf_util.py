@@ -18,7 +18,7 @@ from baselines.common import tf_util as U
 
 class TFRunner:
 
-    def __init__(self, *, tf_dir = 'aiplanner.tf/tensorflow', eval_model_params, couple_net = True, num_workers = 1, num_cpu = None):
+    def __init__(self, *, tf_dir = 'aiplanner.tf/tensorflow', eval_model_params, couple_net = True, num_workers = 1, num_environments = 1, num_cpu = None):
 
         self.couple_net = couple_net
         self.session = None
@@ -43,6 +43,7 @@ class TFRunner:
 
             cls = get_agent_class(config['env_config']['algorithm'])
             config['env_config'] = eval_model_params
+            config['num_envs_per_worker'] = num_environments
             config['sample_mode'] = True
             agent = cls(env = RayFinEnv, config = config)
             agent.restore(checkpoint)

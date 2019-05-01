@@ -254,7 +254,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
                 checkpoint_name = 'tensorflow'
             tf_dir = train_dir + '/' + checkpoint_name
         runner = TFRunner(tf_dir = tf_dir, eval_model_params = eval_model_params, couple_net = eval_couple_net,
-            num_workers = num_workers, num_cpu = num_cpu).__enter__()
+            num_workers = num_workers, num_environments = num_environments, num_cpu = num_cpu).__enter__()
         remote_evaluators = runner.remote_evaluators
 
         action, = runner.run([obs], policy_graph = runner.local_policy_graph)
@@ -427,7 +427,7 @@ def main():
     parser.add_argument('--result-dir', default = 'results')
     parser.add_argument('--num-trace-episodes', type = int, default = 5)
     parser.add_argument('--num-workers', type = int, default = 1) # Number of remote processes for Ray evaluation. Zero for local evaluation.
-    parser.add_argument('--num-environments', type = int, default = 10) # Number of parallel environments to use for a single model. Speeds up tensor flow.
+    parser.add_argument('--num-environments', type = int, default = 50) # Number of parallel environments to use for a single model. Speeds up tensorflow.
     parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False)
     eval_models(eval_model_params, **args)
