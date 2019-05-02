@@ -82,7 +82,10 @@ def weighted_ppf(value_weights, q):
 
 def pack_value_weights(value_weights):
 
-    return tuple(np.array(x) for x in zip(*value_weights))
+    if value_weights:
+        return tuple(np.array(x) for x in zip(*value_weights))
+    else:
+        return [np.array(())] * 2
 
 def unpack_value_weights(value_weights):
 

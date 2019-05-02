@@ -439,22 +439,6 @@ class FinEnv(Env):
 
         self.episode_length = 0
 
-        # Able to improve consumption and CE estimates by borrowing from Merton's portfolio problem.
-        # Compute Samuelson's a parameter for later use.
-        self.gamma_adjusted = self.gamma
-        if self.gamma_adjusted == 1:
-            self.gamma_adjusted += 1e-6 # Avoids divide by zero in b later.
-        if self.params.stocks:
-            r = 0 # Might not have risk free, but a zero return for it if we did is probably a close enough estimate to use.
-            mu_r = log(1 + r)
-            pi = (self.stocks.mu + self.stocks.sigma ** 2 / 2 - mu_r) / (self.stocks.sigma ** 2 * self.gamma)
-            pi = max(0, min(pi, 1))
-            mu = pi * self.stocks.mu + (1 - pi) * mu_r
-            sigma = sqrt(pi) * self.stocks.sigma
-            self.a = exp(mu * (1 - self.gamma_adjusted) + sigma ** 2 * (1 - self.gamma_adjusted) ** 2 / 2) ** (-1 / self.gamma_adjusted)
-        else:
-            self.a = 1
-
         found = False
         preretirement_ok = False
         for _ in range(1000):
@@ -793,12 +777,12 @@ class FinEnv(Env):
         else:
             reward_weight = self.alive_single[self.episode_length] * self.params.time_period
         consume = max(consume_rate, self.params.consume_clip)
-        if self.params.verbose and consume != consume_rate:
-            print('Consumption out of range - age, p_sum, consume_rate:', self.age, self.p_sum(), consume_rate)
+        if consume != consume_rate:
+            print('AIPLANNER: Consumption out of range - age, p_sum, consume_rate:', self.age, self.p_sum(), consume_rate)
         utility = self.utility.utility(consume)
         reward_annual = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
-        if self.params.verbose and reward_annual != utility:
-            print('Reward out of range - age, p_sum, utility:', self.age, self.p_sum(), utility)
+        if reward_annual != utility:
+            print('AIPLANNER: Reward out of range - age, p_sum, utility:', self.age, self.p_sum(), utility)
 
         return reward_weight, reward_annual
 
@@ -986,7 +970,7 @@ class FinEnv(Env):
             + self.p_tax_deferred - (p_tax_deferred - retirement_contribution + real_tax_deferred_spias + nominal_tax_deferred_spias)
         if regular_income < 0:
             if regular_income < -1e-12 * (self.gi_sum(source = ('tax_deferred', 'taxable')) + self.p_tax_deferred):
-                print('Negative regular income:', regular_income)
+                print('AIPLANNER: Negative regular income:', regular_income)
                     # Possible if taxable SPIA non-taxable amount exceeds payout due to deflation.
             regular_income = 0
         social_security = self.gi_sum(type = 'Social Security')
@@ -1041,7 +1025,7 @@ class FinEnv(Env):
             # But this also means we need to observe the initial expected consumption level, as the observed reward is now a function of it.
             reward = self.reward_weight * (self.reward_value - self.reward_zero_point) / (self.reward_expect - self.reward_zero_point)
             if isinf(reward):
-                print('Infinite reward')
+                print('AIPLANNER: Infinite reward')
 
         self._step()
         self._step_bonds()
@@ -1249,19 +1233,10 @@ class FinEnv(Env):
             self.years_retired = self.retirement_expectancy_one[self.episode_length]
             couple_weight = 1
 
-        # Consumption and CE fraction estimates, see https://www.gordoni.com/lifetime_portfolio_selection.pdf .
-        t = self.years_retired - self.params.time_period
-        try:
-            c = self.a ** t * (self.a - 1) / (self.a ** (t + 1) - 1) # Consume fraction.
-        except ZeroDivisionError:
-            c = 1 / (t + 1)
-        b = ((t + 1) * c ** self.gamma_adjusted) ** (1 / (self.gamma_adjusted - 1)) # CE fraction.
-            # Fails to take into account pre-retirement.
-
-        self.ce_estimate_individual = b * self.total_wealth / couple_weight
+        self.ce_estimate_individual = self.total_wealth / self.years_retired / couple_weight
 
         try:
-            self.consume_p_estimate = c * self.total_wealth / self.p_plus_income
+            self.consume_p_estimate = self.total_wealth / self.years_retired / self.p_plus_income
         except ZeroDivisionError:
             self.consume_p_estimate = float('inf')
 
@@ -1339,7 +1314,11 @@ class FinEnv(Env):
             spia_expectancy = 0
             final_spias_purchase = 0
 
-        reward_weight = (2 * self.retirement_expectancy_both[self.episode_length] + self.retirement_expectancy_one[self.episode_length]) * self.params.time_period
+        alive_single = self.alive_single[self.episode_length]
+        if alive_single == None:
+            alive_single = 1
+        reward_weight = (2 * self.retirement_expectancy_both[self.episode_length] + alive_single * self.retirement_expectancy_one[self.episode_length]) \
+            * self.params.time_period
         _, reward_value = self.raw_reward(self.ce_estimate_individual)
         if reward_value == self.reward_zero_point:
             reward_estimate = 0 # Handles -inf reward_value correctly.
@@ -1375,7 +1354,8 @@ class FinEnv(Env):
             # Annuitization related observations.
             life_percentile, spia_expectancy, final_spias_purchase,
             # Value function related observations.
-            # Best results (especially when gamma=6) if provide both reward estimate and CE estimate.
+            # Best results (especially when gamma=6) if provide both a rewards to go estimate that can be fine tuned and a CE estimate.
+            # CE is also presumably important as a yardstick when have taxable assets.
             reward_estimate, self.ce_estimate_individual,
             # Nature of wealth/income observations.
             # Obseve fractionality to hopefully take advantage of iso-elasticity of utility.
@@ -1389,7 +1369,7 @@ class FinEnv(Env):
         obs = np.array(observe, dtype = 'float32')
         obs = self.encode_observation(obs)
         if np.any(np.isnan(obs)) or np.any(np.isinf(obs)):
-            print(observe, obs)
+            print('AIPLANNER:', observe, obs)
             assert False, 'Invalid observation.'
         return obs
 
@@ -1399,8 +1379,8 @@ class FinEnv(Env):
         low = self.observation_space.low
         rnge = high - low
         clipped_obs = np.clip(obs, high - self.params.observation_space_clip * rnge, low + self.params.observation_space_clip * rnge)
-        if self.params.verbose and not np.array_equal(clipped_obs, obs):
-            print('Observation clipped:', obs, obs_clipped)
+        if not np.array_equal(clipped_obs, obs):
+            print('AIPLANNER: Observation clipped:', obs, obs_clipped)
         if self.params.observation_space_ignores_range:
             clipped_obs = -1 + 2 * (clipped_obs - low) / rnge
         return clipped_obs

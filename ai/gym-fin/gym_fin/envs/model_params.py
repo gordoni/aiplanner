@@ -42,9 +42,10 @@ class ModelParams(object):
 
         # This following parameters are determined by the training algorithm, and can't be set by the user.
         self._boolean_flag('action-space-unbounded', None) # Whether the action space is unbounded, or bound to the range [-1, 1].
-        self._param('observation-space-clip', float('inf')) # Clip observation space to this factor of the expected range.
         self._boolean_flag('observation-space-ignores-range', None) # Whether observation space needs to roughly be in the range [-1, 1], or in the range specified.
         self._param('algorithm', None, tp = string_type) # For RLlib only, the training algorithm being used.
+
+        self._param('observation-space-clip', 10.0) # Clip observation space to this factor of the expected range.
 
         self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
 
