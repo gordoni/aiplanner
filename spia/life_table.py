@@ -861,6 +861,7 @@ class LifeTable:
                 age_add_hi = age_add_hi_start = 50
                 for _ in range(50):
                     self.age_add = (age_add_lo + age_add_hi) / 2
+                    self.age_add = max(self.age_add, - self.age)
                     if not self.interpolate_q:
                         self.age_add = math.floor(self.age_add)
                     income_annuity = IncomeAnnuity(yield_curve, self, frequency = 1)
