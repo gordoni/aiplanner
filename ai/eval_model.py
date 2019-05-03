@@ -72,7 +72,7 @@ def pi_opal(opal_data, env, obs):
     consume_fraction = max(0, min(consume_fraction, 1 / env.params.time_period))
     return consume_fraction, stocks
 
-def eval_models(eval_model_params, *, train_seeds, nice, train_seed, model_dir, result_dir, **kwargs):
+def eval_models(eval_model_params, *, train_seeds, ensemble, nice, train_seed, model_dir, result_dir, **kwargs):
 
     priority = getpriority(PRIO_PROCESS, 0)
     priority += nice
@@ -85,11 +85,11 @@ def eval_models(eval_model_params, *, train_seeds, nice, train_seed, model_dir, 
 
     object_id_to_evaluator = {}
     evaluator_to_info = {}
-    for i in range(train_seeds):
+    for i in range(1 if ensemble else train_seeds):
 
         train_dir_seed = train_seed + i
-        train_dir = model_dir + '/seed_' + str(train_dir_seed)
-        result_seed_dir = result_dir + '/seed_' + str(train_dir_seed)
+        train_dirs = [model_dir + '/seed_' + str(train_dir_seed + j) for j in range(train_seeds if ensemble else 1)]
+        result_seed_dir = result_dir + '/seed_' + ('all' if ensemble else str(train_dir_seed))
 
         try:
             mkdir(result_seed_dir)
@@ -98,7 +98,7 @@ def eval_models(eval_model_params, *, train_seeds, nice, train_seed, model_dir, 
 
         out = open(result_seed_dir + '/eval.log', 'w')
 
-        object_ids, evaluator = eval_model(eval_model_params, model_dir = model_dir, train_seed = train_dir_seed, train_dir = train_dir,
+        object_ids, evaluator = eval_model(eval_model_params, model_dir = model_dir, train_seed = train_dir_seed, train_dirs = train_dirs,
             result_seed_dir = result_seed_dir, out = out, **kwargs)
 
         for object_id in object_ids:
@@ -167,7 +167,8 @@ def eval_models(eval_model_params, *, train_seeds, nice, train_seed, model_dir, 
 
 def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_file, redis_address, checkpoint_name,
     eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
-    num_cpu, model_dir, train_seed, train_dir, search_consume_initial_around, result_seed_dir, out, num_trace_episodes, num_workers, num_environments, pdf_buckets):
+    num_cpu, model_dir, train_seed, train_dirs, search_consume_initial_around, result_seed_dir, out, num_trace_episodes,
+    num_workers, num_environments, pdf_buckets):
 
     assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize, opal)) <= 1
     model = not (merton or samuelson or annuitize or opal)
@@ -241,23 +242,11 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
 
     else:
 
-        ray_checkpoints = glob(train_dir + '/*/checkpoint_*')
-        if ray_checkpoints:
-            if not checkpoint_name:
-                checkpoint_name = 'checkpoint_' + str(sorted(int(ray_checkpoint.split('_')[-1]) for ray_checkpoint in ray_checkpoints)[-1])
-            tf_dir, = glob(train_dir + '/*/' + checkpoint_name)
-            import ray
-            if not ray.is_initialized():
-                ray.init(redis_address = redis_address)
-        else:
-            if not checkpoint_name:
-                checkpoint_name = 'tensorflow'
-            tf_dir = train_dir + '/' + checkpoint_name
-        runner = TFRunner(tf_dir = tf_dir, eval_model_params = eval_model_params, couple_net = eval_couple_net,
-            num_workers = num_workers, num_environments = num_environments, num_cpu = num_cpu).__enter__()
+        runner = TFRunner(train_dirs = train_dirs, checkpoint_name = checkpoint_name, eval_model_params = eval_model_params, couple_net = eval_couple_net,
+            redis_address = redis_address, num_workers = num_workers, num_environments = num_environments, num_cpu = num_cpu).__enter__()
         remote_evaluators = runner.remote_evaluators
 
-        action, = runner.run([obs], policy_graph = runner.local_policy_graph)
+        action, = runner.run([obs])
         interp = env.interpret_action(action)
 
     interp['asset_classes'] = interp['asset_allocation'].classes()
@@ -288,7 +277,7 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
 
         if model:
 
-            action = runner.run(obss, policy_graph = runner.local_policy_graph)
+            action = runner.run(obss)
             return action
 
         elif merton or samuelson:
@@ -419,7 +408,9 @@ def main():
     boolean_flag(parser, 'opal', default = False)
     parser.add_argument('--opal-file', default = 'opal-linear.csv')
     parser.add_argument('--redis-address')
-    parser.add_argument('--train-seeds', type = int, default = 1) # Number of possibly parallel seeds to evaluate.
+    parser.add_argument('--train-seeds', type = int, default = 1) # Number of seeds to evaluate.
+    boolean_flag(parser, 'ensemble', default = False)
+        # Whether to evaluate the average recommendation of the seeds or to evaluate the seeds individually in parallel.
     parser.add_argument('--checkpoint-name')
     boolean_flag(parser, 'eval-couple-net', default = True)
     parser.add_argument('--search-consume-initial-around', type = float)
@@ -427,7 +418,7 @@ def main():
     parser.add_argument('--result-dir', default = 'results')
     parser.add_argument('--num-trace-episodes', type = int, default = 5)
     parser.add_argument('--num-workers', type = int, default = 1) # Number of remote processes for Ray evaluation. Zero for local evaluation.
-    parser.add_argument('--num-environments', type = int, default = 50) # Number of parallel environments to use for a single model. Speeds up tensorflow.
+    parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for a single model. Speeds up tensorflow.
     parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False)
     eval_models(eval_model_params, **args)

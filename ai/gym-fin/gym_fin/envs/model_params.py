@@ -90,7 +90,8 @@ class ModelParams(object):
             # Will thus probably need separately trained models for different wealth levels.
         self._param('consume-utility-floor', 10000) # Scale utility to have a value of -1 for this consumption amount.
             # Utility needs to be scaled to prevent floating point overflow.
-        self._param('reward-clip', float('inf'), float('inf')) # Clip returned reward values to lie within [-reward_clip, reward_clip].
+        self._param('reward-warn', 20.0) # Warn reward values not lying within [-reward_warn, reward_warn].
+        self._param('reward-clip', float('inf'), float('inf')) # Clip reward values to lie within [-reward_clip, reward_clip].
             # Clipping during training prevents rewards from spanning 5-10 or more orders of magnitude in the absence of guaranteed income.
             # Fitting the neural networks might then perform poorly as large negative reward values would swamp accuracy of more reasonable small reward values.
             #
@@ -107,17 +108,10 @@ class ModelParams(object):
             # Need to first fix a bug in ddpg/models.py: set name='output' in final critic tf.layers.dense().
             # But doesn't appear to work well becasuse in the absense of guaranteed income the rewards may span a large many orders of magnitude range.
             # In particular some rewards can be -inf, or close there to, which appears to swamp the Pop-Art scaling of the other rewards.
-        self._param('consume-clip', 0, 0) # Minimum allowed consumption level.
-            # Similar role to reward_clip, but limit is specified in terms of consumption.
-            # Evaluation clip should always be zero.
         self._param('reward-zero-point-factor', 0.5) # Scale utility of [reward_zero_point_factor * expected consume, expected consume] onto rewards [0, 1].
             # Utility needs to possibly be roughly scaled to an average absolute value of 1 for DDPG implementation (presumably due to optimizer step size).
             # For PPO1 value will matter in ensuring equal optimization weight is placed on different episodes when gamma is variable.
             # For PPO1 increasing this value is associated with an increase in the standard deviation of measured CEs across models.
-        self._param('consume-rescale', 'estimate_bounded', tp = string_type, choices = ('estimate_biased', 'estimate_bounded'))
-            # Type of re-scaling applied to consume action.
-            #     "estimate_biased": consumption fraction is an exponential rescaling of consume action based on expected consumption (after tanh).
-            #     "estimate_bounded": consumption fraction is a bounded mapping of consume action based on expected consumption (after tanh).
 
         self._param('life-table', 'ssa-cohort', tp = string_type) # Life expectancy table to use. See spia module for possible values.
         self._param('life-table-date', '2020-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.

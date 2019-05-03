@@ -601,35 +601,18 @@ class FinEnv(Env):
             if self.params.bills:
                 bills_action = safe_atanh(bills_action)
 
-        if self.params.consume_rescale == 'estimate_biased':
-
-            consume_action = (consume_action + 1) / 2
-            consume_estimate = self.consume_p_estimate
-            consume_weight = 2 * log((1 + sqrt(1 - 4 * consume_estimate * (1 - consume_estimate))) / (2 * consume_estimate))
-                # So that consume_fraction = consume_estimate when consume_action = 0.5.
-            consume_weight = max(1e-3, consume_weight) # Don't allow weight to become zero.
-            # consume_action is in the range [0, 1]. Make consume_fraction also in the range [0, 1], but weight consume_fraction towards zero.
-            # Otherwise by default consume 50% of assets each year. Quickly end up with few assets, and large negative utilities, making learning difficult.
-            consume_fraction = (exp(consume_weight * consume_action) - 1) / (exp(consume_weight) - 1)
-
-        elif self.params.consume_rescale == 'estimate_bounded':
-
-            consume_action = (consume_action + 1) / 2
-            # Define a consume floor and consume ceiling outside of which we won't consume.
-            # The mid-point acts as a hint as to the initial consumption values to try.
-            # With 0.5 as the mid-point (when time_period = 1) we will initially consume on average half the portfolio at each step.
-            # This leads to very small consumption at advanced ages. The utilities and thus rewards for these values will be highly negative.
-            # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for the negative rewards.
-            # This will be to the detriment of the fit for more likely reward values.
-            # For PPO the policy network either never fully retrains after the initial poor fit, or requires more training time.
-            consume_estimate = self.consume_p_estimate
-            consume_floor = 0
-            consume_ceil = 2 * consume_estimate
-            consume_fraction = consume_floor + (consume_ceil - consume_floor) * consume_action
-
-        else:
-
-            assert False
+        consume_action = (consume_action + 1) / 2
+        # Define a consume floor and consume ceiling outside of which we won't consume.
+        # The mid-point acts as a hint as to the initial consumption values to try.
+        # With 0.5 as the mid-point (when time_period = 1) we will initially consume on average half the portfolio at each step.
+        # This leads to very small consumption at advanced ages. The utilities and thus rewards for these values will be highly negative.
+        # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for the negative rewards.
+        # This will be to the detriment of the fit for more likely reward values.
+        # For PPO the policy network either never fully retrains after the initial poor fit, or requires more training time.
+        consume_estimate = self.consume_p_estimate
+        consume_floor = 0
+        consume_ceil = 2 * consume_estimate
+        consume_fraction = consume_floor + (consume_ceil - consume_floor) * consume_action
 
         consume_fraction = max(1e-6, min(consume_fraction, 1 / self.params.time_period))
             # Don't allow consume_fraction of zero as have problems with -inf utility.
@@ -776,13 +759,7 @@ class FinEnv(Env):
             reward_weight = 2 * self.params.time_period
         else:
             reward_weight = self.alive_single[self.episode_length] * self.params.time_period
-        consume = max(consume_rate, self.params.consume_clip)
-        if consume != consume_rate:
-            print('AIPLANNER: Consumption out of range - age, p_sum, consume_rate:', self.age, self.p_sum(), consume_rate)
-        utility = self.utility.utility(consume)
-        reward_annual = min(max(utility, - self.params.reward_clip), self.params.reward_clip)
-        if reward_annual != utility:
-            print('AIPLANNER: Reward out of range - age, p_sum, utility:', self.age, self.p_sum(), utility)
+        reward_annual = self.utility.utility(consume_rate)
 
         return reward_weight, reward_annual
 
@@ -1023,9 +1000,14 @@ class FinEnv(Env):
             # Scale returned reward based on distance from zero point and initial expected reward value.
             # Ensures equal optimization emphasis placed on episodes with high and low expected reward value.
             # But this also means we need to observe the initial expected consumption level, as the observed reward is now a function of it.
-            reward = self.reward_weight * (self.reward_value - self.reward_zero_point) / (self.reward_expect - self.reward_zero_point)
-            if isinf(reward):
+            reward_unclipped = self.reward_weight * (self.reward_value - self.reward_zero_point) / (self.reward_expect - self.reward_zero_point)
+            if isinf(reward_unclipped):
                 print('AIPLANNER: Infinite reward')
+            elif not - self.params.reward_warn <= reward_unclipped <= self.params.reward_warn:
+                print('AIPLANNER: Extreme reward - age, p_sum, consume, reward:', self.age, self.p_sum(), consume_rate, reward_unclipped)
+            reward = min(max(reward_unclipped, - self.params.reward_clip), self.params.reward_clip)
+            if reward != reward_unclipped:
+                print('AIPLANNER: Reward clipped - age, p_sum, consume, reward:', self.age, self.p_sum(), consume_rate, reward_unclipped)
 
         self._step()
         self._step_bonds()
@@ -1380,7 +1362,7 @@ class FinEnv(Env):
         rnge = high - low
         clipped_obs = np.clip(obs, high - self.params.observation_space_clip * rnge, low + self.params.observation_space_clip * rnge)
         if not np.array_equal(clipped_obs, obs):
-            print('AIPLANNER: Observation clipped:', obs, obs_clipped)
+            print('AIPLANNER: Observation clipped:', obs, clipped_obs)
         if self.params.observation_space_ignores_range:
             clipped_obs = -1 + 2 * (clipped_obs - low) / rnge
         return clipped_obs
