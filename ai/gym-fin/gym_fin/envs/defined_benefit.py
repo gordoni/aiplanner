@@ -28,7 +28,7 @@ class DefinedBenefit:
 
         self.owner_single = 'spouse' if self.env.only_alive2 else 'self'
 
-        younger = self.env.age if self.env.params.sex2 == None else min(self.env.age, self.env.age2)
+        younger = self.env.age if self.env.sex2 == None else min(self.env.age, self.env.age2)
         episodes = ceil((self.env.params.age_end - younger) / self.env.params.time_period)
 
         bonds = self.env.bonds_zero if self.real else self.env.bonds.inflation

@@ -145,12 +145,20 @@ evaluate () {
 
     mkdir $RESULT_DIR 2> /dev/null
 
-    if [ "$MODEL_DIR/seed_*/tensorflow" == "$MODEL_DIR"'/seed_*/tensorflow' ]; then
+    if echo "$ARGS" | grep -q -- --ensemble; then
+        local ENSEMBLE=True
+        local ENSEMBLE_SUFFIX='-all'
+    else
+        local ENSEMBLE=False
+        local ENSEMBLE_SUFFIX=
+    fi
+
+    if [ $ENSEMBLE = True -o "$MODEL_DIR/seed_*/tensorflow" = "$MODEL_DIR"'/seed_*/tensorflow' ]; then
 
         start_ray_if_needed
 
         $EVALUATOR $BASE_ARGS --model-dir=$MODEL_DIR --train-seed=$SEED_START --train-seeds=$SEEDS --result-dir=$RESULT_DIR $ARGS $EXTRA_ARGS \
-            > $RESULT_DIR/evaluate.log 2>&1 &
+            > $RESULT_DIR/evaluate$ENSEMBLE_SUFFIX.log 2>&1 &
         if [ $PARALLEL = True -o $PARALLEL = False ]; then
             wait
         fi

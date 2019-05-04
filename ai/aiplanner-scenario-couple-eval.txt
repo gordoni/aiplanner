@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -8,7 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-master_sex2 = 'male'
+master_couple_probability = 1
 master_life_expectancy_additional = 3 # Investors tend to be in better health than the average retiree.
 master_life_expectancy_additional2 = 3
 master_age_start = 50

@@ -40,12 +40,10 @@ class ModelParams(object):
         self._boolean_flag('verbose', False) # Display relevant model information such as when stepping.
         self._boolean_flag('display-returns', True) # Display yield and return statistics.
 
-        # This following parameters are determined by the training algorithm, and can't be set by the user.
+        # This following three parameters are determined by the training algorithm, and can't be set by the user.
         self._boolean_flag('action-space-unbounded', None) # Whether the action space is unbounded, or bound to the range [-1, 1].
-        self._boolean_flag('observation-space-ignores-range', None) # Whether observation space needs to roughly be in the range [-1, 1], or in the range specified.
+        self._boolean_flag('observation-space-ignores-range', None) # Whether observation space needs to roughly be in the range [-1, 1], or the range specified.
         self._param('algorithm', None, tp = string_type) # For RLlib only, the training algorithm being used.
-
-        self._param('observation-space-clip', 10.0) # Clip observation space to this factor of the expected range.
 
         self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
 
@@ -79,24 +77,20 @@ class ModelParams(object):
             # "rl": reinforcement learning.
             # "age-in-nominal-bonds": age in years as nominal bonds percentage, remainder in stocks.
             # '{"<asset_class>":<allocation>, ...}': fixed allocation. Eg. '{"stocks":0.5, "nominal_bonds":0.5}'.
+        self._param('rl-stocks-bias', 0.0, 0.0) # Bias the reinforcement learning asset allocation policy allocation to stocks by this amount.
+            # Useful for reversing the effects of training algorithm bias when evaluating.
+            # Training bias should always be zero.
         # Bonds duration policy.
         # Defined by "real-bonds-duration" and "nominal-bonds-duration" below; None for reinforcement learning, or a fixed age in years.
 
+        self._param('observation-space-warn', 1.0) # Warn when observation outside this factor of the expected range.
         self._param('consume-floor', 0) # Minimum expected consumption level model is trained for.
         self._param('consume-ceiling', float('inf')) # Maximum expected consumption level model is trained for.
-            # When training a generic model should normally be set to perhaps a factor of 10 appart.
-            # Don't span too large a range as neural network fitting of utility to lower consumption levels will dominate over higher consumption levels.
-            # This is because for gamma > 1 higher consumption levels are bounded (i.e. a small change in utility can produce a big change in consumption).
-            # Will thus probably need separately trained models for different wealth levels.
         self._param('consume-utility-floor', 10000) # Scale utility to have a value of -1 for this consumption amount.
             # Utility needs to be scaled to prevent floating point overflow.
-        self._param('reward-warn', 20.0) # Warn reward values not lying within [-reward_warn, reward_warn].
+        self._param('reward-warn', 1e4, 1e2) # Warn reward values not lying within [-reward_warn, reward_warn].
+            # During early training poor rewards are expected to be generated.
         self._param('reward-clip', float('inf'), float('inf')) # Clip reward values to lie within [-reward_clip, reward_clip].
-            # Clipping during training prevents rewards from spanning 5-10 or more orders of magnitude in the absence of guaranteed income.
-            # Fitting the neural networks might then perform poorly as large negative reward values would swamp accuracy of more reasonable small reward values.
-            #
-            # To get a sense of relative reward sizes, note that, utility(consume_floor) = -1, and when gamma > 1, utility(inf) = 1 / (gamma - 1).
-            #
             # Evaluation clip should always be inf.
             #
             # Chosen training clip of inf appears reasonable for PPO.
@@ -112,6 +106,7 @@ class ModelParams(object):
             # Utility needs to possibly be roughly scaled to an average absolute value of 1 for DDPG implementation (presumably due to optimizer step size).
             # For PPO1 value will matter in ensuring equal optimization weight is placed on different episodes when gamma is variable.
             # For PPO1 increasing this value is associated with an increase in the standard deviation of measured CEs across models.
+            # Rllib PPO takes rewards_to_go / 10 batches to converge the value function.
 
         self._param('life-table', 'ssa-cohort', tp = string_type) # Life expectancy table to use. See spia module for possible values.
         self._param('life-table-date', '2020-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
@@ -119,8 +114,10 @@ class ModelParams(object):
             # Shift initial age so as to add this many years to the life expectancy of the first individual.
         self._param('life-expectancy-additional2', (0, 0), 0) # Initial age adjustment for second individual.
         self._param('life-table-spia', 'iam2012-basic', tp = string_type) # Life expectancy table to use for pricing spia purchases.
+        self._param('couple-probability', 0) # Probability family unit is a couple, not single.
+            # Fractional values only make sense during training.
         self._param('sex', 'female', tp = string_type, choices = ('male', 'female')) # Sex of first individual. Helps determine life expectancy table.
-        self._param('sex2', None, tp = string_type, choices = ('male', 'female', None)) # Sex of second individual, None if none.
+        self._param('sex2', 'male', tp = string_type, choices = ('male', 'female')) # Sex of second individual, if any.
         self._param('age-start', (65, 65), 65) # Age of first individual.
         self._param('age-start2', (65, 65), 65) # Age of second individual.
         self._param('age-end', 121) # Model done when individuals reach this age.

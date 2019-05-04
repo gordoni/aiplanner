@@ -289,7 +289,7 @@ class Evaluator(object):
         self.consume_pdf = []
         for bucket, w in enumerate(pdf_bucket_weights):
             unit_consume = ce_min + ce_step * (bucket + 0.5)
-            if env.params.sex2 != None:
+            if env.sex2 != None:
                 unit_consume *= 1 + env.params.consume_additional
             try:
                 w_ratio = w / w_tot
@@ -297,7 +297,7 @@ class Evaluator(object):
                 w_ratio = float('nan')
             self.consume_pdf.append((unit_consume, w_ratio))
 
-        self.couple = env.params.sex2 != None
+        self.couple = env.sex2 != None
         if self.couple:
             unit_ce *= 1 + env.params.consume_additional
             unit_ce_stderr *= 1 + env.params.consume_additional

@@ -112,6 +112,9 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
             'sgd_minibatch_size': train_minibatch_size,
             'num_sgd_iter': train_optimizer_epochs,
             'entropy_coeff': train_entropy_coefficient,
+            'vf_clip_param': 10.0,
+                # Clip value function advantage estimates. We expect most rewards to be roughly in [-1, 1],
+                # so if we get something far from this we don't want to train on it.
             'grad_clip': 50.0,
                 # Ocassionally models train very poorly, with a CE 10% below that of other seeds (gamma=6, p=2e6). Observed on 2019-05-01.
                 # It isn't clear if this is the nature of neural networks, there is a bug in the model, or there is a bug in the PPO algorithm.
