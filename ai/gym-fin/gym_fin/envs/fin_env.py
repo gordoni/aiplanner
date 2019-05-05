@@ -348,7 +348,7 @@ class FinEnv(Env):
 
     def get_db(self, type, owner, inflation_adjustment, joint, payout_fraction, type_of_funds):
 
-        key = (type_of_funds, inflation_adjustment == 'cpi', type == 'Social Security', owner, joint, payout_fraction)
+        key = (type_of_funds, inflation_adjustment == 'cpi', type == 'Social_Security', owner, joint, payout_fraction)
         try:
             db = self.defined_benefits[key]
         except KeyError:
@@ -369,6 +369,7 @@ class FinEnv(Env):
         if random() >= probability:
             return
 
+        type = type.replace(' ', '_')
         db = self.get_db(type, owner, inflation_adjustment, joint, payout_fraction, source_of_funds)
         adjustment = 0 if inflation_adjustment == 'cpi' else inflation_adjustment
         db.add(age = age, premium = premium, payout = payout, adjustment = adjustment, joint = joint, payout_fraction = payout_fraction,
@@ -959,7 +960,7 @@ class FinEnv(Env):
                 print('AIPLANNER: Negative regular income:', regular_income)
                     # Possible if taxable SPIA non-taxable amount exceeds payout due to deflation.
             regular_income = 0
-        social_security = self.gi_sum(type = 'Social Security')
+        social_security = self.gi_sum(type = 'Social_Security')
         social_security = min(regular_income, social_security)
 
         inflation = self.bonds.inflation.inflation()
@@ -1372,7 +1373,7 @@ class FinEnv(Env):
         obs = np.array(observe, dtype = 'float32')
         obs = self.encode_observation(obs)
         if np.any(np.isnan(obs)) or np.any(np.isinf(obs)):
-            print('AIPLANNER:', observe, obs)
+            print('AIPLANNER:', observe, obs, np.isnan(obs), np.isinf(obs))
             assert False, 'Invalid observation.'
         return obs
 

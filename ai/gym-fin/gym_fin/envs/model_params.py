@@ -147,8 +147,8 @@ class ModelParams(object):
         self._param('consume-preretirement', (0, 0), 0) # Annual pre-retirement consumption.
         self._param('consume-income-ratio-max', float('inf')) # Maximum allowed value of consume_preretirement / (income_preretirement + income_preretirement2).
 
-        self._param('have_401k', (True, True), True, tp = bool) # 401(k) available to first individual.
-        self._param('have_401k2', (True, True), True, tp = bool) # 401(k) available to second individual.
+        self._param('have-401k', (True, True), True, tp = bool) # 401(k) available to first individual.
+        self._param('have-401k2', (True, True), True, tp = bool) # 401(k) available to second individual.
 
         self._param('time-period', 1) # Rebalancing time interval in years.
         self._param('gamma', (3, 3), 3) # Coefficient of relative risk aversion.
@@ -156,7 +156,7 @@ class ModelParams(object):
 
         self._param('defined-benefits', '[{"payout": [1e3, 1e5]}]', '[{"payout": 1e4}]', tp = string_type)
             # Defined benefits represented as a JSON array of objects. Object fields:
-            #     "type": Type of defined benefit. Arbitrary string. Default "Income Annuity". A value of "Social Security" may in the future be taxed specially.
+            #     "type": Type of defined benefit. Arbitrary string. Default "Income Annuity". A value of "Social Security" or "Social_Security" is taxed specially.
             #     "owner": Value "self" or "spouse". Default "self".
             #     "age": Starting age in years of owner for benefit. Default starts when first individual reaches age_retirement.
             #     "probability": Probability of this defined benefit being present. Used when generating different random scenarios. Default 1.
