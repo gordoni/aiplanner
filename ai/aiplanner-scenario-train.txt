@@ -51,13 +51,14 @@ master_defined_benefits = '''[
     {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"},
     {"owner": "spouse", "age": null, "probability": 1.0, "payout": [5e3, 5e4], "source_of_funds": "taxable", "type": "Social Security"}
 ]'''
-master_p_tax_free_low = 1e3
+# Note: median(sum((exp(uniform(log(1e-4), log(1e7))) for _ in range(4))) for _ in range(100000)) is around 200k, which might be roughly typical for AIPlanner users.
+master_p_tax_free_low = 1e-4
 master_p_tax_free_high = 1e7
-master_p_tax_deferred_low = 1e3
+master_p_tax_deferred_low = 1e-4
 master_p_tax_deferred_high = 1e7
-master_p_taxable_stocks_low = 1e3
+master_p_taxable_stocks_low = 1e-4
 master_p_taxable_stocks_high = 1e7
-master_p_taxable_nominal_bonds_low = 1e3
+master_p_taxable_nominal_bonds_low = 1e-4
 master_p_taxable_nominal_bonds_high = 1e7
 master_p_taxable_stocks_basis_fraction_low = 0
 master_p_taxable_stocks_basis_fraction_high = 2
