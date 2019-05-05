@@ -33,7 +33,7 @@ class RayFinEnv(FinEnv):
 
 def train(training_model_params, *, redis_address, train_anneal_num_timesteps, train_seeds,
           train_batch_size, train_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_entropy_coefficient,
-    train_save_frequency, train_restore_dir, train_restore_checkpoint_name, train_couple_net,
+          train_save_frequency, train_resume, train_couple_net,
     train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
     train_seed, nice, num_cpu, model_dir, **dummy_kwargs):
 
@@ -45,7 +45,8 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
         model_dir = model_dir[:-1]
     assert model_dir.endswith('.tf')
     try:
-        rmtree(model_dir)
+        if not train_resume:
+            rmtree(model_dir)
     except FileNotFoundError:
         pass
 
@@ -56,7 +57,10 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
     training_model_params['action_space_unbounded'] = True
     training_model_params['observation_space_ignores_range'] = True
 
-    mkdir(model_dir)
+    try:
+        mkdir(model_dir)
+    except FileExistsError:
+        pass
     dump_params_file(model_dir + '/params.txt', training_model_params)
 
     couple = training_model_params['sex2'] != None
@@ -114,11 +118,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
             'entropy_coeff': train_entropy_coefficient,
             'vf_clip_param': 10.0,
                 # Clip value function advantage estimates. We expect most rewards to be roughly in [-1, 1],
-                # so if we get something far from this we don't want to train on it.
-            'grad_clip': 50.0,
-                # Ocassionally models train very poorly, with a CE 10% below that of other seeds (gamma=6, p=2e6). Observed on 2019-05-01.
-                # It isn't clear if this is the nature of neural networks, there is a bug in the model, or there is a bug in the PPO algorithm.
-                # Setting a grad clip might help if the problem is due to spurious very large absolute values occurring.
+                # so if we get something far from this we don't want to train too hard on it.
             'kl_target': 1, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
             'lr_schedule': lr_schedule,
         },
@@ -147,20 +147,6 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
 
     run = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
     checkpoint_freq = max(1, train_save_frequency // agent_config['train_batch_size']) if train_save_frequency != None else 0
-
-    def restore_dir(seed):
-
-        if train_restore_dir:
-            train_dir = train_restore_dir + '/seed_' + str(seed)
-            if train_restore_checkpoint_name:
-                checkpoint_name = train_restore_checkpoint_name
-            else:
-                ray_checkpoints = glob(train_dir + '/*/checkpoint_*')
-                checkpoint_name = 'checkpoint_' + str(sorted(int(ray_checkpoint.split('_')[-1]) for ray_checkpoint in ray_checkpoints)[-1])
-            rest_dir, = glob(train_dir + '/*/' + checkpoint_name)
-            return abspath(rest_dir)
-        else:
-            return None
 
     run_experiments(
         {
@@ -198,9 +184,9 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
                 'local_dir': abspath(model_dir),
                 'checkpoint_freq': checkpoint_freq,
                 'checkpoint_at_end': True,
-                'restore': restore_dir(seed),
             } for seed in range(train_seed, train_seed + train_seeds)
         },
+        resume = train_resume,
         queue_trials = redis_address != None
     )
 
@@ -226,8 +212,11 @@ def main():
         # Value critical to getting optimal performance.
         # Chosen value reduces CE stdev and increases CE mean for a 256x256 tf model on a Merton like model with stochastic life expectancy and guaranteed income.
     parser.add_argument('--train-save-frequency', type=int, default=None)
-    parser.add_argument('--train-restore-dir') # Restoring currently doesn't seem to work, and would be of limited use as modified trial parameters are ignored.
-    parser.add_argument('--train-restore-checkpoint-name')
+    boolean_flag(parser, 'train-resume', default = False) # Resume training rather than starting new trials.
+        # To attempt to extend already completed trials edit the latest <model_dir>/seed_0/experiment_state-<date>.json
+        # changing all of their statuses from "TERMINATED" to "RUNNING", and timeteps_total to <new_timestep_limit>,
+        # then invoke this script with --train-resume --train-num-timesteps=<new_timestep_limit>.
+        # Didn't work, not sure what the problem is, but Rllib resume is currently experimental.
     boolean_flag(parser, 'train-couple-net', default=True)
     training_model_params, _, args = fin_arg_parse(parser, evaluate=False)
     if not training_model_params['algorithm']:
