@@ -88,12 +88,12 @@ class ModelParams(object):
         self._param('consume-ceiling', float('inf')) # Maximum expected consumption level model is trained for.
         self._param('consume-utility-floor', 10000) # Scale utility to have a value of -1 for this consumption amount.
             # Utility needs to be scaled to prevent floating point overflow.
-        self._param('reward-warn', 1e4, 1e2) # Warn reward values not lying within [-reward_warn, reward_warn].
+        self._param('reward-warn', 1e4, 2e2) # Warn reward values not lying within [-reward_warn, reward_warn].
             # During early training poor rewards are expected to be generated.
-        self._param('reward-clip', float('inf'), float('inf')) # Clip reward values to lie within [-reward_clip, reward_clip].
+        self._param('reward-clip', 1e15, float('inf')) # Clip reward values to lie within [-reward_clip, reward_clip].
             # Evaluation clip should always be inf.
             #
-            # Chosen training clip of inf appears reasonable for PPO.
+            # PPO set training clip of 1e15 is to prevent floating point overflow computing global_norm, which can cause training to fail with a tensorflow error.
             # Setting a bound, such as 50, appears to produces worse CEs for Merton's portfolio problem, but has little effect when guaranteed income is present.
             #
             # In DDPG probably always need a low training clip value such as 10 on account of poor step choices getting saved and reused by the replay buffer.
@@ -154,7 +154,8 @@ class ModelParams(object):
         self._param('gamma', (3, 3), 3) # Coefficient of relative risk aversion.
             # Will probably need smaller [consume_floor, consume_ceiling] ranges if use a large gamma value such as 6.
 
-        self._param('defined-benefits', '[{"payout": [1e3, 1e5]}]', '[{"payout": 1e4}]', tp = string_type)
+        self._param('gi-fraction', (0, 1), (0, 1)) # Allowed values of guaranteed income as a fraction of total wealth.
+        self._param('guaranteed-income', '[{"payout": [1e3, 1e5]}]', '[{"payout": 1e4}]', tp = string_type)
             # Defined benefits represented as a JSON array of objects. Object fields:
             #     "type": Type of defined benefit. Arbitrary string. Default "Income Annuity". A value of "Social Security" or "Social_Security" is taxed specially.
             #     "owner": Value "self" or "spouse". Default "self".
@@ -167,7 +168,7 @@ class ModelParams(object):
             #     "source_of_funds": "taxable", "tax_deferred", or "tax_free". Default "tax_deferred".
             #     "exclusion_period": If taxable, exclusion period in years from starting age. Default 0.
             #     "exclusion_amount": If taxable, annual tax exclusion amount of payout in today's dollars. Not adjusted for inflation. Default 0.
-        self._param('defined-benefits-additional', '[]', tp = string_type) # Additional defined benefits.
+        self._param('guaranteed-income-additional', '[]', tp = string_type) # Additional defined benefits.
         self._param('p-tax-free', (1e3, 1e7), 0) # Non-taxable portfolio size. Roth IRAs and similar. Empirically OK if eval amount is less than model lower bound.
         self._param('p-tax-deferred', (1e3, 1e7), 0) # Taxable deferred portfolio size. Traditional IRAs and similar.
         self._param('p-taxable-stocks', (1e3, 1e7), 0) # Taxable portfolio stocks.

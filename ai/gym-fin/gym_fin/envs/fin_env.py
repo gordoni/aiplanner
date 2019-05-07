@@ -378,7 +378,7 @@ class FinEnv(Env):
     def parse_defined_benefits(self):
 
         self.defined_benefits = {}
-        for db in loads(self.params.defined_benefits) + loads(self.params.defined_benefits_additional):
+        for db in loads(self.params.guaranteed_income) + loads(self.params.guaranteed_income_additional):
             self.add_db(**db)
 
     def age_uniform(self, low, high):
@@ -498,6 +498,13 @@ class FinEnv(Env):
             self.taxes_due = 0
 
             self._pre_calculate()
+
+            try:
+                gi_fraction = self.gi_wealth / self.total_wealth
+            except ZeroDivisionError:
+                gi_fraction = 1
+            if not self.params.gi_fraction_low <= gi_fraction <= self.params.gi_fraction_high:
+                continue
 
             if self.preretirement_years * self.consume_preretirement > self.params.consume_income_ratio_max * \
                 (min(self.preretirement_years, self.income_preretirement_years) * self.income_preretirement + \

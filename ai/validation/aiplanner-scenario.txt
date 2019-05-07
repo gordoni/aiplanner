@@ -21,7 +21,7 @@ master_age_start2 = 65
 
 master_consume_additional = 0.6
 
-master_defined_benefits = '[{"payout": 16000, "source_of_funds": "tax_free"}]'
+master_guaranteed_income = '[{"payout": 16000, "source_of_funds": "tax_free"}]'
     # Mean Social Secuity is $16,075 as of March, 2018 - https://www.ssa.gov/policy/docs/quickfacts/stat_snapshot/
 master_p_tax_free = 500000
 master_p_tax_deferred = 0

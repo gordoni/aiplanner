@@ -165,7 +165,7 @@ export class ScenarioComponent implements OnInit {
         'life_expectancy_additional': this.lifeExpectancyAdditional,
         'life_expectancy_additional2': (this.sex2 == 'none') ? 0 : this.lifeExpectancyAdditional2,
 
-        'defined_benefits': dbs,
+        'guaranteed_income': dbs,
 
         'p_tax_deferred': this.pTaxDeferred,
         'p_tax_free': this.pTaxFree,

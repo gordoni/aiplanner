@@ -258,19 +258,21 @@ train_scenarios () {
     ARGS=`args "$@"`
     local EVAL_ARGS=`eval_args "$@"`
 
-    if [ $TRAINING = both -o $TRAINING = specific ]; then
-        #train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
-        #train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
-        #train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=1e6"
-        #train gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2e6"
-        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2.5e5"
-        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
-        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
-        train gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
-    fi
-
-    if [ $TRAINING = both -o $TRAINING = generic ]; then
-        train gamma$GAMMA "$ARGS $TRAINARGS"
+    if [ $TRAINING = specific ]; then
+        #train gamma$GAMMA-age_start50-age_retirement65-guaranteed_income16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
+        #train gamma$GAMMA-age_start50-age_retirement65-guaranteed_income16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
+        #train gamma$GAMMA-age_start50-age_retirement65-guaranteed_income16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=1e6"
+        #train gamma$GAMMA-age_start50-age_retirement65-guaranteed_income16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2e6"
+        train gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2.5e5"
+        train gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
+        train gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+        train gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
+    elif [ $TRAINING = bucket ]; then
+        train gamma$GAMMA-gi_fraction0.0_0.2 "$ARGS --master-gi-fraction-low=0.0 --master-gi-fraction-high=0.2"
+        train gamma$GAMMA-gi_fraction0.2_0.5 "$ARGS --master-gi-fraction-low=0.2 --master-gi-fraction-high=0.5"
+        train gamma$GAMMA-gi_fraction0.5_1.0 "$ARGS --master-gi-fraction-low=0.5 --master-gi-fraction-high=1.0"
+    elif [ $TRAINING = generic ]; then
+        train gamma$GAMMA "$ARGS"
     fi
 
 }
@@ -286,26 +288,29 @@ eval_scenarios () {
     ARGS=`args "$@"`
     local EVAL_ARGS=`eval_args "$@"`
 
-    if [ $TRAINING = both -o $TRAINING = specific ]; then
-        #evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2.5e5 age_start50-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
-        #evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred5e5 age_start50-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
-        #evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred1e6 age_start50-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=1e6"
-        #evaluate gamma$GAMMA-age_start50-age_retirement65-defined_benefits16e3-tax_deferrred2e6 age_start50-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2e6"
-        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2.5e5 retired65-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2.5e5"
-        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred5e5 retired65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
-        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred1e6 retired65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
-        evaluate gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred2e6 retired65-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
-    fi
-
-    if [ $TRAINING = both -o $TRAINING = generic ]; then
-        #evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
-        #evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
-        #evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=1e6"
-        #evaluate_with_policy $GAMMA age_start50-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2e6"
-        evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2.5e5"
-        evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
-        evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
-        evaluate_with_policy $GAMMA retired65-defined_benefits16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
+    if [ $TRAINING = specific ]; then
+        #evaluate gamma$GAMMA-age_start50-age_retirement65-guaranteed_income16e3-tax_deferrred2.5e5 age_start50-guaranteed_income16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
+        #evaluate gamma$GAMMA-age_start50-age_retirement65-guaranteed_income16e3-tax_deferrred5e5 age_start50-guaranteed_income16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
+        #evaluate gamma$GAMMA-age_start50-age_retirement65-guaranteed_income16e3-tax_deferrred1e6 age_start50-guaranteed_income16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=1e6"
+        #evaluate gamma$GAMMA-age_start50-age_retirement65-guaranteed_income16e3-tax_deferrred2e6 age_start50-guaranteed_income16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2e6"
+        evaluate gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferrred2.5e5 retired65-guaranteed_income16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2.5e5"
+        evaluate gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferrred5e5 retired65-guaranteed_income16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
+        evaluate gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferrred1e6 retired65-guaranteed_income16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+        evaluate gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferrred2e6 retired65-guaranteed_income16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
+    elif [ $TRAINING = bucket ]; then
+        evaluate gamma$GAMMA-gi-fraction0.5_1.0 retired65-guaranteed_income16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2.5e5" # gi_fraction: 0.61
+        evaluate gamma$GAMMA-gi-fraction0.2_0.5 retired65-guaranteed_income16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5" # gi_fraction: 0.44
+        evaluate gamma$GAMMA-gi-fraction0.2_0.5 retired65-guaranteed_income16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6" # gi_fraction: 0.28
+        evaluate gamma$GAMMA-gi-fraction0.0_0.2 retired65-guaranteed_income16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6" # gi_fraction: 0.16
+    elif [ $TRAINING = generic ]; then
+        #evaluate_with_policy $GAMMA age_start50-guaranteed_income16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2.5e5"
+        #evaluate_with_policy $GAMMA age_start50-guaranteed_income16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-p-tax-deferred=5e5"
+        #evaluate_with_policy $GAMMA age_start50-guaranteed_income16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=1e6"
+        #evaluate_with_policy $GAMMA age_start50-guaranteed_income16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-p-tax-deferred=2e6"
+        evaluate_with_policy $GAMMA retired65-guaranteed_income16e3-tax_deferrred2.5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2.5e5"
+        evaluate_with_policy $GAMMA retired65-guaranteed_income16e3-tax_deferrred5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=5e5"
+        evaluate_with_policy $GAMMA retired65-guaranteed_income16e3-tax_deferrred1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=1e6"
+        evaluate_with_policy $GAMMA retired65-guaranteed_income16e3-tax_deferrred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
     fi
 }
 

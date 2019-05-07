@@ -210,7 +210,7 @@ class RequestHandler(BaseHTTPRequestHandler):
     def save_scenario(self, dir, request):
 
         request_params = dict(request)
-        request_params['defined_benefits'] = dumps(request_params['defined_benefits'])
+        request_params['guaranteed_income'] = dumps(request_params['guaranteed_income'])
         try:
             request_params['p_taxable_stocks_basis_fraction'] = request_params['p_taxable_stocks_basis'] / request_params['p_taxable_stocks']
         except ZeroDivisionError:

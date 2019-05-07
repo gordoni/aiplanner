@@ -23,7 +23,7 @@ TRAIN_ARGS="$TRAIN_ARGS --train-num-timesteps=1000000"
 EVALUATOR="$EVALUATOR --master-consume-clip=5000"
     # We specify a consume clip so that we don't overlook algorithms that assume it from training.
     # Should later confirm it isn't needed by running tests on the chosen algorithm without it.
-for ALGORITHM in ppo1 td3 sac trpo ppo ddpg vpg; do
+for ALGORITHM in PPO ppo1 td3 sac trpo ppo ddpg vpg; do
 
     mkdir -p $ALGORITHM
     cd $ALGORITHM
@@ -51,5 +51,5 @@ echo `date` Done
 #         MARWEL - not tested; offline algorithm.
 #     Baselines ppo1 outperforms all spinnup algorithms (td3, sac, trpo, ppo, ddpg, and vpg).
 #
-# ppo with issue 50 fixed:
+# PPO with issue 50 fixed:
 #     Very small improvement in performance.

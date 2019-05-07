@@ -23,7 +23,7 @@ master_consume_preretirement = 4.8e4
 master_have_401k = True
 master_have_401k2 = True
 
-master_defined_benefits = '''[
+master_guaranteed_income = '''[
     {"owner": "self",   "age": null, "payout": 16e3, "source_of_funds": "taxable", "type": "Social Security"},
     {"owner": "spouse", "age": null, "payout": 16e3, "source_of_funds": "taxable", "type": "Social Security"}
 ]'''

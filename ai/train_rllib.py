@@ -119,6 +119,21 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
             'vf_clip_param': 10.0,
                 # Clip value function advantage estimates. We expect most rewards to be roughly in [-1, 1],
                 # so if we get something far from this we don't want to train too hard on it.
+            'grad_clip': 50.0,
+                # Ocassionally models train very poorly, with a CE 10% below that of other seeds (gamma=6, p=2e6). Observed on 2019-05-01.
+                # It isn't clear if this is the nature of neural networks, there is a bug in the model, or there is a bug in the PPO algorithm.
+                # Setting a grad clip was thought might help if the problem is due to spurious very large absolute values occurring, but hasn't helped.
+                # Problem noticed after setting parameters to seemingly optimal values (happened in 2 out of 3 vanilla runs; one of the two failures was
+                # associated with extreme reward values of up to -1e25 before crashing, the other had no reward warnings with a warning at level of -1e4),
+                # so may be caused by one of:
+                #     lambda: 0.95 -> 1
+                #     sample_batch_size: 4k -> 100k
+                #     entropy: 0 -> 1e-3 (had 2 good run with entropy back to 0 (so might be source of problem), but appear to get slightly worse CEs (-0.7%))
+                #     kl_target: 0.01 -> 1
+                # Or could be changes in model:
+                #     adding stocks curvature
+                #     computing CE estimate and consume estimate simply as total wealth divided by life expectancy
+                #     fixing bug in reward estimate to incorporate life expectancy (had 1 fairly bad (-5%) run with reward estimate 0, so probably not the cause)
             'kl_target': 1, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
             'lr_schedule': lr_schedule,
         },

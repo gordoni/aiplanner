@@ -66,7 +66,7 @@ master_consume_preretirement = 0
 
 # Make tax_free rather than taxable the common case as a means of estimating performance gap from optimal for taxable scenario.
 # (The optimal performance for the tax_free scenario can be computed via stochastic dynamic programming.)
-train_defined_benefits = '''[
+train_guaranteed_income = '''[
     {"owner": "self",   "age": null, "probability": 1.0, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"},
@@ -75,7 +75,7 @@ train_defined_benefits = '''[
     {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"}
 ]'''
 
-eval_defined_benefits = '''[
+eval_guaranteed_income = '''[
     {"owner": "self",   "age": null, "probability": 1.0, "payout": 16e3, "source_of_funds": "tax_free"},
     {"owner": "spouse", "age": null, "probability": 1.0, "payout": 16e3, "source_of_funds": "tax_free"}
 ]'''

@@ -19,39 +19,59 @@ cd ~/aiplanner-data/train-results
 
 PARALLEL=Jobs
 SCENARIO_ARGS="--master-stocks-mean-reversion-rate=0 --master-no-observe-stocks-price --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.010 --master-iid-bonds-volatility=0.110 --master-no-bills --master-no-returns-standard-error --master-no-tax --master-static-bonds --master-fixed-real-bonds-rate=0.01 --master-fixed-nominal-bonds-rate=0.03 --master-real-short-rate-type=current --master-inflation-short-rate-type=current"
+SPECIFIC_ARGS='--master-life-expectancy-additional=3 --master-age-retirement=20 --master-have-401k=True --master-guaranteed-income=[{"owner":"self","age":null,"payout":[5e3,5e4],"source_of_funds":"taxable","type":"Social_Security"}] --master-p-tax-free=0 --master-p-taxable-stocks=0 --master-p-taxable-iid-bonds=0'
 GAMMA=6
+TRAINING=bucket
 TRAINARGS=$TRAIN_ARGS
 TIMESTEPS=4000000
 BATCH_SIZE=100000
 for UNIT in single couple; do
-    for SPIAS in no_spias spias; do
+    for SPIAS in no_spias-merton-bucket_entropy0_retired_le_add3_have_401k_dbss_tax_free0_taxable_stocks0; do # no_spias spias; do
 
-        TRAIN_ARGS="$TRAINARGS --train-num-timesteps=$TIMESTEPS --train-batch-size=$BATCH_SIZE"
-        ARGS=$SCENARIO_ARGS
+        TRAIN_ARGS="$TRAINARGS --train-num-timesteps=$TIMESTEPS --train-batch-size=$BATCH_SIZE --train-entropy-coefficient=0"
+        ARGS="$SCENARIO_ARGS $SPECIFIC_ARGS"
         if [ $SPIAS = spias ]; then
+            ARGS="$ARGS --master-nominal-spias"
+        fi
+        if [ $SPIAS = spias80 ]; then
+            ARGS="$ARGS --master-nominal-spias --master-spias-permitted-from-age=200 --master-spias-at-age=80"
+        fi
+        if [ $SPIAS = spias_pctl70 ]; then
             ARGS="$ARGS --master-nominal-spias"
         fi
 
         EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal"
         mkdir -p $EPISODE
         cd $EPISODE
-        train_scenarios specific $UNIT $GAMMA $EPISODE "$ARGS --train-save-frequency=500000"
+        train_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --train-save-frequency=500000"
         cd ..
         wait
-        for TS in 1000000 2000000 3000000 4000000; do
+        for TS in 2000000 3000000 4000000; do
             mkdir -p $EPISODE-timesteps$TS
             cd $EPISODE-timesteps$TS
             for TD in 2.5e5 5e5 1e6 2e6; do
-                TF=aiplanner.gamma$GAMMA-retired65-defined_benefits16e3-tax_deferrred$TD.tf
+                if [ $TRAINING = specific ]; then
+                    TF=aiplanner.gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferrred$TD.tf
+                    mkdir -p $TF
+                    cd $TF
+                    for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
+                        ln -s $FILE 2> /dev/null
+                    done
+                    cd ..
+                fi
+            done
+            if [ $TRAINING = generic ]; then
+                TF=aiplanner.gamma$GAMMA.tf
                 mkdir -p $TF
                 cd $TF
                 for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
                     ln -s $FILE 2> /dev/null
                 done
                 cd ..
-            done
+            fi
             CP=`expr $TS / $BATCH_SIZE`
-            eval_scenarios specific $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP"
+            eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP"
+            eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP --ensemble"
             cd ..
         done
         wait
@@ -105,6 +125,7 @@ exit
 
 # PPO examining 4 scenarios (with 2m timestep evaluations):
 #   batch_size=100000, entropy_coeff=1e-3, kl_target=1, optimizer_step_size=5e-5, optimizer_epochs=30, minibatch_size=128, lambda=1, anneal_num_timesteps=0
+#   model was prior to tuneable stocks curvature
 # timesteps,mean CE,CE stderr (typically 20 experiments)
 # gamma=6 specific 2.5e5 single no-spias:
 1000000,27141.532122,11.211862
