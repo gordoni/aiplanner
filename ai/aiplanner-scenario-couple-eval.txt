@@ -27,6 +27,8 @@ master_guaranteed_income = '''[
     {"owner": "self",   "age": null, "payout": 16e3, "source_of_funds": "taxable", "type": "Social Security"},
     {"owner": "spouse", "age": null, "payout": 16e3, "source_of_funds": "taxable", "type": "Social Security"}
 ]'''
+
+master_p_weighted = 0
 master_p_tax_free = 0
 master_p_tax_deferred = 0
 master_p_taxable_stocks = 0

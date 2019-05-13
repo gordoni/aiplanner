@@ -134,6 +134,11 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
                 #     adding stocks curvature
                 #     computing CE estimate and consume estimate simply as total wealth divided by life expectancy
                 #     fixing bug in reward estimate to incorporate life expectancy (had 1 fairly bad (-5%) run with reward estimate 0, so probably not the cause)
+                # Setting entropy=0 was thought to fix the problem, but it just re-occurred (gamma=6, p=5e6) with 2 seeds 40% below the others when entropy=0.
+                # Perhaps poor training is more likely for small gi_fractions.
+                # There is a strong correlation between seeds that train poorly and seeds that get repeated "Reward clipped" warnings, due to rewards less than -1e15.
+                # Whether the negative rewards are a cause or a symptom isn't known.
+                # The extreme rewards don't occur for subsequent ages in an episode, but just at individual advanced ages.
             'kl_target': 1, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
             'lr_schedule': lr_schedule,
         },

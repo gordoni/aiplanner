@@ -88,7 +88,7 @@ class ModelParams(object):
         self._param('consume-ceiling', float('inf')) # Maximum expected consumption level model is trained for.
         self._param('consume-utility-floor', 10000) # Scale utility to have a value of -1 for this consumption amount.
             # Utility needs to be scaled to prevent floating point overflow.
-        self._param('reward-warn', 1e4, 2e2) # Warn reward values not lying within [-reward_warn, reward_warn].
+        self._param('reward-warn', 1e3, 2e1) # Warn reward values not lying within [-reward_warn, reward_warn].
             # During early training poor rewards are expected to be generated.
         self._param('reward-clip', 1e15, float('inf')) # Clip reward values to lie within [-reward_clip, reward_clip].
             # Evaluation clip should always be inf.
@@ -118,7 +118,7 @@ class ModelParams(object):
             # Fractional values only make sense during training.
         self._param('sex', 'female', tp = string_type, choices = ('male', 'female')) # Sex of first individual. Helps determine life expectancy table.
         self._param('sex2', 'male', tp = string_type, choices = ('male', 'female')) # Sex of second individual, if any.
-        self._param('age-start', (65, 65), 65) # Age of first individual.
+        self._param('age-start', 65, 65) # Age of first individual.
         self._param('age-start2', (65, 65), 65) # Age of second individual.
         self._param('age-end', 121) # Model done when individuals reach this age.
         self._param('age-retirement', (65, 65), 65) # Assess and optimize consumption from when first individual reaches this age.
@@ -169,13 +169,21 @@ class ModelParams(object):
             #     "exclusion_period": If taxable, exclusion period in years from starting age. Default 0.
             #     "exclusion_amount": If taxable, annual tax exclusion amount of payout in today's dollars. Not adjusted for inflation. Default 0.
         self._param('guaranteed-income-additional', '[]', tp = string_type) # Additional defined benefits.
-        self._param('p-tax-free', (1e3, 1e7), 0) # Non-taxable portfolio size. Roth IRAs and similar. Empirically OK if eval amount is less than model lower bound.
-        self._param('p-tax-deferred', (1e3, 1e7), 0) # Taxable deferred portfolio size. Traditional IRAs and similar.
-        self._param('p-taxable-stocks', (1e3, 1e7), 0) # Taxable portfolio stocks.
-        self._param('p-taxable-real-bonds', (1e3, 1e7), 0) # Taxable portfolio real bonds.
-        self._param('p-taxable-nominal-bonds', (1e3, 1e7), 0) # Taxable portfolio nominal bonds.
-        self._param('p-taxable-iid-bonds', (1e3, 1e7), 0) # Taxable portfolio iid bonds.
-        self._param('p-taxable-bills', (1e3, 1e7), 0) # Taxable portfolio bills.
+        self._param('p-weighted', (1e4, 1e7), 0) # Total investment portfolio size excluding additive specific amounts.
+        self._param('p-tax-free', (0, 0), 0) # Non-taxable additive portfolio size. Roth IRAs and similar.
+        self._param('p-tax-free-weight', (0, 100), 0) # Weight for p_weighted allocated to non-taxable.
+        self._param('p-tax-deferred', (0, 0), 0) # Tax deferred additive portfolio size. Traditional IRAs and similar.
+        self._param('p-tax-deferred-weight', (1, 100), 0) # Weight for p_weighted allocated to tax deferred. (Weight low of 1 to avoid all weights zero).
+        self._param('p-taxable-stocks', (0, 0), 0) # Taxable additive portfolio stocks.
+        self._param('p-taxable-stocks-weight', (0, 100), 0) # Weight for p_weighted allocated to taxable stocks.
+        self._param('p-taxable-real-bonds', (0, 0), 0) # Taxable additive portfolio real bonds.
+        self._param('p-taxable-real-bonds-weight', (0, 100), 0) # Weight for p_weighted allocated to taxable real bonds.
+        self._param('p-taxable-nominal-bonds', (0, 0), 0) # Taxable additive portfolio nominal bonds.
+        self._param('p-taxable-nominal-bonds-weight', (0, 100), 0) # Weight for p_weighted allocated to taxable nominal bonds.
+        self._param('p-taxable-iid-bonds', (0, 0), 0) # Taxable additive portfolio iid bonds.
+        self._param('p-taxable-iid-bonds-weight', (0, 100), 0) # Weight for p_weighted allocated to taxable iid bonds.
+        self._param('p-taxable-bills', (0, 0), 0) # Taxable additive portfolio bills.
+        self._param('p-taxable-bills-weight', (0, 100), 0) # Weight for p_weighted allocated to taxable bills.
         self._param('p-taxable-stocks-basis-fraction', (0, 2), 1) # Taxable portfolio stocks cost basis as a fraction of stocks value.
         # Consumption order is assumed to be p_taxable, p_tax_deferred, p_notax.
 

@@ -19,17 +19,16 @@ cd ~/aiplanner-data/train-results
 
 PARALLEL=Jobs
 SCENARIO_ARGS="--master-stocks-mean-reversion-rate=0 --master-no-observe-stocks-price --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.010 --master-iid-bonds-volatility=0.110 --master-no-bills --master-no-returns-standard-error --master-no-tax --master-static-bonds --master-fixed-real-bonds-rate=0.01 --master-fixed-nominal-bonds-rate=0.03 --master-real-short-rate-type=current --master-inflation-short-rate-type=current"
-SPECIFIC_ARGS='--master-life-expectancy-additional=3 --master-age-retirement=20 --master-have-401k=True --master-guaranteed-income=[{"owner":"self","age":null,"payout":[5e3,5e4],"source_of_funds":"taxable","type":"Social_Security"}] --master-p-tax-free=0 --master-p-taxable-stocks=0 --master-p-taxable-iid-bonds=0'
+TRAINING_ARGS='--master-life-expectancy-additional=3 --master-age-retirement=0 --master-have-401k=True --master-guaranteed-income=[{"owner":"self","age":null,"payout":[5e3,5e5],"source_of_funds":"taxable","type":"Social_Security"}] --master-p-tax-free=0 --master-p-taxable-stocks=0 --master-p-taxable-iid-bonds=0'
 GAMMA=6
 TRAINING=bucket
-TRAINARGS=$TRAIN_ARGS
 TIMESTEPS=4000000
 BATCH_SIZE=100000
 for UNIT in single couple; do
-    for SPIAS in no_spias-merton-bucket_entropy0_retired_le_add3_have_401k_dbss_tax_free0_taxable_stocks0; do # no_spias spias; do
+    for SPIAS in no_spias-merton-bucket_weighted_consume_floor0.1_entropy0_reward_level_ce_est_obs_ce_on_rce_retired_le_add3_have_401k_dbss_tax_free0_taxable_stocks0; do # no_spias spias; do
 
-        TRAIN_ARGS="$TRAINARGS --train-num-timesteps=$TIMESTEPS --train-batch-size=$BATCH_SIZE --train-entropy-coefficient=0"
-        ARGS="$SCENARIO_ARGS $SPECIFIC_ARGS"
+        ARGS="$SCENARIO_ARGS"
+        TRAINARGS="$TRAINING_ARGS --train-num-timesteps=$TIMESTEPS --train-batch-size=$BATCH_SIZE --train-entropy-coefficient=0"
         if [ $SPIAS = spias ]; then
             ARGS="$ARGS --master-nominal-spias"
         fi
@@ -43,14 +42,14 @@ for UNIT in single couple; do
         EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal"
         mkdir -p $EPISODE
         cd $EPISODE
-        train_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --train-save-frequency=500000"
+        train_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS $TRAINARGS --train-save-frequency=500000"
         cd ..
         wait
         for TS in 2000000 3000000 4000000; do
             mkdir -p $EPISODE-timesteps$TS
             cd $EPISODE-timesteps$TS
-            for TD in 2.5e5 5e5 1e6 2e6; do
-                if [ $TRAINING = specific ]; then
+            if [ $TRAINING = specific ]; then
+                for TD in 2.5e5 5e5 1e6 2e6; do
                     TF=aiplanner.gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferrred$TD.tf
                     mkdir -p $TF
                     cd $TF
@@ -58,9 +57,18 @@ for UNIT in single couple; do
                         ln -s $FILE 2> /dev/null
                     done
                     cd ..
-                fi
-            done
-            if [ $TRAINING = generic ]; then
+                done
+            elif [ $TRAINING = bucket ]; then
+                for GIF in 0.0_0.1 0.1_0.3 0.3_1.0; do
+                    TF=aiplanner.gamma$GAMMA-gi_fraction$GIF.tf
+                    mkdir -p $TF
+                    cd $TF
+                    for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
+                        ln -s $FILE 2> /dev/null
+                    done
+                    cd ..
+                done
+            elif [ $TRAINING = generic ]; then
                 TF=aiplanner.gamma$GAMMA.tf
                 mkdir -p $TF
                 cd $TF
@@ -71,7 +79,7 @@ for UNIT in single couple; do
             fi
             CP=`expr $TS / $BATCH_SIZE`
             eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP"
-            eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP --ensemble"
+            #eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP --ensemble"
             cd ..
         done
         wait

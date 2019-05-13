@@ -11,10 +11,8 @@
 master_consume_floor = 1e4
 master_consume_ceiling = 1e6
 
-# Make age_start vary, even though we will encounter all ages as we step.
-# This helps ensure if trained with market data we market time using the market parameters rather than life expectancy.
-master_age_start_low = 20
-master_age_start_high = 40
+master_age_start = 30
+    # Be sure to train with variable market data, otherwise may market time using age rather than the market data.
 master_age_start2_low = 20
 master_age_start2_high = 40
 
@@ -51,15 +49,21 @@ master_guaranteed_income = '''[
     {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"},
     {"owner": "spouse", "age": null, "probability": 1.0, "payout": [5e3, 5e4], "source_of_funds": "taxable", "type": "Social Security"}
 ]'''
-# Note: median(sum((exp(uniform(log(1e-4), log(1e7))) for _ in range(4))) for _ in range(100000)) is around 200k, which might be roughly typical for AIPlanner users.
-master_p_tax_free_low = 1e-4
-master_p_tax_free_high = 1e7
-master_p_tax_deferred_low = 1e-4
-master_p_tax_deferred_high = 1e7
-master_p_taxable_stocks_low = 1e-4
-master_p_taxable_stocks_high = 1e7
-master_p_taxable_nominal_bonds_low = 1e-4
-master_p_taxable_nominal_bonds_high = 1e7
+
+master_p_weighted_low = 1e4
+master_p_weighted_high = 1e7
+master_p_tax_free = 0
+master_p_tax_free_weight_low = 0
+master_p_tax_free_weight_high = 50
+master_p_tax_deferred = 0
+master_p_tax_deferred_weight_low = 1 # Weight low of 1 to avoid all weights zero.
+master_p_tax_deferred_weight_high = 100
+master_p_taxable_stocks = 0
+master_p_taxable_stocks_weight_low = 0
+master_p_taxable_stocks_weight_high = 30
+master_p_taxable_nominal_bonds = 0
+master_p_taxable_nominal_bonds_weight_low = 0
+master_p_taxable_nominal_bonds_weight_high = 20
 master_p_taxable_stocks_basis_fraction_low = 0
 master_p_taxable_stocks_basis_fraction_high = 2
 

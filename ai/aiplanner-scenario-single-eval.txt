@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -19,6 +19,8 @@ master_consume_preretirement = 3e4
 master_have_401k = True
 
 master_guaranteed_income = '[{"owner": "self", "age": null, "payout": 16e3, "source_of_funds": "taxable", "type": "Social Security"}]'
+
+master_p_weighted = 0
 master_p_tax_free = 0
 master_p_tax_deferred = 0
 master_p_taxable_stocks = 0

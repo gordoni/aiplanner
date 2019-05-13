@@ -209,7 +209,7 @@ class FinEnv(Env):
             'couple', 'num_401k', 'one_on_gamma',
             'average_asset_years',
             'lifespan_percentile_years', 'spia_expectancy_years', 'final_spias_purchase',
-            'reward_to_go_estimate', 'retirement_ce_estimate_individual',
+            'reward_to_go_estimate', 'relative_retirement_ce_estimate_individual',
             'wealth_fraction', 'income_tax_deferred_fraction', 'income_taxable_fraction',
             'wealth_tax_deferred_fraction', 'wealth_taxable_fraction',
             'income_wealth_fraction', 'taxable_wealth_fraction',
@@ -220,16 +220,16 @@ class FinEnv(Env):
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            low  = np.array((0, 0, 0,   0,   0,   0, 0, -100,   0, 0, 0, 0, 0, 0, 0, -1,  0, -0.20, -0.20)),
-            high = np.array((1, 2, 1, 100, 100, 100, 1,  100, 1e6, 1, 1, 1, 1, 1, 1,  1, 10,  0.20,  0.20)),
+            low  = np.array((0, 0, 0,   0,   0,   0, 0, -100, 0, 0, 0, 0, 0, 0, 0, -1,  0, -0.20, -0.20)),
+            high = np.array((1, 2, 1, 100, 100, 100, 1,  100, 5, 1, 1, 1, 1, 1, 1,  1, 10,  0.20,  0.20)),
             dtype = 'float32'
         )
         self.observation_space_range = self.observation_space.high - self.observation_space.low
         self.observation_space_allowed_range = self.params.observation_space_warn * self.observation_space_range
         self.observation_space_allowed_range[self.observation_space_items.index('reward_to_go_estimate')] = 1e4
             # During early training poor reward_to_go values expected.
-        self.observation_space_allowed_range[self.observation_space_items.index('retirement_ce_estimate_individual')] = 5e7
-            # A 1e7 portfolio at age 20 might actually grow to 2e8 or more at age 80, providing retirement CEs of roughly 1e6 expected and 2e7 or more actual.
+        self.observation_space_allowed_range[self.observation_space_items.index('relative_retirement_ce_estimate_individual')] = 100
+            # A 1e6 portfolio at age 20 might actually grow to 2e7 or more at age 80, providing a relative retirement CEs of roughly 20 or more.
 
         assert self.params.action_space_unbounded in (False, True)
         assert self.params.observation_space_ignores_range in (False, True)
@@ -245,6 +245,11 @@ class FinEnv(Env):
 
         self.life_table_age = None
         self.life_table2_age = None
+
+        self.age_start = self.params.age_start
+        self.death_age = self.params.age_end - self.params.time_period
+        self.life_table_le_hi = LifeTable(self.params.life_table, self.params.sex, self.age_start,
+            death_age = self.death_age, le_add = self.params.life_expectancy_additional_high, date_str = self.params.life_table_date, interpolate_q = False)
 
         self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.stocks_price_low, self.params.stocks_price_high,
             self.params.stocks_price_noise_sigma, self.params.stocks_mean_reversion_rate,
@@ -403,17 +408,15 @@ class FinEnv(Env):
 
         self.sex2 = self.params.sex2 if random() < self.params.couple_probability else None
 
-        self.age = self.age_start = self.age_uniform(self.params.age_start_low, self.params.age_start_high)
-        self.age2 = self.age_start2 = self.age_uniform(self.params.age_start2_low, self.params.age_start2_high)
+        self.age = self.age_start
+        self.age2 = self.age_uniform(self.params.age_start2_low, self.params.age_start2_high)
         le_add = self.age_uniform(self.params.life_expectancy_additional_low, self.params.life_expectancy_additional_high)
         le_add2 = self.age_uniform(self.params.life_expectancy_additional2_low, self.params.life_expectancy_additional2_high)
         self.age_retirement = uniform(self.params.age_retirement_low, self.params.age_retirement_high)
-        self.preretirement_years = max(0, self.age_retirement - self.age)
 
-        death_age = self.params.age_end - self.params.time_period
         if self.age != self.life_table_age or le_add != self.life_table_le_add:
             self.life_table = LifeTable(self.params.life_table, self.params.sex, self.age,
-                                        death_age = death_age, le_add = le_add, date_str = self.params.life_table_date, interpolate_q = False)
+                death_age = self.death_age, le_add = le_add, date_str = self.params.life_table_date, interpolate_q = False)
             self.life_table_age = self.age
             self.life_table_le_add = le_add
         else:
@@ -422,17 +425,26 @@ class FinEnv(Env):
             self.life_table2 = None
         elif self.age2 != self.life_table2_age or le_add2 != self.life_table_le_add2:
             self.life_table2 = LifeTable(self.params.life_table, self.sex2, self.age2,
-                                         death_age = death_age, le_add = le_add2, date_str = self.params.life_table_date, interpolate_q = False)
+                death_age = self.death_age, le_add = le_add2, date_str = self.params.life_table_date, interpolate_q = False)
             self.life_table2_age = self.age2
             self.life_table_le_add2 = le_add2
         else:
             self.life_table2.age = self.age2
+
+        # Try and ensure each training episode starts at the same life expectancy (at least if single).
+        # This helps ensure set_reward_level() normalizes as consistently as possible. May not be necessary.
+        adjust = self.life_table.age_add - self.life_table_le_hi.age_add
+        self.age -= adjust
+        self.age2 -= adjust
+        self.preretirement_years = max(0, self.age_retirement - self.age)
         self._compute_vital_stats(self.age, self.age2, self.preretirement_years)
 
         self.couple = self.alive_single[0] == None
 
         self.have_401k = bool(randint(int(self.params.have_401k_low), int(self.params.have_401k_high)))
         self.have_401k2 = bool(randint(int(self.params.have_401k2_low), int(self.params.have_401k2_high)))
+
+        self.taxes_due = 0
 
         self.gamma = self.log_uniform(self.params.gamma_low, self.params.gamma_high)
         self.utility = Utility(self.gamma, self.params.consume_utility_floor)
@@ -450,81 +462,108 @@ class FinEnv(Env):
         self.episode_length = 0
 
         found = False
-        preretirement_ok = False
         for _ in range(1000):
 
             self.parse_defined_benefits()
             for db in self.defined_benefits.values():
                 db.step(0) # Pick up non-zero schedule for observe.
+            self._pre_calculate_db()
 
-            self.consume_preretirement = self.log_uniform(self.params.consume_preretirement_low, self.params.consume_preretirement_high)
-            self.start_income_preretirement = self.log_uniform(self.params.income_preretirement_low, self.params.income_preretirement_high)
-            self.start_income_preretirement2 = self.log_uniform(self.params.income_preretirement2_low, self.params.income_preretirement2_high)
+            for _ in range(20):
 
-            if self.params.income_preretirement_age_end != None:
-                self.income_preretirement_years = max(0, self.params.income_preretirement_age_end - self.age)
-            else:
-                self.income_preretirement_years = self.preretirement_years
-            if self.couple:
-                if self.params.income_preretirement_age_end2 != None:
-                    self.income_preretirement_years2 = max(0, self.params.income_preretirement_age_end2 - self.age2)
+                self.consume_preretirement = self.log_uniform(self.params.consume_preretirement_low, self.params.consume_preretirement_high)
+                self.start_income_preretirement = self.log_uniform(self.params.income_preretirement_low, self.params.income_preretirement_high)
+                self.start_income_preretirement2 = self.log_uniform(self.params.income_preretirement2_low, self.params.income_preretirement2_high)
+                if self.params.income_preretirement_age_end != None:
+                    self.income_preretirement_years = max(0, self.params.income_preretirement_age_end - self.age)
                 else:
-                    self.income_preretirement_years2 = self.preretirement_years
-            else:
-                self.income_preretirement_years2 = 0
-            self.income_preretirement = self.start_income_preretirement if self.income_preretirement_years > 0 else 0
-            self.income_preretirement2 = self.start_income_preretirement2 if self.income_preretirement_years2 > 0 else 0
+                    self.income_preretirement_years = self.preretirement_years
+                if self.couple:
+                    if self.params.income_preretirement_age_end2 != None:
+                        self.income_preretirement_years2 = max(0, self.params.income_preretirement_age_end2 - self.age2)
+                    else:
+                        self.income_preretirement_years2 = self.preretirement_years
+                else:
+                    self.income_preretirement_years2 = 0
+                self.income_preretirement = self.start_income_preretirement if self.income_preretirement_years > 0 else 0
+                self.income_preretirement2 = self.start_income_preretirement2 if self.income_preretirement_years2 > 0 else 0
 
-            self.p_tax_free = self.log_uniform(self.params.p_tax_free_low, self.params.p_tax_free_high)
-            self.p_tax_deferred = self.log_uniform(self.params.p_tax_deferred_low, self.params.p_tax_deferred_high)
-            taxable_assets = AssetAllocation(fractional = False)
-            if self.params.stocks:
-                taxable_assets.aa['stocks'] = self.log_uniform(self.params.p_taxable_stocks_low, self.params.p_taxable_stocks_high)
-            if self.params.real_bonds:
-                taxable_assets.aa['real_bonds'] = self.log_uniform(self.params.p_taxable_real_bonds_low, self.params.p_taxable_real_bonds_high)
-            if self.params.nominal_bonds:
-                taxable_assets.aa['nominal_bonds'] = self.log_uniform(self.params.p_taxable_nominal_bonds_low, self.params.p_taxable_nominal_bonds_high)
-            if self.params.iid_bonds:
-                taxable_assets.aa['iid_bonds'] = self.log_uniform(self.params.p_taxable_iid_bonds_low, self.params.p_taxable_iid_bonds_high)
-            if self.params.bills:
-                taxable_assets.aa['bills'] = self.log_uniform(self.params.p_taxable_bills_low, self.params.p_taxable_bills_high)
-            self.p_taxable = sum(taxable_assets.aa.values())
-            if self.params.p_taxable_stocks_basis_fraction_low == self.params.p_taxable_stocks_basis_fraction_high:
-                p_taxable_stocks_basis_fraction = self.params.p_taxable_stocks_basis_fraction_low
-            else:
-                p_taxable_stocks_basis_fraction = uniform(self.params.p_taxable_stocks_basis_fraction_low, self.params.p_taxable_stocks_basis_fraction_high)
+                preretirement_ok = not self.preretirement_years * self.consume_preretirement > self.params.consume_income_ratio_max * \
+                    (min(self.preretirement_years, self.income_preretirement_years) * self.income_preretirement + \
+                    min(self.preretirement_years, self.income_preretirement_years2) * self.income_preretirement2)
+                if not preretirement_ok:
+                    continue
 
-            self.taxes = Taxes(self, taxable_assets, p_taxable_stocks_basis_fraction)
-            self.taxes_due = 0
+                p_tax_free_weight = uniform(self.params.p_tax_free_weight_low, self.params.p_tax_free_weight_high)
+                p_tax_deferred_weight = uniform(self.params.p_tax_deferred_weight_low, self.params.p_tax_deferred_weight_high)
+                p_taxable_stocks_weight = uniform(self.params.p_taxable_stocks_low, self.params.p_taxable_stocks_high) if self.params.stocks else 0
+                p_taxable_real_bonds_weight = uniform(self.params.p_taxable_real_bonds_low, self.params.p_taxable_real_bonds_high) if self.params.real_bonds else 0
+                p_taxable_nominal_bonds_weight = uniform(self.params.p_taxable_nominal_bonds_low, self.params.p_taxable_nominal_bonds_high) \
+                    if self.params.nominal_bonds else 0
+                p_taxable_iid_bonds_weight = uniform(self.params.p_taxable_iid_bonds_low, self.params.p_taxable_iid_bonds_high) if self.params.iid_bonds  else 0
+                p_taxable_bills_weight = uniform(self.params.p_taxable_bills_low, self.params.p_taxable_bills_high) if self.params.bills  else 0
+                total_weight = p_tax_free_weight + p_tax_deferred_weight + \
+                    p_taxable_stocks_weight + p_taxable_real_bonds_weight + p_taxable_nominal_bonds_weight + p_taxable_iid_bonds_weight + p_taxable_bills_weight
+                p_weighted = self.log_uniform(self.params.p_weighted_low, self.params.p_weighted_high)
+                if total_weight == 0:
+                    assert p_weighted == 0
+                    total_weight = 1
+                self.p_tax_free = self.log_uniform(self.params.p_tax_free_low, self.params.p_tax_free_high) + \
+                    p_weighted * p_tax_free_weight / total_weight
+                self.p_tax_deferred = self.log_uniform(self.params.p_tax_deferred_low, self.params.p_tax_deferred_high) + \
+                    p_weighted * p_tax_deferred_weight / total_weight
+                taxable_assets = AssetAllocation(fractional = False)
+                if self.params.stocks:
+                    taxable_assets.aa['stocks'] = self.log_uniform(self.params.p_taxable_stocks_low, self.params.p_taxable_stocks_high) + \
+                        p_weighted * p_taxable_stocks_weight / total_weight
+                if self.params.real_bonds:
+                    taxable_assets.aa['real_bonds'] = self.log_uniform(self.params.p_taxable_real_bonds_low, self.params.p_taxable_real_bonds_high) + \
+                        p_weighted * p_taxable_real_bonds_weight / total_weight
+                if self.params.nominal_bonds:
+                    taxable_assets.aa['nominal_bonds'] = self.log_uniform(self.params.p_taxable_nominal_bonds_low, self.params.p_taxable_nominal_bonds_high) + \
+                        p_weighted * p_taxable_nominal_bonds_weight / total_weight
+                if self.params.iid_bonds:
+                    taxable_assets.aa['iid_bonds'] = self.log_uniform(self.params.p_taxable_iid_bonds_low, self.params.p_taxable_iid_bonds_high) + \
+                        p_weighted * p_taxable_iid_bonds_weight / total_weight
+                if self.params.bills:
+                    taxable_assets.aa['bills'] = self.log_uniform(self.params.p_taxable_bills_low, self.params.p_taxable_bills_high) + \
+                        p_weighted * p_taxable_bills_weight / total_weight
+                self.p_taxable = sum(taxable_assets.aa.values())
 
-            self._pre_calculate()
+                self._pre_calculate_wealth()
 
-            try:
-                gi_fraction = self.gi_wealth / self.total_wealth
-            except ZeroDivisionError:
-                gi_fraction = 1
-            if not self.params.gi_fraction_low <= gi_fraction <= self.params.gi_fraction_high:
-                continue
+                ce_estimate_ok = self.params.consume_floor <= self.ce_estimate_individual <= self.params.consume_ceiling
+                if not ce_estimate_ok:
+                    continue
 
-            if self.preretirement_years * self.consume_preretirement > self.params.consume_income_ratio_max * \
-                (min(self.preretirement_years, self.income_preretirement_years) * self.income_preretirement + \
-                 min(self.preretirement_years, self.income_preretirement_years2) * self.income_preretirement2) + self.p_wealth:
-                # Scenario consumes too much of portfolio preretirement.
-                # Stochastic nature of preretirement income means we might run out of assets preretirement,
-                # which would result in training to fit large negative reward values.
-                continue
+                try:
+                    gi_fraction = self.gi_wealth / self.total_wealth
+                except ZeroDivisionError:
+                    gi_fraction = 1
+                if not self.params.gi_fraction_low <= gi_fraction <= self.params.gi_fraction_high:
+                    continue
 
-            preretirement_ok = True
+                found = True
+                break
 
-            found = self.params.consume_floor <= self.ce_estimate_individual <= self.params.consume_ceiling
             if found:
                 break
 
         if not found:
-            if preretirement_ok:
+            if not preretirement_ok:
+                raise FinError('Insufficient pre-retirement wages and wealth to support pre-retirement consumption.')
+            elif not ce_estimate_ok:
                 raise FinError('Expected consumption falls outside model training range.')
             else:
-                raise FinError('Insufficient pre-retirement wages and wealth to support pre-retirement consumption.')
+                raise FinError('Guaranteed income falls outside model training range.')
+
+        if self.params.p_taxable_stocks_basis_fraction_low == self.params.p_taxable_stocks_basis_fraction_high:
+            p_taxable_stocks_basis_fraction = self.params.p_taxable_stocks_basis_fraction_low
+        else:
+            p_taxable_stocks_basis_fraction = uniform(self.params.p_taxable_stocks_basis_fraction_low, self.params.p_taxable_stocks_basis_fraction_high)
+        self.taxes = Taxes(self, taxable_assets, p_taxable_stocks_basis_fraction)
+
+        self._pre_calculate()
 
         self.set_reward_level()
 
@@ -539,9 +578,19 @@ class FinEnv(Env):
 
     def set_reward_level(self):
 
-        self.ce_expect_individual = self.ce_estimate_individual
-        _, self.reward_expect = self.raw_reward(self.ce_expect_individual)
-        _, self.reward_zero_point = self.raw_reward(self.params.reward_zero_point_factor * self.ce_expect_individual)
+        # Taking advantage of iso-elasticity, generalizability will be better if rewards are independent of initial portfolio size.
+        #
+        # Scale returned reward based on distance from zero point and initial expected reward value.
+        # This is helpful for PPO, which clips the value function advantage at 10.0.
+        # Having rewards typically around [-0.2, 0.2], should ensure rewards rarely exceed 10, allowing the value function to converge quickly.
+        consumption_estimate = self.ce_estimate_individual
+        if consumption_estimate == 0:
+            print('AIPLANNER: Using a consumption scale that is incompatible with the default consumption scale.')
+            consumption_estimate = 1
+        self.consume_scale = consumption_estimate
+        _, self.reward_expect = self.raw_reward(consumption_estimate)
+        _, self.reward_zero_point = self.raw_reward(self.params.reward_zero_point_factor * consumption_estimate)
+        self.reward_scale = 0.2
 
     def encode_direct_action(self, consume_fraction, *, real_spias_fraction = None, nominal_spias_fraction = None,
         real_bonds_duration = None, nominal_bonds_duration = None, **kwargs):
@@ -623,11 +672,9 @@ class FinEnv(Env):
         # The mid-point acts as a hint as to the initial consumption values to try.
         # With 0.5 as the mid-point (when time_period = 1) we will initially consume on average half the portfolio at each step.
         # This leads to very small consumption at advanced ages. The utilities and thus rewards for these values will be highly negative.
-        # For DDPG the resulting reward values will be sampled from the replay buffer, leading to a good DDPG fit for the negative rewards.
-        # This will be to the detriment of the fit for more likely reward values.
-        # For PPO the policy network either never fully retrains after the initial poor fit, or requires more training time.
+        # For PPO1 the policy network either never fully retrains after the initial poor fit, or requires more training time.
         consume_estimate = self.consume_p_estimate
-        consume_floor = 0
+        consume_floor = 0.1 * consume_estimate # Non-zero so as to prevent pathological consumption during training.
         consume_ceil = 2 * consume_estimate
         consume_fraction = consume_floor + (consume_ceil - consume_floor) * consume_action
 
@@ -1021,10 +1068,7 @@ class FinEnv(Env):
             reward = 0
         else:
             self.reward_weight, self.reward_value = self.raw_reward(consume_rate)
-            # Scale returned reward based on distance from zero point and initial expected reward value.
-            # Ensures equal optimization emphasis placed on episodes with high and low expected reward value.
-            # But this also means we need to observe the initial expected consumption level, as the observed reward is now a function of it.
-            reward_unclipped = self.reward_weight * (self.reward_value - self.reward_zero_point) / (self.reward_expect - self.reward_zero_point)
+            reward_unclipped = self.reward_weight * self.reward_scale * (self.reward_value - self.reward_zero_point) / (self.reward_expect - self.reward_zero_point)
             if isinf(reward_unclipped):
                 print('AIPLANNER: Infinite reward')
             elif not - self.params.reward_warn <= reward_unclipped <= self.params.reward_warn:
@@ -1172,7 +1216,6 @@ class FinEnv(Env):
             self.taxes_due = 0
 
         self._pre_calculate()
-        self.set_reward_level()
         return self._observe()
 
     def set_reproduce_episode(self, episode):
@@ -1192,32 +1235,46 @@ class FinEnv(Env):
 
         return
 
-    def _pre_calculate(self):
+    def _pre_calculate_db(self):
 
         self.pv_income = {'tax_free': 0, 'tax_deferred': 0, 'taxable': 0}
         for db in self.defined_benefits.values():
             self.pv_income[db.type_of_funds] += db.pv()
 
-        p_basis, cg_carry = self.taxes.observe()
-        assert p_basis >= 0 and cg_carry <= 0
+        self.gi_wealth = sum(self.pv_income.values())
+
+    def _pre_calculate_wealth(self):
+
         self.wealth = {'tax_free': self.p_tax_free, 'tax_deferred': self.p_tax_deferred, 'taxable': self.p_taxable}
-        self.taxable_basis = p_basis - cg_carry
 
         if not self.params.tax and self.params.income_aggregate:
-            self.pv_income = {'tax_free': sum(self.pv_income.values()), 'tax_deferred': 0, 'taxable': 0} # Results in better training.
+            self.pv_income = {'tax_free': self.gi_wealth, 'tax_deferred': 0, 'taxable': 0} # Results in better training.
             self.wealth = {'tax_free': sum(self.wealth.values()), 'tax_deferred': 0, 'taxable': 0}
-            self.taxable_basis = 0
 
         self.pv_income_preretirement = self.income_preretirement * self.income_preretirement_years
         self.pv_income_preretirement2 = self.income_preretirement2 * self.income_preretirement_years2
         self.pv_consume_preretirement = self.consume_preretirement * self.preretirement_years
 
-        self.gi_wealth = sum(self.pv_income.values())
         self.p_wealth = sum(self.wealth.values())
         raw_income_wealth = self.pv_income_preretirement + self.pv_income_preretirement2 - self.pv_consume_preretirement
         self.income_wealth = max(0, raw_income_wealth)
         self.total_wealth = self.gi_wealth + self.p_wealth + self.income_wealth
         self.net_wealth = self.gi_wealth + max(0, self.p_wealth + raw_income_wealth - self.taxes_due)
+
+        if self.couple:
+            self.years_retired = self.retirement_expectancy_both[self.episode_length] + \
+                self.retirement_expectancy_one[self.episode_length] / (1 + self.params.consume_additional)
+            couple_weight = 2
+        else:
+            self.years_retired = self.retirement_expectancy_one[self.episode_length]
+            couple_weight = 1
+
+        self.ce_estimate_individual = self.net_wealth / self.years_retired / couple_weight
+
+    def _pre_calculate(self):
+
+        self._pre_calculate_db()
+        self._pre_calculate_wealth()
 
         self.wealth_ratio = (self.gi_wealth + self.income_wealth) / self.p_wealth if self.p_wealth > 0 else float('inf')
         self.wealth_ratio = min(self.wealth_ratio, 1e100) # Cap so that not calculating with inf.
@@ -1238,16 +1295,6 @@ class FinEnv(Env):
             self.spias = self.spias_required or min_age >= self.params.spias_permitted_from_age and max_age <= self.params.spias_permitted_to_age
         else:
             self.spias = False
-
-        if self.couple:
-            self.years_retired = self.retirement_expectancy_both[self.episode_length] + \
-                self.retirement_expectancy_one[self.episode_length] / (1 + self.params.consume_additional)
-            couple_weight = 1 + self.params.consume_additional
-        else:
-            self.years_retired = self.retirement_expectancy_one[self.episode_length]
-            couple_weight = 1
-
-        self.ce_estimate_individual = self.net_wealth / self.years_retired / couple_weight
 
         try:
             self.consume_p_estimate = self.net_wealth / self.years_retired / self.p_plus_income
@@ -1337,12 +1384,16 @@ class FinEnv(Env):
         if reward_value == self.reward_zero_point:
             reward_estimate = 0 # Handles -inf reward_value correctly.
         else:
-            reward_estimate = reward_weight * (reward_value - self.reward_zero_point) / (self.reward_expect - self.reward_zero_point)
+            reward_estimate = reward_weight * self.reward_scale * (reward_value - self.reward_zero_point) / (self.reward_expect - self.reward_zero_point)
 
         tw = self.total_wealth
         if tw == 0:
             tw = 1 # To avoid divide by zero later.
-        taxable_wealth = max(0, self.wealth['taxable'] - self.taxable_basis)
+
+        p_basis, cg_carry = self.taxes.observe()
+        assert p_basis >= 0 and cg_carry <= 0
+        taxable_basis = p_basis - cg_carry
+        taxable_wealth = max(0, self.wealth['taxable'] - taxable_basis)
 
         # When mean reversion rate is zero, avoid observing spurious noise for better training.
         if self.params.observe_stocks_price and self.params.stocks_mean_reversion_rate != 0:
@@ -1366,9 +1417,9 @@ class FinEnv(Env):
             # Annuitization related observations.
             life_percentile, spia_expectancy, final_spias_purchase,
             # Value function related observations.
-            # Best results (especially when gamma=6) if provide both a rewards to go estimate that can be fine tuned and a CE estimate.
-            # CE is also presumably important as a yardstick when have taxable assets.
-            reward_estimate, self.ce_estimate_individual,
+            # Best results (especially when gamma=6) if provide both a rewards to go estimate that can be fine tuned and a relative CE estimate.
+            # Absolute CE is also presumably important as a yardstick when have taxable assets.
+            reward_estimate, self.ce_estimate_individual / self.consume_scale,
             # Nature of wealth/income observations.
             # Obseve fractionality to hopefully take advantage of iso-elasticity of utility.
             # No need to observe tax free wealth or income as this represents the baseline case.
