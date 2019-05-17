@@ -70,6 +70,8 @@ AMI (Ubuntu):
 
     sudo apt install catdoc gnuplot-nox
     source activate tensorflow_p36
+    pip install arch --install-option='--no-binary'
+        # only needed if you wish to fit your own volatility model
     #pip install mpi4py # only needed if using OpenAI baselines
     #pip install joblib # only needed if using OpenAI baselines
     pip install gym
@@ -305,6 +307,23 @@ If you have set up a Ray compute cluster indicate you want to use it
 during training:
 
     export RAY_AUTOSCALER=True
+
+Fit the equity volatility model
+-------------------------------
+
+A bootstrapped equity return model with GJR-GARCH volatility is
+typically used. The model has already been fitted, but if you wish to
+fit it yourself perform the following steps.
+
+    cd ~/aiplanner
+    mkdir -p data/public
+    mkdir -p data/private/ticker
+    [download the max time period ticker data for ^SP500TR from
+     https://finance.yahoo.com and store it in the just created
+     directory as ^SP500TR.csv ]
+    cd ~/aiplanner/ai/equity_model
+    ./equity_model.py # Ignore the standard output
+    cp standardized_residuals.csv ../../data/public
 
 Training the generic nueral network models
 ------------------------------------------
