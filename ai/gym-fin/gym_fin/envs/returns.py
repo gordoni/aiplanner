@@ -58,7 +58,7 @@ class Returns(object):
 
     def observe(self):
 
-        return (self.above_trend * self.price_noise, )
+        return (self.above_trend * self.price_noise, 0)
 
 def _report(name, rets):
 

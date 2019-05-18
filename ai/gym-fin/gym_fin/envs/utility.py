@@ -27,11 +27,13 @@ class Utility(object):
         if self.gamma == 1:
             return log(c / self.utility_scale)
         else:
-            return ((c / self.utility_scale) ** (1 - self.gamma) - 1) / (1 - self.gamma)
+            return (c / self.utility_scale) ** (1 - self.gamma) / (1 - self.gamma)
+                # Incompatible with gamma=1, because not shifted so that utility(utility_scale) = 0.
+                # We do not shift to avoid losing any possible floating point precision.
 
     def inverse(self, u):
 
         if self.gamma == 1:
             return exp(u) * self.utility_scale
         else:
-            return (u * (1 - self.gamma) + 1) ** (1 / (1 - self.gamma)) * self.utility_scale
+            return (u * (1 - self.gamma)) ** (1 / (1 - self.gamma)) * self.utility_scale

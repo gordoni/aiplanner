@@ -67,5 +67,5 @@ master_p_taxable_nominal_bonds_weight_high = 20
 master_p_taxable_stocks_basis_fraction_low = 0
 master_p_taxable_stocks_basis_fraction_high = 2
 
-master_gamma_low = 1.0
+master_gamma_low = 1.5
 master_gamma_high = 6.0

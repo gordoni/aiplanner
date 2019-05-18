@@ -120,7 +120,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
                 # Clip value function advantage estimates. We expect most rewards to be roughly in [-1, 1],
                 # so if we get something far from this we don't want to train too hard on it.
             'grad_clip': 50.0,
-                # Ocassionally models train very poorly, with a CE 10% below that of other seeds (gamma=6, p=2e6). Observed on 2019-05-01.
+                # Ocassionally models train very poorly, with a CE 10% below that of other seeds (gamma=6, specific, p=2e6). Observed on 2019-05-01.
                 # It isn't clear if this is the nature of neural networks, there is a bug in the model, or there is a bug in the PPO algorithm.
                 # Setting a grad clip was thought might help if the problem is due to spurious very large absolute values occurring, but hasn't helped.
                 # Problem noticed after setting parameters to seemingly optimal values (happened in 2 out of 3 vanilla runs; one of the two failures was
@@ -134,11 +134,18 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
                 #     adding stocks curvature
                 #     computing CE estimate and consume estimate simply as total wealth divided by life expectancy
                 #     fixing bug in reward estimate to incorporate life expectancy (had 1 fairly bad (-5%) run with reward estimate 0, so probably not the cause)
-                # Setting entropy=0 was thought to fix the problem, but it just re-occurred (gamma=6, p=5e6) with 2 seeds 40% below the others when entropy=0.
+                # Setting entropy=0 was thought to fix the problem, but it just re-occurred (gamma=6, bucket, p=5e6) with 2 seeds 40% below the others when entropy=0.
                 # Perhaps poor training is more likely for small gi_fractions.
                 # There is a strong correlation between seeds that train poorly and seeds that get repeated "Reward clipped" warnings, due to rewards less than -1e15.
                 # Whether the negative rewards are a cause or a symptom isn't known.
                 # The extreme rewards don't occur for subsequent ages in an episode, but just at individual advanced ages.
+                # Reworking the reward scale so that it isn't shifted (preventing fp rounding issues) eliminated the reward clipped warning.
+                # But even with entropy=0 and an Adam epsilon of 1e-4 the ocassional poor performance remains.
+                # Now poor performance appears temporary, with different seeds exhibiting poor performance at different timesteps, so it is possible
+                # it might disappear if train for more than 4m timesteps.
+                # TENTATIVE COMMENT FOLLOWS
+                # Models train poorly with extreme observation warnings, large negative mean rewards, and extreme rewards during training,
+                # and/or a CE 10-40% below expected if observations (or at least reward_to_go observation) frequently and significanty exceed observation space range.
             'kl_target': 1, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
             'lr_schedule': lr_schedule,
         },

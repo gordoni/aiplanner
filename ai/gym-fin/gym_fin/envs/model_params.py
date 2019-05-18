@@ -86,10 +86,10 @@ class ModelParams(object):
         self._param('observation-space-warn', 1.0) # Warn when observation outside this factor of the expected range.
         self._param('consume-floor', 0) # Minimum expected consumption level model is trained for.
         self._param('consume-ceiling', float('inf')) # Maximum expected consumption level model is trained for.
-        self._param('consume-utility-floor', 10000) # Scale utility to have a value of -1 for this consumption amount.
+        #self._param('consume-utility-floor', 10000) # Scale utility to have a value of -1 for this consumption amount.
             # Utility needs to be scaled to prevent floating point overflow.
-        self._param('reward-warn', 1e3, 2e1) # Warn reward values not lying within [-reward_warn, reward_warn].
-            # During early training poor rewards are expected to be generated.
+        self._param('reward-warn', 1e3, 1e1) # Warn reward values not lying within [-reward_warn, reward_warn].
+            # During training poor rewards are expected to be generated.
         self._param('reward-clip', 1e15, float('inf')) # Clip reward values to lie within [-reward_clip, reward_clip].
             # Evaluation clip should always be inf.
             #
@@ -102,7 +102,7 @@ class ModelParams(object):
             # Need to first fix a bug in ddpg/models.py: set name='output' in final critic tf.layers.dense().
             # But doesn't appear to work well becasuse in the absense of guaranteed income the rewards may span a large many orders of magnitude range.
             # In particular some rewards can be -inf, or close there to, which appears to swamp the Pop-Art scaling of the other rewards.
-        self._param('reward-zero-point-factor', 0.5) # Scale utility of [reward_zero_point_factor * expected consume, expected consume] onto rewards [0, 1].
+        #self._param('reward-zero-point-factor', 0.5) # Scale utility of [reward_zero_point_factor * expected consume, expected consume] onto rewards [0, 1].
             # Utility needs to possibly be roughly scaled to an average absolute value of 1 for DDPG implementation (presumably due to optimizer step size).
             # For PPO1 value will matter in ensuring equal optimization weight is placed on different episodes when gamma is variable.
             # For PPO1 increasing this value is associated with an increase in the standard deviation of measured CEs across models.
@@ -234,8 +234,25 @@ class ModelParams(object):
             # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%) [from 2017 Yearbook].
         self._boolean_flag('returns-standard-error', True) # Whether to model the standard error of returns.
         self._boolean_flag('stocks', True) # Whether to model stocks.
-        self._param('stocks-return', 0.065) # Annual real return for stocks prior to effects of mean reversion.
-        self._param('stocks-volatility', 0.174) # Annual real volatility for stocks prior to effects of mean reversion.
+        self._param('stocks-model', 'bootstrap', tp = string_type, choices = ('bootstrap', 'iid')) # Stock model to use.
+            # bootstrap - bootrapped normalized residuals applied to a monthly GJR-GARCH volatility model.
+            # iid - geometric Brownian motion (prior to mean reversion).
+        self._param('stocks-bootstrap-years', 5) # Mean bootstrap block size in years bootstrap stocks.
+        self._param('stocks-mu', 0.048) # Annual real log return for bootstrap stocks.
+        self._param('stocks-sigma', 0.149) # Annual real log volatility for bootstrap stocks.
+        self._param('stocks-alpha', 0.0000) # Monthly GJR-GARCH volatility model alpha parameter for bootstrap stocks.
+        self._param('stocks-gamma', 0.3120) # Monthly GJR-GARCH volatility model gamma parameter for bootstrap stocks.
+        self._param('stocks-beta', 0.7110) # Monthly GJR-GARCH volatility model beta parameter for bootstrap stocks.
+        self._param('stocks-previous-epsilon-type', 'sample', 'average', tp = string_type, choices = ('sample', 'average', 'value'))
+            # Monthly GJR-GARCH volatility model previous log residual for bootstrap stocks.
+            # 'sample' chooses initial value at random, 'average' uses the average model value, 'value' uses a specific value.
+        self._param('stocks-previous-epsilon-value', None) # Monthly GJR-GARCH volatility model previous log residual for type 'value'.
+        self._param('stocks-previous-sigma-type', 'sample', 'average', tp = string_type, choices = ('sample', 'average', 'value'))
+            # Monthly GJR-GARCH volatility model sqrt of previous variance for bootstrap stocks.
+            # 'sample' chooses initial value at random, 'average' uses the average model value, 'value' uses a specific value.
+        self._param('stocks-previous-sigma-value', None) # Monthly GJR-GARCH volatility model sqrt of previous variance for type 'value'.
+        self._param('stocks-return', 0.065) # Annual real return for iid stocks prior to effects of mean reversion.
+        self._param('stocks-volatility', 0.174) # Annual real volatility for iid stocks prior to effects of mean reversion.
         self._param('stocks-price', (0.5, 2.0), 1) # Initial observed price of stocks relative to fair price. Used in the case of mean reversion.
         self._param('stocks-price-noise-sigma', 0.2) # Sigma of lognormal noise inherent in observation of stocks price relative to fair price.
             # Used in the case of mean reversion.
@@ -258,12 +275,12 @@ class ModelParams(object):
         self._param('iid-bonds-return', 0.025) # Annual real return for iid bonds when lognormal.
         self._param('iid-bonds-volatility', 0.110) # Annual real volatility for iid bonds when lognormal.
         self._param('bonds-standard-error', 0.010) # Standard error of log real return for bonds.
-        self._param('real-short-rate-type', 'sample', 'current', tp =string_type, choices = ('sample', 'current', 'value'))
+        self._param('real-short-rate-type', 'sample', 'current', tp = string_type, choices = ('sample', 'current', 'value'))
             # Initial short real interest rate when using model.
             # 'sample' chooses initial value at random, 'current' uses the average model value, 'value' uses a specific value.
         self._param('real-short-rate-value', None) # Initial short real interest rate for type 'value'.
         self._param('inflation-standard-error', 0.004) # Standard error of log inflation.
-        self._param('inflation-short-rate-type', 'sample','current', tp =string_type, choices = ('sample', 'current', 'value'))
+        self._param('inflation-short-rate-type', 'sample','current', tp = string_type, choices = ('sample', 'current', 'value'))
             # Initial inflation rate when using model.
             # 'sample' chooses initial value at random, 'current' uses the average model value, 'value' uses a specific value.
         self._param('inflation-short-rate-value', None) # Initial inflation rate for type 'value'.
@@ -273,8 +290,8 @@ class ModelParams(object):
         self._param('bills-standard-error', 0.004) # Standard error of log real return for bills.
 
         self._boolean_flag('observe-stocks-price', True) # Whether to observe stocks price relative to fair price pus noise.
+        self._boolean_flag('observe-stocks-volatility', True) # Whether to observe bootstrap stocks volatility.
         self._boolean_flag('observe-interest-rate', True) # Whether model reveals the short real interest rate to observers.
-        self._boolean_flag('observe-inflation-rate', True) # Whether model reveals the short inflation rate to observers.
 
     def set_params(self, dict_args):
 

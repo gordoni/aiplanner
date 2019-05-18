@@ -77,7 +77,7 @@ z_hist = tuple(res.resid / res.conditional_volatility)
 
 with open('standardized_residuals.csv', 'w') as f:
     w = writer(f)
-    w.writerows([[z] for z in z_hist])
+    w.writerows([[z, sqrt(PERIODS_PER_YEAR) * v / SCALE] for z, v in zip(z_hist, res.conditional_volatility)])
 
 print('Historically sigma_t has been higly predictive of following year volatility, and less so absolute return:')
 hist_sigmas = sqrt(PERIODS_PER_YEAR) * res.conditional_volatility / SCALE
@@ -92,11 +92,8 @@ print(spearmanr(hist_abs_ret, hist_sigmas[:- PERIODS_PER_YEAR]))
 
 # Set mu and omega to yield desired ret and vol.
 mean_reversion_rate = 0.1
-ret = 0.061 # Adjust to get 0.065 actual mean ret
-vol = 0.159 # Adjust to get 0.174 actual vol
-m = 1 + ret
-mu = log(m / sqrt(1 + (vol / m) ** 2))
-sigma = sqrt(log(1 + (vol / m) ** 2))
+mu = 0.048 # Adjust to get 0.065 actual mean ret
+sigma = 0.149 # Adjust to get 0.174 actual vol
 mu *= SCALE / PERIODS_PER_YEAR
 sigma /= sqrt(PERIODS_PER_YEAR)
 omega = SCALE ** 2 * (1 - alpha - gamma / 2 - beta) * sigma ** 2
