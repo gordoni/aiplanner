@@ -47,12 +47,19 @@ master_spias_permitted_to_age = 85
     # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%) [from 2017 Yearbook].
 master_returns_standard_error = True
 master_stocks = True
-master_stocks_return = 0.067 # Generate 6.5% return in presence of mean reversion in the absence of returns_standard_error.
-master_stocks_volatility = 0.189 # Generate 17.4% volatility in presence of mean reversion in the absence of returns_standard_error.
-master_stocks_price_noise_sigma = 0.2 # Rough estimate of noise in stock price to fair price observations.
+master_stocks_model = 'bootstrap'
+master_stocks_mu = 0.049 # Generate 6.5% return in presence of mean reversion in the absence of returns_standard_error.
+master_stocks_volatility = 0.167 # Generate 17.4% volatility in presence of mean reversion in the absence of returns_standard_error.
+master_stocks_mu = 0.049
+master_stocks_sigma = 0.167
+master_stocks_alpha = 0.0000
+master_stocks_gamma = 0.3188
+master_stocks_beta = 0.7116
 master_stocks_mean_reversion_rate = 0.1 # Rough estimate of mean reversion rate based on Shiller data.
+master_stocks_price_exaggeration = 0.6 # Generates reasonable price to fair price ratios.
 master_stocks_price_low = 0.5
 master_stocks_price_high = 2.0
+master_stocks_price_noise_sigma = 0.2 # Rough estimate of noise in stock price to fair price observations.
 master_stocks_standard_error = 0.016
 master_real_bonds = False
 master_real_bonds_duration = 15
@@ -69,6 +76,7 @@ master_bills_return = 0.004 # Use present era bills returns.
 master_bills_volatility = 0.000 # Treat bill returns as essentially known.
 master_bills_standard_error = 0.000
 
+master_stocks_sigma_level_type = 'sample'
 master_real_short_rate_type = 'sample'
 master_inflation_short_rate_type = 'sample'
 

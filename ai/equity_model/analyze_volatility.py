@@ -15,14 +15,19 @@
 from csv import reader, writer
 from datetime import datetime
 from math import exp, log, sqrt
+from os import environ
+from os.path import expanduser
 from random import choice, lognormvariate, normalvariate
 from statistics import mean, median, stdev
 
 import numpy as np
 from scipy.stats import kurtosis, skew, spearmanr
 
+home_dir = environ.get('AIPLANNER_HOME', expanduser('~/aiplanner'))
+ticker_dir = home_dir + '/data/private/ticker'
+
 # Annual volatility computed using daily volatility values
-with open('^GSPC.csv') as f:
+with open(ticker_dir + '/^GSPC.csv') as f:
     r = reader(f)
     next(r) # Skip header.
     daily_vols = []
@@ -49,7 +54,7 @@ with open('^GSPC.csv') as f:
         daily_year.append(ret)
 
 # Annual volatility computed using weekly volatility values
-with open('^GSPC.csv') as f:
+with open(ticker_dir + '/^GSPC.csv') as f:
     r = reader(f)
     next(r) # Skip header.
     weekly_vols = []
@@ -79,7 +84,7 @@ with open('^GSPC.csv') as f:
             weekly_year = []
 
 # Annual volatility computed using monthly volatility values
-with open('^GSPC.csv') as f:
+with open(ticker_dir + '/^GSPC.csv') as f:
     r = reader(f)
     next(r) # Skip header.
     monthly_vols = []
@@ -109,7 +114,7 @@ with open('^GSPC.csv') as f:
             monthly_year = []
 
 # Annual volatility computed using annual volatility values
-with open('^GSPC.csv') as f:
+with open(ticker_dir + '/^GSPC.csv') as f:
     r = reader(f)
     next(r) # Skip header.
     yearly = []

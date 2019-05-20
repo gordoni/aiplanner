@@ -34,6 +34,7 @@ class ReturnsEquity(Returns):
         self.alpha = self.params.stocks_alpha
         self.gamma = self.params.stocks_gamma
         self.beta = self.params.stocks_beta
+        self.price_exaggeration = self.params.stocks_price_exaggeration
         self.price_low = self.params.stocks_price_low
         self.price_high = self.params.stocks_price_high
         self.price_noise_sigma = self.params.stocks_price_noise_sigma
@@ -44,59 +45,56 @@ class ReturnsEquity(Returns):
         self.periods_per_year = 12 # Alpha, gamma, and beta would need to change if alter this.
         self.omega = (1 - self.alpha - self.gamma / 2 - self.beta) * self.sigma ** 2 / self.periods_per_year
 
+        self.t = randrange(len(self.z_hist))
+
+        if self.params.stocks_sigma_level_type == 'sample':
+            # Allow to run through resets. Better than using sigma_hist on each reset as sigma_hist isn't an exact representation of the GJR-GARCH sigma distribution.
+            self.sigma_t = self.sigma_hist[self.t] / self.sigma_average * self.sigma / sqrt(self.periods_per_year)
+            self._set_price() # Price also runs through resets.
+
         self.reset()
 
     def reset(self):
 
-        i = randrange(len(self.z_hist))
-
-        if self.params.stocks_previous_epsilon_type == 'sample':
-            epsilon_t_1 = self.sigma_hist[i] * self.z_hist[i]
-        elif self.params.stocks_previous_epsilon_type == 'average':
-            epsilon_t_1 = 0
-        else:
-            epsilon_t_1 = self.params.stocks_previous_epsilon_value
-
-        if self.params.stocks_previous_sigma_type == 'sample':
-            sigma = self.sigma_hist[i]
-        elif self.params.stocks_previous_sigma_type == 'average':
-            sigma = self.sigma_average
-        else:
-            sigma = self.params.stocks_previous_sigma_value
-        sigma_t_1 = sigma / sqrt(self.periods_per_year)
-
-        self.z_t_1 = epsilon_t_1 / sigma_t_1
-        self.sigma2_t_1 = sigma_t_1 ** 2
-        self.i = randrange(len(self.z_hist))
-
-        self.log_price_noise = normalvariate(0, self.price_noise_sigma)
+        if self.params.stocks_sigma_level_type == 'average':
+            self.sigma_t = self.sigma / sqrt(self.periods_per_year)
+        elif self.params.stocks_sigma_level_type == 'value':
+            self.sigma_t = self.params.stocks_sigma_level_value * self.sigma / sqrt(self.periods_per_year)
 
         mu = normalvariate(self.mu, self.standard_error)
         self.period_mu = mu / self.periods_per_year
-        above_trend = uniform(self.price_low, self.price_high)
-        self.log_above_trend = log(above_trend) - self.log_price_noise
         self.period_mean_reversion_rate = self.mean_reversion_rate / self.periods_per_year
+
+        if self.params.stocks_sigma_level_type != 'sample':
+            self._set_price()
+
+    def _set_price(self):
+
+        self.log_price_noise = normalvariate(0, self.price_noise_sigma)
+        self.log_above_trend = uniform(log(self.price_low), log(self.price_high))
+        self.log_above_trend -= self.log_price_noise
 
     def sample(self):
         '''Sample the returns, also of necessity steps the returns.'''
 
         ret = 0
         for _ in range(round(self.time_period * self.periods_per_year)):
-            sigma2_t = self.omega + ((self.alpha + self.gamma * int(self.z_t_1 < 0)) * self.z_t_1 ** 2 + self.beta) * self.sigma2_t_1
-            sigma_t = sqrt(sigma2_t)
-            z_t = self.z_hist[self.i]
-            r_t = self.period_mu + sigma_t * z_t
-            self.log_above_trend += r_t - self.period_mu
+            z_t = self.z_hist[self.t]
+            epsilon_t = self.sigma_t * z_t
+            r_t = self.period_mu + epsilon_t
+            self.log_above_trend += self.price_exaggeration * epsilon_t
             log_reversion = - self.period_mean_reversion_rate * self.log_above_trend
             self.log_above_trend += log_reversion
             r_t += log_reversion
             ret += r_t
-            self.z_t_1 = z_t
-            self.sigma2_t_1 = sigma2_t
             if random() < 1 / (self.bootstrap_years * self.periods_per_year):
-                self.i = randrange(len(self.z_hist))
+                self.t = randrange(len(self.z_hist))
             else:
-                self.i = (self.i + 1) % len(self.z_hist)
+                self.t = (self.t + 1) % len(self.z_hist)
+            z_t_1 = z_t
+            sigma2_t_1 = self.sigma_t ** 2
+            sigma2_t = self.omega + ((self.alpha + self.gamma * int(z_t_1 < 0)) * z_t_1 ** 2 + self.beta) * sigma2_t_1
+            self.sigma_t = sqrt(sigma2_t)
 
         sample = exp(ret)
 
@@ -107,8 +105,6 @@ class ReturnsEquity(Returns):
     def observe(self):
 
         obs_above_trend = exp(self.log_above_trend + self.log_price_noise)
+        obs_sigma_level = sqrt(self.periods_per_year) * self.sigma_t / self.sigma
 
-        sigma2_t = self.omega + ((self.alpha + self.gamma * int(self.z_t_1 < 0)) * self.z_t_1 ** 2 + self.beta) * self.sigma2_t_1
-        obs_sigma = sqrt(self.periods_per_year * sigma2_t)
-
-        return (obs_above_trend, obs_sigma)
+        return (obs_above_trend, obs_sigma_level)

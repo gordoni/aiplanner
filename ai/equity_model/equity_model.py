@@ -26,14 +26,15 @@ import pandas
 
 from arch import arch_model
 
-start_date = '1990-01-01'
-    # Get weaker correlation between observed sigma_t and next year's monthly volatility if start from 1950.
-    # Possibly because assets weren't priced as accurately back then.
-    # Follow V-lab (https://vlab.stern.nyu.edu/analysis/VOL.SPX%3AIND-R.GJR-GARCH) and use 1990 as the starting date for analysis.
-    # 29 years might not appear a very long time period over which to bootstrap returns.
-    # However, these are monthly returns, not annual returns, and we only use them for the normalized stochastic shock, z_t, not the actual return.
+start_date = '1970-01-01'
+    # Get weaker correlation between observed sigma_t and next year's monthly volatility if start from 1950, the earliest datefor which we have data.
+    # Possibly because assets weren't priced as accurately back then due to the paucity of computers.
+    # Get stronger correlation if follow V-lab (https://vlab.stern.nyu.edu/analysis/VOL.SPX%3AIND-R.GJR-GARCH) and use 1990 as the starting date for analysis.
+    # The problem with using 1990 as the starting date is it represents a 29 year period with 2 major crashes, which is more frequent than usual.
+    # This leads to excessive skew and kurtosis.
+    # So we compromise and use 1970 as the starting date.
     # We adjust the mean and volatility to match the longer historical record.
-    # In summary, we use the recent era for volatility predictability, and the historical record for volatility level and returns.
+    # In summary, we use 1970 on for volatility predictability, and the longer historical record for volatility level and returns.
 end_date = '2018-12-31'
 
 MEDIAN_ANALYSIS_YEARS = 2018 - 1950 + 1
@@ -61,7 +62,7 @@ sp500mask = sp500[mask]
 sp500mask = sp500mask[::TRADING_DAYS_PER_PERIOD]
 returns = SCALE * np.log(1 + sp500mask['Adj Close'].pct_change().dropna())
 
-am = arch_model(returns, p=1, o=1, q=1, dist='StudentsT') # GJR-GARCH.
+am = arch_model(returns, p=1, o=1, q=1, dist='Normal') # GJR-GARCH.
 res = am.fit()
 print(res.summary())
 params = res.params
@@ -91,21 +92,27 @@ print(np.corrcoef(hist_abs_ret, hist_sigmas[:- PERIODS_PER_YEAR]))
 print(spearmanr(hist_abs_ret, hist_sigmas[:- PERIODS_PER_YEAR]))
 
 # Set mu and omega to yield desired ret and vol.
-mean_reversion_rate = 0.1
-mu = 0.048 # Adjust to get 0.065 actual mean ret
-sigma = 0.149 # Adjust to get 0.174 actual vol
+mean_reversion_rate = 0.1 # Rough estimate
+exaggeration = 0.6 # Adjust to get reasonable looking above_trend.csv plot
+mu = 0.049 # Adjust to get 0.065 actual mean ret
+sigma = 0.167 # Adjust to get 0.174 actual vol
 mu *= SCALE / PERIODS_PER_YEAR
 sigma /= sqrt(PERIODS_PER_YEAR)
 omega = SCALE ** 2 * (1 - alpha - gamma / 2 - beta) * sigma ** 2
 
 num_simulated_rets = 100000
+num_trace_years = 1000
 mean_bootstrap_block_size = BOOTSTRAP_BLOCK_YEARS * PERIODS_PER_YEAR
 rets = []
 obs_sigmas = []
 exper_vol = []
 exper_abs_ret = []
+above_trend = []
 epsilon_t_1 = 0
 sigma_t_1 = sqrt(omega / (1 - alpha - gamma / 2 - beta))
+log_index = [0]
+log_trend = [0]
+sigma_periodic = [sqrt(PERIODS_PER_YEAR) * sigma_t_1 / SCALE]
 log_above_trend = 0
 z_t_1 = epsilon_t_1 / sigma_t_1
 sigma2_t_1 = sigma_t_1 ** 2
@@ -117,20 +124,26 @@ while len(rets) < num_simulated_rets:
     sigma2_t = omega + ((alpha + gamma * int(z_t_1 < 0)) * z_t_1 ** 2 + beta) * sigma2_t_1
     sigma_t = sqrt(sigma2_t)
     z_t = z_hist[i]
-    r_t = mu + sigma_t * z_t
+    epsilon_t = sigma_t * z_t
+    r_t = mu + epsilon_t
     r_t /= SCALE
-    log_above_trend += r_t - mu / SCALE
+    log_above_trend += exaggeration * epsilon_t / SCALE
     log_reversion = - mean_reversion_rate / PERIODS_PER_YEAR * log_above_trend
     log_above_trend += log_reversion
     r_t += log_reversion
     ret += r_t
     retl.append(r_t)
+    if len(log_index) <= num_trace_years * PERIODS_PER_YEAR:
+        log_index.append(log_index[-1] + r_t)
+        log_trend.append(log_index[-1] - log_above_trend)
+        sigma_periodic.append(sqrt(PERIODS_PER_YEAR) * sigma_t / SCALE)
     p += 1
     if p >= PERIODS_PER_YEAR:
         rets.append(ret)
         obs_sigmas.append(sqrt(PERIODS_PER_YEAR) * sigma_t / SCALE)
         exper_vol.append(sqrt(PERIODS_PER_YEAR) * stdev(retl))
         exper_abs_ret.append(abs(sum(retl) - mu / SCALE))
+        above_trend.append(exp(log_above_trend))
         p = 0
         ret = 0
         retl = []
@@ -142,6 +155,24 @@ while len(rets) < num_simulated_rets:
         i += 1
         if i == len(z_hist):
             i = 0
+
+with open('index.csv', 'w') as f:
+    w = writer(f)
+    for t, (index, trend, s) in enumerate(zip(log_index, log_trend, sigma_periodic)):
+        w.writerow([t / PERIODS_PER_YEAR, index, trend, s])
+
+at_hist = {}
+density = 20
+for at in above_trend:
+    key = (at * density + 0.5) // 1 / density
+    try:
+        at_hist[key] += density / len(above_trend)
+    except KeyError:
+        at_hist[key] = density / len(above_trend)
+with open('above_trend.csv', 'w') as f:
+    w = writer(f)
+    for at in sorted(at_hist):
+        w.writerow([at, at_hist[at]])
 
 print('Simulated returns (actual, log, and median log per sample; log ret corr):')
 non_log_rets = tuple(exp(ret) for ret in rets)
@@ -159,23 +190,17 @@ print(np.corrcoef(exper_vol[1:], obs_sigmas[:-1]))
 print(spearmanr(exper_vol[1:], obs_sigmas[:-1]))
 print(np.corrcoef(exper_abs_ret[1:], obs_sigmas[:-1]))
 print(spearmanr(exper_abs_ret[1:], obs_sigmas[:-1]))
-print(np.corrcoef(exper_vol[1:], obs_sigmas[:-1]))
-print(spearmanr(exper_vol[1:], obs_sigmas[:-1]))
 print(np.corrcoef(exper_vol[1:], exper_vol[:-1]))
 print(spearmanr(exper_vol[1:], exper_vol[:-1]))
 
 # Target values:
 #           mean  stdev  auto corr  skew    kurtosis  vol-sigma corr
 #      ret   6.5% 17.4%                                               from Credit-Suisse Yearbook
-#  log ret                  0.00   -0.90      4.10        0.48        from analyze_volatility.py; except vol-sigma corr from this script
+#  log ret                  0.00   -0.90      4.10        0.39        from analyze_volatility.py; except vol-sigma corr from this script
 #  log vol    -     -       0.40                                      from analyze_volatility.py
 #
 # Measured simulated values:
 #           mean  stdev  auto corr  skew    kurtosis
 #      ret   6.5% 17.4%
-#  log ret                  0.05   -1.16      5.10        0.44
-#  log vol    -     -       0.39
-#
-# Larger measured negative skew and kurtosis is a result of using 1990 as the starting point.
-# The target auto corr, skew, and kurtosis target values are based on using 1950 as the starting point.
-# There has been more negative skew and kurtosis since then than over the longer history.
+#  log ret                 -0.06   -0.87      3.92        0.35
+#  log vol    -     -       0.26

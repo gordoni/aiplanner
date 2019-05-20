@@ -9,27 +9,21 @@
 # PURPOSE.
 
 from math import exp, log, sqrt
-from random import lognormvariate, normalvariate, uniform
+from random import lognormvariate, normalvariate
 from statistics import mean, stdev
 
 class Returns(object):
 
-    def __init__(self, ret, vol, price_low, price_high, price_noise_sigma, mean_reversion_rate, standard_error, time_period):
+    def __init__(self, ret, vol, standard_error, time_period):
 
         self.ret = ret
         self.vol = vol
-        self.price_low = price_low
-        self.price_high = price_high
-        self.price_noise_sigma = price_noise_sigma
-        self.mean_reversion_rate = mean_reversion_rate
         self.standard_error = standard_error
         self.time_period = time_period
 
         self.reset()
 
     def reset(self):
-
-        self.price_noise = lognormvariate(0, self.price_noise_sigma)
 
         m = 1 + self.ret
         self.mu = log(m / sqrt(1 + (self.vol / m) ** 2))
@@ -39,26 +33,17 @@ class Returns(object):
 
         self.period_mu = mu * self.time_period
         self.period_sigma = self.sigma * sqrt(self.time_period)
-        self.above_trend = uniform(self.price_low, self.price_high) / self.price_noise
-        self.period_mean_reversion_rate = self.mean_reversion_rate * self.time_period
 
     def sample(self):
         '''Sample the returns, also of necessity steps the returns.'''
 
         sample = lognormvariate(self.period_mu, self.period_sigma) # Caution: If switch to using numpy need to get/set numpy state in evaluator.py:evaluate().
 
-        self.above_trend *= sample / exp(self.period_mu)
-        reversion = self.above_trend ** (- self.period_mean_reversion_rate)
-
-        self.above_trend *= reversion
-
-        self.price_noise = lognormvariate(0, self.price_noise_sigma)
-
-        return sample * reversion
+        return sample
 
     def observe(self):
 
-        return (self.above_trend * self.price_noise, 0)
+        return (1, 1)
 
 def _report(name, rets):
 

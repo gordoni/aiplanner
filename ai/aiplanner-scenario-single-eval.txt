@@ -18,7 +18,7 @@ master_consume_preretirement = 3e4
 
 master_have_401k = True
 
-master_guaranteed_income = '[{"owner": "self", "age": null, "payout": 16e3, "source_of_funds": "taxable", "type": "Social Security"}]'
+master_guaranteed_income = '[{"owner": "self", "age": null, "payout": 16e3, "source_of_funds": "tax_free"}]'
 
 master_p_weighted = 0
 master_p_tax_free = 0
@@ -27,6 +27,8 @@ master_p_taxable_stocks = 0
 master_p_taxable_nominal_bonds = 0
 master_p_taxable_stocks_basis_fraction = 0.5
 
+master_stocks_sigma_level_type = 'value'
+master_stocks_sigma_level_value = 0.170
 master_stocks_price = 1
 master_real_short_rate_type = 'value'
 master_real_short_rate_value = 0.010

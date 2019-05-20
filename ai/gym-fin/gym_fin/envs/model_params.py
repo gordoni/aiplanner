@@ -88,7 +88,7 @@ class ModelParams(object):
         self._param('consume-ceiling', float('inf')) # Maximum expected consumption level model is trained for.
         #self._param('consume-utility-floor', 10000) # Scale utility to have a value of -1 for this consumption amount.
             # Utility needs to be scaled to prevent floating point overflow.
-        self._param('reward-warn', 1e3, 1e1) # Warn reward values not lying within [-reward_warn, reward_warn].
+        self._param('reward-warn', 2e3, 1e1) # Warn reward values not lying within [-reward_warn, reward_warn].
             # During training poor rewards are expected to be generated.
         self._param('reward-clip', 1e15, float('inf')) # Clip reward values to lie within [-reward_clip, reward_clip].
             # Evaluation clip should always be inf.
@@ -237,30 +237,29 @@ class ModelParams(object):
         self._param('stocks-model', 'bootstrap', tp = string_type, choices = ('bootstrap', 'iid')) # Stock model to use.
             # bootstrap - bootrapped normalized residuals applied to a monthly GJR-GARCH volatility model.
             # iid - geometric Brownian motion (prior to mean reversion).
-        self._param('stocks-bootstrap-years', 5) # Mean bootstrap block size in years bootstrap stocks.
-        self._param('stocks-mu', 0.048) # Annual real log return for bootstrap stocks.
-        self._param('stocks-sigma', 0.149) # Annual real log volatility for bootstrap stocks.
+        self._param('stocks-bootstrap-years', 5) # Mean bootstrap block size in years for bootstrap stocks.
+        self._param('stocks-mu', 0.049) # Annual real log return for bootstrap stocks. Yields 6.5% return in absense of returns_standard_error.
+        self._param('stocks-sigma', 0.167) # Annual real log volatility for bootstrap stocks. Yields 17.4% volatility in absense of returns_standard_error.
         self._param('stocks-alpha', 0.0000) # Monthly GJR-GARCH volatility model alpha parameter for bootstrap stocks.
-        self._param('stocks-gamma', 0.3120) # Monthly GJR-GARCH volatility model gamma parameter for bootstrap stocks.
-        self._param('stocks-beta', 0.7110) # Monthly GJR-GARCH volatility model beta parameter for bootstrap stocks.
-        self._param('stocks-previous-epsilon-type', 'sample', 'average', tp = string_type, choices = ('sample', 'average', 'value'))
-            # Monthly GJR-GARCH volatility model previous log residual for bootstrap stocks.
+        self._param('stocks-gamma', 0.3188) # Monthly GJR-GARCH volatility model gamma parameter for bootstrap stocks.
+        self._param('stocks-beta', 0.7116) # Monthly GJR-GARCH volatility model beta parameter for bootstrap stocks.
+        self._param('stocks-sigma-level-type', 'sample', 'average', tp = string_type, choices = ('sample', 'average', 'value'))
+            # Monthly GJR-GARCH volatility model current log volatility relative to long term average for bootstrap stocks.
             # 'sample' chooses initial value at random, 'average' uses the average model value, 'value' uses a specific value.
-        self._param('stocks-previous-epsilon-value', None) # Monthly GJR-GARCH volatility model previous log residual for type 'value'.
-        self._param('stocks-previous-sigma-type', 'sample', 'average', tp = string_type, choices = ('sample', 'average', 'value'))
-            # Monthly GJR-GARCH volatility model sqrt of previous variance for bootstrap stocks.
-            # 'sample' chooses initial value at random, 'average' uses the average model value, 'value' uses a specific value.
-        self._param('stocks-previous-sigma-value', None) # Monthly GJR-GARCH volatility model sqrt of previous variance for type 'value'.
-        self._param('stocks-return', 0.065) # Annual real return for iid stocks prior to effects of mean reversion.
-        self._param('stocks-volatility', 0.174) # Annual real volatility for iid stocks prior to effects of mean reversion.
-        self._param('stocks-price', (0.5, 2.0), 1) # Initial observed price of stocks relative to fair price. Used in the case of mean reversion.
-        self._param('stocks-price-noise-sigma', 0.2) # Sigma of lognormal noise inherent in observation of stocks price relative to fair price.
-            # Used in the case of mean reversion.
-        self._param('stocks-mean-reversion-rate', 0) # Mean reversion rate, - d(return percentage)/d(overvalued percentage).
-            # Set to zero for independent identically distributed stock returns.
+        self._param('stocks-sigma-level-value', None) # Monthly GJR-GARCH volatility model current log volatility relative to long term average for type 'value'.
+        self._param('stocks-mean-reversion-rate', 0.1) # Mean reversion rate for bootstrap stocks, - d(return percentage)/d(overvalued percentage).
             # Set to non-zero for mean reverting stock returns.
             # Use a value like 0.1 to mimick findings from Shiller's data, that for every 10% overvalued stocks are,
             # there is an approximate 1% reduction in annual returns for the following year.
+        self._param('stocks-price-exaggeration', 0.6) # Over-exuberance/pessimism factor for boostrap stocks with mean reversion: 1 - d(fair price)/d(price).
+           # Extent to which movement in stock price doesn't reflect movement in fair price.
+           # Used to mimick implications from Shiller's data that stocks can be over/under-valued.
+           # A value of 0.6 produces a value/fair value of 70-140% the vast majority of the time.
+        self._param('stocks-price', (0.5, 2.0), 1) # Initial observed price of stocks relative to fair price for bootstrap stocks with mean reversion.
+        self._param('stocks-price-noise-sigma', 0.2) # Sigma of lognormal noise inherent in observation of stocks price relative to fair price for bootstrap stocks.
+            # Used in the case of mean reversion.
+        self._param('stocks-return', 0.065) # Annual real return for iid stocks.
+        self._param('stocks-volatility', 0.174) # Annual real volatility for iid stocks.
         self._param('stocks-standard-error', 0.016) # Standard error of log real return for stocks.
         self._boolean_flag('real-bonds', True) # Whether to model real bonds (with an interest rate model).
         self._param('real-bonds-duration', None) # Duration in years to use for real bonds, or None to allow duration to vary.

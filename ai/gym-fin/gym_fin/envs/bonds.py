@@ -59,6 +59,8 @@ class Bonds:
         self.standard_error = standard_error
         self.time_period = time_period
 
+        self.mean_short_interest_rate = self.yield_curve.spot(0)
+
         self._sr_cache = {}
 
         self.reset()
@@ -66,7 +68,7 @@ class Bonds:
     def reset(self):
 
         self.adjust = normalvariate(0, self.standard_error)
-        self.sir_init = self.yield_curve.spot(0) + self.adjust
+        self.sir_init = self.mean_short_interest_rate + self.adjust
         if self.r0_type == 'current':
             self.sir0 = self.sir_init
         elif self.r0_type == 'sample':

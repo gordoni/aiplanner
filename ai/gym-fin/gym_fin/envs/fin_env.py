@@ -222,16 +222,19 @@ class FinEnv(Env):
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            low  = np.array((0, 0, 0,   0,   0,   0, 0, -5e2,  0, 0, 0, 0, 0,   0,   0,  0, 0.00, -0.20)),
-            high = np.array((1, 2, 1, 100, 100, 100, 1,    0, 50, 1, 1, 1, 1, 1e7, 1e7, 10, 2.00,  0.20)),
+            low  = np.array((0, 0, 0,   0,   0,   0, 0, -5e2,  0, 0, 0, 0, 0,   0,   0, 0, 0, -0.10)),
+            high = np.array((1, 2, 1, 100, 100, 100, 1,    0, 50, 1, 1, 1, 1, 2e7, 2e7, 4, 4,  0.10)),
             dtype = 'float32'
         )
         self.observation_space_range = self.observation_space.high - self.observation_space.low
         self.observation_space_allowed_range = self.params.observation_space_warn * self.observation_space_range
-        self.observation_space_allowed_range[self.observation_space_items.index('reward_to_go_estimate')] = 1e3
-        self.observation_space_allowed_range[self.observation_space_items.index('relative_ce_estimate_individual')] = 100
-        self.observation_space_allowed_range[self.observation_space_items.index('tax_deferred')] = 5e8
-        self.observation_space_allowed_range[self.observation_space_items.index('taxable')] = 5e8
+        self.observation_space_allowed_range[self.observation_space_items.index('reward_to_go_estimate')] *= 2
+        self.observation_space_allowed_range[self.observation_space_items.index('relative_ce_estimate_individual')] *= 2
+        self.observation_space_allowed_range[self.observation_space_items.index('tax_deferred')] *= 3
+        self.observation_space_allowed_range[self.observation_space_items.index('taxable')] *= 3
+        self.observation_space_allowed_range[self.observation_space_items.index('stocks_price')] *= 2
+        self.observation_space_allowed_range[self.observation_space_items.index('stocks_volatility')] *= 4
+        self.observation_space_allowed_range[self.observation_space_items.index('real_interest_rate')] = 0.30
         self.observation_space_range_exceeded = np.zeros(shape = self.observation_space_allowed_range.shape, dtype = 'int')
 
         assert self.params.action_space_unbounded in (False, True)
@@ -261,12 +264,11 @@ class FinEnv(Env):
             std_res_fname = home_dir + '/data/public/standardized_residuals.csv'
             self.stocks = ReturnsEquity(self.params, std_res_fname = std_res_fname)
         else:
-            self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility, self.params.stocks_price_low, self.params.stocks_price_high,
-                self.params.stocks_price_noise_sigma, self.params.stocks_mean_reversion_rate,
+            self.stocks = Returns(self.params.stocks_return, self.params.stocks_volatility,
                 self.params.stocks_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
-        self.iid_bonds = Returns(self.params.iid_bonds_return, self.params.iid_bonds_volatility, 1, 1, 0, 0,
+        self.iid_bonds = Returns(self.params.iid_bonds_return, self.params.iid_bonds_volatility,
             self.params.bonds_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
-        self.bills = Returns(self.params.bills_return, self.params.bills_volatility, 1, 1, 0, 0,
+        self.bills = Returns(self.params.bills_return, self.params.bills_volatility,
             self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
 
         self.bonds = BondsSet(fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate,
@@ -316,7 +318,7 @@ class FinEnv(Env):
             print('Real returns:')
 
             if self.params.stocks:
-                returns_report('stocks', self.stocks, time_period = self.params.time_period, sample_count = 5000)
+                returns_report('stocks', self.stocks, time_period = self.params.time_period, sample_count = 5000, sample_skip = 10)
 
             if self.params.real_bonds:
                 if self.params.real_bonds_duration:
@@ -1418,11 +1420,11 @@ class FinEnv(Env):
         if not self.params.observe_stocks_price or self.params.stocks_mean_reversion_rate == 0:
             stocks_price = 1
         if not self.params.observe_stocks_volatility:
-            stocks_volatility = 0
+            stocks_volatility = 1
         if self.params.observe_interest_rate:
             real_interest_rate, = self.bonds.real.observe()
         else:
-            real_interest_rate = 0
+            real_interest_rate = self.bonds.real.mean_short_interest_rate
 
         observe = (
             # Scenario description observations.
