@@ -24,12 +24,14 @@ from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
 from gym_fin.common.tf_util import TFRunner
 
-def extract_model(eval_model_params, *, result_dir, eval_couple_net, eval_seed, eval_num_timesteps, eval_render, nice, num_cpu, model_dir,
+def extract_model(eval_model_params, *, train_seed, redis_address, train_seeds, ensemble, checkpoint_name, result_dir,
+    eval_couple_net, eval_seed, eval_num_timesteps, eval_render, nice, num_cpu, model_dir,
     num_age_steps, num_p_steps, age_range, p_range, p_type):
 
-    def extract_timestep(tf_dir, output_fname):
+    def extract_timestep(train_dirs, checkpoint_name, output_fname):
 
-        with TFRunner(tf_dir = tf_dir, couple_net = eval_couple_net, num_cpu = num_cpu) as runner:
+        with TFRunner(train_dirs = train_dirs, checkpoint_name = checkpoint_name, eval_model_params = eval_model_params,
+                      couple_net = eval_couple_net, redis_address = redis_address, num_workers = 0, num_cpu = num_cpu) as runner:
             with open(output_fname, 'w') as f:
                 c = writer(f)
                 for age_index in range(num_age_steps + 1):
@@ -66,7 +68,7 @@ def extract_model(eval_model_params, *, result_dir, eval_couple_net, eval_seed, 
                             p_taxable_assets = None
                             p_taxable_stocks_basis_fraction = None
                         obs = env.goto(age = age, p_tax_free = p_tax_free, p_tax_deferred = p_tax_deferred, p_taxable_assets = p_taxable_assets,
-                            p_taxable_stocks_basis_fraction = p_taxable_stocks_basis_fraction, force_family_unit = True, forced_family_unit_couple = env.couple)
+                            p_taxable_stocks_basis_fraction = p_taxable_stocks_basis_fraction, force_family_unit = True, forced_family_unit_couple = bool(env.sex2))
                         action, = runner.run([obs])
                         act = env.interpret_action(action)
                         c.writerow((age, p, act['consume'], act['retirement_contribution'], act['real_spias_purchase'], act['nominal_spias_purchase'],
@@ -75,29 +77,40 @@ def extract_model(eval_model_params, *, result_dir, eval_couple_net, eval_seed, 
 
     set_global_seeds(0) # Seed shouldn't matter, but just to be ultra-deterministic.
 
+    assert ensemble == (train_seeds > 1)
+
     train_model_params = load_params_file(model_dir + '/params.txt')
     eval_model_params['action_space_unbounded'] = train_model_params['action_space_unbounded']
     eval_model_params['observation_space_ignores_range'] = train_model_params['observation_space_ignores_range']
     eval_model_params['display_returns'] = False
     env = make_fin_env(**eval_model_params)
     env = env.unwrapped
+    env.reset()
 
+    train_dirs = [model_dir + '/seed_' + str(train_seed + i) for i in range(train_seeds)]
     if result_dir == None:
         result_dir = model_dir
-    with scandir(model_dir) as iter:
-        for entry in iter:
-            if entry.name.startswith('tensorflow'):
-                suffix = entry.name[len('tensorflow'):]
-                extract_timestep(model_dir + '/' + entry.name, result_dir + '/aiplanner-linear' + suffix + '.csv')
+    if checkpoint_name:
+        checkpoint_names = [checkpoint_name]
+    else:
+        checkpoints = glob(train_dirs[0] + '/*/checkpoint_*')
+        checkpoint_names = [checkpoint.split('/')[-1] for checkpoint in checkpoints]
+
+    for checkpoint in checkpoint_names:
+        extract_timestep(train_dirs, checkpoint, result_dir + '/aiplanner-linear-' + checkpoint + '.csv')
 
 def main():
     parser = arg_parser()
+    parser.add_argument('--redis-address')
+    parser.add_argument('--train-seeds', type = int, default = 1) # Number of seeds to evaluate for an ensemble.
+    boolean_flag(parser, 'ensemble', default = False)
+    parser.add_argument('--checkpoint-name')
     parser.add_argument('--result-dir')
     boolean_flag(parser, 'eval-couple-net', default = True)
     parser.add_argument('--num-age-steps', type = int, default = 30)
     parser.add_argument('--num-p-steps', type = int, default = 30)
     parser.add_argument('--age-range', type = float, nargs = 2, default = (20, 100))
-    parser.add_argument('--p-range', type = float, nargs = 2, default = (0, int(1e6)))
+    parser.add_argument('--p-range', type = float, nargs = 2, default = (0, 1e7))
     parser.add_argument('--p-type', default = 'tax_free',
         choices = ('tax_free', 'tax_deferred', 'taxable_stocks', 'taxable_real_bonds', 'taxable_nominal_bonds', 'taxable_iid_bonds', 'taxable_bills'))
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, evaluate = True)
