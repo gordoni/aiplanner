@@ -222,20 +222,20 @@ class FinEnv(Env):
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            low  = np.array((0, 0, 0,   0,   0,   0, 0, -5e2,  0, 0, 0, 0, 0,   0,   0, 0, 0, -0.10)),
-            high = np.array((1, 2, 1, 100, 100, 100, 1,    0, 50, 1, 1, 1, 1, 2e7, 2e7, 4, 4,  0.10)),
+            low  = np.array((0, 0, 0,   0,   0,   0, 0, -2e3,   0, 0, 0, 0, 0,   0,   0, 0, 0, -0.10)),
+            high = np.array((1, 2, 1, 100, 100, 100, 1,    0, 100, 1, 1, 1, 1, 1e8, 2e7, 4, 4,  0.10)),
             dtype = 'float32'
         )
         self.observation_space_range = self.observation_space.high - self.observation_space.low
-        self.observation_space_allowed_range = self.params.observation_space_warn * self.observation_space_range
-        self.observation_space_allowed_range[self.observation_space_items.index('reward_to_go_estimate')] *= 2
-        self.observation_space_allowed_range[self.observation_space_items.index('relative_ce_estimate_individual')] *= 2
-        self.observation_space_allowed_range[self.observation_space_items.index('tax_deferred')] *= 3
-        self.observation_space_allowed_range[self.observation_space_items.index('taxable')] *= 3
-        self.observation_space_allowed_range[self.observation_space_items.index('stocks_price')] *= 2
-        self.observation_space_allowed_range[self.observation_space_items.index('stocks_volatility')] *= 4
-        self.observation_space_allowed_range[self.observation_space_items.index('real_interest_rate')] = 0.30
-        self.observation_space_range_exceeded = np.zeros(shape = self.observation_space_allowed_range.shape, dtype = 'int')
+        self.observation_space_extreme_range = self.params.observation_space_warn * self.observation_space_range
+        self.observation_space_extreme_range[self.observation_space_items.index('reward_to_go_estimate')] *= 2
+        self.observation_space_extreme_range[self.observation_space_items.index('relative_ce_estimate_individual')] *= 2
+        self.observation_space_extreme_range[self.observation_space_items.index('tax_deferred')] *= 2
+        self.observation_space_extreme_range[self.observation_space_items.index('taxable')] *= 2
+        self.observation_space_extreme_range[self.observation_space_items.index('stocks_price')] *= 2
+        self.observation_space_extreme_range[self.observation_space_items.index('stocks_volatility')] *= 4
+        self.observation_space_extreme_range[self.observation_space_items.index('real_interest_rate')] = 0.30
+        self.observation_space_range_exceeded = np.zeros(shape = self.observation_space_extreme_range.shape, dtype = 'int')
 
         assert self.params.action_space_unbounded in (False, True)
         assert self.params.observation_space_ignores_range in (False, True)
@@ -507,12 +507,14 @@ class FinEnv(Env):
 
                 p_tax_free_weight = uniform(self.params.p_tax_free_weight_low, self.params.p_tax_free_weight_high)
                 p_tax_deferred_weight = uniform(self.params.p_tax_deferred_weight_low, self.params.p_tax_deferred_weight_high)
-                p_taxable_stocks_weight = uniform(self.params.p_taxable_stocks_low, self.params.p_taxable_stocks_high) if self.params.stocks else 0
-                p_taxable_real_bonds_weight = uniform(self.params.p_taxable_real_bonds_low, self.params.p_taxable_real_bonds_high) if self.params.real_bonds else 0
-                p_taxable_nominal_bonds_weight = uniform(self.params.p_taxable_nominal_bonds_low, self.params.p_taxable_nominal_bonds_high) \
+                p_taxable_stocks_weight = uniform(self.params.p_taxable_stocks_weight_low, self.params.p_taxable_stocks_weight_high) if self.params.stocks else 0
+                p_taxable_real_bonds_weight = uniform(self.params.p_taxable_real_bonds_weight_low, self.params.p_taxable_real_bonds_weight_high) \
+                    if self.params.real_bonds else 0
+                p_taxable_nominal_bonds_weight = uniform(self.params.p_taxable_nominal_bonds_weight_low, self.params.p_taxable_nominal_bonds_weight_high) \
                     if self.params.nominal_bonds else 0
-                p_taxable_iid_bonds_weight = uniform(self.params.p_taxable_iid_bonds_low, self.params.p_taxable_iid_bonds_high) if self.params.iid_bonds  else 0
-                p_taxable_bills_weight = uniform(self.params.p_taxable_bills_low, self.params.p_taxable_bills_high) if self.params.bills  else 0
+                p_taxable_iid_bonds_weight = uniform(self.params.p_taxable_iid_bonds_weight_low, self.params.p_taxable_iid_bonds_weight_high) \
+                    if self.params.iid_bonds  else 0
+                p_taxable_bills_weight = uniform(self.params.p_taxable_bills_weight_low, self.params.p_taxable_bills_weight_high) if self.params.bills else 0
                 total_weight = p_tax_free_weight + p_tax_deferred_weight + \
                     p_taxable_stocks_weight + p_taxable_real_bonds_weight + p_taxable_nominal_bonds_weight + p_taxable_iid_bonds_weight + p_taxable_bills_weight
                 p_weighted = self.log_uniform(self.params.p_weighted_low, self.params.p_weighted_high)
@@ -1457,19 +1459,21 @@ class FinEnv(Env):
         high = self.observation_space.high
         low = self.observation_space.low
         rnge = self.observation_space_range
-        allowed_range = self.observation_space_allowed_range
-        clipped_obs = np.clip(obs, high - allowed_range, low + allowed_range)
+        extreme_range = self.observation_space_extreme_range
+        clipped_obs = np.clip(obs, low, high)
         clip_status = clipped_obs != obs
         if np.any(clip_status):
-            print('AIPLANNER: Extreme observation - age:', self.age)
-            for item, ob, status in zip(self.observation_space_items, obs, clip_status):
+            for index, (item, ob, status) in enumerate(zip(self.observation_space_items, obs, clip_status)):
                 if status:
-                    self.observation_space_range_exceeded[self.observation_space_items.index(item)] += 1
+                    self.observation_space_range_exceeded[index] += 1
                     try:
-                        fract = self.observation_space_range_exceeded[self.observation_space_items.index(item)] / self.env_timesteps
+                        fract = self.observation_space_range_exceeded[index] / self.env_timesteps
                     except ZeroDivisionError:
                         fract = float('inf')
-                    print('AIPLANNER:    ', item, ob, fract)
+                    if fract > 1e-4:
+                        print('AIPLANNER: Frequently out of range', item + ':', fract)
+                    if not high[index] - extreme_range[index] < ob < low[index] + extreme_range[index]:
+                        print('AIPLANNER: Extreme', item + ', age:', ob, self.age)
         if self.params.observation_space_ignores_range:
             obs = -1 + 2 * (obs - low) / rnge
         return obs
