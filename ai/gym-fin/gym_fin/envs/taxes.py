@@ -16,9 +16,9 @@
 
 class Taxes(object):
 
-    def __init__(self, env, taxable_assets, p_taxable_stocks_basis_fraction):
+    def __init__(self, params, taxable_assets, p_taxable_stocks_basis_fraction):
 
-        self.env = env
+        self.params = params
         self.value = dict(taxable_assets.aa)
         self.basis = {ac: p_taxable_stocks_basis_fraction * value if ac == 'stocks' else value for ac, value in taxable_assets.aa.items()}
         self.cpi = 1
@@ -27,7 +27,7 @@ class Taxes(object):
         self.qualified_dividends = 0
         self.non_qualified_dividends = 0
 
-        if self.env.params.tax_table_year == '2018':
+        if self.params.tax_table_year == '2018':
 
             self.federal_standard_deduction_single = 12000
             self.federal_standard_deduction_joint = 24000
@@ -64,7 +64,7 @@ class Taxes(object):
                 (float('inf'), 0.2),
             )
 
-        elif self.env.params.tax_table_year == '2019' or self.env.params.tax_table_year == None:
+        elif self.params.tax_table_year == '2019' or self.params.tax_table_year == None:
 
             self.federal_standard_deduction_single = 12200
             self.federal_standard_deduction_joint = 24400
@@ -102,7 +102,7 @@ class Taxes(object):
             )
 
         else:
-            assert False, 'No tax table for: ' + self.env.tax_table_year
+            assert False, 'No tax table for: ' + self.params.tax_table_year
 
         self.federal_max_capital_loss = 3000 # Limit not inflation adjusted.
 
@@ -138,7 +138,7 @@ class Taxes(object):
         tax = 0
         income += start
         for limit, rate in table:
-            limit *= self.env.params.time_period
+            limit *= self.params.time_period
             tax += max(min(income, limit) - start, 0) * rate
             if income < limit:
                 break
@@ -149,27 +149,18 @@ class Taxes(object):
     def marginal_rate(self, table, income):
 
         for limit, rate in table:
-            limit *= self.env.params.time_period
+            limit *= self.params.time_period
             if income < limit:
                 break
 
         return rate
 
-    def tax(self, regular_income, social_security, single, inflation):
+    def calculate_taxes(self, regular_income, social_security, capital_gains, single):
+
+        if not self.params.tax:
+            return 0
 
         regular_income -= social_security
-        assert regular_income >= 0
-
-        regular_income += self.non_qualified_dividends
-        capital_gains = self.cg_carry + self.capital_gains + self.qualified_dividends
-        current_capital_gains = max(capital_gains, - min(self.federal_max_capital_loss / self.cpi, regular_income))
-        self.cg_carry = capital_gains - current_capital_gains
-        regular_income += min(current_capital_gains, 0)
-        capital_gains = max(current_capital_gains, 0)
-        for ac in self.basis:
-            self.basis[ac] /= inflation
-        self.cg_carry /= inflation
-
         relevant_income = regular_income + social_security / 2
         ss_table = self.ss_taxable_single if single else self.ss_taxable_couple
         social_security_taxable = min(self.tax_table(ss_table, relevant_income * self.cpi, 0) / self.cpi,
@@ -184,24 +175,40 @@ class Taxes(object):
         regular_tax = self.tax_table(self.federal_table_single if single else self.federal_table_joint, taxable_regular_income, 0)
         capital_gains_tax = self.tax_table(self.federal_long_term_gains_single if single else self.federal_long_term_gains_joint,
             taxable_capital_gains, taxable_regular_income)
-        state_tax = (taxable_regular_income + taxable_capital_gains) * self.env.params.tax_state
+
+        regular_tax += taxable_regular_income * self.params.tax_state
+        capital_gains_tax += taxable_capital_gains * self.params.tax_state
+
+        return regular_tax, capital_gains_tax
+
+    def tax(self, regular_income, social_security, single, inflation):
+
+        assert regular_income >= social_security
+
+        regular_income += self.non_qualified_dividends
+        capital_gains = self.cg_carry + self.capital_gains + self.qualified_dividends
+        current_capital_gains = max(capital_gains, - min(self.federal_max_capital_loss / self.cpi, regular_income))
+        self.cg_carry = capital_gains - current_capital_gains
+        regular_income += min(current_capital_gains, 0)
+        capital_gains = max(current_capital_gains, 0)
+
+        regular_tax, capital_gains_tax = self.calculate_taxes(regular_income, social_security, capital_gains, single)
 
         self.capital_gains = 0
         self.qualified_dividends = 0
         self.non_qualified_dividends = 0
 
-        if self.env.params.tax:
-            tax = regular_tax + capital_gains_tax + state_tax
-        else:
-            tax = 0
+        for ac in self.basis:
+            self.basis[ac] /= inflation
+        self.cg_carry /= inflation
 
         self.cpi *= inflation
 
-        return tax
+        return regular_tax + capital_gains_tax
 
     def observe(self):
 
-        if self.env.params.tax:
+        if self.params.tax:
             basis = sum(self.basis.values())
             cg_carry = self.cg_carry
         else:

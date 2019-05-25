@@ -213,8 +213,7 @@ class FinEnv(Env):
             'average_asset_years',
             'lifespan_percentile_years', 'spia_expectancy_years', 'final_spias_purchase',
             'reward_to_go_estimate', 'relative_ce_estimate_individual',
-            'wealth_fraction', 'tax_deferred_fraction', 'taxable_fraction', 'labor_income_wealth_fraction',
-            'tax_deferred', 'taxable',
+            'wealth_fraction', 'labor_income_wealth_fraction',
             'stocks_price', 'stocks_volatility', 'real_interest_rate')
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple()
@@ -222,16 +221,14 @@ class FinEnv(Env):
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            low  = np.array((0, 0, 0,   0,   0,   0, 0, -2e3,   0, 0, 0, 0, 0,   0,   0, 0, 0, -0.10)),
-            high = np.array((1, 2, 1, 100, 100, 100, 1,    0, 100, 1, 1, 1, 1, 1e8, 2e7, 4, 4,  0.10)),
+            low  = np.array((0, 0, 0,   0,   0,   0, 0, -2e3,   0, 0, 0, 0, 0, -0.10)),
+            high = np.array((1, 2, 1, 100, 100, 100, 1,    0, 100, 1, 1, 4, 4,  0.10)),
             dtype = 'float32'
         )
         self.observation_space_range = self.observation_space.high - self.observation_space.low
         self.observation_space_extreme_range = self.params.observation_space_warn * self.observation_space_range
         self.observation_space_extreme_range[self.observation_space_items.index('reward_to_go_estimate')] *= 2
-        self.observation_space_extreme_range[self.observation_space_items.index('relative_ce_estimate_individual')] *= 2
-        self.observation_space_extreme_range[self.observation_space_items.index('tax_deferred')] *= 2
-        self.observation_space_extreme_range[self.observation_space_items.index('taxable')] *= 2
+        self.observation_space_extreme_range[self.observation_space_items.index('relative_ce_estimate_individual')] *= 3
         self.observation_space_extreme_range[self.observation_space_items.index('stocks_price')] *= 2
         self.observation_space_extreme_range[self.observation_space_items.index('stocks_volatility')] *= 4
         self.observation_space_extreme_range[self.observation_space_items.index('real_interest_rate')] = 0.30
@@ -544,13 +541,13 @@ class FinEnv(Env):
                 self.p_taxable = sum(taxable_assets.aa.values())
 
                 self._pre_calculate_wealth(growth_rate = 1.05) # Use a typical stock growth rate for determining expected consume range.
-                ce_estimate_ok = self.params.consume_floor <= self.ce_estimate_individual <= self.params.consume_ceiling
+                ce_estimate_ok = self.params.consume_floor <= self.rough_ce_estimate_individual <= self.params.consume_ceiling
                 if not ce_estimate_ok:
                     continue
 
                 self._pre_calculate_wealth(growth_rate = 1) # By convention use no growth for determining guaranteed income bucket.
                 try:
-                    gi_fraction = self.gi_wealth / self.net_wealth
+                    gi_fraction = self.gi_wealth / self.net_wealth # Values used here are not adjusted for expected taxes.
                 except ZeroDivisionError:
                     gi_fraction = 1
                 if not self.params.gi_fraction_low <= gi_fraction <= self.params.gi_fraction_high:
@@ -574,7 +571,7 @@ class FinEnv(Env):
             p_taxable_stocks_basis_fraction = self.params.p_taxable_stocks_basis_fraction_low
         else:
             p_taxable_stocks_basis_fraction = uniform(self.params.p_taxable_stocks_basis_fraction_low, self.params.p_taxable_stocks_basis_fraction_high)
-        self.taxes = Taxes(self, taxable_assets, p_taxable_stocks_basis_fraction)
+        self.taxes = Taxes(self.params, taxable_assets, p_taxable_stocks_basis_fraction)
 
         self._pre_calculate()
 
@@ -685,13 +682,14 @@ class FinEnv(Env):
         consume_action = (consume_action + 1) / 2
         # Define a consume floor and consume ceiling outside of which we won't consume.
         # The mid-point acts as a hint as to the initial consumption values to try.
-        # With 0.5 as the mid-point (when time_period = 1) we will initially consume on average half the portfolio at each step.
-        # This leads to very small consumption at advanced ages. The utilities and thus rewards for these values will be highly negative.
-        # For ppo1 the policy network either never fully retrains after the initial poor fit, or requires more training time.
-        consume_estimate = self.consume_p_estimate
+        consume_estimate = self.consume_net_wealth_estimate
         consume_floor = 0
         consume_ceil = 2 * consume_estimate
         consume_fraction = consume_floor + (consume_ceil - consume_floor) * consume_action
+        try:
+            consume_fraction *= self.net_wealth / self.p_plus_income
+        except ZeroDivsionError:
+            consume_fraction = float('inf')
 
         consume_fraction = max(1e-6, min(consume_fraction, 1 / self.params.time_period))
             # Don't allow consume_fraction of zero as have problems with -inf utility.
@@ -1227,7 +1225,7 @@ class FinEnv(Env):
             assert p_taxable_stocks_basis_fraction == None
         else:
             self.p_taxable = sum(p_taxable_assets.aa.values())
-            self.taxes = Taxes(self, p_taxable_assets, p_taxable_stocks_basis_fraction)
+            self.taxes = Taxes(self.params, p_taxable_assets, p_taxable_stocks_basis_fraction)
         if taxes_due != None:
             self.taxes_due = 0
 
@@ -1254,23 +1252,28 @@ class FinEnv(Env):
     def _pre_calculate_db(self):
 
         self.pv_income = {'tax_free': 0, 'tax_deferred': 0, 'taxable': 0}
+        self.pv_social_security = 0
         for db in self.defined_benefits.values():
-            self.pv_income[db.type_of_funds] += db.pv()
+            pv = db.pv()
+            self.pv_income[db.type_of_funds] += pv
+            if db.type == 'Social_Security':
+                self.pv_social_security += pv
 
         self.gi_wealth = sum(self.pv_income.values())
 
     def _pre_calculate_wealth(self, growth_rate = 1.01):
         # By default use a conservative growth rate for determining the present value of wealth.
+        # Also reflects the fact that we won't get to consume all wealth before we are expected to die.
         # Get better results this way. Leave it to the AI to map to actual value.
         # Chosen value determined empirically for good performance when gamma=6.
 
         if self.couple:
             self.years_retired = self.retirement_expectancy_both[self.episode_length] + \
                 self.retirement_expectancy_one[self.episode_length] / (1 + self.params.consume_additional)
-            couple_weight = 2
+            self.couple_weight = 2
         else:
             self.years_retired = self.retirement_expectancy_one[self.episode_length]
-            couple_weight = 1
+            self.couple_weight = 1
 
         preretirement_growth = growth_rate ** self.preretirement_years
         retirement_growth = 1 if growth_rate == 1 else self.years_retired * (1 - 1 / growth_rate) / (1 - 1 / growth_rate ** self.years_retired)
@@ -1289,17 +1292,61 @@ class FinEnv(Env):
         self.p_wealth = sum(self.wealth.values())
         raw_labor_income_wealth = self.pv_income_preretirement + self.pv_income_preretirement2 - self.pv_consume_preretirement # Should factor in investment growth.
         self.labor_income_wealth = max(0, raw_labor_income_wealth)
-        self.total_wealth = self.gi_wealth + self.p_wealth + self.labor_income_wealth
         self.net_wealth = self.gi_wealth + max(0, self.p_wealth + raw_labor_income_wealth - self.taxes_due * total_growth)
 
-        self.income_estimate = self.net_wealth / self.years_retired
-        self.ce_estimate_individual = self.income_estimate / couple_weight
+        self.rough_ce_estimate_individual = self.net_wealth / self.years_retired / self.couple_weight
 
     def _pre_calculate(self):
 
         self._pre_calculate_db()
         self._pre_calculate_wealth()
 
+        p_basis, cg_carry = self.taxes.observe()
+        assert p_basis >= 0 and cg_carry <= 0
+        self.taxable_basis = p_basis - cg_carry
+
+        self.average_asset_years = self.preretirement_years + self.years_retired / 2
+        total_years = self.preretirement_years + self.years_retired
+
+        pv_regular_income = self.pv_income['tax_deferred'] + self.pv_income['taxable'] + self.wealth['tax_deferred'] + \
+            self.pv_income_preretirement + self.pv_income_preretirement2
+        pv_social_security = self.pv_social_security
+        inflation = exp(self.bonds.inflation.mean_short_interest_rate)
+        pv_capital_gains = self.wealth['taxable'] - self.taxable_basis / inflation ** self.average_asset_years
+            # Fails to take into consideration non-qualified dividends.
+            # Taxable basis does not get adjusted for inflation.
+        regular_tax, capital_gains_tax = \
+            self.taxes.calculate_taxes(pv_regular_income / total_years, pv_social_security / total_years, pv_capital_gains / total_years, not self.couple)
+                # Assumes income smoothing.
+                # Fails to take into consideration lack of inflation adjustment for Social Security taxable brackets.
+        pv_regular_tax = total_years * regular_tax
+        pv_capital_gains_tax = total_years * capital_gains_tax
+        pv_taxes = pv_regular_tax + pv_capital_gains_tax
+
+        try:
+            self.p_wealth -= self.wealth['tax_deferred'] / pv_regular_income * pv_regular_tax
+            self.labor_income_wealth -= (self.pv_income_preretirement + self.pv_income_preretirement2) / pv_regular_income * pv_regular_tax
+        except ZeroDivisionError:
+            pass
+        self.p_wealth = max(0, self.p_wealth - pv_capital_gains_tax)
+        self.labor_income_wealth = max(0, self.labor_income_wealth)
+        self.net_wealth = max(0, self.net_wealth - pv_taxes)
+        self.gi_wealth = max(0, self.net_wealth - self.p_wealth - self.labor_income_wealth)
+
+        income_estimate = self.net_wealth / self.years_retired
+        self.ce_estimate_individual = income_estimate / self.couple_weight
+
+        try:
+            self.consume_net_wealth_estimate = income_estimate / self.net_wealth
+        except ZeroDivisionError:
+            self.consume_net_wealth_estimate = float('inf')
+
+        try:
+            self.p_fraction = min(self.p_wealth / self.net_wealth, 1)
+            self.labor_fraction = min(self.labor_income_wealth / self.net_wealth, 1)
+        except ZeroDivisionError:
+            self.p_fraction = 1
+            self.labor_income = 1
         self.wealth_ratio = (self.gi_wealth + self.labor_income_wealth) / self.p_wealth if self.p_wealth > 0 else float('inf')
         self.wealth_ratio = min(self.wealth_ratio, 1e100) # Cap so that not calculating with inf.
 
@@ -1319,11 +1366,6 @@ class FinEnv(Env):
             self.spias = self.spias_required or min_age >= self.params.spias_permitted_from_age and max_age <= self.params.spias_permitted_to_age
         else:
             self.spias = False
-
-        try:
-            self.consume_p_estimate = self.income_estimate / self.p_plus_income
-        except ZeroDivisionError:
-            self.consume_p_estimate = float('inf')
 
     def spia_life_tables(self, age, age2):
 
@@ -1380,7 +1422,7 @@ class FinEnv(Env):
             num_401k = int(self.have_401k2) if self.only_alive2 else int(self.have_401k)
         one_on_gamma = 1 / self.gamma
 
-        average_asset_years = self.preretirement_years + self.years_retired / 2
+        average_asset_years = self.average_asset_years
             # Consumption amount in retirement and thus expected reward to go is likely a function of average asset age.
 
         if self.spias_ever:
@@ -1407,16 +1449,6 @@ class FinEnv(Env):
         _, reward_value = self.raw_reward(self.ce_estimate_individual)
         reward_estimate = reward_weight * self.reward_scale * reward_value
 
-        tw = self.total_wealth
-        if tw == 0:
-            tw = 1 # To avoid divide by zero later.
-
-        tax_deferred = self.pv_income['tax_deferred'] + self.wealth['tax_deferred']
-        p_basis, cg_carry = self.taxes.observe()
-        assert p_basis >= 0 and cg_carry <= 0
-        taxable_basis = p_basis - cg_carry
-        taxable = max(0, self.pv_income['taxable'] + self.wealth['taxable'] - taxable_basis)
-
         # When mean reversion rate is zero, avoid observing spurious noise for better training.
         stocks_price, stocks_volatility = self.stocks.observe()
         if not self.params.observe_stocks_price or self.params.stocks_mean_reversion_rate == 0:
@@ -1441,10 +1473,7 @@ class FinEnv(Env):
             reward_estimate, self.ce_estimate_individual / self.consume_scale,
             # Nature of wealth/income observations.
             # Obseve fractionality to hopefully take advantage of iso-elasticity of utility.
-            # Observe absolute values to determine effectsof taxation.
-            # No need to observe tax free wealth and income as this represents the baseline case.
-            self.p_wealth / tw, tax_deferred / tw, taxable / tw, self.labor_income_wealth / tw,
-            tax_deferred, taxable,
+            self.p_fraction, self.labor_fraction,
             # Market condition obsevations.
             stocks_price, stocks_volatility, real_interest_rate)
         obs = np.array(observe, dtype = 'float32')
