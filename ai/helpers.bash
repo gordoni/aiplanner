@@ -271,6 +271,13 @@ train_scenarios () {
         train gamma$GAMMA-retired65-guaranteed_income16e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=2e6"
         train gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
         train gamma$GAMMA-retired65-guaranteed_income16e3-taxable-stocks2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-taxable-stocks=2e6"
+    elif [ $TRAINING = specific-spias ]; then
+        train gamma$GAMMA-spias65-retired-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-spias-permitted-from-age=100 --master-spias-at-age=65 --master-age-start=65 --master-p-tax-free=1e6"
+        train gamma$GAMMA-spias75-retired-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-spias-permitted-from-age=100 --master-spias-at-age=75 --master-age-start=65 --master-p-tax-free=1e6"
+        train gamma$GAMMA-spias85-retired-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-spias-permitted-from-age=100 --master-spias-at-age=85 --master-age-start=65 --master-p-tax-free=1e6"
+        train gamma$GAMMA-spias65-retired-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-spias-permitted-from-age=100 --master-spias-at-age=65 --master-age-start=65 --master-p-tax-free=2e6"
+        train gamma$GAMMA-spias75-retired-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-spias-permitted-from-age=100 --master-spias-at-age=75 --master-age-start=65 --master-p-tax-free=2e6"
+        train gamma$GAMMA-spias85-retired-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-spias-permitted-from-age=100 --master-spias-at-age=85 --master-age-start=65 --master-p-tax-free=2e6"
     elif [ $TRAINING = bucket ]; then
         # If gi_fraction_low is set to zero, without any guaranteed income, during training at advanced ages the projected consumption
         # may be very small. As a result the reward_to_go observation will be many times larger than the observation range.
@@ -304,6 +311,17 @@ eval_scenarios () {
         evaluate gamma$GAMMA-retired65-guaranteed_income16e3-tax_free5e5 retired65-guaranteed_income16e3-tax_free5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=5e5"
         evaluate gamma$GAMMA-retired65-guaranteed_income16e3-tax_free1e6 retired65-guaranteed_income16e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=1e6"
         evaluate gamma$GAMMA-retired65-guaranteed_income16e3-tax_free2e6 retired65-guaranteed_income16e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=2e6"
+    elif [ $TRAINING = specific-p-type ]; then
+        evaluate gamma$GAMMA-retired65-guaranteed_income16e3-tax_free2e6 retired65-guaranteed_income16e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=2e6"
+        evaluate gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferred2e6 retired65-guaranteed_income16e3-tax_deferred2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-deferred=2e6"
+        evaluate gamma$GAMMA-retired65-guaranteed_income16e3-taxable2e6 retired65-guaranteed_income16e3-taxable2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-taxable-stocks=2e6"
+    elif [ $TRAINING = specific-spias ]; then
+        evaluate gamma$GAMMA-spias65-retired-guaranteed_income20e3-tax_free1e6 retired65-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-spias-permitted-from-age=100 --master-spias-at-age=65 --master-age-start=65 --master-p-tax-free=1e6"
+        evaluate gamma$GAMMA-spias75-retired-guaranteed_income20e3-tax_free1e6 retired65-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-spias-permitted-from-age=100 --master-spias-at-age=75 --master-age-start=65 --master-p-tax-free=1e6"
+        evaluate gamma$GAMMA-spias85-retired-guaranteed_income20e3-tax_free1e6 retired65-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-spias-permitted-from-age=100 --master-spias-at-age=85 --master-age-start=65 --master-p-tax-free=1e6"
+        evaluate gamma$GAMMA-spias65-retired-guaranteed_income20e3-tax_free2e6 retired65-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-spias-permitted-from-age=100 --master-spias-at-age=65 --master-age-start=65 --master-p-tax-free=2e6"
+        evaluate gamma$GAMMA-spias75-retired-guaranteed_income20e3-tax_free2e6 retired65-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-spias-permitted-from-age=100 --master-spias-at-age=75 --master-age-start=65 --master-p-tax-free=2e6"
+        evaluate gamma$GAMMA-spias85-retired-guaranteed_income20e3-tax_free2e6 retired65-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-spias-permitted-from-age=100 --master-spias-at-age=85 --master-age-start=65 --master-p-tax-free=2e6"
     elif [ $TRAINING = bucket ]; then
         evaluate gamma$GAMMA-gi_fraction0.3_1.0 retired65-guaranteed_income16e3-tax_free2.5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=2.5e5" # gi_fraction: 0.61
         evaluate gamma$GAMMA-gi_fraction0.3_1.0 retired65-guaranteed_income16e3-tax_free5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=5e5" # gi_fraction: 0.44

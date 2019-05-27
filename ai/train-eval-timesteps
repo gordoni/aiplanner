@@ -19,113 +19,102 @@ cd ~/aiplanner-data/train-results
 
 PARALLEL=Jobs
 SCENARIO_ARGS="--master-stocks-model=iid --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.010 --master-iid-bonds-volatility=0.110 --master-no-bills --master-no-returns-standard-error --master-tax --master-static-bonds --master-fixed-real-bonds-rate=0.01 --master-fixed-nominal-bonds-rate=0.03 --master-real-short-rate-type=current --master-inflation-short-rate-type=current"
-TRAINING_ARGS='--master-age-retirement=0 --master-p-taxable-iid-bonds=0'
+    # Real value of taxable basis decreases 2% per year due to inflation.
+SCENARIO_ARGS='--master-real-spias'
+TRAINING_ARGS='--master-age-start=50 --master-age-retirement=0'
+UNIT=single
+SPIAS=spias
 GAMMA=6
-TRAINING=bucket
+TRAINING=specific-spias
 TIMESTEPS=4000000
 BATCH_SIZE=100000
-for UNIT in single couple; do
-    for SPIAS in no_spias-merton-bucket_tax_entropy0_retired; do # no_spias spias; do
 
-        ARGS="$SCENARIO_ARGS"
-        TRAINARGS="$TRAINING_ARGS --train-num-timesteps=$TIMESTEPS --train-batch-size=$BATCH_SIZE --train-entropy-coefficient=0"
-        if [ $SPIAS = spias ]; then
-            ARGS="$ARGS --master-nominal-spias"
-        fi
-        if [ $SPIAS = spias80 ]; then
-            ARGS="$ARGS --master-nominal-spias --master-spias-permitted-from-age=200 --master-spias-at-age=80"
-        fi
-        if [ $SPIAS = spias_pctl70 ]; then
-            ARGS="$ARGS --master-nominal-spias"
-        fi
+ARGS="$SCENARIO_ARGS"
+TRAINARGS="$TRAINING_ARGS --train-num-timesteps=$TIMESTEPS --train-batch-size=$BATCH_SIZE"
 
-        EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal"
-        mkdir -p $EPISODE
-        cd $EPISODE
-        train_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS $TRAINARGS --train-save-frequency=500000"
-        cd ..
-        wait
-        for TS in 2000000 3000000 4000000; do
-            mkdir -p $EPISODE-timesteps$TS
-            cd $EPISODE-timesteps$TS
-            if [ $TRAINING = specific ]; then
-                for TD in 2.5e5 5e5 1e6 2e6; do
-                    TF=aiplanner.gamma$GAMMA-retired65-guaranteed_income16e3-tax_deferrred$TD.tf
-                    mkdir -p $TF
-                    cd $TF
-                    for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
-                        ln -s $FILE 2> /dev/null
-                    done
-                    cd ..
-                done
-            elif [ $TRAINING = bucket ]; then
-                for GIF in 0.03_0.1 0.1_0.3 0.3_1.0; do
-                    TF=aiplanner.gamma$GAMMA-gi_fraction$GIF.tf
-                    mkdir -p $TF
-                    cd $TF
-                    for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
-                        ln -s $FILE 2> /dev/null
-                    done
-                    cd ..
-                done
-            elif [ $TRAINING = generic ]; then
-                TF=aiplanner.gamma$GAMMA.tf
-                mkdir -p $TF
-                cd $TF
-                for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
-                    ln -s $FILE 2> /dev/null
-                done
-                cd ..
-            fi
-            CP=`expr $TS / $BATCH_SIZE`
-            eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP"
-            eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP --ensemble"
+EPISODE="$UNIT-$SPIAS-gamma$GAMMA"
+mkdir -p $EPISODE
+cd $EPISODE
+train_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS $TRAINARGS --train-save-frequency=500000"
+cd ..
+wait
+for TS in 2000000 3000000 4000000; do
+    mkdir -p $EPISODE-timesteps$TS
+    cd $EPISODE-timesteps$TS
+    if [ $TRAINING = specific ]; then
+        for TD in 2.5e5 5e5 1e6 2e6; do
+            TF=aiplanner.gamma$GAMMA-retired65-guaranteed_income16e3-tax_free$TD.tf
+            mkdir -p $TF
+            cd $TF
+            for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
+                ln -s $FILE 2> /dev/null
+            done
             cd ..
         done
-        wait
-
-        # This following code won't work as restore is broken and changed experiment parameters are currently ignored by tune on restore.
-        # NATS=1500000
-        # ANNEALS="500000 1000000 1500000 2000000"
-        # for ANNEAL in $ANNEALS; do
-        #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
-        #     mkdir -p $EPISODE
-        #     cd $EPISODE
-        #     CP=`expr $NATS / 4000`
-        #     TS=`expr $NATS + $ANNEAL`
-        #     train_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS --train-restore-dir=../single-no_spias-gamma6-nonanneal/aiplanner.gamma6.tf --train-restore-checkpoint-name=checkpoint_$CP --train-num-timesteps=$TS --train-anneal-num-timesteps=$ANNEAL"
-        #     cd ..
-        # done
-        # wait
-        # for ANNEAL in $ANNEALS; do
-        #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
-        #     cd $EPISODE
-        #     eval_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS"
-        #     cd ..
-        # done
-        # wait
-
-        # TS=2000000
-        # ANNEALS="0 100000 200000 400000"
-        # for ANNEAL in $ANNEALS; do
-        #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-anneal$ANNEAL-timesteps$TS"
-        #     mkdir -p $EPISODE
-        #     cd $EPISODE
-        #     train_scenarios specific $UNIT $GAMMA $EPISODE "$ARGS --train-anneal-num-timesteps=$ANNEAL --train-num-timesteps=$TS"
-        #     cd ..
-        # done
-        # wait
-        # for ANNEAL in $ANNEALS; do
-        #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-anneal$ANNEAL-timesteps$TS"
-        #     cd $EPISODE
-        #     eval_scenarios specific $UNIT $GAMMA $EPISODE "$ARGS"
-        #     cd ..
-        # done
-        # wait
-
-    done
-    exit
+    elif [ $TRAINING = bucket ]; then
+        for GIF in 0.03_0.1 0.1_0.3 0.3_1.0; do
+            TF=aiplanner.gamma$GAMMA-gi_fraction$GIF.tf
+            mkdir -p $TF
+            cd $TF
+            for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
+                ln -s $FILE 2> /dev/null
+            done
+            cd ..
+        done
+    elif [ $TRAINING = generic ]; then
+        TF=aiplanner.gamma$GAMMA.tf
+        mkdir -p $TF
+        cd $TF
+        for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
+            ln -s $FILE 2> /dev/null
+        done
+        cd ..
+    fi
+    CP=`expr $TS / $BATCH_SIZE`
+    eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP"
+    eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP --ensemble"
+    cd ..
 done
+wait
+
+# This following code won't work as restore is broken and changed experiment parameters are currently ignored by tune on restore.
+# NATS=1500000
+# ANNEALS="500000 1000000 1500000 2000000"
+# for ANNEAL in $ANNEALS; do
+#     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
+#     mkdir -p $EPISODE
+#     cd $EPISODE
+#     CP=`expr $NATS / 4000`
+#     TS=`expr $NATS + $ANNEAL`
+#     train_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS --train-restore-dir=../single-no_spias-gamma6-nonanneal/aiplanner.gamma6.tf --train-restore-checkpoint-name=checkpoint_$CP --train-num-timesteps=$TS --train-anneal-num-timesteps=$ANNEAL"
+#     cd ..
+# done
+# wait
+# for ANNEAL in $ANNEALS; do
+#     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
+#     cd $EPISODE
+#     eval_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS"
+#     cd ..
+# done
+# wait
+
+# TS=2000000
+# ANNEALS="0 100000 200000 400000"
+# for ANNEAL in $ANNEALS; do
+#     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-anneal$ANNEAL-timesteps$TS"
+#     mkdir -p $EPISODE
+#     cd $EPISODE
+#     train_scenarios specific $UNIT $GAMMA $EPISODE "$ARGS --train-anneal-num-timesteps=$ANNEAL --train-num-timesteps=$TS"
+#     cd ..
+# done
+# wait
+# for ANNEAL in $ANNEALS; do
+#     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-anneal$ANNEAL-timesteps$TS"
+#     cd $EPISODE
+#     eval_scenarios specific $UNIT $GAMMA $EPISODE "$ARGS"
+#     cd ..
+# done
+# wait
 
 echo `date` Done
 

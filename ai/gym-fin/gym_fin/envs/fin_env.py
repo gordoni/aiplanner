@@ -221,8 +221,12 @@ class FinEnv(Env):
             #
             # Values listed below are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
+            #
+            # Models train poorly with extreme observation warnings, large negative mean rewards, and extreme rewards during training,
+            # and/or a CE 10-40% below expected if observations (or at least reward_to_go observation) frequently and significanty exceed observation space range.
+            # Most likely to occur for gamma=6, p=2e6, bucket.
             low  = np.array((0, 0, 0,   0,   0,   0, 0, -2e3,   0, 0, 0, 0, 0, -0.10)),
-            high = np.array((1, 2, 1, 100, 100, 100, 1,    0, 100, 1, 1, 4, 4,  0.10)),
+            high = np.array((1, 2, 1, 100, 100, 100, 1,    0, 100, 1, 1, 4, 5,  0.10)),
             dtype = 'float32'
         )
         self.observation_space_range = self.observation_space.high - self.observation_space.low
@@ -230,7 +234,7 @@ class FinEnv(Env):
         self.observation_space_extreme_range[self.observation_space_items.index('reward_to_go_estimate')] *= 2
         self.observation_space_extreme_range[self.observation_space_items.index('relative_ce_estimate_individual')] *= 3
         self.observation_space_extreme_range[self.observation_space_items.index('stocks_price')] *= 2
-        self.observation_space_extreme_range[self.observation_space_items.index('stocks_volatility')] *= 4
+        self.observation_space_extreme_range[self.observation_space_items.index('stocks_volatility')] *= 3
         self.observation_space_extreme_range[self.observation_space_items.index('real_interest_rate')] = 0.30
         self.observation_space_range_exceeded = np.zeros(shape = self.observation_space_extreme_range.shape, dtype = 'int')
 

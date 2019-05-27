@@ -108,44 +108,17 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
                 # Keep at 256x256 in case need more net capacity for duration and SPIA decisions, or beyond 4m timesteps.
                 # Reducing size is unlikely to improve the run time performance as it is dominated by fixed overhead costs:
                 #     runner.run(obss, policy_graph = runner.local_policy_graph):
-                #         256x256 (r5.large): 1.1ms x 0.013ms x num_observations_in_batch
-                #         128x128 (r5.large): 1.1ms x 0.009ms x num_observations_in_batch
+                #         256x256 (r5.large): 1.1ms + 0.013ms x num_observations_in_batch
+                #         128x128 (r5.large): 1.1ms + 0.009ms x num_observations_in_batch
                 #'fcnet_hiddens': (128, 128),
             },
             'train_batch_size': train_batch_size,
             'sgd_minibatch_size': train_minibatch_size,
             'num_sgd_iter': train_optimizer_epochs,
             'entropy_coeff': train_entropy_coefficient,
-            'vf_clip_param': 10.0,
+            'vf_clip_param': 10.0, # Currently equal to PPO default value.
                 # Clip value function advantage estimates. We expect most rewards to be roughly in [-1, 1],
                 # so if we get something far from this we don't want to train too hard on it.
-            'grad_clip': 50.0,
-                # Ocassionally models train very poorly, with a CE 10% below that of other seeds (gamma=6, specific, p=2e6). Observed on 2019-05-01.
-                # It isn't clear if this is the nature of neural networks, there is a bug in the model, or there is a bug in the PPO algorithm.
-                # Setting a grad clip was thought might help if the problem is due to spurious very large absolute values occurring, but hasn't helped.
-                # Problem noticed after setting parameters to seemingly optimal values (happened in 2 out of 3 vanilla runs; one of the two failures was
-                # associated with extreme reward values of up to -1e25 before crashing, the other had no reward warnings with a warning at level of -1e4),
-                # so may be caused by one of:
-                #     lambda: 0.95 -> 1
-                #     sample_batch_size: 4k -> 100k
-                #     entropy: 0 -> 1e-3 (had 2 good run with entropy back to 0 (so might be source of problem), but appear to get slightly worse CEs (-0.7%))
-                #     kl_target: 0.01 -> 1
-                # Or could be changes in model:
-                #     adding stocks curvature
-                #     computing CE estimate and consume estimate simply as total wealth divided by life expectancy
-                #     fixing bug in reward estimate to incorporate life expectancy (had 1 fairly bad (-5%) run with reward estimate 0, so probably not the cause)
-                # Setting entropy=0 was thought to fix the problem, but it just re-occurred (gamma=6, bucket, p=5e6) with 2 seeds 40% below the others when entropy=0.
-                # Perhaps poor training is more likely for small gi_fractions.
-                # There is a strong correlation between seeds that train poorly and seeds that get repeated "Reward clipped" warnings, due to rewards less than -1e15.
-                # Whether the negative rewards are a cause or a symptom isn't known.
-                # The extreme rewards don't occur for subsequent ages in an episode, but just at individual advanced ages.
-                # Reworking the reward scale so that it isn't shifted (preventing fp rounding issues) eliminated the reward clipped warning.
-                # But even with entropy=0 and an Adam epsilon of 1e-4 the ocassional poor performance remains.
-                # Now poor performance appears temporary, with different seeds exhibiting poor performance at different timesteps, so it is possible
-                # it might disappear if train for more than 4m timesteps.
-                # TENTATIVE COMMENT FOLLOWS
-                # Models train poorly with extreme observation warnings, large negative mean rewards, and extreme rewards during training,
-                # and/or a CE 10-40% below expected if observations (or at least reward_to_go observation) frequently and significanty exceed observation space range.
             'kl_target': 1, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
             'lr_schedule': lr_schedule,
         },
@@ -235,9 +208,10 @@ def main():
     parser.add_argument('--train-minibatch-size', type=int, default=128)
     parser.add_argument('--train-optimizer-epochs', type=int, default=30)
     parser.add_argument('--train-optimizer-step-size', type=float, default=5e-5)
-    parser.add_argument('--train-entropy-coefficient', type=float, default=1e-3)
-        # Value critical to getting optimal performance.
-        # Chosen value reduces CE stdev and increases CE mean for a 256x256 tf model on a Merton like model with stochastic life expectancy and guaranteed income.
+    parser.add_argument('--train-entropy-coefficient', type=float, default=0)
+        # Value might be critical to getting optimal performance.
+        # Value to use probably depends on the complexity of the scenario.
+        # A value of 1e-3 reduced CE stdev and increased CE mean for a 256x256 tf model on a Merton like model with stochastic life expectancy and guaranteed income.
     parser.add_argument('--train-save-frequency', type=int, default=None)
     boolean_flag(parser, 'train-resume', default = False) # Resume training rather than starting new trials.
         # To attempt to extend already completed trials edit the latest <model_dir>/seed_0/experiment_state-<date>.json
