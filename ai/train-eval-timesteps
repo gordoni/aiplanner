@@ -25,7 +25,7 @@ TRAINING_ARGS='--master-age-start=50 --master-age-retirement=0'
 UNIT=single
 SPIAS=spias
 GAMMA=6
-TRAINING=specific-spias
+TRAINING=generic
 TIMESTEPS=4000000
 BATCH_SIZE=100000
 
@@ -38,18 +38,40 @@ cd $EPISODE
 train_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS $TRAINARGS --train-save-frequency=500000"
 cd ..
 wait
-for TS in 2000000 3000000 4000000; do
+for TS in 4000000; do # 2000000 3000000 4000000; do
     mkdir -p $EPISODE-timesteps$TS
     cd $EPISODE-timesteps$TS
     if [ $TRAINING = specific ]; then
-        for TD in 2.5e5 5e5 1e6 2e6; do
-            TF=aiplanner.gamma$GAMMA-retired65-guaranteed_income16e3-tax_free$TD.tf
+        for TD in 2e5 5e5 1e6 2e6; do
+            TF=aiplanner.gamma$GAMMA-retired65-guaranteed_income20e3-tax_free$TD.tf
             mkdir -p $TF
             cd $TF
             for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
                 ln -s $FILE 2> /dev/null
             done
             cd ..
+        done
+    elif [ $TRAINING = specific-p-type ]; then
+        for P_TYPE in tax_free tax_deferred taxable; do
+            TF=aiplanner.gamma$GAMMA-retired65-guaranteed_income20e3-${P_TYPE}2e6.tf
+            mkdir -p $TF
+            cd $TF
+            for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
+                ln -s $FILE 2> /dev/null
+            done
+            cd ..
+        done
+    elif [ $TRAINING = specific-spias ]; then
+        for TD in 1e6 2e6; do
+            for SA in 65 75 85; do
+                TF=aiplanner.gamma$GAMMA-spias$SA-retired65-guaranteed_income20e3-tax_free$TD.tf
+                mkdir -p $TF
+                cd $TF
+                for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
+                    ln -s $FILE 2> /dev/null
+                done
+                cd ..
+            done
         done
     elif [ $TRAINING = bucket ]; then
         for GIF in 0.03_0.1 0.1_0.3 0.3_1.0; do
@@ -72,7 +94,7 @@ for TS in 2000000 3000000 4000000; do
     fi
     CP=`expr $TS / $BATCH_SIZE`
     eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP"
-    eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP --ensemble"
+    #eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP --ensemble"
     cd ..
 done
 wait

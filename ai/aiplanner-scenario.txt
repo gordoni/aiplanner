@@ -37,6 +37,7 @@ master_nominal_spias = False
 master_real_spias_mwr = 0.94 # Based on 2015 pricing.
 master_nominal_spias_mwr = 1.0 # Based on 2015 pricing exceeding 100%.
 master_nominal_spias_adjust = 0.02
+master_spias_partial = True
 master_spias_min_purchase_fraction = 0.1
 master_spias_permitted_to_age = 85
 
