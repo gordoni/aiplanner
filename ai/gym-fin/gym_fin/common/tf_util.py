@@ -92,9 +92,12 @@ class TFRunner:
 
                 def compute_actions(self, *args, **kwargs):
 
-                    actions = [policy_graph.compute_actions(*args, **kwargs) for policy_graph in self.policy_graphs]
-                    mean_action = np.mean(np.array([action[0] for action in actions]), axis=0)
-                    return [mean_action] + list(actions[0][1:])
+                    actions_ca = [policy_graph.compute_actions(*args, **kwargs) for policy_graph in self.policy_graphs]
+                    actions = np.array([action[0] for action in actions_ca])
+                    # Get slightly better CEs (retired, SPIAs, gamma=1.5) taking mean, than first dropping high/low.
+                    #mean_action = (np.sum(actions, axis = 0) - np.amin(actions, axis = 0) - np.amax(actions, axis = 0)) / (actions.shape[0] - 2)
+                    mean_action = np.mean(actions, axis = 0)
+                    return [mean_action] + list(actions_ca[0][1:])
 
                 def copy(self, existing_inputs):
                     return EnsemblePolicyGraph(self.observation_space, self.action_space, self.config, existing_inputs = existing_inputs)

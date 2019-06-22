@@ -63,7 +63,6 @@ class DefinedBenefit:
         assert (premium == None) != (payout == None)
 
         if premium != None:
-            assert joint
             mwr = self.env.params.real_spias_mwr if self.real else self.env.params.nominal_spias_mwr
             start = max(1, self.env.preretirement_years)
             payout = self._spia_payout(start, adjustment, payout_fraction, premium, mwr)

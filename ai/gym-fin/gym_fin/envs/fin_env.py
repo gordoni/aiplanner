@@ -226,7 +226,7 @@ class FinEnv(Env):
             # and/or a CE 10-40% below expected if observations (or at least reward_to_go observation) frequently and significanty exceed observation space range.
             # Most likely to occur for gamma=6, p=2e6, bucket.
             low  = np.array((0, 0, 0,   0,   0,   0, 0, -2e3,   0, 0, 0, 0, 0, -0.10)),
-            high = np.array((1, 2, 1, 100, 100, 100, 1,    0, 100, 1, 1, 4, 5,  0.10)),
+            high = np.array((1, 2, 1, 100, 100, 100, 1,    0, 100, 1, 1, 4, 6,  0.15)),
             dtype = 'float32'
         )
         self.observation_space_range = self.observation_space.high - self.observation_space.low
@@ -234,7 +234,7 @@ class FinEnv(Env):
         self.observation_space_extreme_range[self.observation_space_items.index('reward_to_go_estimate')] *= 2
         self.observation_space_extreme_range[self.observation_space_items.index('relative_ce_estimate_individual')] *= 3
         self.observation_space_extreme_range[self.observation_space_items.index('stocks_price')] *= 2
-        self.observation_space_extreme_range[self.observation_space_items.index('stocks_volatility')] *= 3
+        self.observation_space_extreme_range[self.observation_space_items.index('stocks_volatility')] *= 2
         self.observation_space_extreme_range[self.observation_space_items.index('real_interest_rate')] = 0.30
         self.observation_space_range_exceeded = np.zeros(shape = self.observation_space_extreme_range.shape, dtype = 'int')
 
@@ -273,7 +273,7 @@ class FinEnv(Env):
             self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
 
         self.bonds = BondsSet(fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate,
-            date_str = self.params.bonds_date, date_str_low = self.params.bonds_date_start,
+            static_bonds = self.params.static_bonds, date_str = self.params.bonds_date, date_str_low = self.params.bonds_date_start,
             real_r0_type = self.params.real_short_rate_type, inflation_r0_type = self.params.inflation_short_rate_type)
         self.bonds.update(
             fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate,
@@ -387,6 +387,10 @@ class FinEnv(Env):
         if random() >= probability:
             return
 
+        if not self.couple:
+            joint = False
+            payout_fraction = 0
+
         type = type.replace(' ', '_')
         db = self.get_db(type, owner, inflation_adjustment, joint, payout_fraction, source_of_funds)
         adjustment = 0 if inflation_adjustment == 'cpi' else inflation_adjustment
@@ -448,7 +452,10 @@ class FinEnv(Env):
         # This helps ensure set_reward_level() normalizes as consistently as possible. May not be necessary.
         adjust = self.life_table.age_add - self.life_table_le_hi.age_add
         self.age -= adjust
-        self.age2 -= adjust
+        self.life_table.age -= adjust
+        if self.sex2 != None:
+            self.age2 -= adjust
+            self.life_table2.age -= adjust
         self.preretirement_years = max(0, self.age_retirement - self.age)
         self._compute_vital_stats(self.age, self.age2, self.preretirement_years)
 
@@ -588,6 +595,12 @@ class FinEnv(Env):
         self.prev_consume_rate = None
         self.prev_reward = None
 
+        if self.params.verbose:
+            print()
+            print('Age add:', self.life_table.age_add)
+            print('Guaranteed income fraction:', gi_fraction)
+            self.render()
+
         return self._observe()
 
     def set_reward_level(self):
@@ -663,8 +676,15 @@ class FinEnv(Env):
             consume_action = tanh(consume_action / 5)
                 # Scaling back initial volatility of consume_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
             if self.spias_ever:
-                spias_action = tanh(spias_action / 5)
-                    # Scaling back initial volatility of spias_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
+                spias_action = tanh(spias_action / 2)
+                    # Decreasing initial volatility of spias_action is observed to improve run to run mean certainty equivalent (gamma=6).
+                    # Increasing initial volatility of spias_action is observed to improve run to run mean certainty equivalent (gamma=1.5).
+                    #
+                    # real spias, p_tax_free=2e6, age_start=65, life_expectancy_add=3, bucket-le ensemble results:
+                    #                gamma=1.5   gamma=6
+                    # tanh(action)     134304    106032
+                    # tanh(action/2)   132693    112684
+                    # tanh(action/5)   128307    110570
                 if self.params.real_spias and self.params.nominal_spias:
                     real_spias_action = tanh(real_spias_action)
             if self.params.real_bonds and not self.params.real_bonds_duration:
@@ -721,6 +741,8 @@ class FinEnv(Env):
                     spias_fraction = 0
                 if spias_action - current_spias_fraction_estimate < self.params.spias_min_purchase_fraction:
                     spias_fraction = 0
+                elif spias_action > 1 - self.params.spias_min_purchase_fraction:
+                    spias_fraction = 1
                 spias_fraction = min(spias_fraction, 1)
 
             else:
@@ -1029,7 +1051,7 @@ class FinEnv(Env):
         if regular_income < 0:
             if regular_income < -1e-12 * (self.gi_sum(source = ('tax_deferred', 'taxable')) + self.p_tax_deferred):
                 print('AIPLANNER: Negative regular income:', regular_income)
-                    # Possible if taxable SPIA non-taxable amount exceeds payout due to deflation.
+                    # Possible if taxable real SPIA non-taxable amount exceeds payout due to deflation.
             regular_income = 0
         social_security = self.gi_sum(type = 'Social_Security')
         social_security = min(regular_income, social_security)
@@ -1188,12 +1210,10 @@ class FinEnv(Env):
 
     def _step_bonds(self):
 
-        if not self.params.static_bonds:
+        if self.params.reproduce_episode != None:
+            self._reproducable_seed(self.params.reproduce_episode, self.episode_length, 2)
 
-            if self.params.reproduce_episode != None:
-                self._reproducable_seed(self.params.reproduce_episode, self.episode_length, 2)
-
-            self.bonds_stepper.step()
+        self.bonds_stepper.step()
 
     def goto(self, step = None, age = None, real_oup_x = None, inflation_oup_x = None, p_tax_free = None, p_tax_deferred = None, p_taxable_assets = None,
              p_taxable_stocks_basis_fraction = None, taxes_due = None, force_family_unit = False, forced_family_unit_couple = True):
@@ -1360,7 +1380,7 @@ class FinEnv(Env):
         self.p_plus_income = p_sum + gi_sum - self.taxes_paid
 
         self.spias_ever = self.params.real_spias or self.params.nominal_spias
-        if self.spias_ever and (self.params.couple_spias or not self.couple):
+        if self.spias_ever and (self.params.preretirement_spias or self.preretirement_years == 0) and (self.params.couple_spias or not self.couple):
             if self.couple:
                 min_age = min(self.age, self.age2)
                 max_age = max(self.age, self.age2)

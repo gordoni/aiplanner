@@ -24,6 +24,7 @@ master_p_weighted = 0
 master_p_tax_free = 0
 master_p_tax_deferred = 0
 master_p_taxable_stocks = 0
+master_p_taxable_real_bonds = 0
 master_p_taxable_nominal_bonds = 0
 master_p_taxable_stocks_basis_fraction = 0.5
 

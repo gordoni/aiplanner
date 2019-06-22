@@ -20,10 +20,10 @@ cd ~/aiplanner-data/train-results
 PARALLEL=Jobs
 SCENARIO_ARGS="--master-stocks-model=iid --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.010 --master-iid-bonds-volatility=0.110 --master-no-bills --master-no-returns-standard-error --master-tax --master-static-bonds --master-fixed-real-bonds-rate=0.01 --master-fixed-nominal-bonds-rate=0.03 --master-real-short-rate-type=current --master-inflation-short-rate-type=current"
     # Real value of taxable basis decreases 2% per year due to inflation.
-SCENARIO_ARGS='--master-real-spias'
+SCENARIO_ARGS=''
 TRAINING_ARGS='--master-age-start=50 --master-age-retirement=0'
 UNIT=single
-SPIAS=spias
+SPIAS=no_spias
 GAMMA=6
 TRAINING=generic
 TIMESTEPS=4000000
@@ -31,6 +31,18 @@ BATCH_SIZE=100000
 
 ARGS="$SCENARIO_ARGS"
 TRAINARGS="$TRAINING_ARGS --train-num-timesteps=$TIMESTEPS --train-batch-size=$BATCH_SIZE"
+
+make_train_dir () {
+
+    for TD in "$@"; do
+        mkdir -p $TD
+        cd $TD
+        for FILE in ../../$EPISODE/$TD/{seed_*,params.txt}; do
+            ln -s $FILE 2> /dev/null
+        done
+        cd ..
+    done
+}
 
 EPISODE="$UNIT-$SPIAS-gamma$GAMMA"
 mkdir -p $EPISODE
@@ -42,55 +54,19 @@ for TS in 4000000; do # 2000000 3000000 4000000; do
     mkdir -p $EPISODE-timesteps$TS
     cd $EPISODE-timesteps$TS
     if [ $TRAINING = specific ]; then
-        for TD in 2e5 5e5 1e6 2e6; do
-            TF=aiplanner.gamma$GAMMA-retired65-guaranteed_income20e3-tax_free$TD.tf
-            mkdir -p $TF
-            cd $TF
-            for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
-                ln -s $FILE 2> /dev/null
-            done
-            cd ..
-        done
+        make_train_dir aiplanner.gamma$GAMMA-retired65-guaranteed_income20e3-tax_free{2e5,5e5,1e6,2e6}.tf
     elif [ $TRAINING = specific-p-type ]; then
-        for P_TYPE in tax_free tax_deferred taxable; do
-            TF=aiplanner.gamma$GAMMA-retired65-guaranteed_income20e3-${P_TYPE}2e6.tf
-            mkdir -p $TF
-            cd $TF
-            for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
-                ln -s $FILE 2> /dev/null
-            done
-            cd ..
-        done
+        make_train_dir aiplanner.gamma$GAMMA-retired65-guaranteed_income20e3-${tax_free,tax_deferred,taxable}2e6.tf
     elif [ $TRAINING = specific-spias ]; then
-        for TD in 1e6 2e6; do
-            for SA in 65 75 85; do
-                TF=aiplanner.gamma$GAMMA-spias$SA-retired65-guaranteed_income20e3-tax_free$TD.tf
-                mkdir -p $TF
-                cd $TF
-                for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
-                    ln -s $FILE 2> /dev/null
-                done
-                cd ..
-            done
-        done
-    elif [ $TRAINING = bucket ]; then
-        for GIF in 0.03_0.1 0.1_0.3 0.3_1.0; do
-            TF=aiplanner.gamma$GAMMA-gi_fraction$GIF.tf
-            mkdir -p $TF
-            cd $TF
-            for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
-                ln -s $FILE 2> /dev/null
-            done
-            cd ..
-        done
+        make_train_dir aiplanner.gamma$GAMMA-spias{65,75,85}-retired65-guaranteed_income20e3-tax_free{1e6,2e6}.tf
+    elif [ $TRAINING = specific-spias-le ]; then
+        make_train_dir aiplanner.gamma$GAMMA-spias-retired65-le{-5,0,5}-guaranteed_income20e3-tax_free2e6.tf
+    elif [ $TRAINING = bucket-gi ]; then
+        make_train_dir aiplanner.gamma$GAMMA-gi_fraction{0.03_0.1,0.1_0.3,0.3_1.0}.tf
+    elif [ $TRAINING = bucket-le ]; then
+        make_train_dir aiplanner.gamma$GAMMA-le_additional{-2.5_-0.5,-0.5_1.5,1.5_3.5,3.5_5.5}.tf
     elif [ $TRAINING = generic ]; then
-        TF=aiplanner.gamma$GAMMA.tf
-        mkdir -p $TF
-        cd $TF
-        for FILE in ../../$EPISODE/$TF/{seed_*,params.txt}; do
-            ln -s $FILE 2> /dev/null
-        done
-        cd ..
+        make_train_dir aiplanner.gamma$GAMMA.tf
     fi
     CP=`expr $TS / $BATCH_SIZE`
     eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP"

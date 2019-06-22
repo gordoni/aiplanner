@@ -16,7 +16,7 @@ master_sex = 'female'
 master_sex2 = 'male'
 master_life_table_date = '2020-01-01'
 
-master_age_end = 121
+master_age_end = 151
 
 master_consume_additional = 0.6
 
@@ -32,14 +32,20 @@ master_bonds_date = '2018-12-31'
     # Initial yield curve is determined by the initial short rate, the typical yield curve, and the Hull-White parameters.
 master_bonds_date_start = None
 
-master_real_spias = False
+# Nominal MWR 105% outperforms real 94% which outperforms nominal 100%.
+master_real_spias = False # Not widely available, so suggest, but don't use.
 master_nominal_spias = False
 master_real_spias_mwr = 0.94 # Based on 2015 pricing.
 master_nominal_spias_mwr = 1.0 # Based on 2015 pricing exceeding 100%.
 master_nominal_spias_adjust = 0.02
 master_spias_partial = True
 master_spias_min_purchase_fraction = 0.1
+master_preretirement_spias = False
+master_couple_spias = False
 master_spias_permitted_to_age = 85
+master_spias_at_age = 85
+    # Improves CE by 3%, gamma = 6, p = 2e6, and good health (life_expectancy_additional = 3).
+    # Hurts CE by 2%, gamma = 1.5, p = 2e6, and in poor health (life_expectancy_additional = -5). Negligible harm life_expectancy_additional = 0.
 
 # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2019 for 1900-2018.
     # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.0%).

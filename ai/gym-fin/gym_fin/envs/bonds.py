@@ -22,7 +22,7 @@ class Bonds:
     Hull-White one-factor model - https://en.wikipedia.org/wiki/Hull%E2%80%93White_model .
     '''
 
-    def __init__(self, *, a, sigma, yield_curve, r0_type, r0, standard_error, time_period):
+    def __init__(self, *, a, sigma, yield_curve, r0_type, r0, standard_error, static_bonds, time_period):
         '''Initialize a bonds object.
 
         "a" interest rate mean reversion rate. Default value chosen to
@@ -47,6 +47,8 @@ class Bonds:
         "standard_error" is the standard error of the estimated
         continuously compounded annual yield curve yield.
 
+        "static_bonds" supresses Hull-White temporal variability.
+
         "time_period" step size in years.
 
         '''
@@ -57,6 +59,7 @@ class Bonds:
         self.r0_type = r0_type
         self.r0 = r0
         self.standard_error = standard_error
+        self.static_bonds = static_bonds
         self.time_period = time_period
 
         self.mean_short_interest_rate = self.yield_curve.spot(0)
@@ -79,7 +82,8 @@ class Bonds:
             assert False
 
         self.t = 0
-        self.oup = OUProcess(self.time_period, self.a, self.sigma, mu = self.sir_init, x = self.sir0) # Underlying random movement in short interest rates.
+        self.oup = OUProcess(self.time_period, self.a, self.sigma, mu = self.sir_init, x = self.sir0, norm = 0 if self.static_bonds else None)
+            # Underlying random movement in short interest rates.
 
         self._lpv_cache = None
         self._spot_cache = {}
@@ -155,6 +159,9 @@ class Bonds:
         return exp(self._log_present_value(duration - self.time_period, next = True) - self._log_present_value(duration))
 
     def step(self):
+
+        if self.static_bonds:
+            return
 
         self.t += self.time_period
         self._lpv_cache = None
@@ -260,7 +267,7 @@ class Bonds:
 
 class RealBonds(Bonds):
 
-    def __init__(self, *, a = 0.13, sigma = 0.011, yield_curve, r0_type = 'current', r0 = None, standard_error = 0, time_period = 1):
+    def __init__(self, *, a = 0.13, sigma = 0.011, yield_curve, r0_type = 'current', r0 = None, standard_error = 0, static_bonds = False, time_period = 1):
         '''Chosen value of sigma, 0.011, intended to produce a short term real
         yield volatility of 0.9-1.0%. The measured value over
         2005-2017 was 1.00%. Obtained value is 1.00%.
@@ -280,7 +287,8 @@ class RealBonds(Bonds):
 
         self.interest_rate = 'real'
 
-        super().__init__(a = a, sigma = sigma, yield_curve = yield_curve, r0_type = r0_type, r0 = r0, standard_error = standard_error, time_period = time_period)
+        super().__init__(a = a, sigma = sigma, yield_curve = yield_curve, r0_type = r0_type, r0 = r0, standard_error = standard_error, static_bonds = static_bonds,
+            time_period = time_period)
 
     def _short_interest_rate(self, *, next = False):
         '''Return the annualized continuously compounded current short
@@ -340,7 +348,7 @@ class YieldCurveSum:
 class BreakEvenInflation(Bonds):
 
     def __init__(self, real_bonds, *, inflation_a = 0.13, inflation_sigma = 0.014, bond_a = 0.13, bond_sigma = 0.014, model_bond_volatility = True,
-        nominal_yield_curve, inflation_risk_premium = 0, real_liquidity_premium = 0, r0_type = 'current', r0 = None, standard_error = 0,
+        nominal_yield_curve, inflation_risk_premium = 0, real_liquidity_premium = 0, r0_type = 'current', r0 = None, standard_error = 0, static_bonds = False,
         time_period = 1):
         '''Keeping inflation parameters the same as the bond parameters
         simplifies the model.
@@ -402,7 +410,7 @@ class BreakEvenInflation(Bonds):
         self.interest_rate = 'inflation'
 
         super().__init__(a = a, sigma = sigma, yield_curve = deflated_yield_curve, r0_type = r0_type, r0 = r0, standard_error = standard_error,
-            time_period = time_period)
+            static_bonds = static_bonds, time_period = time_period)
 
         self.reset()
 
@@ -459,6 +467,9 @@ class BreakEvenInflation(Bonds):
         return 1 / self._present_value(self.time_period)
 
     def step(self):
+
+        if self.static_bonds:
+            return
 
         super().step()
         self.inflation_oup.step(norm = self.oup.norm)
@@ -612,7 +623,7 @@ class BondsMeasuredInNominalTerms(Bonds):
 class BondsSet:
 
     def __init__(self, need_real = True, need_nominal = True, need_inflation = True, fixed_real_bonds_rate = None, fixed_nominal_bonds_rate = None,
-        date_str = '2017-12-31', date_str_low = '2005-01-01',
+        static_bonds = False, date_str = '2017-12-31', date_str_low = '2005-01-01',
         real_r0_type = 'current', inflation_r0_type = 'current', real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
         '''Create a BondsSet.
 
@@ -620,6 +631,10 @@ class BondsSet:
 
                 If not None use for a constant yield curve. Does not
                 supress random Hull-White temporal variability.
+
+            static_bonds
+
+                Supress random Hull-White temporal variability.
 
             date_str and date_str_low:
 
@@ -691,7 +706,8 @@ class BondsSet:
                 yield_curve = YieldCurve('fixed', '2017-12-31', adjust = fixed_real_bonds_rate)
             else:
                 yield_curve = YieldCurve('real', date_str, date_str_low = date_str_low, adjust = 0, permit_stale_days = 2)
-            self.real = RealBonds(yield_curve = yield_curve, r0_type = real_r0_type, standard_error = real_standard_error, time_period = time_period)
+            self.real = RealBonds(yield_curve = yield_curve, static_bonds = static_bonds, r0_type = real_r0_type, standard_error = real_standard_error,
+                time_period = time_period)
         else:
             self.real = None
 
@@ -701,7 +717,7 @@ class BondsSet:
             else:
                 nominal_yield_curve = YieldCurve('nominal', date_str, date_str_low = date_str_low, adjust = 0, permit_stale_days = 2)
             self.inflation = BreakEvenInflation(self.real, nominal_yield_curve = nominal_yield_curve, r0_type = inflation_r0_type,
-                standard_error = inflation_standard_error, time_period = time_period)
+                standard_error = inflation_standard_error, static_bonds = static_bonds, time_period = time_period)
         else:
             self.inflation = None
 

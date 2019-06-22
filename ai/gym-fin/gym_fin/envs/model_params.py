@@ -120,7 +120,8 @@ class ModelParams(object):
         self._param('sex2', 'male', tp = string_type, choices = ('male', 'female')) # Sex of second individual, if any.
         self._param('age-start', 65, 65) # Age of first individual.
         self._param('age-start2', (65, 65), 65) # Age of second individual.
-        self._param('age-end', 121) # Model done when individuals reach this age.
+        self._param('age-end', 151) # Model done when individuals reach this age.
+            # Life table ends at 121. Specifying a larger value ensures no truncation of the life table occurs when life_expectancy_additional is specified.
         self._param('age-retirement', (65, 65), 65) # Assess and optimize consumption from when first individual reaches this age.
         self._param('consume-additional', 0.6)
             # When a second individual is present we consume this fraction more than a single individual for the same per individual utility.
@@ -199,7 +200,7 @@ class ModelParams(object):
 
         self._boolean_flag('static-bonds', False)
             # Whether to model real bonds and inflation and thus nominal bonds and SPIAs as static (that is using a yield curve that does not vary over time).
-            # Does not remove effects of potential for temporal variability in bond prices; simply does not step bonds over time.
+            # Does not remove side-effects of potential for temporal variability in bond prices; simply does not step bonds over time.
         self._param('fixed-real-bonds-rate', None) # Rate to model real bonds with a fixed mean yield curve (does not favor duration).
         self._param('fixed-nominal-bonds-rate', None) # Rate to model nominal bonds in determining inflation with a fixed mean yield curve (does not favor duration).
         self._param('bonds-date', '2018-12-31', tp = string_type) # Date to use for typical bond yield curve if not fixed.
@@ -221,6 +222,7 @@ class ModelParams(object):
         self._param('nominal-spias-adjust', 0) # Fixed annual adjustment to apply to nominal SPIAs payout to compensate for inflation.
         self._boolean_flag('spias-partial', True) # Whether to allow partial annuitization.
         self._param('spias-min-purchase-fraction', 0) # Minimum fraction of total estimated annual income making up a SPIAs purchase.
+        self._boolean_flag('preretirement-spias', True) # Enable purchase of DIAs preretirement.
         self._boolean_flag('couple-spias', True) # Enable purchase of SPIAs by couples.
         self._param('spias-permitted-from-age', 0) # Minimum age (of youngest party) at which able to purchase SPIAs.
         self._param('spias-permitted-to-age', 85) # Maximum age (of oldest party) at which able to purchase SPIAs.
