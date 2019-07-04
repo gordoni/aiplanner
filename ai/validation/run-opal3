@@ -38,3 +38,6 @@ validate gamam6-tax_free250000 '-e utility_eta=6 -e start_tp=250000'
 validate gamam6-tax_free500000 '-e utility_eta=6 -e start_tp=500000'
 validate gamam6-tax_free1000000 '-e utility_eta=6 -e start_tp=1000000'
 validate gamam6-tax_free2000000 '-e utility_eta=6 -e start_tp=2000000'
+
+validate gamma3-preretirement '-e utility_eta=3 -e start_age=50'
+validate gamma6-preretirement '-e utility_eta=6 -e start_age=50'

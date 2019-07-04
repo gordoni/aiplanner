@@ -210,7 +210,7 @@ class FinEnv(Env):
             # ppo1 and Rllib PPO implementation ignores size and very roughly initially assumes N(0, 1) actions, but potentially trainable to any value.
         self.observation_space_items = (
             'couple', 'num_401k', 'one_on_gamma',
-            'average_asset_years',
+            'preretirement_years', 'years_retired',
             'lifespan_percentile_years', 'spia_expectancy_years', 'final_spias_purchase',
             'reward_to_go_estimate', 'relative_ce_estimate_individual',
             'wealth_fraction', 'labor_income_wealth_fraction',
@@ -225,8 +225,8 @@ class FinEnv(Env):
             # Models train poorly with extreme observation warnings, large negative mean rewards, and extreme rewards during training,
             # and/or a CE 10-40% below expected if observations (or at least reward_to_go observation) frequently and significanty exceed observation space range.
             # Most likely to occur for gamma=6, p=2e6, bucket.
-            low  = np.array((0, 0, 0,   0,   0,   0, 0, -2e3,   0, 0, 0, 0, 0, -0.10)),
-            high = np.array((1, 2, 1, 100, 100, 100, 1,    0, 100, 1, 1, 4, 6,  0.15)),
+            low  = np.array((0, 0, 0,   0,   0,   0,   0, 0, -2e3,   0, 0, 0, 0, 0, -0.10)),
+            high = np.array((1, 2, 1, 100, 100, 100, 100, 1,    0, 100, 1, 1, 4, 6,  0.15)),
             dtype = 'float32'
         )
         self.observation_space_range = self.observation_space.high - self.observation_space.low
@@ -1329,14 +1329,14 @@ class FinEnv(Env):
         assert p_basis >= 0 and cg_carry <= 0
         self.taxable_basis = p_basis - cg_carry
 
-        self.average_asset_years = self.preretirement_years + self.years_retired / 2
+        average_asset_years = self.preretirement_years + self.years_retired / 2
         total_years = self.preretirement_years + self.years_retired
 
         pv_regular_income = self.pv_income['tax_deferred'] + self.pv_income['taxable'] + self.wealth['tax_deferred'] + \
             self.pv_income_preretirement + self.pv_income_preretirement2
         pv_social_security = self.pv_social_security
         inflation = exp(self.bonds.inflation.mean_short_interest_rate)
-        pv_capital_gains = self.wealth['taxable'] - self.taxable_basis / inflation ** self.average_asset_years
+        pv_capital_gains = self.wealth['taxable'] - self.taxable_basis / inflation ** average_asset_years
             # Fails to take into consideration non-qualified dividends.
             # Taxable basis does not get adjusted for inflation.
         regular_tax, capital_gains_tax = \
@@ -1446,9 +1446,6 @@ class FinEnv(Env):
             num_401k = int(self.have_401k2) if self.only_alive2 else int(self.have_401k)
         one_on_gamma = 1 / self.gamma
 
-        average_asset_years = self.average_asset_years
-            # Consumption amount in retirement and thus expected reward to go is likely a function of average asset age.
-
         if self.spias_ever:
             # We siplify by comparing life expectancies and SPIA payouts rather than retirement expectancies and DIA payouts.
             # DIA payouts depend on retirement age, which would make the _spia_years_cache sigificiantly larger and less effective.
@@ -1488,7 +1485,7 @@ class FinEnv(Env):
             # Scenario description observations.
             couple, num_401k, one_on_gamma,
             # Nature of lifespan observations.
-            average_asset_years,
+            self.preretirement_years, self.years_retired
             # Annuitization related observations.
             life_percentile, spia_expectancy, final_spias_purchase,
             # Value function related observations.

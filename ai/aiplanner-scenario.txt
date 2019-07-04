@@ -20,6 +20,11 @@ master_age_end = 151
 
 master_consume_additional = 0.6
 
+master_income_preretirement_mu = 0
+master_income_preretirement_mu2 = 0
+master_income_preretirement_sigma = 0
+master_income_preretirement_sigma2 = 0
+
 master_p_taxable_real_bonds = 0
 master_p_taxable_iid_bonds = 0
 master_p_taxable_bills = 0

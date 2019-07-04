@@ -16,8 +16,8 @@ master_age_start2 = 50
 
 master_age_retirement = 65
 
-master_income_preretirement = 4e4
-master_income_preretirement2 = 4e4
+master_income_preretirement = 5e4
+master_income_preretirement2 = 5e4
 master_consume_preretirement = 4.8e4
 
 master_have_401k = True

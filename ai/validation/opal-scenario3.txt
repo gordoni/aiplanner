@@ -19,8 +19,11 @@ retirement_age = 65
 
 fixed_deceased_age = 95 # Applies when life_table is 'fixed_mortality'.
 
-defined_benefit = 16000 # Mean Social Secuity is $16,075 as of March, 2018 - https://www.ssa.gov/policy/docs/quickfacts/stat_snapshot/
+defined_benefit = 20000 # Mean Social Secuity is $17,634 as of May, 2019 - https://www.ssa.gov/policy/docs/quickfacts/stat_snapshot/
 start_tp = 1000000
+
+accumulation_rate = 20000
+accumulation_ramp = 1.0
 
 utility_eta = 6.0
 consume_discount_rate = 0

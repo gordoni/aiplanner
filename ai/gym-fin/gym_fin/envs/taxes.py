@@ -158,7 +158,7 @@ class Taxes(object):
     def calculate_taxes(self, regular_income, social_security, capital_gains, single):
 
         if not self.params.tax:
-            return 0
+            return 0, 0
 
         regular_income -= social_security
         relevant_income = regular_income + social_security / 2
