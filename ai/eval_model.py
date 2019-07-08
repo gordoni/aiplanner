@@ -252,9 +252,9 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
     interp['asset_classes'] = interp['asset_allocation'].classes()
     interp['asset_allocation'] = interp['asset_allocation'].as_list()
     interp['name'] = env.params.name
-    interp['pv_guaranteed_income'] = sum(env.pv_income.values())
+    interp['pv_retired_income'] = env.retired_income_wealth
     interp['p'] = env.p_sum()
-    interp['pv_preretirement'] = env.pv_income_preretirement + env.pv_income_preretirement2 - env.pv_consume_preretirement
+    interp['pv_preretirement_income'] = env.preretirement_income_wealth
     interp_str = dumps(interp)
     with open(result_seed_dir + '/aiplanner-initial.json', 'w') as w:
         w.write(interp_str)

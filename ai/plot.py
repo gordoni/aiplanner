@@ -14,7 +14,7 @@ from json import loads
 from math import sin, cos, pi
 from os import environ
 
-def bar(fname, names, values, colors, *, barwidth = 120, height = 400, font_size = 20):
+def bar(fname, names, values, colors, *, barwidth = 130, height = 400, font_size = 20):
 
     assert all(value >= 0 for value in values)
     maximum = max(values)
@@ -102,11 +102,11 @@ def main():
         asset_classes = ['bonds' if ac.endswith('bonds') else ac for ac in asset_classes]
     asset_allocation = interp['asset_allocation']
 
-    gi = interp['pv_guaranteed_income']
+    gi = interp['pv_retired_income']
     p = interp['p']
     real_spias = interp['real_spias_purchase']
     nominal_spias = interp['nominal_spias_purchase']
-    pv_preretirement = interp['pv_preretirement']
+    pv_preretirement = interp['pv_preretirement_income']
     spias = 0
     if real_spias:
         spias += real_spias
@@ -119,7 +119,7 @@ def main():
     if real_spias != None or nominal_spias != None:
         wealth_classes.append('new income annuities')
         wealth_allocation.append(spias)
-    wealth_classes.append('future contributions')
+    wealth_classes.append('pre-retirement contributions')
     wealth_allocation.append(pv_preretirement)
     wealth_allocation = list(max(w, 0) for w in wealth_allocation)
 

@@ -288,9 +288,9 @@ train_scenarios () {
         # If gi_fraction_low is set to zero, without any guaranteed income, during training at advanced ages the projected consumption
         # may be very small. As a result the reward_to_go observation will be many times larger than the observation range.
         # This may lead to poor training and/or training failing with a negative infinity reward_to_go estimate.
-        train $STAGE-gamma$GAMMA-gi_fraction0.03_0.1 "$ARGS --master-gi-fraction-low=0.03 --master-gi-fraction-high=0.1"
+        #train $STAGE-gamma$GAMMA-gi_fraction0.03_0.1 "$ARGS --master-gi-fraction-low=0.03 --master-gi-fraction-high=0.1"
         train $STAGE-gamma$GAMMA-gi_fraction0.1_0.3 "$ARGS --master-gi-fraction-low=0.1 --master-gi-fraction-high=0.3"
-        train $STAGE-gamma$GAMMA-gi_fraction0.3_1.0 "$ARGS --master-gi-fraction-low=0.3 --master-gi-fraction-high=1.0"
+        #train $STAGE-gamma$GAMMA-gi_fraction0.3_1.0 "$ARGS --master-gi-fraction-low=0.3 --master-gi-fraction-high=1.0"
     elif [ $TRAINING = preretirement-le -o $TRAINING = retired-le ]; then
         local STAGE=`echo $TRAINING | sed 's/-.*//'`
         train $STAGE-gamma$GAMMA-le_additional-2.5_-0.5 "$ARGS --master-life-expectancy-additional-low=-2.5 --master-life-expectancy-additional-high=-0.5"

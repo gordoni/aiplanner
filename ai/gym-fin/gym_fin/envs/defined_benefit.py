@@ -28,40 +28,47 @@ class DefinedBenefit:
 
         self.owner_single = 'spouse' if self.env.only_alive2 else 'self'
 
-        younger = self.env.age if self.env.sex2 == None else min(self.env.age, self.env.age2)
-        episodes = ceil((self.env.params.age_end - younger) / self.env.params.time_period)
-
-        bonds = self.env.bonds_zero if self.real else self.env.bonds.inflation
         if self.env.couple:
             life_table = self.env.life_table if owner == 'self' else self.env.life_table2
             life_table2 = self.env.life_table2 if owner == 'self' else self.env.life_table
         else:
             life_table = self.env.life_table2 if self.env.only_alive2 else self.env.life_table
             life_table2 = None
-        payout_delay = 0
-        schedule = [0] * episodes
-        self.sched = schedule
-        self.spia = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint_contingent = joint,
-            joint_payout_fraction = payout_fraction, frequency = round(1 / self.env.params.time_period),
-            cpi_adjust = 'all', date_str = self.env.date.isoformat(), schedule = schedule)
+        self.spia_preretirement, self.sched_preretirement = self.create(life_table, life_table2 = life_table2, retired = False)
+        self.spia_retired, self.sched_retired = self.create(life_table, life_table2 = life_table2, retired = True)
 
-        if self.env.couple:
+        self.spia_single = self.env.couple
+        if self.spia_single:
 
             life_table = self.env.life_table2 if self.env.only_alive2 else self.env.life_table
-            schedule = [0] * episodes
-            self.sched_single = schedule
-            self.spia_single = IncomeAnnuity(bonds, life_table, payout_delay = 12 * payout_delay,
-                frequency = round(1 / self.env.params.time_period), cpi_adjust = 'all', date_str = self.env.date.isoformat(), schedule = schedule)
+            self.spia_single_preretirement, self.sched_single_preretirement = self.create(life_table, retired = False)
+            self.spia_single_retired, self.sched_single_retired = self.create(life_table, retired = True)
             self.sched_single_zero = True
 
-        else:
+        self.zero_preretirement = True
+        self.zero_retired = True
 
-            self.spia_single = None
+    def create(self, life_table, life_table2 = None, *, retired):
 
-    def add(self, age = None, premium = None, payout = None, adjustment = 0, joint = False, payout_fraction = 0, exclusion_period = 0, exclusion_amount = 0):
+        younger = self.env.age if self.env.sex2 == None else min(self.env.age, self.env.age2)
+        episodes = ceil((self.env.params.age_end - younger) / self.env.params.time_period)
+
+        bonds = self.env.bonds_zero if self.real else self.env.bonds.inflation
+
+        payout_delay = 0
+        schedule = [0] * episodes
+        spia = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint_contingent = self.joint,
+            joint_payout_fraction = self.payout_fraction, frequency = round(1 / self.env.params.time_period),
+            cpi_adjust = 'all', date_str = self.env.date.isoformat(), schedule = schedule)
+
+        return spia, schedule
+
+    def add(self, age = None, final = float('inf'), premium = None, payout = None, adjustment = 0,
+        joint = False, payout_fraction = 0, exclusion_period = 0, exclusion_amount = 0):
 
         assert (premium == None) != (payout == None)
 
+        owner_age = self.env.age if self.owner == 'self' else self.env.age2
         if premium != None:
             mwr = self.env.params.real_spias_mwr if self.real else self.env.params.nominal_spias_mwr
             start = max(1, self.env.preretirement_years)
@@ -76,8 +83,8 @@ class DefinedBenefit:
             if age == None:
                 start = self.env.preretirement_years
             else:
-                owner_age = self.env.age if self.owner == 'self' else self.env.age2
                 start = age - owner_age
+        end = final - owner_age
 
         if not self.real:
             payout *= self.env.cpi
@@ -88,7 +95,7 @@ class DefinedBenefit:
         else:
             actual_payout_fraction = 1
 
-        self._add_sched(start, float('inf'), payout, actual_payout_fraction, adjustment)
+        self._add_sched(start, end, payout, actual_payout_fraction, adjustment)
 
         if self.type_of_funds == 'taxable' and exclusion_period > 0:
 
@@ -126,18 +133,25 @@ class DefinedBenefit:
         #print('_add_sched:', start, end, payout, payout_fraction, adjustment)
 
         payout /= self.env.params.time_period
-        for e in range(ceil(max(start / self.env.params.time_period, 0)), floor(min(end / self.env.params.time_period + 1, len(self.sched)))):
-            adjust = (1 + adjustment) ** e
-            self.sched[e] += payout * adjust
-            if self.spia_single:
-                self.sched_single[e] += payout * payout_fraction * adjust
+        for e in range(ceil(max(start / self.env.params.time_period, 0)), floor(min(end / self.env.params.time_period + 1, len(self.sched_retired)))):
+            adjust = (1 + adjustment) ** (e * self.env.params.time_period)
+            if e * self.env.params.time_period < self.env.preretirement_years:
+                self.sched_preretirement[e] += payout * adjust
+                if self.spia_single:
+                    self.sched_single_preretirement[e] += payout * payout_fraction * adjust
+                self.zero_preretirement = False
+            else:
+                self.sched_retired[e] += payout * adjust
+                if self.spia_single:
+                    self.sched_single_retired[e] += payout * payout_fraction * adjust
+                self.zero_retired = False
 
-        if self.spia_single and payout_fraction > 0:
+        if self.spia_single and payout_fraction != 0:
             self.sched_single_zero = False
 
     def payout(self):
 
-        payout = self.sched[0]
+        payout = self.sched_preretirement[0] + self.sched_retired[0]
         if not self.real:
             payout /= self.env.cpi
 
@@ -145,23 +159,31 @@ class DefinedBenefit:
 
     def couple_became_single(self):
 
-        self.spia = self.spia_single
-        self.sched = self.sched_single
+        self.spia_preretirement = self.spia_single_preretirement
+        self.spia_retired = self.spia_single_retired
+        self.sched_preretirement = self.sched_preretirement_single
+        self.sched_retired = self.sched_retired_single
         self.owner = self.owner_single
-        self.spia_single = None
+        self.spia_single = False
 
     def step(self, steps):
 
-        del self.sched[:steps]
+        del self.sched_preretirement[:steps]
+        del self.sched_retired[:steps]
         if self.spia_single:
-            del self.sched_single[:steps]
+            del self.sched_single_preretirement[:steps]
+            del self.sched_single_retired[:steps]
 
-        self.spia.set_age(self.env.age if self.owner == 'self' else self.env.age2)
+        age = self.env.age if self.owner == 'self' else self.env.age2
+        if not self.zero_preretirement:
+            self.spia_preretirement.set_age(age)
+        if not self.zero_retired:
+            self.spia_retired.set_age(age)
 
     def render(self):
 
         try:
-            payout = self.sched[0]
+            payout = self.sched_preretirement[0] + self.sched_retired[0]
         except IndexError:
             payout = 0
         pv = self.pv()
@@ -170,9 +192,13 @@ class DefinedBenefit:
 
         print('    ', self.type_of_funds, payout, self.real, pv)
 
-    def pv(self):
+    def pv(self, preretirement = True, retired = True):
 
-        pv = self.spia.premium(1)
+        pv = 0
+        if preretirement and not self.zero_preretirement and self.env.preretirement_years > 0:
+            pv += self.spia_preretirement.premium(1)
+        if retired and not self.zero_retired:
+            pv += self.spia_retired.premium(1)
         if not self.real:
             pv /= self.env.cpi
 

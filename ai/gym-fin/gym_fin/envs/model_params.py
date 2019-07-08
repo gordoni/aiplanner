@@ -157,17 +157,21 @@ class ModelParams(object):
 
         self._param('gi-fraction', (0, 1), (0, 1)) # Allowed values of guaranteed income as a fraction of total wealth.
         self._param('guaranteed-income', '[{"payout": [1e3, 1e5]}]', '[{"payout": 1e4}]', tp = string_type)
-            # Defined benefits represented as a JSON array of objects. Object fields:
-            #     "type": Type of defined benefit. Arbitrary string. Default "Income Annuity". A value of "Social Security" or "Social_Security" is taxed specially.
+            # Guaranteed income and expenses represented as a JSON array of objects. Object fields:
+            #     "type": Type of defined benefit or expese. Arbitrary string. Default "Income Annuity".
+            #         A value of "Social Security" or "Social_Security" is taxed specially.
             #     "owner": Value "self" or "spouse". Default "self".
             #     "age": Starting age in years of owner for benefit. Default starts when first individual reaches age_retirement.
+            #     "final": Inclusive ending age in years of owner for benfit. Default infinity.
             #     "probability": Probability of this defined benefit being present. Used when generating different random scenarios. Default 1.
-            #     "payout": Annual payment amount in today's dollars. May be a array of length 2 for stochastic log range. Required.
+            #     "payout": Annual guaranteed income payout amount in today's dollars. Negative for expenses.
+            #         May be a array of length 2 for stochastic log range. Required.
             #     "inflation_adjustment": Annual inflation increase fraction from today, or "cpi" for adjustment to reflect the CPI value. Default "cpi".
             #     "joint": true if payout drops on death of either self or spouse, false if value payout drops only on death of owner. Default false.
             #     "payout_fraction": payout fraction when joint contingency occurs. Default 0.
             #     "source_of_funds": "taxable", "tax_deferred", or "tax_free". Default "tax_deferred".
-            #     "exclusion_period": If taxable, exclusion period in years from starting age. Default 0.
+            #         Regular expenses should be "tax_free". A tax deductable expense should be "taxable".
+            #     "exclusion_period": If taxable, tax exclusion period in years from starting age. Default 0.
             #     "exclusion_amount": If taxable, annual tax exclusion amount of payout in today's dollars. Not adjusted for inflation. Default 0.
         self._param('guaranteed-income-additional', '[]', tp = string_type) # Additional defined benefits.
         self._param('p-weighted', (1e4, 1e7), 0) # Total investment portfolio size excluding additive specific amounts.
