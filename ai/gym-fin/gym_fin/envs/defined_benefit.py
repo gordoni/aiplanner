@@ -161,8 +161,8 @@ class DefinedBenefit:
 
         self.spia_preretirement = self.spia_single_preretirement
         self.spia_retired = self.spia_single_retired
-        self.sched_preretirement = self.sched_preretirement_single
-        self.sched_retired = self.sched_retired_single
+        self.sched_preretirement = self.sched_single_preretirement
+        self.sched_retired = self.sched_single_retired
         self.owner = self.owner_single
         self.spia_single = False
 

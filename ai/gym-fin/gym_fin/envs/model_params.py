@@ -145,8 +145,8 @@ class ModelParams(object):
         self._param('income-preretirement-sigma', 0.12) # Pre-retirement income annual log volatility for first individual.
         self._param('income-preretirement-sigma2', 0.12) # Pre-retirement income annual log volatility for second individual.
         self._boolean_flag('income-preretirement-concordant', False) # Whether second member of couple's income follows the same fluctuations as the first.
-        self._param('consume-preretirement', (0, 0), 0) # Annual pre-retirement consumption.
-        self._param('consume-income-ratio-max', float('inf')) # Maximum allowed value of consume_preretirement / (income_preretirement + income_preretirement2).
+        self._param('consume-preretirement', 0) # Annual pre-retirement consumption.
+        self._param('consume-preretirement-income-ratio', (0, 0)) # Fraction of initial pre-retirement income to add to pre-retirement consumption.
 
         self._param('have-401k', (True, True), True, tp = bool) # 401(k) available to first individual.
         self._param('have-401k2', (True, True), True, tp = bool) # 401(k) available to second individual.
@@ -170,7 +170,7 @@ class ModelParams(object):
             #     "joint": true if payout drops on death of either self or spouse, false if value payout drops only on death of owner. Default false.
             #     "payout_fraction": payout fraction when joint contingency occurs. Default 0.
             #     "source_of_funds": "taxable", "tax_deferred", or "tax_free". Default "tax_deferred".
-            #         Regular expenses should be "tax_free". A tax deductable expense should be "taxable".
+            #         Regular expenses should be "tax_free". A tax deductable expense can be either "tax_deferred" or "taxable".
             #     "exclusion_period": If taxable, tax exclusion period in years from starting age. Default 0.
             #     "exclusion_amount": If taxable, annual tax exclusion amount of payout in today's dollars. Not adjusted for inflation. Default 0.
         self._param('guaranteed-income-additional', '[]', tp = string_type) # Additional defined benefits.

@@ -32,8 +32,8 @@ class RayFinEnv(FinEnv):
         super().__init__(**config)
 
 def train(training_model_params, *, redis_address, train_anneal_num_timesteps, train_seeds,
-          train_batch_size, train_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_entropy_coefficient,
-          train_save_frequency, train_resume, train_couple_net,
+    train_batch_size, train_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_entropy_coefficient,
+    train_save_frequency, train_resume,
     train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
     train_seed, nice, num_cpu, model_dir, **dummy_kwargs):
 
@@ -62,9 +62,6 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
     except FileExistsError:
         pass
     dump_params_file(model_dir + '/params.txt', training_model_params)
-
-    couple = training_model_params['sex2'] != None
-    couple_net = couple and train_couple_net
 
     ray.init(redis_address=redis_address)
     #ray.init(object_store_memory=int(2e9))
@@ -218,7 +215,6 @@ def main():
         # changing all of their statuses from "TERMINATED" to "RUNNING", and timeteps_total to <new_timestep_limit>,
         # then invoke this script with --train-resume --train-num-timesteps=<new_timestep_limit>.
         # Didn't work, not sure what the problem is, but Rllib resume is currently experimental.
-    boolean_flag(parser, 'train-couple-net', default=True)
     training_model_params, _, args = fin_arg_parse(parser, evaluate=False)
     if not training_model_params['algorithm']:
          training_model_params['algorithm'] = 'PPO'

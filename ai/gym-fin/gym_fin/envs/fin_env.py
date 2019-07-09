@@ -443,7 +443,7 @@ class FinEnv(Env):
             self.life_table.age = self.age # Undo hack (value gets messed with below).
         if self.sex2 == None:
             self.life_table2 = None
-        elif self.age2 != self.life_table2_age or le_add2 != self.life_table_le_add2:
+        elif self.age2 != self.life_table2_age or le_add2 != self.life_table_le_add2 or self.life_table2 == None:
             self.life_table2 = LifeTable(self.params.life_table, self.sex2, self.age2,
                 death_age = self.death_age, le_add = le_add2, date_str = self.params.life_table_date, interpolate_q = False)
             self.life_table2_age = self.age2
@@ -492,7 +492,6 @@ class FinEnv(Env):
 
             for _ in range(20):
 
-                self.consume_preretirement = self.log_uniform(self.params.consume_preretirement_low, self.params.consume_preretirement_high)
                 self.start_income_preretirement = self.log_uniform(self.params.income_preretirement_low, self.params.income_preretirement_high)
                 self.start_income_preretirement2 = self.log_uniform(self.params.income_preretirement2_low, self.params.income_preretirement2_high)
                 if self.params.income_preretirement_age_end != None:
@@ -509,11 +508,9 @@ class FinEnv(Env):
                 self.income_preretirement = self.start_income_preretirement if self.income_preretirement_years > 0 else 0
                 self.income_preretirement2 = self.start_income_preretirement2 if self.income_preretirement_years2 > 0 else 0
 
-                preretirement_ok = not self.preretirement_years * self.consume_preretirement > self.params.consume_income_ratio_max * \
-                    (min(self.preretirement_years, self.income_preretirement_years) * self.income_preretirement + \
-                    min(self.preretirement_years, self.income_preretirement_years2) * self.income_preretirement2)
-                if not preretirement_ok:
-                    continue
+                self.consume_preretirement = self.params.consume_preretirement + \
+                    uniform(self.params.consume_preretirement_income_ratio_low, self.params.consume_preretirement_income_ratio_high) * \
+                    (self.income_preretirement + self.income_preretirement2)
 
                 p_tax_free_weight = uniform(self.params.p_tax_free_weight_low, self.params.p_tax_free_weight_high)
                 p_tax_deferred_weight = uniform(self.params.p_tax_deferred_weight_low, self.params.p_tax_deferred_weight_high)
@@ -559,6 +556,11 @@ class FinEnv(Env):
                     continue
 
                 self._pre_calculate_wealth(growth_rate = 1) # By convention use no growth for determining guaranteed income bucket.
+
+                pre_retirement_ok = self.raw_preretirement_income_wealth >= 0
+                if not pre_retirement_ok:
+                    continue
+
                 try:
                     gi_fraction = self.retired_income_wealth_pretax / self.net_wealth_pretax
                 except ZeroDivisionError:
@@ -573,10 +575,10 @@ class FinEnv(Env):
                 break
 
         if not found:
-            if not preretirement_ok:
-                raise FinError('Insufficient pre-retirement wages and wealth to support pre-retirement consumption.')
-            elif not ce_estimate_ok:
+            if not ce_estimate_ok:
                 raise FinError('Expected consumption falls outside model training range.')
+            elif not preretirement_ok:
+                raise FinError('Insufficient pre-retirement wages and wealth to support pre-retirement consumption.')
             else:
                 raise FinError('Guaranteed income falls outside model training range.')
 
@@ -714,7 +716,7 @@ class FinEnv(Env):
         consume_fraction = consume_floor + (consume_ceil - consume_floor) * consume_action
         try:
             consume_fraction *= self.net_wealth / self.p_plus_income
-        except ZeroDivsionError:
+        except ZeroDivisionError:
             consume_fraction = float('inf')
 
         consume_fraction = max(1e-6, min(consume_fraction, 1 / self.params.time_period))
@@ -890,7 +892,7 @@ class FinEnv(Env):
         p_taxable = max(p_taxable, 0)
         p_tax_deferred = max(p_tax_deferred, 0)
         if p_tax_free < 0:
-            assert p_tax_free > -1e-14 * self.p_plus_income, '{} {}'.format(p_tax_free, self.p_plus_income)
+            assert p_tax_free > min(-1e-14 * self.p_plus_income, -1e-11), '{} {}'.format(p_tax_free, self.p_plus_income)
             p_tax_free = 0
 
         retirement_contribution = contribution_limit(self.income_preretirement, self.age, self.have_401k, self.params.time_period) \
@@ -1323,9 +1325,8 @@ class FinEnv(Env):
             self.wealth = {'tax_free': sum(self.wealth.values()), 'tax_deferred': 0, 'taxable': 0}
 
         self.p_wealth = sum(self.wealth.values())
-        raw_preretirement_income_wealth = sum(self.pv_preretirement_income.values()) # Should factor in investment growth.
-        self.preretirement_income_wealth = max(0, raw_preretirement_income_wealth)
-        self.net_wealth_pretax = self.retired_income_wealth_pretax + max(0, self.p_wealth + raw_preretirement_income_wealth - self.taxes_due * total_growth)
+        self.raw_preretirement_income_wealth = sum(self.pv_preretirement_income.values()) # Should factor in investment growth.
+        self.net_wealth_pretax = self.retired_income_wealth_pretax + max(0, self.p_wealth + self.raw_preretirement_income_wealth - self.taxes_due * total_growth)
 
         self.rough_ce_estimate_individual = self.net_wealth_pretax / self.years_retired / self.couple_weight
 
@@ -1357,12 +1358,12 @@ class FinEnv(Env):
 
         try:
             self.p_wealth -= self.wealth['tax_deferred'] / pv_regular_income * pv_regular_tax
-            self.preretirement_income_wealth -= (self.pv_preretirement_income['tax_deferred'] + self.pv_preretirement_income['taxable']) / pv_regular_income * \
+            self.raw_preretirement_income_wealth -= (self.pv_preretirement_income['tax_deferred'] + self.pv_preretirement_income['taxable']) / pv_regular_income * \
                 pv_regular_tax
         except ZeroDivisionError:
             pass
         self.p_wealth = max(0, self.p_wealth - pv_capital_gains_tax)
-        self.preretirement_income_wealth = max(0, self.preretirement_income_wealth)
+        self.preretirement_income_wealth = max(0, self.raw_preretirement_income_wealth)
         self.net_wealth = max(0, self.net_wealth_pretax - pv_taxes)
         self.retired_income_wealth = max(0, self.net_wealth - self.p_wealth - self.preretirement_income_wealth)
 
@@ -1478,6 +1479,7 @@ class FinEnv(Env):
             * self.params.time_period
         _, reward_value = self.raw_reward(self.ce_estimate_individual)
         reward_estimate = reward_weight * self.reward_scale * reward_value
+        reward_estimate = max(-1e30, reward_estimate) # Prevent observation of -inf reward estimate during training.
 
         # When mean reversion rate is zero, avoid observing spurious noise for better training.
         stocks_price, stocks_volatility = self.stocks.observe()
@@ -1499,7 +1501,6 @@ class FinEnv(Env):
             life_percentile, spia_expectancy, final_spias_purchase,
             # Value function related observations.
             # Best results (especially when gamma=6) if provide both a rewards to go estimate that can be fine tuned and a relative CE estimate.
-            # Absolute CE is also presumably important as a yardstick when have taxable assets.
             reward_estimate, self.ce_estimate_individual / self.consume_scale,
             # Nature of wealth/income observations.
             # Obseve fractionality to hopefully take advantage of iso-elasticity of utility.

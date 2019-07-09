@@ -266,10 +266,10 @@ class Evaluator(object):
         unit_low = self.indiv_low
         unit_high = self.indiv_high
 
-        utility_preretirement = utility.utility(env.params.consume_preretirement_low)
+        utility_preretirement = utility.utility(env.params.consume_preretirement)
         self.preretirement_ppf = weighted_ppf(self.rewards, utility_preretirement) / 100
 
-        self.consume_preretirement = env.params.consume_preretirement_low
+        self.consume_preretirement = env.params.consume_preretirement
 
         pdf_bucket_weights = []
         w_tot = 0

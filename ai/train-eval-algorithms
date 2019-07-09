@@ -45,10 +45,11 @@ echo `date` Done
 #         A3C - not tested; A3C asynchronous variant (reportedly inferior).
 #         PG - presumed inferior.
 #         DDPG - ran too slowly (50,000 timesteps per CPU hour without GPU).
-#         APPO - not tested; PPO asychronous variant.
+#         APPO - not tested; PPO asychronous variant; need Ray 0.7.1 for https://github.com/ray-project/ray/issues/4477
 #         APEX-DDPG - not tested; DDPG variant.
 #         ES, ARS - not tested; need rollouts, which would be very expensive.
 #         MARWEL - not tested; offline algorithm.
+#         IMPALA - not tested; need Ray 0.7.1 for https://github.com/ray-project/ray/issues/4771
 #     Baselines ppo1 outperforms all spinnup algorithms (td3, sac, trpo, ppo, ddpg, and vpg).
 #
 # PPO with issue 50 fixed:
