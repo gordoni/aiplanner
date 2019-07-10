@@ -28,7 +28,7 @@ class DefinedBenefit:
 
         self.owner_single = 'spouse' if self.env.only_alive2 else 'self'
 
-        if self.env.couple:
+        if self.env.couple and self.payout_fraction > 0:
             life_table = self.env.life_table if owner == 'self' else self.env.life_table2
             life_table2 = self.env.life_table2 if owner == 'self' else self.env.life_table
         else:
@@ -190,7 +190,7 @@ class DefinedBenefit:
         if not self.real:
             payout /= self.env.cpi
 
-        print('    ', self.type_of_funds, payout, self.real, pv)
+        print('    ', self.owner, self.type_of_funds, payout, 'real' if self.real else 'nominal', pv)
 
     def pv(self, preretirement = True, retired = True):
 

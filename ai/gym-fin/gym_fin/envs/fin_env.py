@@ -557,8 +557,8 @@ class FinEnv(Env):
 
                 self._pre_calculate_wealth(growth_rate = 1) # By convention use no growth for determining guaranteed income bucket.
 
-                pre_retirement_ok = self.raw_preretirement_income_wealth >= 0
-                if not pre_retirement_ok:
+                preretirement_ok = self.raw_preretirement_income_wealth >= 0
+                if not preretirement_ok:
                     continue
 
                 try:
@@ -581,6 +581,8 @@ class FinEnv(Env):
                 raise FinError('Insufficient pre-retirement wages and wealth to support pre-retirement consumption.')
             else:
                 raise FinError('Guaranteed income falls outside model training range.')
+
+        #print('wealth:', self.net_wealth_pretax, self.raw_preretirement_income_wealth, self.retired_income_wealth_pretax, self.p_wealth)
 
         if self.params.p_taxable_stocks_basis_fraction_low == self.params.p_taxable_stocks_basis_fraction_high:
             p_taxable_stocks_basis_fraction = self.params.p_taxable_stocks_basis_fraction_low
@@ -1170,6 +1172,7 @@ class FinEnv(Env):
                 self.income_preretirement_years = 0
             else:
                 self.income_preretirement_years2 = 0
+            self.consume_preretirement /= 1 + self.params.consume_additional
 
             self.retirement_expectancy_both = [0] * len(self.retirement_expectancy_both)
             self.retirement_expectancy_one = self.retirement_expectancy_single

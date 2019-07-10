@@ -13,8 +13,8 @@ master_consume_ceiling = 1e6
 
 master_age_start = 20
     # Be sure to train with variable market data, otherwise may market time using age rather than the market data.
-master_age_start2_low = 20
-master_age_start2_high = 40
+master_age_start2_low = 10
+master_age_start2_high = 30
 
 # Ensure life expectancy isn't a proxy for age.
 # This helps ensure we use spias_purchase_years rather than life expectancy in determining whether to purchase SPIAs.

@@ -168,7 +168,7 @@ class ModelParams(object):
             #         May be a array of length 2 for stochastic log range. Required.
             #     "inflation_adjustment": Annual inflation increase fraction from today, or "cpi" for adjustment to reflect the CPI value. Default "cpi".
             #     "joint": true if payout drops on death of either self or spouse, false if value payout drops only on death of owner. Default false.
-            #     "payout_fraction": payout fraction when joint contingency occurs. Default 0.
+            #     "payout_fraction": payout fraction when joint contingency occurs. Zero specifies a single annuity with no joint contingency. Default 0.
             #     "source_of_funds": "taxable", "tax_deferred", or "tax_free". Default "tax_deferred".
             #         Regular expenses should be "tax_free". A tax deductable expense can be either "tax_deferred" or "taxable".
             #     "exclusion_period": If taxable, tax exclusion period in years from starting age. Default 0.
