@@ -18,12 +18,16 @@ mkdir -p ~/aiplanner-data/train-results
 cd ~/aiplanner-data/train-results
 
 PARALLEL=Jobs
-SCENARIO_ARGS="--master-stocks-model=iid --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.010 --master-iid-bonds-volatility=0.110 --master-no-bills --master-no-returns-standard-error --master-tax --master-static-bonds --master-fixed-real-bonds-rate=0.01 --master-fixed-nominal-bonds-rate=0.03 --master-real-short-rate-type=current --master-inflation-short-rate-type=current"
-    # Real value of taxable basis decreases 2% per year due to inflation.
 SCENARIO_ARGS=''
-#SCENARIO_ARGS="$SCENARIO_ARGS --master-no-tax" # no-tax required for pre-retirement validation.
-#TRAINING_ARGS='--master-age-start=50 --master-age-retirement=0 --master-p-weighted-high=1e7' # Required for retirement models.
+#SCENARIO_ARGS="$SCENARIO_ARGS --master-nominal-spias" # Required for SPIAs.
+#SCENARIO_ARGS="$SCENARIO_ARGS --master-stocks-model=iid --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.010 --master-iid-bonds-volatility=0.110 --master-no-bills --master-no-returns-standard-error --master-tax --master-static-bonds --master-fixed-real-bonds-rate=0.01 --master-fixed-nominal-bonds-rate=0.03 --master-real-short-rate-type=current --master-inflation-short-rate-type=current"
+    # Required for validation.
+    # Real value of taxable basis decreases 2% per year due to inflation.
+#SCENARIO_ARGS="$SCENARIO_ARGS --master-no-tax"
+    # Required for pre-retirement validation.
+    # Retirement validation is OK taxed because validation wealth is non-taxable.
 TRAINING_ARGS=''
+#TRAINING_ARGS="$TRAINING_ARGS --master-age-start=50 --master-age-retirement=0 --master-p-weighted-high=1e7" # Required for retirement models.
 EVALARGS=''
 UNIT=single
 SPIAS=no_spias
@@ -47,7 +51,7 @@ make_train_dir () {
     done
 }
 
-EPISODE="$UNIT-$SPIAS-gamma$GAMMA"
+EPISODE="$SPIAS-gamma$GAMMA"
 mkdir -p $EPISODE
 cd $EPISODE
 train_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS $TRAINARGS --train-save-frequency=500000"
