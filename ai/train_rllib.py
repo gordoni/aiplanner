@@ -33,7 +33,7 @@ class RayFinEnv(FinEnv):
 
 def train(training_model_params, *, redis_address, train_anneal_num_timesteps, train_seeds,
     train_batch_size, train_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_entropy_coefficient,
-    train_save_frequency, train_resume,
+    train_save_frequency, train_max_failures, train_resume,
     train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
     train_seed, nice, num_cpu, model_dir, **dummy_kwargs):
 
@@ -181,6 +181,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
                 'local_dir': abspath(model_dir),
                 'checkpoint_freq': checkpoint_freq,
                 'checkpoint_at_end': True,
+                'max_failures': train_max_failures,
             } for seed in range(train_seed, train_seed + train_seeds)
         },
         resume = train_resume,
@@ -194,7 +195,7 @@ def main():
         # Increased mean CE levels are likely for a large number of timesteps, but it is a case of diminishing returns.
         # Eg. for a gamma of 6 and a large portfolio, going from 2m to 4m increases the CE by 1.1%, but going to 6m only increases it by a further 0.5%.
     parser.add_argument('--train-anneal-num-timesteps', type=int, default=0)
-    parser.add_argument('--train-seeds', type=int, default = 1) # Number of parallel seeds to train.
+    parser.add_argument('--train-seeds', type=int, default=1) # Number of parallel seeds to train.
     parser.add_argument('--train-batch-size', type=int, default=100000)
         # PPO default batch size is 4000. For a gamma of 6 and a large portfolio it results in asset allocation heavily biased in favor of stocks, and a poor mean CE.
         # The poor CE is probably the result of each batch being non-representative of the overall situation given the stochastic nature of the problem.
@@ -210,6 +211,7 @@ def main():
         # Value to use probably depends on the complexity of the scenario.
         # A value of 1e-3 reduced CE stdev and increased CE mean for a 256x256 tf model on a Merton like model with stochastic life expectancy and guaranteed income.
     parser.add_argument('--train-save-frequency', type=int, default=None)
+    parser.add_argument('--train-max-failures', type=int, default=3)
     boolean_flag(parser, 'train-resume', default = False) # Resume training rather than starting new trials.
         # To attempt to extend already completed trials edit the latest <model_dir>/seed_0/experiment_state-<date>.json
         # changing all of their statuses from "TERMINATED" to "RUNNING", and timeteps_total to <new_timestep_limit>,
