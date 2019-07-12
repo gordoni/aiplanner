@@ -22,8 +22,9 @@ SCENARIO_ARGS="--master-stocks-model=iid --master-stocks-return=0.065 --master-s
     # Real value of taxable basis decreases 2% per year due to inflation.
 SCENARIO_ARGS=''
 #SCENARIO_ARGS="$SCENARIO_ARGS --master-no-tax" # no-tax required for pre-retirement validation.
-#TRAINING_ARGS='--master-age-start=50 --master-age-retirement=0' # Required for retirement models.
+#TRAINING_ARGS='--master-age-start=50 --master-age-retirement=0 --master-p-weighted-high=1e7' # Required for retirement models.
 TRAINING_ARGS=''
+EVALARGS=''
 UNIT=single
 SPIAS=no_spias
 GAMMA=6
@@ -75,8 +76,9 @@ for TS in 4000000; do # 2000000 3000000 4000000; do
         make_train_dir aiplanner.gamma$GAMMA.tf
     fi
     CP=`expr $TS / $BATCH_SIZE`
-    #eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP"
-    eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS --checkpoint-name=checkpoint_$CP --ensemble"
+    eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS $EVALARGS --checkpoint-name=checkpoint_$CP"
+    #eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS $EVALARGS --checkpoint-name=checkpoint_$CP --ensemble"
+    #eval_scenarios $TRAINING concordant $GAMMA $EPISODE "$ARGS $EVALARGS --checkpoint-name=checkpoint_$CP --ensemble"
     cd ..
 done
 wait

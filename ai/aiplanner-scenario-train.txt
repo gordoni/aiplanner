@@ -11,6 +11,8 @@
 master_consume_floor = 1e4
 master_consume_ceiling = 1e6
 
+master_couple_probability = 0 # Train model using single scenario even for couples to avoid couple stochasticity.
+
 master_age_start = 20
     # Be sure to train with variable market data, otherwise may market time using age rather than the market data.
 master_age_start2_low = 10
@@ -25,6 +27,8 @@ master_life_expectancy_additional2_high = 5
 
 master_age_retirement_low = 50
 master_age_retirement_high = 80
+
+master_couple_death_preretirement_consume = 'pro_rata' # Prevent over consumption in event of death of high wage earning member of couple.
 
 master_income_preretirement_low = 2e3 # Produces desired post-tax savings for retirement distribution.
 master_income_preretirement_high = 2e5
@@ -43,12 +47,16 @@ master_guaranteed_income = '''[
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"},
-    {"owner": "self",   "age": null, "probability": 0.8, "payout": [5e3, 5e4], "source_of_funds": "taxable", "type": "Social Security"},
+    {"owner": "self",   "age": null, "probability": 1.0, "payout": [5e3, 5e4], "source_of_funds": "taxable", "type": "Social Security"},
     {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
     {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
     {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"},
-    {"owner": "spouse", "age": null, "probability": 0.8, "payout": [5e3, 5e4], "source_of_funds": "taxable", "type": "Social Security"}
+    {"owner": "spouse", "age": null, "probability": 1.0, "payout": [5e3, 5e4], "source_of_funds": "taxable", "type": "Social Security"}
 ]'''
+    # Probability of Social Security set to 1, even though it is slightly less, to avoid the possibility of very large negative reward to go and reward values
+    # at very advanced ages for large gamma values. At very advanced ages, without any guaranteed income, life expectancy is roughly 2, and initially
+    # we keep consuming half the remaining portfolio each year. For large gamma values this leads utility to becoming quickly very negative.
+    # Problem only observed when training couple model. Not clear why.
 
 master_p_weighted_low = 1e3
 master_p_weighted_high = 1e5

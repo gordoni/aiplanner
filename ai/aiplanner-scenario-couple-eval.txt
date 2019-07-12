@@ -9,12 +9,16 @@
 # PURPOSE.
 
 master_couple_probability = 1
+master_couple_hide = True
+
 master_life_expectancy_additional = 3 # Investors tend to be in better health than the average retiree.
 master_life_expectancy_additional2 = 3
 master_age_start = 50
 master_age_start2 = 50
 
 master_age_retirement = 65
+
+master_couple_death_preretirement_consume = 'consume_additional'
 
 master_income_preretirement = 5e4
 master_income_preretirement2 = 5e4

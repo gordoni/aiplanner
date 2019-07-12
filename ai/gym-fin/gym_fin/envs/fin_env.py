@@ -713,8 +713,8 @@ class FinEnv(Env):
         # Define a consume floor and consume ceiling outside of which we won't consume.
         # The mid-point acts as a hint as to the initial consumption values to try.
         consume_estimate = self.consume_net_wealth_estimate
-        consume_floor = 0
-        consume_ceil = 2 * consume_estimate
+        consume_floor = 0.1 * consume_estimate
+        consume_ceil = 1.9 * consume_estimate
         consume_fraction = consume_floor + (consume_ceil - consume_floor) * consume_action
         try:
             consume_fraction *= self.net_wealth / self.p_plus_income
@@ -1172,7 +1172,19 @@ class FinEnv(Env):
                 self.income_preretirement_years = 0
             else:
                 self.income_preretirement_years2 = 0
-            self.consume_preretirement /= 1 + self.params.consume_additional
+            if self.params.couple_death_preretirement_consume == 'consume_additional':
+                self.consume_preretirement /= 1 + self.params.consume_additional
+            elif self.params.couple_death_preretirement_consume == 'pro_rata':
+                try:
+                    ratio = (self.start_income_preretirement2 if self.only_alive2 else self.start_income_preretirement) / \
+                        (self.start_income_preretirement + self.start_income_preretirement2)
+                except ZeroDivisionError:
+                    ratio = 1
+                self.consume_preretirement *= ratio
+            elif self.params.couple_death_preretirement_consume == 'none':
+                pass
+            else:
+                assert False
 
             self.retirement_expectancy_both = [0] * len(self.retirement_expectancy_both)
             self.retirement_expectancy_one = self.retirement_expectancy_single
@@ -1453,10 +1465,13 @@ class FinEnv(Env):
     def _observe(self):
 
         couple = int(self.couple)
-        if couple:
+        if self.couple:
             num_401k = int(self.have_401k) + int(self.have_401k2)
         else:
             num_401k = int(self.have_401k2) if self.only_alive2 else int(self.have_401k)
+        if self.couple and self.params.couple_hide:
+            couple = 0
+            num_401k = min(1, num_401k)
         one_on_gamma = 1 / self.gamma
 
         if self.spias_ever:

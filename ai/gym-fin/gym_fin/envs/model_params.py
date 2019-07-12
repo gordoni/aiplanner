@@ -107,6 +107,10 @@ class ModelParams(object):
             # For PPO1 value will matter in ensuring equal optimization weight is placed on different episodes when gamma is variable.
             # For PPO1 increasing this value is associated with an increase in the standard deviation of measured CEs across models.
             # Rllib PPO takes rewards_to_go / 10 batches to converge the value function.
+        self._boolean_flag('couple-hide', False)
+            # Whether to hide observation of couple specific values.
+            # When hidden a couple appears like a single individual. This allows use of a single trained model for evaluation of a couple.
+            # A couple trained model may be less accurate due to the large stochasticity associated with the random death of the first member of the couple.
 
         self._param('life-table', 'ssa-cohort', tp = string_type) # Life expectancy table to use. See spia module for possible values.
         self._param('life-table-date', '2020-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
@@ -125,6 +129,11 @@ class ModelParams(object):
         self._param('age-retirement', (65, 65), 65) # Assess and optimize consumption from when first individual reaches this age.
         self._param('consume-additional', 0.6)
             # When a second individual is present we consume this fraction more than a single individual for the same per individual utility.
+        self._param('couple-death-preretirement-consume', 'consume_additional', tp = string_type, choices = ('consume_additional', 'pro_rata', 'none'))
+            # How to adjust preretirement consumption in the event of the death of one member of a couple.
+            # "consume_additional": reduce so that the original consumption level is consume_additional greater than the new consumption level.
+            # "pro_rata": reduce proportionately to the initial pre-retirement income of each member.
+            # "none": no change in consumption.
         self._boolean_flag('probabilistic-life-expectancy', True)
             # This flag is useful for debugging.
             # Whether to the extent possible to simulate life expectancy probabilistically, or whether to use random roll outs.

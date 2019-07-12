@@ -8,7 +8,6 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-master_couple_probability = 0
 # Observation is of life expectancy, so the fact that we train using
 # parameters that don't match those of the user has a second order
 # impact only.
