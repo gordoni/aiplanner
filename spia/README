@@ -13,6 +13,7 @@ The package comprises the following files:
     monotone_convex.py - yield curve interpolation
     fetch_yield_curve.py - yield curve data file retrieval
     test.py
+    test.out
     test
     README
     LICENSE
@@ -21,28 +22,36 @@ The package comprises the following files:
 They should normally all be stored in the directory spia .
 
 The package depends on scipy for yield curve interpolation and the
-catdoc xls2csv program to obtain the corporate interest rate.
+catdoc xls2csv program for the corporate interest rate.
 
 On Ubuntu, to obtain these modules:
 
     sudo apt install python3-scipy catdoc
 
-Then to fetch the yield curves for all time and store the results in
-the directory ~/.spia (this could take a while):
+When the module is first used it will automatically download yield
+curve data for all time from the Treasury and store it in the
+directory ~/.spia .  This may take a few minutes. Subsequent
+invocations will only download yield curve data if a request is made
+for a yield curve with a date not found in ~/.spia .
+
+Alternatively the yield curve data can be downloaded manually:
 
     chmod +x fetch_yield_curve.py
     ./fetch_yield_curve.py -t nominal
     ./fetch_yield_curve.py -t real
     ./fetch_yield_curve.py -t corporate
 
-Subsequent runs of fetch_yield_curve.py will only download updates to the
-data.
+Subsequent runs of fetch_yield_curve.py will only download updates to
+the yield curve data.
 
-The module can then be run to compute, as an example, the payout
-associated with a given premium and money's worth ratio:
+The module can be used to compute the payouts and premiums for various
+annuities:
 
     chmod +x test
     ./test
 
-Full details of all the options available are contained in the source
-code.
+This should print "OK", or show the differences between the expected
+results and the obtained results.
+
+See test.py for some examples of the various options, or the
+documentation in the source code.
