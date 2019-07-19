@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -9,8 +9,9 @@
 # PURPOSE.
 
 from glob import glob
-from os.path import join
+from os.path import isdir, join
 from pickle import load
+from shutil import rmtree
 
 import numpy as np
 
@@ -21,15 +22,22 @@ from baselines.common import tf_util as U
 class TFRunner:
 
     def __init__(self, *, train_dirs = ['aiplanner.tf'], checkpoint_name = None, eval_model_params, couple_net = True,
-        redis_address = None, num_workers = 1, num_environments = 1, num_cpu = None):
+        redis_address = None, num_workers = 1, num_environments = 1, num_cpu = None,
+        evaluator = True, export_model = False):
 
         self.couple_net = couple_net
         self.session = None
         self.local_policy_graph = None
         self.remote_evaluators = None
+        self.sessions = []
+        self.observation_tfs = []
+        self.action_tfs = []
 
-        rllib_checkpoints = glob(train_dirs[0] + '/*/checkpoint_*')
-        if rllib_checkpoints:
+        tf_name = checkpoint_name or 'tensorflow'
+        tf_dir = train_dirs[0] + '/' + tf_name
+        tensorflow = isdir(tf_dir)
+        #rllib_checkpoints = glob(train_dirs[0] + '/*/checkpoint_*')
+        if not tensorflow:
 
             # RLlib.
             import ray
@@ -63,6 +71,19 @@ class TFRunner:
 
                 agent = cls(env = RayFinEnv, config = config)
                 agent.restore(checkpoint)
+
+                if export_model:
+                    export_dir = train_dir + '/tensorflow'
+                    assert '.tf/' in export_dir
+                    try:
+                        rmtree(export_dir)
+                    except FileNotFoundError:
+                        pass
+                    agent.export_policy_model(export_dir)
+
+                if not evaluator:
+                    return
+
                 weight = agent.local_evaluator.get_weights()['default']
                 weights.append(weight)
 
@@ -119,35 +140,54 @@ class TFRunner:
 
         else:
 
-            if not checkpoint_name:
-                checkpoint_name = 'tensorflow'
-            tf_dir = train_dirs[0] + '/' + checkpoint_name
-
-            self.session = U.make_session(num_cpu = num_cpu).__enter__()
-
             try:
 
-                # OpenAI Spinning Up.
-                from spinup.utils.logx import restore_tf_graph
-                model_graph = restore_tf_graph(self.session, tf_dir + '/simple_save')
-                self.observation_sigle_tf = observation_couple_tf = model_graph['x']
-                try:
-                    self.action_single_tf = action_couple_tf = model_graph['mu']
-                except KeyError:
-                    self.action_single_tf = action_couple_tf = model_graph['pi']
+                # RLlib tensorflow.
+                for train_dir in train_dirs:
+                    tf_dir = train_dir + '/' + tf_name
+                    graph = tf.Graph()
+                    with graph.as_default() as g:
+                        tf_config = tf.ConfigProto(
+                            inter_op_parallelism_threads = num_cpu,
+                            intra_op_parallelism_threads = num_cpu
+                        )
+                        with tf.Session(graph = graph, config = tf_config).as_default() as session:
+                            metagraph = tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], tf_dir)
+                            inputs = metagraph.signature_def['serving_default'].inputs
+                            outputs = metagraph.signature_def['serving_default'].outputs
+                            observation_tf = graph.get_tensor_by_name(inputs['observations'].name)
+                            action_tf = graph.get_tensor_by_name(outputs['actions'].name)
+                            self.sessions.append(session)
+                            self.observation_tfs.append(observation_tf)
+                            self.action_tfs.append(action_tf)
 
-            except (ModuleNotFoundError, IOError):
+            except KeyError:
 
-                # OpenAI Baselines.
-                tf.saved_model.loader.load(self.session, [tf.saved_model.tag_constants.SERVING], tf_dir)
-                g = tf.get_default_graph()
-                self.observation_single_tf = g.get_tensor_by_name('single/ob:0')
-                self.action_single_tf = g.get_tensor_by_name('single/action:0')
+                self.session = U.make_session(num_cpu = num_cpu).__enter__()
+
                 try:
-                    self.observation_couple_tf = g.get_tensor_by_name('couple/ob:0')
-                    self.action_couple_tf = g.get_tensor_by_name('couple/action:0')
-                except KeyError:
-                    self.observation_couple_tf = self.action_couple_tf = None
+
+                    # OpenAI Spinning Up.
+                    from spinup.utils.logx import restore_tf_graph
+                    model_graph = restore_tf_graph(self.session, tf_dir + '/simple_save')
+                    self.observation_sigle_tf = observation_couple_tf = model_graph['x']
+                    try:
+                        self.action_single_tf = action_couple_tf = model_graph['mu']
+                    except KeyError:
+                        self.action_single_tf = action_couple_tf = model_graph['pi']
+
+                except (ModuleNotFoundError, IOError):
+
+                    # OpenAI Baselines.
+                    tf.saved_model.loader.load(self.session, [tf.saved_model.tag_constants.SERVING], tf_dir)
+                    g = tf.get_default_graph()
+                    self.observation_single_tf = g.get_tensor_by_name('single/ob:0')
+                    self.action_single_tf = g.get_tensor_by_name('single/action:0')
+                    try:
+                        self.observation_couple_tf = g.get_tensor_by_name('couple/ob:0')
+                        self.action_couple_tf = g.get_tensor_by_name('couple/action:0')
+                    except KeyError:
+                        self.observation_couple_tf = self.action_couple_tf = None
 
     def __enter__(self):
 
@@ -163,6 +203,13 @@ class TFRunner:
         return ob[0] == 1
 
     def _run_unit(self, couple, obss):
+
+        if self.sessions:
+
+                actions = [session.run(action_tf, feed_dict = {observation_tf: obss}) \
+                    for session, observation_tf, action_tf in zip(self.sessions, self.observation_tfs, self.action_tfs)]
+                mean_action = np.mean(actions, axis = 0)
+                return mean_action
 
         if self.session:
 
