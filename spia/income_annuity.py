@@ -392,16 +392,6 @@ class IncomeAnnuity(object):
                 y = delay + period
                 if i + self.alive_offset >= len(self.alive1_delay_array) or prev_combined < target_combined:
                     break
-                try:
-                    schedule = self.schedule[int(y * self.frequency + 0.5)]
-                except TypeError:
-                    try:
-                        schedule = self.schedule(y)
-                    except TypeError:
-                        schedule = self.schedule
-                if schedule == 0:
-                    i += 1
-                    continue
                 if period >= self.period_certain:
                     if self.life_table2 == None:
                         alive = self.alive1_delay_array[i + self.alive_offset] / alive1_init
@@ -458,10 +448,10 @@ class IncomeAnnuity(object):
                 duration += y * payout_value
                 annual_return += payout_amount * spot
                 total_payout += payout_amount
-                if self.calculate:
+                if self.calculate and payout_fraction != 0:
                     r = math.exp(spot)
                     calc = {'i': i, 'y': y, 'alive': alive, 'joint': joint, 'combined': combined,
-                        'payout_fraction': payout_amount, 'interest_rate': r, 'fair_price': payout_value}
+                        'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout_value}
                     self.calcs.append(calc)
                 i += 1
                 prev_combined = combined
