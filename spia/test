@@ -1,4 +1,4 @@
 #!/bin/sh
 
 cd ..
-python3 -m spia.test "$@"
+python3 -m spia.test "$@" | diff -c spia/test.out - && echo OK
