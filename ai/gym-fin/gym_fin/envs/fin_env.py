@@ -283,6 +283,7 @@ class FinEnv(Env):
             time_period = self.params.time_period)
         self.bonds_stepper = self.bonds.nominal
         self.bonds_zero = YieldCurve('fixed', self.params.life_table_date)
+        self.bonds_constant_inflation = YieldCurve('fixed', self.params.life_table_date, adjust = exp(self.bonds.inflation.mean_short_interest_rate) - 1)
 
         if self.params.iid_bonds:
             if self.params.iid_bonds_type == 'real':
@@ -364,20 +365,20 @@ class FinEnv(Env):
 
         return self.p_tax_free + self.p_tax_deferred + self.p_taxable
 
-    def get_db(self, type, owner, inflation_adjustment, joint, payout_fraction, type_of_funds):
+    def get_db(self, type, real, type_of_funds):
 
-        key = (type_of_funds, inflation_adjustment == 'cpi', type == 'Social_Security', owner, joint, payout_fraction)
+        key = (type_of_funds, real, type == 'Social_Security')
         try:
             db = self.defined_benefits[key]
         except KeyError:
-            real = inflation_adjustment == 'cpi'
-            db = DefinedBenefit(self, type = type, owner = owner, real = real, joint = joint, payout_fraction = payout_fraction, type_of_funds = type_of_funds)
+            db = DefinedBenefit(self, type = type, real = real, type_of_funds = type_of_funds)
             self.defined_benefits[key] = db
 
         return db
 
     def add_db(self, type = 'Income Annuity', owner = 'self', age = None, final = float('inf'), probability = 1, premium = None, payout = None,
-        inflation_adjustment = 'cpi', joint = False, payout_fraction = 0, source_of_funds = 'tax_deferred', exclusion_period = 0, exclusion_amount = 0):
+        inflation_adjustment = 'cpi', joint = False, payout_fraction = 0, source_of_funds = 'tax_deferred', exclusion_period = 0, exclusion_amount = 0,
+        delay_calcs = False):
 
         assert owner in ('self', 'spouse')
 
@@ -392,16 +393,20 @@ class FinEnv(Env):
             payout_fraction = 0
 
         type = type.replace(' ', '_')
-        db = self.get_db(type, owner, inflation_adjustment, joint, payout_fraction, source_of_funds)
+        real = inflation_adjustment == 'cpi'
+        db = self.get_db(type, real, source_of_funds)
         adjustment = 0 if inflation_adjustment == 'cpi' else inflation_adjustment
-        db.add(age = age, final = final, premium = premium, payout = payout, adjustment = adjustment, joint = joint, payout_fraction = payout_fraction,
-               exclusion_period = exclusion_period, exclusion_amount = exclusion_amount)
+        db.add(owner = owner, age = age, final = final, premium = premium, payout = payout, adjustment = adjustment, joint = joint, payout_fraction = payout_fraction,
+            exclusion_period = exclusion_period, exclusion_amount = exclusion_amount, delay_calcs = delay_calcs)
 
     def parse_defined_benefits(self):
 
         self.defined_benefits = {}
         for db in loads(self.params.guaranteed_income) + loads(self.params.guaranteed_income_additional):
-            self.add_db(**db)
+            self.add_db(delay_calcs = True, **db)
+
+        for db in self.defined_benefits.values():
+            db.force_calcs()
 
     def age_uniform(self, low, high):
         if low == high:
@@ -970,7 +975,7 @@ class FinEnv(Env):
 
     def add_spias(self, inflation_adjustment, tax_free_spias, tax_deferred_spias, taxable_spias):
 
-        owner = 'self' # Owner doesn't matter for joint SPIAs. Doing things this way reduces the number of db objects required for couples.
+        owner = 'self' if self.couple or not self.only_alive2 else 'spouse'
         age = self.age + self.params.time_period
         payout_fraction = 1 / (1 + self.params.consume_additional)
         if tax_free_spias > 0:
@@ -1189,10 +1194,6 @@ class FinEnv(Env):
             self.retirement_expectancy_both = [0] * len(self.retirement_expectancy_both)
             self.retirement_expectancy_one = self.retirement_expectancy_single
 
-            self.defined_benefits = {key: db for key, db in self.defined_benefits.items() if not db.sched_single_zero}
-            for db in self.defined_benefits.values():
-                db.couple_became_single()
-
         for _ in range(steps):
             income_fluctuation = lognormvariate(self.params.income_preretirement_mu * self.params.time_period,
                 self.params.income_preretirement_sigma * sqrt(self.params.time_period))
@@ -1359,8 +1360,7 @@ class FinEnv(Env):
         pv_regular_income = self.pv_preretirement_income['tax_deferred'] + self.pv_preretirement_income['taxable'] + \
             self.pv_retired_income['tax_deferred'] + self.pv_retired_income['taxable'] + self.wealth['tax_deferred']
         pv_social_security = self.pv_social_security
-        inflation = exp(self.bonds.inflation.mean_short_interest_rate)
-        pv_capital_gains = self.wealth['taxable'] - self.taxable_basis / inflation ** average_asset_years
+        pv_capital_gains = self.wealth['taxable'] - self.taxable_basis / self.bonds_constant_inflation.discount_rate(1) ** average_asset_years
             # Fails to take into consideration non-qualified dividends.
             # Taxable basis does not get adjusted for inflation.
         regular_tax, capital_gains_tax = \
@@ -1453,8 +1453,8 @@ class FinEnv(Env):
             life_table, life_table2 = self.spia_life_tables(age, age2)
             payout_delay = 0 # Observe better training for a generic model with a payout delay of 0 than self.params.time_period; not sure why.
             payout_fraction = 1 / (1 + self.params.consume_additional)
-            spia = IncomeAnnuity(self.bonds_zero, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint_contingent = True,
-                joint_payout_fraction = payout_fraction, frequency = round(1 / self.params.time_period), date_str = date)
+            spia = IncomeAnnuity(self.bonds_zero, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint = True,
+                payout_fraction = payout_fraction, frequency = 1 / self.params.time_period, price_adjust = 'all', date_str = date)
 
             duration = spia.premium(1) * self.params.time_period
 
