@@ -345,8 +345,8 @@ class IncomeAnnuity(object):
 
             try:
                 if self.life_table2:
-                    alive1 = self.alive1_array[self.alive_offset]
-                    alive2 = self.alive2_array[self.alive_offset]
+                    alive1 = self.alive1_array[self.alive_offset] or 1 # "or 1" to avoid subsequent zero divided by zero.
+                    alive2 = self.alive2_array[self.alive_offset] or 1
                     price = int(self.alive) * int(self.alive2) * self._prices[self.sched_offset] / (alive1 * alive2) \
                         + int(self.alive) * self._prices1[self.sched_offset] / alive1 + int(self.alive2) * self._prices2[self.sched_offset] / alive2
                 else:
