@@ -200,7 +200,7 @@ class IncomeAnnuity(object):
 
         return start, alive1_array, alive2_array, alive1_delay_array, alive2_delay_array
 
-    def set_age(self, age):
+    def set_age(self, age, alive = True, alive2 = True):
 
         '''Recompute income annuity prices at a particular age.
 
@@ -208,12 +208,19 @@ class IncomeAnnuity(object):
         greater or equal to the initial age by a multiple of 1 /
         'frequency'.
 
+        'alive' specifies whether the first individual is alive.
+
+        'alive2' specifies whether any second individual is alive.
+
         This method is able to compute annuity prices rapidly when
         'yield_curve' 'interest_rate' is "fixed" and either
         'price_adjust' is "all" or 1 / 'frequency' is an integral
         value.
 
         '''
+
+        self.alive = alive
+        self.alive2 = alive2
 
         first_time = self.start_age1 == None
         if first_time:
@@ -340,10 +347,10 @@ class IncomeAnnuity(object):
                 if self.life_table2:
                     alive1 = self.alive1_array[self.alive_offset]
                     alive2 = self.alive2_array[self.alive_offset]
-                    price = self._prices[self.sched_offset] / (alive1 * alive2) \
-                        + self._prices1[self.sched_offset] / alive1 + self._prices2[self.sched_offset] / alive2
+                    price = int(self.alive) * int(self.alive2) * self._prices[self.sched_offset] / (alive1 * alive2) \
+                        + int(self.alive) * self._prices1[self.sched_offset] / alive1 + int(self.alive2) * self._prices2[self.sched_offset] / alive2
                 else:
-                    price = self._prices[self.sched_offset] / self.alive1_array[self.alive_offset]
+                    price = int(self.alive) * self._prices[self.sched_offset] / self.alive1_array[self.alive_offset]
             except IndexError:
                 price = 0
             y = self.sched_offset / self.frequency
@@ -394,14 +401,16 @@ class IncomeAnnuity(object):
                     break
                 if period >= self.period_certain:
                     if self.life_table2 == None:
-                        alive = self.alive1_delay_array[i + self.alive_offset] / alive1_init
+                        alive = int(self.alive) * self.alive1_delay_array[i + self.alive_offset] / alive1_init
                         joint = 0
                     else:
-                        alive1 = self.alive1_delay_array[i + self.alive_offset] / alive1_init
-                        alive2 = self.alive2_delay_array[i + self.alive_offset] / alive2_init
-                        alive = alive1 * alive2 if self.joint else alive1
-                        joint = alive2 * (1 - alive1)
-                        if self.joint:
+                        alive1 = int(self.alive) * self.alive1_delay_array[i + self.alive_offset] / alive1_init
+                        alive2 = int(self.alive2) * self.alive2_delay_array[i + self.alive_offset] / alive2_init
+                        alive = alive1 * alive2 if self.joint else (alive2 if self.contingent2 else alive1)
+                        joint = 0
+                        if self.joint or not self.contingent2:
+                            joint += alive2 * (1 - alive1)
+                        if self.joint or self.contingent2:
                             joint += alive1 * (1 - alive2)
                 else:
                     alive = alive1 = alive2 = 1
@@ -485,12 +494,14 @@ class IncomeAnnuity(object):
         except ZeroDivisionError:
             self._unit_price = float('inf')
 
-    def schedule_payout(self, alive1 = True, alive2 = True, offset = 0):
+    def schedule_payout(self, alive = None, alive2 = None, offset = 0):
         '''Return the sum of schedule values for a particular payout period.
 
-        'alive1' specifies whether the first individual is alive.
+        'alive' specifies whether the first individual is alive. None
+        to use the status from the current set_age().
 
-        'alive2' specifies whether any second individual is alive.
+        'alive2' specifies whether any second individual is
+        alive. None to use the status from the current set_age().
 
         'offset' is the integer offset of the payout period from the
         current age of the first individual plus 'payout_delay'
@@ -498,10 +509,15 @@ class IncomeAnnuity(object):
 
         '''
 
+        if alive == None:
+            alive = self.alive
+        if alive2 == None:
+            alive2 = self.alive2
+
         try:
-            if alive1 and (self.life_table2 == None or alive2):
+            if alive and (self.life_table2 == None or alive2):
                 return self.sched_alive[self.sched_offset + offset]
-            if alive1:
+            if alive:
                 return self.sched_alive1_only[self.sched_offset + offset]
             if alive2 and self.life_table2:
                 return self.sched_alive2_only[self.sched_offset + offset]
