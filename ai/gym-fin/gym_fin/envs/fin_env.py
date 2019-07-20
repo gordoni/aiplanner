@@ -283,7 +283,7 @@ class FinEnv(Env):
             time_period = self.params.time_period)
         self.bonds_stepper = self.bonds.nominal
         self.bonds_zero = YieldCurve('fixed', self.params.life_table_date)
-        self.bonds_constant_inflation = YieldCurve('fixed', self.params.life_table_date, adjust = exp(self.bonds.inflation.mean_short_interest_rate) - 1)
+        self.bonds_constant_inflation = YieldCurve('fixed', self.params.life_table_date, adjust = exp(self.bonds.inflation.spot(100)) - 1)
 
         if self.params.iid_bonds:
             if self.params.iid_bonds_type == 'real':
@@ -976,7 +976,8 @@ class FinEnv(Env):
     def add_spias(self, inflation_adjustment, tax_free_spias, tax_deferred_spias, taxable_spias):
 
         owner = 'self' if self.couple or not self.only_alive2 else 'spouse'
-        age = self.age + self.params.time_period
+        age = self.age if owner == 'self' else self.age2
+        age += self.params.time_period
         payout_fraction = 1 / (1 + self.params.consume_additional)
         if tax_free_spias > 0:
             self.add_db(owner = owner, age = age, premium = tax_free_spias, inflation_adjustment = inflation_adjustment, joint = True, \
@@ -1360,7 +1361,7 @@ class FinEnv(Env):
         pv_regular_income = self.pv_preretirement_income['tax_deferred'] + self.pv_preretirement_income['taxable'] + \
             self.pv_retired_income['tax_deferred'] + self.pv_retired_income['taxable'] + self.wealth['tax_deferred']
         pv_social_security = self.pv_social_security
-        pv_capital_gains = self.wealth['taxable'] - self.taxable_basis / self.bonds_constant_inflation.discount_rate(1) ** average_asset_years
+        pv_capital_gains = self.wealth['taxable'] - self.taxable_basis / self.bonds_constant_inflation.discount_rate(average_asset_years) ** average_asset_years
             # Fails to take into consideration non-qualified dividends.
             # Taxable basis does not get adjusted for inflation.
         regular_tax, capital_gains_tax = \

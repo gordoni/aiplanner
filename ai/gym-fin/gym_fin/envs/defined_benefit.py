@@ -29,7 +29,7 @@ class DefinedBenefit:
 
     def create(self, life_table, life_table2 = None):
 
-        bonds = self.env.bonds_zero if self.real else self.env.bonds.inflation
+        bonds = self.env.bonds_zero if self.real else self.env.bonds_constant_inflation
 
         payout_delay = 0
         spia = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, frequency = round(1 / self.env.params.time_period),
@@ -62,11 +62,8 @@ class DefinedBenefit:
 
         if not self.real:
             payout *= self.env.cpi
-            exclusion_amount *= self.env.cpi
 
         self._add_sched(owner, start, end, payout, joint, payout_fraction, adjustment, delay_calcs)
-        if premium != None:
-            print(delay_calcs, self.spia_retired.premium())
 
         if self.type_of_funds == 'taxable' and exclusion_period > 0:
 
@@ -78,7 +75,7 @@ class DefinedBenefit:
                         exclusion_amount = premium / exclusion_period
                     else:
                         exclusion_amount = premium * adjustment / ((1 + adjustment) ** exclusion_period - 1)
-                    exclusion_amount *= self.env.cpi
+            exclusion_amount *= self.env.cpi
             end = start + exclusion_period
             db = self.env.get_db(self.type, False, 'taxable')
             db._add_sched(owner, start, end, - exclusion_amount, joint, payout_fraction, adjustment, delay_calcs)
