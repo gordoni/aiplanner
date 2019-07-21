@@ -732,33 +732,29 @@ class FinEnv(Env):
         if self.spias:
 
             if self.spias_required:
-
-                spias_fraction = 1
-
+                spias_action = 1
             elif self.params.spias_partial:
-
-                # Try and make it easy to learn the optimal amount of guaranteed income,
-                # so things function well with differing current amounts of guaranteed income.
-
                 spias_action = (spias_action + 1) / 2
-                try:
-                    current_spias_fraction_estimate = self.retired_income_wealth / self.net_wealth
-                except ZeroDivisionError:
-                    current_spias_fraction_estimate = 1
-                current_spias_fraction_estimate = max(0, min(current_spias_fraction_estimate, 1))
+            else:
+                spias_action = 1 if spias_action > 0 else 0
+
+            # Try and make it easy to learn the optimal amount of guaranteed income,
+            # so things function well with differing current amounts of guaranteed income.
+            try:
+                current_spias_fraction_estimate = self.retired_income_wealth / self.net_wealth
+            except ZeroDivisionError:
+                current_spias_fraction_estimate = 1
+            current_spias_fraction_estimate = max(0, min(current_spias_fraction_estimate, 1))
+            if spias_action - current_spias_fraction_estimate < self.params.spias_min_purchase_fraction:
+                spias_fraction = 0
+            elif spias_action > 1 - self.params.spias_min_purchase_fraction:
+                spias_fraction = 1
+            else:
                 try:
                     spias_fraction = (spias_action - current_spias_fraction_estimate) * self.net_wealth / self.p_plus_income
                 except ZeroDivisionError:
                     spias_fraction = 0
-                if spias_action - current_spias_fraction_estimate < self.params.spias_min_purchase_fraction:
-                    spias_fraction = 0
-                elif spias_action > 1 - self.params.spias_min_purchase_fraction:
-                    spias_fraction = 1
-                spias_fraction = min(spias_fraction, 1)
-
-            else:
-
-                spias_fraction = 1 if spias_action > 0 else 0
+                spias_fraction = max(0, min(spias_fraction, 1))
 
             real_spias_fraction = spias_fraction if self.params.real_spias else 0
             if self.params.real_spias and self.params.nominal_spias:
@@ -1406,14 +1402,15 @@ class FinEnv(Env):
         self.p_plus_income = p_sum + gi_sum - self.taxes_paid
 
         self.spias_ever = self.params.real_spias or self.params.nominal_spias
-        if self.spias_ever and (self.params.preretirement_spias or self.preretirement_years == 0) and (self.params.couple_spias or not self.couple):
+        if self.spias_ever and (self.params.preretirement_spias or self.preretirement_years == 0):
             if self.couple:
                 min_age = min(self.age, self.age2)
                 max_age = max(self.age, self.age2)
             else:
                 min_age = max_age = self.age2 if self.only_alive2 else self.age
-            self.spias_required = self.params.spias_at_age != None and max_age <= self.params.spias_at_age < max_age + self.params.time_period
-            self.spias = self.spias_required or min_age >= self.params.spias_permitted_from_age and max_age <= self.params.spias_permitted_to_age
+            age_permitted = min_age >= self.params.spias_permitted_from_age and max_age <= self.params.spias_permitted_to_age
+            self.spias_required = age_permitted and max_age >= self.params.spias_from_age
+            self.spias = age_permitted and (self.params.couple_spias or not self.couple) or self.spias_required
         else:
             self.spias = False
 

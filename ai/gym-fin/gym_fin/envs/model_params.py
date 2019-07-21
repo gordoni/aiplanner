@@ -238,9 +238,9 @@ class ModelParams(object):
         self._boolean_flag('preretirement-spias', True) # Enable purchase of DIAs preretirement.
         self._boolean_flag('couple-spias', True) # Enable purchase of SPIAs by couples.
         self._param('spias-permitted-from-age', 0) # Minimum age (of youngest party) at which able to purchase SPIAs.
-        self._param('spias-permitted-to-age', 85) # Maximum age (of oldest party) at which able to purchase SPIAs.
-            # Age at which availability of quotes starts to decrease.
-        self._param('spias-at-age', None) # Age (of oldest party) at which must fully annuitize irrespective of whether age permitted.
+        self._param('spias-permitted-to-age', 90) # Maximum age (of oldest party) at which able to purchase SPIAs.
+        self._param('spias-from-age', 200)
+            # Minimum age (of oldest party) from which must be fully annuitize even if no couple_spias provided age permitted and meets minimum purchase fraction.
 
         # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2019 for 1900-2018.
             # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.0%).
