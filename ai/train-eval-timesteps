@@ -18,26 +18,26 @@ mkdir -p ~/aiplanner-data/train-results
 cd ~/aiplanner-data/train-results
 
 PARALLEL=Jobs
-SCENARIO_ARGS=''
-#SCENARIO_ARGS="$SCENARIO_ARGS --master-nominal-spias" # Required for SPIAs.
+SCENARIO_ARGS=""
 #SCENARIO_ARGS="$SCENARIO_ARGS --master-stocks-model=iid --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.010 --master-iid-bonds-volatility=0.110 --master-no-bills --master-no-returns-standard-error --master-tax --master-static-bonds --master-fixed-real-bonds-rate=0.01 --master-fixed-nominal-bonds-rate=0.03 --master-real-short-rate-type=current --master-inflation-short-rate-type=current"
     # Required for validation.
     # Real value of taxable basis decreases 2% per year due to inflation.
 #SCENARIO_ARGS="$SCENARIO_ARGS --master-no-tax"
-    # Required for pre-retirement validation.
+    # Required for pre-retirement validation on account of otherwise taxable pre-retirement income.
     # Retirement validation is OK taxed because validation wealth is non-taxable.
-TRAINING_ARGS=''
-#TRAINING_ARGS="$TRAINING_ARGS --master-age-start=50 --master-age-retirement=0 --master-p-weighted-high=1e7" # Required for retirement models.
-EVALARGS=''
+TRAINING_ARGS=""
+EVALUATE_ARGS=""
+EPISODE=generic
+TRAINING=generic
 UNIT=single
-SPIAS=no_spias
+STAGE=retired
+SPIAS=none
 GAMMA=6
-TRAINING=preretirement-gi
-TIMESTEPS=4000000
-BATCH_SIZE=100000
+TIMESTEPS=48000000
+SAVESTEPS=4000000
+BATCH_SIZE=500000
 
-ARGS="$SCENARIO_ARGS"
-TRAINARGS="$TRAINING_ARGS --train-num-timesteps=$TIMESTEPS --train-batch-size=$BATCH_SIZE"
+TRAINING_ARGS="$TRAINING_ARGS --train-num-timesteps=$TIMESTEPS --train-batch-size=$BATCH_SIZE"
 
 make_train_dir () {
 
@@ -51,13 +51,13 @@ make_train_dir () {
     done
 }
 
-EPISODE="$SPIAS-gamma$GAMMA"
 mkdir -p $EPISODE
 cd $EPISODE
-train_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS $TRAINARGS --train-save-frequency=500000"
+train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$SCENARIO_ARGS $TRAINING_ARGS --train-save-frequency=$SAVESTEPS"
 cd ..
 wait
-for TS in 4000000; do # 2000000 3000000 4000000; do
+TS=$SAVESTEPS
+while [ $TS -le $TIMESTEPS ]; do
     mkdir -p $EPISODE-timesteps$TS
     cd $EPISODE-timesteps$TS
     if [ $TRAINING = specific ]; then
@@ -80,10 +80,10 @@ for TS in 4000000; do # 2000000 3000000 4000000; do
         make_train_dir aiplanner.gamma$GAMMA.tf
     fi
     CP=`expr $TS / $BATCH_SIZE`
-    eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS $EVALARGS --checkpoint-name=checkpoint_$CP"
-    #eval_scenarios $TRAINING $UNIT $GAMMA $EPISODE "$ARGS $EVALARGS --checkpoint-name=checkpoint_$CP --ensemble"
-    #eval_scenarios $TRAINING concordant $GAMMA $EPISODE "$ARGS $EVALARGS --checkpoint-name=checkpoint_$CP --ensemble"
+    eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$SCENARIO_ARGS $EVALUATE_ARGS --checkpoint-name=checkpoint_$CP"
+    #eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$SCENARIO_ARGS $EVALUATE_ARGS --checkpoint-name=checkpoint_$CP --ensemble"
     cd ..
+    TS=`expr $TS + $SAVESTEPS`
 done
 wait
 
@@ -96,14 +96,14 @@ wait
 #     cd $EPISODE
 #     CP=`expr $NATS / 4000`
 #     TS=`expr $NATS + $ANNEAL`
-#     train_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS --train-restore-dir=../single-no_spias-gamma6-nonanneal/aiplanner.gamma6.tf --train-restore-checkpoint-name=checkpoint_$CP --train-num-timesteps=$TS --train-anneal-num-timesteps=$ANNEAL"
+#     train_scenarios generic $UNIT $GAMMA $EPISODE "$SCENARIO_ARGS --train-restore-dir=../single-no_spias-gamma6-nonanneal/aiplanner.gamma6.tf --train-restore-checkpoint-name=checkpoint_$CP --train-num-timesteps=$TS --train-anneal-num-timesteps=$ANNEAL"
 #     cd ..
 # done
 # wait
 # for ANNEAL in $ANNEALS; do
 #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
 #     cd $EPISODE
-#     eval_scenarios generic $UNIT $GAMMA $EPISODE "$ARGS"
+#     eval_scenarios generic $UNIT $GAMMA $EPISODE "$SCENARIO_ARGS"
 #     cd ..
 # done
 # wait
@@ -114,14 +114,14 @@ wait
 #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-anneal$ANNEAL-timesteps$TS"
 #     mkdir -p $EPISODE
 #     cd $EPISODE
-#     train_scenarios specific $UNIT $GAMMA $EPISODE "$ARGS --train-anneal-num-timesteps=$ANNEAL --train-num-timesteps=$TS"
+#     train_scenarios specific $UNIT $GAMMA $EPISODE "$SCENARIO_ARGS --train-anneal-num-timesteps=$ANNEAL --train-num-timesteps=$TS"
 #     cd ..
 # done
 # wait
 # for ANNEAL in $ANNEALS; do
 #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-anneal$ANNEAL-timesteps$TS"
 #     cd $EPISODE
-#     eval_scenarios specific $UNIT $GAMMA $EPISODE "$ARGS"
+#     eval_scenarios specific $UNIT $GAMMA $EPISODE "$SCENARIO_ARGS"
 #     cd ..
 # done
 # wait

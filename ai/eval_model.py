@@ -336,7 +336,8 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         except KeyError:
             runner = TFRunner(train_dirs = train_dirs, checkpoint_name = checkpoint_name, eval_model_params = eval_model_params, couple_net = eval_couple_net,
                 redis_address = redis_address, num_workers = num_workers, num_environments = num_environments, num_cpu = num_cpu).__enter__()
-            runner_cache[train_dirs[0]] = runner
+            if daemon: # Don't cache runner if not daemon as it prevents termination of Ray workers.
+                runner_cache[train_dirs[0]] = runner
         remote_evaluators = runner.remote_evaluators
 
         action, = runner.run([obs])
@@ -450,7 +451,8 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         evaluator = None
         object_ids = None
 
-    #runner.__exit__(None, None, None)
+    if not daemon:
+        runner.__exit__(None, None, None)
 
     if not object_ids:
         object_ids = [train_seed]
