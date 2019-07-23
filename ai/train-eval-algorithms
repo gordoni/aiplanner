@@ -18,6 +18,10 @@ mkdir -p ~/aiplanner-data/train-results
 cd ~/aiplanner-data/train-results
 
 PARALLEL=True
+TRAINING=generic
+UNIT=single
+STAGE=retired
+SPIAS=none
 GAMMA=3
 TRAIN_ARGS="$TRAIN_ARGS --train-num-timesteps=1000000"
 EVALUATOR="$EVALUATOR --master-consume-clip=5000"
@@ -28,7 +32,7 @@ for ALGORITHM in PPO ppo1 td3 sac trpo ppo ddpg vpg; do
     mkdir -p $ALGORITHM
     cd $ALGORITHM
 
-    train_eval both single $GAMMA $ALGORITHM
+    train_eval $TRAINING $UNIT $STAGE $SPIAS $GAMMA
 
     cd ..
 

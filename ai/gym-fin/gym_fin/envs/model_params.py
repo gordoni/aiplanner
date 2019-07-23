@@ -151,9 +151,10 @@ class ModelParams(object):
             # Age of second individual when pre-retirement income ends, or None to base on first individual reaching age_retirement.
         self._param('income-preretirement-mu', 0) # Pre-retirement income annual drift for first individual.
         self._param('income-preretirement-mu2', 0) # Pre-retirement income annual drift for second individual.
-        self._param('income-preretirement-sigma', 0.12) # Pre-retirement income annual log volatility for first individual.
-        self._param('income-preretirement-sigma2', 0.12) # Pre-retirement income annual log volatility for second individual.
+        self._param('income-preretirement-sigma', 0) # Pre-retirement income annual log volatility for first individual.
+        self._param('income-preretirement-sigma2', 0) # Pre-retirement income annual log volatility for second individual.
         self._boolean_flag('income-preretirement-concordant', False) # Whether second member of couple's income follows the same fluctuations as the first.
+        self._boolean_flag('income-preretirement-taxable', True) # Whether pre-tax pre-retirement income is taxable.
         self._param('consume-preretirement', 0) # Annual pre-retirement consumption.
         self._param('consume-preretirement-income-ratio', (0, 0)) # Fraction of initial pre-retirement income to add to pre-retirement consumption.
 

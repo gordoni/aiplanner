@@ -353,7 +353,8 @@ class FinEnv(Env):
     def gi_sum(self, type = None, source = ('tax_free', 'tax_deferred', 'taxable')):
 
         gi = 0
-        if type in (None, 'Preretirement Income') and 'taxable' in source:
+        preretirement_income_source = 'taxable' if self.params.income_preretirement_taxable else 'tax_free'
+        if type in (None, 'Preretirement Income') and preretirement_income_source in source:
             gi += self.income_preretirement + self.income_preretirement2
         for db in self.defined_benefits.values():
             if type in (None, db.type) and db.type_of_funds in source:
@@ -367,7 +368,7 @@ class FinEnv(Env):
 
     def get_db(self, type, real, type_of_funds):
 
-        key = (type_of_funds, real, type == 'Social_Security')
+        key = (type_of_funds, real, type == 'Social Security')
         try:
             db = self.defined_benefits[key]
         except KeyError:
@@ -392,7 +393,7 @@ class FinEnv(Env):
             joint = False
             payout_fraction = 0
 
-        type = type.replace(' ', '_')
+        type = type.replace('_', ' ')
         real = inflation_adjustment == 'cpi'
         db = self.get_db(type, real, source_of_funds)
         adjustment = 0 if inflation_adjustment == 'cpi' else inflation_adjustment
@@ -1064,7 +1065,7 @@ class FinEnv(Env):
                 print('AIPLANNER: Negative regular income:', regular_income)
                     # Possible if taxable real SPIA non-taxable amount exceeds payout due to deflation.
             regular_income = 0
-        social_security = self.gi_sum(type = 'Social_Security')
+        social_security = self.gi_sum(type = 'Social Security')
         social_security = min(regular_income, social_security)
 
         inflation = self.bonds.inflation.inflation()
@@ -1308,17 +1309,18 @@ class FinEnv(Env):
         for db in self.defined_benefits.values():
             pv = db.pv(retired = False)
             self.pv_preretirement_income[db.type_of_funds] += pv
-            if db.type == 'Social_Security':
+            if db.type == 'Social Security':
                 self.pv_social_security += pv
             pv = db.pv(preretirement = False)
             self.pv_retired_income[db.type_of_funds] += pv
-            if db.type == 'Social_Security':
+            if db.type == 'Social Security':
                 self.pv_social_security += pv
-        self.pv_preretirement_income['taxable'] += self.income_preretirement * min(self.income_preretirement_years, self.preretirement_years)
-        self.pv_preretirement_income['taxable'] += self.income_preretirement2 * min(self.income_preretirement_years2, self.preretirement_years)
+        source = 'taxable' if self.params.income_preretirement_taxable else 'tax_free'
+        self.pv_preretirement_income[source] += self.income_preretirement * min(self.income_preretirement_years, self.preretirement_years)
+        self.pv_preretirement_income[source] += self.income_preretirement2 * min(self.income_preretirement_years2, self.preretirement_years)
         self.pv_preretirement_income['tax_free'] -= self.consume_preretirement * self.preretirement_years
-        self.pv_retired_income['taxable'] += self.income_preretirement * max(0, self.income_preretirement_years - self.preretirement_years)
-        self.pv_retired_income['taxable'] += self.income_preretirement2 * max(0, self.income_preretirement_years2 - self.preretirement_years)
+        self.pv_retired_income[source] += self.income_preretirement * max(0, self.income_preretirement_years - self.preretirement_years)
+        self.pv_retired_income[source] += self.income_preretirement2 * max(0, self.income_preretirement_years2 - self.preretirement_years)
 
         self.retired_income_wealth_pretax = sum(self.pv_retired_income.values())
 

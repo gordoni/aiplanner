@@ -19,29 +19,25 @@ cd ~/aiplanner-data/models.new
 
 PARALLEL=Jobs
 
-for UNIT in single couple; do
+SPIAS_TYPE=nominal
+SAVESTEPS=2000000
 
-    for SPIAS in no_spias spias; do
+TRAINING=generic
+UNIT=single
 
-        echo `date` Training $UNIT $SPIAS
+for STAGE in preretirement retired; do
 
-        for GAMMA in 1 1.5 3 6; do
+    for SPIAS in none $SPIAS_TYPE; do
 
-            ARGS="--master-gamma=$GAMMA"
-            if [ $UNIT = couple ]; then
-                ARGS="$ARGS --master-sex2=male"
-            fi
-            if [ $SPIAS = spias ]; then
-                ARGS="$ARGS --master-nominal-spias"
-            fi
-            TIMESTEPS=`timesteps $UNIT $SPIAS`
-            ARGS="$ARGS --train-num-timesteps=$TIMESTEPS"
+        for GAMMA in 1.5 3 6; do
 
-            train $UNIT-$SPIAS-gamma$GAMMA "$ARGS"
+            TIMESTEPS=`timesteps $TRAINING $UNIT $STAGE $SPIAS $GAMMA`
+            ARGS="--train-num-timesteps=$TIMESTEPS --train-save-frequency=$SAVESTEPS"
+
+            train $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
 
         done
-        wait
     done
 done
 
-echo `date` Done
+wait

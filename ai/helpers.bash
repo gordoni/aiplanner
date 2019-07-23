@@ -297,8 +297,8 @@ train_scenarios () {
 
     ARGS=`args "$@"`
     local EVAL_ARGS=`eval_args "$@"`
-    local TRAIN_ARGS=`train_args "$@"`
-    ARGS="$TRAIN_ARGS $ARGS"
+    local TARGS=`train_args "$@"`
+    ARGS="$TARGS $ARGS"
 
     if [ "$SPIAS" = none ]; then
         SPIAS=no_spias
@@ -407,7 +407,9 @@ eval_scenarios () {
         evaluate $STAGE-gamma$GAMMA-le_additional-0.5_1.5 $UNIT-retired65-le_additional1-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-age-start2=65 --master-life-expectancy-additional=1 --master-life-expectancy-additional2=1 --master-p-tax-free=2e6"
         evaluate $STAGE-gamma$GAMMA-le_additional1.5_3.5 $UNIT-retired65-le_additional3-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-age-start2=65 --master-life-expectancy-additional=3 --master-life-expectancy-additional2=3 --master-p-tax-free=2e6"
         evaluate $STAGE-gamma$GAMMA-le_additional3.5_5.5 $UNIT-retired65-le_additional5-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-age-start2=65 --master-life-expectancy-additional=5 --master-life-expectancy-additional2=5 --master-p-tax-free=2e6"
-    elif [ $TRAINING = generic ]; then
+    elif [ $TRAINING = generic -a $STAGE = preretirement ]; then
+        evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free1e6 "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=1e6"
+    elif [ $TRAINING = generic -a $STAGE = retired ]; then
         evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-retired65-guaranteed_income20e3-tax_free2e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=2e5"
         evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-retired65-guaranteed_income20e3-tax_free5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=5e5"
         evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-retired65-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=1e6"
@@ -438,16 +440,11 @@ train_eval () {
 
 timesteps () {
 
-    local UNIT=$1
-    local SPIAS=$2
+    local TRAINING=$1
+    local UNIT=$2
+    local STAGE=$3
+    local SPIAS=$4
+    local GAMMA=$5
 
-    if [ $UNIT = single ]; then
-        if [ $SPIAS = no_spias ]; then
-            echo 2000000
-        else
-            echo 5000000
-        fi
-    elif [ $UNIT = couple ]; then
-        echo 10000000
-    fi
+    echo 50000000
 }

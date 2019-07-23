@@ -20,8 +20,10 @@ cd ~/aiplanner-data/train-results
 PARALLEL=Jobs
 POLICY=none
 ALGORITHM=ppo1
+TRAINING=generic
 UNIT=single
-SPIAS=no_spias
+STAGE=retired
+SPIAS=none
 TIMESTEPS=2000000
 TRAIN_ARGS="$TRAIN_ARGS --train-num-timesteps=$TIMESTEPS"
 for GAMMA in 1.5 3 6; do
@@ -38,7 +40,7 @@ for GAMMA in 1.5 3 6; do
     mkdir -p $EPISODE
     cd $EPISODE
 
-    train_eval generic $UNIT $GAMMA $EPISODE "$ARGS"
+    train_eval $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
 
     cd ..
 
@@ -47,7 +49,7 @@ for GAMMA in 1.5 3 6; do
             EP="$EPISODE-age_nominal$AGE"
             mkdir -p $EP
             cd $EP
-            train_eval generic $UNIT $GAMMA $EP "$ARGS --master-annuitization-policy=age_nominal --master-annuitization-policy-age=$AGE"
+            train_eval $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS --master-annuitization-policy=age_nominal --master-annuitization-policy-age=$AGE"
             cd ..
         done
     fi
