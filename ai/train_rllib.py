@@ -35,7 +35,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
     train_batch_size, train_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_entropy_coefficient,
     train_save_frequency, train_max_failures, train_resume,
     train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
-    train_seed, nice, num_cpu, model_dir, **dummy_kwargs):
+    train_seed, nice, num_cpu, model_dir, **ray_kwargs):
 
     priority = getpriority(PRIO_PROCESS, 0)
     priority += nice
@@ -141,6 +141,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
         },
 
     }[algorithm]
+    agent_config = dict(agent_config, **ray_kwargs['config'])
 
     run = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
     checkpoint_freq = max(1, train_save_frequency // agent_config['train_batch_size']) if train_save_frequency != None else 0
@@ -189,7 +190,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
     )
 
 def main():
-    parser = make_parser(arg_parser)
+    parser = make_parser(lambda: arg_parser(evaluate=False))
     parser.add_argument('--redis-address')
     # --train-num-timesteps:
         # Increased mean CE levels are likely for a large number of timesteps, but it is a case of diminishing returns.

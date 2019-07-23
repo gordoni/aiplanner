@@ -165,7 +165,7 @@ class ModelParams(object):
             # Will probably need smaller [consume_floor, consume_ceiling] ranges if use a large gamma value such as 6.
 
         self._param('gi-fraction', (0, 1), (0, 1)) # Allowed values of guaranteed income as a fraction of total wealth.
-        self._param('guaranteed-income', '[{"payout": [1e3, 1e5]}]', '[{"payout": 1e4}]', tp = string_type)
+        self._param('guaranteed-income', '[{"payout": [1e3, 1e5]}]', '[]', tp = string_type)
             # Guaranteed income and expenses represented as a JSON array of objects. Object fields:
             #     "type": Type of defined benefit or expese. Arbitrary string. Default "Income Annuity".
             #         A value of "Social Security" or "Social_Security" is taxed specially.
@@ -319,12 +319,6 @@ class ModelParams(object):
             finally:
                 self.params[param] = value
 
-    def dump_params(self):
-
-        print('Parameters:')
-        for param in sorted(self.params):
-            print('   ', param, '=', repr(self.params[param]))
-
     def get_params(self, training = False):
 
         def get_param(name):
@@ -418,15 +412,17 @@ class ModelParams(object):
 
         under_name = name.replace('-', '_')
         if rnge:
-            self.parser.add_argument(prefix + name, type = tp, default = None, choices = choices)
-            self.parser.add_argument(prefix + name + '-low', type = tp, default = val[0], choices = choices)
-            self.parser.add_argument(prefix + name + '-high', type = tp, default = val[1], choices = choices)
+            if self.parser:
+                self.parser.add_argument(prefix + name, type = tp, default = None, choices = choices)
+                self.parser.add_argument(prefix + name + '-low', type = tp, default = val[0], choices = choices)
+                self.parser.add_argument(prefix + name + '-high', type = tp, default = val[1], choices = choices)
             if not (self.training or self.evaluate):
                 self.param_names.append(under_name)
                 self.param_names.append(under_name + '_low')
                 self.param_names.append(under_name + '_high')
         else:
-            self.parser.add_argument(prefix + name, type = tp, default = val, choices = choices)
+            if self.parser:
+                self.parser.add_argument(prefix + name, type = tp, default = val, choices = choices)
             if not (self.training or self.evaluate):
                 self.param_names.append(under_name)
 
@@ -444,12 +440,19 @@ class ModelParams(object):
 
         dest = prefix + name
         under_dest = dest.replace('-', '_')
-        self.parser.add_argument("--" + prefix + name, action = "store_true", default = val, dest = under_dest)
-        self.parser.add_argument('--' + prefix + 'no-' + name, action = "store_false", dest = under_dest)
+        if self.parser:
+            self.parser.add_argument("--" + prefix + name, action = "store_true", default = val, dest = under_dest)
+            self.parser.add_argument('--' + prefix + 'no-' + name, action = "store_false", dest = under_dest)
 
         if not (self.training or self.evaluate):
             under_name = name.replace('-', '_')
             self.param_names.append(under_name)
+
+def dump_params(params):
+
+    print('Parameters:')
+    for param in sorted(params):
+        print('   ', param, '=', repr(params[param]))
 
 def dump_params_file(fname, params, *, prefix = 'master_'):
 

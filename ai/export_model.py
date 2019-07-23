@@ -31,11 +31,11 @@ def export_models(*, redis_address, checkpoint_name, train_seeds, nice, train_se
             redis_address = redis_address, evaluator = False, export_model = True)
 
 def main():
-    parser = arg_parser()
+    parser = arg_parser(training = True, evaluate = False)
     parser.add_argument('--redis-address')
     parser.add_argument('--train-seeds', type = int, default = 1) # Number of seeds to evaluate.
     parser.add_argument('--checkpoint-name')
-    training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, evaluate = False, dump = False)
+    training_model_params, eval_model_params, args = fin_arg_parse(parser, training = True, evaluate = False, dump = False)
     export_models(**args)
 
 if __name__ == '__main__':

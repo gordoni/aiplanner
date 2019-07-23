@@ -228,7 +228,7 @@ args () {
     elif [ $UNIT = couple ]; then
         echo "$ARGS --master-sex2=male"
     else
-        echo "$ARGS --master-sex2=female --master-couple-death-concordant --master-income-preretirement-concordant --master-consume-preretirement=6e4 --master-consume-additional=1"
+        echo "$ARGS --master-sex2=female --master-couple-death-concordant --master-couple-spias --master-income-preretirement-concordant --master-consume-preretirement=6e4 --master-consume-additional=1"
     fi
 }
 
@@ -259,10 +259,6 @@ train_scenarios () {
     local EVAL_ARGS=`eval_args "$@"`
 
     if [ $TRAINING = specific ]; then
-        #train gamma$GAMMA-age_start50-age_retirement65-guaranteed_income20e3-tax_free2e5 "$EVAL_ARGS $ARGS --master-p-tax-free=2e5"
-        #train gamma$GAMMA-age_start50-age_retirement65-guaranteed_income20e3-tax_free5e5 "$EVAL_ARGS $ARGS --master-p-tax-free=5e5"
-        #train gamma$GAMMA-age_start50-age_retirement65-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-p-tax-free=1e6"
-        #train gamma$GAMMA-age_start50-age_retirement65-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-p-tax-free=2e6"
         train gamma$GAMMA-retired65-guaranteed_income20e3-tax_free2e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=2e5"
         train gamma$GAMMA-retired65-guaranteed_income20e3-tax_free5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=5e5"
         train gamma$GAMMA-retired65-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=1e6"
@@ -284,6 +280,7 @@ train_scenarios () {
         train gamma$GAMMA-spias-retired65-le_additional3-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-life-expectancy-additional=3 --master-p-tax-free=2e6"
         train gamma$GAMMA-spias-retired65-le_additional5-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-life-expectancy-additional=5 --master-p-tax-free=2e6"
     elif [ $TRAINING = preretirement-gi -o $TRAINING = retired-gi ]; then
+        # No spias case - slice and dice based on guaranteed income fraction.
         local STAGE=`echo $TRAINING | sed 's/-.*//'`
         # If gi_fraction_low is set to zero, without any guaranteed income, during training at advanced ages the projected consumption
         # may be very small. As a result the reward_to_go observation will be many times larger than the observation range.
@@ -292,7 +289,10 @@ train_scenarios () {
         train $STAGE-gamma$GAMMA-gi_fraction0.1_0.3 "$ARGS --master-gi-fraction-low=0.1 --master-gi-fraction-high=0.3"
         train $STAGE-gamma$GAMMA-gi_fraction0.3_1.0 "$ARGS --master-gi-fraction-low=0.3 --master-gi-fraction-high=1.0"
     elif [ $TRAINING = preretirement-le -o $TRAINING = retired-le ]; then
+        # Spias case - slice and dice based on le_additional.
         local STAGE=`echo $TRAINING | sed 's/-.*//'`
+        # Probably also need to train separately for male and female as spias_permitted_to_age appears at different remaining years_retire values.
+        # Not clear how to handle couples because age difference is variable.
         train $STAGE-gamma$GAMMA-le_additional-2.5_-0.5 "$ARGS --master-life-expectancy-additional-low=-2.5 --master-life-expectancy-additional-high=-0.5 --master-life-expectancy-additional2-low=-2.5 --master-life-expectancy-additional2-high=-0.5"
         train $STAGE-gamma$GAMMA-le_additional-0.5_1.5 "$ARGS --master-life-expectancy-additional-low=-0.5 --master-life-expectancy-additional-high=1.5 --master-life-expectancy-additional2-low=-0.5 --master-life-expectancy-additional2-high=1.5"
         train $STAGE-gamma$GAMMA-le_additional1.5_3.5 "$ARGS --master-life-expectancy-additional-low=1.5 --master-life-expectancy-additional-high=3.5 --master-life-expectancy-additional2-low=1.5 --master-life-expectancy-additional2-high=3.5"
@@ -315,10 +315,6 @@ eval_scenarios () {
     local EVAL_ARGS=`eval_args "$@"`
 
     if [ $TRAINING = specific ]; then
-        #evaluate gamma$GAMMA-age_start50-age_retirement65-guaranteed_income20e3-tax_free2e5 age_start50-guaranteed_income20e3-tax_free2e5 "$EVAL_ARGS $ARGS --master-p-tax-free=2e5"
-        #evaluate gamma$GAMMA-age_start50-age_retirement65-guaranteed_income20e3-tax_free5e5 age_start50-guaranteed_income20e3-tax_free5e5 "$EVAL_ARGS $ARGS --master-p-tax-free=5e5"
-        #evaluate gamma$GAMMA-age_start50-age_retirement65-guaranteed_income20e3-tax_free1e6 age_start50-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-p-tax-free=1e6"
-        #evaluate gamma$GAMMA-age_start50-age_retirement65-guaranteed_income20e3-tax_free2e6 age_start50-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-p-tax-free=2e6"
         evaluate gamma$GAMMA-retired65-guaranteed_income20e3-tax_free2e5 retired65-guaranteed_income20e3-tax_free2e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=2e5"
         evaluate gamma$GAMMA-retired65-guaranteed_income20e3-tax_free5e5 retired65-guaranteed_income20e3-tax_free5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=5e5"
         evaluate gamma$GAMMA-retired65-guaranteed_income20e3-tax_free1e6 retired65-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=1e6"
@@ -359,14 +355,11 @@ eval_scenarios () {
         evaluate retired-gamma$GAMMA-le_additional1.5_3.5 $UNIT-retired65-le_additional3-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-age-start2=65 --master-life-expectancy-additional=3 --master-life-expectancy-additional2=3 --master-p-tax-free=2e6"
         evaluate retired-gamma$GAMMA-le_additional3.5_5.5 $UNIT-retired65-le_additional5-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-age-start2=65 --master-life-expectancy-additional=5 --master-life-expectancy-additional2=5 --master-p-tax-free=2e6"
     elif [ $TRAINING = generic ]; then
-        #evaluate_with_policy $GAMMA $UNIT-age_start50-guaranteed_income20e3-tax_free2e5 "$EVAL_ARGS $ARGS --master-p-tax-free=2e5"
-        #evaluate_with_policy $GAMMA $UNIT-age_start50-guaranteed_income20e3-tax_free5e5 "$EVAL_ARGS $ARGS --master-p-tax-free=5e5"
-        #evaluate_with_policy $GAMMA $UNIT-age_start50-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-p-tax-free=1e6"
-        #evaluate_with_policy $GAMMA $UNIT-age_start50-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-p-tax-free=2e6"
         evaluate_with_policy $GAMMA $UNIT-retired65-guaranteed_income20e3-tax_free2e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=2e5"
         evaluate_with_policy $GAMMA $UNIT-retired65-guaranteed_income20e3-tax_free5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=5e5"
         evaluate_with_policy $GAMMA $UNIT-retired65-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=1e6"
         evaluate_with_policy $GAMMA $UNIT-retired65-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=2e6"
+        evaluate_with_policy $GAMMA $UNIT-retired65-guaranteed_income20e3-tax_free5e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=5e6"
     fi
 }
 

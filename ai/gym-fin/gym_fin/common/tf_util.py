@@ -39,7 +39,7 @@ class TFRunner:
         #rllib_checkpoints = glob(train_dirs[0] + '/*/checkpoint_*')
         if not tensorflow:
 
-            # RLlib.
+            # Rllib.
             import ray
             from ray.rllib.agents.registry import get_agent_class
             from ray.rllib.evaluation import PolicyGraph
@@ -55,6 +55,7 @@ class TFRunner:
 
                 checkpoints = glob(train_dir + '/*/checkpoint_*')
                 if not checkpoint_name:
+                    assert checkpoints, 'No Rllib checkpoints found: ' + train_dir
                     checkpoint_name = 'checkpoint_' + str(max(int(checkpoint.split('_')[-1]) for checkpoint in checkpoints))
                 checkpoint_dir, = glob(train_dir + '/*/' + checkpoint_name)
                 checkpoint, = glob(checkpoint_dir + '/checkpoint-*[0-9]')
@@ -142,7 +143,7 @@ class TFRunner:
 
             try:
 
-                # RLlib tensorflow.
+                # Rllib tensorflow.
                 for train_dir in train_dirs:
                     tf_dir = train_dir + '/' + tf_name
                     graph = tf.Graph()

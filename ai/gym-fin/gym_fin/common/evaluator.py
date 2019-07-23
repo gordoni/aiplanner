@@ -259,6 +259,7 @@ class Evaluator(object):
         except ZeroDivisionError:
             stderr = float('nan')
         env = self.eval_envs[0].unwrapped
+        env.reset()
         utility = env.utility
         unit_ce = self.indiv_ce = utility.inverse(rew)
         unit_ce_stderr = self.indiv_ce_stderr = self.indiv_ce - utility.inverse(rew - stderr)

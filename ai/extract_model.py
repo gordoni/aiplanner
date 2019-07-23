@@ -100,7 +100,7 @@ def extract_model(eval_model_params, *, train_seed, redis_address, train_seeds, 
         extract_timestep(train_dirs, checkpoint, result_dir + '/aiplanner-linear-' + checkpoint + '.csv')
 
 def main():
-    parser = arg_parser()
+    parser = arg_parser(training = False, evaluate = True)
     parser.add_argument('--redis-address')
     parser.add_argument('--train-seeds', type = int, default = 1) # Number of seeds to evaluate for an ensemble.
     boolean_flag(parser, 'ensemble', default = False)

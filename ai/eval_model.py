@@ -13,20 +13,24 @@
 from bisect import bisect
 from csv import reader, writer
 from glob import glob
-from json import dumps
+from json import dumps, loads
 from math import ceil, exp, sqrt
-from os import chmod, environ, getpriority, mkdir, PRIO_PROCESS, setpriority
+from os import chmod, devnull, environ, getpriority, mkdir, PRIO_PROCESS, setpriority
 from os.path import exists
 from subprocess import run
+from sys import argv, stdin
+from traceback import print_exc
 
 from baselines.common import boolean_flag
 from baselines.common.misc_util import set_global_seeds
 
 from gym_fin.envs.asset_allocation import AssetAllocation
-from gym_fin.envs.model_params import load_params_file
+from gym_fin.envs.model_params import dump_params, load_params_file
 from gym_fin.envs.policies import policy
+from gym_fin.common.api import parse_api_scenario
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
+from gym_fin.common.scenario_space import enumerate_model_params_api, scenario_space_model_filename, scenario_space_update_params
 from gym_fin.common.tf_util import TFRunner
 
 def pi_merton(env, obs, continuous_time = False):
@@ -53,7 +57,7 @@ def pi_merton(env, obs, continuous_time = False):
     return consume_fraction, stocks_allocation
 
 def pi_opal(opal_data, env, obs):
-    # obs is currently ignored in favor of direcct env lookups.
+    # obs is currently ignored in favor of direct env lookups.
     age = env.age
     age_data = opal_data[age]
     p = env.p_sum()
@@ -72,40 +76,123 @@ def pi_opal(opal_data, env, obs):
     consume_fraction = max(0, min(consume_fraction, 1 / env.params.time_period))
     return consume_fraction, stocks
 
-def eval_models(eval_model_params, *, train_seeds, ensemble, nice, train_seed, model_dir, result_dir, **kwargs):
+def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length,
+    merton, samuelson, annuitize, opal, models_dir, evaluate, warm_cache, train_seeds, ensemble, nice, train_seed, model_dir, result_dir, num_environments, **kwargs):
 
     priority = getpriority(PRIO_PROCESS, 0)
     priority += nice
     setpriority(PRIO_PROCESS, 0, priority)
 
-    try:
-        mkdir(result_dir)
-    except FileExistsError:
-        pass
+    assert not daemon or train_seeds == 1 or ensemble
 
+    assert models_dir == None or model_dir == 'aiplanner.tf'
+
+    assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize, opal)) <= 1
+    model = not (merton or samuelson or annuitize or opal)
+
+    if not warm_cache:
+        try:
+            mkdir(result_dir)
+        except FileExistsError:
+            pass
+
+    if model:
+        if models_dir != None:
+            model_dir = models_dir + '/' + scenario_space_model_filename(eval_model_params)
+        train_model_params = load_params_file(model_dir + '/params.txt')
+        eval_model_params['action_space_unbounded'] = train_model_params['action_space_unbounded']
+        eval_model_params['observation_space_ignores_range'] = train_model_params['observation_space_ignores_range']
+    else:
+        num_environments = 1
+        eval_model_params['action_space_unbounded'] = True
+        eval_model_params['observation_space_ignores_range'] = False
+
+    results = [[] for _ in range(len(api))] # Gets multiply overwritten but is not used, when train_seeds > 1 and not ensemble.
+
+    any_exception = None
     object_id_to_evaluator = {}
     evaluator_to_info = {}
     for i in range(1 if ensemble else train_seeds):
 
         train_dir_seed = train_seed + i
-        train_dirs = [model_dir + '/seed_' + str(train_dir_seed + j) for j in range(train_seeds if ensemble else 1)]
         result_seed_dir = result_dir + '/seed_' + ('all' if ensemble else str(train_dir_seed))
 
-        try:
-            mkdir(result_seed_dir)
-        except FileExistsError:
-            pass
+        if not warm_cache:
+            try:
+                mkdir(result_seed_dir)
+            except FileExistsError:
+                pass
 
-        out = open(result_seed_dir + '/eval.log', 'w')
+        out = open(devnull if daemon else result_seed_dir + '/eval.log', 'w')
 
-        object_ids, evaluator = eval_model(eval_model_params, model_dir = model_dir, train_seed = train_dir_seed, train_dirs = train_dirs,
-            result_seed_dir = result_seed_dir, out = out, **kwargs)
+        for scenario_num, api_scenario in enumerate(api):
 
-        for object_id in object_ids:
-            object_id_to_evaluator[object_id] = evaluator
-        evaluator_to_info[evaluator] = {'out': out, 'prefix': result_seed_dir + '/aiplanner'}
+            parse_exception = None
+            assert eval_model_params['gamma_low'] == eval_model_params['gamma_high'], "Can't evaluate a gamma range."
+            gamma = eval_model_params['gamma_low']
+            if int(gamma) == gamma:
+                gamma = int(gamma)
+            control_params = {
+                'id': None,
+                'gammas': [gamma],
+            }
 
-    any_exception = None
+            try:
+
+                if daemon:
+                    model_params, control_params = parse_api_scenario(api_scenario)
+                    model_params = dict(eval_model_params, **model_params)
+                    scenario_space_update_params(model_params, control_params)
+                else:
+                    model_params = eval_model_params
+
+            except Exception as e:
+
+                parse_exception = e
+
+            for sub_num, gamma in enumerate(control_params['gammas']):
+
+                try:
+
+                    prefix = result_seed_dir + '/aiplanner-gamma' + str(gamma)
+
+                    if parse_exception:
+                        raise parse_exception
+
+                    if daemon:
+                        model_params['gamma_low'] = model_params['gamma_high'] = gamma
+
+                    if models_dir != None:
+                        model_dir = models_dir + '/' + scenario_space_model_filename(model_params)
+                    train_dirs = [model_dir + '/seed_' + str(train_dir_seed + j) for j in range(train_seeds if ensemble else 1)]
+
+                    object_ids, evaluator, initial_results = eval_model(model_params, daemon = daemon,
+                        merton = merton, samuelson = samuelson, annuitize = annuitize, opal = opal,
+                        model = model, evaluate = evaluate, warm_cache = warm_cache, train_seed = train_dir_seed + scenario_num,
+                        train_dirs = train_dirs, out = out, num_environments = num_environments, **kwargs)
+                    initial_results['id'] = control_params['id']
+
+                    for object_id in object_ids:
+                        object_id_to_evaluator[object_id] = evaluator
+                    evaluator_to_info[evaluator] = {'scenario_num': scenario_num, 'sub_num': sub_num, 'out': out, 'prefix': prefix}
+
+                except Exception as e:
+                    if daemon:
+                        print_exc()
+                    any_exception = e
+                    error_msg = str(e) or e.__class__.__name__ + ' exception encountered.'
+                    initial_results = {
+                        'id': control_params.get('id'),
+                        'error': error_msg,
+                    }
+
+                results[scenario_num].append(initial_results)
+
+                if not daemon or evaluator:
+                    initial_str = dumps(initial_results, indent = 4, sort_keys = True)
+                    with open(prefix + '.json', 'w') as w:
+                        w.write(initial_str + '\n')
+
     object_ids = list(object_id_to_evaluator.keys())
     while object_ids:
 
@@ -117,9 +204,11 @@ def eval_models(eval_model_params, *, train_seeds, ensemble, nice, train_seed, m
 
         evaluator = object_id_to_evaluator[object_id]
         del object_id_to_evaluator[object_id]
-        if evaluator not in object_id_to_evaluator.values():
+        if evaluator and (evaluator not in object_id_to_evaluator.values()):
 
             info = evaluator_to_info[evaluator]
+            scenario_num = info['scenario_num']
+            sub_num = info['sub_num']
             out = info['out']
             prefix = info['prefix']
 
@@ -134,7 +223,7 @@ def eval_models(eval_model_params, *, train_seeds, ensemble, nice, train_seed, m
 
                 plot(prefix, evaluator.trace, evaluator.consume_pdf)
 
-                final_data = {
+                final_results = dict(results[scenario_num][sub_num], **{
                     'error': None,
                     'ce': ce,
                     'ce_stderr': ce_stderr,
@@ -142,59 +231,59 @@ def eval_models(eval_model_params, *, train_seeds, ensemble, nice, train_seed, m
                     'ce_high': high,
                     'consume_preretirement': evaluator.consume_preretirement,
                     'preretirement_ppf': evaluator.preretirement_ppf,
-                }
-                exception = None
+                })
 
             except Exception as e:
-                exception = any_exception = e
-                error_msg = str(e)
-                if not error_msg:
-                    error_msg = e.__class__.__name__ + ' exception encountered.'
-                final_data = {
+                if daemon:
+                    print_exc()
+                any_exception = e
+                error_msg = str(e) or e.__class__.__name__ + ' exception encountered.'
+                final_results = {
+                    'id': results[scenario_num][sub_num]['id'],
                     'error': error_msg,
                 }
 
-            final_str = dumps(final_data)
-            with open(prefix + '-final.json', 'w') as w:
-                w.write(final_str)
+            results[scenario_num][sub_num] = final_results
+
+            if not daemon:
+                final_str = dumps(final_results, indent = 4, sort_keys = True)
+                with open(prefix + '.json', 'w') as w:
+                    w.write(final_str + '\n')
 
             # Allow evaluator to be garbage collected to conserve RAM and also allow agent actor process to be killed.
             del evaluator_to_info[evaluator]
             del evaluator
 
-    if any_exception:
+    if daemon and not warm_cache:
+
+        failures = [scenario for scenario, result in zip(api, results) if any((sub_result['error'] != None for sub_result in result))]
+        if failures:
+            failures_str = dumps(failures, indent = 4, sort_keys = True)
+            with open(result_seed_dir + '/failures.json', 'w') as w:
+                w.write(failures_str + '\n')
+
+    elif any_exception:
+
         raise any_exception
 
-def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_file, redis_address, checkpoint_name,
-    eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
-    num_cpu, model_dir, train_seed, train_dirs, search_consume_initial_around, result_seed_dir, out, num_trace_episodes,
-    num_workers, num_environments, pdf_buckets):
+    return results
 
-    assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize, opal)) <= 1
-    model = not (merton or samuelson or annuitize or opal)
+runner_cache = {}
+
+def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal, opal_file, redis_address, checkpoint_name,
+    evaluate, warm_cache, eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
+    num_cpu, model, train_seed, train_dirs, search_consume_initial_around, out, num_trace_episodes,
+    num_workers, num_environments, pdf_buckets):
 
     eval_seed += 1000000 # Use a different seed than might have been used during training.
     set_global_seeds(eval_seed)
 
-    if model:
-        train_model_params = load_params_file(model_dir + '/params.txt')
-        eval_model_params['action_space_unbounded'] = train_model_params['action_space_unbounded']
-        eval_model_params['observation_space_ignores_range'] = train_model_params['observation_space_ignores_range']
-    else:
-        num_environments = 1
-        eval_model_params['action_space_unbounded'] = True
-        eval_model_params['observation_space_ignores_range'] = False
+    env = make_fin_env(**eval_model_params, direct_action = not model)
+    env = env.unwrapped
 
-    envs = []
-    for _ in range(num_environments):
-        envs.append(make_fin_env(**eval_model_params, direct_action = not model))
-        eval_model_params['display_returns'] = False # Only have at most one env display returns.
-    env = envs[0].unwrapped
-
-    if env.params.consume_policy != 'rl' and env.params.annuitization_policy != 'rl' and env.params.asset_allocation_policy != 'rl' and \
+    skip_model = env.params.consume_policy != 'rl' and env.params.annuitization_policy != 'rl' and env.params.asset_allocation_policy != 'rl' and \
         (not env.params.real_bonds or env.params.real_bonds_duration != None) and \
-        (not env.params.nominal_bonds or env.params.nominal_bonds_duration != None):
-        model = False
+        (not env.params.nominal_bonds or env.params.nominal_bonds_duration != None)
 
     obs = env.reset()
 
@@ -204,14 +293,14 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
 
         consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
         asset_allocation = AssetAllocation(stocks = stocks_allocation, bills = 1 - stocks_allocation)
-        interp = env.interpret_spending(consume_fraction, asset_allocation)
+        initial_results = env.interpret_spending(consume_fraction, asset_allocation)
 
     elif annuitize:
 
         consume_initial = env.gi_sum() + env.p_sum() / (env.params.time_period + env.real_spia.premium(1, mwr = env.params.real_spias_mwr))
         consume_fraction_initial = consume_initial / env.p_plus_income()
         asset_allocation = AssetAllocation(stocks = 1)
-        interp = env.interpret_spending(consume_fraction_initial, asset_allocation, real_spias_fraction = 1)
+        initial_results = env.interpret_spending(consume_fraction_initial, asset_allocation, real_spias_fraction = 1)
 
     elif opal:
 
@@ -238,113 +327,135 @@ def eval_model(eval_model_params, *, merton, samuelson, annuitize, opal, opal_fi
 
         consume_fraction, stocks_allocation = pi_opal(opal_data, env, obs)
         asset_allocation = AssetAllocation(stocks = stocks_allocation, iid_bonds = 1 - stocks_allocation)
-        interp = env.interpret_spending(consume_fraction, asset_allocation)
+        initial_results = env.interpret_spending(consume_fraction, asset_allocation)
 
     else:
 
-        runner = TFRunner(train_dirs = train_dirs, checkpoint_name = checkpoint_name, eval_model_params = eval_model_params, couple_net = eval_couple_net,
-            redis_address = redis_address, num_workers = num_workers, num_environments = num_environments, num_cpu = num_cpu).__enter__()
+        try:
+            runner = runner_cache[train_dirs[0]]
+        except KeyError:
+            runner = TFRunner(train_dirs = train_dirs, checkpoint_name = checkpoint_name, eval_model_params = eval_model_params, couple_net = eval_couple_net,
+                redis_address = redis_address, num_workers = num_workers, num_environments = num_environments, num_cpu = num_cpu).__enter__()
+            runner_cache[train_dirs[0]] = runner
         remote_evaluators = runner.remote_evaluators
 
         action, = runner.run([obs])
-        interp = env.interpret_action(action)
+        initial_results = env.interpret_action(action)
 
-    interp['asset_classes'] = interp['asset_allocation'].classes()
-    interp['asset_allocation'] = interp['asset_allocation'].as_list()
-    interp['name'] = env.params.name
-    interp['pv_retired_income'] = env.retired_income_wealth
-    interp['p'] = env.p_sum()
-    interp['pv_preretirement_income'] = env.preretirement_income_wealth
-    interp_str = dumps(interp)
-    with open(result_seed_dir + '/aiplanner-initial.json', 'w') as w:
-        w.write(interp_str)
+    if not daemon:
 
-    print('Initial properties for first episode:', file = out)
-    print('    Consume:', interp['consume'], file = out)
-    print('    Asset allocation:', interp['asset_allocation'], file = out)
-    print('    401(k)/IRA contribution:', interp['retirement_contribution'], file = out)
-    print('    Real income annuities purchase:', interp['real_spias_purchase'], file = out)
-    print('    Nominal income annuities purchase:', interp['nominal_spias_purchase'], file = out)
-    print('    Real bonds duration:', interp['real_bonds_duration'], file = out)
-    print('    Nominal bonds duration:', interp['nominal_bonds_duration'], file = out)
+        initial_results['asset_classes'] = initial_results['asset_allocation'].classes()
+        initial_results['asset_allocation'] = initial_results['asset_allocation'].as_list()
+        initial_results['name'] = env.params.name
+        initial_results['pv_retired_income'] = env.retired_income_wealth
+        initial_results['p'] = env.p_sum()
+        initial_results['pv_preretirement_income'] = env.preretirement_income_wealth
 
-    print(file = out, flush = True)
+        print('Initial properties for first episode:', file = out)
+        print('    Consume:', initial_results['consume'], file = out)
+        print('    Asset allocation:', initial_results['asset_allocation'], file = out)
+        print('    401(k)/IRA contribution:', initial_results['retirement_contribution'], file = out)
+        print('    Real income annuities purchase:', initial_results['real_spias_purchase'], file = out)
+        print('    Nominal income annuities purchase:', initial_results['nominal_spias_purchase'], file = out)
+        print('    Real bonds duration:', initial_results['real_bonds_duration'], file = out)
+        print('    Nominal bonds duration:', initial_results['nominal_bonds_duration'], file = out)
 
-    evaluator = Evaluator(envs, eval_seed, eval_num_timesteps,
-        remote_evaluators = remote_evaluators, render = eval_render, num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets)
+        print(file = out, flush = True)
 
-    def pi(obss):
+    if evaluate and not warm_cache:
 
-        if model:
+        envs = []
+        for _ in range(num_environments):
+            envs.append(make_fin_env(**eval_model_params, direct_action = not model))
+            eval_model_params['display_returns'] = False # Only have at most one env display returns.
 
-            action = runner.run(obss)
-            return action
+        evaluator = Evaluator(envs, eval_seed, eval_num_timesteps,
+            remote_evaluators = remote_evaluators, render = eval_render, num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets)
 
-        elif merton or samuelson:
+        def pi(obss):
 
-            results = []
-            for obs in obss:
-                consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
-                observation = env.decode_observation(obs)
-                assert observation['life_expectancy_both'] == 0
-                life_expectancy = observation['life_expectancy_one']
-                t = ceil(life_expectancy / env.params.time_period) - 1
-                if t == 0:
-                    consume_fraction = min(consume_fraction, 1 / env.params.time_period) # Bound may be exceeded in continuous time case.
-                results.append(env.encode_direct_action(consume_fraction, stocks = stocks_allocation, bills = 1 - stocks_allocation))
-            return results
+            if model:
 
-        elif annuitize:
+                if skip_model:
+                    action = None
+                else:
+                    action = runner.run(obss)
 
-            results = []
-            for obs in obss:
-                consume_fraction = consume_fraction_initial if env.episode_length == 0 else 1 / env.params.time_period
-                results.append(env.encode_direct_action(consume_fraction, stocks = 1, real_spias_fraction = 1))
-            return results
+                return action
 
-        elif opal:
+            elif merton or samuelson:
 
-            results = []
-            for obs in obss:
-                consume_fraction, stocks_allocation = pi_opal(opal_data, env, obs)
-                results.append(env.encode_direct_action(consume_fraction, stocks = stocks_allocation, iid_bonds = 1 - stocks_allocation))
-            return results
-
-        else:
-
-            return None
-
-    if search_consume_initial_around != None:
-
-        f_cache = {}
-
-        def f(x):
-
-            try:
-
-                return f_cache[x]
-
-            except KeyError:
-
-                print('    Consume: ', x)
-                for e in envs:
-                    e.unwrapped.params.consume_initial = x
-                evaluator.evaluate(pi)
-                f_x, tol_x, _, _ = evaluator.summarize()
-                results = (f_x, tol_x)
-                f_cache[x] = results
+                results = []
+                for obs in obss:
+                    consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
+                    observation = env.decode_observation(obs)
+                    assert observation['life_expectancy_both'] == 0
+                    life_expectancy = observation['life_expectancy_one']
+                    t = ceil(life_expectancy / env.params.time_period) - 1
+                    if t == 0:
+                        consume_fraction = min(consume_fraction, 1 / env.params.time_period) # Bound may be exceeded in continuous time case.
+                    results.append(env.encode_direct_action(consume_fraction, stocks = stocks_allocation, bills = 1 - stocks_allocation))
                 return results
 
-        x, f_x = gss(f, search_consume_initial_around / 2, search_consume_initial_around * 2)
-        print('    Consume: ', x)
-        for e in envs:
-            e.unwrapped.params.consume_initial = x
+            elif annuitize:
 
-    object_ids = evaluator.evaluate(pi) or [train_seed]
+                results = []
+                for obs in obss:
+                    consume_fraction = consume_fraction_initial if env.episode_length == 0 else 1 / env.params.time_period
+                    results.append(env.encode_direct_action(consume_fraction, stocks = 1, real_spias_fraction = 1))
+                return results
 
-    runner.__exit__(None, None, None)
+            elif opal:
 
-    return object_ids, evaluator
+                results = []
+                for obs in obss:
+                    consume_fraction, stocks_allocation = pi_opal(opal_data, env, obs)
+                    results.append(env.encode_direct_action(consume_fraction, stocks = stocks_allocation, iid_bonds = 1 - stocks_allocation))
+                return results
+
+            else:
+
+                assert False
+
+        if search_consume_initial_around != None:
+
+            f_cache = {}
+
+            def f(x):
+
+                try:
+
+                    return f_cache[x]
+
+                except KeyError:
+
+                    print('    Consume: ', x)
+                    for e in envs:
+                        e.unwrapped.params.consume_initial = x
+                    evaluator.evaluate(pi)
+                    f_x, tol_x, _, _ = evaluator.summarize()
+                    results = (f_x, tol_x)
+                    f_cache[x] = results
+                    return results
+
+            x, f_x = gss(f, search_consume_initial_around / 2, search_consume_initial_around * 2)
+            print('    Consume: ', x)
+            for e in envs:
+                e.unwrapped.params.consume_initial = x
+
+        object_ids = evaluator.evaluate(pi)
+
+    else:
+
+        evaluator = None
+        object_ids = None
+
+    #runner.__exit__(None, None, None)
+
+    if not object_ids:
+        object_ids = [train_seed]
+
+    return object_ids, evaluator, initial_results
 
 def gss(f, a, b):
     '''Golden segment search for maximum of f on [a, b].'''
@@ -401,17 +512,22 @@ def plot(prefix, traces, consume_pdf):
     run([environ['AIPLANNER_HOME'] + '/ai/plot'], check = True)
 
 def main():
-    parser = arg_parser()
+    parser = arg_parser(training = False)
+    parser.add_argument('-d', '--daemon', action = "store_true", default = False)
+    parser.add_argument('--api-content-length', type = int, default = None)
     boolean_flag(parser, 'merton', default = False)
     boolean_flag(parser, 'samuelson', default = False)
     boolean_flag(parser, 'annuitize', default = False)
     boolean_flag(parser, 'opal', default = False)
     parser.add_argument('--opal-file', default = 'opal-linear.csv')
     parser.add_argument('--redis-address')
+    parser.add_argument('--models-dir')
     parser.add_argument('--train-seeds', type = int, default = 1) # Number of seeds to evaluate.
     boolean_flag(parser, 'ensemble', default = False)
         # Whether to evaluate the average recommendation of the seeds or to evaluate the seeds individually in parallel.
     parser.add_argument('--checkpoint-name')
+    boolean_flag(parser, 'evaluate', default = True) # Inference and simulation, otherwise inference only.
+    boolean_flag(parser, 'warm-cache', default = True) # Pre-load tensorflow/Rllib models.
     boolean_flag(parser, 'eval-couple-net', default = True)
     parser.add_argument('--search-consume-initial-around', type = float)
         # Search for the initial consumption that maximizes the certainty equivalent using the supplied value as a hint as to where to search.
@@ -420,8 +536,46 @@ def main():
     parser.add_argument('--num-workers', type = int, default = 1) # Number of remote processes for Ray evaluation. Zero for local evaluation.
     parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for a single model. Speeds up tensorflow.
     parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
-    training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False)
-    eval_models(eval_model_params, **args)
+    training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, dump = False)
+    if not args['daemon']:
+        args['warm_cache'] = False
+        dump_params(dict(eval_model_params, **args))
+        eval_models(eval_model_params, **args)
+    else:
+        if args['models_dir'] != None and args['warm_cache']:
+            if args['evaluate']:
+                gamma = None
+            else:
+                gamma = eval_model_params['gamma_low']
+            for model_params, api in enumerate_model_params_api(gamma):
+                model_params = dict(eval_model_params, **model_params)
+                eval_models(model_params, api = api, **args)
+        args['warm_cache'] = False
+        while True:
+            try:
+                results = None
+                line = stdin.readline()
+                if not line:
+                    break
+                line = line.strip()
+                if not line:
+                    continue
+                args = argv[1:] + line.split()
+                training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, dump = False, args = args)
+                api_content_length = args['api_content_length']
+                assert api_content_length != None, 'No --api-content-length parameter.'
+                api_json = stdin.read(api_content_length)
+                api = loads(api_json)
+                results = eval_models(eval_model_params, api = api, **args)
+            except Exception as e:
+                print_exc()
+                results = str(e) or e.__class__.__name__ + ' exception encountered.'
+            except SystemExit as e:
+                results = 'Invalid argument.'
+            results_str = dumps(results, indent = 4, sort_keys = True)
+            print('\nAIPlanner-Result')
+            print('Content-Length:', len(results_str.encode('utf-8')))
+            print(results_str, flush = True)
 
 if __name__ == '__main__':
     main()

@@ -92,7 +92,7 @@ def main():
 
     prefix = environ['AIPLANNER_FILE_PREFIX']
 
-    with open(prefix + '-initial.json') as f:
+    with open(prefix + '.json') as f:
         interp = loads(f.read())
 
     asset_classes = interp['asset_classes']

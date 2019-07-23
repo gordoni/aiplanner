@@ -164,7 +164,7 @@ def train(training_model_params, *, train_algorithm, train_num_hidden_layers, tr
         assert False
 
 def main():
-    parser = arg_parser()
+    parser = arg_parser(evaluate=False)
     parser.add_argument('--train-algorithm', default='sac', choices=('ddpg', 'ppo', 'sac', 'td3', 'trpo', 'vpg'))
     parser.add_argument('--train-num-hidden-layers', type=int, default=2)
     parser.add_argument('--train-hidden-layer-size', type=int, default=None)

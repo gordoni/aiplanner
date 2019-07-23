@@ -401,8 +401,11 @@ class FinEnv(Env):
 
     def parse_defined_benefits(self):
 
+        def load(s):
+            return loads(s) if isinstance(s, str) else s
+
         self.defined_benefits = {}
-        for db in loads(self.params.guaranteed_income) + loads(self.params.guaranteed_income_additional):
+        for db in load(self.params.guaranteed_income) + load(self.params.guaranteed_income_additional):
             self.add_db(delay_calcs = True, **db)
 
         for db in self.defined_benefits.values():
@@ -1392,7 +1395,7 @@ class FinEnv(Env):
             self.preretirement_fraction = min(self.preretirement_income_wealth / self.net_wealth, 1)
         except ZeroDivisionError:
             self.p_fraction = 1
-            self.preretirement_income = 1
+            self.preretirement_fraction = 1
         self.wealth_ratio = (self.retired_income_wealth + self.preretirement_income_wealth) / self.p_wealth if self.p_wealth > 0 else float('inf')
         self.wealth_ratio = min(self.wealth_ratio, 1e100) # Cap so that not calculating with inf.
 

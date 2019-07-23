@@ -22,6 +22,7 @@ from baselines.bench import Monitor
 from baselines.common import boolean_flag, set_global_seeds
 
 from gym_fin.envs import FinEnv, ModelParams
+from gym_fin.envs.model_params import dump_params
 
 def make_fin_env(training = False, allow_early_resets = None, **kwargs):
     """
@@ -43,41 +44,9 @@ def _config_parser():
 
     return config_parser
 
-def arg_parser():
+def arg_parser(training = True, evaluate = True):
 
     parser = argparse.ArgumentParser(formatter_class = argparse.ArgumentDefaultsHelpFormatter, parents = [_config_parser()])
-
-    return parser
-
-def parse_args(parser, *, training = True, evaluate = True, args = None):
-
-    config_parser = _config_parser()
-
-    arguments, _ = config_parser.parse_known_args(args = args)
-
-    config = {}
-    for config_file in arguments.config_file:
-        with open(config_file) as f:
-            config_str = f.read()
-        exec(config_str, {'inf': float('inf')}, config)
-
-    # Hack to ensure config files dosn't contain any misspelled parameters.
-    defaults = {}
-    for action in parser._actions:
-        if action.dest in config:
-            defaults[action.dest] = config[action.dest]
-            del config[action.dest]
-    config = {param: value for param, value in config.items()
-        if (training if param.startswith('train_') else (evaluate if param.startswith('eval_') else True))}
-    if config:
-        parser.error('Unrecognised configuration file parameters: ' + ','.join(config.keys()))
-    parser.set_defaults(**defaults)
-
-    arguments = parser.parse_args(args = args)
-
-    return arguments
-
-def fin_arg_parse(parser, *, training = True, evaluate = True, dump = True, args = None):
 
     if training:
         parser.add_argument('--train-num-timesteps', type = int, default = int(1e7))
@@ -103,11 +72,45 @@ def fin_arg_parse(parser, *, training = True, evaluate = True, dump = True, args
 
     model_params = ModelParams()
     model_params.add_arguments(parser, training = training, evaluate = evaluate)
+
+    return parser
+
+def parse_args(parser, *, training = True, evaluate = True, args = None):
+
+    arguments = parser.parse_args(args = args)
+
+    config = {}
+    for config_file in arguments.config_file:
+        with open(config_file) as f:
+            config_str = f.read()
+        exec(config_str, {'inf': float('inf')}, config)
+
+    # Hack to ensure config files dosn't contain any misspelled parameters.
+    defaults = {}
+    for action in parser._actions:
+        if action.dest in config:
+            defaults[action.dest] = config[action.dest]
+            del config[action.dest]
+    config = {param: value for param, value in config.items()
+        if (training if param.startswith('train_') else (evaluate if param.startswith('eval_') else True))}
+    if config:
+        parser.error('Unrecognised configuration file parameters: ' + ','.join(config.keys()))
+    parser.set_defaults(**defaults)
+
+    arguments = parser.parse_args(args = args)
+
+    return arguments
+
+def fin_arg_parse(parser, *, training = True, evaluate = True, dump = True, args = None):
+
+    model_params = ModelParams()
+    model_params.add_arguments(None, training = training, evaluate = evaluate)
+
     arguments = parse_args(parser, training = training, evaluate = evaluate, args = args)
     dict_args = vars(arguments)
     model_params.set_params(dict_args)
     if dump:
-        model_params.dump_params()
+        dump_params(dict_args)
     training_model_params = model_params.get_params(training = True) if training else {}
     eval_model_params = model_params.get_params(training = False) if evaluate else {}
     dict_args = model_params.remaining_params()
