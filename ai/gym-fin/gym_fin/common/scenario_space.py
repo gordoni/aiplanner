@@ -10,11 +10,17 @@
 
 allowed_gammas = [1.5, 3, 6]
 
-spia_type = 'nominal_spias'
+spias_type = 'nominal_spias'
+bonds_type = 'real_bonds'
 
 def scenario_space_update_params(model_params, control_params):
 
-    model_params[spia_type] = control_params['spias']
+    model_params[spias_type] = control_params['spias']
+    model_params['p_taxable_' + bonds_type] = control_params['p_taxable_bonds']
+    if bonds_type == 'real_bonds':
+        assert model_params['real_bonds']
+    elif bonds_type == 'nominal_bonds':
+        assert model_params['nominal_bonds']
 
     if control_params['gammas'] == None:
         control_params['gammas'] = allowed_gammas
@@ -31,9 +37,7 @@ def scenario_space_model_filename(model_params):
 
     return 'aiplanner-' + retired + '-' + spias + '-gamma' + str(gamma) + '.tf'
 
-def enumerate_model_params_api(gamma):
-
-    gammas = [gamma] if gamma != None else allowed_gammas
+def enumerate_model_params_api(gammas):
 
     return [({
         'age': age,

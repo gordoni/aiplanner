@@ -259,7 +259,7 @@ class ModelParams(object):
         self._param('stocks-alpha', 0.0000) # Monthly GJR-GARCH volatility model alpha parameter for bootstrap stocks.
         self._param('stocks-gamma', 0.3188) # Monthly GJR-GARCH volatility model gamma parameter for bootstrap stocks.
         self._param('stocks-beta', 0.7116) # Monthly GJR-GARCH volatility model beta parameter for bootstrap stocks.
-        self._param('stocks-sigma-level-type', 'sample', 'average', tp = string_type, choices = ('sample', 'average', 'value'))
+        self._param('stocks-sigma-level-type', 'sample', 'invalid', tp = string_type, choices = ('sample', 'average', 'value'))
             # Monthly GJR-GARCH volatility model current log volatility relative to long term average for bootstrap stocks.
             # 'sample' chooses initial value at random, 'average' uses the average model value, 'value' uses a specific value.
         self._param('stocks-sigma-level-value', None) # Monthly GJR-GARCH volatility model current log volatility relative to long term average for type 'value'.
@@ -271,7 +271,7 @@ class ModelParams(object):
            # Extent to which movement in stock price doesn't reflect movement in fair price.
            # Used to mimick implications from Shiller's data that stocks can be over/under-valued.
            # A value of 0.6 produces a value/fair value of 70-140% the vast majority of the time.
-        self._param('stocks-price', (0.5, 2.0), 1) # Initial observed price of stocks relative to fair price for bootstrap stocks with mean reversion.
+        self._param('stocks-price', (0.5, 2.0), None) # Initial observed price of stocks relative to fair price for bootstrap stocks with mean reversion.
         self._param('stocks-price-noise-sigma', 0.2) # Sigma of lognormal noise inherent in observation of stocks price relative to fair price for bootstrap stocks.
             # Used in the case of mean reversion.
         self._param('stocks-return', 0.065) # Annual real return for iid stocks.
@@ -290,12 +290,12 @@ class ModelParams(object):
         self._param('iid-bonds-return', 0.025) # Annual real return for iid bonds when lognormal.
         self._param('iid-bonds-volatility', 0.110) # Annual real volatility for iid bonds when lognormal.
         self._param('bonds-standard-error', 0.010) # Standard error of log real return for bonds.
-        self._param('real-short-rate-type', 'sample', 'current', tp = string_type, choices = ('sample', 'current', 'value'))
+        self._param('real-short-rate-type', 'sample', 'invalid', tp = string_type, choices = ('sample', 'current', 'value'))
             # Initial short real interest rate when using model.
             # 'sample' chooses initial value at random, 'current' uses the average model value, 'value' uses a specific value.
         self._param('real-short-rate-value', None) # Initial short real interest rate for type 'value'.
         self._param('inflation-standard-error', 0.004) # Standard error of log inflation.
-        self._param('inflation-short-rate-type', 'sample','current', tp = string_type, choices = ('sample', 'current', 'value'))
+        self._param('inflation-short-rate-type', 'sample','invalid', tp = string_type, choices = ('sample', 'current', 'value'))
             # Initial inflation rate when using model.
             # 'sample' chooses initial value at random, 'current' uses the average model value, 'value' uses a specific value.
         self._param('inflation-short-rate-value', None) # Initial inflation rate for type 'value'.

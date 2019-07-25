@@ -197,16 +197,17 @@ def main():
         # Eg. for a gamma of 6 and a large portfolio, going from 2m to 4m increases the CE by 1.1%, but going to 6m only increases it by a further 0.5%.
     parser.add_argument('--train-anneal-num-timesteps', type=int, default=0)
     parser.add_argument('--train-seeds', type=int, default=1) # Number of parallel seeds to train.
-    parser.add_argument('--train-batch-size', type=int, default=100000)
+    parser.add_argument('--train-batch-size', type=int, default=500000)
         # PPO default batch size is 4000. For a gamma of 6 and a large portfolio it results in asset allocation heavily biased in favor of stocks, and a poor mean CE.
         # The poor CE is probably the result of each batch being non-representative of the overall situation given the stochastic nature of the problem.
         # Inceasing value too 50000 or more improves performance and reduces the asset allocation bias, but never eliminates it.
         # It would appear the larger the batch size the higher the mean CE, but also the larger the number of timesteps it takes to reach that CE level.
         # A value of 100000 appears best for 3m to 7m timesteps.
-        # It appears only slightly sub-par compared to 50000 for 2m timesteps, or probably compared to 200000 for 8m timesteps.
+        # 500000 is probably marginally better than 100000 for 50m timesteps.
     parser.add_argument('--train-minibatch-size', type=int, default=128)
     parser.add_argument('--train-optimizer-epochs', type=int, default=30)
-    parser.add_argument('--train-optimizer-step-size', type=float, default=5e-5)
+    parser.add_argument('--train-optimizer-step-size', type=float, default=5e-6)
+        # PPO default is 5e-5. Trains rapidly, but training curve ends up having a lot of CE variability over timesteps.
     parser.add_argument('--train-entropy-coefficient', type=float, default=0)
         # Value might be critical to getting optimal performance.
         # Value to use probably depends on the complexity of the scenario.

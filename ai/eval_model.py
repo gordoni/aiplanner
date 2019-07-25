@@ -17,6 +17,7 @@ from json import dumps, loads
 from math import ceil, exp, sqrt
 from os import chmod, devnull, environ, getpriority, mkdir, PRIO_PROCESS, setpriority
 from os.path import exists
+from shlex import split
 from subprocess import run
 from sys import argv, stdin
 from traceback import print_exc
@@ -30,7 +31,7 @@ from gym_fin.envs.policies import policy
 from gym_fin.common.api import parse_api_scenario
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from gym_fin.common.evaluator import Evaluator
-from gym_fin.common.scenario_space import enumerate_model_params_api, scenario_space_model_filename, scenario_space_update_params
+from gym_fin.common.scenario_space import allowed_gammas, enumerate_model_params_api, scenario_space_model_filename, scenario_space_update_params
 from gym_fin.common.tf_util import TFRunner
 
 def pi_merton(env, obs, continuous_time = False):
@@ -76,8 +77,9 @@ def pi_opal(opal_data, env, obs):
     consume_fraction = max(0, min(consume_fraction, 1 / env.params.time_period))
     return consume_fraction, stocks
 
-def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length,
-    merton, samuelson, annuitize, opal, models_dir, evaluate, warm_cache, train_seeds, ensemble, nice, train_seed, model_dir, result_dir, num_environments, **kwargs):
+def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, stdin,
+    merton, samuelson, annuitize, opal, models_dir, evaluate, warm_cache, gamma, train_seeds, ensemble, nice,
+    train_seed, model_dir, result_dir, num_environments, **kwargs):
 
     priority = getpriority(PRIO_PROCESS, 0)
     priority += nice
@@ -129,12 +131,12 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length,
 
             parse_exception = None
             assert eval_model_params['gamma_low'] == eval_model_params['gamma_high'], "Can't evaluate a gamma range."
-            gamma = eval_model_params['gamma_low']
-            if int(gamma) == gamma:
-                gamma = int(gamma)
+            g = eval_model_params['gamma_low']
+            if int(g) == g:
+                g = int(g)
             control_params = {
                 'id': None,
-                'gammas': [gamma],
+                'gammas': [g],
             }
 
             try:
@@ -150,7 +152,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length,
 
                 parse_exception = e
 
-            for sub_num, gamma in enumerate(control_params['gammas']):
+            for sub_num, g in enumerate(control_params['gammas']):
 
                 try:
 
@@ -160,7 +162,8 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length,
                         raise parse_exception
 
                     if daemon:
-                        model_params['gamma_low'] = model_params['gamma_high'] = gamma
+                        assert g in gamma, 'Unsupported gamma value: ' + str(g)
+                        model_params['gamma_low'] = model_params['gamma_high'] = g
 
                     if models_dir != None:
                         model_dir = models_dir + '/' + scenario_space_model_filename(model_params)
@@ -168,7 +171,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length,
 
                     object_ids, evaluator, initial_results = eval_model(model_params, daemon = daemon,
                         merton = merton, samuelson = samuelson, annuitize = annuitize, opal = opal,
-                        model = model, evaluate = evaluate, warm_cache = warm_cache, train_seed = train_dir_seed + scenario_num,
+                        model = model, evaluate = evaluate, warm_cache = warm_cache, default_object_id = (scenario_num, sub_num),
                         train_dirs = train_dirs, out = out, num_environments = num_environments, **kwargs)
                     initial_results['id'] = control_params['id']
 
@@ -188,7 +191,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length,
 
                 results[scenario_num].append(initial_results)
 
-                if not daemon or evaluator:
+                if not daemon or evaluate:
                     initial_str = dumps(initial_results, indent = 4, sort_keys = True)
                     with open(prefix + '.json', 'w') as w:
                         w.write(initial_str + '\n')
@@ -196,7 +199,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length,
     object_ids = list(object_id_to_evaluator.keys())
     while object_ids:
 
-        if all(type(id) == int for id in object_ids):
+        if all(type(id) == tuple for id in object_ids):
             object_id = object_ids.pop(0)
         else:
             import ray
@@ -272,7 +275,7 @@ runner_cache = {}
 
 def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal, opal_file, redis_address, checkpoint_name,
     evaluate, warm_cache, eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
-    num_cpu, model, train_seed, train_dirs, search_consume_initial_around, out, num_trace_episodes,
+    num_cpu, model, default_object_id, train_dirs, search_consume_initial_around, out, num_trace_episodes,
     num_workers, num_environments, pdf_buckets):
 
     eval_seed += 1000000 # Use a different seed than might have been used during training.
@@ -343,14 +346,17 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         action, = runner.run([obs])
         initial_results = env.interpret_action(action)
 
-    if not daemon:
+    initial_results = dict(initial_results, **{
+        'error': None,
+        'asset_classes': initial_results['asset_allocation'].classes(),
+        'asset_allocation': initial_results['asset_allocation'].as_list(),
+        #'name': env.params.name,
+        'pv_retired_income': env.retired_income_wealth,
+        'p': env.p_sum(),
+        'pv_preretirement_income': env.preretirement_income_wealth,
+    })
 
-        initial_results['asset_classes'] = initial_results['asset_allocation'].classes()
-        initial_results['asset_allocation'] = initial_results['asset_allocation'].as_list()
-        initial_results['name'] = env.params.name
-        initial_results['pv_retired_income'] = env.retired_income_wealth
-        initial_results['p'] = env.p_sum()
-        initial_results['pv_preretirement_income'] = env.preretirement_income_wealth
+    if not daemon:
 
         print('Initial properties for first episode:', file = out)
         print('    Consume:', initial_results['consume'], file = out)
@@ -455,7 +461,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         runner.__exit__(None, None, None)
 
     if not object_ids:
-        object_ids = [train_seed]
+        object_ids = [default_object_id]
 
     return object_ids, evaluator, initial_results
 
@@ -517,6 +523,7 @@ def main():
     parser = arg_parser(training = False)
     parser.add_argument('-d', '--daemon', action = "store_true", default = False)
     parser.add_argument('--api-content-length', type = int, default = None)
+    boolean_flag(parser, 'stdin', default = False)
     boolean_flag(parser, 'merton', default = False)
     boolean_flag(parser, 'samuelson', default = False)
     boolean_flag(parser, 'annuitize', default = False)
@@ -524,6 +531,7 @@ def main():
     parser.add_argument('--opal-file', default = 'opal-linear.csv')
     parser.add_argument('--redis-address')
     parser.add_argument('--models-dir')
+    parser.add_argument('--gamma', action = 'append', type = float, default = [])
     parser.add_argument('--train-seeds', type = int, default = 1) # Number of seeds to evaluate.
     boolean_flag(parser, 'ensemble', default = False)
         # Whether to evaluate the average recommendation of the seeds or to evaluate the seeds individually in parallel.
@@ -539,45 +547,54 @@ def main():
     parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for a single model. Speeds up tensorflow.
     parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, dump = False)
+    if args['stdin']:
+        args['daemon'] = True
     if not args['daemon']:
+        assert args['api_content_length'] == None and not args['gamma']
         args['warm_cache'] = False
         dump_params(dict(eval_model_params, **args))
         eval_models(eval_model_params, **args)
     else:
-        if args['models_dir'] != None and args['warm_cache']:
-            if args['evaluate']:
-                gamma = None
-            else:
-                gamma = eval_model_params['gamma_low']
-            for model_params, api in enumerate_model_params_api(gamma):
-                model_params = dict(eval_model_params, **model_params)
-                eval_models(model_params, api = api, **args)
-        args['warm_cache'] = False
-        while True:
-            try:
-                results = None
-                line = stdin.readline()
-                if not line:
-                    break
-                line = line.strip()
-                if not line:
-                    continue
-                args = argv[1:] + line.split()
-                training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, dump = False, args = args)
-                api_content_length = args['api_content_length']
-                assert api_content_length != None, 'No --api-content-length parameter.'
-                api_json = stdin.read(api_content_length)
-                api = loads(api_json)
-                results = eval_models(eval_model_params, api = api, **args)
-            except Exception as e:
-                print_exc()
-                results = str(e) or e.__class__.__name__ + ' exception encountered.'
-            except SystemExit as e:
-                results = 'Invalid argument.'
+        if not args['gamma']:
+            args['gamma'] = allowed_gammas
+        if args['stdin']:
+            args['warm_cache'] = False
+            api_json = stdin.read()
+            api = loads(api_json)
+            results = eval_models(eval_model_params, api = api, **args)
             results_str = dumps(results, indent = 4, sort_keys = True)
-            print('\nAIPlanner-Result')
-            print('Content-Length:', len(results_str.encode('utf-8')))
-            print(results_str, flush = True)
+            print(results_str)
+        else:
+            if args['models_dir'] != None and args['warm_cache']:
+                for model_params, api in enumerate_model_params_api(args['gamma']):
+                    model_params = dict(eval_model_params, **model_params)
+                    eval_models(model_params, api = api, **args)
+            args['warm_cache'] = False
+            while True:
+                try:
+                    results = None
+                    line = stdin.readline()
+                    if not line:
+                        break
+                    line = line.strip()
+                    if not line:
+                        continue
+                    args = argv[1:] + split(line)
+                    training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, dump = False, args = args)
+                    api_content_length = args['api_content_length']
+                    assert api_content_length != None, 'No --api-content-length parameter.'
+                    api_json = stdin.read(api_content_length)
+                    api = loads(api_json)
+                    results = eval_models(eval_model_params, api = api, **args)
+                except Exception as e:
+                    print_exc()
+                    results = str(e) or e.__class__.__name__ + ' exception encountered.'
+                except SystemExit as e:
+                    results = 'Invalid argument.'
+                results_str = dumps(results, indent = 4, sort_keys = True)
+                print('\nAIPlanner-Result')
+                print('Content-Length:', len(results_str.encode('utf-8')))
+                print(results_str, flush = True)
 
 if __name__ == '__main__':
     main()

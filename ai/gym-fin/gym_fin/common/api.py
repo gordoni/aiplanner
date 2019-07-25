@@ -70,6 +70,8 @@ def parse_api_scenario(api_scenario):
         'id',
         'nominal_short_rate',
         'inflation_short_rate',
+        'p_taxable_bonds',
+        'p_taxable_stocks_basis',
         'spias',
         'gammas',
     ]:
@@ -81,16 +83,27 @@ def parse_api_scenario(api_scenario):
     if 'nominal_short_rate' in api_scenario:
         assert 'inflation_short_rate' in api_scenario, 'nominal_short_rate requires a value for inflation_short_rate also be specified.'
         model_params['real_short_rate_type'] = 'value'
-        model_params['real_short_rate_value'] = log(1 + model_params['nominal_short_rate']) - log(1 + model_params['inflation_short_rate'])
+        model_params['real_short_rate_value'] = log(1 + api_scenario['nominal_short_rate']) - log(1 + api_scenario['inflation_short_rate'])
     if 'inflation_short_rate' in api_scenario:
-        model_params['real_short_rate_type'] = 'value'
-        model_params['real_short_rate_value'] = log(1 + model_params['nominal_short_rate']) - log(1 + model_params['inflation_short_rate'])
+        model_params['inflation_short_rate_type'] = 'value'
+        model_params['inflation_short_rate_value'] = log(1 + api_scenario['inflation_short_rate'])
+    if 'p_taxable_stocks_basis' in api_scenario:
+        try:
+            model_params['p_taxable_stocks_basis_fraction'] = api_scenario['p_taxable_stocks_basis'] / api_scenario['p_taxable_stocks']
+        except ZeroDivisionError:
+            assert api_scenario['p_taxable_stocks_basis'] == 0, 'Zero stocks must have a zero cost basis.'
+            model_params['p_taxable_stocks_basis_fraction'] = 0
+    else:
+            model_params['p_taxable_stocks_basis_fraction'] = 1
 
     model_params['couple_probability'] = int(api_scenario.get('sex2') != None)
+
+    model_params['display_returns'] = False
 
     control_params = {
         'id': api_scenario.get('id'),
         'spias': api_scenario.get('spias', False),
+        'p_taxable_bonds': api_scenario.get('p_taxable_bonds', 0),
         'gammas': api_scenario.get('gammas', None),
     }
 

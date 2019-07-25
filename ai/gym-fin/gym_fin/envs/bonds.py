@@ -79,7 +79,7 @@ class Bonds:
         elif self.r0_type == 'value':
             self.sir0 = self.r0
         else:
-            assert False
+            assert False, 'Invalid short rate type.'
 
         self.t = 0
         self.oup = OUProcess(self.time_period, self.a, self.sigma, mu = self.sir_init, x = self.sir0, norm = 0 if self.static_bonds else None)

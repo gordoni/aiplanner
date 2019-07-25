@@ -43,6 +43,9 @@ master_have_401k_high = True
 master_have_401k2_low = False
 master_have_401k2_high = True
 
+master_gi_fraction_low = 0.03 # Avoid possibility of very large negative rewards at advanced ages; may provide around 0.2% CE improvement for gamma=6.
+master_gi_fraction_high = 1
+
 master_guaranteed_income = '''[
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
     {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
@@ -77,6 +80,12 @@ master_p_taxable_nominal_bonds_weight_low = 0
 master_p_taxable_nominal_bonds_weight_high = 20
 master_p_taxable_stocks_basis_fraction_low = 0
 master_p_taxable_stocks_basis_fraction_high = 2
+
+master_stocks_sigma_level_type = 'sample'
+master_stocks_price_low = 0.5
+master_stocks_price_high = 2.0
+master_real_short_rate_type = 'sample'
+master_inflation_short_rate_type = 'sample'
 
 master_gamma_low = 1.5
 master_gamma_high = 6.0

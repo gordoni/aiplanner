@@ -27,7 +27,8 @@ SEEDS=${SEEDS:-10}
 POLICY=${POLICY:-none}
 ALGORITHM=${ALGORITHM:-PPO}
 EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py --redis-address=$RAY_REDIS_ADDRESS}
-BASE_ARGS=${BASE_ARGS:--c $AI_DIR/aiplanner-scenario.txt}
+BASE_SCENARIO=${BASE_SCENARIO:-$AI_DIR/aiplanner-scenario.txt}
+BASE_ARGS=${BASE_ARGS:--c $BASE_SCENARIO}
 TRAIN_ARGS=${TRAIN_ARGS:--c $AI_DIR/aiplanner-scenario-train.txt}
 
 SINGLE_EVAL_ARGS="-c $AI_DIR/aiplanner-scenario-single-eval.txt"
@@ -78,6 +79,7 @@ train () {
             local TRAINER_PARALLEL=False
             ;;
     esac
+    TRAINER="nohup $TRAINER"
 
     local MODEL_DIR=aiplanner-$MODEL_NAME.tf
 

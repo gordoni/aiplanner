@@ -49,7 +49,7 @@ master_nominal_spias_adjust = 0.02
 master_spias_partial = True
 master_spias_min_purchase_fraction = 0.1
 master_preretirement_spias = False
-master_couple_spias = False
+master_couple_spias = False # Better results if disabled.
 master_spias_permitted_to_age = 90
 master_spias_from_age = 85 # Age at which availability of quotes starts to decrease.
     # Improves CE by 3%, gamma = 6, p = 2e6, and good health (life_expectancy_additional = 3).
@@ -72,14 +72,12 @@ master_stocks_gamma = 0.3188
 master_stocks_beta = 0.7116
 master_stocks_mean_reversion_rate = 0.1 # Rough estimate of mean reversion rate based on Shiller data.
 master_stocks_price_exaggeration = 0.6 # Generates reasonable price to fair price ratios.
-master_stocks_price_low = 0.5
-master_stocks_price_high = 2.0
 master_stocks_price_noise_sigma = 0.2 # Rough estimate of noise in stock price to fair price observations.
 master_stocks_standard_error = 0.016
-master_real_bonds = False
-master_real_bonds_duration = 15
-master_nominal_bonds = True
-master_nominal_bonds_duration = 15 # Hardwiring the duration gives slightly better, and less inconsistent, results; 15 years is typical for a long term bond fund.
+master_real_bonds = True
+master_real_bonds_duration = None
+master_nominal_bonds = False
+master_nominal_bonds_duration = None # Variable duration gives slightly better than 15 year, but inconsistent results; 15 years is typical for a long term bond fund.
 master_iid_bonds = False
 master_iid_bonds_return = 0.010 # Use present era bond returns. This is the 15 year duration spot yield from the Treasury real yield curve on 2018-12-31.
 master_iid_bonds_volatility = 0.110
@@ -91,13 +89,6 @@ master_bills_return = 0.004 # Use present era bills returns.
 master_bills_volatility = 0.000 # Treat bill returns as essentially known.
 master_bills_standard_error = 0.000
 
-master_stocks_sigma_level_type = 'sample'
-master_real_short_rate_type = 'sample'
-master_inflation_short_rate_type = 'sample'
-
-master_couple_spias = False # Better results if disabled.
-
-train_num_timesteps = 2000000 # Little is gained by going to 5m.
 eval_num_timesteps = 2000000 # Produces a 0.1-0.2% CE standard error.
 
 num_cpu = 1 # Makes Tensorflow deterministic, reduces aggregate cpu usage, and doesn't increase the elapsed time very much.

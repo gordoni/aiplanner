@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -49,7 +49,7 @@ def arg_parser(training = True, evaluate = True):
     parser = argparse.ArgumentParser(formatter_class = argparse.ArgumentDefaultsHelpFormatter, parents = [_config_parser()])
 
     if training:
-        parser.add_argument('--train-num-timesteps', type = int, default = int(1e7))
+        parser.add_argument('--train-num-timesteps', type = int, default = int(50e6))
         parser.add_argument('--train-single-num-timesteps', type = int, default = int(1e9))
         parser.add_argument('--train-couple-num-timesteps', type = int, default = int(1e9))
     if evaluate and training:
@@ -58,8 +58,8 @@ def arg_parser(training = True, evaluate = True):
             # Should also set eval_num_timesteps to around 2000 for acceptable performance.
     if evaluate:
         parser.add_argument('--eval-seed', type = int, default = 0)
-        parser.add_argument('--eval-num-timesteps', type = int, default = 1000000) # Per evaluation.
-            # Above value is good for computing the true policy certainty equivalence to within perhaps 0.1%.
+        parser.add_argument('--eval-num-timesteps', type = int, default = 2000000) # Per evaluation.
+            # Above value is good for computing the true policy certainty equivalence to within perhaps 0.1-0.2%.
             # A lower value such as 10000 may be more appropriate when performing inter-run comparisons, as the evaluation episodes are identical for each run.
         boolean_flag(parser, 'eval-render', default = False)
     parser.add_argument('--nice', type = int, default = 0)

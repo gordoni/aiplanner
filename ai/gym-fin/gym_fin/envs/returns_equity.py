@@ -21,6 +21,8 @@ class ReturnsEquity(Returns):
 
         self.params = params
 
+        assert self.params.stocks_sigma_level_type != 'invalid'
+
         with open(std_res_fname) as f:
             r = reader(f)
             data = tuple(r)

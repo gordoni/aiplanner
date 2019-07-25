@@ -40,5 +40,3 @@ master_inflation_short_rate_type = 'value'
 master_inflation_short_rate_value = 0.016
 
 master_gamma = 3.0
-
-eval_num_timesteps = 2000000
