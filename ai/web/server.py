@@ -306,9 +306,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             'have_401k2': choice((True, False)),
 
             'guaranteed_income': [{
-                'type': choice(('Social Security', 'Income Annuity')),
+                'type': choice(('social_security', 'income_annuity')),
                 'owner': choice(('self', 'spouse')),
-                'age': uniform(50, 80),
+                'start': uniform(50, 80),
                 'final': uniform(80, 150),
                 'payout': uniform(10000, 100000),
                 'inflation_adjustment': 0.02,
