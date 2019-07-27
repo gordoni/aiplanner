@@ -340,31 +340,24 @@ PURPOSE.
 
 <div *ngIf="step == 7">
   <div class="small-font">
-    [Temporary <a href="/result/{{result_id}}" target="_blank" rel="noopener">link</a>]
+    [Temporary <a href="/result/{{result_aid}}/{{gamma}}" target="_blank" rel="noopener">link</a>]
   </div>
-  <app-result [id]="result_id" [mode]="'prelim'"></app-result>
+  <app-result [aid]="result_aid" [gamma]="gamma"></app-result>
   <div class="main-button">
     <button class="button" (click)="firstStep()">Edit</button>
   </div>
   <div class="main-button">
-    <button class="button" (click)="nextStep()">Full Results</button>
+    <button class="button" (click)="nextStep()">Sign Up</button>
   </div>
 </div>
 
-<form class="scenario-form" #fullForm="ngForm">
+<form class="scenario-form" #subscribeForm="ngForm">
   <div *ngIf="step == 8">
-    <h1 class="title">Full Results</h1>
+    <h1 class="title">Sign Up</h1>
     <p>
-      Full results are more accurate, but are computationally
-      expensive to produce, taking 1-2 hours to generate provided no
-      other similar results are being generated at the same time.
+      Enter your email address to receive AIPlanner news and related
+      musings, approximately 1 message every few months.
     </p>
-    <p>
-      Enter your email address, and we will contact you once the
-      results are ready.
-    </p>
-    Descriptive name for these results: <input type="text" class="text" name="name" [(ngModel)]="name">
-    <br>
     Your email address: <input type="email" class="text" pattern=".+@.+" required name="email" #scenarioEmail="ngModel" [(ngModel)]="email">
     <div class="error" *ngIf="scenarioEmail.invalid && scenarioEmail.dirty">
       Invalid email address.
@@ -374,7 +367,7 @@ PURPOSE.
         <button class="button" (click)="prevStep()">Back</button>
       </div>
       <div class="main-button float-right">
-        <button class="button" (click)="calculateFull()" [disabled]="!fullForm.valid">Compute</button>
+        <button class="button" (click)="subscribe()" [disabled]="!subscribeForm.valid">Subscribe</button>
       </div>
       <div class="float-clear">
       </div>
@@ -386,11 +379,9 @@ PURPOSE.
 </form>
 
 <div class="scenario-form" *ngIf="step == 9">
-  <h1 class="title">Calculating Full Results</h1>
+  <h1 class="title">Subscription Successful</h1>
   <p>
-    Thank you. Your request has been received.
-    There are {{run_queue_length - 1}} requests ahead of yours.
-    We will let you know when your results are ready.
+    Thank you.
   </p>
   <div class="main-button">
     <button class="button" (click)="firstStep()">Edit</button>

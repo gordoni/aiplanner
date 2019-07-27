@@ -55,7 +55,7 @@ export class ScenarioComponent implements OnInit {
 
   public gamma: string = "3";
 
-  private result_id: string = null;
+  private result_aid: string = null;
 
   public email: string = null
   public name: string = "My Results";
@@ -154,9 +154,9 @@ export class ScenarioComponent implements OnInit {
     var scenario = {
         'stocks_price': this.stocksPricePct / 100,
         'real_short_rate_type': 'value',
-        'real_short_rate_value': Math.log(1 + Number(this.nominalShortRatePct) / 100) - Math.log(1 + Number(this.inflationShortRatePct) / 100),
+        'real_short_rate_value': (1 + Number(this.nominalShortRatePct) / 100) / (1 + Number(this.inflationShortRatePct) / 100) - 1,
         'inflation_short_rate_type': 'value',
-        'inflation_short_rate_value': Math.log(1 + Number(this.inflationShortRatePct) / 100),
+        'inflation_short_rate_value': Number(this.inflationShortRatePct) / 100,
 
         'sex': this.sex,
         'sex2': (this.sex2 == 'none') ? null : this.sex2,
@@ -194,15 +194,18 @@ export class ScenarioComponent implements OnInit {
     return false;
   }
 
-  calculateFull() {
+  doResults(results) {
+     this.result_aid = results[0]['aid'];
+     this.step++;
+   }
+
+  subscribe() {
     var request = {
       'email': this.email,
-      'name': this.name,
-      'id': this.result_id,
     }
     this.errorMessage = null;
-    this.apiService.post('full', request).subscribe(
-      results => this.doFull(results),
+    this.apiService.post('subscribe', request).subscribe(
+      results => this.doSubscribe(results),
       error => this.handleError(error)
     );
     this.step++;
@@ -210,19 +213,14 @@ export class ScenarioComponent implements OnInit {
     return false;
   }
 
-  doResults(results) {
-    this.result_id = results['id'];
+  doSubscribe(results) {
     this.step++;
-  }
-
-  doFull(results) {
-    this.run_queue_length = results['run_queue_length']
   }
 
   doMarket(results) {
     this.stocksPricePct = Math.round(results.stocks_price * 100);
-    this.nominalShortRatePct = ((Math.exp(results.nominal_short_rate) - 1) * 100).toFixed(1);
-    this.inflationShortRatePct = ((Math.exp(results.nominal_short_rate - results.real_short_rate) - 1) * 100).toFixed(1);
+    this.nominalShortRatePct = (results.nominal_short_rate - 1) * 100).toFixed(1);
+    this.inflationShortRatePct = (((1 + results.nominal_short_rate) / (1 + results.real_short_rate) - 1) * 100).toFixed(1);
     this.doneMarket = true;
   }
 
@@ -238,7 +236,7 @@ export class ScenarioComponent implements OnInit {
       error => this.handleError(error)
     );
     var db: DefinedBenefit = new DefinedBenefit(this, 'Social Security', null);
-    db.amountPer = 1300;
+    db.amountPer = 1500;
     this.definedBenefits.push(db);
   }
 

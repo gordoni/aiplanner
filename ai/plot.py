@@ -103,7 +103,7 @@ def main():
     asset_allocation = interp['asset_allocation']
 
     gi = interp['pv_retired_income']
-    p = interp['p']
+    p = interp['portfolio_wealth']
     real_spias = interp['real_spias_purchase']
     nominal_spias = interp['nominal_spias_purchase']
     pv_preretirement = interp['pv_preretirement_income']

@@ -14,26 +14,113 @@ from argparse import ArgumentParser
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from json import dumps, loads
-from os import chmod, environ, listdir, makedirs, remove, scandir, stat, statvfs
-from os.path import expanduser, isdir
+from math import exp
+from os import chmod, environ, listdir, makedirs, rmdir, scandir, stat, statvfs
+from os.path import expanduser
+from random import choice, randrange, uniform
 from re import match
-from shutil import copyfile, move, rmtree
+from shlex import quote
+from shutil import rmtree
 from socketserver import ThreadingMixIn
-from statistics import stdev
 from subprocess import PIPE, Popen
-from tempfile import mkdtemp, mkstemp
-from threading import BoundedSemaphore, Lock, Thread
+from tempfile import mkdtemp
+from threading import BoundedSemaphore, Thread
 from time import sleep, time
 from traceback import print_tb
 
-from gym_fin.envs.model_params import dump_params_file, load_params_file
+from gym_fin.common.scenario_space import allowed_gammas
+from gym_fin.envs.model_params import load_params_file
 
 from spia import YieldCurve
 
-class AttributeObject(object):
+def report_exception(args, e):
 
-    def __init__(self, dict):
-        self.__dict__.update(dict)
+    with open(expanduser(args.root_dir) + '/server.log', 'a') as f:
+
+        print('----------------------------------------', file = f)
+        print_tb(e.__traceback__, file = f)
+        print(e.__class__.__name__ + ': ' + str(e), file = f)
+        print('----------------------------------------', file = f)
+
+class InferEvaluateDaemon:
+
+    def __init__(self, args, *, evaluate, gammas, priority = 0):
+
+        self.args = args
+
+        models_dir = expanduser(self.args.models_dir)
+        self.log = open(expanduser(self.args.root_dir) + '/server.log', 'ab')
+        cmd = [
+            environ['AIPLANNER_HOME'] + '/ai/eval_model.py',
+            '--daemon',
+            '--nice', str(priority),
+            '--eval-no-warn',
+            '--eval-no-display-returns',
+            '--models-dir', models_dir,
+            '--train-seeds', str(self.args.train_seeds),
+            '--ensemble',
+            ('--' if evaluate else '--no-') + 'evaluate',
+            ('--' if self.args.warm_cache else '--no-') + 'warm-cache',
+            '-c', models_dir + '/base-scenario.txt',
+            '--eval-num-timesteps', str(self.args.eval_num_timesteps),
+            '--num-environment', str(self.args.num_environments),
+            '--num-trace-episodes', str(self.args.num_trace_episodes),
+            '--pdf-buckets', str(self.args.pdf_buckets),
+        ]
+        for gamma in gammas:
+            cmd += ['--gamma', str(gamma)]
+        self.proc = Popen(cmd, stdin = PIPE, stdout = PIPE, stderr = self.log)
+
+    def infer_evaluate(self, api_data, *, options = [], prefix = ''):
+
+        makedirs(self.args.results_dir, exist_ok = True)
+        dir = mkdtemp(prefix = prefix, dir = self.args.results_dir)
+        chmod(dir, 0o755)
+
+        try:
+
+            aid = dir[len(self.args.results_dir) + 1:]
+            data = dumps(api_data).encode('utf-8')
+
+            options = list(options) + [
+                '--aid', quote(aid),
+                '--result-dir', quote(dir),
+                '--api-content-length', str(len(data)),
+            ]
+            options = ' '.join(options) + '\n'
+
+            self.proc.stdin.write(options.encode('utf-8') + data)
+            self.proc.stdin.flush()
+
+            while True:
+                line = self.proc.stdout.readline()
+                if not line:
+                    raise IOError
+                string = line.decode('utf-8')
+                if string == 'AIPlanner-Result\n':
+                    line = self.proc.stdout.readline()
+                    line = line.rstrip().decode('utf-8')
+                    attr, val = line.split(':')
+                    assert attr == 'Content-Length'
+                    length = int(val)
+                    data = self.proc.stdout.read(length)
+                    return aid, data
+                elif string != '\n':
+                    self.log.write(line)
+                    self.log.flush()
+
+        except IOError as e:
+
+            return aid, '{"error": "No evaluator."}\n'.encode('utf-8')
+
+        finally:
+
+            # Delete if empty.
+            try:
+                rmdir(dir + '/seed_all')
+                rmdir(dir)
+            except:
+                pass
 
 class ApiHTTPServer(ThreadingMixIn, HTTPServer):
 
@@ -41,500 +128,371 @@ class ApiHTTPServer(ThreadingMixIn, HTTPServer):
 
         super().__init__((args.host, args.port), RequestHandler)
         self.args = args
-        self.run_lock = BoundedSemaphore(self.args.num_concurrent_jobs)
+
+        if self.args.infer:
+            self.infer_run_lock = BoundedSemaphore(self.args.num_concurrent_infer_jobs)
+            self.infer_daemon = [
+                InferEvaluateDaemon(self.args, evaluate = False, gammas = self.args.gamma, priority = 10) for _ in range(self.args.num_concurrent_infer_jobs)
+            ]
+
+        if self.args.evaluate:
+            self.evaluate_run_lock = BoundedSemaphore(self.args.num_concurrent_evaluate_jobs)
+            self.evaluate_daemons = {
+                gamma: [InferEvaluateDaemon(self.args, evaluate = True, gammas = [gamma]) for _ in range(self.args.num_concurrent_evaluate_jobs)]
+                    for gamma in self.args.gamma
+            }
 
 class RequestHandler(BaseHTTPRequestHandler):
 
-    def send_result(self, result_bytes, mime_type):
+    def send_result(self, result_bytes, mime_type, headers = []):
 
         self.send_response(200)
         self.send_header('Content-Type', mime_type)
         self.send_header('Content-Length', len(result_bytes))
         self.send_header('Connection', 'close')
+        for k, v in headers:
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(result_bytes)
 
     def do_POST(self):
 
-        if self.path in ('/api/scenario', '/api/result', '/api/full'):
+        try:
 
-            content_type = self.headers.get('Content-Type')
-            content_length = int(self.headers['Content-Length'])
-            data = self.rfile.read(content_length)
-            json_data = data.decode('utf-8')
-            request = loads(json_data)
+            if self.path.startswith('/api/'):
 
-            if self.path == '/api/scenario':
-                result = self.run_models_with_lock(request)
-            elif self.path == '/api/result':
-                result = self.get_results(request)
-            elif self.path == '/api/full':
-                result = self.run_full(request)
-            else:
-                assert False
+                content_type = self.headers.get('Content-Type')
+                content_length = self.headers.get('Content-Length')
+                if content_length == None:
+                    self.send_error(411) # Length Required
+                    return
+                content_length = int(content_length)
+                if not 0 <= content_length < 10e6:
+                    self.send_error(413) # Payload Too Large
+                    return
 
-            if result:
+                data = self.rfile.read(content_length)
+                try:
+                    request = loads(data.decode('utf-8'))
+                except ValueError:
+                    self.send_error(400) # Bad Request
+                    return
 
-                result_bytes = dumps(result).encode('utf-8')
-                self.send_result(result_bytes, 'application/json')
+                data = None
+                headers = []
+                if self.path == '/api/infer':
 
-            return
+                    if self.server.args.infer:
+                        data = self.run_models(request, evaluate = False)
+                    else:
+                        self.send_error(403) # Forbidden
+                        return
 
-        self.send_error(404)
+                elif self.path == '/api/evaluate':
+
+                    if self.server.args.evaluate:
+                        data = self.run_models(request, evaluate = True)
+                    else:
+                        self.send_error(403) # Forbidden
+
+                elif self.path == '/api/subscribe':
+
+                    result = self.subscribe(request)
+                    data = (dumps(result, indent = 4, sort_keys = True) + '\n').encode('utf-8')
+
+                if data != None:
+                    self.send_result(data, 'application/json', headers = headers)
+                    return
+
+            self.send_error(404) # Not Found
+
+        except Exception as e:
+
+            report_exception(self.server.args, e)
+            self.send_error(500) # Internal Server Error
 
     def do_GET(self):
 
-        if self.path == '/healthcheck':
+        try:
 
-            if self.healthcheck():
-                data = 'OK\n'
-            else:
-                data = 'FAIL\n'
+            data = None
+            headers = []
+            if self.path == '/healthcheck':
 
-            data = data.encode('utf-8')
-            self.send_result(data, 'text/plain')
-            return
-
-        elif self.path.startswith('/api/data/'):
-
-            asset = self.path[len('/api/data/'):];
-            if '..' not in asset:
-                if asset.endswith('.png'):
-                    filetype = 'image/png'
-                elif asset.endswith('.svg'):
-                    filetype = 'image/svg+xml'
+                if self.healthcheck():
+                    data = 'OK\n'
                 else:
-                    filetype = None
-                if filetype:
-                    path = self.server.args.results_dir + '/' + asset
-                    try:
-                        data = open(path, 'rb').read()
-                    except IOError:
-                        pass
-                    else:
-                        self.send_result(data, filetype)
-                        return
+                    data = 'FAIL\n'
 
-        elif self.path == '/api/market':
+                data, filetype = data.encode('utf-8'), 'text/plain'
+                headers.append(('Cache-Control', 'no-cache'))
 
-            result_bytes = dumps(self.market()).encode('utf-8')
-            self.send_result(result_bytes, 'application/json')
-            return
+            elif self.path.startswith('/api/data/'):
 
-        self.send_error(404)
+                m  = match('^/api/data/(.+?)/(.+?)(\.0*)?(/(.+))?$', self.path)
+                if not m:
+                    self.send_error(404) # Not Found
+                    return
+                data, filetype = self.get_file(m[1], m[2], m[5])
+
+            elif self.path == '/api/market':
+
+                data = self.market()
+                print(data)
+                data['real_short_rate'] = exp(data['real_short_rate']) - 1
+                data['nominal_short_rate'] = exp(data['nominal_short_rate']) - 1
+                data, filetype = (dumps(data, indent = 4, sort_keys = True) + '\n').encode('utf-8'), 'application/json'
+                headers.append(('Cache-Control', 'max-age=3600'))
+
+            if data != None:
+
+                self.send_result(data, filetype, headers = headers)
+                return
+
+            self.send_error(404) # Not Found
+
+        except Exception as e:
+
+            report_exception(self.server.args, e)
+            self.send_error(500) # Internal Server Error
+
+    def get_file(self, aid, gamma, name):
+
+        if name:
+            filename = 'aiplanner-gamma' + gamma + '-' + name
+        else:
+            filename = 'aiplanner-gamma' + gamma + '.json'
+        path = aid + '/seed_all/' + filename
+
+        print(path)
+        filetype = None
+        if '..' not in path:
+            if filename.endswith('.json'):
+                filetype = 'application/json'
+            elif filename.endswith('.csv'):
+                filetype = 'text/csv'
+            elif filename.endswith('.svg'):
+                filetype = 'image/svg+xml'
+
+        data = None
+        if filetype:
+            try:
+                data = open(self.server.args.results_dir + '/' + path, 'rb').read()
+            except IOError:
+                pass
+
+        if data == None:
+            filetype = None
+
+        return data, filetype
 
     def healthcheck(self):
 
-        myargs = dict(
-            vars(self.server.args),
-            num_models = 1,
-            eval_prelim_num_timesteps = 2000,
-            train_num_timesteps = 2000,
-            eval_full_num_timesteps = 2000,
-        )
-        args = AttributeObject(myargs)
+        api_data = [{
+            'cid': 'healthcheck',
 
-        request = {
-            'sex2': None,
-            'spias': True,
-        }
-        result = self.run_models(request, args, prefix = 'healthcheck-')
-        id = result['id']
-        request = {
-            'id': id,
-            'mode': 'prelim',
-        }
-        results = self.get_results(request)
+            'sex': choice(('male', 'female')),
+            'sex2': choice(('male', 'female', None)),
+            'age': uniform(20, 80),
+            'age2': uniform(20, 80),
+            'life_expectancy_additional': uniform(-5, 10),
+            'life_expectancy_additional2': uniform(-5, 10),
 
-        assert 40000 < results['ce'] < 50000
-            # Generically trained model continues past age 100 and doesn't allow for SPIAs past 85. Hence it delivers a worse CE than self trained model below.
+            'age_retirement': uniform(50, 80),
+            'income_preretirement': uniform(20000, 200000),
+            'income_preretirement2': uniform(20000, 200000),
+            'consume_preretirement': uniform(15000, 100000),
+            'have_401k': choice((True, False)),
+            'have_401k2': choice((True, False)),
 
-        dir = self.server.args.results_dir + '/' + id
-        model_runner = ModelRunner(dir, args)
-        model_runner.train_eval_models('Healthcheck Results')
-        request = {
-            'id': id,
-            'mode': 'full',
-        }
-        results = self.get_results(request)
+            'guaranteed_income': [{
+                'type': choice(('Social Security', 'Income Annuity')),
+                'owner': choice(('self', 'spouse')),
+                'age': uniform(50, 80),
+                'final': uniform(80, 150),
+                'payout': uniform(10000, 100000),
+                'inflation_adjustment': 0.02,
+                'joint': choice((True, False)),
+                'payout_fraction': uniform(0, 1),
+                'source_of_funds': choice(('taxable', 'tax_deferred', 'tax_free')),
+                'exclusion_period': uniform(0, 20),
+                'exclusion_amount': uniform(5000, 10000),
+            } for _ in range(randrange(5))],
 
-        assert 45000 < results['ce'] < 50000
+            'p_tax_deferred': uniform(10000, 1000000),
+            'p_tax_free': uniform(10000, 1000000),
+            'p_taxable_bonds': uniform(10000, 1000000),
+            'p_taxable_stocks': uniform(10000, 1000000),
+            'p_taxable_stocks_basis': uniform(10000, 1000000),
+
+            'stocks_price': uniform(0.5, 2),
+            'nominal_short_rate': uniform(-0.01, 0.1),
+            'inflation_short_rate': uniform(-0.01, 0.1),
+
+            'spias': choice((True, False)),
+
+            'rra': [choice(self.server.args.gamma)],
+        }]
+
+        if self.server.args.infer:
+            data = self.run_models(api_data, evaluate = False, prefix = 'healthcheck-')
+            result = loads(data.decode('utf-8'))
+            if result['error'] or result['result'][0][0]['error']:
+                return False
+
+        if self.server.args.evaluate:
+            options = [
+                '--eval-num-timesteps', str(self.server.args.eval_num_timesteps_healthcheck),
+            ]
+            data = self.run_models(api_data, evaluate = True, options = options, prefix = 'healthcheck-')
+            result = loads(data.decode('utf-8'))
+            if result['error'] or result['result'][0][0]['error']:
+                return False
 
         return True
 
     def market(self):
+
+        market_file = load_params_file(expanduser(self.server.args.models_dir) + '/market-data.txt')
 
         now = datetime.utcnow().date().isoformat()
         real_short_rate = YieldCurve('real', now, permit_stale_days = 7).spot(0)
         nominal_short_rate = YieldCurve('nominal', now, permit_stale_days = 7).spot(0)
 
         return {
-            'stocks_price': self.server.args.stocks_price,
+            'stocks_price': market_file['stocks_price'],
+            'stocks_volatility': market_file['stocks_volatility'],
             'real_short_rate': real_short_rate,
             'nominal_short_rate': nominal_short_rate,
         }
 
-    def run_models_with_lock(self, request):
+    def run_models(self, api_data, *, evaluate, options = [], prefix = ''):
 
-        if self.server.run_lock.acquire(timeout = 60):
-            # Development client resubmits request after 120 seconds, so keep timeout plus evaluation time below that.
+        if evaluate:
+            lock = self.server.evaluate_run_lock
+            timeout = 60
+                # Development client resubmits request after 120 seconds, so keep timeout plus evaluation time below that.
+        else:
+            lock = self.server.infer_run_lock
+            timeout = None
+
+        market = self.market()
+        for api_scenario in api_data:
+            if not 'stocks_volatility' in api_scenario:
+                api_scenario['stocks_volatility'] = market['stocks_volatility']
+            if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:
+                if not 'real_short_rate' in api_scenario:
+                    api_scenario['real_short_rate'] = exp(market['real_short_rate']) - 1
+                if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:
+                    api_scenario['nominal_short_rate'] = exp(market['nominal_short_rate']) - 1
+
+        if lock.acquire(timeout = timeout):
             try:
-                return self.run_models(request, self.server.args)
+                if evaluate:
+                    results = self.run_evaluate(api_data, options = options, prefix = prefix)
+                    data = (dumps(results, indent = 4, sort_keys = True) + '\n').encode('utf-8')
+                else:
+                    aid, data = self.run_model(self.server.infer_daemon, api_data, options = options, prefix = prefix)
+                return data
             finally:
-                self.server.run_lock.release()
+                lock.release()
         else:
             self.send_error(503, 'Overloaded: try again later')
 
-    def run_models(self, request, args, prefix = ''):
+    def run_evaluate(self, api_data, *, options = [], prefix = ''):
 
-        dir = self.save_request(request, prefix = prefix)
-        if prefix == 'healthcheck-':
-            copyfile('healthcheck-scenario.txt', dir + '/aiplanner-scenario.txt')
-        else:
-            self.save_scenario(dir, request)
-        model_prefix = self.get_model_prefix(dir)
-        model_runner = ModelRunner(dir, args)
-        model_runner.eval_models('prelim', model_prefix)
-
-        return {'id': dir[len(args.results_dir) + 1:]}
-
-    def save_request(self, request, prefix = ''):
-
-        dir = mkdtemp(prefix = prefix, dir = self.server.args.results_dir)
-        chmod(dir, 0o755)
-
-        dump_params_file(dir + '/aiplanner-request.txt', request, prefix = '')
-
-        return dir
-
-    def save_scenario(self, dir, request):
-
-        request_params = dict(request)
-        request_params['guaranteed_income'] = dumps(request_params['guaranteed_income'])
-        try:
-            request_params['p_taxable_stocks_basis_fraction'] = request_params['p_taxable_stocks_basis'] / request_params['p_taxable_stocks']
-        except ZeroDivisionError:
-            request_params['p_taxable_stocks_basis_fraction'] = 0
-        del request_params['p_taxable_stocks_basis']
-        request_params['income_preretirement_age_end'] = request_params['age_retirement']
-        for param in ('p_taxable_real_bonds', 'p_taxable_iid_bonds', 'p_taxable_bills'):
-            request_params[param] = 0
-        request_params['p_taxable_nominal_bonds'] = request_params['p_taxable_bonds']
-        del request_params['p_taxable_bonds']
-        request_params['nominal_spias'] = request_params['spias']
-        del request_params['spias']
-        request_params['consume_income_ratio_max'] = float('inf')
-        request_params['display_returns'] = False
-
-        dump_params_file(dir + '/aiplanner-scenario.txt', request_params)
-
-    def get_model_prefix(self, dir):
-
-        request = load_params_file(dir + '/aiplanner-request.txt', prefix = '')
-
-        unit = 'single' if request['sex2'] == None else 'couple'
-        spias = 'spias' if request['spias'] else 'no_spias'
-        gamma = 'gamma' + str(request['gamma'])
-        suffix = '' if self.server.args.modelset_suffix == None else '-' + self.server.args.modelset_suffix
-        model_prefix = expanduser(self.server.args.modelset_dir) + '/aiplanner.' + unit + '-' + spias + '-' + gamma + suffix
-
-        return model_prefix
-
-    def get_results(self, request):
-
-        id = request['id']
-        assert match('[A-Za-z0-9_-]+$', id)
-        mode = request['mode']
-        assert mode in ('prelim', 'full')
-
-        dir = self.server.args.results_dir + '/' + id + '/' + mode
-
-        ces = []
-        best_ce = float('-inf')
-        for model_seed in range(self.server.args.num_models):
-
-            dir_seed = dir + '/' + str(model_seed)
-
+        if len(api_data) == 0:
+            return {'error': None, 'result': []}
+        elif len(api_data) > 1:
+            return {'error': 'Multiple scenarios to evaluate.'}
+        gammas = api_data[0].get('rra')
+        if gammas == None:
+            gammas = self.server.args.gamma
+        if len(gammas) != len(set(gammas)):
+            return {'error': 'Duplicate gamma values.'}
+        for gamma in gammas:
+            if not gamma in self.server.evaluate_daemons.keys():
+                return {'error': 'Unsupported gamma value: ' + str(gamma)}
+        results = [None] * len(gammas)
+        threads = []
+        error_result = None
+        def run(i, gamma):
             try:
-                final = loads(open(dir_seed + '/aiplanner-final.json').read())
-            except IOError:
-                continue
-
-            if final['error'] != None:
-                continue
-
-            try:
-                initial = loads(open(dir_seed + '/aiplanner-initial.json').read())
-            except IOError:
-                continue
-
-            results = dict(initial, **final)
-            results['data_dir'] = '/api/data/' + dir_seed[len(self.server.args.results_dir) + 1:]
-
-            ce = results['ce']
-            ces.append(ce)
-            if ce > best_ce:
-                best_ce = ce
-                best_results = results
-
-        if not ces:
-            results = {'error': 'Results not found.'}
-        else:
-            results = dict(
-                best_results,
-                model_count = len(ces),
-                models_stdev = 0 if len(ces) == 1 else stdev(ces),
-            )
-
-        return results
-
-    def run_full(self, request):
-
-        email = request['email']
-        assert match('[^\s]+@[^\s]+$', email)
-        name = request['name']
-        assert match('.*$', name)
-        id = request['id']
-        assert match('[A-Za-z0-9_-]+$', id)
-
-        dir = self.server.args.results_dir + '/' + id
-        dump_params_file(dir + '/aiplanner-request-full.txt', request, prefix = '')
-
-        open(self.server.args.run_queue + '/' + id, 'w')
-        #symlink('../' + id, self.server.args.run_queue + '/' + id)
-
-        run_queue_length = len(listdir(self.server.args.run_queue))
-
-        return {'run_queue_length': run_queue_length}
-
-class ModelRunner(object):
-
-    def __init__(self, dir, args, priority = 0):
-
-        self.dir = dir
-        self.args = args
-        self.priority = priority
-
-    def eval_models(self, mode, model_prefix):
-
-        processes = []
-        for model_seed in range(self.args.num_models):
-            processes.append(self.eval_model(mode, model_prefix, model_seed))
-
-        fail = False
-        for process in processes:
-            if process.wait() != 0:
-                fail = True
-
-        if fail:
-            raise Exception('Model evaluation failed mode ' + mode + ': ' + self.dir)
-
-    def train_eval_models(self, name):
-
-        model_prefix = self.dir + '/models/aiplanner'
-        model_dir = model_prefix + '.tf'
-
-        makedirs(model_dir, exist_ok = True)
-
-        processes = []
-        for model_seed in range(self.args.num_models):
-            processes.append(self.train_model(name, model_dir, model_seed))
-
-        fail = False
-        for process, temp_name in processes:
-            if process.wait() != 0:
-                fail = True
-            model_seed_dir = model_dir + '/seed_' + str(train_seed)
-            makedirs(model_seed_dir, exist_ok = True)
-            move(temp_name, model_seed_dir + '/train.log')
-
-        if fail:
-            raise Exception('Model training failed: ' + self.dir)
-
-        mode = 'full'
-        self.eval_models(mode, model_prefix)
-
-    def eval_model(self, mode, model_prefix, model_seed):
-
-        model_dir = model_prefix + '.tf/seed_' + str(model_seed)
-        dir_seed = self.dir + '/' + mode + '/' + str(model_seed)
-
-        makedirs(dir_seed, exist_ok = True)
-
-        num_timesteps = str(self.args.eval_prelim_num_timesteps) if mode == 'prelim' else str(self.args.eval_full_num_timesteps)
-
-        eval_log = open(dir_seed + '/eval.log', 'w')
-        return Popen((environ['AIPLANNER_HOME'] + '/ai/eval_model.py',
-            '--result-dir', dir_seed,
-            '--model-dir', model_dir,
-            '--nice', str(self.priority),
-            '-c', model_dir + '/params.txt',
-            '-c', self.dir + '/aiplanner-scenario.txt',
-            '--master-consume-clip', '0',
-            '--eval-num-timesteps', num_timesteps,
-            '--num-trace-episodes', str(self.args.num_trace_episodes),
-            '--num-environments', str(self.args.num_environments),
-            '--pdf-buckets', str(self.args.pdf_buckets),
-        ), stdout = eval_log, stderr = eval_log)
-
-    def train_model(self, name, model_dir, model_seed):
-
-        temp, temp_name = mkstemp(prefix = 'train')
-        process = Popen((environ['AIPLANNER_HOME'] + '/ai/train_ppo1.py',
-            '--model-dir', model_dir,
-            '--nice', str(self.priority),
-            '-c', '../aiplanner-scenario.txt',
-            '-c', self.dir + '/aiplanner-scenario.txt',
-            '--master-name', name,
-            '--train-seed', str(model_seed),
-            '--train-num-timesteps', str(self.args.train_num_timesteps),
-        ), stdout = temp, stderr = temp)
-
-        return process, temp_name
-
-class RunQueueServer(object):
-
-    def __init__(self, args):
-
-        self.args = args
-
-        self.run_queue_lock = Lock()
-        self.output_lock = Lock()
-
-        self.running = {}
-
-    def report_exception(self, e):
-
-        self.output_lock.acquire()
-        print('----------------------------------------')
-        print_tb(e.__traceback__)
-        print(e.__class__.__name__ + ': ' + str(e))
-        print('----------------------------------------')
-        self.output_lock.release()
-
-    def serve_forever(self):
-
-        prev_pending = None
-        while True:
-            try:
-                run_queue_length = 0
-                oldest_id = None
-                oldest_age = float('inf')
-                self.run_queue_lock.acquire()
-                with scandir(self.args.run_queue) as iter:
-                    for entry in iter:
-                        run_queue_length += 1
-                        if len(self.running) < self.args.num_concurrent_jobs:
-                            age = entry.stat(follow_symlinks = False).st_mtime
-                            if age < oldest_age and entry.name not in self.running:
-                                oldest_id = entry.name
-                                oldest_age = age
-                self.run_queue_lock.release()
-                if oldest_id:
-                    id = oldest_id
-                    thread = Thread(target = self.serve_thread, args = (id, ))
-                    self.log('Starting', id)
-                    self.running[id] = thread
-                    thread.start()
+                my_api_data = [dict(api_data[0], rra = [gamma])]
+                aid, data = self.run_model(self.server.evaluate_daemons[gamma], my_api_data, options = options, prefix = prefix)
+                result = loads(data.decode('utf-8'))
+                if result['error']:
+                    results[i] = result
                 else:
-                    pending = max(0, run_queue_length - len(self.running))
-                    if pending != prev_pending:
-                        prev_pending = pending
-                        if pending > 0:
-                            self.log('Jobs pending', pending)
-                    sleep(10)
+                    results[i] = result['result'][0][0]
             except Exception as e:
-                self.report_exception(e)
-                sleep(10)
-
-    def log(self, *args):
-
-        self.output_lock.acquire()
-        print(datetime.now().replace(microsecond = 0).isoformat(), *args)
-        self.output_lock.release()
-
-    def serve_thread(self, id):
-
-        try:
-            self.serve_one(id)
-            self.log('Completed', id)
-        except Exception as e:
-            self.report_exception(e)
-            self.log('Failed', id)
-        finally:
-            try:
-                self.run_queue_lock.acquire()
-                remove(self.args.run_queue + '/' + id)
-                del self.running[id]
-            except Exception as e:
-                self.report_exception(e)
-                pass
+                results[i] = {'error': e.__class__.__name__ + ': ' + (str(e) or 'Exception encountered.')}
             finally:
-                self.run_queue_lock.release()
+                results[i]['aid'] = aid
+                results[i]['cid'] = my_api_data[0].get('cid')
+        for i, gamma in enumerate(gammas):
+            thread = Thread(target = run, args = (i, gamma), daemon = False)
+            thread.start()
+            threads.append(thread)
+        for thread in threads:
+            thread.join()
+        return {
+            'error': None,
+            'result': [results],
+        }
 
-    def serve_one(self, id):
-
-        dir = self.args.results_dir + '/' + id
-        request = load_params_file(dir + '/aiplanner-request-full.txt', prefix = '')
-        email = request['email']
-        name = request['name']
+    def run_model(self, daemon_queue, api_data, *, options = [], prefix = ''):
 
         try:
-            dir = self.args.results_dir + '/' + id
-            model_runner = ModelRunner(dir, self.args, priority = 10)
-            model_runner.train_eval_models(name)
-            self.notify(email, name, id, True)
-        except Exception as e:
-            self.notify(email, name, id, False)
-            raise e
+            daemon = daemon_queue.pop()
+            return daemon.infer_evaluate(api_data, options = options, prefix = prefix)
+        finally:
+            daemon_queue.append(daemon)
 
-    def notify(self, email, name, id, success):
+    def subscribe(self, request):
 
-        if not email:
-            return
+        email = request.get('email', '')
+        email = email.strip()
+        print(email)
+        if not match('^\S+@\S+\.\S+$', email):
+            return {'error': 'Invalid email address.'}
+
+        try:
+            with open(expanduser(self.server.args.root_dir) + '/subscribe.txt', 'a') as f:
+                f.write(email + '\n')
+        except IOError:
+            raise
 
         cmd = ['/usr/sbin/sendmail',
             '-f', 'root',
-            email,
+            self.server.args.admin_email,
         ]
-        if not success:
-            cmd.append(self.args.admin_email)
         mta = Popen(cmd, stdin = PIPE, encoding = 'utf-8')
 
-        header = 'From: "' + self.args.notify_name + '" <' + self.args.notify_email + '''>
-To: ''' + email + '''
-Subject: ''' + self.args.project_name + ': ' + name + '''
+        header = 'From: "' + self.server.args.notify_name + '" <' + self.server.args.notify_email + '''>
+To: ''' + self.server.args.admin_email + '''
+Subject: ''' + self.server.args.project_name + ': subscribe' + '''
 
 '''
-
-        if success:
-            body = 'Your requested ' + self.args.project_name + ' results are now available at ' + self.args.base_url + 'result/' + id + '''
-
-Thank you for using ''' + self.args.project_name + '''.
-'''
-        else:
-            body = 'Something went wrong computing your ' + self.args.project_name + ''' results. We are looking into the problem.
-
-JobRef: ''' + id + '''
-'''
+        body = email + '\n'
 
         mta.stdin.write(header + body)
         mta.stdin.close()
 
-        assert mta.wait() == 0
+        if mta.wait() != 0:
+            self.send_error(500) # Internal Server Error
+            return
 
-class PurgeQueueServer(object):
+        return {
+            'error': None,
+            'result': None,
+        }
+
+class PurgeQueueServer:
 
     def __init__(self, args):
 
         self.args = args
-
-    def report_exception(self, e):
-
-        print('----------------------------------------')
-        print_tb(e.__traceback__)
-        print(e.__class__.__name__ + ': ' + str(e))
-        print('----------------------------------------')
 
     def serve_forever(self):
 
@@ -543,7 +501,7 @@ class PurgeQueueServer(object):
                 self.purgeq()
                 sleep(self.args.purge_frequency)
             except Exception as e:
-                self.report_exception(e)
+                report_exception(self.args, e)
                 sleep(10)
 
     def purgeq(self):
@@ -563,72 +521,77 @@ class PurgeQueueServer(object):
             free = float(s.f_bavail) / s.f_blocks
             ifree = float(s.f_favail) / s.f_files
 
-            if entry.name.startswith('healthcheck-'):
-                purge_time = self.args.purge_time_healthcheck
-            else:
-                try:
-                    stat(dir + '/models')
-                    purge_time = self.args.purge_time_full
-                except IOError:
-                    purge_time = self.args.purge_time_prelim
+            try:
+                stat(dir + '/failures.json')
+                purge_time = self.args.purge_time_failure
+            except IOError:
+                if entry.name.startswith('healthcheck-'):
+                    purge_time = self.args.purge_time_healthcheck
+                else:
+                    purge_time = self.args.purge_time_success
 
             if free < self.args.purge_keep_free or ifree < self.args.purge_keep_free or age >= purge_time:
                 def rmfail(function, path, excinfo):
                     print('Error purging file:', path)
+                assert dir.startswith(expanduser(self.args.root_dir))
+                assert dir.startswith(self.args.results_dir)
                 rmtree(dir, onerror = rmfail)
+
+def boolean_flag(parser, name, default = False):
+
+    under_dest = name.replace('-', '_')
+    parser.add_argument('--' + name, action = "store_true", default = default, dest = under_dest)
+    parser.add_argument('--' + 'no-' + name, action = "store_false", dest = under_dest)
 
 def main():
 
     parser = ArgumentParser()
 
     # Generic options.
-    parser.add_argument('--serve', action = 'append', default = [], choices=('http', 'runq', 'purgeq'))
+    parser.add_argument('--serve', action = 'append', default = [], choices=('http', 'purgeq'))
     parser.add_argument('--root-dir', default = '~/aiplanner-data')
-    parser.add_argument('--num-concurrent-jobs', type = int, default = 1) # Each job represents the concurrent execution of num_models models in a single scenario.
-    parser.add_argument('--num-models', type = int, default = 10)
-    parser.add_argument('--num-trace-episodes', type = int, default = 5) # Number of sample traces to generate.
-    parser.add_argument('--num-environments', type = int, default = 10) # Number of parallel environments to use for a single model evaluation. Speeds up tensor flow.
-    parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
 
     # HTTP options.
     parser.add_argument('--host', default = 'localhost')
     parser.add_argument('--port', type = int, default = 3000)
-    parser.add_argument('--stocks-price', type = float, default = 1)
-    parser.add_argument('--modelset-dir', default = '~/aiplanner-data/models')
-    parser.add_argument('--modelset-suffix')
-    parser.add_argument('--eval-prelim-num-timesteps', type = int, default = 20000)
+    boolean_flag(parser, 'infer', default = True) # Support /api/infer.
+    boolean_flag(parser, 'evaluate', default = True) # Support /api/evaluate.
+    boolean_flag(parser, 'warm-cache', default = True) # Pre-load tensorflow/Rllib models.
+    parser.add_argument('--num-concurrent-infer-jobs', type = int, default = 2) # Each job may have multiple scenarios with multiple gamma values.
+    parser.add_argument('--num-concurrent-evaluate-jobs', type = int, default = 1) # Each job is a single scenario with multiple gamma values.
+    parser.add_argument('--gamma', action = 'append', type = float, default = []) # Supported gamma values.
+    parser.add_argument('--train-seeds', type = int, default = 10)
+    parser.add_argument('--models-dir', default = '~/aiplanner-data/models')
+    parser.add_argument('--eval-num-timesteps', type = int, default = 50000)
+    parser.add_argument('--eval-num-timesteps-healthcheck', type = int, default = 1000)
+    parser.add_argument('--num-environments', type = int, default = 10) # Number of parallel environments to use for a single model evaluation. Speeds up tensorflow.
+    parser.add_argument('--num-trace-episodes', type = int, default = 5) # Number of sample traces to generate.
+    parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
 
-    # runq options.
+    # HTTP subscribe options.
     parser.add_argument('--notify-email', default = 'notify@aiplanner.com')
-    parser.add_argument('--notify-name', default = 'AIPlanner')
+    parser.add_argument('--notify-name', default = 'AIPlanner Notify')
     parser.add_argument('--admin-email', default = 'admin@aiplanner.com')
     parser.add_argument('--project-name', default = 'AIPlanner')
-    parser.add_argument('--base-url', default = 'https://www.aiplanner.com/')
-    parser.add_argument('--train-num-timesteps', type = int, default = 10000000)
-    parser.add_argument('--eval-full-num-timesteps', type = int, default = 2000000)
 
     # purgeq options.
-    parser.add_argument('--purge-frequency', type = int, default = 3600) # Purge the run queue of old files every this many seconds.
+    parser.add_argument('--purge-frequency', type = int, default = 3600) # Purge the resultsdirectory of old files every this many seconds.
     parser.add_argument('--purge-keep-free', type = float, default = 0.02) # Keep this much proportion of disk space/inodes free.
     parser.add_argument('--purge-keep-time', type = int, default = 3600) # Keep directories around for this long regardless.
+    parser.add_argument('--purge-time-failure', type = int, default = 90 * 86400) # Delete failed scenarios after this long.
     parser.add_argument('--purge-time-healthcheck', type = int, default = 3600) # Delete healthcheck scenarios after this long.
-    parser.add_argument('--purge-time-prelim', type = int, default = 30 * 86400) # Delete prelim run only scenarios after this long.
-    parser.add_argument('--purge-time-full', type = int, default = 365 * 86400) # Delete full run scenarios after this long.
+    parser.add_argument('--purge-time-success', type = int, default = 7 * 86400) # Delete successful scenarios after this long.
 
     args = parser.parse_args()
     root_dir = expanduser(args.root_dir)
     args.results_dir = root_dir + '/results'
-    args.run_queue = root_dir + '/runq'
+    if not args.gamma:
+        args.gamma = allowed_gammas
 
     makedirs(args.results_dir, exist_ok = True)
-    makedirs(args.run_queue, exist_ok = True)
 
     if not args.serve or 'http' in args.serve:
         server = ApiHTTPServer(args)
-        Thread(target = server.serve_forever, daemon = True).start()
-
-    if not args.serve or 'runq' in args.serve:
-        server = RunQueueServer(args)
         Thread(target = server.serve_forever, daemon = True).start()
 
     if not args.serve or 'purgeq' in args.serve:

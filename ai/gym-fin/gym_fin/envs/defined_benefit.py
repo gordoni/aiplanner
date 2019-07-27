@@ -37,15 +37,19 @@ class DefinedBenefit:
 
         return spia
 
-    def add(self, owner = 'self', age = None, final = float('inf'), premium = None, payout = None, adjustment = 0,
+    def add(self, owner = 'self', start = None, final = float('inf'), premium = None, payout = None, adjustment = 0,
             joint = False, payout_fraction = 0, exclusion_period = 0, exclusion_amount = 0, delay_calcs = False):
 
         assert (premium == None) != (payout == None)
 
         owner_age = self.env.age if owner == 'self' else self.env.age2
+        if start == None:
+            start = self.env.preretirement_years
+        else:
+            start = start - owner_age
         if premium != None:
             mwr = self.env.params.real_spias_mwr if self.real else self.env.params.nominal_spias_mwr
-            start = max(1, self.env.preretirement_years)
+            start = max(start, self.env.preretirement_years)
             payout = self._spia_payout(start, adjustment, payout_fraction, premium, mwr)
         else:
             try:
@@ -54,10 +58,6 @@ class DefinedBenefit:
                 pass
             else:
                 payout = self.env.log_uniform(payout_low, payout_high)
-            if age == None:
-                start = self.env.preretirement_years
-            else:
-                start = age - owner_age
         end = final - owner_age
 
         if not self.real:

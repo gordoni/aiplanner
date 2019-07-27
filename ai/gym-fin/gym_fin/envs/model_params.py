@@ -38,6 +38,7 @@ class ModelParams(object):
         self._param('name', 'AIPlanner', tp = string_type) # Descriptive name of this parameter set.
 
         self._boolean_flag('verbose', False) # Display relevant model information such as when stepping.
+        self._boolean_flag('warn', True) # Display warning messages.
         self._boolean_flag('display-returns', True) # Display yield and return statistics.
 
         # This following three parameters are determined by the training algorithm, and can't be set by the user.
@@ -168,10 +169,10 @@ class ModelParams(object):
         self._param('gi-fraction', (0, 1), (0, 1)) # Allowed values of guaranteed income as a fraction of total wealth.
         self._param('guaranteed-income', '[{"payout": [1e3, 1e5]}]', '[]', tp = string_type)
             # Guaranteed income and expenses represented as a JSON array of objects. Object fields:
-            #     "type": Type of defined benefit or expese. Arbitrary string. Default "Income Annuity".
-            #         A value of "Social Security" or "Social_Security" is taxed specially.
+            #     "type": Type of defined benefit or expense. Arbitrary string. Default "income_annuity".
+            #         A value of "social_security" is taxed specially.
             #     "owner": Value "self" or "spouse". Default "self".
-            #     "age": Starting age in years of owner for benefit. Default starts when first individual reaches age_retirement.
+            #     "start": Starting age in years of owner for benefit. Default starts when first individual reaches age_retirement.
             #     "final": Inclusive ending age in years of owner for benfit. Default infinity.
             #     "probability": Probability of this defined benefit being present. Used when generating different random scenarios. Default 1.
             #     "payout": Annual guaranteed income payout amount in today's dollars. Negative for expenses.
@@ -293,12 +294,12 @@ class ModelParams(object):
         self._param('real-short-rate-type', 'sample', 'invalid', tp = string_type, choices = ('sample', 'current', 'value'))
             # Initial short real interest rate when using model.
             # 'sample' chooses initial value at random, 'current' uses the average model value, 'value' uses a specific value.
-        self._param('real-short-rate-value', None) # Initial short real interest rate for type 'value'.
+        self._param('real-short-rate-value', None) # Initial continuously compounded annualized short real interest rate for type 'value'.
         self._param('inflation-standard-error', 0.004) # Standard error of log inflation.
         self._param('inflation-short-rate-type', 'sample','invalid', tp = string_type, choices = ('sample', 'current', 'value'))
             # Initial inflation rate when using model.
             # 'sample' chooses initial value at random, 'current' uses the average model value, 'value' uses a specific value.
-        self._param('inflation-short-rate-value', None) # Initial inflation rate for type 'value'.
+        self._param('inflation-short-rate-value', None) # Initial continuously compounded annualized inflation rate for type 'value'.
         self._boolean_flag('bills', True) # Whether to model stochastic bills (without any interest rate model).
         self._param('bills-return', 0.009) # Annual real return for bill asset class.
         self._param('bills-volatility', 0.046) # Annual real return for bill asset class.
@@ -332,7 +333,7 @@ class ModelParams(object):
 
         params = {}
         for name in self.param_names:
-            if not name in params:
+            if not name in params and not name + '_low' in self.param_names:
                 params[name] = get_param(name)
             if name.endswith('_low'):
                 base = name[:-4]

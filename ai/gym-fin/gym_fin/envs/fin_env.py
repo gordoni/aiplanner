@@ -14,6 +14,7 @@ from math import atanh, ceil, copysign, exp, floor, isinf, isnan, log, sqrt, tan
 from os import environ
 from os.path import expanduser
 from random import seed, randint, random, uniform, lognormvariate
+from sys import stderr
 
 import numpy as np
 
@@ -44,6 +45,11 @@ class AttributeObject(object):
 class FinEnv(Env):
 
     metadata = {'render.modes': ['human']}
+
+    def warn(self, *args):
+
+        if self.params.warn:
+            print('AIPLANNER:', *args, file = stderr)
 
     def _compute_vital_stats(self, age_start, age_start2, preretirement):
 
@@ -237,6 +243,8 @@ class FinEnv(Env):
         self.observation_space_extreme_range[self.observation_space_items.index('stocks_volatility')] *= 2
         self.observation_space_extreme_range[self.observation_space_items.index('real_interest_rate')] = 0.30
         self.observation_space_range_exceeded = np.zeros(shape = self.observation_space_extreme_range.shape, dtype = 'int')
+        self.observation_space_extreme_range = self.observation_space_extreme_range.tolist() # De-numpify.
+        self.observation_space_range_exceeded = self.observation_space_range_exceeded.tolist()
 
         assert self.params.action_space_unbounded in (False, True)
         assert self.params.observation_space_ignores_range in (False, True)
@@ -255,6 +263,9 @@ class FinEnv(Env):
 
         self.life_table_age = None
         self.life_table2_age = None
+
+        assert self.params.sex in ('male', 'female'), 'sex must be male or female.'
+        assert self.params.sex2 in ('male', 'female'), 'sex2 must be male or female.'
 
         self.age_start = self.params.age_start
         self.death_age = self.params.age_end - self.params.time_period
@@ -368,7 +379,7 @@ class FinEnv(Env):
 
     def get_db(self, type, real, type_of_funds):
 
-        key = (type_of_funds, real, type == 'Social Security')
+        key = (type_of_funds, real, type == 'social_security')
         try:
             db = self.defined_benefits[key]
         except KeyError:
@@ -377,11 +388,12 @@ class FinEnv(Env):
 
         return db
 
-    def add_db(self, type = 'Income Annuity', owner = 'self', age = None, final = float('inf'), probability = 1, premium = None, payout = None,
+    def add_db(self, type = 'income_annuity', owner = 'self', start = None, final = float('inf'), probability = 1, premium = None, payout = None,
         inflation_adjustment = 'cpi', joint = False, payout_fraction = 0, source_of_funds = 'tax_deferred', exclusion_period = 0, exclusion_amount = 0,
         delay_calcs = False):
 
         assert owner in ('self', 'spouse')
+        assert source_of_funds in ('tax_free', 'tax_deferred', 'taxable')
 
         if owner == 'spouse' and self.sex2 == None:
             return
@@ -393,11 +405,11 @@ class FinEnv(Env):
             joint = False
             payout_fraction = 0
 
-        type = type.replace('_', ' ')
         real = inflation_adjustment == 'cpi'
         db = self.get_db(type, real, source_of_funds)
         adjustment = 0 if inflation_adjustment == 'cpi' else inflation_adjustment
-        db.add(owner = owner, age = age, final = final, premium = premium, payout = payout, adjustment = adjustment, joint = joint, payout_fraction = payout_fraction,
+        db.add(owner = owner, start = start, final = final, premium = premium, payout = payout, adjustment = adjustment,
+            joint = joint, payout_fraction = payout_fraction,
             exclusion_period = exclusion_period, exclusion_amount = exclusion_amount, delay_calcs = delay_calcs)
 
     def parse_defined_benefits(self):
@@ -628,7 +640,7 @@ class FinEnv(Env):
         # Having rewards for a minimal consumption level of -0.2 should ensure rewards rarely exceed -10.0, allowing the value function to converge quickly.
         consumption_estimate = self.ce_estimate_individual
         if consumption_estimate == 0:
-            print('AIPLANNER: Using a consumption scale that is incompatible with the default consumption scale.')
+            self.warn('Using a consumption scale that is incompatible with the default consumption scale.')
             consumption_estimate = 1
         self.consume_scale = consumption_estimate
         self.utility = Utility(self.gamma, 0.3 * consumption_estimate)
@@ -977,13 +989,13 @@ class FinEnv(Env):
 
         owner = 'self' if self.couple or not self.only_alive2 else 'spouse'
         age = self.age if owner == 'self' else self.age2
-        age += self.params.time_period
+        start = age + self.params.time_period
         payout_fraction = 1 / (1 + self.params.consume_additional)
         if tax_free_spias > 0:
-            self.add_db(owner = owner, age = age, premium = tax_free_spias, inflation_adjustment = inflation_adjustment, joint = True, \
+            self.add_db(owner = owner, start = start, premium = tax_free_spias, inflation_adjustment = inflation_adjustment, joint = True, \
                 payout_fraction = payout_fraction, source_of_funds = 'tax_free')
         if tax_deferred_spias > 0:
-            self.add_db(owner = owner, age = age, premium = tax_deferred_spias, inflation_adjustment = inflation_adjustment, joint = True, \
+            self.add_db(owner = owner, start = start, premium = tax_deferred_spias, inflation_adjustment = inflation_adjustment, joint = True, \
                 payout_fraction = payout_fraction, source_of_funds = 'tax_deferred')
         if taxable_spias > 0:
             exclusion_period = ceil(self.life_expectancy_both[self.episode_length] + self.life_expectancy_one[self.episode_length])
@@ -992,7 +1004,7 @@ class FinEnv(Env):
                 exclusion_amount = taxable_spias / exclusion_period
             else:
                 exclusion_amount = taxable_spias * inflation_adjustment / ((1 + inflation_adjustment) ** exclusion_period - 1)
-            self.add_db(owner = owner, age = age, final = float('inf'), premium = taxable_spias, inflation_adjustment = inflation_adjustment, joint = True, \
+            self.add_db(owner = owner, start = start, final = float('inf'), premium = taxable_spias, inflation_adjustment = inflation_adjustment, joint = True, \
                 payout_fraction = payout_fraction, source_of_funds = 'taxable', exclusion_period = exclusion_period, exclusion_amount = exclusion_amount)
 
     def allocate_aa(self, p_tax_free, p_tax_deferred, p_taxable, asset_allocation):
@@ -1062,10 +1074,10 @@ class FinEnv(Env):
             + self.p_tax_deferred - (p_tax_deferred - retirement_contribution + real_tax_deferred_spias + nominal_tax_deferred_spias)
         if regular_income < 0:
             if regular_income < -1e-12 * (self.gi_sum(source = ('tax_deferred', 'taxable')) + self.p_tax_deferred):
-                print('AIPLANNER: Negative regular income:', regular_income)
+                self.warn('Negative regular income:', regular_income)
                     # Possible if taxable real SPIA non-taxable amount exceeds payout due to deflation.
             regular_income = 0
-        social_security = self.gi_sum(type = 'Social Security')
+        social_security = self.gi_sum(type = 'social_security')
         social_security = min(regular_income, social_security)
 
         inflation = self.bonds.inflation.inflation()
@@ -1121,12 +1133,12 @@ class FinEnv(Env):
             self.reward_weight, self.reward_value = self.raw_reward(consume_rate)
             reward_unclipped = self.reward_weight * self.reward_scale * self.reward_value
             if isinf(reward_unclipped):
-                print('AIPLANNER: Infinite reward')
+                self.warn('Infinite reward')
             elif not - self.params.reward_warn <= reward_unclipped <= self.params.reward_warn:
-                print('AIPLANNER: Extreme reward - age, consume, reward:', self.age, consume_rate, reward_unclipped)
+                self.warn('Extreme reward - age, consume, reward:', self.age, consume_rate, reward_unclipped)
             reward = min(max(reward_unclipped, - self.params.reward_clip), self.params.reward_clip)
             if reward != reward_unclipped:
-                print('AIPLANNER: Reward clipped - age, consume, reward:', self.age, consume_rate, reward_unclipped)
+                self.warn('Reward clipped - age, consume, reward:', self.age, consume_rate, reward_unclipped)
 
         self._step()
         self._step_bonds()
@@ -1309,11 +1321,11 @@ class FinEnv(Env):
         for db in self.defined_benefits.values():
             pv = db.pv(retired = False)
             self.pv_preretirement_income[db.type_of_funds] += pv
-            if db.type == 'Social Security':
+            if db.type == 'social_security':
                 self.pv_social_security += pv
             pv = db.pv(preretirement = False)
             self.pv_retired_income[db.type_of_funds] += pv
-            if db.type == 'Social Security':
+            if db.type == 'social_security':
                 self.pv_social_security += pv
         source = 'taxable' if self.params.income_preretirement_taxable else 'tax_free'
         self.pv_preretirement_income[source] += self.income_preretirement * min(self.income_preretirement_years, self.preretirement_years)
@@ -1531,7 +1543,7 @@ class FinEnv(Env):
         obs = np.array(observe, dtype = 'float32')
         obs = self.encode_observation(obs)
         if np.any(np.isnan(obs)) or np.any(np.isinf(obs)):
-            print('AIPLANNER:', observe, obs, np.isnan(obs), np.isinf(obs))
+            self.warn('Invalid observation:', observe, obs, np.isnan(obs), np.isinf(obs))
             assert False, 'Invalid observation.'
         return obs
 
@@ -1552,9 +1564,9 @@ class FinEnv(Env):
                     except ZeroDivisionError:
                         fract = float('inf')
                     if fract > 1e-4:
-                        print('AIPLANNER: Frequently out of range', item + ':', fract)
+                        self.warn('Frequently out of range', item + ':', fract)
                     if not high[index] - extreme_range[index] < ob < low[index] + extreme_range[index]:
-                        print('AIPLANNER: Extreme', item + ', age:', ob, self.age)
+                        self.warn('Extreme', item + ', age:', ob, self.age)
         if self.params.observation_space_ignores_range:
             obs = -1 + 2 * (obs - low) / rnge
         return obs

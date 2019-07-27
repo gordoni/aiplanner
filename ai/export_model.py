@@ -20,7 +20,7 @@ def export_models(*, redis_address, checkpoint_name, train_seeds, nice, train_se
         model_dir = model_dir[:-1]
     assert model_dir.endswith('.tf')
 
-    for i in range(train_seeds):
+    for i in range(train_seed, train_seed + train_seeds):
 
         train_dir_seed = train_seed + i
         train_dirs = [model_dir + '/seed_' + str(train_dir_seed)]
@@ -33,7 +33,7 @@ def export_models(*, redis_address, checkpoint_name, train_seeds, nice, train_se
 def main():
     parser = arg_parser(training = True, evaluate = False)
     parser.add_argument('--redis-address')
-    parser.add_argument('--train-seeds', type = int, default = 1) # Number of seeds to evaluate.
+    parser.add_argument('--train-seeds', type = int, default = 1) # Number of seeds to export.
     parser.add_argument('--checkpoint-name')
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = True, evaluate = False, dump = False)
     export_models(**args)

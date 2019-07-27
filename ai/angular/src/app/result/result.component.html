@@ -1,7 +1,7 @@
 <!--
 
 AIPlanner - Deep Learning Financial Planner
-Copyright (C) 2018 Gordon Irlam
+Copyright (C) 2018-2019 Gordon Irlam
 
 All rights reserved. This program may not be used, copied, modified,
 or redistributed without permission.
@@ -39,7 +39,7 @@ PURPOSE.
     <p>
       Recommended {{results.asset_classes}} investment asset allocation: {{results.asset_allocation}}
       <br>
-      Bonds duration: {{results.nominal_bonds_duration}} years ({{(results.nominal_bonds_duration <= 9) ? ((results.nominal_bonds_duration <= 2) ? "short" : "intermediate") : "long"}} term)
+      Bonds duration: {{results.real_bonds_duration}} years ({{(results.real_bonds_duration <= 9) ? ((results.real_bonds_duration <= 2) ? "short" : "intermediate") : "long"}} term)
     </p>
     <p>
       Current recommended retirement plan contribution: {{results.retirement_contribution}}
@@ -47,13 +47,11 @@ PURPOSE.
     <div>
       Certainty equivalent retirement consumption: {{results.ce}}
       <div class="small-font">
-        Standard error of measurement of CE for chosen best model: {{results.ce_stderr}}
-        <br>
-        Standard deviation of CE across {{results.model_count}} differently seeded models: {{results.models_stdev}}
+        Standard error of measurement of CE: {{results.ce_stderr}}
       </div>
     </div>
     <p>
-      Probability retirement consumption below {{results.consume_preretirement}}: {{results.preretirement_ppf}}%
+      Probability retirement consumption below {{results.consume_preretirement}}: {{results.consume_preretirement_ppf}}%
       <br>
       10% chance of annual retirement consumption below: {{results.ce_low}}
     </p>

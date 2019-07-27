@@ -19,7 +19,7 @@ from os import chmod, devnull, environ, getpriority, mkdir, PRIO_PROCESS, setpri
 from os.path import exists
 from shlex import split
 from subprocess import run
-from sys import argv, stdin
+from sys import argv, stderr, stdin, stdout
 from traceback import print_exc
 
 from baselines.common import boolean_flag
@@ -79,7 +79,7 @@ def pi_opal(opal_data, env, obs):
 
 def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, stdin,
     merton, samuelson, annuitize, opal, models_dir, evaluate, warm_cache, gamma, train_seeds, ensemble, nice,
-    train_seed, model_dir, result_dir, num_environments, **kwargs):
+    train_seed, model_dir, result_dir, aid, num_environments, permissive_api = False, **kwargs):
 
     priority = getpriority(PRIO_PROCESS, 0)
     priority += nice
@@ -135,15 +135,20 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
             if int(g) == g:
                 g = int(g)
             control_params = {
-                'id': None,
+                'cid': api_scenario.get('cid'),
                 'gammas': [g],
             }
 
             try:
 
                 if daemon:
-                    model_params, control_params = parse_api_scenario(api_scenario)
-                    model_params = dict(eval_model_params, **model_params)
+                    api_model_params, control_params = parse_api_scenario(api_scenario, permissive = permissive_api)
+                    model_params = dict(eval_model_params)
+                    for param in api_model_params:
+                        if param in model_params:
+                            model_params[param] = api_model_params[param]
+                        else:
+                            assert False, 'Unknown parameter: ' + param
                     scenario_space_update_params(model_params, control_params)
                 else:
                     model_params = eval_model_params
@@ -156,7 +161,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
                 try:
 
-                    prefix = result_seed_dir + '/aiplanner-gamma' + str(gamma)
+                    prefix = result_seed_dir + '/aiplanner-gamma' + str(g)
 
                     if parse_exception:
                         raise parse_exception
@@ -172,8 +177,8 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                     object_ids, evaluator, initial_results = eval_model(model_params, daemon = daemon,
                         merton = merton, samuelson = samuelson, annuitize = annuitize, opal = opal,
                         model = model, evaluate = evaluate, warm_cache = warm_cache, default_object_id = (scenario_num, sub_num),
-                        train_dirs = train_dirs, out = out, num_environments = num_environments, **kwargs)
-                    initial_results['id'] = control_params['id']
+                        train_dirs = train_dirs, out = out, aid = aid, num_environments = num_environments, **kwargs)
+                    initial_results['cid'] = control_params['cid']
 
                     for object_id in object_ids:
                         object_id_to_evaluator[object_id] = evaluator
@@ -185,13 +190,14 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                     any_exception = e
                     error_msg = str(e) or e.__class__.__name__ + ' exception encountered.'
                     initial_results = {
-                        'id': control_params.get('id'),
+                        'aid': aid,
+                        'cid': control_params['cid'],
                         'error': error_msg,
                     }
 
                 results[scenario_num].append(initial_results)
 
-                if not daemon or evaluate:
+                if (not daemon or evaluate) and not warm_cache:
                     initial_str = dumps(initial_results, indent = 4, sort_keys = True)
                     with open(prefix + '.json', 'w') as w:
                         w.write(initial_str + '\n')
@@ -230,28 +236,28 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                     'error': None,
                     'ce': ce,
                     'ce_stderr': ce_stderr,
-                    'ce_low': low,
-                    'ce_high': high,
+                    'ce10': low,
+                    'ce90': high,
                     'consume_preretirement': evaluator.consume_preretirement,
-                    'preretirement_ppf': evaluator.preretirement_ppf,
+                    'consume_preretirement_ppf': evaluator.preretirement_ppf,
                 })
 
             except Exception as e:
                 if daemon:
                     print_exc()
                 any_exception = e
-                error_msg = str(e) or e.__class__.__name__ + ' exception encountered.'
+                error_msg = e.__class__.__name__ + ': ' + (str(e) or 'Exception encountered.')
                 final_results = {
-                    'id': results[scenario_num][sub_num]['id'],
+                    'aid': aid,
+                    'cid': results[scenario_num][sub_num]['cid'],
                     'error': error_msg,
                 }
 
             results[scenario_num][sub_num] = final_results
 
-            if not daemon:
-                final_str = dumps(final_results, indent = 4, sort_keys = True)
-                with open(prefix + '.json', 'w') as w:
-                    w.write(final_str + '\n')
+            final_str = dumps(final_results, indent = 4, sort_keys = True)
+            with open(prefix + '.json', 'w') as w:
+                w.write(final_str + '\n')
 
             # Allow evaluator to be garbage collected to conserve RAM and also allow agent actor process to be killed.
             del evaluator_to_info[evaluator]
@@ -275,8 +281,8 @@ runner_cache = {}
 
 def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal, opal_file, redis_address, checkpoint_name,
     evaluate, warm_cache, eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
-    num_cpu, model, default_object_id, train_dirs, search_consume_initial_around, out, num_trace_episodes,
-    num_workers, num_environments, pdf_buckets):
+    num_cpu, model, default_object_id, train_dirs, search_consume_initial_around, out,
+    aid, num_workers, num_environments, num_trace_episodes, pdf_buckets):
 
     eval_seed += 1000000 # Use a different seed than might have been used during training.
     set_global_seeds(eval_seed)
@@ -348,11 +354,12 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
 
     initial_results = dict(initial_results, **{
         'error': None,
+        'aid': aid,
+        'rra': env.params.gamma_low,
         'asset_classes': initial_results['asset_allocation'].classes(),
         'asset_allocation': initial_results['asset_allocation'].as_list(),
-        #'name': env.params.name,
         'pv_retired_income': env.retired_income_wealth,
-        'p': env.p_sum(),
+        'portfolio_wealth': env.p_sum(),
         'pv_preretirement_income': env.preretirement_income_wealth,
     })
 
@@ -375,6 +382,8 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         for _ in range(num_environments):
             envs.append(make_fin_env(**eval_model_params, direct_action = not model))
             eval_model_params['display_returns'] = False # Only have at most one env display returns.
+
+        num_trace_episodes = ceil(num_trace_episodes / num_environments)
 
         evaluator = Evaluator(envs, eval_seed, eval_num_timesteps,
             remote_evaluators = remote_evaluators, render = eval_render, num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets)
@@ -542,9 +551,10 @@ def main():
     parser.add_argument('--search-consume-initial-around', type = float)
         # Search for the initial consumption that maximizes the certainty equivalent using the supplied value as a hint as to where to search.
     parser.add_argument('--result-dir', default = 'results')
-    parser.add_argument('--num-trace-episodes', type = int, default = 5)
+    parser.add_argument('--aid') # AIPlanner id.
     parser.add_argument('--num-workers', type = int, default = 1) # Number of remote processes for Ray evaluation. Zero for local evaluation.
     parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for a single model. Speeds up tensorflow.
+    parser.add_argument('--num-trace-episodes', type = int, default = 5) # Number of sample traces to generate.
     parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, dump = False)
     if args['stdin']:
@@ -561,18 +571,16 @@ def main():
             args['warm_cache'] = False
             api_json = stdin.read()
             api = loads(api_json)
-            results = eval_models(eval_model_params, api = api, **args)
+            results = eval_models(eval_model_params, api = api, permissive_api = True, **args)
             results_str = dumps(results, indent = 4, sort_keys = True)
             print(results_str)
         else:
             if args['models_dir'] != None and args['warm_cache']:
                 for model_params, api in enumerate_model_params_api(args['gamma']):
                     model_params = dict(eval_model_params, **model_params)
-                    eval_models(model_params, api = api, **args)
-            args['warm_cache'] = False
+                    eval_models(model_params, api = api, permissive_api = True, **args)
             while True:
                 try:
-                    results = None
                     line = stdin.readline()
                     if not line:
                         break
@@ -581,20 +589,26 @@ def main():
                         continue
                     args = argv[1:] + split(line)
                     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, dump = False, args = args)
+                    args['warm_cache'] = False
                     api_content_length = args['api_content_length']
                     assert api_content_length != None, 'No --api-content-length parameter.'
                     api_json = stdin.read(api_content_length)
                     api = loads(api_json)
-                    results = eval_models(eval_model_params, api = api, **args)
+                    results = {
+                        'error': None,
+                        'result': eval_models(eval_model_params, api = api, **args)
+                    }
                 except Exception as e:
                     print_exc()
-                    results = str(e) or e.__class__.__name__ + ' exception encountered.'
+                    stderr.flush()
+                    results = {'error': e.__class__.__name__ + ': ' + (str(e) or 'Exception encountered.')}
                 except SystemExit as e:
-                    results = 'Invalid argument.'
-                results_str = dumps(results, indent = 4, sort_keys = True)
+                    results = {'error': 'Invalid argument.'}
+                results_str = dumps(results, indent = 4, sort_keys = True) + '\n'
                 print('\nAIPlanner-Result')
                 print('Content-Length:', len(results_str.encode('utf-8')))
-                print(results_str, flush = True)
+                stdout.write(results_str)
+                stdout.flush()
 
 if __name__ == '__main__':
     main()

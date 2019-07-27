@@ -328,7 +328,7 @@ fit it yourself perform the following steps.
 Training the generic nueral network models
 ------------------------------------------
 
-Training the neural network models will take 10-20 hours:
+Training the neural network models will take 1-2 days:
 
     cd ~/aiplanner/ai/web
     ./train
@@ -470,10 +470,7 @@ The model server has four functions:
 The model server can be run in development as follows:
 
     cd ~/aiplanner/ai/web
-    ./server
-        --base-url=<http://thishost.thisdomain:4200/> \
-        --admin-email=<you@yourdomain> \
-        --notify-email=<you@yourdomain> --notify-name="<FirstName> <LastName>"
+    ./server --admin-email=<you@yourdomain>
 
 On the same machine in another shell window run the Angular server:
 

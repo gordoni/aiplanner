@@ -47,14 +47,14 @@ master_gi_fraction_low = 0.03 # Avoid possibility of very large negative rewards
 master_gi_fraction_high = 1
 
 master_guaranteed_income = '''[
-    {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
-    {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
-    {"owner": "self",   "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"},
-    {"owner": "self",   "age": null, "probability": 1.0, "payout": [5e3, 5e4], "source_of_funds": "taxable", "type": "Social Security"},
-    {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
-    {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
-    {"owner": "spouse", "age": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"},
-    {"owner": "spouse", "age": null, "probability": 1.0, "payout": [5e3, 5e4], "source_of_funds": "taxable", "type": "Social Security"}
+    {"owner": "self",   "start": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
+    {"owner": "self",   "start": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
+    {"owner": "self",   "start": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"},
+    {"owner": "self",   "start": null, "probability": 1.0, "payout": [5e3, 5e4], "source_of_funds": "taxable", "type": "social_security"},
+    {"owner": "spouse", "start": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},
+    {"owner": "spouse", "start": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_deferred"},
+    {"owner": "spouse", "start": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"},
+    {"owner": "spouse", "start": null, "probability": 1.0, "payout": [5e3, 5e4], "source_of_funds": "taxable", "type": "social_security"}
 ]'''
     # Probability of Social Security set to 1, even though it is slightly less, to avoid the possibility of very large negative reward to go and reward values
     # at very advanced ages for large gamma values. At very advanced ages, without any guaranteed income, life expectancy is roughly 2, and initially

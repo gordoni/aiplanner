@@ -119,6 +119,11 @@ class Taxes(object):
             (float('inf'), 0.85),
         )
 
+        # Net Investment income tax is not inflation adjusted.
+        self.niit_threshold_single = 200000
+        self.niit_threshold_couple = 250000
+        self.niit_rate = 0.038
+
     def buy_sell(self, ac, amount, new_value, ret, dividend_yield, qualified):
 
         if amount > 0:
@@ -172,7 +177,11 @@ class Taxes(object):
         taxable_regular_income = max(taxable_regular_income, 0)
         taxable_capital_gains = max(taxable_capital_gains, 0)
 
-        regular_tax = self.tax_table(self.federal_table_single if single else self.federal_table_joint, taxable_regular_income, 0)
+        nii = max(self.capital_gains + self.qualified_dividends + self.non_qualified_dividends, 0)
+        nii_taxable = min(nii, max(regular_income - (self.niit_threshold_single if single else self.niit_threshold_couple), 0))
+
+        regular_tax = self.tax_table(self.federal_table_single if single else self.federal_table_joint, taxable_regular_income, 0) \
+            + nii_taxable * self.niit_rate
         capital_gains_tax = self.tax_table(self.federal_long_term_gains_single if single else self.federal_long_term_gains_joint,
             taxable_capital_gains, taxable_regular_income)
 

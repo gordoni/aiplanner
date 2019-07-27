@@ -28,7 +28,8 @@ def scenario_space_update_params(model_params, control_params):
 def scenario_space_model_filename(model_params):
 
     spias = 'spias' if model_params['real_spias'] or model_params['nominal_spias'] else 'no_spias'
-    retired = 'retired' if model_params['age'] >= model_params['age_retirement'] else 'preretirement'
+    retired = 'retired' if model_params['age_start'] >= max(50, model_params['age_retirement_low']) else 'preretirement'
+        # Retirement model is trained starting from age 50.
     assert model_params['gamma_low'] == model_params['gamma_high'], "Can't evaluate a gamma range."
     gamma = model_params['gamma_low']
     if int(gamma) == gamma:
@@ -41,8 +42,13 @@ def enumerate_model_params_api(gammas):
 
     return [({
         'age': age,
-        'age_retirement': 65,
+        'age_retirement_low': 65,
+        'age_retirement_high': 65,
+        'stocks_price': 1,
+        'stocks_sigma_level_type': 'average',
+        'real_short_rate_type': 'current',
+        'inflation_short_rate_type': 'current',
     }, [{
         'spias': spias,
-        'gammas': gammas,
+        'rra': gammas,
     }]) for age in (20, 100) for spias in (False, True)]
