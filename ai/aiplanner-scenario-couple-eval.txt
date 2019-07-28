@@ -26,8 +26,8 @@ master_have_401k = True
 master_have_401k2 = True
 
 master_guaranteed_income = '''[
-    {"owner": "self",   "age": null, "payout": 20e3, "source_of_funds": "tax_free"},
-    {"owner": "spouse", "age": null, "payout": 20e3, "source_of_funds": "tax_free"}
+    {"owner": "self",   "start": null, "payout": 20e3, "source_of_funds": "tax_free"},
+    {"owner": "spouse", "start": null, "payout": 20e3, "source_of_funds": "tax_free"}
 ]'''
 
 master_p_weighted = 0

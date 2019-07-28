@@ -881,13 +881,14 @@ class FinEnv(Env):
     def raw_reward(self, consume_rate):
 
         if self.couple:
-            consume_rate = consume_rate / (1 + self.params.consume_additional)
+            reward_consume = consume_rate / (1 + self.params.consume_additional)
             reward_weight = 2 * self.params.time_period
         else:
+            reward_consume = consume_rate
             reward_weight = self.alive_single[self.episode_length] * self.params.time_period
-        reward_annual = self.utility.utility(consume_rate)
+        reward_value = self.utility.utility(reward_consume)
 
-        return reward_weight, reward_annual
+        return reward_weight, reward_consume, reward_value
 
     def spend(self, consume_fraction, real_spias_fraction = 0, nominal_spias_fraction = 0):
 
@@ -1127,10 +1128,11 @@ class FinEnv(Env):
 
         if self.age < self.age_retirement:
             self.reward_weight = 0
+            self.reward_consume = 0
             self.reward_value = 0
             reward = 0
         else:
-            self.reward_weight, self.reward_value = self.raw_reward(consume_rate)
+            self.reward_weight, self.reward_consume, self.reward_value = self.raw_reward(consume_rate)
             reward_unclipped = self.reward_weight * self.reward_scale * self.reward_value
             if isinf(reward_unclipped):
                 self.warn('Infinite reward')
@@ -1383,7 +1385,7 @@ class FinEnv(Env):
                 # Fails to take into consideration lack of inflation adjustment for Social Security taxable brackets.
         pv_regular_tax = total_years * regular_tax
         pv_capital_gains_tax = total_years * capital_gains_tax
-        pv_taxes = pv_regular_tax + pv_capital_gains_tax
+        self.pv_taxes = pv_regular_tax + pv_capital_gains_tax
 
         try:
             self.p_wealth -= self.wealth['tax_deferred'] / pv_regular_income * pv_regular_tax
@@ -1393,7 +1395,7 @@ class FinEnv(Env):
             pass
         self.p_wealth = max(0, self.p_wealth - pv_capital_gains_tax)
         self.preretirement_income_wealth = max(0, self.raw_preretirement_income_wealth)
-        self.net_wealth = max(0, self.net_wealth_pretax - pv_taxes)
+        self.net_wealth = max(0, self.net_wealth_pretax - self.pv_taxes)
         self.retired_income_wealth = max(0, self.net_wealth - self.p_wealth - self.preretirement_income_wealth)
 
         income_estimate = self.net_wealth / self.years_retired
@@ -1510,7 +1512,7 @@ class FinEnv(Env):
             alive_single = 1
         reward_weight = (2 * self.retirement_expectancy_both[self.episode_length] + alive_single * self.retirement_expectancy_one[self.episode_length]) \
             * self.params.time_period
-        _, reward_value = self.raw_reward(self.ce_estimate_individual)
+        _, _, reward_value = self.raw_reward(self.ce_estimate_individual)
         reward_estimate = reward_weight * self.reward_scale * reward_value
         reward_estimate = max(-1e30, reward_estimate) # Prevent observation of -inf reward estimate during training.
 

@@ -102,11 +102,12 @@ def main():
         asset_classes = ['bonds' if ac.endswith('bonds') else ac for ac in asset_classes]
     asset_allocation = interp['asset_allocation']
 
+    pv_preretirement = interp['pv_preretirement_income']
     gi = interp['pv_retired_income']
+    taxes = interp['pv_future_taxes']
     p = interp['portfolio_wealth']
     real_spias = interp['real_spias_purchase']
     nominal_spias = interp['nominal_spias_purchase']
-    pv_preretirement = interp['pv_preretirement_income']
     spias = 0
     if real_spias:
         spias += real_spias
@@ -121,6 +122,8 @@ def main():
         wealth_allocation.append(spias)
     wealth_classes.append('pre-retirement contributions')
     wealth_allocation.append(pv_preretirement)
+    wealth_classes.append('future taxes')
+    wealth_allocation.append(taxes)
     wealth_allocation = list(max(w, 0) for w in wealth_allocation)
 
     colors = ['red', 'green', 'blue', 'yellow', 'orange', 'magenta', 'olive', 'indigo']

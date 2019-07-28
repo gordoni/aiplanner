@@ -18,7 +18,7 @@ from math import ceil, exp, sqrt
 from os import chmod, devnull, environ, getpriority, mkdir, PRIO_PROCESS, setpriority
 from os.path import exists
 from shlex import split
-from subprocess import run
+from subprocess import CalledProcessError, run
 from sys import argv, stderr, stdin, stdout
 from traceback import print_exc
 
@@ -161,7 +161,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
                 try:
 
-                    prefix = result_seed_dir + '/aiplanner-gamma' + str(g)
+                    prefix = result_seed_dir + '/aiplanner'
 
                     if parse_exception:
                         raise parse_exception
@@ -223,23 +223,28 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
             try:
 
-                ce, ce_stderr, low, high = evaluator.summarize()
+                res = evaluator.summarize()
 
-                if evaluator.couple:
-                    print('Couple certainty equivalent:', ce, '+/-', ce_stderr, '(80% confidence interval:', low, '-', str(high) + ')', file = out)
-                print('Evaluation certainty equivalent:', evaluator.indiv_ce, '+/-', evaluator.indiv_ce_stderr,
-                    '(80% confidence interval:', evaluator.indiv_low, '-', str(evaluator.indiv_high) + ')', file = out, flush = True)
+                if res['couple']:
+                    print('Couple certainty equivalent:', res['ce'], '+/-', res['ce_stderr'],
+                        '(80% confidence interval:', res['consume10'], '-', str(res['consume90']) + ')', file = out)
+                print('Evaluation certainty equivalent:', res['ce_individual'], '+/-', res['ce_stderr_individual'],
+                    '(80% confidence interval:', res['consume10_individual'], '-', str(res['consume90_individual']) + ')', file = out, flush = True)
 
-                plot(prefix, evaluator.trace, evaluator.consume_pdf)
+                plot(prefix, res['paths'], res['consume_pdf'])
 
                 final_results = dict(results[scenario_num][sub_num], **{
                     'error': None,
-                    'ce': ce,
-                    'ce_stderr': ce_stderr,
-                    'ce10': low,
-                    'ce90': high,
-                    'consume_preretirement': evaluator.consume_preretirement,
-                    'consume_preretirement_ppf': evaluator.preretirement_ppf,
+                    'ce': res['ce'],
+                    'ce_stderr': res['ce_stderr'],
+                    'consume10': res['consume10'],
+                    'consume90': res['consume90'],
+                    'consume_mean': res['consume_mean'],
+                    'consume_stdev': res['consume_stdev'],
+                    'consume_preretirement': res['consume_preretirement'],
+                    'consume_preretirement_ppf': res['consume_preretirement_ppf'],
+                    'consume_pdf': res['consume_pdf'],
+                    'sample_paths': res['paths'],
                 })
 
             except Exception as e:
@@ -358,9 +363,10 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         'rra': env.params.gamma_low,
         'asset_classes': initial_results['asset_allocation'].classes(),
         'asset_allocation': initial_results['asset_allocation'].as_list(),
-        'pv_retired_income': env.retired_income_wealth,
-        'portfolio_wealth': env.p_sum(),
         'pv_preretirement_income': env.preretirement_income_wealth,
+        'pv_retired_income': env.retired_income_wealth,
+        'pv_future_taxes': env.pv_taxes,
+        'portfolio_wealth': env.p_wealth,
     })
 
     if not daemon:
@@ -382,8 +388,6 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         for _ in range(num_environments):
             envs.append(make_fin_env(**eval_model_params, direct_action = not model))
             eval_model_params['display_returns'] = False # Only have at most one env display returns.
-
-        num_trace_episodes = ceil(num_trace_episodes / num_environments)
 
         evaluator = Evaluator(envs, eval_seed, eval_num_timesteps,
             remote_evaluators = remote_evaluators, render = eval_render, num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets)
@@ -449,7 +453,9 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
                     for e in envs:
                         e.unwrapped.params.consume_initial = x
                     evaluator.evaluate(pi)
-                    f_x, tol_x, _, _ = evaluator.summarize()
+                    res = evaluator.summarize()
+                    f_x = res['ce']
+                    tol_x = res['ce_stderr']
                     results = (f_x, tol_x)
                     f_cache[x] = results
                     return results
@@ -507,26 +513,31 @@ def plot(prefix, traces, consume_pdf):
     with open(prefix + '-paths.csv', 'w') as f:
         csv_writer = writer(f)
         for trace in traces:
-            for i, step in enumerate(trace):
-                couple_plot = step['alive_count'] == 2
-                single_plot = step['alive_count'] == 1
+            for i, (age, alive_count, pv_income, portfolio_wealth, consume, real_spias_purchase, nominal_spias_purchase, asset_allocation) in \
+                enumerate(zip(trace['age'], trace['alive_count'], trace['pv_income'], trace['portfolio_wealth'], trace['consume'],
+                    trace['real_spias_purchase'], trace['nominal_spias_purchase'], trace['asset_allocation'])):
+
+                couple_plot = alive_count == 2
+                single_plot = alive_count == 1
                 try:
-                    if step['alive_count'] == 2 and trace[i + 1]['alive_count'] == 1:
+                    if alive_count == 2 and trace['alive_count'][i + 1] == 1:
                         single_plot = True
                 except KeyError:
                     pass
-                aa = step['asset_allocation']
-                aa = () if aa == None else aa.as_list()
-                csv_writer.writerow((step['age'], int(couple_plot), int(single_plot), step['gi_sum'], step['p_sum'], step['consume'],
-                                     step['real_spias_purchase'], step['nominal_spias_purchase'], *aa))
+                csv_writer.writerow((age, int(couple_plot), int(single_plot), pv_income, portfolio_wealth, consume,
+                    real_spias_purchase, nominal_spias_purchase, *asset_allocation))
             csv_writer.writerow(())
 
+    pdf = zip(consume_pdf['consume'], consume_pdf['weight'])
     with open(prefix + '-consume-pdf.csv', 'w') as f:
         csv_writer = writer(f)
-        csv_writer.writerows(consume_pdf)
+        csv_writer.writerows(pdf)
 
-    environ['AIPLANNER_FILE_PREFIX'] = prefix
-    run([environ['AIPLANNER_HOME'] + '/ai/plot'], check = True)
+    try:
+        environ['AIPLANNER_FILE_PREFIX'] = prefix
+        run([environ['AIPLANNER_HOME'] + '/ai/plot'], check = True)
+    except CalledProcessError:
+        assert not traces, 'Error ploting results.'
 
 def main():
     parser = arg_parser(training = False)
@@ -594,6 +605,7 @@ def main():
                     assert api_content_length != None, 'No --api-content-length parameter.'
                     api_json = stdin.read(api_content_length)
                     api = loads(api_json)
+                    assert len(api) <= 10000, 'Too many scenarios in a single request.'
                     results = {
                         'error': None,
                         'result': eval_models(eval_model_params, api = api, **args)
@@ -604,7 +616,7 @@ def main():
                     results = {'error': e.__class__.__name__ + ': ' + (str(e) or 'Exception encountered.')}
                 except SystemExit as e:
                     results = {'error': 'Invalid argument.'}
-                results_str = dumps(results, indent = 4, sort_keys = True) + '\n'
+                results_str = dumps(results, sort_keys = True) + '\n'
                 print('\nAIPlanner-Result')
                 print('Content-Length:', len(results_str.encode('utf-8')))
                 stdout.write(results_str)

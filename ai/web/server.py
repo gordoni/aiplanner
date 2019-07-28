@@ -44,12 +44,12 @@ def report_exception(args, e):
 
 class InferEvaluateDaemon:
 
-    def __init__(self, args, *, evaluate, gammas, priority = 0):
+    def __init__(self, args, *, evaluate, gammas, log, priority = 0):
 
         self.args = args
+        self.log = log
 
         models_dir = expanduser(self.args.models_dir)
-        self.log = open(expanduser(self.args.root_dir) + '/server.log', 'ab')
         cmd = [
             environ['AIPLANNER_HOME'] + '/ai/eval_model.py',
             '--daemon',
@@ -124,21 +124,23 @@ class InferEvaluateDaemon:
 
 class ApiHTTPServer(ThreadingMixIn, HTTPServer):
 
-    def __init__(self, args):
+    def __init__(self, args, log):
 
         super().__init__((args.host, args.port), RequestHandler)
         self.args = args
+        self.log =  log
 
         if self.args.infer:
             self.infer_run_lock = BoundedSemaphore(self.args.num_concurrent_infer_jobs)
             self.infer_daemon = [
-                InferEvaluateDaemon(self.args, evaluate = False, gammas = self.args.gamma, priority = 10) for _ in range(self.args.num_concurrent_infer_jobs)
+                InferEvaluateDaemon(self.args, evaluate = False, gammas = self.args.gamma, log = self.log, priority = 10)
+                    for _ in range(self.args.num_concurrent_infer_jobs)
             ]
 
         if self.args.evaluate:
             self.evaluate_run_lock = BoundedSemaphore(self.args.num_concurrent_evaluate_jobs)
             self.evaluate_daemons = {
-                gamma: [InferEvaluateDaemon(self.args, evaluate = True, gammas = [gamma]) for _ in range(self.args.num_concurrent_evaluate_jobs)]
+                gamma: [InferEvaluateDaemon(self.args, evaluate = True, gammas = [gamma], log = self.log) for _ in range(self.args.num_concurrent_evaluate_jobs)]
                     for gamma in self.args.gamma
             }
 
@@ -149,7 +151,6 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-Type', mime_type)
         self.send_header('Content-Length', len(result_bytes))
-        self.send_header('Connection', 'close')
         for k, v in headers:
             self.send_header(k, v)
         self.end_headers()
@@ -167,7 +168,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     self.send_error(411) # Length Required
                     return
                 content_length = int(content_length)
-                if not 0 <= content_length < 10e6:
+                if not 0 <= content_length <= 100e6:
                     self.send_error(413) # Payload Too Large
                     return
 
@@ -229,11 +230,11 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             elif self.path.startswith('/api/data/'):
 
-                m  = match('^/api/data/(.+?)/(.+?)(\.0*)?(/(.+))?$', self.path)
+                m  = match('^/api/data/(.+?)(/(.+))?$', self.path)
                 if not m:
                     self.send_error(404) # Not Found
                     return
-                data, filetype = self.get_file(m[1], m[2], m[5])
+                data, filetype = self.get_file(m[1], m[3])
 
             elif self.path == '/api/market':
 
@@ -256,12 +257,12 @@ class RequestHandler(BaseHTTPRequestHandler):
             report_exception(self.server.args, e)
             self.send_error(500) # Internal Server Error
 
-    def get_file(self, aid, gamma, name):
+    def get_file(self, aid, name):
 
         if name:
-            filename = 'aiplanner-gamma' + gamma + '-' + name
+            filename = 'aiplanner-' + name
         else:
-            filename = 'aiplanner-gamma' + gamma + '.json'
+            filename = 'aiplanner.json'
         path = aid + '/seed_all/' + filename
 
         print(path)
@@ -332,21 +333,24 @@ class RequestHandler(BaseHTTPRequestHandler):
             'spias': choice((True, False)),
 
             'rra': [choice(self.server.args.gamma)],
+
+            'num_evaluate_timesteps': self.server.args.eval_num_timesteps_healthcheck,
         }]
 
         if self.server.args.infer:
             data = self.run_models(api_data, evaluate = False, prefix = 'healthcheck-')
             result = loads(data.decode('utf-8'))
             if result['error'] or result['result'][0][0]['error']:
+                self.server.log.write(data)
+                self.server.log.flush()
                 return False
 
         if self.server.args.evaluate:
-            options = [
-                '--eval-num-timesteps', str(self.server.args.eval_num_timesteps_healthcheck),
-            ]
-            data = self.run_models(api_data, evaluate = True, options = options, prefix = 'healthcheck-')
+            data = self.run_models(api_data, evaluate = True, prefix = 'healthcheck-')
             result = loads(data.decode('utf-8'))
             if result['error'] or result['result'][0][0]['error']:
+                self.server.log.write(data)
+                self.server.log.flush()
                 return False
 
         return True
@@ -390,7 +394,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             try:
                 if evaluate:
                     results = self.run_evaluate(api_data, options = options, prefix = prefix)
-                    data = (dumps(results, indent = 4, sort_keys = True) + '\n').encode('utf-8')
+                    data = (dumps(results, sort_keys = True) + '\n').encode('utf-8')
                 else:
                     aid, data = self.run_model(self.server.infer_daemon, api_data, options = options, prefix = prefix)
                 return data
@@ -413,6 +417,20 @@ class RequestHandler(BaseHTTPRequestHandler):
         for gamma in gammas:
             if not gamma in self.server.evaluate_daemons.keys():
                 return {'error': 'Unsupported gamma value: ' + str(gamma)}
+        eval_num_timesteps = api_data[0].get('num_evaluate_timesteps')
+        if not isinstance(eval_num_timesteps, (int, float)):
+            eval_num_timesteps = self.server.args.eval_num_timesteps
+        if not 0 <= eval_num_timesteps <= self.server.args.eval_num_timesteps_max:
+            return {'error': 'num_evalate_timeteps out of range.'}
+        num_trace_episodes = api_data[0].get('num_sample_paths')
+        if not isinstance(num_trace_episodes, (int, float)):
+            num_trace_episodes = self.server.args.num_trace_episodes
+        if not 0 <= num_trace_episodes <= self.server.args.num_trace_episodes_max:
+            return {'error': 'num_sample_paths out of range.'}
+        options += [
+            '--eval-num-timesteps', str(eval_num_timesteps),
+            '--num-trace-episodes', str(num_trace_episodes),
+        ]
         results = [None] * len(gammas)
         threads = []
         error_result = None
@@ -564,8 +582,10 @@ def main():
     parser.add_argument('--models-dir', default = '~/aiplanner-data/models')
     parser.add_argument('--eval-num-timesteps', type = int, default = 50000)
     parser.add_argument('--eval-num-timesteps-healthcheck', type = int, default = 1000)
+    parser.add_argument('--eval-num-timesteps-max', type = int, default = 100000)
     parser.add_argument('--num-environments', type = int, default = 10) # Number of parallel environments to use for a single model evaluation. Speeds up tensorflow.
-    parser.add_argument('--num-trace-episodes', type = int, default = 5) # Number of sample traces to generate.
+    parser.add_argument('--num-trace-episodes', type = int, default = 5) # Default number of sample traces to generate.
+    parser.add_argument('--num-trace-episodes-max', type = int, default = 10000)
     parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
 
     # HTTP subscribe options.
@@ -580,7 +600,7 @@ def main():
     parser.add_argument('--purge-keep-time', type = int, default = 3600) # Keep directories around for this long regardless.
     parser.add_argument('--purge-time-failure', type = int, default = 90 * 86400) # Delete failed scenarios after this long.
     parser.add_argument('--purge-time-healthcheck', type = int, default = 3600) # Delete healthcheck scenarios after this long.
-    parser.add_argument('--purge-time-success', type = int, default = 7 * 86400) # Delete successful scenarios after this long.
+    parser.add_argument('--purge-time-success', type = int, default = 86400) # Delete successful scenarios after this long.
 
     args = parser.parse_args()
     root_dir = expanduser(args.root_dir)
@@ -591,7 +611,8 @@ def main():
     makedirs(args.results_dir, exist_ok = True)
 
     if not args.serve or 'http' in args.serve:
-        server = ApiHTTPServer(args)
+        log = open(expanduser(args.root_dir) + '/server.log', 'ab')
+        server = ApiHTTPServer(args, log)
         Thread(target = server.serve_forever, daemon = True).start()
 
     if not args.serve or 'purgeq' in args.serve:

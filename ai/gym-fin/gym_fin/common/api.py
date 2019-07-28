@@ -47,6 +47,9 @@ def parse_api_scenario(api_scenario, *, permissive = False):
             'spias',
 
             'rra',
+
+            'num_evaluate_timesteps',
+            'num_sample_paths',
         ]:
             assert False, 'Unknown api parameter: ' + name
 

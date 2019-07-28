@@ -109,28 +109,41 @@ class Evaluator(object):
 
         if self.remote_evaluators:
             self.eval_num_timesteps /= len(self.remote_evaluators)
+            self.num_trace_episodes /= len(self.remote_evaluators)
 
+        print(self.num_trace_episodes)
         self.trace = []
-        self.episode = []
+        self.episode = {}
 
-    def trace_step(self, env, action, done):
+    def trace_step(self, i, env, action, done):
+
+        try:
+            episode = self.episode[i]
+        except KeyError:
+            episode = {}
+            self.episode[i] = episode
 
         if not done:
             decoded_action = env.interpret_action(action)
-        self.episode.append({
-            'age': env.age,
-            'alive_count': env.alive_count[env.episode_length],
-            'gi_sum': env.gi_sum() if not done else None,
-            'p_sum': env.p_sum(),
-            'consume': decoded_action['consume'] if not done else None,
-            'real_spias_purchase': decoded_action['real_spias_purchase'] if not done else None,
-            'nominal_spias_purchase': decoded_action['nominal_spias_purchase'] if not done else None,
-            'asset_allocation': decoded_action['asset_allocation'] if not done else None,
-        })
+            self.no_aa = [None] * len(decoded_action['asset_allocation'].as_list())
+        for item, value in (
+                    ('age', env.age),
+                    ('alive_count', env.alive_count[env.episode_length]),
+                    ('pv_income', env.gi_sum() if not done else None),
+                    ('portfolio_wealth', env.p_sum()),
+                    ('consume', decoded_action['consume'] if not done else None),
+                    ('real_spias_purchase', decoded_action['real_spias_purchase'] if not done else None),
+                    ('nominal_spias_purchase', decoded_action['nominal_spias_purchase'] if not done else None),
+                    ('asset_allocation', decoded_action['asset_allocation'].as_list() if not done else self.no_aa),
+        ):
+            try:
+                episode[item].append(value)
+            except KeyError:
+                episode[item] = [value]
 
         if done:
-            self.trace.append(self.episode)
-            self.episode = []
+            self.trace.append(episode)
+            del self.episode[i]
 
     def evaluate(self, pi):
 
@@ -145,26 +158,37 @@ class Evaluator(object):
             s = 0
             erews = [0 for _ in eval_envs]
             eweights = [0 for _ in eval_envs]
+            weight_sum = 0
+            consume_mean = 0
+            consume_m2 = 0
             finished = [self.eval_num_timesteps == 0 for _ in eval_envs]
             while True:
                 actions = pi(obss)
                 if et < self.num_trace_episodes:
-                    self.trace_step(envs[0], actions[0], False)
+                    for i in range(len(eval_envs)):
+                        self.trace_step(i, envs[i], actions[i], False)
                 if self.eval_render:
                     eval_envs[0].render()
                 for i, (eval_env, env, action) in enumerate(zip(eval_envs, envs, actions)):
                     if not finished[i]:
                         obs, r, done, info = eval_env.step(action)
-                        reward = env.reward_value
-                        weight = env.reward_weight
-                        erews[i] += reward * weight
-                        eweights[i] += weight
                         s += 1
+                        weight = env.reward_weight
+                        consume = env.reward_consume
+                        reward = env.reward_value
                         if weight != 0:
                             rewards.append((reward, weight))
+                            erews[i] += reward * weight
+                            eweights[i] += weight
+                            # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+                            weight_sum += weight
+                            delta = consume - consume_mean
+                            consume_mean += (weight / weight_sum) * delta
+                            delta2 = consume - consume_mean
+                            consume_m2 += weight * delta * delta2
                         if done:
-                            if i == 0 and et < self.num_trace_episodes:
-                                self.trace_step(env, None, done)
+                            if et < self.num_trace_episodes:
+                                self.trace_step(i, env, None, done)
                                 et += 1
                             e += 1
                             try:
@@ -184,7 +208,7 @@ class Evaluator(object):
                 if all(finished):
                     break
 
-            return pack_value_weights(sorted(rewards)), pack_value_weights(sorted(erewards)), self.trace
+            return pack_value_weights(sorted(rewards)), pack_value_weights(sorted(erewards)), weight_sum, consume_mean, consume_m2, self.trace
 
         self.object_ids = None
         self.exception = None
@@ -216,7 +240,7 @@ class Evaluator(object):
             seed(self.eval_seed)
 
             try:
-                self.rewards, self.erewards, self.trace = rollout(self.eval_envs, pi)
+                self.rewards, self.erewards, self.weight_sum, self.consume_mean, self.consume_m2, self.trace = rollout(self.eval_envs, pi)
             except Exception as e:
                 self.exception = e # Only want to know about failures in one place; later in summarize().
 
@@ -232,7 +256,7 @@ class Evaluator(object):
 
             rollouts = ray.get(self.object_ids)
 
-            rewards, erewards, trace = zip(*chain(*rollouts))
+            rewards, erewards, weight_sums, consume_means, consume_m2s, traces = zip(*chain(*rollouts))
             if len(rewards) > 1:
                 self.rewards = pack_value_weights(sorted(chain(*(unpack_value_weights(reward) for reward in rewards))))
                 self.erewards = pack_value_weights(sorted(chain(*(unpack_value_weights(ereward) for ereward in erewards))))
@@ -240,7 +264,17 @@ class Evaluator(object):
                 self.rewards = rewards[0]
                 self.erewards = erewards[0]
 
-            self.trace = tuple(chain(*trace))[:self.num_trace_episodes]
+            # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+            self.weight_sum = 0
+            self.consume_mean = 0
+            self.consume_m2 = 0
+            for weight_sum, consume_mean, consume_m2 in zip(weight_sums, consume_means, consume_m2s):
+                if weight_sum > 0:
+                    delta = consume_mean - self.consume_mean
+                    self.consume_mean = (self.weight_sum * self.consume_mean + weight_sum * consume_mean) / (self.weight_sum + weight_sum)
+                    self.consume_m2 += consume_m2 + delta ** 2 * self.weight_sum * weight_sum / (self.weight_sum + weight_sum)
+
+            self.trace = tuple(chain(*traces))[:self.num_trace_episodes]
 
         else:
 
@@ -256,21 +290,28 @@ class Evaluator(object):
             stderr = std / sqrt(len(self.erewards[0]))
                 # Standard error is ill-defined for a weighted sample.
                 # Here we are incorrectly assuming each episode carries equal weight.
+                # Use erewards rather than rewards because episode rewards are correlated.
         except ZeroDivisionError:
             stderr = float('nan')
         env = self.eval_envs[0].unwrapped
         env.reset()
         utility = env.utility
-        unit_ce = self.indiv_ce = utility.inverse(rew)
-        unit_ce_stderr = self.indiv_ce_stderr = self.indiv_ce - utility.inverse(rew - stderr)
-        ce_min, self.indiv_low, self.indiv_high, ce_max = (utility.inverse(u) for u in weighted_percentiles(self.rewards, [2, 10, 90, 98]))
-        unit_low = self.indiv_low
-        unit_high = self.indiv_high
+        unit_ce = indiv_ce = utility.inverse(rew)
+        unit_ce_stderr = indiv_ce_stderr = indiv_ce - utility.inverse(rew - stderr)
+        ce_min, indiv_low, indiv_high, ce_max = (utility.inverse(u) for u in weighted_percentiles(self.rewards, [2, 10, 90, 98]))
+        unit_low = indiv_low
+        unit_high = indiv_high
+
+        unit_consume_mean = indiv_consume_mean = self.consume_mean
+        try:
+            unit_consume_stdev = indiv_consume_stdev = sqrt(self.consume_m2 / (self.weight_sum - 1))
+        except (ValueError, ZeroDivisionError):
+            unit_consume_stdev = indiv_consume_stdev = float('nan')
 
         utility_preretirement = utility.utility(env.params.consume_preretirement)
-        self.preretirement_ppf = weighted_ppf(self.rewards, utility_preretirement) / 100
+        preretirement_ppf = weighted_ppf(self.rewards, utility_preretirement) / 100
 
-        self.consume_preretirement = env.params.consume_preretirement
+        consume_preretirement = env.params.consume_preretirement
 
         pdf_bucket_weights = []
         w_tot = 0
@@ -287,7 +328,7 @@ class Evaluator(object):
             if u_floor <= r < u_ceil:
                 pdf_bucket_weights[-1] += w
             w_tot += w
-        self.consume_pdf = []
+        consume_pdf = {'consume': [], 'weight': []}
         for bucket, w in enumerate(pdf_bucket_weights):
             unit_consume = ce_min + ce_step * (bucket + 0.5)
             if env.sex2 != None:
@@ -296,13 +337,32 @@ class Evaluator(object):
                 w_ratio = w / w_tot
             except ZeroDivisionError:
                 w_ratio = float('nan')
-            self.consume_pdf.append((unit_consume, w_ratio))
+            consume_pdf['consume'].append(unit_consume)
+            consume_pdf['weight'].append(w_ratio)
 
-        self.couple = env.sex2 != None
-        if self.couple:
+        couple = env.sex2 != None
+        if couple:
             unit_ce *= 1 + env.params.consume_additional
             unit_ce_stderr *= 1 + env.params.consume_additional
             unit_low *= 1 + env.params.consume_additional
             unit_high *= 1 + env.params.consume_additional
+            unit_consume_mean *= 1 + env.params.consume_additional
+            unit_consume_stdev *= 1 + env.params.consume_additional
 
-        return unit_ce, unit_ce_stderr, unit_low, unit_high
+        return {
+            'couple': couple,
+            'ce': unit_ce,
+            'ce_stderr': unit_ce_stderr,
+            'consume10': unit_low,
+            'consume90': unit_high,
+            'consume_mean': unit_consume_mean,
+            'consume_stdev': unit_consume_stdev,
+            'ce_individual': indiv_ce,
+            'ce_stderr_individual': indiv_ce_stderr,
+            'consume10_individual': indiv_low,
+            'consume90_individual': indiv_high,
+            'consume_preretirement': consume_preretirement,
+            'consume_preretirement_ppf': preretirement_ppf,
+            'consume_pdf': consume_pdf,
+            'paths': self.trace,
+        }
