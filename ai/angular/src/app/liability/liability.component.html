@@ -1,0 +1,67 @@
+<!--
+
+AIPlanner - Deep Learning Financial Planner
+Copyright (C) 2018-2019 Gordon Irlam
+
+All rights reserved. This program may not be used, copied, modified,
+or redistributed without permission.
+
+This program is distributed WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE.
+
+-->
+
+<div class="liability-component">
+
+  <form class="liability-form" #liabilityForm="ngForm">
+
+    <div class="liability-type">
+      {{newData.type}}
+    </div>
+
+    <div>
+      Number of years: <input type="number" class="small-numeric" required name="liabilityYears" #liabilityYears="ngModel" [(ngModel)]="newData.years">
+        <div class="error" *ngIf="liabilityYears.invalid">
+          Invalid numeric value.
+        </div>
+    </div>
+
+    <div>
+      Starting at your age: <input type="number" class="small-numeric" required name="liabilityAge" #liabilityAge="ngModel" [(ngModel)]="newData.age">
+        <div class="error" *ngIf="liabilityAge.invalid">
+          Invalid numeric value.
+        </div>
+    </div>
+
+    <div>
+      Payment: <input type="number" class="numeric" required name="liabilityAmountPer" #liabilityAmountPer="ngModel" [(ngModel)]="newData.amountPer">
+        <div class="error" *ngIf="liabilityAmountPer.invalid">
+          Invalid numeric value.
+        </div>
+      per <select name="liabilityPer" [(ngModel)]="newData.per">
+        <option value="month">month</option>
+        <option value="year">year</option>
+      </select>
+    </div>
+
+    <div *ngIf="['Mortgage'].includes(newData.type)">
+      Annual inflation adjustment: none
+    </div>
+
+    <div *ngIf="['Child/Dependent'].includes(newData.type)">
+      Annual inflation adjustment: CPI
+    </div>
+
+    <div class="cancel">
+      <button type="button" (click)="cancel()">Cancel</button>
+    </div>
+    <div class="done">
+      <button type="button" (click)="done()" [disabled]="!liabilityForm.valid">Done</button>
+    </div>
+    <div class="clear">
+    </div>
+
+  </form>
+
+</div>

@@ -41,6 +41,8 @@ class ModelParams(object):
         self._boolean_flag('warn', True) # Display warning messages.
         self._boolean_flag('display-returns', True) # Display yield and return statistics.
 
+        self._param('debug-dummy-float', None) # Occasionally useful for debugging.
+
         # This following three parameters are determined by the training algorithm, and can't be set by the user.
         self._boolean_flag('action-space-unbounded', None) # Whether the action space is unbounded, or bound to the range [-1, 1].
         self._boolean_flag('observation-space-ignores-range', None) # Whether observation space needs to roughly be in the range [-1, 1], or the range specified.

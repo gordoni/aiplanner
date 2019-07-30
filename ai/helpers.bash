@@ -410,7 +410,10 @@ eval_scenarios () {
         evaluate $STAGE-gamma$GAMMA-le_additional1.5_3.5 $UNIT-retired65-le_additional3-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-age-start2=65 --master-life-expectancy-additional=3 --master-life-expectancy-additional2=3 --master-p-tax-free=2e6"
         evaluate $STAGE-gamma$GAMMA-le_additional3.5_5.5 $UNIT-retired65-le_additional5-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=65 --master-age-start2=65 --master-life-expectancy-additional=5 --master-life-expectancy-additional2=5 --master-p-tax-free=2e6"
     elif [ $TRAINING = generic -a $STAGE = preretirement ]; then
+        evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free2e5 "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2e5"
+        evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free5e5 "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=5e5"
         evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free1e6 "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=1e6"
+        evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2e6"
     elif [ $TRAINING = generic -a $STAGE = retired ]; then
         evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-retired65-guaranteed_income20e3-tax_free2e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=2e5"
         evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-retired65-guaranteed_income20e3-tax_free5e5 "$EVAL_ARGS $ARGS --master-age-start=65 --master-p-tax-free=5e5"

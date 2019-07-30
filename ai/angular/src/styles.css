@@ -1,5 +1,5 @@
 /* AIPlanner - Deep Learning Financial Planner
- * Copyright (C) 2018 Gordon Irlam
+ * Copyright (C) 2018-2019 Gordon Irlam
  *
  * All rights reserved. This program may not be used, copied, modified,
  * or redistributed without permission.
@@ -11,6 +11,11 @@
 
 /* You can add global styles to this file, and also import other style files */
 
+body {
+    background-color: white;
+    color: black;
+}
+
 .error {
     color: red;
 }
@@ -21,6 +26,10 @@
 
 .center, .title {
     text-align: center;
+}
+
+.left {
+    text-align: left;
 }
 
 .right {
@@ -37,6 +46,19 @@
 
 .float-clear {
     clear: both;
+}
+
+.boxed {
+    border: 1px solid black;
+    padding: 5px 10px;
+}
+
+.padded {
+    padding: 10px;
+}
+
+.inline-block {
+    display: inline-block;
 }
 
 .main-button {

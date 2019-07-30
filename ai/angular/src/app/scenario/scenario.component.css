@@ -1,5 +1,5 @@
 /* AIPlanner - Deep Learning Financial Planner
- * Copyright (C) 2018 Gordon Irlam
+ * Copyright (C) 2018-2019 Gordon Irlam
  *
  * All rights reserved. This program may not be used, copied, modified,
  * or redistributed without permission.
@@ -27,6 +27,20 @@
     text-align: left;
 }
 
+.le .pad {
+    padding: 0 10px;
+}
+
+.disabled {
+    background: #e9e9e9;
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    opacity: 0.5;
+}
+
 .defined-benefits, .defined-contributions {
     padding: 10px 50px;
 }
@@ -46,7 +60,7 @@
     padding: 5px;
 }
 
-.income, .crra {
+.income {
     padding: 10px 0;
 }
 
@@ -57,13 +71,6 @@
     text-align: center;
 }
 
-.crra table, .crra td {
-    border: 0px;
-    border-collapse: collapse;
-    padding: 0px 10px;
-    text-align: center;
-}
-
 .crra {
     text-align: center;
 }
@@ -71,4 +78,25 @@
 .crra table {
     display: inline-block;
     border: 1px solid black;
+    border-collapse: collapse;
+    padding: 0px 0px;
+}
+
+.crra .first td {
+    padding-top: 5px;
+}
+
+.crra td {
+    border: 0px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.crra .selected {
+    background-color: black;
+    color: white;
+}
+
+.indent {
+    padding-left: 10em;
 }

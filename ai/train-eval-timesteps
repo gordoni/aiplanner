@@ -104,14 +104,14 @@ wait
 #     cd $EPISODE
 #     CP=`expr $NATS / 4000`
 #     TS=`expr $NATS + $ANNEAL`
-#     train_scenarios generic $UNIT $GAMMA $EPISODE "$SCENARIO_ARGS --train-restore-dir=../single-no_spias-gamma6-nonanneal/aiplanner.gamma6.tf --train-restore-checkpoint-name=checkpoint_$CP --train-num-timesteps=$TS --train-anneal-num-timesteps=$ANNEAL"
+#     train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$SCENARIO_ARGS --train-restore-dir=../single-no_spias-gamma6-nonanneal/aiplanner.gamma6.tf --train-restore-checkpoint-name=checkpoint_$CP --train-num-timesteps=$TS --train-anneal-num-timesteps=$ANNEAL"
 #     cd ..
 # done
 # wait
 # for ANNEAL in $ANNEALS; do
 #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-nonanneal$NATS-anneal$ANNEAL"
 #     cd $EPISODE
-#     eval_scenarios generic $UNIT $GAMMA $EPISODE "$SCENARIO_ARGS"
+#     eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$SCENARIO_ARGS"
 #     cd ..
 # done
 # wait
@@ -122,14 +122,14 @@ wait
 #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-anneal$ANNEAL-timesteps$TS"
 #     mkdir -p $EPISODE
 #     cd $EPISODE
-#     train_scenarios specific $UNIT $GAMMA $EPISODE "$SCENARIO_ARGS --train-anneal-num-timesteps=$ANNEAL --train-num-timesteps=$TS"
+#     train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$SCENARIO_ARGS --train-anneal-num-timesteps=$ANNEAL --train-num-timesteps=$TS"
 #     cd ..
 # done
 # wait
 # for ANNEAL in $ANNEALS; do
 #     EPISODE="$UNIT-$SPIAS-gamma$GAMMA-anneal$ANNEAL-timesteps$TS"
 #     cd $EPISODE
-#     eval_scenarios specific $UNIT $GAMMA $EPISODE "$SCENARIO_ARGS"
+#     eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$SCENARIO_ARGS"
 #     cd ..
 # done
 # wait

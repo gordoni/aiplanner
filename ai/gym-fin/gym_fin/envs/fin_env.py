@@ -965,7 +965,8 @@ class FinEnv(Env):
         return {
             'consume': consume / self.params.time_period,
             'asset_allocation': asset_allocation,
-            'retirement_contribution': retirement_contribution / self.params.time_period,
+            'retirement_contribution': retirement_contribution / self.params.time_period \
+                if self.income_preretirement_years > 0 or self.income_preretirement_years2 > 0 else None,
             'real_spias_purchase': real_tax_free_spias + real_tax_deferred_spias + real_taxable_spias if self.params.real_spias and self.spias else None,
             'nominal_spias_purchase':
                 nominal_tax_free_spias + nominal_tax_deferred_spias + nominal_taxable_spias if self.params.nominal_spias and self.spias else None,

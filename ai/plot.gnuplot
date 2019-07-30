@@ -36,7 +36,7 @@ set output prefix . "-paths-consume.svg"
 plot prefix . "-paths.csv" using 1:($2 == 1 ? $6 : NaN) with lines title 'couple' lt 2, \
     prefix . "-paths.csv" using 1:($3 == 1 ? $6 : NaN) with lines title 'single' lt 1
 
-set ylabel "non-investment income"
+set ylabel "net guaranteed income"
 set yrange [0:*]
 set format y "%.1s%c"
 set output prefix . "-paths-gi.svg"

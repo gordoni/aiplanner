@@ -20,8 +20,7 @@ import { ApiService } from '../api.service';
 })
 export class ResultComponent implements OnInit {
 
-  @Input() public aid: string;
-  @Input() public gamma: string;
+  @Input() public result: object;
 
   public errorMessage = null;
   public results: object = null;
@@ -30,10 +29,10 @@ export class ResultComponent implements OnInit {
     private apiService: ApiService
   ) {}
 
-  doResults(results) {
+  doResult(result) {
 
     var asset_classes = '';
-    for (let ac of results.asset_classes) {
+    for (let ac of result.asset_classes) {
       if (asset_classes)
         asset_classes += '/';
       if (ac.endsWith('bonds'))
@@ -44,7 +43,7 @@ export class ResultComponent implements OnInit {
 
     var asset_allocation = '';
     var carry = 0;
-    for (let alloc of results.asset_allocation) {
+    for (let alloc of result.asset_allocation) {
       if (asset_allocation)
         asset_allocation += '/';
       var val = Math.round(alloc * 100 + carry);
@@ -54,18 +53,23 @@ export class ResultComponent implements OnInit {
 
     this.results = {
       'error': null,
-      'consume': Math.round(results.consume),
-      'nominal_spias_purchase': results.nominal_spias_purchase == null ? null : Math.round(results.nominal_spias_purchase),
+      'gamma': result.rra,
+      'consume': Math.round(result.consume),
+      'real_spias_purchase': result.real_spias_purchase == null ? null : Math.round(result.real_spias_purchase),
+      'nominal_spias_purchase': result.nominal_spias_purchase == null ? null : Math.round(result.nominal_spias_purchase),
       'asset_classes': asset_classes,
       'asset_allocation': asset_allocation,
-      'real_bonds_duration': Math.round(results.real_bonds_duration),
-      'retirement_contribution': Math.round(results.retirement_contribution),
-      'ce': Math.round(results.ce),
-      'ce_stderr': Math.round(results.ce_stderr),
-      'consume_preretirement': Math.round(results.consume_preretirement),
-      'consume_preretirement_ppf': Math.round(results.consume_preretirement_ppf * 100),
-      'ce_low': Math.round(results.ce10),
-      'data_dir': '/api/data/' + results.aid,
+      'real_bonds_duration': result.real_bonds_duration == null ? null : Math.round(result.real_bonds_duration),
+      'nominal_bonds_duration': result.nominal_bonds_duration == null ? null : Math.round(result.nominal_bonds_duration),
+      'retirement_contribution': result.retirement_contribution == null ? null : Math.round(result.retirement_contribution),
+      'ce': Math.round(result.ce),
+      'ce_stderr': Math.round(result.ce_stderr),
+      'consume_mean': Math.round(result.consume_mean),
+      'consume_stdev': Math.round(result.consume_stdev),
+      'consume_preretirement': Math.round(result.consume_preretirement),
+      'consume_preretirement_ppf': Math.round(result.consume_preretirement_ppf * 100),
+      'consume_low': Math.round(result.consume10),
+      'data_dir': '/api/data/' + result.aid,
     }
   }
 
@@ -73,16 +77,8 @@ export class ResultComponent implements OnInit {
     this.results = {'error': error.message};
   }
 
-  ngOnChanges() {
-    this.errorMessage = null;
-    this.results = null;
-    this.apiService.get('result/' + this.id + '/' + this.gamma, {}).subscribe(
-      results => this.doResults(results),
-      error => this.handleError(error)
-    );
-  }
-
   ngOnInit() {
+    this.doResult(this.result);
   }
 
 }

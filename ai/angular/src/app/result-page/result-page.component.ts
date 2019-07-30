@@ -1,3 +1,14 @@
+/* AIPlanner - Deep Learning Financial Planner
+ * Copyright (C) 2018-2019 Gordon Irlam
+ *
+ * All rights reserved. This program may not be used, copied, modified,
+ * or redistributed without permission.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.
+ */
+
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -8,7 +19,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 })
 export class ResultPageComponent implements OnInit {
 
-  public id: string;
+  public aid: string;
   private sub: any;
 
   constructor(
@@ -23,7 +34,7 @@ export class ResultPageComponent implements OnInit {
 
   ngOnInit() {
     this.sub = this.route.params.subscribe(
-      params => { this.id = params['id']; }
+      params => { this.aid = params['aid']; }
     );
   }
 

@@ -1,7 +1,7 @@
 <!--
 
 AIPlanner - Deep Learning Financial Planner
-Copyright (C) 2018 Gordon Irlam
+Copyright (C) 2018-2019 Gordon Irlam
 
 All rights reserved. This program may not be used, copied, modified,
 or redistributed without permission.
@@ -16,16 +16,21 @@ PURPOSE.
 
   <div *ngIf="step == 0">
     <h1 class="title">AIPlanner</h1>
+    <div class="small-font center">
+      [<a href="about" (click)="gotoStep(200)">About</a>]
+      [<a href="privacy_policy" (click)="gotoStep(300)">Privacy Policy</a>]
+      [<a href="sign_up" (click)="gotoStep(100)">Sign Up</a>]
+    </div>
     <p>
       AIPlaner uses <a href="http://ssrn.com/abstract=3201703" target="_blank" rel="noopener">deep
-      reinforcement learning</a> to compute the optimal spending and
-      investment strategy to maximize lifetime well-being.
+      reinforcement learning</a> to compute a near optimal spending
+      and investment strategy so as to maximize lifetime well-being.
     </p>
     <div class="center small-font" *ngIf="!doneMarket">
       [Loading market data]
     </div>
     <div class="main-button" *ngIf="doneMarket">
-      <button class="button" (click)="nextStep()">Start</button>
+      <button type="button" class="button" (click)="nextStep()">Start</button>
     </div>
     <div class="error" *ngIf="errorMessage">
       {{errorMessage}}
@@ -34,7 +39,13 @@ PURPOSE.
 
   <div *ngIf="step == 1">
     <h1 class="title">Longevity</h1>
-    <table>
+    <table class="le">
+      <tr>
+        <td> </td>
+        <td> </td>
+        <td class="center"> Age </td>
+        <td class="center" colspan=2> Health </td>
+      </tr>
       <tr>
         <td> Self: </td>
         <td>
@@ -43,12 +54,12 @@ PURPOSE.
             <option value="female">female</option>
           </select>
         </td>
-        <td> Age: <input type="number" class="small-numeric" required name="scenarioAge" #scenarioAge="ngModel" [(ngModel)]="age">
+        <td class="pad"> <input type="number" class="small-numeric" required name="scenarioAge" #scenarioAge="ngModel" [(ngModel)]="age">
           <div class="error" *ngIf="scenarioAge.invalid">
             Invalid numeric value.
           </div>
         </td>
-        <td> Health: {{health("self")}} - </td>
+        <td> {{health("self")}}&nbsp;- </td>
         <td> extra life expectancy of
           <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional" #scenarioLifeExpectancyAdditional="ngModel" [(ngModel)]="lifeExpectancyAdditional"> years
           <div class="error" *ngIf="scenarioLifeExpectancyAdditional.invalid">
@@ -65,12 +76,12 @@ PURPOSE.
             <option value="female">female</option>
           </select>
         </td>
-        <td *ngIf="sex2 != 'none'"> Age: <input type="number" class="small-numeric" required name="scenarioAge2" #scenarioAge2="ngModel" [(ngModel)]="age2">
+        <td class="pad" *ngIf="sex2 != 'none'"> <input type="number" class="small-numeric" required name="scenarioAge2" #scenarioAge2="ngModel" [(ngModel)]="age2">
           <div class="error" *ngIf="scenarioAge2.invalid">
             Invalid numeric value.
           </div>
         </td>
-        <td *ngIf="sex2 != 'none'"> Health: {{health("spouse")}} - </td>
+        <td *ngIf="sex2 != 'none'"> {{health("spouse")}}&nbsp;- </td>
         <td *ngIf="sex2 != 'none'"> extra life expectancy of
           <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional2" #scenarioLifeExpectancyAdditional2="ngModel" [(ngModel)]="lifeExpectancyAdditional2"> years
           <div class="error" *ngIf="scenarioLifeExpectancyAdditional2.invalid">
@@ -81,8 +92,8 @@ PURPOSE.
     </table>
   </div>
 
-  <div *ngIf="step == 2">
-    <h1 class="title">Financial position</h1>
+  <div  *ngIf="step == 2">
+    <h1 class="title">Assets</h1>
     Existing defined benefits:
     <br>
     <div class="defined-benefits">
@@ -102,23 +113,23 @@ PURPOSE.
           <td class="right"> {{db.age}} </td>
           <td class="right"> {{db.amount()}} </td>
           <td>
-            <button (click)="doEdit(db)" [disabled]="editDefinedBenefit">Edit</button>
-            <button (click)="deleteDb(i)" [disabled]="editDefinedBenefit">Delete</button>
+            <button type="button" (click)="doEdit(db)" [disabled]="editDefinedBenefit">Edit</button>
+            <button type="button" (click)="deleteDb(definedBenefits, i)" [disabled]="editDefinedBenefit">Delete</button>
           </td>
         </tr>
         <tr *ngIf="definedBenefits.length > 0">
           <td> Total </td>
           <td> - </td>
           <td class="right"> - </td>
-          <td class="right"> {{dbTotal()}} </td>
+          <td class="right"> {{dbTotal(definedBenefits)}} </td>
           <td> </td>
         </tr>
       </table>
       <div class="buttons">
-        <button (click)="addDb('Social Security')" [disabled]="editDefinedBenefit">add Social Security</button>
-        <button (click)="addDb('Pension')" [disabled]="editDefinedBenefit">add Pension</button>
-        <button (click)="addDb('Income Annuity')" [disabled]="editDefinedBenefit">add Income Annuity</button>
-        <button (click)="addDb('Reverse Mortgage')" [disabled]="editDefinedBenefit">add Reverse Mortgage</button>
+        <button type="button" (click)="addDb('Social Security')" [disabled]="editDefinedBenefit">add Social Security</button>
+        <button type="button" (click)="addDb('Pension')" [disabled]="editDefinedBenefit">add Pension</button>
+        <button type="button" (click)="addDb('Income Annuity')" [disabled]="editDefinedBenefit">add Income Annuity</button>
+        <button type="button" (click)="addDb('Reverse Mortgage')" [disabled]="editDefinedBenefit">add Reverse Mortgage</button>
       </div>
     </div>
     <div *ngIf="editDefinedBenefit">
@@ -126,58 +137,98 @@ PURPOSE.
     </div>
     <br>
     <br>
-    Existing defined contribution savings:
-    <div class="defined-contributions">
-      <table>
-        <tr>
-          <td> Traditional IRA/401(k) </td>
-          <td> <input type="number" class="numeric" required name="scenarioPTaxDeferred" #scenarioPTaxDeferred="ngModel" [(ngModel)]="pTaxDeferred">
-            <div class="error" *ngIf="scenarioPTaxDeferred.invalid">
-              Invalid numeric value.
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td> Roth IRA/401(k) </td>
-          <td> <input type="number" class="numeric" required name="scenarioPTaxFree" #scenarioPTaxFree="ngModel" [(ngModel)]="pTaxFree">
-            <div class="error" *ngIf="scenarioPTaxFree.invalid">
-              Invalid numeric value.
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td> Taxable bonds </td>
-          <td> <input type="number" class="numeric" required name="scenarioPTaxableBonds" #scenarioPTaxableBonds="ngModel" [(ngModel)]="pTaxableBonds">
-            <div class="error" *ngIf="scenarioPTaxableBonds.invalid">
-              Invalid numeric value.
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td> Taxable stocks </td>
-          <td> <input type="number" class="numeric" required name="scenarioPTaxableStocks" #scenarioPTaxableStocks="ngModel" [(ngModel)]="pTaxableStocks">
-            <div class="error" *ngIf="scenarioPTaxableStocks.invalid">
-              Invalid numeric value.
-            </div>
-          </td>
-          <td>
-            Stocks cost basis:
-            <input type="number" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
-            <div class="error" *ngIf="scenarioPTaxableStocksBasis.invalid">
-              Invalid numeric value.
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td> Total </td>
-          <td class="right"> {{pTotal()}} </td>
-        </tr>
-      </table>
+    <div *ngIf="!editDefinedBenefit">
+      Existing defined contribution savings:
+      <div class="defined-contributions">
+        <table>
+          <tr>
+            <td> Traditional IRA/401(k) </td>
+            <td> <input type="number" class="numeric" required name="scenarioPTaxDeferred" #scenarioPTaxDeferred="ngModel" [(ngModel)]="pTaxDeferred">
+              <div class="error" *ngIf="scenarioPTaxDeferred.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td> Roth IRA/401(k) </td>
+            <td> <input type="number" class="numeric" required name="scenarioPTaxFree" #scenarioPTaxFree="ngModel" [(ngModel)]="pTaxFree">
+              <div class="error" *ngIf="scenarioPTaxFree.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td> Taxable bonds </td>
+            <td> <input type="number" class="numeric" required name="scenarioPTaxableBonds" #scenarioPTaxableBonds="ngModel" [(ngModel)]="pTaxableBonds">
+              <div class="error" *ngIf="scenarioPTaxableBonds.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td> Taxable stocks </td>
+            <td> <input type="number" class="numeric" required name="scenarioPTaxableStocks" #scenarioPTaxableStocks="ngModel" [(ngModel)]="pTaxableStocks">
+              <div class="error" *ngIf="scenarioPTaxableStocks.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
+            <td>
+              Stocks cost basis:
+              <input type="number" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
+              <div class="error" *ngIf="scenarioPTaxableStocksBasis.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td> Total </td>
+            <td class="right"> {{pTotal()}} </td>
+          </tr>
+        </table>
+      </div>
     </div>
   </div>
 
-  <div *ngIf="step == 3">
-    <h1 class="title">Financial goals</h1>
+  <div  *ngIf="step == 3">
+    <h1 class="title">Liabilities</h1>
+    <div class="defined-benefits">
+      <table>
+        <tr *ngIf="definedLiabilities.length > 0; else elseBlock">
+          <td> </td>
+          <td> Years </td>
+          <td> Annual amount </td>
+        </tr>
+        <ng-template #elseBlock>
+          <td> None </td>
+        </ng-template>
+        <tr class="db-container" *ngFor="let db of definedLiabilities; index as i">
+          <td> {{db.type}} </td>
+          <td class="right"> {{db.years}} </td>
+          <td class="right"> {{db.amount()}} </td>
+          <td>
+            <button type="button" (click)="doEdit(db)" [disabled]="editDefinedBenefit">Edit</button>
+            <button type="button" (click)="deleteDb(definedLiabilities, i)" [disabled]="editDefinedBenefit">Delete</button>
+          </td>
+        </tr>
+        <tr *ngIf="definedLiabilities.length > 0">
+          <td> Total </td>
+          <td class="right"> - </td>
+          <td class="right"> {{dbTotal(definedLiabilities)}} </td>
+          <td> </td>
+        </tr>
+      </table>
+      <div class="buttons">
+        <button type="button" (click)="addDb('Mortgage')" [disabled]="editDefinedBenefit">add Mortgage</button>
+        <button type="button" (click)="addDb('Child/Dependent')" [disabled]="editDefinedBenefit">add Child/Dependent</button>
+      </div>
+    </div>
+    <div *ngIf="editDefinedBenefit">
+      <app-liability [data]="editDefinedBenefit"></app-liability>
+    </div>
+  </div>
+
+  <div *ngIf="step == 4">
+    <h1 class="title">Goals</h1>
     Age of self at retirement: <input type="number" class="small-numeric" required name="scenarioAgeRetirement" #scenarioAgeRetirement="ngModel" [(ngModel)]="ageRetirement">
       <div class="error" *ngIf="scenarioAgeRetirement.invalid">
         Invalid numeric value.
@@ -222,18 +273,19 @@ PURPOSE.
     Allow income annuity purchases: <input type="checkbox" name="spias" [(ngModel)]="spias">
   </div>
 
-  <div *ngIf="step == 4">
+  <div *ngIf="step == 5">
     <h1 class="title">Market conditions</h1>
     <p>
       It is often a judgement call as to whether the market is fairly
       valued. You can enter your personal opinion here. The rest of
       this section should normally be left alone.
     </p>
-    Current stock market price relative to fair price:
+    Current stock market price above fair price (negative if below):
       <input type="number" class="small-numeric" required name="scenarioStocksPricePct" #scenarioStocksPricePct="ngModel" [(ngModel)]="stocksPricePct">%
       <div class="error" *ngIf="scenarioStocksPricePct.invalid">
         Invalid numeric value.
       </div>
+    <br>
     <br>
     Current short term interest rate:
       <input type="number" class="small-numeric" required name="scenarioNominalShortRatePct" #scenarioNominalShortRatePct="ngModel" [(ngModel)]="nominalShortRatePct">%
@@ -248,18 +300,18 @@ PURPOSE.
       </div>
   </div>
 
-  <div *ngIf="1 <= step && step < 5">
+  <div *ngIf="1 <= step && step < 6 && !editDefinedBenefit">
     <div class="main-button float-left">
-      <button class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
+      <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
     </div>
     <div class="main-button float-right">
-      <button class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !dbValid()">Next</button>
+      <button type="button" class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !dbValid()">Next</button>
     </div>
     <div class="float-clear">
     </div>
   </div>
 
-  <div *ngIf="step == 5">
+  <div *ngIf="step == 6">
     <h1 class="title">Well being</h1>
     <p>
       The coefficient of relative risk aversion determines how much
@@ -305,20 +357,15 @@ PURPOSE.
       <img src="assets/risk_aversion_pdf.svg" width="75%"/>
     </div>
     <br>
-    <div>
-      Coefficient of relative risk aversion: <select type="select" name="scenarioGamma" [(ngModel)]="gamma">
-        <option value="6">6.0</option>
-        <option value="3">3.0</option>
-        <option value="1.5">1.5</option>
-        <option value="1">1.0</option>
-      </select>
-    </div>
+    When you submit your scenario the near optimal strategy for
+    several different RRA coefficients will be simulated and you can
+    choose the one you prefer.
     <div>
       <div class="main-button float-left">
-        <button class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
+        <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
       </div>
       <div class="main-button float-right">
-        <button class="button" (click)="calculate()" [disabled]="!scenarioForm.valid || !dbValid()">Submit</button>
+        <button type="button" class="button" (click)="calculate()" [disabled]="!scenarioForm.valid || !dbValid()">Submit</button>
       </div>
       <div class="float-clear">
       </div>
@@ -328,7 +375,7 @@ PURPOSE.
     </div>
   </div>
 
-  <div *ngIf="step == 6">
+  <div *ngIf="step == 7">
     <h1 class="title">Calculating</h1>
     <p>
       Please wait 20 seconds.
@@ -338,36 +385,57 @@ PURPOSE.
 
 </form>
 
-<div *ngIf="step == 7">
-  <div class="small-font">
-    [Temporary <a href="/result/{{result_aid}}/{{gamma}}" target="_blank" rel="noopener">link</a>]
+<div class="center" *ngIf="step == 8">
+  <h1 class="title">Results</h1>
+  <span class="small-font">[<a href="sign_up" (click)="gotoStep(100)">Sign Up</a>]</span>
+  <br>
+  <br>
+  <div class="crra">
+    <table>
+      <tr class="first">
+        <td> RRA coefficient </td>
+        <td> Extra consumption </td>
+        <td> Consumption uncertainty </td>
+      </tr>
+      <tr class="{{(i == activeResultIndex) ? 'selected' : ''}}" *ngFor="let result of results; index as i">
+        <td> {{result.rra}} </td>
+        <td> {{result.consume_extra}}</td>
+        <td> {{result.consume_uncertainty}}</td>
+      </tr>
+    </table>
   </div>
-  <app-result [aid]="result_aid" [gamma]="gamma"></app-result>
-  <div class="main-button">
-    <button class="button" (click)="firstStep()">Edit</button>
+  <div>
+    <div class="main-button float-left">
+      <button type="button" class="button" (click)="risk(-1)" [disabled]="activeResultIndex <= 0">Less Risk</button>
+    </div>
+    <div class="main-button float-right">
+      <button type="button" class="button" (click)="risk(1)" [disabled]="activeResultIndex >= results.length - 1">More Risk</button>
+    </div>
+    <div class="main-button">
+      <button type="button" class="button" (click)="gotoStep(1)">Edit Scenario</button>
+    </div>
+    <div class="float-clear">
+    </div>
   </div>
-  <div class="main-button">
-    <button class="button" (click)="nextStep()">Sign Up</button>
+  <div *ngFor="let result of results; index as i">
+  <app-result [result]="result" *ngIf="i == activeResultIndex"></app-result>
   </div>
 </div>
 
-<form class="scenario-form" #subscribeForm="ngForm">
-  <div *ngIf="step == 8">
+<div *ngIf="step == 100">
+  <form class="scenario-form" #subscribeForm="ngForm">
     <h1 class="title">Sign Up</h1>
     <p>
       Enter your email address to receive AIPlanner news and related
       musings, approximately 1 message every few months.
     </p>
     Your email address: <input type="email" class="text" pattern=".+@.+" required name="email" #scenarioEmail="ngModel" [(ngModel)]="email">
-    <div class="error" *ngIf="scenarioEmail.invalid && scenarioEmail.dirty">
-      Invalid email address.
-    </div>
     <div>
-      <div class="main-button float-left">
-        <button class="button" (click)="prevStep()">Back</button>
+      <div type="button" class="main-button float-left">
+        <button type="button" class="button" (click)="gotoStep(0)">Home</button>
       </div>
-      <div class="main-button float-right">
-        <button class="button" (click)="subscribe()" [disabled]="!subscribeForm.valid">Subscribe</button>
+      <div type="submit" class="main-button float-right">
+        <button type="submit" class="button" (click)="subscribe()" [disabled]="!subscribeForm.valid">Sign Up</button>
       </div>
       <div class="float-clear">
       </div>
@@ -375,15 +443,105 @@ PURPOSE.
     <div class="error" *ngIf="errorMessage">
       {{errorMessage}}
     </div>
-  </div>
-</form>
+  </form>
+</div>
 
-<div class="scenario-form" *ngIf="step == 9">
-  <h1 class="title">Subscription Successful</h1>
+<div class="scenario-form" *ngIf="step == 101">
+  <h1 class="title">Subscribed</h1>
   <p>
-    Thank you.
+    Thank you!
   </p>
   <div class="main-button">
-    <button class="button" (click)="firstStep()">Edit</button>
+    <button type="button" class="button" (click)="gotoStep(0)">Home</button>
+  </div>
+</div>
+
+<div class="left" *ngIf="step == 200">
+  <h1 class="title">About</h1>
+  <p>
+    AIPlaner was developed by Gordon Irlam.
+  </p>
+  <p>
+    AIPlanner is Copyright &copy; 2018-2019 Gordon Irlam. It is
+    provided without any warranty; without even the implied warranty
+    of merchantability or fitness for a particular purpose.
+  </p>
+  <p>
+    I may be contacted as follows:
+  <p class="indent">
+    <a href="mailto:gordoni@gordoni.com">gordoni@gordoni.com</a>
+  </p>
+  <p class="indent">
+    Gordon Irlam
+    <br>
+    23 Coronado Ave
+    <br>
+    Los Altos, CA 94022
+    <br>
+    United States
+  </p>
+  <div class="main-button">
+    <button type="button" class="button" (click)="gotoStep(0)">Home</button>
+  </div>
+</div>
+
+<div class="left" *ngIf="step == 300">
+  <h1 class="title">Privacy Policy</h1>
+  <p>
+    Version 1, July 30, 2019.
+  </p>
+  <p>
+    By using our site, you consent to our privacy policy.
+  </p>
+  <p>
+    We collect information such as sex, age, financial position,
+    financial goals, pages visited, referrer, browser version, and IP
+    address.
+  </p>
+  <p>
+    We collect this information so we may provide you with financial
+    information, for debugging, and to analyze the utilization of this
+    site.
+  </p>
+  <p>
+    We normally delete any personal and financial information we
+    collect after 1 day, although we may retain it for a longer period
+    in the event of an apparent system problem. Website request logs
+    are also maintained for a longer period of time.
+  </p>
+  <p>
+    It isn't required, but if you explicitly provide your email
+    address for us to contact you, we may use your email for marketing
+    and business development. You may request removal from any list at
+    any time.
+    </p>
+  <p>
+    We do not willingly share any of the information we collect with
+    third parties, apart from requests from law enforcement, in
+    compliance with a court order or other due legal process, or in
+    response to malicious acts.
+  </p>
+  <p>
+    We do not use cookies.
+  </p>
+  <p>
+    We do not use an analytics package to track users of this website.
+  </p>
+  <p>
+    We make use of computers located at Amazon Web Services, a hosting
+    provider. Amazon Web Services publishes information on the
+    <a href="https://aws.amazon.com/security/" target="_blank" rel="noopener">security
+    of its systems</a>.
+  </p>
+  <p>
+    If we change our privacy policy, we will provide notice by
+    updating this page.
+  </p>
+  <p>
+    Information on contacting us regarding this policy is provided
+    <a href="privacy_policy" (click)="gotoStep(200)">here</a>.
+  </p>
+  <div class="main-button">
+    <button type="button" class="button" (click)="gotoStep(0)">Home</button>
   </div>
 </div>

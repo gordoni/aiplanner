@@ -1,7 +1,7 @@
 <!--
 
 AIPlanner - Deep Learning Financial Planner
-Copyright (C) 2018 Gordon Irlam
+Copyright (C) 2018-2019 Gordon Irlam
 
 All rights reserved. This program may not be used, copied, modified,
 or redistributed without permission.
@@ -98,10 +98,10 @@ PURPOSE.
     </div>
 
     <div class="cancel">
-      <button (click)="cancel()">Cancel</button>
+      <button type="button" (click)="cancel()">Cancel</button>
     </div>
     <div class="done">
-      <button (click)="done()" [disabled]="!dbForm.valid">Done</button>
+      <button type="button" (click)="done()" [disabled]="!dbForm.valid">Done</button>
     </div>
     <div class="clear">
     </div>

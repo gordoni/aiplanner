@@ -39,6 +39,8 @@ export class ScenarioComponent implements OnInit {
   public definedBenefits: DefinedBenefit[] = [];
   public editDefinedBenefit: DefinedBenefit = null;
 
+  public definedLiabilities: DefinedBenefit[] = [];
+
   public pTaxDeferred: number = 0;
   public pTaxFree: number = 0;
   public pTaxableBonds: number = 0;
@@ -53,14 +55,10 @@ export class ScenarioComponent implements OnInit {
   public have401k2: boolean = true;
   public spias: boolean = true;
 
-  public gamma: string = "3";
-
-  private result_aid: string = null;
+  private results: any[];
+  private activeResultIndex: number = 0;
 
   public email: string = null
-  public name: string = "My Results";
-
-  public run_queue_length = null;
 
   public errorMessage: string = null;
 
@@ -80,10 +78,10 @@ export class ScenarioComponent implements OnInit {
       return "Poor";
   }
 
-  dbTotal() {
+  dbTotal(definedItems) {
 
     var tot: number = 0;
-    for (let db of this.definedBenefits) {
+    for (let db of definedItems) {
       tot += db.amount()
     }
 
@@ -99,8 +97,8 @@ export class ScenarioComponent implements OnInit {
     return false;
   }
 
-  deleteDb(index) {
-    this.definedBenefits.splice(index, 1);
+  deleteDb(definedBenefits, index) {
+    definedBenefits.splice(index, 1);
     return false;
   }
 
@@ -126,22 +124,22 @@ export class ScenarioComponent implements OnInit {
     return false;
   }
 
-  firstStep() {
-    this.result_id = null;
+  gotoStep(step) {
     this.errorMessage = null;
-    this.step = 1;
+    this.step = step;
+    if (step == 0 && !this.doneMarket)
+      this.market();
     return false;
   }
 
-  calculate() {
-
-    var dbs = [];
-    for (let db of this.definedBenefits) {
+  addToDbs(dbs, definedItems, benefit) {
+    for (let db of definedItems) {
         dbs.push({
-            'type': db.type,
+            'type': db.type.toLowerCase().replace(/ /, '_'),
             'owner': db.owner,
-            'age': db.age,
-            'payout': db.amount(),
+            'start': db.age,
+            'final': db.years == null ? null : db.age + db.years - 1,
+            'payout': benefit ? db.amount() : - db.amount(),
             'inflation_adjustment': db.inflationAdjustment,
             'joint': db.joint,
             'payout_fraction': db.payoutFractionPct / 100,
@@ -150,18 +148,23 @@ export class ScenarioComponent implements OnInit {
             'exclusion_amount': db.exclusionAmount(),
         });
     }
+  }
+
+  calculate() {
+
+    var dbs = [];
+    this.addToDbs(dbs, this.definedBenefits, true);
+    this.addToDbs(dbs, this.definedLiabilities, false);
 
     var scenario = {
-        'stocks_price': this.stocksPricePct / 100,
-        'real_short_rate_type': 'value',
-        'real_short_rate_value': (1 + Number(this.nominalShortRatePct) / 100) / (1 + Number(this.inflationShortRatePct) / 100) - 1,
-        'inflation_short_rate_type': 'value',
-        'inflation_short_rate_value': Number(this.inflationShortRatePct) / 100,
+        'stocks_price': 1 + this.stocksPricePct / 100,
+        'real_short_rate': (1 + Number(this.nominalShortRatePct) / 100) / (1 + Number(this.inflationShortRatePct) / 100) - 1,
+        'inflation_short_rate': Number(this.inflationShortRatePct) / 100,
 
         'sex': this.sex,
         'sex2': (this.sex2 == 'none') ? null : this.sex2,
-        'age_start': this.age,
-        'age_start2': (this.sex2 == 'none') ? 0 : this.age2,
+        'age': this.age,
+        'age2': (this.sex2 == 'none') ? 0 : this.age2,
         'life_expectancy_additional': this.lifeExpectancyAdditional,
         'life_expectancy_additional2': (this.sex2 == 'none') ? 0 : this.lifeExpectancyAdditional2,
 
@@ -179,13 +182,14 @@ export class ScenarioComponent implements OnInit {
         'consume_preretirement': this.consumePreretirement,
         'have_401k': this.have401k,
         'have_401k2': this.have401k2,
+
         'spias': this.spias,
 
-        'gamma': Number(this.gamma),
+        'rra': null,
     };
 
     this.errorMessage = null;
-    this.apiService.post('scenario', scenario).subscribe(
+    this.apiService.post('evaluate', [scenario]).subscribe(
       results => this.doResults(results),
       error => this.handleError(error)
     );
@@ -195,9 +199,30 @@ export class ScenarioComponent implements OnInit {
   }
 
   doResults(results) {
-     this.result_aid = results[0]['aid'];
-     this.step++;
+     if (results.error) {
+       this.errorMessage = results.error;
+       this.step--;
+     } else {
+       this.results = results.result[0].sort(function(a, b) {return a - b});
+       this.results.forEach((result, i) => {
+         if (result.error) {
+           this.errorMessage = 'Server error: ' + result.error + ' (aid: ' + result.aid + ')';
+         }
+         result.consume_extra = (i == 0) ? 0 : Math.round((result.consume_mean / this.results[0].consume_mean - 1) * 100) + '%';
+         result.consume_uncertainty = Math.round((result.consume_stdev / result.consume_mean) * 100) + '%';
+       })
+       if (this.errorMessage) {
+         this.step--;
+         return
+       }
+       this.activeResultIndex = 0;
+       this.step++;
+     }
    }
+
+  risk(adjust) {
+    this.activeResultIndex += adjust;
+  }
 
   subscribe() {
     var request = {
@@ -206,20 +231,34 @@ export class ScenarioComponent implements OnInit {
     this.errorMessage = null;
     this.apiService.post('subscribe', request).subscribe(
       results => this.doSubscribe(results),
-      error => this.handleError(error)
+      error => this.subscribeError(error)
     );
-    this.step++;
 
     return false;
   }
 
   doSubscribe(results) {
-    this.step++;
+    if (results.error) {
+       this.errorMessage = results.error;
+    } else {
+      this.step++;
+    }
+  }
+
+  subscribeError(error) {
+    this.errorMessage = error.message;
+  }
+
+  market() {
+    this.apiService.get('market', {}).subscribe(
+      results => this.doMarket(results),
+      error => this.handleError(error)
+    );
   }
 
   doMarket(results) {
-    this.stocksPricePct = Math.round(results.stocks_price * 100);
-    this.nominalShortRatePct = (results.nominal_short_rate - 1) * 100).toFixed(1);
+    this.stocksPricePct = Math.round((results.stocks_price - 1) * 100);
+    this.nominalShortRatePct = (results.nominal_short_rate * 100).toFixed(1);
     this.inflationShortRatePct = (((1 + results.nominal_short_rate) / (1 + results.real_short_rate) - 1) * 100).toFixed(1);
     this.doneMarket = true;
   }
@@ -231,10 +270,7 @@ export class ScenarioComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.apiService.get('market', {}).subscribe(
-      results => this.doMarket(results),
-      error => this.handleError(error)
-    );
+    this.market();
     var db: DefinedBenefit = new DefinedBenefit(this, 'Social Security', null);
     db.amountPer = 1500;
     this.definedBenefits.push(db);

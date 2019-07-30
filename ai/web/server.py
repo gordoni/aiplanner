@@ -23,6 +23,7 @@ from shlex import quote
 from shutil import rmtree
 from socketserver import ThreadingMixIn
 from subprocess import PIPE, Popen
+from sys import stdout
 from tempfile import mkdtemp
 from threading import BoundedSemaphore, Thread
 from time import sleep, time
@@ -173,6 +174,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                     return
 
                 data = self.rfile.read(content_length)
+                if self.server.args.verbose:
+                    stdout.buffer.write(data + '\n'.encode('utf-8'))
+                    stdout.flush()
                 try:
                     request = loads(data.decode('utf-8'))
                 except ValueError:
@@ -202,6 +206,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                     data = (dumps(result, indent = 4, sort_keys = True) + '\n').encode('utf-8')
 
                 if data != None:
+                    if self.server.args.verbose:
+                        stdout.buffer.write(data)
+                        stdout.flush()
                     self.send_result(data, 'application/json', headers = headers)
                     return
 
@@ -239,7 +246,6 @@ class RequestHandler(BaseHTTPRequestHandler):
             elif self.path == '/api/market':
 
                 data = self.market()
-                print(data)
                 data['real_short_rate'] = exp(data['real_short_rate']) - 1
                 data['nominal_short_rate'] = exp(data['nominal_short_rate']) - 1
                 data, filetype = (dumps(data, indent = 4, sort_keys = True) + '\n').encode('utf-8'), 'application/json'
@@ -265,7 +271,6 @@ class RequestHandler(BaseHTTPRequestHandler):
             filename = 'aiplanner.json'
         path = aid + '/seed_all/' + filename
 
-        print(path)
         filetype = None
         if '..' not in path:
             if filename.endswith('.json'):
@@ -381,7 +386,11 @@ class RequestHandler(BaseHTTPRequestHandler):
             timeout = None
 
         market = self.market()
+        if not isinstance(api_data, list):
+            return '{"error": "Method body must be a JSON array."}\n'.encode('utf-8')
         for api_scenario in api_data:
+            if not isinstance(api_scenario, dict):
+                return '{"error": "Method body must be an array of JSON objects."}\n'.encode('utf-8')
             if not 'stocks_volatility' in api_scenario:
                 api_scenario['stocks_volatility'] = market['stocks_volatility']
             if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:
@@ -412,11 +421,13 @@ class RequestHandler(BaseHTTPRequestHandler):
         gammas = api_data[0].get('rra')
         if gammas == None:
             gammas = self.server.args.gamma
+        if not isinstance(gammas, list):
+            return {'error': 'Expecting list of rra values.'}
         if len(gammas) != len(set(gammas)):
-            return {'error': 'Duplicate gamma values.'}
+            return {'error': 'Duplicate rra values.'}
         for gamma in gammas:
             if not gamma in self.server.evaluate_daemons.keys():
-                return {'error': 'Unsupported gamma value: ' + str(gamma)}
+                return {'error': 'Unsupported rra value: ' + str(gamma)}
         eval_num_timesteps = api_data[0].get('num_evaluate_timesteps')
         if not isinstance(eval_num_timesteps, (int, float)):
             eval_num_timesteps = self.server.args.eval_num_timesteps
@@ -471,7 +482,6 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         email = request.get('email', '')
         email = email.strip()
-        print(email)
         if not match('^\S+@\S+\.\S+$', email):
             return {'error': 'Invalid email address.'}
 
@@ -508,9 +518,10 @@ Subject: ''' + self.server.args.project_name + ': subscribe' + '''
 
 class PurgeQueueServer:
 
-    def __init__(self, args):
+    def __init__(self, args, log):
 
         self.args = args
+        self.log = log
 
     def serve_forever(self):
 
@@ -550,7 +561,8 @@ class PurgeQueueServer:
 
             if free < self.args.purge_keep_free or ifree < self.args.purge_keep_free or age >= purge_time:
                 def rmfail(function, path, excinfo):
-                    print('Error purging file:', path)
+                    self.log.write(('Error purging file: ' + path).encode('utf-8'))
+                    self.log.flush()
                 assert dir.startswith(expanduser(self.args.root_dir))
                 assert dir.startswith(self.args.results_dir)
                 rmtree(dir, onerror = rmfail)
@@ -569,7 +581,8 @@ def main():
     parser.add_argument('--serve', action = 'append', default = [], choices=('http', 'purgeq'))
     parser.add_argument('--root-dir', default = '~/aiplanner-data')
 
-    # HTTP options.
+    # HTTP server options.
+    boolean_flag(parser, 'verbose', default = False)
     parser.add_argument('--host', default = 'localhost')
     parser.add_argument('--port', type = int, default = 3000)
     boolean_flag(parser, 'infer', default = True) # Support /api/infer.
@@ -616,7 +629,7 @@ def main():
         Thread(target = server.serve_forever, daemon = True).start()
 
     if not args.serve or 'purgeq' in args.serve:
-        server = PurgeQueueServer(args)
+        server = PurgeQueueServer(args, log)
         Thread(target = server.serve_forever, daemon = True).start()
 
     try:

@@ -13,7 +13,7 @@ import json
 import os
 import time
 from itertools import chain
-from math import sqrt
+from math import ceil, sqrt
 from random import getstate, seed, setstate
 from statistics import mean, stdev, StatisticsError
 
@@ -108,10 +108,9 @@ class Evaluator(object):
         self.pdf_buckets = pdf_buckets
 
         if self.remote_evaluators:
-            self.eval_num_timesteps /= len(self.remote_evaluators)
-            self.num_trace_episodes /= len(self.remote_evaluators)
+            self.eval_num_timesteps = ceil(self.eval_num_timesteps / len(self.remote_evaluators))
+            self.num_trace_episodes = ceil(self.num_trace_episodes / len(self.remote_evaluators))
 
-        print(self.num_trace_episodes)
         self.trace = []
         self.episode = {}
 
@@ -315,22 +314,23 @@ class Evaluator(object):
 
         pdf_bucket_weights = []
         w_tot = 0
-        ce_step = max((ce_max - ce_min) / self.pdf_buckets, ce_max * 1e-15)
-        u_floor = float('inf')
-        u_ceil = utility.utility(ce_min - ce_min * 1e-15)
+        ce_step = max((ce_max - ce_min) / self.pdf_buckets, ce_max /  1000)
+        c_ceil = 0
+        u_ceil = float('-inf')
         for r, w in zip(*self.rewards):
             while r >= u_ceil:
-                if len(pdf_bucket_weights) >= self.pdf_buckets:
+                if c_ceil >= ce_max:
                     break
                 pdf_bucket_weights.append(0)
                 u_floor = u_ceil
-                u_ceil = utility.utility(ce_min + ce_step * len(pdf_bucket_weights))
+                c_ceil += ce_step
+                u_ceil = utility.utility(c_ceil)
             if u_floor <= r < u_ceil:
                 pdf_bucket_weights[-1] += w
             w_tot += w
         consume_pdf = {'consume': [], 'weight': []}
         for bucket, w in enumerate(pdf_bucket_weights):
-            unit_consume = ce_min + ce_step * (bucket + 0.5)
+            unit_consume = ce_step * (bucket + 0.5)
             if env.sex2 != None:
                 unit_consume *= 1 + env.params.consume_additional
             try:

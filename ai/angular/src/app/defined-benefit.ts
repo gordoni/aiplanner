@@ -1,5 +1,5 @@
 /* AIPlanner - Deep Learning Financial Planner
- * Copyright (C) 2018 Gordon Irlam
+ * Copyright (C) 2018-2019 Gordon Irlam
  *
  * All rights reserved. This program may not be used, copied, modified,
  * or redistributed without permission.
@@ -19,6 +19,7 @@ export class DefinedBenefit {
   public amountPer: number = 0;
   public per: string = 'month';
   public age: number;
+  public years: number;
   public inflationAdjustment: any;
   public joint: boolean;
   public payoutFractionPct: number;
@@ -30,10 +31,11 @@ export class DefinedBenefit {
     this.scenario = scenario;
     this.type = type;
     this.age = type == 'Social Security' ? 66 : age;
-    this.inflationAdjustment = ['Social Security', 'Pension'].includes(type) ? "cpi" : 0;
+    this.years = ['Mortgage', 'Child/Dependent'].includes(type) ? 20 : null;
+    this.inflationAdjustment = ['Social Security', 'Pension', 'Child/Dependent'].includes(type) ? "cpi" : 0;
     this.joint = ['Income Annuity', 'Reverse Mortgage'].includes(type);
-    this.payoutFractionPct = type == 'Income Annuity' ? 70 : (type == 'Reverse Mortgage' ? 100 : 0);
-    this.sourceOfFunds = type == 'Income Annuity' ? 'tax_deferred' : (type == 'Reverse Mortgage' ? 'tax_free' : 'taxable');
+    this.payoutFractionPct = type == 'Income Annuity' ? 60 : (['Reverse Mortgage', 'Mortgage', 'Child/Dependent'].includes(type) ? 100 : 0);
+    this.sourceOfFunds = type == 'Income Annuity' ? 'tax_deferred' : (['Reverse Mortgage', 'Mortgage', 'Child/Dependent'].includes(type) ? 'tax_free' : 'taxable');
   }
 
   amount() {

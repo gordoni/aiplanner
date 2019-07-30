@@ -37,10 +37,12 @@ class DefinedBenefit:
 
         return spia
 
-    def add(self, owner = 'self', start = None, final = float('inf'), premium = None, payout = None, adjustment = 0,
+    def add(self, owner = 'self', start = None, final = None, premium = None, payout = None, adjustment = 0,
             joint = False, payout_fraction = 0, exclusion_period = 0, exclusion_amount = 0, delay_calcs = False):
 
         assert (premium == None) != (payout == None)
+        if final == None:
+            final = float('inf')
 
         owner_age = self.env.age if owner == 'self' else self.env.age2
         if start == None:

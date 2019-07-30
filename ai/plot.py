@@ -120,7 +120,7 @@ def main():
     if real_spias != None or nominal_spias != None:
         wealth_classes.append('new income annuities')
         wealth_allocation.append(spias)
-    wealth_classes.append('pre-retirement contributions')
+    wealth_classes.append('pre-retire contributions')
     wealth_allocation.append(pv_preretirement)
     wealth_classes.append('future taxes')
     wealth_allocation.append(taxes)
