@@ -23,7 +23,7 @@ def bar(fname, names, values, colors, *, barwidth = 130, height = 400, font_size
 
     padding = barwidth / 10
     width = len(names) * barwidth + 2 * padding
-    label_height = (max(len(name.split(' ')) for name in names) + 0.5) * font_size
+    label_height = (max(len(name.split('\n')) for name in names) + 0.5) * font_size
     s = '''<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="{x_origin} {y_origin} {width} {height}">
 '''.format(x_origin = - padding, y_origin = 0.0, width = width, height = height)
@@ -35,7 +35,7 @@ def bar(fname, names, values, colors, *, barwidth = 130, height = 400, font_size
 '''.format(x = x, y = y, barwidth = barwidth, barheight = barheight, color = color)
         x += barwidth / 2
         y = height - label_height + font_size
-        for n in name.split(' '):
+        for n in name.split('\n'):
             s += '''<text x="{x}" y="{y}" text-anchor="middle" font-size="{font_size}">{n}</text>
 '''.format(x = x, y = y, font_size = font_size, n = n)
             y += font_size
@@ -44,7 +44,7 @@ def bar(fname, names, values, colors, *, barwidth = 130, height = 400, font_size
     with open(fname, 'w') as f:
         f.write(s)
 
-def pie(fname, names, values, colors, *, r = 100, font_size = 16, font_width = 10, de_minus = 0.005):
+def pie(fname, names, values, colors, *, r = 200, font_size = 20, font_width = 14, de_minus = 0.005):
 
     assert all(value >= 0 for value in values)
     raw_tot = sum(values)
@@ -108,21 +108,18 @@ def main():
     p = interp['portfolio_wealth']
     real_spias = interp['real_spias_purchase']
     nominal_spias = interp['nominal_spias_purchase']
-    spias = 0
-    if real_spias:
-        spias += real_spias
-    if nominal_spias:
-        spias += nominal_spias
+    spias = interp['pv_spias_purchase']
     wealth_classes = list(asset_classes)
     wealth_allocation = list(aa * (p - spias) for aa in asset_allocation)
-    wealth_classes.append('guaranteed income')
+    wealth_classes.append('guaranteed\nincome')
     wealth_allocation.append(gi)
     if real_spias != None or nominal_spias != None:
-        wealth_classes.append('new income annuities')
+        wealth_classes.append('new\nincome\nannuities')
         wealth_allocation.append(spias)
-    wealth_classes.append('pre-retire contributions')
-    wealth_allocation.append(pv_preretirement)
-    wealth_classes.append('future taxes')
+    if pv_preretirement != None:
+        wealth_classes.append('pre-\nretirement\ncontributions')
+        wealth_allocation.append(pv_preretirement)
+    wealth_classes.append('set aside\nfor future\ntaxes')
     wealth_allocation.append(taxes)
     wealth_allocation = list(max(w, 0) for w in wealth_allocation)
 

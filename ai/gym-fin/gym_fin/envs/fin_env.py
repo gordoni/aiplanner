@@ -388,7 +388,7 @@ class FinEnv(Env):
 
         return db
 
-    def add_db(self, type = 'income_annuity', owner = 'self', start = None, final = float('inf'), probability = 1, premium = None, payout = None,
+    def add_db(self, type = 'income_annuity', owner = 'self', start = None, end = None, probability = 1, premium = None, payout = None,
         inflation_adjustment = 'cpi', joint = False, payout_fraction = 0, source_of_funds = 'tax_deferred', exclusion_period = 0, exclusion_amount = 0,
         delay_calcs = False):
 
@@ -408,7 +408,7 @@ class FinEnv(Env):
         real = inflation_adjustment == 'cpi'
         db = self.get_db(type, real, source_of_funds)
         adjustment = 0 if inflation_adjustment == 'cpi' else inflation_adjustment
-        db.add(owner = owner, start = start, final = final, premium = premium, payout = payout, adjustment = adjustment,
+        db.add(owner = owner, start = start, end = end, premium = premium, payout = payout, adjustment = adjustment,
             joint = joint, payout_fraction = payout_fraction,
             exclusion_period = exclusion_period, exclusion_amount = exclusion_amount, delay_calcs = delay_calcs)
 
@@ -897,13 +897,18 @@ class FinEnv(Env):
         assert 0 <= consume_fraction_period <= 1
 
         p = self.p_plus_income
+        if p < 0:
+            self.warn('Portfolio became negative')
+            p = 0
         if self.age < self.age_retirement:
-            consume = min(p, self.consume_preretirement * self.params.time_period)
+            consume = self.consume_preretirement * self.params.time_period
         else:
             #consume_annual = consume_fraction * p
             consume = consume_fraction_period * p
         p -= consume
-        assert p >= 0
+        if p < 0:
+            self.warn('Consumption made portfolio negative')
+            p = 0
 
         p_taxable = self.p_taxable + (p - self.p_sum())
         p_tax_deferred = self.p_tax_deferred + min(p_taxable, 0)
@@ -962,14 +967,16 @@ class FinEnv(Env):
             real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias = \
             self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
 
+        real_spias_purchase = real_tax_free_spias + real_tax_deferred_spias + real_taxable_spias
+        nominal_spias_purchase = nominal_tax_free_spias + nominal_tax_deferred_spias + nominal_taxable_spias
         return {
             'consume': consume / self.params.time_period,
             'asset_allocation': asset_allocation,
             'retirement_contribution': retirement_contribution / self.params.time_period \
                 if self.income_preretirement_years > 0 or self.income_preretirement_years2 > 0 else None,
-            'real_spias_purchase': real_tax_free_spias + real_tax_deferred_spias + real_taxable_spias if self.params.real_spias and self.spias else None,
-            'nominal_spias_purchase':
-                nominal_tax_free_spias + nominal_tax_deferred_spias + nominal_taxable_spias if self.params.nominal_spias and self.spias else None,
+            'real_spias_purchase': real_spias_purchase if self.params.real_spias and self.spias else None,
+            'nominal_spias_purchase': nominal_spias_purchase if self.params.nominal_spias and self.spias else None,
+            'pv_spias_purchase': real_spias_purchase + nominal_spias_purchase - (real_tax_deferred_spias + nominal_tax_deferred_spias) * self.regular_tax_rate,
             'real_bonds_duration': real_bonds_duration,
             'nominal_bonds_duration': nominal_bonds_duration,
         }
@@ -1006,7 +1013,7 @@ class FinEnv(Env):
                 exclusion_amount = taxable_spias / exclusion_period
             else:
                 exclusion_amount = taxable_spias * inflation_adjustment / ((1 + inflation_adjustment) ** exclusion_period - 1)
-            self.add_db(owner = owner, start = start, final = float('inf'), premium = taxable_spias, inflation_adjustment = inflation_adjustment, joint = True, \
+            self.add_db(owner = owner, start = start, premium = taxable_spias, inflation_adjustment = inflation_adjustment, joint = True, \
                 payout_fraction = payout_fraction, source_of_funds = 'taxable', exclusion_period = exclusion_period, exclusion_amount = exclusion_amount)
 
     def allocate_aa(self, p_tax_free, p_tax_deferred, p_taxable, asset_allocation):
@@ -1383,17 +1390,16 @@ class FinEnv(Env):
         regular_tax, capital_gains_tax = \
             self.taxes.calculate_taxes(pv_regular_income / total_years, pv_social_security / total_years, pv_capital_gains / total_years, not self.couple)
                 # Assumes income smoothing.
-                # Fails to take into consideration lack of inflation adjustment for Social Security taxable brackets.
         pv_regular_tax = total_years * regular_tax
         pv_capital_gains_tax = total_years * capital_gains_tax
         self.pv_taxes = pv_regular_tax + pv_capital_gains_tax
 
         try:
-            self.p_wealth -= self.wealth['tax_deferred'] / pv_regular_income * pv_regular_tax
-            self.raw_preretirement_income_wealth -= (self.pv_preretirement_income['tax_deferred'] + self.pv_preretirement_income['taxable']) / pv_regular_income * \
-                pv_regular_tax
+            self.regular_tax_rate = pv_regular_tax / pv_regular_income
         except ZeroDivisionError:
-            pass
+            self.regular_tax_rate = 0
+        self.p_wealth -= self.regular_tax_rate * self.wealth['tax_deferred']
+        self.raw_preretirement_income_wealth -= self.regular_tax_rate * (self.pv_preretirement_income['tax_deferred'] + self.pv_preretirement_income['taxable'])
         self.p_wealth = max(0, self.p_wealth - pv_capital_gains_tax)
         self.preretirement_income_wealth = max(0, self.raw_preretirement_income_wealth)
         self.net_wealth = max(0, self.net_wealth_pretax - self.pv_taxes)

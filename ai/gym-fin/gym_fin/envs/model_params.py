@@ -174,15 +174,15 @@ class ModelParams(object):
             #     "type": Type of defined benefit or expense. Arbitrary string. Default "income_annuity".
             #         A value of "social_security" is taxed specially.
             #     "owner": Value "self" or "spouse". Default "self".
-            #     "start": Starting age in years of owner for benefit. Default starts when first individual reaches age_retirement.
-            #     "final": Inclusive ending age in years of owner for benfit. Default infinity.
+            #     "start": Starting age in years of owner for benefit. Default of null starts when first individual reaches age_retirement.
+            #     "end": Exclusive ending age in years of owner for benfit. Default of null for no end.
             #     "probability": Probability of this defined benefit being present. Used when generating different random scenarios. Default 1.
             #     "payout": Annual guaranteed income payout amount in today's dollars. Negative for expenses.
             #         May be a array of length 2 for stochastic log range. Required.
             #     "inflation_adjustment": Annual inflation increase fraction from today, or "cpi" for adjustment to reflect the CPI value. Default "cpi".
             #     "joint": true if payout drops on death of either self or spouse, false if value payout drops only on death of owner. Default false.
             #     "payout_fraction": payout fraction when joint contingency occurs. Zero specifies a single annuity with no joint contingency. Default 0.
-            #     "source_of_funds": "taxable", "tax_deferred", or "tax_free". Default "tax_deferred".
+            #     "source_of_funds": "taxable", "tax_deferred", or "tax_free". Tax treatment of benefit or expense. Default "tax_deferred".
             #         Regular expenses should be "tax_free". A tax deductable expense can be either "tax_deferred" or "taxable".
             #     "exclusion_period": If taxable, tax exclusion period in years from starting age. Default 0.
             #     "exclusion_amount": If taxable, annual tax exclusion amount of payout in today's dollars. Not adjusted for inflation. Default 0.

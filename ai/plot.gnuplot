@@ -1,7 +1,7 @@
 #!/usr/bin/gnuplot
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -11,7 +11,7 @@
 # PURPOSE.
 
 set datafile separator ","
-set terminal svg dynamic size 800,400
+set terminal svg dynamic size 800,400 name "AIPlanner"
 
 prefix = "`echo $AIPLANNER_FILE_PREFIX`"
 if (prefix eq "") prefix = "aiplanner"
@@ -26,7 +26,7 @@ set output prefix . "-consume-pdf.svg"
 plot prefix . "-consume-pdf.csv" with lines notitle lt 2
 set ytics
 
-set xlabel "age"
+set xlabel "your age"
 set xrange [*:100]
 
 set ylabel "annual consumption"

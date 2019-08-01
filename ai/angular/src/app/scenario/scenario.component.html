@@ -12,7 +12,7 @@ PURPOSE.
 
 -->
 
-<form class="scenario-form" #scenarioForm="ngForm">
+<form class="scenario" #scenarioForm="ngForm">
 
   <div *ngIf="step == 0">
     <h1 class="title">AIPlanner</h1>
@@ -41,14 +41,14 @@ PURPOSE.
     <h1 class="title">Longevity</h1>
     <table class="le">
       <tr>
-        <td> </td>
-        <td> </td>
+        <td class="noborderleft noborderright nobordertop"> </td>
+        <td class="noborderleft nobordertop"> </td>
         <td class="center"> Age </td>
         <td class="center" colspan=2> Health </td>
       </tr>
       <tr>
-        <td> Self: </td>
-        <td>
+        <td class="noborderright"> Self: </td>
+        <td class="noborderleft">
           <select type="select" name="scenarioSex" [(ngModel)]="sex">
             <option value="male">male</option>
             <option value="female">female</option>
@@ -59,8 +59,8 @@ PURPOSE.
             Invalid numeric value.
           </div>
         </td>
-        <td> {{health("self")}}&nbsp;- </td>
-        <td> extra life expectancy of
+        <td class="noborderright"> {{health("self")}} </td>
+        <td class="noborderleft"> -&nbsp;extra life expectancy of
           <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional" #scenarioLifeExpectancyAdditional="ngModel" [(ngModel)]="lifeExpectancyAdditional"> years
           <div class="error" *ngIf="scenarioLifeExpectancyAdditional.invalid">
             Invalid numeric value.
@@ -68,50 +68,64 @@ PURPOSE.
         </td>
       </tr>
       <tr>
-        <td> Spouse: </td>
-        <td>
+        <td class="noborderright"> Spouse: </td>
+        <td class="noborderleft">
           <select type="select" name="scenarioSex2" [(ngModel)]="sex2">
             <option value="none">none</option>
             <option value="male">male</option>
             <option value="female">female</option>
           </select>
         </td>
-        <td class="pad" *ngIf="sex2 != 'none'"> <input type="number" class="small-numeric" required name="scenarioAge2" #scenarioAge2="ngModel" [(ngModel)]="age2">
-          <div class="error" *ngIf="scenarioAge2.invalid">
-            Invalid numeric value.
+        <td class="pad">
+          <div *ngIf="sex2 != 'none'">
+            <input type="number" class="small-numeric" required name="scenarioAge2" #scenarioAge2="ngModel" [(ngModel)]="age2">
+            <div class="error" *ngIf="scenarioAge2.invalid">
+              Invalid numeric value.
+            </div>
           </div>
         </td>
-        <td *ngIf="sex2 != 'none'"> {{health("spouse")}}&nbsp;- </td>
-        <td *ngIf="sex2 != 'none'"> extra life expectancy of
-          <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional2" #scenarioLifeExpectancyAdditional2="ngModel" [(ngModel)]="lifeExpectancyAdditional2"> years
-          <div class="error" *ngIf="scenarioLifeExpectancyAdditional2.invalid">
-            Invalid numeric value.
+        <td class="noborderright"> <div *ngIf="sex2 != 'none'"> {{health("spouse")}} </div> </td>
+        <td class="noborderleft">
+          <div *ngIf="sex2 != 'none'"> -&nbsp;extra life expectancy of
+            <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional2" #scenarioLifeExpectancyAdditional2="ngModel" [(ngModel)]="lifeExpectancyAdditional2"> years
+            <div class="error" *ngIf="scenarioLifeExpectancyAdditional2.invalid">
+              Invalid numeric value.
+            </div>
           </div>
         </td>
       </tr>
     </table>
+    <div class="error" *ngIf="!healthValid()">
+      <br>
+      Additional life expectancy is too large: Enter only any
+      additional years you expect you might live beyond the life
+      expectancy for your age. Do not include any padding. We will
+      take into consideration the possibilities you live longer or
+      shorter than expected.
+    </div>
   </div>
 
-  <div  *ngIf="step == 2">
+  <div class="center" *ngIf="step == 2">
     <h1 class="title">Assets</h1>
-    Existing defined benefits:
+    Existing defined benefits
     <br>
     <div class="defined-benefits">
       <table>
         <tr *ngIf="definedBenefits.length > 0; else elseBlock">
-          <td> </td>
+          <td class="nobordertop noborderleft"> </td>
           <td> Owner </td>
-          <td> Starting age </td>
+          <td> Owner's starting age </td>
           <td> Annual amount </td>
+          <td> </td>
         </tr>
         <ng-template #elseBlock>
           <td> None </td>
         </ng-template>
         <tr class="db-container" *ngFor="let db of definedBenefits; index as i">
-          <td> {{db.type}} </td>
-          <td> {{db.owner}} </td>
+          <td class="left"> {{db.type}} </td>
+          <td class="center"> {{db.owner}} </td>
           <td class="right"> {{db.age}} </td>
-          <td class="right"> {{db.amount()}} </td>
+          <td class="right"> {{comma(db.amount())}} </td>
           <td>
             <button type="button" (click)="doEdit(db)" [disabled]="editDefinedBenefit">Edit</button>
             <button type="button" (click)="deleteDb(definedBenefits, i)" [disabled]="editDefinedBenefit">Delete</button>
@@ -129,6 +143,7 @@ PURPOSE.
         <button type="button" (click)="addDb('Social Security')" [disabled]="editDefinedBenefit">add Social Security</button>
         <button type="button" (click)="addDb('Pension')" [disabled]="editDefinedBenefit">add Pension</button>
         <button type="button" (click)="addDb('Income Annuity')" [disabled]="editDefinedBenefit">add Income Annuity</button>
+        <button type="button" (click)="addDb('Home Proceeds')" [disabled]="editDefinedBenefit">add Home Proceeds</button>
         <button type="button" (click)="addDb('Reverse Mortgage')" [disabled]="editDefinedBenefit">add Reverse Mortgage</button>
       </div>
     </div>
@@ -138,11 +153,11 @@ PURPOSE.
     <br>
     <br>
     <div *ngIf="!editDefinedBenefit">
-      Existing defined contribution savings:
+      Existing defined contribution savings
       <div class="defined-contributions">
         <table>
           <tr>
-            <td> Traditional IRA/401(k) </td>
+            <td class="left"> Traditional IRA/401(k): </td>
             <td> <input type="number" class="numeric" required name="scenarioPTaxDeferred" #scenarioPTaxDeferred="ngModel" [(ngModel)]="pTaxDeferred">
               <div class="error" *ngIf="scenarioPTaxDeferred.invalid">
                 Invalid numeric value.
@@ -150,7 +165,7 @@ PURPOSE.
             </td>
           </tr>
           <tr>
-            <td> Roth IRA/401(k) </td>
+            <td class="left"> Roth IRA/401(k): </td>
             <td> <input type="number" class="numeric" required name="scenarioPTaxFree" #scenarioPTaxFree="ngModel" [(ngModel)]="pTaxFree">
               <div class="error" *ngIf="scenarioPTaxFree.invalid">
                 Invalid numeric value.
@@ -158,7 +173,7 @@ PURPOSE.
             </td>
           </tr>
           <tr>
-            <td> Taxable bonds </td>
+            <td class="left"> Taxable bonds: </td>
             <td> <input type="number" class="numeric" required name="scenarioPTaxableBonds" #scenarioPTaxableBonds="ngModel" [(ngModel)]="pTaxableBonds">
               <div class="error" *ngIf="scenarioPTaxableBonds.invalid">
                 Invalid numeric value.
@@ -166,7 +181,7 @@ PURPOSE.
             </td>
           </tr>
           <tr>
-            <td> Taxable stocks </td>
+            <td class="left"> Taxable stocks: </td>
             <td> <input type="number" class="numeric" required name="scenarioPTaxableStocks" #scenarioPTaxableStocks="ngModel" [(ngModel)]="pTaxableStocks">
               <div class="error" *ngIf="scenarioPTaxableStocks.invalid">
                 Invalid numeric value.
@@ -181,7 +196,7 @@ PURPOSE.
             </td>
           </tr>
           <tr>
-            <td> Total </td>
+            <td class="center"> Total </td>
             <td class="right"> {{pTotal()}} </td>
           </tr>
         </table>
@@ -194,9 +209,10 @@ PURPOSE.
     <div class="defined-benefits">
       <table>
         <tr *ngIf="definedLiabilities.length > 0; else elseBlock">
-          <td> </td>
+          <td class="nobordertop noborderleft"> </td>
           <td> Years </td>
           <td> Annual amount </td>
+          <td> </td>
         </tr>
         <ng-template #elseBlock>
           <td> None </td>
@@ -204,7 +220,7 @@ PURPOSE.
         <tr class="db-container" *ngFor="let db of definedLiabilities; index as i">
           <td> {{db.type}} </td>
           <td class="right"> {{db.years}} </td>
-          <td class="right"> {{db.amount()}} </td>
+          <td class="right"> {{comma(db.amount())}} </td>
           <td>
             <button type="button" (click)="doEdit(db)" [disabled]="editDefinedBenefit">Edit</button>
             <button type="button" (click)="deleteDb(definedLiabilities, i)" [disabled]="editDefinedBenefit">Delete</button>
@@ -220,6 +236,8 @@ PURPOSE.
       <div class="buttons">
         <button type="button" (click)="addDb('Mortgage')" [disabled]="editDefinedBenefit">add Mortgage</button>
         <button type="button" (click)="addDb('Child/Dependent')" [disabled]="editDefinedBenefit">add Child/Dependent</button>
+        <button type="button" (click)="addDb('College Expenses')" [disabled]="editDefinedBenefit">add College Expenses</button>
+        <button type="button" (click)="addDb('Home Purchase')" [disabled]="editDefinedBenefit">add Home Purchase</button>
       </div>
     </div>
     <div *ngIf="editDefinedBenefit">
@@ -227,7 +245,7 @@ PURPOSE.
     </div>
   </div>
 
-  <div *ngIf="step == 4">
+  <div class="center" *ngIf="step == 4">
     <h1 class="title">Goals</h1>
     Age of self at retirement: <input type="number" class="small-numeric" required name="scenarioAgeRetirement" #scenarioAgeRetirement="ngModel" [(ngModel)]="ageRetirement">
       <div class="error" *ngIf="scenarioAgeRetirement.invalid">
@@ -243,8 +261,9 @@ PURPOSE.
     <div class="income">
       <table>
         <tr>
-          <td> </td>
-          <td> Annual pre-retirement income before tax </td>
+          <td class="nobordertop noborderleft"> </td>
+          <td> Annual pre-retirement wages before income tax </td>
+          <td> Wages end at </td>
           <td> 401(k) plan available </td>
         </tr>
         <tr>
@@ -255,6 +274,19 @@ PURPOSE.
               Invalid numeric value.
             </div>
           </td>
+          <td>
+            <select type="select" name="scenarioIncomePreretirementAgeEndType" [(ngModel)]="incomePreretirementAgeEndType">
+              <option value="retirement">my retirement</option>
+              <option value="age">my age</option>
+            </select>
+            <span *ngIf="incomePreretirementAgeEndType == 'age'">
+              <input type="number" class="small-numeric" required name="scenarioIncomePreretirementAgeEnd" #scenarioIncomePreretirementAgeEnd="ngModel" [(ngModel)]="incomePreretirementAgeEnd">
+              <span class="error" *ngIf="scenarioIncomePreretirementAgeEnd.invalid">
+                <br>
+                Invalid numeric value.
+              </span>
+            </span>
+          </td>
           <td> <input type="checkbox" name="scenarioHave401k" [(ngModel)]="have401k"> </td>
         </tr>
         <tr *ngIf="sex2 != 'none'">
@@ -264,6 +296,19 @@ PURPOSE.
             <div class="error" *ngIf="scenarioIncomePreretirement2.invalid">
               Invalid numeric value.
             </div>
+          </td>
+          <td>
+            <select type="select" name="scenarioIncomePreretirementAgeEnd2Type" [(ngModel)]="incomePreretirementAgeEnd2Type">
+              <option value="retirement">my retirement</option>
+              <option value="age">their age</option>
+            </select>
+            <span *ngIf="incomePreretirementAgeEnd2Type == 'age'">
+              <input type="number" class="small-numeric" required name="scenarioIncomePreretirementAgeEnd2" #scenarioIncomePreretirementAgeEnd2="ngModel" [(ngModel)]="incomePreretirementAgeEnd2">
+              <span class="error" *ngIf="scenarioIncomePreretirementAgeEnd2.invalid">
+                <br>
+                Invalid numeric value.
+              </span>
+            </span>
           </td>
           <td> <input type="checkbox" name="scenarioHave401k2" [(ngModel)]="have401k2"> </td>
         </tr>
@@ -280,32 +325,55 @@ PURPOSE.
       valued. You can enter your personal opinion here. The rest of
       this section should normally be left alone.
     </p>
-    Current stock market price above fair price (negative if below):
-      <input type="number" class="small-numeric" required name="scenarioStocksPricePct" #scenarioStocksPricePct="ngModel" [(ngModel)]="stocksPricePct">%
-      <div class="error" *ngIf="scenarioStocksPricePct.invalid">
-        Invalid numeric value.
-      </div>
-    <br>
-    <br>
-    Current short term interest rate:
-      <input type="number" class="small-numeric" required name="scenarioNominalShortRatePct" #scenarioNominalShortRatePct="ngModel" [(ngModel)]="nominalShortRatePct">%
-      <div class="error" *ngIf="scenarioNominalShortRatePct.invalid">
-        Invalid numeric value.
-      </div>
-    <br>
-    Current break-even inflation rate:
-      <input type="number" class="small-numeric" required name="scenarioInflationShortRatePct" #scenarioInflationShortRatePct="ngModel" [(ngModel)]="inflationShortRatePct">%
-      <div class="error" *ngIf="scenarioInflationShortRatePct.invalid">
-        Invalid numeric value.
-      </div>
+    <div class="market">
+      <table>
+        <tr>
+          <td>
+            Current stock market price above fair price (negative if below):
+          </td>
+          <td>
+            <input type="number" class="small-numeric" required name="scenarioStocksPricePct" #scenarioStocksPricePct="ngModel" [(ngModel)]="stocksPricePct">%
+            <div class="error" *ngIf="scenarioStocksPricePct.invalid">
+              Invalid numeric value.
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td> <br> </td>
+          <td> </td>
+          </tr>
+        <tr>
+          <td>
+            Current short term interest rate:
+          </td>
+          <td>
+            <input type="number" class="small-numeric" required name="scenarioNominalShortRatePct" #scenarioNominalShortRatePct="ngModel" [(ngModel)]="nominalShortRatePct">%
+            <div class="error" *ngIf="scenarioNominalShortRatePct.invalid">
+              Invalid numeric value.
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            Current break-even inflation rate:
+          </td>
+          <td>
+            <input type="number" class="small-numeric" required name="scenarioInflationShortRatePct" #scenarioInflationShortRatePct="ngModel" [(ngModel)]="inflationShortRatePct">%
+            <div class="error" *ngIf="scenarioInflationShortRatePct.invalid">
+              Invalid numeric value.
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
   </div>
 
   <div *ngIf="1 <= step && step < 6 && !editDefinedBenefit">
     <div class="main-button float-left">
-      <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
+      <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !healthValid() || !dbValid()">Back</button>
     </div>
     <div class="main-button float-right">
-      <button type="button" class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !dbValid()">Next</button>
+      <button type="button" class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !healthValid() || !dbValid()">Next</button>
     </div>
     <div class="float-clear">
     </div>
@@ -317,45 +385,58 @@ PURPOSE.
       The coefficient of relative risk aversion determines how much
       risk to take. The lower the coefficient the higher the expected
       consumption, but also the higher the uncertainty in realized
-      consumption. This is illustrated in the table and graph below.
+      consumption. This is hypothetically illustrated in the table and
+      graph below.
     </p>
-    <div class="crra">
-      <table>
-        <tr>
-          <td> RRA coefficient </td>
-          <td> Extra consumption </td>
-          <td> Consumption uncertainty </td>
-        </tr>
-        <tr>
-          <td> &infin; </td>
-          <td> 0 </td>
-          <td> 0 </td>
-        </tr>
-        <tr>
-          <td> 6.0 </td>
-          <td> 1% </td>
-          <td> 4% </td>
-        </tr>
-        <tr>
-          <td> 3.0 </td>
-          <td> 3% </td>
-          <td> 9% </td>
-        </tr>
-        <tr>
-          <td> 1.5 </td>
-          <td> 6% </td>
-          <td> 18% </td>
-        </tr>
-        <tr>
-          <td> 1.0 </td>
-          <td> 10% </td>
-          <td> 29% </td>
-        </tr>
-      </table>
-    </div>
-    <div class="center">
-      <img src="assets/risk_aversion_pdf.svg" width="75%"/>
-    </div>
+    <table class="crra">
+      <tr>
+        <td>
+          <div>
+            <table>
+              <tr>
+                <td class="first"> RRA coefficient </td>
+                <td class="first"> Extra consumption </td>
+                <td class="first"> Consumption uncertainty </td>
+              </tr>
+              <tr>
+                <td> &infin; </td>
+                <td> 0 </td>
+                <td> 0 </td>
+              </tr>
+              <tr>
+                <td> 6.0 </td>
+                <td> 1% </td>
+                <td> 4% </td>
+              </tr>
+              <tr>
+                <td> 3.0 </td>
+                <td> 3% </td>
+                <td> 9% </td>
+              </tr>
+              <tr>
+                <td> 1.5 </td>
+                <td> 6% </td>
+                <td> 18% </td>
+              </tr>
+              <!--
+              <tr>
+                <td> 1.0 </td>
+                <td> 10% </td>
+                <td> 29% </td>
+              </tr>
+              -->
+            </table>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="center">
+            <a href="assets/risk_aversion_pdf.svg" target="_blank" rel="noopener"><img src="assets/risk_aversion_pdf.svg" width="100%"/></a>
+          </div>
+        </td>
+      </tr>
+    </table>
     <br>
     When you submit your scenario the near optimal strategy for
     several different RRA coefficients will be simulated and you can
@@ -375,15 +456,15 @@ PURPOSE.
     </div>
   </div>
 
-  <div *ngIf="step == 7">
-    <h1 class="title">Calculating</h1>
-    <p>
-      Please wait 20 seconds.
-      Do not reload this page.
-    </p>
-  </div>
-
 </form>
+
+<div class="center progress" *ngIf="step == 7">
+  <h1 class="title">Calculating</h1>
+  <p>
+    Please wait 20 seconds.
+    Do not reload this page.
+  </p>
+</div>
 
 <div class="center" *ngIf="step == 8">
   <h1 class="title">Results</h1>
@@ -392,12 +473,12 @@ PURPOSE.
   <br>
   <div class="crra">
     <table>
-      <tr class="first">
-        <td> RRA coefficient </td>
-        <td> Extra consumption </td>
-        <td> Consumption uncertainty </td>
+      <tr>
+        <td class="first"> RRA coefficient </td>
+        <td class="first"> Extra consumption </td>
+        <td class="first"> Consumption uncertainty </td>
       </tr>
-      <tr class="{{(i == activeResultIndex) ? 'selected' : ''}}" *ngFor="let result of results; index as i">
+      <tr class="pointer {{(i == activeResultIndex) ? 'selected' : ''}}" (click)="gotoRisk(i)" *ngFor="let result of results; index as i">
         <td> {{result.rra}} </td>
         <td> {{result.consume_extra}}</td>
         <td> {{result.consume_uncertainty}}</td>
@@ -423,11 +504,11 @@ PURPOSE.
 </div>
 
 <div *ngIf="step == 100">
-  <form class="scenario-form" #subscribeForm="ngForm">
+  <form class="scenario" #subscribeForm="ngForm">
     <h1 class="title">Sign Up</h1>
     <p>
       Enter your email address to receive AIPlanner news and related
-      musings, approximately 1 message every few months.
+      musings, unlikely to be more than 1 message every few months.
     </p>
     Your email address: <input type="email" class="text" pattern=".+@.+" required name="email" #scenarioEmail="ngModel" [(ngModel)]="email">
     <div>
@@ -446,9 +527,9 @@ PURPOSE.
   </form>
 </div>
 
-<div class="scenario-form" *ngIf="step == 101">
+<div class="scenario" *ngIf="step == 101">
   <h1 class="title">Subscribed</h1>
-  <p>
+  <p class="center">
     Thank you!
   </p>
   <div class="main-button">
@@ -456,7 +537,7 @@ PURPOSE.
   </div>
 </div>
 
-<div class="left" *ngIf="step == 200">
+<div class="scenario" *ngIf="step == 200">
   <h1 class="title">About</h1>
   <p>
     AIPlaner was developed by Gordon Irlam.
@@ -480,14 +561,17 @@ PURPOSE.
     <br>
     United States
   </p>
+  <p class="indent">
+    <a href="https://www.gordoni.com/" target="_blank" rel="noopener">www.gordoni.com</a>
+  </p>
   <div class="main-button">
     <button type="button" class="button" (click)="gotoStep(0)">Home</button>
   </div>
 </div>
 
-<div class="left" *ngIf="step == 300">
+<div class="scenario" *ngIf="step == 300">
   <h1 class="title">Privacy Policy</h1>
-  <p>
+  <p class="center">
     Version 1, July 30, 2019.
   </p>
   <p>

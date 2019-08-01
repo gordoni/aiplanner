@@ -14,7 +14,7 @@ from bisect import bisect
 from csv import reader, writer
 from glob import glob
 from json import dumps, loads
-from math import ceil, exp, sqrt
+from math import ceil, exp, isnan, sqrt
 from os import chmod, devnull, environ, getpriority, mkdir, PRIO_PROCESS, setpriority
 from os.path import exists
 from shlex import split
@@ -186,7 +186,8 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
                 except Exception as e:
                     if daemon:
-                        print_exc()
+                        print_exc(file = stderr)
+                        stderr.flush()
                     any_exception = e
                     error_msg = str(e) or e.__class__.__name__ + ' exception encountered.'
                     initial_results = {
@@ -236,7 +237,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                 final_results = dict(results[scenario_num][sub_num], **{
                     'error': None,
                     'ce': res['ce'],
-                    'ce_stderr': res['ce_stderr'],
+                    'ce_stderr': None if isnan(res['ce_stderr']) else res['ce_stderr'],
                     'consume10': res['consume10'],
                     'consume90': res['consume90'],
                     'consume_mean': res['consume_mean'],
@@ -249,7 +250,8 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
             except Exception as e:
                 if daemon:
-                    print_exc()
+                    print_exc(file = stderr)
+                    stderr.flush()
                 any_exception = e
                 error_msg = e.__class__.__name__ + ': ' + (str(e) or 'Exception encountered.')
                 final_results = {
@@ -363,7 +365,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         'rra': env.params.gamma_low,
         'asset_classes': initial_results['asset_allocation'].classes(),
         'asset_allocation': initial_results['asset_allocation'].as_list(),
-        'pv_preretirement_income': env.preretirement_income_wealth,
+        'pv_preretirement_income': env.preretirement_income_wealth if env.income_preretirement_years > 0 or env.income_preretirement_years2 > 0 else None,
         'pv_retired_income': env.retired_income_wealth,
         'pv_future_taxes': env.pv_taxes,
         'portfolio_wealth': env.p_wealth,
@@ -611,7 +613,7 @@ def main():
                         'result': eval_models(eval_model_params, api = api, **args)
                     }
                 except Exception as e:
-                    print_exc()
+                    print_exc(file = stderr)
                     stderr.flush()
                     results = {'error': e.__class__.__name__ + ': ' + (str(e) or 'Exception encountered.')}
                 except SystemExit as e:

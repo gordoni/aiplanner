@@ -17,11 +17,11 @@ export class DefinedBenefit {
   public type: string;
   public owner: string = 'self';
   public amountPer: number = 0;
-  public per: string = 'month';
+  public per: string;
   public age: number;
   public years: number;
   public inflationAdjustment: any;
-  public joint: boolean;
+  public joint: string;
   public payoutFractionPct: number;
   public sourceOfFunds: string;
   public exclusionPeriod: number = 0;
@@ -30,12 +30,16 @@ export class DefinedBenefit {
   constructor(scenario: ScenarioComponent, type: string, age: number) {
     this.scenario = scenario;
     this.type = type;
-    this.age = type == 'Social Security' ? 66 : age;
-    this.years = ['Mortgage', 'Child/Dependent'].includes(type) ? 20 : null;
-    this.inflationAdjustment = ['Social Security', 'Pension', 'Child/Dependent'].includes(type) ? "cpi" : 0;
-    this.joint = ['Income Annuity', 'Reverse Mortgage'].includes(type);
-    this.payoutFractionPct = type == 'Income Annuity' ? 60 : (['Reverse Mortgage', 'Mortgage', 'Child/Dependent'].includes(type) ? 100 : 0);
-    this.sourceOfFunds = type == 'Income Annuity' ? 'tax_deferred' : (['Reverse Mortgage', 'Mortgage', 'Child/Dependent'].includes(type) ? 'tax_free' : 'taxable');
+    this.per = ['Home Proceeds', 'College Expenses', 'Home Purchase'].includes(type) ? 'year' : 'month';
+    this.age = type == 'Social Security' ? 67 : age;
+    this.years = ['Mortgage', 'Child/Dependent'].includes(type) ? 20 : ['College Expenses'].includes(type) ? 4 : ['Home Proceeds', 'Home Purchase'] ? 1 : null;
+    this.inflationAdjustment = ['Social Security', 'Pension', 'Home Proceeds', 'Child/Dependent', 'College Expenses', 'Home Purchase'].includes(type) ? "cpi" :
+        type == 'Income Annuity' ? 0.02 : 0;
+    this.joint = ['Income Annuity', 'Reverse Mortgage'].includes(type) ? 'joint' : (['Pension'].includes(type) ? 'single' : 'survivor');
+    this.payoutFractionPct = ['Pension', 'Income Annuity'].includes(type) ? 60 :
+        (['Reverse Mortgage', 'Home Proceeds', 'Mortgage', 'Child/Dependent', 'College Expenses', 'Home Purchase'].includes(type) ? 100 : 0);
+    this.sourceOfFunds = type == 'Income Annuity' ? 'tax_deferred' :
+        (['Reverse Mortgage', 'Home Proceeds', 'Mortgage', 'Child/Dependent', 'College Expenses', 'Home Purchase'].includes(type) ? 'tax_free' : 'taxable');
   }
 
   amount() {

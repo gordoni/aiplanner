@@ -26,6 +26,8 @@ def parse_api_scenario(api_scenario, *, permissive = False):
             'age_retirement',
             'income_preretirement',
             'income_preretirement2',
+            'income_preretirement_age_end',
+            'income_preretirement_age_end2',
             'consume_preretirement',
             'have_401k',
             'have_401k2',
@@ -59,7 +61,7 @@ def parse_api_scenario(api_scenario, *, permissive = False):
                 'type',
                 'owner',
                 'start',
-                'final',
+                'end',
                 'payout',
                 'inflation_adjustment',
                 'joint',
@@ -75,6 +77,8 @@ def parse_api_scenario(api_scenario, *, permissive = False):
     for name in [
         'sex',
 
+        'income_preretirement_age_end',
+        'income_preretirement_age_end2',
         'consume_preretirement',
 
         'guaranteed_income',

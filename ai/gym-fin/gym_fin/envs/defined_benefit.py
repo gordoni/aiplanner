@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -8,7 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-from math import ceil, floor
+from math import floor
 
 from spia import IncomeAnnuity, LifeTable
 
@@ -37,12 +37,12 @@ class DefinedBenefit:
 
         return spia
 
-    def add(self, owner = 'self', start = None, final = None, premium = None, payout = None, adjustment = 0,
+    def add(self, owner = 'self', start = None, end = None, premium = None, payout = None, adjustment = 0,
             joint = False, payout_fraction = 0, exclusion_period = 0, exclusion_amount = 0, delay_calcs = False):
 
         assert (premium == None) != (payout == None)
-        if final == None:
-            final = float('inf')
+        if end == None:
+            end = float('inf')
 
         owner_age = self.env.age if owner == 'self' else self.env.age2
         if start == None:
@@ -60,7 +60,7 @@ class DefinedBenefit:
                 pass
             else:
                 payout = self.env.log_uniform(payout_low, payout_high)
-        end = final - owner_age
+        end -= owner_age
 
         if not self.real:
             payout *= self.env.cpi
@@ -106,8 +106,8 @@ class DefinedBenefit:
 
         #print('_add_sched:', owner, start, end, payout, joint, payout_fraction, adjustment)
 
-        start = ceil(max(start / self.env.params.time_period, 0))
-        end = floor(end / self.env.params.time_period + 1) if end != float('inf') else int(1e10)
+        start = max(floor(start / self.env.params.time_period + 0.5), 0)
+        end = floor(end / self.env.params.time_period + 0.5) - 1 if end != float('inf') else int(1e10)
         payout /= self.env.params.time_period
 
         contingent2 = owner == 'spouse'

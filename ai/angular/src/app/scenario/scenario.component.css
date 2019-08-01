@@ -21,13 +21,13 @@
     width: 20em;
 }
 
-.scenario-form {
+.scenario {
     margin: auto;
     width: 85%;
     text-align: left;
 }
 
-.le .pad {
+.pad {
     padding: 0 10px;
 }
 
@@ -41,37 +41,81 @@
     opacity: 0.5;
 }
 
-.defined-benefits, .defined-contributions {
-    padding: 10px 50px;
+.le .noborderleft, .defined-benefits .noborderleft, .income .noborderleft {
+    border-left: 0px;
 }
 
-.defined-benefits table, .defined-benefits td {
-    border: 1px solid black;
+.le .noborderright {
+    border-right: 0px;
+    padding-right: 0px;
+}
+
+.le .nobordertop, .defined-benefits .nobordertop, .income .nobordertop {
+    border-top: 0px;
+}
+
+.le {
+    margin: auto;
     border-collapse: collapse;
+}
+
+.le td {
+    border: 1px solid black;
+    padding: 5px;
+}
+
+.defined-benefits, .defined-contributions {
+    padding: 5px 0px;
+}
+
+.defined-benefits table {
+    margin: auto;
+    border-collapse: collapse;
+}
+
+.defined-benefits td {
+    border: 1px solid black;
     padding: 5px;
 }
 
 .buttons {
-    padding: 10px 0px;
+    text-align: center;
+    padding: 5px 0px;
 }
 
 .defined-contributions table {
+    margin: auto;
     border: 1px solid black;
     padding: 5px;
 }
 
 .income {
-    padding: 10px 0;
+    padding: 5px 0;
 }
 
-.income table, .income td {
-    border: 1px solid black;
+.income table {
+    margin: auto;
     border-collapse: collapse;
-    padding: 5px 10px;
+}
+
+.income td {
+    border: 1px solid black;
+    padding: 5px;
     text-align: center;
 }
 
+.market table {
+    margin: auto;
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+
+.market td {
+    padding: 5px;
+}
+
 .crra {
+    margin: auto;
     text-align: center;
 }
 
@@ -82,7 +126,7 @@
     padding: 0px 0px;
 }
 
-.crra .first td {
+.crra .first {
     padding-top: 5px;
 }
 
@@ -97,6 +141,17 @@
     color: white;
 }
 
+.progress {
+    cursor: progress;
+    position: fixed;
+    width: 100%;
+    height: 100vh;
+}
+
+.pointer {
+    cursor: default;
+}
+
 .indent {
-    padding-left: 10em;
+    padding-left: 5em;
 }

@@ -47,10 +47,14 @@ export class ScenarioComponent implements OnInit {
   public pTaxableStocks: number = 0;
   public pTaxableStocksBasis: number = 0;
 
-  public ageRetirement: number = 66;
-  public incomePreretirement: number = 60000;
-  public incomePreretirement2: number = 60000;
-  public consumePreretirement: number = 40000;
+  public ageRetirement: number = 67;
+  public incomePreretirement: number = 50000;
+  public incomePreretirement2: number = 50000;
+  public incomePreretirementAgeEndType: string = 'retirement'
+  public incomePreretirementAgeEnd: number = 67
+  public incomePreretirementAgeEnd2Type: string = 'retirement'
+  public incomePreretirementAgeEnd2: number = 67
+  public consumePreretirement: number = 30000;
   public have401k: boolean = true;
   public have401k2: boolean = true;
   public spias: boolean = true;
@@ -78,18 +82,27 @@ export class ScenarioComponent implements OnInit {
       return "Poor";
   }
 
+  healthValid() {
+    return this.lifeExpectancyAdditional < 10 && this.lifeExpectancyAdditional2 < 10;
+  }
+
+  comma(x) {
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
   dbTotal(definedItems) {
 
     var tot: number = 0;
     for (let db of definedItems) {
-      tot += db.amount()
+      if (!['Home Proceeds', 'Home Purchase'].includes(db.type))
+        tot += db.amount()
     }
 
-    return tot;
+    return this.comma(tot)
   }
 
   pTotal() {
-    return this.pTaxDeferred + this.pTaxFree + this.pTaxableBonds + this.pTaxableStocks;
+    return this.comma(this.pTaxDeferred + this.pTaxFree + this.pTaxableBonds + this.pTaxableStocks);
   }
 
   doEdit(db) {
@@ -138,11 +151,11 @@ export class ScenarioComponent implements OnInit {
             'type': db.type.toLowerCase().replace(/ /, '_'),
             'owner': db.owner,
             'start': db.age,
-            'final': db.years == null ? null : db.age + db.years - 1,
+            'end': db.years == null ? null : db.age + db.years,
             'payout': benefit ? db.amount() : - db.amount(),
             'inflation_adjustment': db.inflationAdjustment,
-            'joint': db.joint,
-            'payout_fraction': db.payoutFractionPct / 100,
+            'joint': db.joint == 'joint',
+            'payout_fraction': db.joint == 'single' ? 0 : db.payoutFractionPct / 100,
             'source_of_funds': db.sourceOfFunds,
             'exclusion_period': db.exclusionPeriod,
             'exclusion_amount': db.exclusionAmount(),
@@ -178,7 +191,9 @@ export class ScenarioComponent implements OnInit {
 
         'age_retirement': this.ageRetirement,
         'income_preretirement': this.incomePreretirement,
-        'income_preretirement2': this.incomePreretirement,
+        'income_preretirement2': this.incomePreretirement2,
+        'income_preretirement_age_end': this.incomePreretirementAgeEndType == 'age' ? this.incomePreretirementAgeEnd : null,
+        'income_preretirement_age_end2': this.incomePreretirementAgeEnd2Type == 'age' ? this.incomePreretirementAgeEnd2 : null,
         'consume_preretirement': this.consumePreretirement,
         'have_401k': this.have401k,
         'have_401k2': this.have401k2,
@@ -215,10 +230,14 @@ export class ScenarioComponent implements OnInit {
          this.step--;
          return
        }
-       this.activeResultIndex = 0;
+       this.activeResultIndex = Math.min(this.activeResultIndex, this.results.length - 1);
        this.step++;
      }
    }
+
+  gotoRisk(risk) {
+    this.activeResultIndex = risk;
+  }
 
   risk(adjust) {
     this.activeResultIndex += adjust;

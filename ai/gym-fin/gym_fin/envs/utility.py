@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -21,7 +21,7 @@ class Utility(object):
 
     def utility(self, c):
 
-        if c == 0:
+        if c == 0 and self.gamma >= 1:
             return float('-inf')
 
         if self.gamma == 1:
@@ -32,6 +32,9 @@ class Utility(object):
                 # We do not shift to avoid losing any possible floating point precision.
 
     def inverse(self, u):
+
+        if u == float('-inf') and self.gamma >= 1:
+            return 0
 
         if self.gamma == 1:
             return exp(u) * self.utility_scale

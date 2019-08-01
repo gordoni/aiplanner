@@ -27,7 +27,7 @@ from sys import stdout
 from tempfile import mkdtemp
 from threading import BoundedSemaphore, Thread
 from time import sleep, time
-from traceback import print_tb
+from traceback import print_exc
 
 from gym_fin.common.scenario_space import allowed_gammas
 from gym_fin.envs.model_params import load_params_file
@@ -39,8 +39,7 @@ def report_exception(args, e):
     with open(expanduser(args.root_dir) + '/server.log', 'a') as f:
 
         print('----------------------------------------', file = f)
-        print_tb(e.__traceback__, file = f)
-        print(e.__class__.__name__ + ': ' + str(e), file = f)
+        print_exc(file = f)
         print('----------------------------------------', file = f)
 
 class InferEvaluateDaemon:
@@ -455,6 +454,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 else:
                     results[i] = result['result'][0][0]
             except Exception as e:
+                report_exception(self.server.args, e)
                 results[i] = {'error': e.__class__.__name__ + ': ' + (str(e) or 'Exception encountered.')}
             finally:
                 results[i]['aid'] = aid
@@ -608,12 +608,12 @@ def main():
     parser.add_argument('--project-name', default = 'AIPlanner')
 
     # purgeq options.
-    parser.add_argument('--purge-frequency', type = int, default = 3600) # Purge the resultsdirectory of old files every this many seconds.
+    parser.add_argument('--purge-frequency', type = int, default = 3600) # Purge the results directory of old files every this many seconds.
     parser.add_argument('--purge-keep-free', type = float, default = 0.02) # Keep this much proportion of disk space/inodes free.
     parser.add_argument('--purge-keep-time', type = int, default = 3600) # Keep directories around for this long regardless.
     parser.add_argument('--purge-time-failure', type = int, default = 90 * 86400) # Delete failed scenarios after this long.
     parser.add_argument('--purge-time-healthcheck', type = int, default = 3600) # Delete healthcheck scenarios after this long.
-    parser.add_argument('--purge-time-success', type = int, default = 86400) # Delete successful scenarios after this long.
+    parser.add_argument('--purge-time-success', type = int, default = 12 * 3600) # Delete successful scenarios after this long.
 
     args = parser.parse_args()
     root_dir = expanduser(args.root_dir)

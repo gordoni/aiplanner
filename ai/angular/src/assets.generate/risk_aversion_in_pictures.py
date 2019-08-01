@@ -14,9 +14,9 @@ from math import ceil, exp, floor, log, sqrt
 
 from scipy.stats import lognorm
 
-gammas = (1, 1.5, 3, 6)
+gammas = (1.5, 3, 6)
 
-# Credit Suisse Yearbook 2017.
+# Credit Suisse Yearbook 2019.
 m = 1.065
 vol = 0.174
 r = 1.008
@@ -30,7 +30,7 @@ sharpe = (stock_mu - log(r)) / stock_sigma
 
 print('sharpe', sharpe)
 
-f_max = 2
+f_max = 1.8
 f_steps = 1000
 step = f_max / f_steps
 
