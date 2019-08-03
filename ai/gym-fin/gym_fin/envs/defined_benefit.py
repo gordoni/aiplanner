@@ -62,6 +62,7 @@ class DefinedBenefit:
                 payout = self.env.log_uniform(payout_low, payout_high)
         end -= owner_age
 
+        original_payout = payout
         if not self.real:
             payout *= self.env.cpi
 
@@ -71,7 +72,7 @@ class DefinedBenefit:
 
             # Shift nominal exclusion amount from taxable to tax free income.
             if premium != None:
-                while exclusion_amount > payout:
+                while exclusion_amount > original_payout:
                     exclusion_period += 1
                     if adjustment == 0:
                         exclusion_amount = premium / exclusion_period

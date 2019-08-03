@@ -54,7 +54,7 @@ start_ray_if_needed() {
             ARGS=
         fi
 
-        (ulimit -n 65536; ray start --head --redis-port=$PORT $ARGS)
+        (ulimit -n 65536; nohup ray start --head --redis-port=$PORT $ARGS > /tmp/ray.out 2>&1)
 
     fi
 }
