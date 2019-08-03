@@ -166,7 +166,7 @@ class Taxes(object):
             return 0, 0
 
         regular_income -= social_security
-        relevant_income = regular_income + social_security / 2
+        relevant_income = regular_income + capital_gains + social_security / 2
         ss_table = self.ss_taxable_single if single else self.ss_taxable_couple
         social_security_taxable = min(self.tax_table(ss_table, relevant_income * self.cpi, 0) / self.cpi,
             self.marginal_rate(ss_table, relevant_income * self.cpi) * social_security)

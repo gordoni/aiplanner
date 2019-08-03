@@ -215,6 +215,15 @@ def main():
     parser.add_argument('--train-save-frequency', type=int, default=None)
     parser.add_argument('--train-max-failures', type=int, default=3)
     boolean_flag(parser, 'train-resume', default = False) # Resume training rather than starting new trials.
+        # To resume running trials for which Ray appears to have hung with no running worker processes or worker nodes (check has redis died?),
+        # it is recommended first make a copy the model(s) directory, and then stop Ray and reinvoke training with --train-resume.
+        # First time attempted this got redis connection error on 2 of 20 processes, which couldn't be corrected,
+        # but having a copy of the model(s) directory allowed me to rollback and retry successfully.
+        #
+        # To attempt to resume trials that have errored edit the latest <model_dir>/seed_0/experiment_state-<date>.json (Note: Use seed_0 for all experiments).
+        # changing all of their statuses from "ERROR" to "RUNNING", and then invoke this script with --train-resume.
+        # Didn't work, state changed to "RUNNING", but not actually running.
+        #
         # To attempt to extend already completed trials edit the latest <model_dir>/seed_0/experiment_state-<date>.json
         # changing all of their statuses from "TERMINATED" to "RUNNING", and timeteps_total to <new_timestep_limit>,
         # then invoke this script with --train-resume --train-num-timesteps=<new_timestep_limit>.

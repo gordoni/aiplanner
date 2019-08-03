@@ -1319,11 +1319,10 @@ class FinEnv(Env):
 
         return
 
-    def _pre_calculate_wealth(self, growth_rate = 1.01):
+    def _pre_calculate_wealth(self, growth_rate = 1.0):
         # By default use a conservative growth rate for determining the present value of wealth.
         # Also reflects the fact that we won't get to consume all wealth before we are expected to die.
-        # Get better results this way. Leave it to the AI to map to actual value.
-        # Chosen value determined empirically for good performance when gamma=6.
+        # Leave it to the AI to map to actual value.
 
         self.pv_preretirement_income = {'tax_free': 0, 'tax_deferred': 0, 'taxable': 0}
         self.pv_retired_income = {'tax_free': 0, 'tax_deferred': 0, 'taxable': 0}
