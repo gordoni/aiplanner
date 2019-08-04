@@ -29,7 +29,7 @@ PURPOSE.
       </div>
 
       <div>
-        Proceeds after tax: <input type="number" class="numeric" required name="dbAmountPer" #dbAmountPer="ngModel" [(ngModel)]="newData.amountPer">
+        Proceeds after tax: <input step="1000" type="number" class="numeric" required name="dbAmountPer" #dbAmountPer="ngModel" [(ngModel)]="newData.amountPer">
           <div class="error" *ngIf="dbAmountPer.invalid">
             Invalid numeric value.
           </div>
@@ -58,7 +58,7 @@ PURPOSE.
       </div>
 
       <div>
-        Payment: <input type="number" class="numeric" required name="dbAmountPer" #dbAmountPer="ngModel" [(ngModel)]="newData.amountPer">
+        Payment: <input type="number" step="1000" class="numeric" required name="dbAmountPer" #dbAmountPer="ngModel" [(ngModel)]="newData.amountPer">
           <div class="error" *ngIf="dbAmountPer.invalid">
             Invalid numeric value.
           </div>
@@ -114,7 +114,7 @@ PURPOSE.
 
         <div *ngIf="newData.sourceOfFunds == 'taxable'">
           Taxable exclusion amount:
-            <input type="number" class="numeric" required name="dbExclusionAmountPer" #dbExclusionAmountPer="ngModel" [(ngModel)]="newData.exclusionAmountPer">
+            <input type="number" step="1000" class="numeric" required name="dbExclusionAmountPer" #dbExclusionAmountPer="ngModel" [(ngModel)]="newData.exclusionAmountPer">
             <div class="error" *ngIf="dbExclusionAmountPer.invalid">
               Invalid numeric value.
             </div>

@@ -26,6 +26,7 @@ export class ScenarioComponent implements OnInit {
   public doneMarket: boolean = false;
 
   public stocksPricePct: number;
+  public stocksVolatility: number;
   public nominalShortRatePct: string;
   public inflationShortRatePct: string;
 
@@ -171,6 +172,7 @@ export class ScenarioComponent implements OnInit {
 
     var scenario = {
         'stocks_price': 1 + this.stocksPricePct / 100,
+        'stocks_volatility': this.stocksVolatility,
         'real_short_rate': (1 + Number(this.nominalShortRatePct) / 100) / (1 + Number(this.inflationShortRatePct) / 100) - 1,
         'inflation_short_rate': Number(this.inflationShortRatePct) / 100,
 
@@ -277,6 +279,7 @@ export class ScenarioComponent implements OnInit {
 
   doMarket(results) {
     this.stocksPricePct = Math.round((results.stocks_price - 1) * 100);
+    this.stocksVolatility = results.stocks_volatility.toFixed(1);
     this.nominalShortRatePct = (results.nominal_short_rate * 100).toFixed(1);
     this.inflationShortRatePct = (((1 + results.nominal_short_rate) / (1 + results.real_short_rate) - 1) * 100).toFixed(1);
     this.doneMarket = true;

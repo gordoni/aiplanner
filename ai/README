@@ -110,19 +110,7 @@ Failing to perform this step will result in the full historical yield
 curves getting downloaded from the Fed every time a cluster node
 starts up.
 
-    cd ~
-    ln -s aiplanner aacalc
-    ~/aiplanner/web/cron.daily
-
-Also install a daily refresh of this data in the ubuntu user's crontab:
-
-    crontab -e
-
-----
-# m h  dom mon dow   command
-MAILTO=<you@yourdomain>
-0 0 * * * perl -e '{sleep(rand(1000))}'; ~/aiplanner/web/cron.daily
-----
+    ~/aiplanner/ai/cron.daily
 
 Setting up the Ray compute cluster
 ----------------------------------
@@ -341,6 +329,21 @@ The models should then be installed:
     rm -rf models.old  # Delete prior model backups if required.
     mv models models.old  # Save prior models if any as a backup.
     mv models.new models
+
+Setting up cron
+---------------
+
+Install crontabs to perform a daily refresh of the interest rate yield
+curves, and a weekly refresh of the fair market price and volatility.
+
+    crontab -e
+
+----
+# m h  dom mon dow   command
+MAILTO=<you@yourdomain>
+0 0 * * * perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/cron.daily
+0 0 * * 0 perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/cron.weekly
+----
 
 Generating required assets (images)
 -----------------------------------

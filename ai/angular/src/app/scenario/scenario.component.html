@@ -158,7 +158,7 @@ PURPOSE.
         <table>
           <tr>
             <td class="left"> Traditional IRA/401(k): </td>
-            <td> <input type="number" class="numeric" required name="scenarioPTaxDeferred" #scenarioPTaxDeferred="ngModel" [(ngModel)]="pTaxDeferred">
+            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxDeferred" #scenarioPTaxDeferred="ngModel" [(ngModel)]="pTaxDeferred">
               <div class="error" *ngIf="scenarioPTaxDeferred.invalid">
                 Invalid numeric value.
               </div>
@@ -166,7 +166,7 @@ PURPOSE.
           </tr>
           <tr>
             <td class="left"> Roth IRA/401(k): </td>
-            <td> <input type="number" class="numeric" required name="scenarioPTaxFree" #scenarioPTaxFree="ngModel" [(ngModel)]="pTaxFree">
+            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxFree" #scenarioPTaxFree="ngModel" [(ngModel)]="pTaxFree">
               <div class="error" *ngIf="scenarioPTaxFree.invalid">
                 Invalid numeric value.
               </div>
@@ -174,7 +174,7 @@ PURPOSE.
           </tr>
           <tr>
             <td class="left"> Taxable bonds: </td>
-            <td> <input type="number" class="numeric" required name="scenarioPTaxableBonds" #scenarioPTaxableBonds="ngModel" [(ngModel)]="pTaxableBonds">
+            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableBonds" #scenarioPTaxableBonds="ngModel" [(ngModel)]="pTaxableBonds">
               <div class="error" *ngIf="scenarioPTaxableBonds.invalid">
                 Invalid numeric value.
               </div>
@@ -182,14 +182,14 @@ PURPOSE.
           </tr>
           <tr>
             <td class="left"> Taxable stocks: </td>
-            <td> <input type="number" class="numeric" required name="scenarioPTaxableStocks" #scenarioPTaxableStocks="ngModel" [(ngModel)]="pTaxableStocks">
+            <td> <input type="number"step="1000" class="numeric" required name="scenarioPTaxableStocks" #scenarioPTaxableStocks="ngModel" [(ngModel)]="pTaxableStocks">
               <div class="error" *ngIf="scenarioPTaxableStocks.invalid">
                 Invalid numeric value.
               </div>
             </td>
             <td>
               Stocks cost basis:
-              <input type="number" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
+              <input type="number" step="1000" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
               <div class="error" *ngIf="scenarioPTaxableStocksBasis.invalid">
                 Invalid numeric value.
               </div>
@@ -254,7 +254,7 @@ PURPOSE.
     <br>
     <br>
     Pre-retirement annual consumption:
-      <input type="number" class="numeric" required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
+      <input type="number" step="1000" class="numeric" required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
       <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
         Invalid numeric value.
       </div>
@@ -269,7 +269,7 @@ PURPOSE.
         <tr>
           <td> Self </td>
           <td>
-            <input type="number" class="numeric" required name="scenarioIncomePreretirement" #scenarioIncomePreretirement="ngModel" [(ngModel)]="incomePreretirement">
+            <input type="number" step="1000" class="numeric" required name="scenarioIncomePreretirement" #scenarioIncomePreretirement="ngModel" [(ngModel)]="incomePreretirement">
             <div class="error" *ngIf="scenarioIncomePreretirement.invalid">
               Invalid numeric value.
             </div>
@@ -292,7 +292,7 @@ PURPOSE.
         <tr *ngIf="sex2 != 'none'">
           <td> Spouse </td>
           <td>
-            <input type="number" class="numeric" required name="scenarioIncomePreretirement2" #scenarioIncomePreretirement2="ngModel" [(ngModel)]="incomePreretirement2">
+            <input type="number"step="1000"  class="numeric" required name="scenarioIncomePreretirement2" #scenarioIncomePreretirement2="ngModel" [(ngModel)]="incomePreretirement2">
             <div class="error" *ngIf="scenarioIncomePreretirement2.invalid">
               Invalid numeric value.
             </div>
@@ -344,10 +344,21 @@ PURPOSE.
           </tr>
         <tr>
           <td>
+            Current stock market volatility divided by long term average:
+          </td>
+          <td>
+            <input type="number" step="0.1" class="small-numeric" required name="scenarioStocksVolatility" #scenarioStocksVolatility="ngModel" [(ngModel)]="stocksVolatility">
+            <div class="error" *ngIf="scenarioStocksVolatility.invalid">
+              Invalid numeric value.
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
             Current short term interest rate:
           </td>
           <td>
-            <input type="number" class="small-numeric" required name="scenarioNominalShortRatePct" #scenarioNominalShortRatePct="ngModel" [(ngModel)]="nominalShortRatePct">%
+            <input type="number" step="0.1" class="small-numeric" required name="scenarioNominalShortRatePct" #scenarioNominalShortRatePct="ngModel" [(ngModel)]="nominalShortRatePct">%
             <div class="error" *ngIf="scenarioNominalShortRatePct.invalid">
               Invalid numeric value.
             </div>
@@ -358,7 +369,7 @@ PURPOSE.
             Current break-even inflation rate:
           </td>
           <td>
-            <input type="number" class="small-numeric" required name="scenarioInflationShortRatePct" #scenarioInflationShortRatePct="ngModel" [(ngModel)]="inflationShortRatePct">%
+            <input type="number" step="0.1" class="small-numeric" required name="scenarioInflationShortRatePct" #scenarioInflationShortRatePct="ngModel" [(ngModel)]="inflationShortRatePct">%
             <div class="error" *ngIf="scenarioInflationShortRatePct.invalid">
               Invalid numeric value.
             </div>

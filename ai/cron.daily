@@ -1,0 +1,8 @@
+#!/bin/bash
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+SPIA_DIR=$AIPLANNER_HOME/spia
+
+$SPIA_DIR/fetch_yield_curve.py -t nominal
+$SPIA_DIR/fetch_yield_curve.py -t real
+$SPIA_DIR/fetch_yield_curve.py -t corporate

@@ -45,4 +45,4 @@ done
 wait
 
 cp $BASE_SCENARIO ./base-scenario.txt
-ln -s $AI_DIR/market-data.txt ./
+cp $AI_DIR/web/market-data.json ./

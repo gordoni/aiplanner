@@ -1,0 +1,9 @@
+#!/bin/bash
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+AI_DIR=$AIPLANNER_HOME/ai
+
+mkdir -p ~/aiplanner-data/models
+
+$AI_DIR/web/update_price.py
+$AI_DIR/web/update_volatility.py

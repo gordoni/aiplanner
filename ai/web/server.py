@@ -11,7 +11,7 @@
 # PURPOSE.
 
 from argparse import ArgumentParser
-from datetime import datetime
+from datetime import datetime, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from json import dumps, loads
 from math import exp
@@ -314,7 +314,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 'type': choice(('social_security', 'income_annuity')),
                 'owner': choice(('self', 'spouse')),
                 'start': uniform(50, 80),
-                'final': uniform(80, 150),
+                'end': uniform(80, 150),
                 'payout': uniform(10000, 100000),
                 'inflation_adjustment': 0.02,
                 'joint': choice((True, False)),
@@ -343,6 +343,8 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         if self.server.args.infer:
             data = self.run_models(api_data, evaluate = False, prefix = 'healthcheck-')
+            if data == None:
+                return None
             result = loads(data.decode('utf-8'))
             if result['error'] or result['result'][0][0]['error']:
                 self.server.log.write(data)
@@ -351,6 +353,8 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         if self.server.args.evaluate:
             data = self.run_models(api_data, evaluate = True, prefix = 'healthcheck-')
+            if data == None:
+                return None
             result = loads(data.decode('utf-8'))
             if result['error'] or result['result'][0][0]['error']:
                 self.server.log.write(data)
@@ -359,13 +363,27 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         return True
 
-    def market(self):
+    def market(self, check_current = False):
 
-        market_file = load_params_file(expanduser(self.server.args.models_dir) + '/market-data.txt')
+        with open(expanduser(self.server.args.models_dir) + '/market-data.json') as f:
+            market_file = loads(f.read())
 
-        now = datetime.utcnow().date().isoformat()
-        real_short_rate = YieldCurve('real', now, permit_stale_days = 7).spot(0)
-        nominal_short_rate = YieldCurve('nominal', now, permit_stale_days = 7).spot(0)
+        now = datetime.utcnow()
+        now_date = now.date().isoformat()
+        real_yield_curve = YieldCurve('real', now_date, permit_stale_days = 7)
+        real_short_rate = real_yield_curve.spot(0)
+        nominal_yield_curve = YieldCurve('nominal', now_date, permit_stale_days = 7)
+        nominal_short_rate = nominal_yield_curve.spot(0)
+
+        if check_current:
+            try:
+                assert now - timedelta(days = 14) < datetime.strptime(market_file['stocks_price_date'], '%Y-%m-%d') <= now
+                assert now - timedelta(days = 14) < datetime.strptime(market_file['stocks_volatility_date'], '%Y-%m-%d') <= now
+                assert now - timedelta(days = 14) < datetime.strptime(real_yield_curve.yield_curve_date, '%Y-%m-%d') <= now
+                assert now - timedelta(days = 14) < datetime.strptime(nominal_yield_curve.yield_curve_date, '%Y-%m-%d') <= now
+            except AssertionError as e:
+                report_exception(self.server.args, e)
+                return None
 
         return {
             'stocks_price': market_file['stocks_price'],
@@ -384,7 +402,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             lock = self.server.infer_run_lock
             timeout = None
 
-        market = self.market()
+        market = self.market(check_current = prefix == 'healthcheck-')
+        if market == None:
+            return '{"error": "Market data is not current."}\n'.encode('utf-8')
         if not isinstance(api_data, list):
             return '{"error": "Method body must be a JSON array."}\n'.encode('utf-8')
         for api_scenario in api_data:
