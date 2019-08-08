@@ -179,6 +179,15 @@ PURPOSE.
                 Invalid numeric value.
               </div>
             </td>
+            <td class="left">
+              Bonds cost basis:
+            </td>
+            <td>
+              <input type="number" step="1000" class="numeric" required name="scenarioPTaxableBondsBasis" #scenarioPTaxableBondsBasis="ngModel" [(ngModel)]="pTaxableBondsBasis">
+              <div class="error" *ngIf="scenarioPTaxableBondsBasis.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
           </tr>
           <tr>
             <td class="left"> Taxable stocks: </td>
@@ -187,8 +196,10 @@ PURPOSE.
                 Invalid numeric value.
               </div>
             </td>
-            <td>
+            <td class="left">
               Stocks cost basis:
+            </td>
+            <td>
               <input type="number" step="1000" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
               <div class="error" *ngIf="scenarioPTaxableStocksBasis.invalid">
                 Invalid numeric value.
@@ -198,6 +209,8 @@ PURPOSE.
           <tr>
             <td class="center"> Total </td>
             <td class="right"> {{pTotal()}} </td>
+            <td> </td>
+            <td class="right"> {{basisTotal()}} </td>
           </tr>
         </table>
       </div>

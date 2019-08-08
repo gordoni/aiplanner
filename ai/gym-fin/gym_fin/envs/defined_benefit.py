@@ -21,10 +21,12 @@ class DefinedBenefit:
         self.real = real
         self.type_of_funds = type_of_funds
 
+        # Separate pre-retirement and retired SPIAs so can compute present values separately.
+        life_table = self.env.life_table_preretirement
+        life_table2 = self.env.life_table2_preretirement if self.env.sex2 else None
+        self.spia_preretirement = self.create(life_table, life_table2 = life_table2)
         life_table = self.env.life_table
         life_table2 = self.env.life_table2 if self.env.sex2 else None
-        # Separate pre-retirement and retired SPIAs so can compute present values separately.
-        self.spia_preretirement = self.create(life_table, life_table2 = life_table2)
         self.spia_retired = self.create(life_table, life_table2 = life_table2)
 
     def create(self, life_table, life_table2 = None):
@@ -137,7 +139,8 @@ class DefinedBenefit:
         age = self.env.age
         alive = self.env.couple or not self.env.only_alive2
         alive2 = self.env.couple or self.env.only_alive2
-        self.spia_preretirement.set_age(age, alive, alive2)
+        if self.env.preretirement_years > 0:
+            self.spia_preretirement.set_age(age, alive, alive2)
         self.spia_retired.set_age(age, alive, alive2)
 
     def render(self):

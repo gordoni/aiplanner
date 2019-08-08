@@ -28,7 +28,9 @@ master_income_preretirement_mu2 = 0
 master_income_preretirement_sigma = 0
 master_income_preretirement_sigma2 = 0
 
+master_p_taxable_stocks = 0
 master_p_taxable_real_bonds = 0
+master_p_taxable_nominal_bonds = 0
 master_p_taxable_iid_bonds = 0
 master_p_taxable_bills = 0
 

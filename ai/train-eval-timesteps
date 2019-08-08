@@ -36,6 +36,7 @@ GAMMA=6
 TIMESTEPS=50000000
 SAVESTEPS=2000000
 EVALSTEPS=4000000
+BATCH_SIZE=200000
 
 TRAINING_ARGS="$TRAINING_ARGS --train-num-timesteps=$TIMESTEPS"
 
@@ -53,7 +54,7 @@ make_train_dir () {
 
 mkdir -p $EPISODE
 cd $EPISODE
-train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$SCENARIO_ARGS $TRAINING_ARGS --train-save-frequency=$SAVESTEPS"
+train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$SCENARIO_ARGS $TRAINING_ARGS --train-batch-size=$BATCH_SIZE --train-save-frequency=$SAVESTEPS"
 cd ..
 wait
 #exit

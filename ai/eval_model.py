@@ -232,7 +232,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                 print('Evaluation certainty equivalent:', res['ce_individual'], '+/-', res['ce_stderr_individual'],
                     '(80% confidence interval:', res['consume10_individual'], '-', str(res['consume90_individual']) + ')', file = out, flush = True)
 
-                plot(prefix, res['paths'], res['consume_pdf'])
+                plot(prefix, res['paths'], res['consume_pdf'], res['estate_pdf'])
 
                 final_results = dict(results[scenario_num][sub_num], **{
                     'error': None,
@@ -245,6 +245,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                     'consume_preretirement': res['consume_preretirement'],
                     'consume_preretirement_ppf': res['consume_preretirement_ppf'],
                     'consume_pdf': res['consume_pdf'],
+                    'estate_pdf': res['estate_pdf'],
                     'sample_paths': res['paths'],
                 })
 
@@ -510,7 +511,7 @@ def gss(f, a, b):
 
     return found, f_found
 
-def plot(prefix, traces, consume_pdf):
+def plot(prefix, traces, consume_pdf, estate_pdf):
 
     with open(prefix + '-paths.csv', 'w') as f:
         csv_writer = writer(f)
@@ -532,6 +533,11 @@ def plot(prefix, traces, consume_pdf):
 
     pdf = zip(consume_pdf['consume'], consume_pdf['weight'])
     with open(prefix + '-consume-pdf.csv', 'w') as f:
+        csv_writer = writer(f)
+        csv_writer.writerows(pdf)
+
+    pdf = zip(estate_pdf['estate'], estate_pdf['weight'])
+    with open(prefix + '-estate-pdf.csv', 'w') as f:
         csv_writer = writer(f)
         csv_writer.writerows(pdf)
 

@@ -12,65 +12,109 @@ from math import log
 
 def parse_api_scenario(api_scenario, *, permissive = False):
 
-    for name in api_scenario.keys():
-        if not name in [
-            'cid',
+    def anything(name, value):
+        return True
 
-            'sex',
-            'sex2',
-            'age',
-            'age2',
-            'life_expectancy_additional',
-            'life_expectancy_additional2',
+    def boolean(name, value):
+        return type(value) == bool
 
-            'age_retirement',
-            'income_preretirement',
-            'income_preretirement2',
-            'income_preretirement_age_end',
-            'income_preretirement_age_end2',
-            'consume_preretirement',
-            'have_401k',
-            'have_401k2',
+    def number(name, value):
+        return type(value) in [int, float]
 
-            'guaranteed_income',
+    def string(name, value):
+        return type(value) == str
 
-            'p_tax_deferred',
-            'p_tax_free',
-            'p_taxable_bonds',
-            'p_taxable_stocks',
-            'p_taxable_stocks_basis',
+    def enumeration(values):
+        def f(name, value):
+            return any((compare(name, value, schema) for schema in values))
+        return f
 
-            'stocks_price',
-            'stocks_volatility',
-            'nominal_short_rate',
-            'real_short_rate',
-            'inflation_short_rate',
+    def array(element):
+        def f(name, value):
+            if not type(value) in [list, tuple]:
+                return False
+            for i, v in enumerate(value):
+                check(name + ' element ' + str(i), v, element)
+            return True
+        return f
 
-            'spias',
+    def object(schema):
+        def f(name, value):
+            if not type(value) in [dict]:
+                return False
+            for n, v in value.items():
+                try:
+                    s = schema[n]
+                except KeyError:
+                    assert False, 'Unknown api parameter:' + name + ' ' + n
+                check(name + ' ' + n, v, s)
+            return True
+        return f
 
-            'rra',
+    def compare(name, value, schema):
+        return schema(name, value) if callable(schema) else value == schema
 
-            'num_evaluate_timesteps',
-            'num_sample_paths',
-        ]:
-            assert False, 'Unknown api parameter: ' + name
+    def check(name, value, schema):
+        if not compare(name, value, schema):
+            assert False, 'Invalid api parameter value for' + name + ': ' + str(value)
 
-    for guaranteed_income in api_scenario.get('guaranteed_income', []):
-        for name in guaranteed_income.keys():
-            if not name in [
-                'type',
-                'owner',
-                'start',
-                'end',
-                'payout',
-                'inflation_adjustment',
-                'joint',
-                'payout_fraction',
-                'source_of_funds',
-                'exclusion_period',
-                'exclusion_amount',
-            ]:
-                assert False, 'Unknown api guaranteed income field: ' + name
+    schema = object({
+        'cid': anything,
+
+        'sex': enumeration(['female', 'male']),
+        'sex2': enumeration(['female', 'male', None]),
+        'age': number,
+        'age2': number,
+        'life_expectancy_additional': number,
+        'life_expectancy_additional2': number,
+
+        'age_retirement': number,
+        'income_preretirement': number,
+        'income_preretirement2': number,
+        'income_preretirement_age_end': enumeration([number, None]),
+        'income_preretirement_age_end2': enumeration([number, None]),
+        'consume_preretirement': number,
+        'have_401k': boolean,
+        'have_401k2': boolean,
+
+        'guaranteed_income': array(
+            object({
+                'type': string,
+                'owner': enumeration(['self', 'spouse']),
+                'start': enumeration([number, None]),
+                'end': enumeration([number, None]),
+                'payout': number,
+                'inflation_adjustment': enumeration([number, 'cpi']),
+                'joint': boolean,
+                'payout_fraction': number,
+                'source_of_funds': enumeration(['taxable', 'tax_deferred', 'tax_free']),
+                'exclusion_period': number,
+                'exclusion_amount': number,
+            })
+        ),
+
+        'p_tax_deferred': number,
+        'p_tax_free': number,
+        'p_taxable_bonds': number,
+        'p_taxable_stocks': number,
+        'p_taxable_stocks_basis': number,
+        'p_taxable_bonds_basis': number,
+
+        'stocks_price': number,
+        'stocks_volatility': number,
+        'nominal_short_rate': number,
+        'real_short_rate': number,
+        'inflation_short_rate': number,
+
+        'spias': boolean,
+
+        'rra': enumeration([None, array(number)]), # Must put None first as array() asserts if it doesn't match.
+
+        'num_evaluate_timesteps': number,
+        'num_sample_paths': number,
+    })
+
+    check('', api_scenario, schema)
 
     model_params = {}
 
@@ -136,15 +180,10 @@ def parse_api_scenario(api_scenario, *, permissive = False):
             model_params['real_short_rate_value'] = log(1 + api_scenario['nominal_short_rate']) - log(1 + api_scenario['inflation_short_rate'])
         else:
             assert False, 'nominal_short_rate requires a value for real_short_rate or inflation_short_rate also be specified.'
-    if 'p_taxable_stocks_basis' in api_scenario:
-        try:
-            p_taxable_stocks_basis_fraction = api_scenario['p_taxable_stocks_basis'] / api_scenario['p_taxable_stocks']
-        except ZeroDivisionError:
-            assert api_scenario['p_taxable_stocks_basis'] == 0, 'Zero stocks must have a zero cost basis.'
-            p_taxable_stocks_basis_fraction = 0
-    else:
-        p_taxable_stocks_basis_fraction = 1
-    model_params['p_taxable_stocks_basis_fraction_low'] = model_params['p_taxable_stocks_basis_fraction_high'] = p_taxable_stocks_basis_fraction
+    model_params['p_taxable_stocks_basis'] = api_scenario.get('p_taxable_stocks_basis', api_scenario.get('p_taxable_stocks', 0))
+    model_params['p_taxable_stocks_basis_fraction_low'] = model_params['p_taxable_stocks_basis_fraction_high'] = 0
+    model_params['p_taxable_real_bonds_basis_fraction_low'] = model_params['p_taxable_real_bonds_basis_fraction_high'] = 0
+    model_params['p_taxable_nominal_bonds_basis_fraction_low'] = model_params['p_taxable_nominal_bonds_basis_fraction_high'] = 0
 
     model_params['couple_probability'] = int(api_scenario.get('sex2') != None)
 
@@ -152,6 +191,7 @@ def parse_api_scenario(api_scenario, *, permissive = False):
         'cid': api_scenario.get('cid'),
         'spias': api_scenario.get('spias', True),
         'p_taxable_bonds': api_scenario.get('p_taxable_bonds', 0),
+        'p_taxable_bonds_basis': api_scenario.get('p_taxable_bonds_basis', api_scenario.get('p_taxable_bonds', 0)),
         'gammas': [int(gamma) if int(gamma) == gamma else gamma for gamma in api_scenario['rra']] if api_scenario.get('rra') != None else None,
     }
 

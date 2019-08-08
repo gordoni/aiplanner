@@ -25,8 +25,8 @@ export class ScenarioComponent implements OnInit {
   public step: number = 0;
   public doneMarket: boolean = false;
 
-  public stocksPricePct: number;
-  public stocksVolatility: number;
+  public stocksPricePct: string;
+  public stocksVolatility: string;
   public nominalShortRatePct: string;
   public inflationShortRatePct: string;
 
@@ -46,6 +46,7 @@ export class ScenarioComponent implements OnInit {
   public pTaxFree: number = 0;
   public pTaxableBonds: number = 0;
   public pTaxableStocks: number = 0;
+  public pTaxableBondsBasis: number = 0;
   public pTaxableStocksBasis: number = 0;
 
   public ageRetirement: number = 67;
@@ -104,6 +105,10 @@ export class ScenarioComponent implements OnInit {
 
   pTotal() {
     return this.comma(this.pTaxDeferred + this.pTaxFree + this.pTaxableBonds + this.pTaxableStocks);
+  }
+
+  basisTotal() {
+    return this.comma(this.pTaxableBondsBasis + this.pTaxableStocksBasis);
   }
 
   doEdit(db) {
@@ -171,8 +176,8 @@ export class ScenarioComponent implements OnInit {
     this.addToDbs(dbs, this.definedLiabilities, false);
 
     var scenario = {
-        'stocks_price': 1 + this.stocksPricePct / 100,
-        'stocks_volatility': this.stocksVolatility,
+        'stocks_price': 1 + Number(this.stocksPricePct) / 100,
+        'stocks_volatility': Number(this.stocksVolatility),
         'real_short_rate': (1 + Number(this.nominalShortRatePct) / 100) / (1 + Number(this.inflationShortRatePct) / 100) - 1,
         'inflation_short_rate': Number(this.inflationShortRatePct) / 100,
 
@@ -188,6 +193,7 @@ export class ScenarioComponent implements OnInit {
         'p_tax_deferred': this.pTaxDeferred,
         'p_tax_free': this.pTaxFree,
         'p_taxable_bonds':  this.pTaxableBonds,
+        'p_taxable_bonds_basis': this.pTaxableBondsBasis,
         'p_taxable_stocks': this.pTaxableStocks,
         'p_taxable_stocks_basis': this.pTaxableStocksBasis,
 
@@ -278,7 +284,7 @@ export class ScenarioComponent implements OnInit {
   }
 
   doMarket(results) {
-    this.stocksPricePct = Math.round((results.stocks_price - 1) * 100);
+    this.stocksPricePct = Math.round((results.stocks_price - 1) * 100).toFixed(0);
     this.stocksVolatility = results.stocks_volatility.toFixed(1);
     this.nominalShortRatePct = (results.nominal_short_rate * 100).toFixed(1);
     this.inflationShortRatePct = (((1 + results.nominal_short_rate) / (1 + results.real_short_rate) - 1) * 100).toFixed(1);

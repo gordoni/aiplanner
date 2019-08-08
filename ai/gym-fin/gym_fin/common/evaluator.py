@@ -151,6 +151,7 @@ class Evaluator(object):
             envs = tuple(eval_env.unwrapped for eval_env in eval_envs)
             rewards = []
             erewards = []
+            estates = []
             obss = [eval_env.reset() for eval_env in eval_envs]
             et = 0
             e = 0
@@ -175,6 +176,7 @@ class Evaluator(object):
                         weight = env.reward_weight
                         consume = env.reward_consume
                         reward = env.reward_value
+                        estates.append((env.estate_value, env.estate_weight))
                         if weight != 0:
                             rewards.append((reward, weight))
                             erews[i] += reward * weight
@@ -207,7 +209,8 @@ class Evaluator(object):
                 if all(finished):
                     break
 
-            return pack_value_weights(sorted(rewards)), pack_value_weights(sorted(erewards)), weight_sum, consume_mean, consume_m2, self.trace
+            return pack_value_weights(sorted(rewards)), pack_value_weights(sorted(erewards)), pack_value_weights(sorted(estates)), \
+                weight_sum, consume_mean, consume_m2, self.trace
 
         self.object_ids = None
         self.exception = None
@@ -239,7 +242,7 @@ class Evaluator(object):
             seed(self.eval_seed)
 
             try:
-                self.rewards, self.erewards, self.weight_sum, self.consume_mean, self.consume_m2, self.trace = rollout(self.eval_envs, pi)
+                self.rewards, self.erewards, self.estates, self.weight_sum, self.consume_mean, self.consume_m2, self.trace = rollout(self.eval_envs, pi)
             except Exception as e:
                 self.exception = e # Only want to know about failures in one place; later in summarize().
 
@@ -255,13 +258,15 @@ class Evaluator(object):
 
             rollouts = ray.get(self.object_ids)
 
-            rewards, erewards, weight_sums, consume_means, consume_m2s, traces = zip(*chain(*rollouts))
+            rewards, erewards, estates, weight_sums, consume_means, consume_m2s, traces = zip(*chain(*rollouts))
             if len(rewards) > 1:
                 self.rewards = pack_value_weights(sorted(chain(*(unpack_value_weights(reward) for reward in rewards))))
                 self.erewards = pack_value_weights(sorted(chain(*(unpack_value_weights(ereward) for ereward in erewards))))
+                self.estates = pack_value_weights(sorted(chain(*(unpack_value_weights(estate) for estate in estates))))
             else:
                 self.rewards = rewards[0]
                 self.erewards = erewards[0]
+                self.estates = estates[0]
 
             # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
             self.weight_sum = 0
@@ -312,33 +317,12 @@ class Evaluator(object):
 
         consume_preretirement = env.params.consume_preretirement
 
-        pdf_bucket_weights = []
-        w_tot = 0
         ce_step = max((ce_max - ce_min) / self.pdf_buckets, ce_max /  1000)
-        c_ceil = 0
-        u_ceil = float('-inf')
-        for r, w in zip(*self.rewards):
-            while r >= u_ceil:
-                if c_ceil >= ce_max:
-                    break
-                pdf_bucket_weights.append(0)
-                u_floor = u_ceil
-                c_ceil += ce_step
-                u_ceil = utility.utility(c_ceil)
-            if u_floor <= r < u_ceil:
-                pdf_bucket_weights[-1] += w
-            w_tot += w
-        consume_pdf = {'consume': [], 'weight': []}
-        for bucket, w in enumerate(pdf_bucket_weights):
-            unit_consume = ce_step * (bucket + 0.5)
-            if env.sex2 != None:
-                unit_consume *= 1 + env.params.consume_additional
-            try:
-                w_ratio = w / w_tot
-            except ZeroDivisionError:
-                w_ratio = float('nan')
-            consume_pdf['consume'].append(unit_consume)
-            consume_pdf['weight'].append(w_ratio)
+        consume_pdf = self.pdf('consume', self.rewards, 0, ce_max, ce_step, utility.utility, 1 + env.paras.consume_additional if env.sex2 != None else 1)
+
+        estate_max, = weighted_percentiles(self.estates, [98])
+        estate_step = estate_max / self.pdf_buckets
+        estate_pdf = self.pdf('estate', self.estates, 0, estate_max, estate_step)
 
         couple = env.sex2 != None
         if couple:
@@ -364,5 +348,35 @@ class Evaluator(object):
             'consume_preretirement': consume_preretirement,
             'consume_preretirement_ppf': preretirement_ppf,
             'consume_pdf': consume_pdf,
+            'estate_pdf': estate_pdf,
             'paths': self.trace,
         }
+
+    def pdf(self, what, value_weights, low, high, step, f = lambda x: x, multiplier = 1):
+
+        pdf_bucket_weights = []
+        w_tot = 0
+        c_ceil = low
+        u_ceil = f(c_ceil)
+        for r, w in zip(*value_weights):
+            while r >= u_ceil:
+                if c_ceil >= high * (1 - 1e-15):
+                    break
+                pdf_bucket_weights.append(0)
+                u_floor = u_ceil
+                c_ceil += step
+                u_ceil = f(c_ceil)
+            if u_floor <= r < u_ceil:
+                pdf_bucket_weights[-1] += w
+            w_tot += w
+        pdf = {what: [], 'weight': []}
+        for bucket, w in enumerate(pdf_bucket_weights):
+            unit_c = step * (bucket + 0.5) * multiplier
+            try:
+                w_ratio = w / w_tot
+            except ZeroDivisionError:
+                w_ratio = float('nan')
+            pdf[what].append(unit_c)
+            pdf['weight'].append(w_ratio)
+
+        return pdf

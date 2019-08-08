@@ -80,6 +80,10 @@ master_p_taxable_nominal_bonds_weight_low = 0
 master_p_taxable_nominal_bonds_weight_high = 20
 master_p_taxable_stocks_basis_fraction_low = 0
 master_p_taxable_stocks_basis_fraction_high = 2
+master_p_taxable_real_bonds_basis_fraction_low = 0.7
+master_p_taxable_real_bonds_basis_fraction_high = 1.1
+master_p_taxable_nominal_bonds_basis_fraction_low = 0.7
+master_p_taxable_nominal_bonds_basis_fraction_high = 1.1
 
 master_stocks_sigma_level_type = 'sample'
 master_stocks_price_low = 0.5

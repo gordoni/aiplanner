@@ -451,5 +451,24 @@ timesteps () {
     local SPIAS=$4
     local GAMMA=$5
 
-    echo 50000000
+    if [ $STAGE = preretirement ]; then
+        if [ $SPIAS = none ]; then
+            echo 100000000 # gamma=6, evaluate p=1e6: good 60m, asymptote 70m
+            return
+        elif [ $SPIAS = real -o $SPIAS = nominal ]; then
+            echo 100000000 # gamma=6, evaluate p=1e6; good 80m, asymptote 90m
+            return
+        fi
+    elif [ $STAGE = retired ]; then
+        if [ $SPIAS = none ]; then
+            echo 50000000 # gamma=6, evaluate p=2e6: good 30m, asymptote 40m
+            return
+        elif [ $SPIAS = real -o $SPIAS = nominal ]; then
+            echo 100000000 # gamma=6, evaluate p=2e6; good 40m, asymptote 70m
+            return
+        fi
+    fi
+
+    echo "Unknown stage: $STAGE" >&2
+    exit 1
 }

@@ -202,7 +202,16 @@ class ModelParams(object):
         self._param('p-taxable-iid-bonds-weight', (0, 100), 0) # Weight for p_weighted allocated to taxable iid bonds.
         self._param('p-taxable-bills', (0, 0), 0) # Taxable additive portfolio bills.
         self._param('p-taxable-bills-weight', (0, 100), 0) # Weight for p_weighted allocated to taxable bills.
+        self._param('p-taxable-stocks-basis', 0) # Taxable portfolio stocks cost basis.
+        self._param('p-taxable-real-bonds-basis', 0) # Taxable portfolio real bonds cost basis.
+        self._param('p-taxable-nominal-bonds-basis', 0) # Taxable portfolio nominal bonds cost basis.
+        self._param('p-taxable-iid-bonds-basis', 0) # Taxable portfolio iid bonds cost basis.
+        self._param('p-taxable-bills-basis', 0) # Taxable portfolio bills cost basis.
         self._param('p-taxable-stocks-basis-fraction', (0, 2), 1) # Taxable portfolio stocks cost basis as a fraction of stocks value.
+        self._param('p-taxable-real-bonds-basis-fraction', (0.7, 1.1), 1) # Taxable portfolio real bonds cost basis as a fraction of real bonds value.
+        self._param('p-taxable-nominal-bonds-basis-fraction', (0.7, 1.1), 1) # Taxable portfolio nominal bonds cost basis as a fraction of nominal bonds value.
+        self._param('p-taxable-iid-bonds-basis-fraction', (0.7, 1.1), 1) # Taxable portfolio iid bonds cost basis as a fraction of iid bonds value.
+        self._param('p-taxable-bills-basis-fraction', (0.7, 1.1), 1) # Taxable portfolio bills cost basis as a fraction of bills value.
         # Consumption order is assumed to be p_taxable, p_tax_deferred, p_notax.
 
         self._boolean_flag('tax', False) # Whether income is taxed.
@@ -283,9 +292,11 @@ class ModelParams(object):
         self._boolean_flag('real-bonds', True) # Whether to model real bonds (with an interest rate model).
         self._param('real-bonds-duration', None) # Duration in years to use for real bonds, or None to allow duration to vary.
         self._param('real-bonds-duration-max', 30) # Maximum allowed real duration to use when duration is allowed to vary.
+        self._boolean_flag('real-bonds-duration-action-force', False) # Whether to employ a real bond model that has variable duration with a fixed duration.
         self._boolean_flag('nominal-bonds', True) # Whether to model nominal bonds (with an interest rate model).
         self._param('nominal-bonds-duration', None) # Duration in years to use for nominal bonds, or None to allow duration to vary.
         self._param('nominal-bonds-duration-max', 30) # Maximum allowed nominal duration to use when duration is allowed to vary.
+        self._boolean_flag('nominal-bonds-duration-action-force', False) # Whether to employ a real bond model that has variable duration with a fixed duration.
         self._boolean_flag('iid-bonds', False) # Whether to model independent identically distributed bonds (without any interest rate model).
         self._param('iid-bonds-type', None, tp = string_type, choices = ('real', 'nominal', None))
             # Derive iid bond returns from the specified bond model, or None if iid bond returns are lognormally distributed.

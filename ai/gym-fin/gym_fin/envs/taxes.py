@@ -16,11 +16,11 @@
 
 class Taxes(object):
 
-    def __init__(self, params, taxable_assets, p_taxable_stocks_basis_fraction):
+    def __init__(self, params, taxable_assets, taxable_basis):
 
         self.params = params
         self.value = dict(taxable_assets.aa)
-        self.basis = {ac: p_taxable_stocks_basis_fraction * value if ac == 'stocks' else value for ac, value in taxable_assets.aa.items()}
+        self.basis = dict(taxable_basis.aa)
         self.cpi = 1
         self.cg_carry = 0
         self.capital_gains = 0
@@ -165,12 +165,13 @@ class Taxes(object):
         if not self.params.tax:
             return 0, 0
 
-        regular_income -= social_security
-        relevant_income = regular_income + capital_gains + social_security / 2
-        ss_table = self.ss_taxable_single if single else self.ss_taxable_couple
-        social_security_taxable = min(self.tax_table(ss_table, relevant_income * self.cpi, 0) / self.cpi,
-            self.marginal_rate(ss_table, relevant_income * self.cpi) * social_security)
-        regular_income += social_security_taxable
+        if social_security != 0:
+            regular_income -= social_security
+            relevant_income = regular_income + capital_gains + social_security / 2
+            ss_table = self.ss_taxable_single if single else self.ss_taxable_couple
+            social_security_taxable = min(self.tax_table(ss_table, relevant_income * self.cpi, 0) / self.cpi,
+                self.marginal_rate(ss_table, relevant_income * self.cpi) * social_security)
+            regular_income += social_security_taxable
 
         taxable_regular_income = regular_income - (self.federal_standard_deduction_single if single else self.federal_standard_deduction_joint)
         taxable_capital_gains = capital_gains + min(taxable_regular_income, 0)
@@ -181,9 +182,11 @@ class Taxes(object):
         nii_taxable = min(nii, max(regular_income - (self.niit_threshold_single if single else self.niit_threshold_couple), 0))
 
         regular_tax = self.tax_table(self.federal_table_single if single else self.federal_table_joint, taxable_regular_income, 0) \
-            + nii_taxable * self.niit_rate
+            if taxable_regular_income != 0 else 0
+        regular_tax += nii_taxable * self.niit_rate
         capital_gains_tax = self.tax_table(self.federal_long_term_gains_single if single else self.federal_long_term_gains_joint,
-            taxable_capital_gains, taxable_regular_income)
+            taxable_capital_gains, taxable_regular_income) \
+            if taxable_capital_gains != 0 else 0
 
         regular_tax += taxable_regular_income * self.params.tax_state
         capital_gains_tax += taxable_capital_gains * self.params.tax_state

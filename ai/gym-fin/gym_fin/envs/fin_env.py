@@ -58,12 +58,12 @@ class FinEnv(Env):
         next_year = datetime(start_date.year + 1, 1, 1)
         start_decimal_year = start_date.year + (start_date - this_year) / (next_year - this_year)
 
-        alive_both = [1 if self.sex2 else 0]
-        alive_one = [0 if self.sex2 else 1]
+        alive_both = [1 if self.sex2 else 0] # Probability across all rollouts.
+        alive_one = [0 if self.sex2 else 1] # Probability across all rollouts.
         _alive = 1
         _alive2 = 1
 
-        alive_single = [None if self.sex2 else 1]
+        alive_single = [None if self.sex2 else 1] # Probability for this couple rollout.
         _alive_single = None if self.sex2 else 1
         dead = False
         dead2 = self.sex2 == None
@@ -200,11 +200,11 @@ class FinEnv(Env):
             actions += 1 # stocks_action
         if self.params.real_bonds:
             actions += 1 # real_bonds_action
-            if not self.params.real_bonds_duration:
+            if not self.params.real_bonds_duration or self.params.real_bonds_duration_action_force:
                 actions += 1 # real_bonds_duration_action
         if self.params.nominal_bonds:
             actions += 1 # nominal_bonds_action
-            if not self.params.nominal_bonds_duration:
+            if not self.params.nominal_bonds_duration or self.params.nominal_bonds_duration_action_force:
                 actions += 1 # nominal_bonds_duration_action
         if self.params.iid_bonds:
             actions += 1 # iid_bonds_action
@@ -236,6 +236,8 @@ class FinEnv(Env):
             dtype = 'float32'
         )
         self.observation_space_range = self.observation_space.high - self.observation_space.low
+        self.observation_space_scale = 2 / self.observation_space_range
+        self.observation_space_shift = -1 - self.observation_space.low * self.observation_space_scale
         self.observation_space_extreme_range = self.params.observation_space_warn * self.observation_space_range
         self.observation_space_extreme_range[self.observation_space_items.index('reward_to_go_estimate')] *= 2
         self.observation_space_extreme_range[self.observation_space_items.index('relative_ce_estimate_individual')] *= 3
@@ -257,9 +259,11 @@ class FinEnv(Env):
 
     def _init(self):
 
+        np.seterr(divide = 'raise', over = 'raise', under = 'ignore', invalid = 'raise')
+
         home_dir = environ.get('AIPLANNER_HOME', expanduser('~/aiplanner'))
 
-        self.vs_cache = None
+        self._cvs_key = None
 
         self.life_table_age = None
         self.life_table2_age = None
@@ -480,8 +484,26 @@ class FinEnv(Env):
         if self.sex2 != None:
             self.age2 -= adjust
             self.life_table2.age -= adjust
+
         self.preretirement_years = max(0, self.age_retirement - self.age)
-        self._compute_vital_stats(self.age, self.age2, self.preretirement_years)
+
+        # As a speedup create special matching life tables that cover just the preretirement years.
+        self.life_table_preretirement = LifeTable(self.params.life_table, self.params.sex, self.age,
+            death_age = self.age + self.preretirement_years + self.params.time_period, date_str = self.params.life_table_date, interpolate_q = False)
+        self.life_table_preretirement.age_add = self.life_table.age_add
+        if self.sex2 != None:
+            self.life_table2_preretirement = LifeTable(self.params.life_table, self.sex2, self.age2,
+                death_age = self.age2 + self.preretirement_years + self.params.time_period, date_str = self.params.life_table_date, interpolate_q = False)
+            self.life_table2_preretirement.age_add = self.life_table2.age_add
+        else:
+            self.life_table2_preretirement = None
+
+        key = (self.age, self.preretirement_years, le_add)
+        if self.sex2 or not self.params.probabilistic_life_expectancy or key != self._cvs_key:
+            # Can't cache vital stats for couple as would loose random rollouts of couple expectancy.
+            # Additionally would need to save retirement_expectancy_one and retirement_expectancy_both as the get clobbered below.
+            self._compute_vital_stats(self.age, self.age2, self.preretirement_years)
+            self._cvs_key = key
 
         self.couple = self.alive_single[0] == None
 
@@ -529,6 +551,7 @@ class FinEnv(Env):
                 self.income_preretirement = self.start_income_preretirement if self.income_preretirement_years > 0 else 0
                 self.income_preretirement2 = self.start_income_preretirement2 if self.income_preretirement_years2 > 0 else 0
 
+                assert not self.params.consume_preretirement or not self.params.consume_preretirement_income_ratio_high
                 self.consume_preretirement = self.params.consume_preretirement + \
                     uniform(self.params.consume_preretirement_income_ratio_low, self.params.consume_preretirement_income_ratio_high) * \
                     (self.income_preretirement + self.income_preretirement2)
@@ -605,11 +628,29 @@ class FinEnv(Env):
 
         #print('wealth:', self.net_wealth_pretax, self.raw_preretirement_income_wealth, self.retired_income_wealth_pretax, self.p_wealth)
 
-        if self.params.p_taxable_stocks_basis_fraction_low == self.params.p_taxable_stocks_basis_fraction_high:
-            p_taxable_stocks_basis_fraction = self.params.p_taxable_stocks_basis_fraction_low
-        else:
-            p_taxable_stocks_basis_fraction = uniform(self.params.p_taxable_stocks_basis_fraction_low, self.params.p_taxable_stocks_basis_fraction_high)
-        self.taxes = Taxes(self.params, taxable_assets, p_taxable_stocks_basis_fraction)
+        taxable_basis = AssetAllocation(fractional = False)
+        if self.params.stocks:
+            assert not self.params.p_taxable_stocks_basis or not self.params.p_taxable_stocks_basis_fraction_high
+            taxable_basis.aa['stocks'] = self.params.p_taxable_stocks_basis + \
+                uniform(self.params.p_taxable_stocks_basis_fraction_low, self.params.p_taxable_stocks_basis_fraction_high) * taxable_assets.aa['stocks']
+        if self.params.real_bonds:
+            assert not self.params.p_taxable_real_bonds_basis or not self.params.p_taxable_real_bonds_basis_fraction_high
+            taxable_basis.aa['real_bonds'] = self.params.p_taxable_real_bonds_basis + \
+                uniform(self.params.p_taxable_real_bonds_basis_fraction_low, self.params.p_taxable_real_bonds_basis_fraction_high) * taxable_assets.aa['real_bonds']
+        if self.params.nominal_bonds:
+            assert not self.params.p_taxable_nominal_bonds_basis or not self.params.p_taxable_nominal_bonds_basis_fraction_high
+            taxable_basis.aa['nominal_bonds'] = self.params.p_taxable_nominal_bonds_basis + \
+                uniform(self.params.p_taxable_nominal_bonds_basis_fraction_low, self.params.p_taxable_nominal_bonds_basis_fraction_high) * \
+                taxable_assets.aa['nominal_bonds']
+        if self.params.iid_bonds:
+            assert not self.params.p_taxable_iid_bonds_basis or not self.params.p_taxable_iid_bonds_basis_fraction_high
+            taxable_basis.aa['iid_bonds'] = self.params.p_taxable_iid_bonds_basis + \
+                uniform(self.params.p_taxable_iid_bonds_basis_fraction_low, self.params.p_taxable_iid_bonds_basis_fraction_high) * taxable_assets.aa['iid_bonds']
+        if self.params.bills:
+            assert not self.params.p_taxable_bills_basis or not self.params.p_taxable_bills_basis_fraction_high
+            taxable_basis.aa['bills'] = self.params.p_taxable_bills_basis + \
+                uniform(self.params.p_taxable_bills_basis_fraction_low, self.params.p_taxable_bills_basis_fraction_high) * taxable_assets.aa['bills']
+        self.taxes = Taxes(self.params, taxable_assets, taxable_basis)
 
         self._pre_calculate()
 
@@ -680,11 +721,11 @@ class FinEnv(Env):
             stocks_action, *action = action
         if self.params.real_bonds:
             real_bonds_action, *action = action
-            if not self.params.real_bonds_duration:
+            if not self.params.real_bonds_duration or self.params.real_bonds_duration_action_force:
                 real_bonds_duration_action, *action = action
         if self.params.nominal_bonds:
             nominal_bonds_action, *action = action
-            if not self.params.nominal_bonds_duration:
+            if not self.params.nominal_bonds_duration or self.params.nominal_bonds_duration_action_force:
                 nominal_bonds_duration_action, *action = action
         if self.params.iid_bonds:
             iid_bonds_action, *action = action
@@ -868,12 +909,16 @@ class FinEnv(Env):
         if self.params.bills:
             asset_allocation.aa['bills'] = bills
 
+        buckets = 100 # Quantize duration so that bonds.py:_log_p() _sr_cache can be utilized when sample returns.
+
         real_bonds_duration = self.params.real_bonds_duration or \
-            self.params.time_period + (self.params.real_bonds_duration_max - self.params.time_period) * (real_bonds_duration_action + 1) / 2 \
+            self.params.time_period + (self.params.real_bonds_duration_max - self.params.time_period) * \
+            round((real_bonds_duration_action + 1) / 2 * buckets) / buckets \
             if self.params.real_bonds else None
 
         nominal_bonds_duration = self.params.nominal_bonds_duration or \
-            self.params.time_period + (self.params.nominal_bonds_duration_max - self.params.time_period) * (nominal_bonds_duration_action + 1) / 2 \
+            self.params.time_period + (self.params.nominal_bonds_duration_max - self.params.time_period) * \
+            round((nominal_bonds_duration_action + 1) / 2 * buckets) / buckets \
             if self.params.nominal_bonds else None
 
         return (consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration)
@@ -1150,6 +1195,15 @@ class FinEnv(Env):
             if reward != reward_unclipped:
                 self.warn('Reward clipped - age, consume, reward:', self.age, consume_rate, reward_unclipped)
 
+        alive0 = self.alive_single[self.episode_length]
+        if alive0 == None:
+            alive0 = 1
+        alive1 = self.alive_single[self.episode_length + 1]
+        if alive1 == None:
+            alive1 = 1
+        self.estate_weight = alive0 - alive1
+        self.estate_value = max(0, self.p_sum() - self.taxes_due) # Ignore future taxation of p_tax_deferred; depends upon heirs tax bracket.
+
         self._step()
         self._step_bonds()
 
@@ -1181,9 +1235,11 @@ class FinEnv(Env):
 
         self.age += steps
         self.age2 += steps
-        self.life_table.age = self.age # Hack.
+        self.life_table.age = self.age # Hack. (Probably not needed here as set_age() doesn't result in a life table recompute).
+        self.life_table_preretirement.age = self.age
         try:
             self.life_table2.age = self.age2
+            self.life_table2_preretirement.age = self.age2
         except AttributeError:
             pass
 
@@ -1259,7 +1315,7 @@ class FinEnv(Env):
         self.bonds_stepper.step()
 
     def goto(self, step = None, age = None, real_oup_x = None, inflation_oup_x = None, p_tax_free = None, p_tax_deferred = None, p_taxable_assets = None,
-             p_taxable_stocks_basis_fraction = None, taxes_due = None, force_family_unit = False, forced_family_unit_couple = True):
+             p_taxable_basis = None, taxes_due = None, force_family_unit = False, forced_family_unit_couple = True):
         '''Goto a reproducable time step. Useful for benchmarking and plotting surfaces.'''
 
         assert (step == None) != (age == None)
@@ -1289,10 +1345,11 @@ class FinEnv(Env):
         if p_tax_free != None: self.p_tax_free = p_tax_free
         if p_tax_deferred != None: self.p_tax_deferred = p_tax_deferred
         if p_taxable_assets == None:
-            assert p_taxable_stocks_basis_fraction == None
+            assert p_taxable_basis == None
         else:
+            assert p_taxable_basis != None
             self.p_taxable = sum(p_taxable_assets.aa.values())
-            self.taxes = Taxes(self.params, p_taxable_assets, p_taxable_stocks_basis_fraction)
+            self.taxes = Taxes(self.params, p_taxable_assets, p_taxable_basis)
         if taxes_due != None:
             self.taxes_due = 0
 
@@ -1328,18 +1385,20 @@ class FinEnv(Env):
         self.pv_retired_income = {'tax_free': 0, 'tax_deferred': 0, 'taxable': 0}
         self.pv_social_security = 0
         for db in self.defined_benefits.values():
-            pv = db.pv(retired = False)
-            self.pv_preretirement_income[db.type_of_funds] += pv
-            if db.type == 'social_security':
-                self.pv_social_security += pv
+            if self.preretirement_years > 0:
+                pv = db.pv(retired = False)
+                self.pv_preretirement_income[db.type_of_funds] += pv
+                if db.type == 'social_security':
+                    self.pv_social_security += pv
             pv = db.pv(preretirement = False)
             self.pv_retired_income[db.type_of_funds] += pv
             if db.type == 'social_security':
                 self.pv_social_security += pv
         source = 'taxable' if self.params.income_preretirement_taxable else 'tax_free'
-        self.pv_preretirement_income[source] += self.income_preretirement * min(self.income_preretirement_years, self.preretirement_years)
-        self.pv_preretirement_income[source] += self.income_preretirement2 * min(self.income_preretirement_years2, self.preretirement_years)
-        self.pv_preretirement_income['tax_free'] -= self.consume_preretirement * self.preretirement_years
+        if self.preretirement_years > 0:
+            self.pv_preretirement_income[source] += self.income_preretirement * min(self.income_preretirement_years, self.preretirement_years)
+            self.pv_preretirement_income[source] += self.income_preretirement2 * min(self.income_preretirement_years2, self.preretirement_years)
+            self.pv_preretirement_income['tax_free'] -= self.consume_preretirement * self.preretirement_years
         self.pv_retired_income[source] += self.income_preretirement * max(0, self.income_preretirement_years - self.preretirement_years)
         self.pv_retired_income[source] += self.income_preretirement2 * max(0, self.income_preretirement_years2 - self.preretirement_years)
 
@@ -1353,17 +1412,24 @@ class FinEnv(Env):
             self.years_retired = self.retirement_expectancy_one[self.episode_length]
             self.couple_weight = 1
 
-        preretirement_growth = growth_rate ** self.preretirement_years
-        retirement_growth = 1 if growth_rate == 1 else self.years_retired * (1 - 1 / growth_rate) / (1 - 1 / growth_rate ** self.years_retired)
-        total_growth = preretirement_growth * retirement_growth
+        if growth_rate != 1:
+            preretirement_growth = growth_rate ** self.preretirement_years
+            retirement_growth = 1 if growth_rate == 1 else self.years_retired * (1 - 1 / growth_rate) / (1 - 1 / growth_rate ** self.years_retired)
+            total_growth = preretirement_growth * retirement_growth
+        else:
+            total_growth = 1
 
-        self.wealth = {'tax_free': self.p_tax_free * total_growth, 'tax_deferred': self.p_tax_deferred * total_growth, 'taxable': self.p_taxable * total_growth}
+        self.wealth_tax_free = self.p_tax_free * total_growth
+        self.wealth_tax_deferred = self.p_tax_deferred * total_growth
+        self.wealth_taxable = self.p_taxable * total_growth
 
         if not self.params.tax and self.params.income_aggregate:
             self.pv_retired_income = {'tax_free': self.retired_income_wealth_pretax, 'tax_deferred': 0, 'taxable': 0} # Results in better training.
-            self.wealth = {'tax_free': sum(self.wealth.values()), 'tax_deferred': 0, 'taxable': 0}
+            self.wealth_tax_free += self.wealth_tax_deferred + self.wealth_taxable
+            self.wealth_tax_deferred = 0
+            self.wealth_taxable = 0
 
-        self.p_wealth = sum(self.wealth.values())
+        self.p_wealth = self.wealth_tax_free + self.wealth_tax_deferred + self.wealth_taxable
         self.raw_preretirement_income_wealth = sum(self.pv_preretirement_income.values()) # Should factor in investment growth.
         self.net_wealth_pretax = self.retired_income_wealth_pretax + max(0, self.p_wealth + self.raw_preretirement_income_wealth - self.taxes_due * total_growth)
 
@@ -1381,9 +1447,9 @@ class FinEnv(Env):
         total_years = self.preretirement_years + self.years_retired
 
         pv_regular_income = self.pv_preretirement_income['tax_deferred'] + self.pv_preretirement_income['taxable'] + \
-            self.pv_retired_income['tax_deferred'] + self.pv_retired_income['taxable'] + self.wealth['tax_deferred']
+            self.pv_retired_income['tax_deferred'] + self.pv_retired_income['taxable'] + self.wealth_tax_deferred
         pv_social_security = self.pv_social_security
-        pv_capital_gains = self.wealth['taxable'] - self.taxable_basis / self.bonds_constant_inflation.discount_rate(average_asset_years) ** average_asset_years
+        pv_capital_gains = self.wealth_taxable - self.taxable_basis / self.bonds_constant_inflation.discount_rate(average_asset_years) ** average_asset_years
             # Fails to take into consideration non-qualified dividends.
             # Taxable basis does not get adjusted for inflation.
         regular_tax, capital_gains_tax = \
@@ -1397,7 +1463,7 @@ class FinEnv(Env):
             self.regular_tax_rate = pv_regular_tax / pv_regular_income
         except ZeroDivisionError:
             self.regular_tax_rate = 0
-        self.p_wealth -= self.regular_tax_rate * self.wealth['tax_deferred']
+        self.p_wealth -= self.regular_tax_rate * self.wealth_tax_deferred
         self.raw_preretirement_income_wealth -= self.regular_tax_rate * (self.pv_preretirement_income['tax_deferred'] + self.pv_preretirement_income['taxable'])
         self.p_wealth = max(0, self.p_wealth - pv_capital_gains_tax)
         self.preretirement_income_wealth = max(0, self.raw_preretirement_income_wealth)
@@ -1548,24 +1614,24 @@ class FinEnv(Env):
             self.p_fraction, self.preretirement_fraction,
             # Market condition obsevations.
             stocks_price, stocks_volatility, real_interest_rate)
-        obs = np.array(observe, dtype = 'float32')
-        obs = self.encode_observation(obs)
-        if np.any(np.isnan(obs)) or np.any(np.isinf(obs)):
-            self.warn('Invalid observation:', observe, obs, np.isnan(obs), np.isinf(obs))
-            assert False, 'Invalid observation.'
+        obs = self.encode_observation(observe)
         return obs
 
-    def encode_observation(self, obs):
+    def encode_observation(self, observe):
 
+        obs = np.array(observe, dtype = 'float32')
         high = self.observation_space.high
         low = self.observation_space.low
-        rnge = self.observation_space_range
-        extreme_range = self.observation_space_extreme_range
-        clipped_obs = np.clip(obs, low, high)
-        clip_status = clipped_obs != obs
-        if np.any(clip_status):
-            for index, (item, ob, status) in enumerate(zip(self.observation_space_items, obs, clip_status)):
-                if status:
+        try:
+            ok = all(low <= obs) and all(obs <= high)
+        except FloatingPointError:
+            self.warn('Invalid observation:', observe, obs, np.isnan(obs))
+            assert False, 'Invalid observation.'
+        if not ok:
+            extreme_range = self.observation_space_extreme_range
+            for index, ob in enumerate(obs):
+                if not low[index] <= ob <= high[index]:
+                    item = self.observation_space_items[index]
                     self.observation_space_range_exceeded[index] += 1
                     try:
                         fract = self.observation_space_range_exceeded[index] / self.env_timesteps
@@ -1575,8 +1641,15 @@ class FinEnv(Env):
                         self.warn('Frequently out of range', item + ':', fract)
                     if not high[index] - extreme_range[index] < ob < low[index] + extreme_range[index]:
                         self.warn('Extreme', item + ', age:', ob, self.age)
+                        if isinf(ob):
+                            assert False, 'Infinite observation.'
+                        if isnan(ob):
+                            assert False, 'Undetected invalid observation.'
         if self.params.observation_space_ignores_range:
-            obs = -1 + 2 * (obs - low) / rnge
+            try:
+                obs = obs * self.observation_space_scale + self.observation_space_shift
+            except FloatingPointError:
+                assert False, 'Overflow in observation rescaling.'
         return obs
 
     def decode_observation(self, obs):
