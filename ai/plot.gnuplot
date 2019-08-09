@@ -32,7 +32,7 @@ plot prefix . "-estate-pdf.csv" with lines notitle lt 2
 
 set ytics
 
-set xlabel "your age"
+set xlabel "age self"
 set xrange [*:100]
 
 set ylabel "annual consumption"
