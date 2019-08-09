@@ -19,8 +19,6 @@ from statistics import mean, stdev, StatisticsError
 
 import numpy as np
 
-from baselines import logger
-
 def weighted_percentiles(value_weights, pctls):
     if len(value_weights[0]) == 0:
         return [float('nan')] * len(pctls)
@@ -148,7 +146,7 @@ class Evaluator(object):
 
         def rollout(eval_envs, pi):
 
-            envs = tuple(eval_env.unwrapped for eval_env in eval_envs)
+            envs = tuple(eval_env.fin for eval_env in eval_envs)
             rewards = []
             erewards = []
             estates = []
@@ -297,7 +295,7 @@ class Evaluator(object):
                 # Use erewards rather than rewards because episode rewards are correlated.
         except ZeroDivisionError:
             stderr = float('nan')
-        env = self.eval_envs[0].unwrapped
+        env = self.eval_envs[0].fin
         env.reset()
         utility = env.utility
         unit_ce = indiv_ce = utility.inverse(rew)

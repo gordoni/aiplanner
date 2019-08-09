@@ -12,7 +12,10 @@ from math import exp, log, sqrt
 from random import lognormvariate, normalvariate
 from statistics import mean, stdev
 
-class Returns(object):
+import cython
+
+@cython.cclass
+class Returns():
 
     def __init__(self, ret, vol, standard_error, time_period):
 

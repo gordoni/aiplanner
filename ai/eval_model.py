@@ -296,7 +296,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
     set_global_seeds(eval_seed)
 
     env = make_fin_env(**eval_model_params, direct_action = not model)
-    env = env.unwrapped
+    env = env.fin
 
     skip_model = env.params.consume_policy != 'rl' and env.params.annuitization_policy != 'rl' and env.params.asset_allocation_policy != 'rl' and \
         (not env.params.real_bonds or env.params.real_bonds_duration != None) and \
@@ -454,7 +454,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
 
                     print('    Consume: ', x)
                     for e in envs:
-                        e.unwrapped.params.consume_initial = x
+                        e.fin.params.consume_initial = x
                     evaluator.evaluate(pi)
                     res = evaluator.summarize()
                     f_x = res['ce']
@@ -466,7 +466,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
             x, f_x = gss(f, search_consume_initial_around / 2, search_consume_initial_around * 2)
             print('    Consume: ', x)
             for e in envs:
-                e.unwrapped.params.consume_initial = x
+                e.fin.params.consume_initial = x
 
         object_ids = evaluator.evaluate(pi)
 

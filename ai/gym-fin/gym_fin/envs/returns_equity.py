@@ -10,12 +10,42 @@
 
 from csv import reader
 from math import exp, log, sqrt
-from random import normalvariate, random, randrange, uniform
+from random import expovariate, normalvariate, randrange, uniform
 from statistics import mean
 
-from gym_fin.envs.returns import Returns
+import cython
 
+from gym_fin.envs.returns import Returns # Needs to be cimport if using Cython.
+
+@cython.cclass
 class ReturnsEquity(Returns):
+    params: object
+    z_hist: cython.double[:]
+    sigma_hist: cython.double[:]
+    sigma_average: cython.double
+    bootstrap_years: cython.double
+    mu: cython.double
+    sigma: cython.double
+    alpha: cython.double
+    gamma: cython.double
+    beta: cython.double
+    price_exaggeration: cython.double
+    price_low: cython.double
+    price_high: cython.double
+    price_noise_sigma: cython.double
+    mean_reversion_rate: cython.double
+    standard_error: cython.double
+    time_period: cython.double
+    periods_per_year: cython.double
+    omega: cython.double
+    block_size: cython.int
+    sigma_t: cython.double
+
+    period_mu: cython.double
+    period_mean_reversion_rate: cython.double
+    log_price_noise: cython.double
+    log_above_trend: cython.double
+    t: cython.int
 
     def __init__(self, params, std_res_fname):
 
@@ -47,7 +77,7 @@ class ReturnsEquity(Returns):
         self.periods_per_year = 12 # Alpha, gamma, and beta would need to change if alter this.
         self.omega = (1 - self.alpha - self.gamma / 2 - self.beta) * self.sigma ** 2 / self.periods_per_year
 
-        self.t = randrange(len(self.z_hist))
+        self.block_size = 0
 
         if self.params.stocks_sigma_level_type == 'sample':
             # Allow to run through resets. Better than using sigma_hist on each reset as sigma_hist isn't an exact representation of the GJR-GARCH sigma distribution.
@@ -78,9 +108,16 @@ class ReturnsEquity(Returns):
 
     def sample(self):
         '''Sample the returns, also of necessity steps the returns.'''
+        ret: cython.double
+        len_z_hist: cython.int
+        z_t: cython.double
 
         ret = 0
+        len_z_hist = len(self.z_hist)
         for _ in range(round(self.time_period * self.periods_per_year)):
+            while self.block_size == 0:
+                self.t = randrange(len(self.z_hist))
+                self.block_size = round(expovariate(1 / (self.bootstrap_years * self.periods_per_year)))
             z_t = self.z_hist[self.t]
             epsilon_t = self.sigma_t * z_t
             r_t = self.period_mu + epsilon_t
@@ -89,14 +126,12 @@ class ReturnsEquity(Returns):
             self.log_above_trend += log_reversion
             r_t += log_reversion
             ret += r_t
-            if random() < 1 / (self.bootstrap_years * self.periods_per_year):
-                self.t = randrange(len(self.z_hist))
-            else:
-                self.t = (self.t + 1) % len(self.z_hist)
+            self.t = (self.t + 1) % len_z_hist
+            self.block_size -= 1
             z_t_1 = z_t
             sigma2_t_1 = self.sigma_t ** 2
-            sigma2_t = self.omega + ((self.alpha + self.gamma * int(z_t_1 < 0)) * z_t_1 ** 2 + self.beta) * sigma2_t_1
-            self.sigma_t = sqrt(sigma2_t)
+            sigma2_t = self.omega + ((self.alpha + (self.gamma if z_t_1 < 0 else 0)) * z_t_1 ** 2 + self.beta) * sigma2_t_1
+            self.sigma_t = sigma2_t ** 0.5
 
         sample = exp(ret)
 

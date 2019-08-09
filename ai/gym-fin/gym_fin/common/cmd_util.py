@@ -17,24 +17,13 @@ Helpers for scripts like train_ppo1.py.
 import argparse
 import os
 
-from baselines import logger
-from baselines.bench import Monitor
 from baselines.common import boolean_flag, set_global_seeds
 
 from gym_fin.envs import FinEnv, ModelParams
 from gym_fin.envs.model_params import dump_params
 
 def make_fin_env(training = False, allow_early_resets = None, **kwargs):
-    """
-    Create a wrapped, monitored gym.Env for Fin.
-    """
     env = FinEnv(**kwargs)
-    filename = logger.get_dir()
-    if filename:
-        filename = os.path.join(filename, '' if training else 'gym_eval')
-    if allow_early_resets == None:
-        allow_early_resets = not training
-    env = Monitor(env, filename, allow_early_resets=allow_early_resets)
     return env
 
 def _config_parser():
