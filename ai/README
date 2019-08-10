@@ -316,10 +316,12 @@ fit it yourself perform the following steps.
 Training the generic nueral network models
 ------------------------------------------
 
-Training the neural network models will take 1-2 days:
+Training the neural network models (will take approximately 3 days on
+two InstanceType c5.24xlarge instances with Ray started with
+--num-cpus=60; edit cluster.yaml accordingly):
 
     cd ~/aiplanner/ai/web
-    ./train
+    nohup ./train > /tmp/train.out &
 
 The trained models will be placed in ~/aiplanner-data/models.new .
 
