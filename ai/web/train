@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -19,7 +19,7 @@ cd ~/aiplanner-data/models.new
 
 PARALLEL=Jobs
 
-SPIAS_TYPE=real
+SPIAS_TYPE=nominal
 SAVESTEPS=2000000
 
 TRAINING=generic
@@ -40,9 +40,8 @@ wait
 start_ray_if_needed
 TEMPFILE=`tempfile -p train`
 for MODEL_DIR in aiplanner-*.tf; do
-    $AI_DIR/export_model.py --redis-address=$RAY_REDIS_ADDRESS --model-dir=$MODEL_DIR --train-seed=$SEED_START --train-seeds=$SEEDS >> $TEMPFILE 2>&1 &
+    $AI_DIR/export_model.py --redis-address=$RAY_REDIS_ADDRESS --model-dir=$MODEL_DIR --train-seed=$SEED_START --train-seeds=$SEEDS >> $TEMPFILE 2>&1
 done
-wait
 
 cp $BASE_SCENARIO ./base-scenario.txt
 cp $AI_DIR/web/market-data.json ./
