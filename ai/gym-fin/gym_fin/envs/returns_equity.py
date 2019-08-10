@@ -78,6 +78,9 @@ class ReturnsEquity(Returns):
         self.omega = (1 - self.alpha - self.gamma / 2 - self.beta) * self.sigma ** 2 / self.periods_per_year
 
         self.block_size = 0
+        while self.block_size == 0:
+            self.t = randrange(len(self.z_hist))
+            self.block_size = round(expovariate(1 / (self.bootstrap_years * self.periods_per_year)))
 
         if self.params.stocks_sigma_level_type == 'sample':
             # Allow to run through resets. Better than using sigma_hist on each reset as sigma_hist isn't an exact representation of the GJR-GARCH sigma distribution.
