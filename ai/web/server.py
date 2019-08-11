@@ -13,14 +13,16 @@
 from argparse import ArgumentParser
 from datetime import datetime, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from io import TextIOWrapper
 from json import dumps, loads
 from math import exp
-from os import chmod, environ, listdir, makedirs, rmdir, scandir, stat, statvfs
+from os import chmod, environ, getpid, listdir, makedirs, rmdir, scandir, stat, statvfs
 from os.path import expanduser
 from random import choice, randrange, uniform
 from re import match
 from shlex import quote
 from shutil import rmtree
+from signal import SIGHUP, signal
 from socketserver import ThreadingMixIn
 from subprocess import PIPE, Popen
 from sys import stdout
@@ -34,20 +36,43 @@ from gym_fin.envs.model_params import load_params_file
 
 from spia import YieldCurve
 
-def report_exception(args, e):
+class Logger:
 
-    with open(expanduser(args.root_dir) + '/server.log', 'a') as f:
+    def __init__(self, args):
 
-        print('----------------------------------------', file = f)
-        print_exc(file = f)
-        print('----------------------------------------', file = f)
+        self.args = args
+
+        self.restart()
+
+    def restart(self):
+
+       self.logfile_binary = open(expanduser(self.args.root_dir) + '/server.err', 'ab')
+       self.logfile = TextIOWrapper(self.logfile_binary)
+       self.info_logfile = open(expanduser(self.args.root_dir) + '/server.log', 'a')
+
+    def log(self, *args):
+
+        print(*args, file = self.logfile)
+        self.logfile.flush()
+
+    def log_binary(self, data):
+
+        self.logfile_binary.write(data)
+        self.logfile_binary.flush()
+
+    def report_exception(e):
+
+        print('----------------------------------------', file = self.logfile)
+        print_exc(file = self.logfile)
+        print('----------------------------------------', file = self.logfile)
+        self.logfile.flush()
 
 class InferEvaluateDaemon:
 
-    def __init__(self, args, *, evaluate, gammas, log, priority = 0):
+    def __init__(self, args, *, evaluate, gammas, logger, priority = 0):
 
         self.args = args
-        self.log = log
+        self.logger = logger
 
         models_dir = expanduser(self.args.models_dir)
         cmd = [
@@ -69,7 +94,7 @@ class InferEvaluateDaemon:
         ]
         for gamma in gammas:
             cmd += ['--gamma', str(gamma)]
-        self.proc = Popen(cmd, stdin = PIPE, stdout = PIPE, stderr = self.log)
+        self.proc = Popen(cmd, stdin = PIPE, stdout = PIPE, stderr = self.logger.logfile_binary)
 
     def infer_evaluate(self, api_data, *, options = [], prefix = ''):
 
@@ -106,8 +131,7 @@ class InferEvaluateDaemon:
                     data = self.proc.stdout.read(length)
                     return aid, data
                 elif string != '\n':
-                    self.log.write(line)
-                    self.log.flush()
+                    self.logger.log_binary(line)
 
         except IOError as e:
 
@@ -124,27 +148,38 @@ class InferEvaluateDaemon:
 
 class ApiHTTPServer(ThreadingMixIn, HTTPServer):
 
-    def __init__(self, args, log):
+    def __init__(self, args, logger):
 
         super().__init__((args.host, args.port), RequestHandler)
         self.args = args
-        self.log =  log
+        self.logger = logger
+
+        self.infer_run_lock = BoundedSemaphore(self.args.num_concurrent_infer_jobs)
+        self.evaluate_run_lock = BoundedSemaphore(self.args.num_concurrent_evaluate_jobs)
+
+        self.restart()
+
+    def restart(self):
 
         if self.args.infer:
-            self.infer_run_lock = BoundedSemaphore(self.args.num_concurrent_infer_jobs)
             self.infer_daemon = [
-                InferEvaluateDaemon(self.args, evaluate = False, gammas = self.args.gamma, log = self.log, priority = 10)
+                InferEvaluateDaemon(self.args, evaluate = False, gammas = self.args.gamma, logger = self.logger, priority = 10)
                     for _ in range(self.args.num_concurrent_infer_jobs)
             ]
 
         if self.args.evaluate:
-            self.evaluate_run_lock = BoundedSemaphore(self.args.num_concurrent_evaluate_jobs)
             self.evaluate_daemons = {
-                gamma: [InferEvaluateDaemon(self.args, evaluate = True, gammas = [gamma], log = self.log) for _ in range(self.args.num_concurrent_evaluate_jobs)]
-                    for gamma in self.args.gamma
+                gamma:
+                    [InferEvaluateDaemon(self.args, evaluate = True, gammas = [gamma], logger = self.logger) for _ in range(self.args.num_concurrent_evaluate_jobs)]
+                        for gamma in self.args.gamma
             }
 
 class RequestHandler(BaseHTTPRequestHandler):
+
+    def log_message(self, format, *args):
+
+        print(self.log_date_time_string(), format % args, file = self.server.logger.info_logfile)
+        self.server.logger.info_logfile.flush()
 
     def send_result(self, result_bytes, mime_type, headers = []):
 
@@ -347,8 +382,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 return None
             result = loads(data.decode('utf-8'))
             if result['error'] or result['result'][0][0]['error']:
-                self.server.log.write(data)
-                self.server.log.flush()
+                self.server.logger.log_binary(data)
                 return False
 
         if self.server.args.evaluate:
@@ -357,8 +391,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 return None
             result = loads(data.decode('utf-8'))
             if result['error'] or result['result'][0][0]['error']:
-                self.server.log.write(data)
-                self.server.log.flush()
+                self.server.logger.log_binary(data)
                 return False
 
         return True
@@ -538,10 +571,10 @@ Subject: ''' + self.server.args.project_name + ': subscribe' + '''
 
 class PurgeQueueServer:
 
-    def __init__(self, args, log):
+    def __init__(self, args, logger):
 
         self.args = args
-        self.log = log
+        self.logger = logger
 
     def serve_forever(self):
 
@@ -581,8 +614,7 @@ class PurgeQueueServer:
 
             if free < self.args.purge_keep_free or ifree < self.args.purge_keep_free or age >= purge_time:
                 def rmfail(function, path, excinfo):
-                    self.log.write(('Error purging file: ' + path).encode('utf-8'))
-                    self.log.flush()
+                    self.logger.log('Error purging file:', path)
                 assert dir.startswith(expanduser(self.args.root_dir))
                 assert dir.startswith(self.args.results_dir)
                 rmtree(dir, onerror = rmfail)
@@ -643,14 +675,26 @@ def main():
 
     makedirs(args.results_dir, exist_ok = True)
 
+    logger = Logger(args)
+
     if not args.serve or 'http' in args.serve:
-        log = open(expanduser(args.root_dir) + '/server.log', 'ab')
-        server = ApiHTTPServer(args, log)
-        Thread(target = server.serve_forever, daemon = True).start()
+        api_server = ApiHTTPServer(args, logger)
+        Thread(target = api_server.serve_forever, daemon = True).start()
+    else:
+        api_server = None
 
     if not args.serve or 'purgeq' in args.serve:
-        server = PurgeQueueServer(args, log)
+        server = PurgeQueueServer(args, logger)
         Thread(target = server.serve_forever, daemon = True).start()
+
+    def rotate_logs(signum, frame):
+        logger.restart()
+        api_server.restart()
+
+    signal(SIGHUP, rotate_logs)
+
+    with open(root_dir + '/server.pid', 'w') as f:
+        print (getpid(), file = f)
 
     try:
         while True:

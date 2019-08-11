@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # AIPlanner - Deep Learning Financial Planner
 # Copyright (C) 2019 Gordon Irlam
 #
@@ -10,10 +8,16 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
-AI_DIR=$AIPLANNER_HOME/ai
+[Unit]
+Description=AIPlanner API Webserver
 
-mkdir -p ~/aiplanner-data/models
+[Service]
+Type=simple
+ExecStart=/home/ubuntu/aiplanner/ai/web/server
+PIDFile=/home/ubuntu/aiplanner-data/server.pid
+ExecReload=/bin/kill -HUP $MAINPID
+User=ubuntu
+Group=ubuntu
 
-$AI_DIR/web/update_price.py
-$AI_DIR/web/update_volatility.py
+[Install]
+WantedBy=multi-user.target

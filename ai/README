@@ -335,8 +335,9 @@ The models should then be installed:
 Setting up cron
 ---------------
 
-Install crontabs to perform a daily refresh of the interest rate yield
-curves, and a weekly refresh of the fair market price and volatility.
+Install crontabs to perform logfile rotation, a daily refresh of the
+interest rate yield curves, and a weekly refresh of the fair market
+price and volatility.
 
     crontab -e
 
@@ -409,6 +410,19 @@ Set up the website
     sites to be served if desired, so that http://www.<site>/,
     http://<site>/, and https://<site>/ all point to
     https://www.<site>/.
+
+Configure systemd to start the services upon booting
+----------------------------------------------------
+
+Set up the systemd config:
+
+    cd ~/aiplanner/ai
+    sudo cp aiplanner-apiserver.service /etc/systemd/system/
+    sudo systemctl enable aiplanner-apiserver
+
+Start the service up:
+
+    sudo systemctl start aiplanner-apiserver
 
 Installing an outbound mailer
 -----------------------------
