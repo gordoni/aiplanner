@@ -332,22 +332,6 @@ The models should then be installed:
     mv models models.old  # Save prior models if any as a backup.
     mv models.new models
 
-Setting up cron
----------------
-
-Install crontabs to perform logfile rotation, a daily refresh of the
-interest rate yield curves, and a weekly refresh of the fair market
-price and volatility.
-
-    crontab -e
-
-----
-# m h  dom mon dow   command
-MAILTO=<you@yourdomain>
-0 0 * * * perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/cron.daily
-0 0 * * 0 perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/cron.weekly
-----
-
 Generating required assets (images)
 -----------------------------------
 
@@ -423,6 +407,22 @@ Set up the systemd config:
 Start the service up:
 
     sudo systemctl start aiplanner-apiserver
+
+Setting up cron
+---------------
+
+Install crontabs to perform logfile rotation, a daily refresh of the
+interest rate yield curves, and a weekly refresh of the fair market
+price and volatility.
+
+    crontab -e
+
+----
+# m h  dom mon dow   command
+MAILTO=<you@yourdomain>
+0 0 * * * perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/cron.daily
+0 0 * * 0 perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/cron.weekly
+----
 
 Installing an outbound mailer
 -----------------------------
