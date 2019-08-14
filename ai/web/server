@@ -10,10 +10,10 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-source activate tensorflow_p36 # Doesn't belong here, but needed somewhere if want to start apiserver on system startup.
+source $HOME/anaconda3/bin/activate tensorflow_p36 # Doesn't belong here, but needed somewhere if want to start apiserver on system startup.
 
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 
 . $AIPLANNER_HOME/ai/setenv
 
-$AIPLANNER_HOME/ai/web/server.py "$@"
+$AIPLANNER_HOME/ai/web/server.py "$@" &

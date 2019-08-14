@@ -64,7 +64,7 @@ def weighted_stdev(value_weights):
         return sqrt(n0 / (n0 - 1) * (n * ss - s ** 2) / (n ** 2))
     except ValueError:
         return 0
-    except ZeroDivisionError:
+    except (FloatingPointError, ZeroDivisionError):
         return float('nan')
 
 def weighted_ppf(value_weights, q):
@@ -319,6 +319,8 @@ class Evaluator(object):
         consume_pdf = self.pdf('consume', self.rewards, 0, ce_max, ce_step, utility.utility, 1 + env.params.consume_additional if env.sex2 != None else 1)
 
         estate_max, = weighted_percentiles(self.estates, [98])
+        if estate_max == 0:
+            estate_max = 1
         estate_step = estate_max / self.pdf_buckets
         estate_pdf = self.pdf('estate', self.estates, 0, estate_max, estate_step)
 
@@ -330,6 +332,10 @@ class Evaluator(object):
             unit_high *= 1 + env.params.consume_additional
             unit_consume_mean *= 1 + env.params.consume_additional
             unit_consume_stdev *= 1 + env.params.consume_additional
+
+        del self.rewards # Conserve RAM.
+        del self.erewards
+        del self.estates
 
         return {
             'couple': couple,
@@ -356,6 +362,7 @@ class Evaluator(object):
         w_tot = 0
         c_ceil = low
         u_ceil = f(c_ceil)
+        u_floor = u_ceil
         for r, w in zip(*value_weights):
             while r >= u_ceil:
                 if c_ceil >= high * (1 - 1e-15):

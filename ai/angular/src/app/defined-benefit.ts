@@ -32,7 +32,8 @@ export class DefinedBenefit {
     this.type = type;
     this.per = ['Home Proceeds', 'College Expenses', 'Home Purchase'].includes(type) ? 'year' : 'month';
     this.age = type == 'Social Security' ? 67 : age;
-    this.years = ['Mortgage', 'Child/Dependent'].includes(type) ? 20 : ['College Expenses'].includes(type) ? 4 : ['Home Proceeds', 'Home Purchase'] ? 1 : null;
+    this.years = ['Mortgage', 'Child/Dependent'].includes(type) ? 20 : ['College Expenses'].includes(type) ? 4 :
+        ['Home Proceeds', 'Home Purchase'].includes(type) ? 1 : null;
     this.inflationAdjustment = ['Social Security', 'Pension', 'Home Proceeds', 'Child/Dependent', 'College Expenses', 'Home Purchase'].includes(type) ? "cpi" :
         type == 'Income Annuity' ? 0.02 : 0;
     this.joint = ['Income Annuity', 'Reverse Mortgage'].includes(type) ? 'joint' : (['Pension'].includes(type) ? 'single' : 'survivor');

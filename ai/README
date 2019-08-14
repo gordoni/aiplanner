@@ -401,12 +401,15 @@ Configure systemd to start the services upon booting
 Set up the systemd config:
 
     cd ~/aiplanner/ai
-    sudo cp aiplanner-apiserver.service /etc/systemd/system/
-    sudo systemctl enable aiplanner-apiserver
+    mkdir -p ~/.config/systemd/user
+    cp aiplanner-apiserver.service ~/.config/systemd/user/
+    [edit] ~/.config/systemd/user/aiplanner-apiserver.service
+        # Change admin email you@yourdomain to <you@yourdomain>
+    systemctl --user enable aiplanner-apiserver
 
 Start the service up:
 
-    sudo systemctl start aiplanner-apiserver
+    systemctl --user start aiplanner-apiserver
 
 Setting up cron
 ---------------
@@ -427,8 +430,8 @@ MAILTO=<you@yourdomain>
 Installing an outbound mailer
 -----------------------------
 
-A mail transfer agent is required to provide end users with email
-notifications that their long running models have been trained.
+A mail transfer agent is required to provide subscription
+notifications to the administrator.
 
     sudo apt install postfix
     sudo dpkg-reconfigure postfix
@@ -465,7 +468,7 @@ bounce messages addressed to root. Something like:
 
 Consult your domain provider for details of how to do these steps.
 
-Finally you may need to create a firewall rule to allow inbound SMTP
+Finally you may wish to create a firewall rule to allow inbound SMTP
 connections on port 25. Consult your service provider for details.
 
 Performing site health checks
@@ -480,16 +483,18 @@ result indicates a problem.
 Development
 -----------
 
-The model server has four functions:
+The model server has three functions:
     - respond to the Angular server proxying to it to handle HTTP /api requests
-    - execute the run queue to perform long running model training and evaluations
-    - purge old results from the directory ~/aiplanner-data
+    - purge old results from the directory ~/aiplanner-data/results
     - respond to HTTP /healthcheck requests
 
 The model server can be run in development as follows:
 
     cd ~/aiplanner/ai/web
-    ./server --admin-email=<you@yourdomain>
+    # First stop any production apiserver
+    systemctl --user stop aiplanner-apiserver
+    # Then start up the development apiserver
+    ./server.py --admin-email=<you@yourdomain>
 
 On the same machine in another shell window run the Angular server:
 

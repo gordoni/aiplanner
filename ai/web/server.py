@@ -16,7 +16,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from io import TextIOWrapper
 from json import dumps, loads
 from math import exp
-from os import chmod, environ, getpid, listdir, makedirs, rmdir, scandir, stat, statvfs
+from os import chmod, environ, listdir, makedirs, rmdir, scandir, stat, statvfs
 from os.path import expanduser
 from random import choice, randrange, uniform
 from re import match
@@ -60,7 +60,7 @@ class Logger:
         self.logfile_binary.write(data)
         self.logfile_binary.flush()
 
-    def report_exception(e):
+    def report_exception(self, e):
 
         print('----------------------------------------', file = self.logfile)
         print_exc(file = self.logfile)
@@ -146,6 +146,27 @@ class InferEvaluateDaemon:
             except:
                 pass
 
+    def stop(self):
+
+        self.proc.stdin.close()
+        self.proc.wait()
+
+class DaemonsAndLock:
+
+    def __init__(self, daemons, timeout = None):
+
+        self.daemons = daemons
+        self.daemon_count = len(daemons)
+        self.lock = BoundedSemaphore(self.daemon_count)
+        self.timeout = timeout
+
+    def stop(self):
+
+        for _ in range(self.daemon_count):
+            self.lock.acquire()
+            daemon = self.daemons.pop()
+            daemon.stop()
+
 class ApiHTTPServer(ThreadingMixIn, HTTPServer):
 
     def __init__(self, args, logger):
@@ -154,25 +175,37 @@ class ApiHTTPServer(ThreadingMixIn, HTTPServer):
         self.args = args
         self.logger = logger
 
-        self.infer_run_lock = BoundedSemaphore(self.args.num_concurrent_infer_jobs)
-        self.evaluate_run_lock = BoundedSemaphore(self.args.num_concurrent_evaluate_jobs)
+        self.infer_daemon = None
+        self.evaluate_daemons = {}
 
         self.restart()
 
     def restart(self):
 
         if self.args.infer:
-            self.infer_daemon = [
+            old_infer_daemon = self.infer_daemon
+            self.infer_daemon = DaemonsAndLock([
                 InferEvaluateDaemon(self.args, evaluate = False, gammas = self.args.gamma, logger = self.logger, priority = 10)
                     for _ in range(self.args.num_concurrent_infer_jobs)
-            ]
+            ])
+            if old_infer_daemon:
+                old_infer_daemon.stop()
 
         if self.args.evaluate:
+            old_evaluate_daemons = self.evaluate_daemons
             self.evaluate_daemons = {
-                gamma:
-                    [InferEvaluateDaemon(self.args, evaluate = True, gammas = [gamma], logger = self.logger) for _ in range(self.args.num_concurrent_evaluate_jobs)]
-                        for gamma in self.args.gamma
+                gamma: DaemonsAndLock(
+                    [InferEvaluateDaemon(self.args, evaluate = True, gammas = [gamma], logger = self.logger) for _ in range(self.args.num_concurrent_evaluate_jobs)],
+                    timeout = 60)
+                        # Development client resubmits request after 120 seconds, so keep timeout plus evaluation time below that.
+                    for gamma in self.args.gamma
             }
+            for old_evaluate_daemon in old_evaluate_daemons.values():
+                old_evaluate_daemon.stop()
+
+class Overloaded(Exception):
+
+    pass
 
 class RequestHandler(BaseHTTPRequestHandler):
 
@@ -237,20 +270,29 @@ class RequestHandler(BaseHTTPRequestHandler):
                 elif self.path == '/api/subscribe':
 
                     result = self.subscribe(request)
-                    data = (dumps(result, indent = 4, sort_keys = True) + '\n').encode('utf-8')
+                    if result != None:
+                        data = (dumps(result, indent = 4, sort_keys = True) + '\n').encode('utf-8')
+                    else:
+                        data = None
+
+                else:
+
+                    self.send_error(404) # Not Found
+                    return
 
                 if data != None:
                     if self.server.args.verbose:
                         stdout.buffer.write(data)
                         stdout.flush()
                     self.send_result(data, 'application/json', headers = headers)
-                    return
+
+                return
 
             self.send_error(404) # Not Found
 
         except Exception as e:
 
-            report_exception(self.server.args, e)
+            self.server.logger.report_exception(e)
             self.send_error(500) # Internal Server Error
 
     def do_GET(self):
@@ -294,22 +336,17 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         except Exception as e:
 
-            report_exception(self.server.args, e)
+            self.server.logger.report_exception(e)
             self.send_error(500) # Internal Server Error
 
     def get_file(self, aid, name):
 
-        if name:
-            filename = 'aiplanner-' + name
-        else:
-            filename = 'aiplanner.json'
+        filename = 'aiplanner-' + name
         path = aid + '/seed_all/' + filename
 
         filetype = None
         if '..' not in path:
-            if filename.endswith('.json'):
-                filetype = 'application/json'
-            elif filename.endswith('.csv'):
+            if filename.endswith('.csv'):
                 filetype = 'text/csv'
             elif filename.endswith('.svg'):
                 filetype = 'image/svg+xml'
@@ -415,7 +452,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 assert now - timedelta(days = 14) < datetime.strptime(real_yield_curve.yield_curve_date, '%Y-%m-%d') <= now
                 assert now - timedelta(days = 14) < datetime.strptime(nominal_yield_curve.yield_curve_date, '%Y-%m-%d') <= now
             except AssertionError as e:
-                report_exception(self.server.args, e)
+                self.server.logger.report_exception(e)
                 return None
 
         return {
@@ -426,14 +463,6 @@ class RequestHandler(BaseHTTPRequestHandler):
         }
 
     def run_models(self, api_data, *, evaluate, options = [], prefix = ''):
-
-        if evaluate:
-            lock = self.server.evaluate_run_lock
-            timeout = 60
-                # Development client resubmits request after 120 seconds, so keep timeout plus evaluation time below that.
-        else:
-            lock = self.server.infer_run_lock
-            timeout = None
 
         market = self.market(check_current = prefix == 'healthcheck-')
         if market == None:
@@ -451,18 +480,17 @@ class RequestHandler(BaseHTTPRequestHandler):
                 if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:
                     api_scenario['nominal_short_rate'] = exp(market['nominal_short_rate']) - 1
 
-        if lock.acquire(timeout = timeout):
-            try:
-                if evaluate:
-                    results = self.run_evaluate(api_data, options = options, prefix = prefix)
-                    data = (dumps(results, sort_keys = True) + '\n').encode('utf-8')
-                else:
-                    aid, data = self.run_model(self.server.infer_daemon, api_data, options = options, prefix = prefix)
-                return data
-            finally:
-                lock.release()
+        if evaluate:
+            results = self.run_evaluate(api_data, options = options, prefix = prefix)
+            data = (dumps(results, sort_keys = True) + '\n').encode('utf-8')
         else:
-            self.send_error(503, 'Overloaded: try again later')
+            try:
+                aid, data = self.run_model(self.server.infer_daemon, api_data, options = options, prefix = prefix)
+            except Overloaded as e:
+                self.server.logger.report_exception(e)
+                self.send_error(503, 'Overloaded: try again later')
+                return
+        return data
 
     def run_evaluate(self, api_data, *, options = [], prefix = ''):
 
@@ -507,7 +535,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 else:
                     results[i] = result['result'][0][0]
             except Exception as e:
-                report_exception(self.server.args, e)
+                self.server.logger.report_exception(e)
                 results[i] = {'error': e.__class__.__name__ + ': ' + (str(e) or 'Exception encountered.')}
             finally:
                 results[i]['aid'] = aid
@@ -523,13 +551,17 @@ class RequestHandler(BaseHTTPRequestHandler):
             'result': [results],
         }
 
-    def run_model(self, daemon_queue, api_data, *, options = [], prefix = ''):
+    def run_model(self, daemons_and_lock, api_data, *, options = [], prefix = ''):
 
-        try:
-            daemon = daemon_queue.pop()
-            return daemon.infer_evaluate(api_data, options = options, prefix = prefix)
-        finally:
-            daemon_queue.append(daemon)
+        if daemons_and_lock.lock.acquire(timeout = daemons_and_lock.timeout):
+            try:
+                daemon = daemons_and_lock.daemons.pop()
+                return daemon.infer_evaluate(api_data, options = options, prefix = prefix)
+            finally:
+                daemons_and_lock.daemons.append(daemon)
+                daemons_and_lock.lock.release()
+        else:
+            raise Overloaded('Try again later')
 
     def subscribe(self, request):
 
@@ -583,7 +615,7 @@ class PurgeQueueServer:
                 self.purgeq()
                 sleep(self.args.purge_frequency)
             except Exception as e:
-                report_exception(self.args, e)
+                self.logger.report_exception(e)
                 sleep(10)
 
     def purgeq(self):
@@ -640,7 +672,7 @@ def main():
     boolean_flag(parser, 'infer', default = True) # Support /api/infer.
     boolean_flag(parser, 'evaluate', default = True) # Support /api/evaluate.
     boolean_flag(parser, 'warm-cache', default = True) # Pre-load tensorflow/Rllib models.
-    parser.add_argument('--num-concurrent-infer-jobs', type = int, default = 2) # Each job may have multiple scenarios with multiple gamma values.
+    parser.add_argument('--num-concurrent-infer-jobs', type = int, default = 1) # Each job may have multiple scenarios with multiple gamma values.
     parser.add_argument('--num-concurrent-evaluate-jobs', type = int, default = 1) # Each job is a single scenario with multiple gamma values.
     parser.add_argument('--gamma', action = 'append', type = float, default = []) # Supported gamma values.
     parser.add_argument('--train-seeds', type = int, default = 10)
@@ -648,7 +680,7 @@ def main():
     parser.add_argument('--eval-num-timesteps', type = int, default = 50000)
     parser.add_argument('--eval-num-timesteps-healthcheck', type = int, default = 1000)
     parser.add_argument('--eval-num-timesteps-max', type = int, default = 100000)
-    parser.add_argument('--num-environments', type = int, default = 10) # Number of parallel environments to use for a single model evaluation. Speeds up tensorflow.
+    parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for a single model evaluation. Speeds up tensorflow.
     parser.add_argument('--num-trace-episodes', type = int, default = 5) # Default number of sample traces to generate.
     parser.add_argument('--num-trace-episodes-max', type = int, default = 10000)
     parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
@@ -692,9 +724,6 @@ def main():
         api_server.restart()
 
     signal(SIGHUP, rotate_logs)
-
-    with open(root_dir + '/server.pid', 'w') as f:
-        print (getpid(), file = f)
 
     try:
         while True:

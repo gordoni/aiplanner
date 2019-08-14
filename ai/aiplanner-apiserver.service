@@ -12,12 +12,9 @@
 Description=AIPlanner API Webserver
 
 [Service]
-Type=simple
-ExecStart=/home/ubuntu/aiplanner/ai/web/server
-PIDFile=/home/ubuntu/aiplanner-data/server.pid
+Type=forking
+ExecStart=/home/ubuntu/aiplanner/ai/web/server --admin-email=you@yourdomain
 ExecReload=/bin/kill -HUP $MAINPID
-User=ubuntu
-Group=ubuntu
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

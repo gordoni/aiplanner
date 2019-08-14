@@ -25,6 +25,7 @@ PURPOSE.
       AIPlaner uses <a href="http://ssrn.com/abstract=3201703" target="_blank" rel="noopener">deep
       reinforcement learning</a> to compute a near optimal spending
       and investment strategy so as to maximize lifetime well-being.
+      AIPlanner is optimized for the U.S. tax code.
     </p>
     <div class="center small-font" *ngIf="!doneMarket">
       [Loading market data]
@@ -290,7 +291,7 @@ PURPOSE.
           <td>
             <select type="select" name="scenarioIncomePreretirementAgeEndType" [(ngModel)]="incomePreretirementAgeEndType">
               <option value="retirement">my retirement</option>
-              <option value="age">my age</option>
+              <option value="age">my specific age</option>
             </select>
             <span *ngIf="incomePreretirementAgeEndType == 'age'">
               <input type="number" class="small-numeric" required name="scenarioIncomePreretirementAgeEnd" #scenarioIncomePreretirementAgeEnd="ngModel" [(ngModel)]="incomePreretirementAgeEnd">
@@ -313,7 +314,7 @@ PURPOSE.
           <td>
             <select type="select" name="scenarioIncomePreretirementAgeEnd2Type" [(ngModel)]="incomePreretirementAgeEnd2Type">
               <option value="retirement">my retirement</option>
-              <option value="age">their age</option>
+              <option value="age">their specific age</option>
             </select>
             <span *ngIf="incomePreretirementAgeEnd2Type == 'age'">
               <input type="number" class="small-numeric" required name="scenarioIncomePreretirementAgeEnd2" #scenarioIncomePreretirementAgeEnd2="ngModel" [(ngModel)]="incomePreretirementAgeEnd2">
@@ -409,8 +410,8 @@ PURPOSE.
       The coefficient of relative risk aversion determines how much
       risk to take. The lower the coefficient the higher the expected
       consumption, but also the higher the uncertainty in realized
-      consumption. This is hypothetically illustrated in the table and
-      graph below.
+      consumption. This is hypothetically illustrated for a single
+      time period in the table and graph below.
     </p>
     <table class="crra">
       <tr>
@@ -485,7 +486,7 @@ PURPOSE.
 <div class="center progress" *ngIf="step == 7">
   <h1 class="title">Calculating</h1>
   <p>
-    Please wait 20 seconds.
+    Please wait 60 seconds.
     Do not reload this page.
   </p>
 </div>
@@ -499,7 +500,7 @@ PURPOSE.
     <table>
       <tr>
         <td class="first"> RRA coefficient </td>
-        <td class="first"> Extra consumption </td>
+        <td class="first"> Extra consumption in retirement </td>
         <td class="first"> Consumption uncertainty </td>
       </tr>
       <tr class="pointer {{(i == activeResultIndex) ? 'selected' : ''}}" (click)="gotoRisk(i)" *ngFor="let result of results; index as i">

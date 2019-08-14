@@ -10,7 +10,6 @@
 
 # Nominal tax brackets and rates. Amounts treated as real since brackets get adjusted for inflation.
 # Assume take standard deduction.
-# Net Investment Income Tax (NIIT) not considered.
 # Alternative minimum tax not considered.
 # Average-cost cost basis method used for asset class sales.
 
@@ -137,6 +136,10 @@ class Taxes(object):
         self.non_qualified_dividends += dividend * (1 - qualified)
         self.basis[ac] += dividend
         self.value[ac] = new_value
+
+    def unrealized_gains(self):
+
+        return sum(self.value.values()) - sum(self.basis.values())
 
     def tax_table(self, table, income, start):
 

@@ -263,9 +263,9 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
             results[scenario_num][sub_num] = final_results
 
-            final_str = dumps(final_results, indent = 4, sort_keys = True)
-            with open(prefix + '.json', 'w') as w:
-                w.write(final_str + '\n')
+            #final_str = dumps(final_results, indent = 4, sort_keys = True)
+            #with open(prefix + '.json', 'w') as w:
+            #    w.write(final_str + '\n')
 
             # Allow evaluator to be garbage collected to conserve RAM and also allow agent actor process to be killed.
             del evaluator_to_info[evaluator]
@@ -597,7 +597,8 @@ def main():
             if args['models_dir'] != None and args['warm_cache']:
                 for model_params, api in enumerate_model_params_api(args['gamma']):
                     model_params = dict(eval_model_params, **model_params)
-                    eval_models(model_params, api = api, permissive_api = True, **args)
+                    eval_args = dict(args, api = api, permissive_api = True, eval_num_timesteps = 1)
+                    eval_models(model_params, **eval_args)
             while True:
                 try:
                     line = stdin.readline()

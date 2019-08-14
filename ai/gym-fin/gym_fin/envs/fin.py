@@ -914,6 +914,7 @@ class Fin:
         if p_tax_free < 0:
             assert p_tax_free > min(-1e-14 * self.p_plus_income, -1e-11), '{} {}'.format(p_tax_free, self.p_plus_income)
             p_tax_free = 0
+        delta_p_tax_deferred = self.p_tax_deferred - p_tax_deferred
 
         retirement_contribution = contribution_limit(self.income_preretirement, self.age, self.have_401k, self.params.time_period) \
             + contribution_limit(self.income_preretirement2, self.age2, self.have_401k2, self.params.time_period)
@@ -947,18 +948,39 @@ class Fin:
         nominal_tax_deferred_spias = min(nominal_spias, p_tax_deferred)
         p_tax_deferred -= nominal_tax_deferred_spias
         nominal_taxable_spias = nominal_spias - nominal_tax_deferred_spias
+
+        regular_income = self.gi_sum(source = ('tax_deferred', 'taxable')) - retirement_contribution + delta_p_tax_deferred
+        if regular_income < 0:
+            if regular_income < -1e-12 * (self.gi_sum(source = ('tax_deferred', 'taxable')) + self.p_tax_deferred):
+                self.warn('Negative regular income:', regular_income)
+                    # Possible if taxable real SPIA non-taxable amount exceeds payout due to deflation.
+            regular_income = 0
+        social_security = self.gi_sum(type = 'social_security')
+        social_security = min(regular_income, social_security)
+
+        taxable_spias = real_taxable_spias + nominal_taxable_spias
+        if taxable_spias > 0:
+            # Ensure leave enough taxable assets to cover any taxes due.
+            max_capital_gains = self.taxes.unrealized_gains()
+            if max_capital_gains > 0:
+                max_capital_gains_taxes = sum(self.taxes.calculate_taxes(regular_income, social_security, max_capital_gains, not self.couple)) \
+                    - sum(self.taxes.calculate_taxes(regular_income, social_security, 0, not self.couple))
+                new_taxable_spias = min(taxable_spias, max(0, p_taxable - max_capital_gains_taxes))
+                real_taxable_spias *= new_taxable_spias / taxable_spias
+                nominal_taxable_spias *= new_taxable_spias / taxable_spias
+
         p_taxable -= real_taxable_spias + nominal_taxable_spias
         if p_taxable < 0:
             assert p_taxable / self.p_plus_income > -1e-15
             p_taxable = 0
 
-        return p_tax_free, p_tax_deferred, p_taxable, consume, retirement_contribution, \
+        return p_tax_free, p_tax_deferred, p_taxable, regular_income, social_security, consume, retirement_contribution, \
             real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias
 
     def interpret_spending(self, consume_fraction, asset_allocation, *, real_spias_fraction = 0, nominal_spias_fraction = 0,
         real_bonds_duration = None, nominal_bonds_duration = None):
 
-        p_tax_free, p_tax_deferred, p_taxable, consume, retirement_contribution, \
+        p_tax_free, p_tax_deferred, p_taxable, regular_income, social_security, consume, retirement_contribution, \
             real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias = \
             self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
 
@@ -1059,7 +1081,7 @@ class Fin:
         policified_action = policy(self, decoded_action)
         consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
 
-        p_tax_free, p_tax_deferred, p_taxable, consume, retirement_contribution, \
+        p_tax_free, p_tax_deferred, p_taxable, regular_income, social_security, consume, retirement_contribution, \
             real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias = \
             self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
         consume_rate = consume / self.params.time_period
@@ -1073,16 +1095,6 @@ class Fin:
             self.add_spias(self.params.nominal_spias_adjust, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias)
 
         tax_free_assets, tax_deferred_assets, taxable_assets = self.allocate_aa(p_tax_free, p_tax_deferred, p_taxable, asset_allocation)
-
-        regular_income = self.gi_sum(source = ('tax_deferred', 'taxable')) - retirement_contribution \
-            + self.p_tax_deferred - (p_tax_deferred - retirement_contribution + real_tax_deferred_spias + nominal_tax_deferred_spias)
-        if regular_income < 0:
-            if regular_income < -1e-12 * (self.gi_sum(source = ('tax_deferred', 'taxable')) + self.p_tax_deferred):
-                self.warn('Negative regular income:', regular_income)
-                    # Possible if taxable real SPIA non-taxable amount exceeds payout due to deflation.
-            regular_income = 0
-        social_security = self.gi_sum(type = 'social_security')
-        social_security = min(regular_income, social_security)
 
         inflation = self.bonds.inflation.inflation()
         self.cpi *= inflation
