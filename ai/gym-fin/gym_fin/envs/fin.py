@@ -768,6 +768,12 @@ class Fin:
                 real_spias_fraction *= (real_spias_action + 1) / 2
             nominal_spias_fraction = spias_fraction - real_spias_fraction
 
+            spias_purchase = spias_fraction * self.p_plus_income
+
+        else:
+
+            spias_purchase = 0
+
         if not self.params.real_spias or not self.spias:
             real_spias_fraction = None
         if not self.params.nominal_spias or not self.spias:
@@ -792,6 +798,12 @@ class Fin:
         nominal_bonds_action /= total
         iid_bonds_action /= total
         bills_action /= total
+
+        try:
+            wealth_ratio = (self.retired_income_wealth + self.preretirement_income_wealth + spias_purchase) / max(0, self.p_wealth - spias_purchase)
+        except ZeroDivisionError:
+            wealth_ratio = float('inf')
+        wealth_ratio = min(wealth_ratio, 1e100) # Cap so that not calculating with inf.
 
         # Fit to curve.
         #
@@ -828,13 +840,13 @@ class Fin:
         # We thus use a curvature coefficient of 0.5, and allow stocks to depend on the observation to fine tune things from there.
         stocks_curvature = real_bonds_curvature = nominal_bonds_curvature = iid_bonds_curvature = 0.5
         alloc = 1
-        stocks = max(0, min(stocks_action + stocks_curvature * self.wealth_ratio + self.params.rl_stocks_bias, alloc)) if self.params.stocks else 0
+        stocks = max(0, min(stocks_action + stocks_curvature * wealth_ratio + self.params.rl_stocks_bias, alloc)) if self.params.stocks else 0
         alloc -= stocks
-        real_bonds = max(0, min(real_bonds_action + real_bonds_curvature * self.wealth_ratio, alloc)) if self.params.real_bonds else 0
+        real_bonds = max(0, min(real_bonds_action + real_bonds_curvature * wealth_ratio, alloc)) if self.params.real_bonds else 0
         alloc -= real_bonds
-        nominal_bonds = max(0, min(nominal_bonds_action + nominal_bonds_curvature * self.wealth_ratio, alloc)) if self.params.nominal_bonds else 0
+        nominal_bonds = max(0, min(nominal_bonds_action + nominal_bonds_curvature * wealth_ratio, alloc)) if self.params.nominal_bonds else 0
         alloc -= nominal_bonds
-        iid_bonds = max(0, min(iid_bonds_action + iid_bonds_curvature * self.wealth_ratio, alloc)) if self.params.iid_bonds else 0
+        iid_bonds = max(0, min(iid_bonds_action + iid_bonds_curvature * wealth_ratio, alloc)) if self.params.iid_bonds else 0
         alloc -= iid_bonds
         if self.params.bills:
             bills = alloc
@@ -1446,8 +1458,6 @@ class Fin:
         except ZeroDivisionError:
             self.p_fraction = 1
             self.preretirement_fraction = 1
-        self.wealth_ratio = (self.retired_income_wealth + self.preretirement_income_wealth) / self.p_wealth if self.p_wealth > 0 else float('inf')
-        self.wealth_ratio = min(self.wealth_ratio, 1e100) # Cap so that not calculating with inf.
 
         p_sum = self.p_sum()
         gi_sum = self.gi_sum() * self.params.time_period
