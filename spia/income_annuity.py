@@ -245,10 +245,15 @@ class IncomeAnnuity(object):
                 self.sched_alive1_only = [0] * len(self.alive1_delay_array)
                 self.sched_alive2_only = [0] * len(self.alive1_delay_array)
             self.sched_offset = 0
+            if self.cacheable_payout:
+                self._sched_offset_discount = 1
             self.add_schedule(end = self.payout_end, schedule = self.schedule, payout_fraction = self.payout_fraction, joint = self.joint,
                 contingent2 = self.contingent2, adjust = self.adjust, price_adjust = self.price_adjust, delay_calcs = self.delay_calcs)
         else:
             self.sched_offset = index_offset
+            if self.cacheable_payout:
+                y = self.sched_offset / self.frequency
+                self._sched_offset_discount = self.yield_curve.discount_rate(y) ** y
             self._compute_price(self.cacheable_payout and not compute_vital_stats)
 
     def add_schedule(self, start = 0, end = None, schedule = 0, payout_fraction = 1, joint = True, contingent2 = False, adjust = 0, price_adjust = 'calendar',
@@ -353,8 +358,7 @@ class IncomeAnnuity(object):
                     price = int(self.alive) * self._prices[self.sched_offset] / self.alive1_array[self.alive_offset]
             except IndexError:
                 price = 0
-            y = self.sched_offset / self.frequency
-            price *= self.yield_curve.discount_rate(y) ** y
+            price *= self._sched_offset_discount
 
         else:
 
@@ -450,10 +454,14 @@ class IncomeAnnuity(object):
                 payout_value = payout_amount / discount
                 price += payout_value
                 if self.cacheable_payout:
-                    payout_values.append(payout / discount)
+                    if self.life_table2 == None:
+                        payout *= alive1_init
+                    else:
+                        payout *= alive1_init * alive2_init
+                    payout_values.append(payout / (self._sched_offset_discount * discount))
                     if self.life_table2:
-                        payout_values1.append(payout1 / discount)
-                        payout_values2.append(payout2 / discount)
+                        payout_values1.append(payout1 * alive1_init / (self._sched_offset_discount * discount))
+                        payout_values2.append(payout2 * alive2_init / (self._sched_offset_discount * discount))
                 duration += y * payout_value
                 annual_return += payout_amount * spot
                 total_payout += payout_amount
@@ -471,7 +479,7 @@ class IncomeAnnuity(object):
                 for i in range(len(l) - 1, -1, -1):
                     partial_price += l[i]
                     prices.insert(0, partial_price)
-                return prices
+                return [0] * self.sched_offset + prices
 
             if self.cacheable_payout:
                 self._prices = sum_from_end(payout_values)
