@@ -3,12 +3,12 @@ package org.ray.api.test;
 import static org.ray.runtime.util.SystemUtil.pid;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.ray.api.Checkpointable;
 import org.ray.api.Ray;
 import org.ray.api.RayActor;
+import org.ray.api.TestUtils;
 import org.ray.api.annotation.RayRemote;
 import org.ray.api.exception.RayActorException;
 import org.ray.api.id.UniqueId;
@@ -23,6 +23,16 @@ public class ActorReconstructionTest extends BaseTest {
 
     protected int value = 0;
 
+    private boolean wasCurrentActorReconstructed = false;
+
+    public Counter() {
+      wasCurrentActorReconstructed = Ray.getRuntimeContext().wasCurrentActorReconstructed();
+    }
+
+    public boolean wasCurrentActorReconstructed() {
+      return wasCurrentActorReconstructed;
+    }
+
     public int increase() {
       value += 1;
       return value;
@@ -35,12 +45,16 @@ public class ActorReconstructionTest extends BaseTest {
 
   @Test
   public void testActorReconstruction() throws InterruptedException, IOException {
-    ActorCreationOptions options = new ActorCreationOptions(new HashMap<>(), 1);
+    TestUtils.skipTestUnderSingleProcess();
+    ActorCreationOptions options =
+        new ActorCreationOptions.Builder().setMaxReconstructions(1).createActorCreationOptions();
     RayActor<Counter> actor = Ray.createActor(Counter::new, options);
     // Call increase 3 times.
     for (int i = 0; i < 3; i++) {
       Ray.call(Counter::increase, actor).get();
     }
+
+    Assert.assertFalse(Ray.call(Counter::wasCurrentActorReconstructed, actor).get());
 
     // Kill the actor process.
     int pid = Ray.call(Counter::getPid, actor).get();
@@ -51,6 +65,8 @@ public class ActorReconstructionTest extends BaseTest {
     // Try calling increase on this actor again and check the value is now 4.
     int value = Ray.call(Counter::increase, actor).get();
     Assert.assertEquals(value, 4);
+
+    Assert.assertTrue(Ray.call(Counter::wasCurrentActorReconstructed, actor).get());
 
     // Kill the actor process again.
     pid = Ray.call(Counter::getPid, actor).get();
@@ -110,7 +126,9 @@ public class ActorReconstructionTest extends BaseTest {
 
   @Test
   public void testActorCheckpointing() throws IOException, InterruptedException {
-    ActorCreationOptions options = new ActorCreationOptions(new HashMap<>(), 1);
+    TestUtils.skipTestUnderSingleProcess();
+    ActorCreationOptions options =
+        new ActorCreationOptions.Builder().setMaxReconstructions(1).createActorCreationOptions();
     RayActor<CheckpointableCounter> actor = Ray.createActor(CheckpointableCounter::new, options);
     // Call increase 3 times.
     for (int i = 0; i < 3; i++) {
@@ -118,8 +136,6 @@ public class ActorReconstructionTest extends BaseTest {
     }
     // Assert that the actor wasn't resumed from a checkpoint.
     Assert.assertFalse(Ray.call(CheckpointableCounter::wasResumedFromCheckpoint, actor).get());
-
-    // Kill the actor process.
     int pid = Ray.call(CheckpointableCounter::getPid, actor).get();
     Runtime.getRuntime().exec("kill -9 " + pid);
     // Wait for the actor to be killed.

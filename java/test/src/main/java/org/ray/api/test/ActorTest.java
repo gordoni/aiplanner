@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit;
 import org.ray.api.Ray;
 import org.ray.api.RayActor;
 import org.ray.api.RayObject;
+import org.ray.api.TestUtils;
 import org.ray.api.annotation.RayRemote;
 import org.ray.api.exception.UnreconstructableException;
 import org.ray.api.id.UniqueId;
@@ -90,12 +91,13 @@ public class ActorTest extends BaseTest {
 
   @Test
   public void testUnreconstructableActorObject() throws InterruptedException {
+    TestUtils.skipTestUnderSingleProcess();
     RayActor<Counter> counter = Ray.createActor(Counter::new, 100);
     // Call an actor method.
     RayObject value = Ray.call(Counter::getValue, counter);
     Assert.assertEquals(100, value.get());
     // Delete the object from the object store.
-    Ray.internal().free(ImmutableList.of(value.getId()), false);
+    Ray.internal().free(ImmutableList.of(value.getId()), false, false);
     // Wait until the object is deleted, because the above free operation is async.
     while (true) {
       GetResult<Integer> result = ((AbstractRayRuntime)

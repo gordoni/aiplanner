@@ -12,7 +12,6 @@ from ray import tune
 from ray.rllib import _register_all
 from ray.tune.trial import Trial, Resources
 from ray.tune.web_server import TuneClient
-from ray.tune.suggest import BasicVariantGenerator
 from ray.tune.trial_runner import TrialRunner
 
 
@@ -34,8 +33,7 @@ class TuneServerSuite(unittest.TestCase):
     def basicSetup(self):
         ray.init(num_cpus=4, num_gpus=1)
         port = get_valid_port()
-        self.runner = TrialRunner(
-            BasicVariantGenerator(), launch_web_server=True, server_port=port)
+        self.runner = TrialRunner(launch_web_server=True, server_port=port)
         runner = self.runner
         kwargs = {
             "stopping_criterion": {
@@ -69,8 +67,8 @@ class TuneServerSuite(unittest.TestCase):
                 "training_iteration": 3
             },
             "resources_per_trial": {
-                'cpu': 1,
-                'gpu': 1
+                "cpu": 1,
+                "gpu": 1
             },
         }
         client.add_trial("test", spec)
@@ -134,8 +132,8 @@ class TuneServerSuite(unittest.TestCase):
         for i in range(2):
             runner.step()
         stdout = subprocess.check_output(
-            'curl "http://{}:{}/trials"'.format(client.server_address,
-                                                client.server_port),
+            "curl \"http://{}:{}/trials\"".format(client.server_address,
+                                                  client.server_port),
             shell=True)
         self.assertNotEqual(stdout, None)
         curl_trials = json.loads(stdout.decode())["trials"]

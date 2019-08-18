@@ -2,16 +2,26 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ray-worker
+  namespace: ray
 spec:
   replicas: 3
   selector:
     matchLabels:
       component: ray-worker
+      type: ray
   template:
     metadata:
       labels:
         component: ray-worker
+        type: ray
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                type: ray
+            topologyKey: kubernetes.io/hostname
       containers:
         - name: ray-worker
           image: rayproject/examples
