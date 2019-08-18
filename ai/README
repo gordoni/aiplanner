@@ -3,14 +3,16 @@ AIPlanner - Deep Reinforcement Learning Financial Planner.
 Server requirements
 -------------------
 
-AIPLanner runs well in production on an 8 core 16 thread Amazon
-c5.4xlarge instance. Such an instance is also necessary for training
-the generic neural networks.
+AIPLanner runs well in production on an 2 core 4 thread 16G RAM Amazon
+m5.xlarge instance (ideally want 3 cores and at least 16G of
+RAM). Training the neural network requires running 1 or 2 c5.24xlarge
+spot instances for about 3 days. The us-east-2 region currently
+appears the cheapest region for performing this training work.
 
 For development a much smaller c5.large, or even a t3.small instance,
 can often be used, provided in the first case a Ray compute cluster is
 configured or in the second case the SEEDS=1 environment variable is
-set and the --num-models=1 flag is passed to web/server .
+set and the --tran-seeds=1 flag is passed to web/server.py .
 
 Tensorflow
 ----------
@@ -21,11 +23,16 @@ releasing tensorflow for CUDA 9.1, will release for 9.2. Would thus
 need to manually install CUDA, which based on the tensorflow docs, is
 messy.
 
-Hence for time being using Amazon's Deep Learning AMI (Ubuntu) Version
-21.2 based on Ubuntu 16.04 - CUDA 9 - with tensorflow pre-installed.
-In the us-east-1 region this is AMI ami-0d96d570269578cd7. For this
-instance 100G of storage is recommended. The default of 75G only
-leaves 8G for AIPlanner.
+Hence for time being using Amazon's Deep Learning AMI (Ubuntu)
+currently based on Ubuntu 16.04 - CUDA 9 - with tensorflow
+pre-installed.
+
+     Region    Deep Learning Version          AMI
+    us-east-1           21.2          ami-0d96d570269578cd7
+    us-east-2           24.0          ami-0944c173745e93dff
+
+For this instance 150G of storage is recommended. The default of 75G
+only leaves 5G for AIPlanner.
 
 Set up hostname
 ---------------
@@ -62,7 +69,7 @@ not workable):
     apt install python3-boto3
     pip3 install tensorflow
     pip3 install gym
-    pip3 install ray==0.6.4
+    pip3 install ray[debug]==0.7.3
     exit
 
 Installing additional required components on Amazon's Deep Learning
@@ -75,7 +82,7 @@ AMI (Ubuntu):
     #pip install mpi4py # only needed if using OpenAI baselines
     #pip install joblib # only needed if using OpenAI baselines
     pip install gym
-    pip install ray==0.6.4
+    pip install ray[debug]==0.7.3
 
 Hack Ray to use our version of RLlib, not the default version:
 
@@ -97,8 +104,8 @@ Install required components for the Angular website:
 
     [ Get latest Node.js per https://nodejs.org/en/download/ ]
     cd ~
-    curl https://nodejs.org/dist/v10.15.3/node-v10.15.3-linux-x64.tar.xz | tar xJf -
-    export PATH=$HOME/node-v10.15.3-linux-x64/bin:$PATH
+    curl https://nodejs.org/dist/v10.16.3/node-v10.16.3-linux-x64.tar.xz | tar xJf -
+    export PATH=$HOME/node-v10.16.3-linux-x64/bin:$PATH
 
 npm install -g typescript
 npm install -g @angular/cli
@@ -110,6 +117,7 @@ Failing to perform this step will result in the full historical yield
 curves getting downloaded from the Fed every time a cluster node
 starts up.
 
+    mkdir ~/aiplanner-data
     ~/aiplanner/ai/cron.daily
 
 Setting up the Ray compute cluster
@@ -158,13 +166,13 @@ This will create the ssh key pair, IAM role, and network security
 group.
 
 If you wish to use the difficult but secure method, first use EC2 to
-generate an EC2 key pair called ray-autoscaler_us-east-1.pem, and save
-it to the .ssh directory. Then create a security group tagged
-ray-autoscaler-default that allows all inbound traffic from itself,
-inbound ssh from the Internet if desired, and all outbound
-traffic. Finally generate an IAM role called ray-autoscaler-v1 with
-the following IAM policy atached (in which sg-AAA is replaced by the
-ray-autoscaler-default security group):
+generate an EC2 key pair called ray-autoscaler_us-east-2.pem, and save
+it to the .ssh directory of the AIPlanner host. Then create a security
+group tagged ray-autoscaler-default that allows all inbound traffic
+from itself, inbound ssh from the Internet if desired, and all
+outbound traffic. Finally generate an EC2 IAM role named
+ray-autoscaler-v1 with the following IAM policy atached (in which
+sg-AAA is replaced by the ray-autoscaler-default security group):
 
 {"Version": "2012-10-17",
     "Statement": [
@@ -245,12 +253,12 @@ groups to add ray-autoscaler-default.
 
 For syncing worker node result directories create a link:
 
-    ln -s ~/.ssh/ray-autoscaler_us-east-1.pem ~/ray_bootstrap_key.pem
+    ln -s ~/.ssh/ray-autoscaler_us-east-2.pem ~/ray_bootstrap_key.pem
 
 Add the following line to the "auth" section of cluster.yaml:
 
 ----
-    ssh_private_key: /home/ubuntu/.ssh/ray-autoscaler_us-east-1.pem
+    ssh_private_key: /home/ubuntu/.ssh/ray-autoscaler_us-east-2.pem
 ----
 
 And to the "worker_nodes" section add:
@@ -356,7 +364,7 @@ tree:
 
 Build the website:
 
-    export PATH=$HOME/node-v10.15.3-linux-x64/bin:$PATH
+    export PATH=$HOME/node-v10.16.3-linux-x64/bin:$PATH
     cd ~/aiplanner/ai/angular
     ng build --prod
 
@@ -498,7 +506,7 @@ The model server can be run in development as follows:
 
 On the same machine in another shell window run the Angular server:
 
-    export PATH=$HOME/node-v10.15.3-linux-x64/bin:$PATH
+    export PATH=$HOME/node-v10.16.3-linux-x64/bin:$PATH
     cd ~/aiplanner/ai/angular
     ng serve --host 0.0.0.0 --public-host <thishost.thisdomain>
 
