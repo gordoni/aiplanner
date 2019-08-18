@@ -80,6 +80,9 @@ class ModelParams(object):
             # "rl": reinforcement learning.
             # "age-in-nominal-bonds": age in years as nominal bonds percentage, remainder in stocks.
             # '{"<asset_class>":<allocation>, ...}': fixed allocation. Eg. '{"stocks":0.5, "nominal_bonds":0.5}'.
+        self._param('rl-consume-bias', 0.0, 0.0) # Bias the reinforcement learning conumption policy consumption fraction by this amount.
+            # Useful for reversing the effects of training algorithm bias when evaluating.
+            # Training bias should always be zero.
         self._param('rl-stocks-bias', 0.0, 0.0) # Bias the reinforcement learning asset allocation policy allocation to stocks by this amount.
             # Useful for reversing the effects of training algorithm bias when evaluating.
             # Training bias should always be zero.
@@ -266,8 +269,8 @@ class ModelParams(object):
             # bootstrap - bootrapped normalized residuals applied to a monthly GJR-GARCH volatility model.
             # iid - geometric Brownian motion (prior to mean reversion).
         self._param('stocks-bootstrap-years', 5) # Mean bootstrap block size in years for bootstrap stocks.
-        self._param('stocks-mu', 0.049) # Annual real log return for bootstrap stocks. Yields 6.5% return in absense of returns_standard_error.
-        self._param('stocks-sigma', 0.167) # Annual real log volatility for bootstrap stocks. Yields 17.4% volatility in absense of returns_standard_error.
+        self._param('stocks-mu', 0.064) # Annual real log return for bootstrap stocks. Yields 6.5% return in absense of returns_standard_error.
+        self._param('stocks-sigma', 0.164) # Annual real log volatility for bootstrap stocks. Yields 17.4% volatility in absense of returns_standard_error.
         self._param('stocks-alpha', 0.0000) # Monthly GJR-GARCH volatility model alpha parameter for bootstrap stocks.
         self._param('stocks-gamma', 0.3188) # Monthly GJR-GARCH volatility model gamma parameter for bootstrap stocks.
         self._param('stocks-beta', 0.7116) # Monthly GJR-GARCH volatility model beta parameter for bootstrap stocks.
@@ -279,11 +282,11 @@ class ModelParams(object):
             # Set to non-zero for mean reverting stock returns.
             # Use a value like 0.1 to mimick findings from Shiller's data, that for every 10% overvalued stocks are,
             # there is an approximate 1% reduction in annual returns for the following year.
-        self._param('stocks-price-exaggeration', 0.6) # Over-exuberance/pessimism factor for boostrap stocks with mean reversion: 1 - d(fair price)/d(price).
+        self._param('stocks-price-exaggeration', 0.7) # Over-exuberance/pessimism factor for boostrap stocks with mean reversion: 1 - d(fair price)/d(price).
            # Extent to which movement in stock price doesn't reflect movement in fair price.
            # Used to mimick implications from Shiller's data that stocks can be over/under-valued.
-           # A value of 0.6 produces a value/fair value of 70-140% the vast majority of the time.
-        self._param('stocks-price', (0.5, 2.0), None) # Initial observed price of stocks relative to fair price for bootstrap stocks with mean reversion.
+           # A value of 0.7 produces a value/fair value of 60-150% the vast majority of the time.
+        self._param('stocks-price', (0.5, 2.0), (None, None)) # Initial observed price of stocks relative to fair price for bootstrap stocks with mean reversion.
         self._param('stocks-price-noise-sigma', 0.2) # Sigma of lognormal noise inherent in observation of stocks price relative to fair price for bootstrap stocks.
             # Used in the case of mean reversion.
         self._param('stocks-return', 0.065) # Annual real return for iid stocks.
@@ -353,7 +356,7 @@ class ModelParams(object):
                 if get_param(base) == None:
                     low = get_param(base + '_low')
                     high = get_param(base + '_high')
-                    assert low <= high, 'Bad range: ' + base
+                    assert low == high or low < high, 'Bad range: ' + base # Handles low == high == None.
                 else:
                     params[base + '_low'] = params[base + '_high'] = get_param(base)
 

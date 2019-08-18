@@ -14,7 +14,7 @@ from math import atanh, ceil, copysign, exp, floor, isinf, isnan, log, sqrt, tan
 from os import environ
 from os.path import expanduser
 from random import seed, randint, random, uniform, lognormvariate
-from sys import stderr
+from sys import stderr, stdout
 
 import numpy as np
 
@@ -43,7 +43,7 @@ class Fin:
 
         if self.params.warn:
             stderr.write('AIPLANNER: ' + ' '.join(str(arg) for arg in args) + '\n')
-            #print('AIPLANNER:', *args, file = stderr)
+            stderr.flush()
 
     def _compute_vital_stats(self, age_start, age_start2, preretirement):
 
@@ -732,6 +732,7 @@ class Fin:
             consume_fraction *= self.net_wealth / self.p_plus_income
         except ZeroDivisionError:
             consume_fraction = float('inf')
+        consume_fraction *= 1 + self.params.rl_consume_bias
 
         consume_fraction = max(1e-6, min(consume_fraction, 1 / self.params.time_period))
             # Don't allow consume_fraction of zero as have problems with -inf utility.
@@ -1336,15 +1337,19 @@ class Fin:
 
     def render(self, mode = 'human'):
 
-        pv_income_preretirement = self.income_preretirement * self.income_preretirement_years
-        pv_income_preretirement2 = self.income_preretirement2 * self.income_preretirement_years2
-        pv_consume_preretirement = self.consume_preretirement * self.preretirement_years
-
-        print(self.age, self.p_tax_free, self.p_tax_deferred, self.p_taxable, pv_income_preretirement, pv_income_preretirement2, pv_consume_preretirement)
         print('    ', self.prev_asset_allocation, self.prev_consume_rate, self.prev_real_spias_rate, self.prev_nominal_spias_rate, self.prev_reward)
 
         for db in self.defined_benefits.values():
             db.render()
+
+        pv_income_preretirement = self.income_preretirement * self.income_preretirement_years
+        pv_income_preretirement2 = self.income_preretirement2 * self.income_preretirement_years2
+        pv_consume_preretirement = self.consume_preretirement * self.preretirement_years
+
+        print(self.age, self.p_tax_free, self.p_tax_deferred, self.p_taxable,
+            pv_income_preretirement, pv_income_preretirement2, pv_consume_preretirement, - self.taxes_due)
+
+        stdout.flush()
 
     def seed(self, seed=None):
 

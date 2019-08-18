@@ -366,7 +366,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         'rra': env.params.gamma_low,
         'asset_classes': initial_results['asset_allocation'].classes(),
         'asset_allocation': initial_results['asset_allocation'].as_list(),
-        'pv_preretirement_income': env.preretirement_income_wealth if env.income_preretirement_years > 0 or env.income_preretirement_years2 > 0 else None,
+        'pv_preretirement_income': env.preretirement_income_wealth if env.preretirement_years > 0 else None,
         'pv_retired_income': env.retired_income_wealth,
         'pv_future_taxes': env.pv_taxes,
         'portfolio_wealth': env.p_wealth,
@@ -516,8 +516,8 @@ def plot(prefix, traces, consume_pdf, estate_pdf):
     with open(prefix + '-paths.csv', 'w') as f:
         csv_writer = writer(f)
         for trace in traces:
-            for i, (age, alive_count, pv_income, portfolio_wealth, consume, real_spias_purchase, nominal_spias_purchase, asset_allocation) in \
-                enumerate(zip(trace['age'], trace['alive_count'], trace['pv_income'], trace['portfolio_wealth'], trace['consume'],
+            for i, (age, alive_count, total_guaranteed_income, portfolio_wealth, consume, real_spias_purchase, nominal_spias_purchase, asset_allocation) in \
+                enumerate(zip(trace['age'], trace['alive_count'], trace['total_guaranteed_income'], trace['portfolio_wealth'], trace['consume'],
                     trace['real_spias_purchase'], trace['nominal_spias_purchase'], trace['asset_allocation'])):
 
                 couple_plot = alive_count == 2
@@ -527,7 +527,7 @@ def plot(prefix, traces, consume_pdf, estate_pdf):
                         single_plot = True
                 except KeyError:
                     pass
-                csv_writer.writerow((age, int(couple_plot), int(single_plot), pv_income, portfolio_wealth, consume,
+                csv_writer.writerow((age, int(couple_plot), int(single_plot), total_guaranteed_income, portfolio_wealth, consume,
                     real_spias_purchase, nominal_spias_purchase, *asset_allocation))
             csv_writer.writerow(())
 

@@ -472,6 +472,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         for api_scenario in api_data:
             if not isinstance(api_scenario, dict):
                 return '{"error": "Method body must be an array of JSON objects."}\n'.encode('utf-8')
+            if not 'stocks_price' in api_scenario:
+                api_scenario['stocks_price'] = market['stocks_price']
             if not 'stocks_volatility' in api_scenario:
                 api_scenario['stocks_volatility'] = market['stocks_volatility']
             if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:

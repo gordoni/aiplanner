@@ -116,6 +116,7 @@ class ReturnsEquity(Returns):
         z_t: cython.double
 
         ret = 0
+        sigma2_t = self.sigma_t ** 2
         len_z_hist = len(self.z_hist)
         for _ in range(round(self.time_period * self.periods_per_year)):
             while self.block_size == 0:
@@ -123,7 +124,7 @@ class ReturnsEquity(Returns):
                 self.block_size = round(expovariate(1 / (self.bootstrap_years * self.periods_per_year)))
             z_t = self.z_hist[self.t]
             epsilon_t = self.sigma_t * z_t
-            r_t = self.period_mu + epsilon_t
+            r_t = self.period_mu - sigma2_t / 2 + epsilon_t
             self.log_above_trend += self.price_exaggeration * epsilon_t
             log_reversion = - self.period_mean_reversion_rate * self.log_above_trend
             self.log_above_trend += log_reversion
@@ -132,7 +133,7 @@ class ReturnsEquity(Returns):
             self.t = (self.t + 1) % len_z_hist
             self.block_size -= 1
             z_t_1 = z_t
-            sigma2_t_1 = self.sigma_t ** 2
+            sigma2_t_1 = sigma2_t
             sigma2_t = self.omega + ((self.alpha + (self.gamma if z_t_1 < 0 else 0)) * z_t_1 ** 2 + self.beta) * sigma2_t_1
             self.sigma_t = sigma2_t ** 0.5
 

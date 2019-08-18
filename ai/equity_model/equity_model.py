@@ -93,9 +93,9 @@ print(spearmanr(hist_abs_ret, hist_sigmas[:- PERIODS_PER_YEAR]))
 
 # Set mu and omega to yield desired ret and vol.
 mean_reversion_rate = 0.1 # Rough estimate
-exaggeration = 0.6 # Adjust to get reasonable looking above_trend.csv plot
-mu = 0.049 # Adjust to get 0.065 actual mean ret
-sigma = 0.167 # Adjust to get 0.174 actual vol
+exaggeration = 0.7 # Adjust to get reasonable looking above_trend.csv plot
+mu = 0.064 # Adjust to get 0.065 actual mean ret
+sigma = 0.164 # Adjust to get 0.174 actual vol
 mu *= SCALE / PERIODS_PER_YEAR
 sigma /= sqrt(PERIODS_PER_YEAR)
 omega = SCALE ** 2 * (1 - alpha - gamma / 2 - beta) * sigma ** 2
@@ -125,7 +125,7 @@ while len(rets) < num_simulated_rets:
     sigma_t = sqrt(sigma2_t)
     z_t = z_hist[i]
     epsilon_t = sigma_t * z_t
-    r_t = mu + epsilon_t
+    r_t = mu - sigma2_t / (2 * SCALE) + epsilon_t
     r_t /= SCALE
     log_above_trend += exaggeration * epsilon_t / SCALE
     log_reversion = - mean_reversion_rate / PERIODS_PER_YEAR * log_above_trend
@@ -202,5 +202,5 @@ print(spearmanr(exper_vol[1:], exper_vol[:-1]))
 # Measured simulated values:
 #           mean  stdev  auto corr  skew    kurtosis
 #      ret   6.5% 17.4%
-#  log ret                 -0.06   -0.87      3.92        0.35
-#  log vol    -     -       0.26
+#  log ret                 -0.04   -0.97      4.16        0.35
+#  log vol    -     -       0.25

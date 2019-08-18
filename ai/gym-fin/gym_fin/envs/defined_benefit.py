@@ -107,7 +107,7 @@ class DefinedBenefit:
 
     def _add_sched(self, owner, start, end, payout, joint, payout_fraction, adjustment, delay_calcs):
 
-        #print('_add_sched:', owner, start, end, payout, joint, payout_fraction, adjustment)
+        #print('_add_sched:', self.type_of_funds, 'real' if self.real else 'nominal', owner, start, end, payout, joint, payout_fraction, adjustment, delay_calcs)
 
         start = max(floor(start / self.env.params.time_period + 0.5), 0)
         end = floor(end / self.env.params.time_period + 0.5) - 1 if end != float('inf') else int(1e10)
@@ -147,8 +147,6 @@ class DefinedBenefit:
 
         payout = self.payout()
         pv = self.pv()
-        if not self.real:
-            payout /= self.env.cpi
 
         print('    ', self.type_of_funds, payout, 'real' if self.real else 'nominal', pv)
 

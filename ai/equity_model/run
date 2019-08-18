@@ -1,0 +1,3 @@
+#!/bin/sh
+
+./equity_model.py > equity_model.out
