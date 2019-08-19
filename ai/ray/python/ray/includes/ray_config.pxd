@@ -3,7 +3,7 @@ from libcpp.string cimport string as c_string
 from libcpp.unordered_map cimport unordered_map
 
 
-cdef extern from "ray/ray_config.h" nogil:
+cdef extern from "ray/common/ray_config.h" nogil:
     cdef cppclass RayConfig "RayConfig":
         @staticmethod
         RayConfig &instance()
@@ -36,13 +36,13 @@ cdef extern from "ray/ray_config.h" nogil:
 
         int64_t connect_timeout_milliseconds() const
 
-        int64_t local_scheduler_fetch_timeout_milliseconds() const
+        int64_t raylet_fetch_timeout_milliseconds() const
 
-        int64_t local_scheduler_reconstruction_timeout_milliseconds() const
+        int64_t raylet_reconstruction_timeout_milliseconds() const
 
         int64_t max_num_to_reconstruct() const
 
-        int64_t local_scheduler_fetch_request_size() const
+        int64_t raylet_fetch_request_size() const
 
         int64_t kill_worker_timeout_milliseconds() const
 

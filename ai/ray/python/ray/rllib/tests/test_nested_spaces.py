@@ -7,24 +7,26 @@ import pickle
 from gym import spaces
 from gym.envs.registration import EnvSpec
 import gym
-import tensorflow.contrib.slim as slim
-import tensorflow as tf
+import torch.nn as nn
 import unittest
 
 import ray
-from ray.rllib.agents.a3c import A2CAgent
-from ray.rllib.agents.pg import PGAgent
-from ray.rllib.agents.pg.pg_policy_graph import PGPolicyGraph
+from ray.rllib.agents.a3c import A2CTrainer
+from ray.rllib.agents.pg import PGTrainer
+from ray.rllib.agents.pg.pg_policy import PGTFPolicy
 from ray.rllib.env import MultiAgentEnv
 from ray.rllib.env.base_env import BaseEnv
 from ray.rllib.env.vector_env import VectorEnv
 from ray.rllib.models import ModelCatalog
 from ray.rllib.models.model import Model
-from ray.rllib.models.pytorch.fcnet import FullyConnectedNetwork
-from ray.rllib.models.pytorch.model import TorchModel
+from ray.rllib.models.torch.fcnet import FullyConnectedNetwork
+from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.rollout import rollout
 from ray.rllib.tests.test_external_env import SimpleServing
 from ray.tune.registry import register_env
+from ray.rllib.utils import try_import_tf
+
+tf = try_import_tf()
 
 DICT_SPACE = spaces.Dict({
     "sensors": spaces.Dict({
@@ -132,16 +134,19 @@ class InvalidModel2(Model):
         return tf.constant(0), tf.constant(0)
 
 
-class TorchSpyModel(TorchModel):
+class TorchSpyModel(TorchModelV2, nn.Module):
     capture_index = 0
 
-    def __init__(self, obs_space, num_outputs, options):
-        TorchModel.__init__(self, obs_space, num_outputs, options)
+    def __init__(self, obs_space, action_space, num_outputs, model_config,
+                 name):
+        TorchModelV2.__init__(self, obs_space, action_space, num_outputs,
+                              model_config, name)
+        nn.Module.__init__(self)
         self.fc = FullyConnectedNetwork(
             obs_space.original_space.spaces["sensors"].spaces["position"],
-            num_outputs, options)
+            action_space, num_outputs, model_config, name)
 
-    def _forward(self, input_dict, hidden_state):
+    def forward(self, input_dict, state, seq_lens):
         pos = input_dict["obs"]["sensors"]["position"].numpy()
         front_cam = input_dict["obs"]["sensors"]["front_cam"][0].numpy()
         task = input_dict["obs"]["inner_state"]["job_status"]["task"].numpy()
@@ -152,7 +157,10 @@ class TorchSpyModel(TorchModel):
         TorchSpyModel.capture_index += 1
         return self.fc({
             "obs": input_dict["obs"]["sensors"]["position"]
-        }, hidden_state)
+        }, state, seq_lens)
+
+    def value_function(self):
+        return self.fc.value_function()
 
 
 class DictSpyModel(Model):
@@ -179,8 +187,8 @@ class DictSpyModel(Model):
             stateful=True)
 
         with tf.control_dependencies([spy_fn]):
-            output = slim.fully_connected(
-                input_dict["obs"]["sensors"]["position"], num_outputs)
+            output = tf.layers.dense(input_dict["obs"]["sensors"]["position"],
+                                     num_outputs)
         return output, output
 
 
@@ -208,14 +216,14 @@ class TupleSpyModel(Model):
             stateful=True)
 
         with tf.control_dependencies([spy_fn]):
-            output = slim.fully_connected(input_dict["obs"][0], num_outputs)
+            output = tf.layers.dense(input_dict["obs"][0], num_outputs)
         return output, output
 
 
 class NestedSpacesTest(unittest.TestCase):
     def testInvalidModel(self):
         ModelCatalog.register_custom_model("invalid", InvalidModel)
-        self.assertRaises(ValueError, lambda: PGAgent(
+        self.assertRaises(ValueError, lambda: PGTrainer(
             env="CartPole-v0", config={
                 "model": {
                     "custom_model": "invalid",
@@ -226,7 +234,7 @@ class NestedSpacesTest(unittest.TestCase):
         ModelCatalog.register_custom_model("invalid2", InvalidModel2)
         self.assertRaisesRegexp(
             ValueError, "Expected output.*",
-            lambda: PGAgent(
+            lambda: PGTrainer(
                 env="CartPole-v0", config={
                     "model": {
                         "custom_model": "invalid2",
@@ -236,7 +244,7 @@ class NestedSpacesTest(unittest.TestCase):
     def doTestNestedDict(self, make_env, test_lstm=False):
         ModelCatalog.register_custom_model("composite", DictSpyModel)
         register_env("nested", make_env)
-        pg = PGAgent(
+        pg = PGTrainer(
             env="nested",
             config={
                 "num_workers": 0,
@@ -265,7 +273,7 @@ class NestedSpacesTest(unittest.TestCase):
     def doTestNestedTuple(self, make_env):
         ModelCatalog.register_custom_model("composite2", TupleSpyModel)
         register_env("nested2", make_env)
-        pg = PGAgent(
+        pg = PGTrainer(
             env="nested2",
             config={
                 "num_workers": 0,
@@ -323,19 +331,19 @@ class NestedSpacesTest(unittest.TestCase):
         ModelCatalog.register_custom_model("tuple_spy", TupleSpyModel)
         register_env("nested_ma", lambda _: NestedMultiAgentEnv())
         act_space = spaces.Discrete(2)
-        pg = PGAgent(
+        pg = PGTrainer(
             env="nested_ma",
             config={
                 "num_workers": 0,
                 "sample_batch_size": 5,
                 "train_batch_size": 5,
                 "multiagent": {
-                    "policy_graphs": {
+                    "policies": {
                         "tuple_policy": (
-                            PGPolicyGraph, TUPLE_SPACE, act_space,
+                            PGTFPolicy, TUPLE_SPACE, act_space,
                             {"model": {"custom_model": "tuple_spy"}}),
                         "dict_policy": (
-                            PGPolicyGraph, DICT_SPACE, act_space,
+                            PGTFPolicy, DICT_SPACE, act_space,
                             {"model": {"custom_model": "dict_spy"}}),
                     },
                     "policy_mapping_fn": lambda a: {
@@ -370,13 +378,13 @@ class NestedSpacesTest(unittest.TestCase):
 
     def testRolloutDictSpace(self):
         register_env("nested", lambda _: NestedDictEnv())
-        agent = PGAgent(env="nested")
+        agent = PGTrainer(env="nested")
         agent.train()
         path = agent.save()
         agent.stop()
 
         # Test train works on restore
-        agent2 = PGAgent(env="nested")
+        agent2 = PGTrainer(env="nested")
         agent2.restore(path)
         agent2.train()
 
@@ -386,7 +394,7 @@ class NestedSpacesTest(unittest.TestCase):
     def testPyTorchModel(self):
         ModelCatalog.register_custom_model("composite", TorchSpyModel)
         register_env("nested", lambda _: NestedDictEnv())
-        a2c = A2CAgent(
+        a2c = A2CTrainer(
             env="nested",
             config={
                 "num_workers": 0,

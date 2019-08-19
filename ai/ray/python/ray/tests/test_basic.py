@@ -7,6 +7,7 @@ import collections
 from concurrent.futures import ThreadPoolExecutor
 import json
 import logging
+from multiprocessing import Process
 import os
 import random
 import re
@@ -28,28 +29,11 @@ import pytest
 import ray
 import ray.tests.cluster_utils
 import ray.tests.utils
-from ray.utils import _random_string
 
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture
-def ray_start():
-    # Start the Ray processes.
-    ray.init(num_cpus=1)
-    yield None
-    # The code after the yield will run as teardown code.
-    ray.shutdown()
-
-
-@pytest.fixture
-def shutdown_only():
-    yield None
-    # The code after the yield will run as teardown code.
-    ray.shutdown()
-
-
-def test_simple_serialization(ray_start):
+def test_simple_serialization(ray_start_regular):
     primitive_objects = [
         # Various primitive types.
         0,
@@ -116,7 +100,7 @@ def test_simple_serialization(ray_start):
             assert type(obj) == type(new_obj_2)
 
 
-def test_complex_serialization(ray_start):
+def test_complex_serialization(ray_start_regular):
     def assert_equal(obj1, obj2):
         module_numpy = (type(obj1).__module__ == np.__name__
                         or type(obj2).__module__ == np.__name__)
@@ -319,7 +303,24 @@ def test_complex_serialization(ray_start):
         assert_equal(obj, ray.get(ray.put(obj)))
 
 
-def test_ray_recursive_objects(ray_start):
+def test_nested_functions(ray_start_regular):
+    # Make sure that remote functions can use other values that are defined
+    # after the remote function but before the first function invocation.
+    @ray.remote
+    def f():
+        return g(), ray.get(h.remote())
+
+    def g():
+        return 1
+
+    @ray.remote
+    def h():
+        return 2
+
+    assert ray.get(f.remote()) == (1, 2)
+
+
+def test_ray_recursive_objects(ray_start_regular):
     class ClassA(object):
         pass
 
@@ -347,7 +348,7 @@ def test_ray_recursive_objects(ray_start):
             ray.put(obj)
 
 
-def test_passing_arguments_by_value_out_of_the_box(ray_start):
+def test_passing_arguments_by_value_out_of_the_box(ray_start_regular):
     @ray.remote
     def f(x):
         return x
@@ -379,7 +380,7 @@ def test_passing_arguments_by_value_out_of_the_box(ray_start):
     ray.get(ray.put(Foo))
 
 
-def test_putting_object_that_closes_over_object_id(ray_start):
+def test_putting_object_that_closes_over_object_id(ray_start_regular):
     # This test is here to prevent a regression of
     # https://github.com/ray-project/ray/issues/1317.
 
@@ -422,9 +423,7 @@ def test_put_get(shutdown_only):
         assert value_before == value_after
 
 
-def test_custom_serializers(shutdown_only):
-    ray.init(num_cpus=1)
-
+def test_custom_serializers(ray_start_regular):
     class Foo(object):
         def __init__(self):
             self.x = 3
@@ -454,7 +453,7 @@ def test_custom_serializers(shutdown_only):
     assert ray.get(f.remote()) == ((3, "string1", Bar.__name__), "string2")
 
 
-def test_serialization_final_fallback(ray_start):
+def test_serialization_final_fallback(ray_start_regular):
     pytest.importorskip("catboost")
     # This test will only run when "catboost" is installed.
     from catboost import CatBoostClassifier
@@ -471,9 +470,7 @@ def test_serialization_final_fallback(ray_start):
         reconstructed_model.get_params().items())
 
 
-def test_register_class(shutdown_only):
-    ray.init(num_cpus=2)
-
+def test_register_class(ray_start_2_cpus):
     # Check that putting an object of a class that has not been registered
     # throws an exception.
     class TempClass(object):
@@ -616,7 +613,7 @@ def test_register_class(shutdown_only):
         assert not hasattr(c2, "method1")
 
 
-def test_keyword_args(shutdown_only):
+def test_keyword_args(ray_start_regular):
     @ray.remote
     def keyword_fct1(a, b="hello"):
         return "{} {}".format(a, b)
@@ -628,8 +625,6 @@ def test_keyword_args(shutdown_only):
     @ray.remote
     def keyword_fct3(a, b, c="hello", d="world"):
         return "{} {} {} {}".format(a, b, c, d)
-
-    ray.init(num_cpus=1)
 
     x = keyword_fct1.remote(1)
     assert ray.get(x) == "1 hello"
@@ -755,7 +750,7 @@ def test_variable_number_of_args(shutdown_only):
         def no_op():
             pass
 
-        self.init_ray()
+        self.ray_start()
 
         ray.get(no_op.remote())
 
@@ -827,55 +822,131 @@ def test_defining_remote_functions(shutdown_only):
     assert ray.get(k2.remote(1)) == 2
     assert ray.get(m.remote(1)) == 2
 
-    def test_submit_api(shutdown_only):
-        ray.init(num_cpus=1, num_gpus=1, resources={"Custom": 1})
 
-        @ray.remote
-        def f(n):
-            return list(range(n))
+def test_submit_api(shutdown_only):
+    ray.init(num_cpus=2, num_gpus=1, resources={"Custom": 1})
 
-        @ray.remote
-        def g():
+    @ray.remote
+    def f(n):
+        return list(range(n))
+
+    @ray.remote
+    def g():
+        return ray.get_gpu_ids()
+
+    assert f._remote([0], num_return_vals=0) is None
+    id1 = f._remote(args=[1], num_return_vals=1)
+    assert ray.get(id1) == [0]
+    id1, id2 = f._remote(args=[2], num_return_vals=2)
+    assert ray.get([id1, id2]) == [0, 1]
+    id1, id2, id3 = f._remote(args=[3], num_return_vals=3)
+    assert ray.get([id1, id2, id3]) == [0, 1, 2]
+    assert ray.get(
+        g._remote(args=[], num_cpus=1, num_gpus=1,
+                  resources={"Custom": 1})) == [0]
+    infeasible_id = g._remote(args=[], resources={"NonexistentCustom": 1})
+    assert ray.get(g._remote()) == []
+    ready_ids, remaining_ids = ray.wait([infeasible_id], timeout=0.05)
+    assert len(ready_ids) == 0
+    assert len(remaining_ids) == 1
+
+    @ray.remote
+    class Actor(object):
+        def __init__(self, x, y=0):
+            self.x = x
+            self.y = y
+
+        def method(self, a, b=0):
+            return self.x, self.y, a, b
+
+        def gpu_ids(self):
             return ray.get_gpu_ids()
 
-        assert f._remote([0], num_return_vals=0) is None
-        id1 = f._remote(args=[1], num_return_vals=1)
-        assert ray.get(id1) == [0]
-        id1, id2 = f._remote(args=[2], num_return_vals=2)
-        assert ray.get([id1, id2]) == [0, 1]
-        id1, id2, id3 = f._remote(args=[3], num_return_vals=3)
-        assert ray.get([id1, id2, id3]) == [0, 1, 2]
-        assert ray.get(
-            g._remote(
-                args=[], num_cpus=1, num_gpus=1,
-                resources={"Custom": 1})) == [0]
-        infeasible_id = g._remote(args=[], resources={"NonexistentCustom": 1})
-        ready_ids, remaining_ids = ray.wait([infeasible_id], timeout=0.05)
-        assert len(ready_ids) == 0
-        assert len(remaining_ids) == 1
+    @ray.remote
+    class Actor2(object):
+        def __init__(self):
+            pass
 
-        @ray.remote
-        class Actor(object):
-            def __init__(self, x, y=0):
-                self.x = x
-                self.y = y
+        def method(self):
+            pass
 
-            def method(self, a, b=0):
-                return self.x, self.y, a, b
+    a = Actor._remote(
+        args=[0], kwargs={"y": 1}, num_gpus=1, resources={"Custom": 1})
 
-            def gpu_ids(self):
-                return ray.get_gpu_ids()
+    a2 = Actor2._remote()
+    ray.get(a2.method._remote())
 
-        a = Actor._remote(
-            args=[0], kwargs={"y": 1}, num_gpus=1, resources={"Custom": 1})
-
-        id1, id2, id3, id4 = a.method._remote(
-            args=["test"], kwargs={"b": 2}, num_return_vals=4)
-        assert ray.get([id1, id2, id3, id4]) == [0, 1, "test", 2]
+    id1, id2, id3, id4 = a.method._remote(
+        args=["test"], kwargs={"b": 2}, num_return_vals=4)
+    assert ray.get([id1, id2, id3, id4]) == [0, 1, "test", 2]
 
 
-def test_get_multiple(shutdown_only):
-    ray.init(num_cpus=1)
+def test_many_fractional_resources(shutdown_only):
+    ray.init(num_cpus=2, num_gpus=2, resources={"Custom": 2})
+
+    @ray.remote
+    def g():
+        return 1
+
+    @ray.remote
+    def f(block, accepted_resources):
+        true_resources = {
+            resource: value[0][1]
+            for resource, value in ray.get_resource_ids().items()
+        }
+        if block:
+            ray.get(g.remote())
+        return true_resources == accepted_resources
+
+    # Check that the resource are assigned correctly.
+    result_ids = []
+    for rand1, rand2, rand3 in np.random.uniform(size=(100, 3)):
+        resource_set = {"CPU": int(rand1 * 10000) / 10000}
+        result_ids.append(f._remote([False, resource_set], num_cpus=rand1))
+
+        resource_set = {"CPU": 1, "GPU": int(rand1 * 10000) / 10000}
+        result_ids.append(f._remote([False, resource_set], num_gpus=rand1))
+
+        resource_set = {"CPU": 1, "Custom": int(rand1 * 10000) / 10000}
+        result_ids.append(
+            f._remote([False, resource_set], resources={"Custom": rand1}))
+
+        resource_set = {
+            "CPU": int(rand1 * 10000) / 10000,
+            "GPU": int(rand2 * 10000) / 10000,
+            "Custom": int(rand3 * 10000) / 10000
+        }
+        result_ids.append(
+            f._remote(
+                [False, resource_set],
+                num_cpus=rand1,
+                num_gpus=rand2,
+                resources={"Custom": rand3}))
+        result_ids.append(
+            f._remote(
+                [True, resource_set],
+                num_cpus=rand1,
+                num_gpus=rand2,
+                resources={"Custom": rand3}))
+    assert all(ray.get(result_ids))
+
+    # Check that the available resources at the end are the same as the
+    # beginning.
+    stop_time = time.time() + 10
+    correct_available_resources = False
+    while time.time() < stop_time:
+        if ray.available_resources() == {
+                "CPU": 2.0,
+                "GPU": 2.0,
+                "Custom": 2.0,
+        }:
+            correct_available_resources = True
+            break
+    if not correct_available_resources:
+        assert False, "Did not get correct available resources."
+
+
+def test_get_multiple(ray_start_regular):
     object_ids = [ray.put(i) for i in range(10)]
     assert ray.get(object_ids) == list(range(10))
 
@@ -886,8 +957,7 @@ def test_get_multiple(shutdown_only):
     assert results == indices
 
 
-def test_get_multiple_experimental(shutdown_only):
-    ray.init(num_cpus=1)
+def test_get_multiple_experimental(ray_start_regular):
     object_ids = [ray.put(i) for i in range(10)]
 
     object_ids_tuple = tuple(object_ids)
@@ -897,8 +967,7 @@ def test_get_multiple_experimental(shutdown_only):
     assert ray.experimental.get(object_ids_nparray) == list(range(10))
 
 
-def test_get_dict(shutdown_only):
-    ray.init(num_cpus=1)
+def test_get_dict(ray_start_regular):
     d = {str(i): ray.put(i) for i in range(5)}
     for i in range(5, 10):
         d[str(i)] = i
@@ -907,9 +976,7 @@ def test_get_dict(shutdown_only):
     assert result == expected
 
 
-def test_wait(shutdown_only):
-    ray.init(num_cpus=1)
-
+def test_wait(ray_start_regular):
     @ray.remote
     def f(delay):
         time.sleep(delay)
@@ -964,9 +1031,7 @@ def test_wait(shutdown_only):
         ray.wait([1])
 
 
-def test_wait_iterables(shutdown_only):
-    ray.init(num_cpus=1)
-
+def test_wait_iterables(ray_start_regular):
     @ray.remote
     def f(delay):
         time.sleep(delay)
@@ -1063,9 +1128,7 @@ def test_caching_functions_to_run(shutdown_only):
     ray.worker.global_worker.run_function_on_all_workers(f)
 
 
-def test_running_function_on_all_workers(shutdown_only):
-    ray.init(num_cpus=1)
-
+def test_running_function_on_all_workers(ray_start_regular):
     def f(worker_info):
         sys.path.append("fake_directory")
 
@@ -1092,9 +1155,7 @@ def test_running_function_on_all_workers(shutdown_only):
     assert "fake_directory" not in ray.get(get_path2.remote())
 
 
-def test_profiling_api(shutdown_only):
-    ray.init(num_cpus=2)
-
+def test_profiling_api(ray_start_2_cpus):
     @ray.remote
     def f():
         with ray.profile(
@@ -1115,7 +1176,7 @@ def test_profiling_api(shutdown_only):
         if time.time() - start_time > timeout_seconds:
             raise Exception("Timed out while waiting for information in "
                             "profile table.")
-        profile_data = ray.global_state.chrome_tracing_dump()
+        profile_data = ray.timeline()
         event_types = {event["cat"] for event in profile_data}
         expected_types = [
             "worker_idle",
@@ -1138,16 +1199,6 @@ def test_profiling_api(shutdown_only):
             break
 
 
-@pytest.fixture()
-def ray_start_cluster():
-    cluster = ray.tests.cluster_utils.Cluster()
-    yield cluster
-
-    # The code after the yield will run as teardown code.
-    ray.shutdown()
-    cluster.shutdown()
-
-
 def test_wait_cluster(ray_start_cluster):
     cluster = ray_start_cluster
     cluster.add_node(num_cpus=1, resources={"RemoteResource": 1})
@@ -1158,10 +1209,17 @@ def test_wait_cluster(ray_start_cluster):
     def f():
         return
 
-    # Submit some tasks that can only be executed on the remote nodes.
+    # Make sure we have enough workers on the remote nodes to execute some
+    # tasks.
+    tasks = [f.remote() for _ in range(10)]
+    start = time.time()
+    ray.get(tasks)
+    end = time.time()
+
+    # Submit some more tasks that can only be executed on the remote nodes.
     tasks = [f.remote() for _ in range(10)]
     # Sleep for a bit to let the tasks finish.
-    time.sleep(1)
+    time.sleep((end - start) * 2)
     _, unready = ray.wait(tasks, num_returns=len(tasks), timeout=0)
     # All remote tasks should have finished.
     assert len(unready) == 0
@@ -1194,7 +1252,7 @@ def test_object_transfer_dump(ray_start_cluster):
     # The profiling information only flushes once every second.
     time.sleep(1.1)
 
-    transfer_dump = ray.global_state.chrome_tracing_object_transfer_dump()
+    transfer_dump = ray.object_transfer_timeline()
     # Make sure the transfer dump can be serialized with JSON.
     json.loads(json.dumps(transfer_dump))
     assert len(transfer_dump) >= num_nodes**2
@@ -1208,10 +1266,9 @@ def test_object_transfer_dump(ray_start_cluster):
     }) == num_nodes
 
 
-def test_identical_function_names(shutdown_only):
+def test_identical_function_names(ray_start_regular):
     # Define a bunch of remote functions and make sure that we don't
     # accidentally call an older version.
-    ray.init(num_cpus=1)
 
     num_calls = 200
 
@@ -1275,8 +1332,7 @@ def test_identical_function_names(shutdown_only):
     assert result_values == num_calls * [5]
 
 
-def test_illegal_api_calls(shutdown_only):
-    ray.init(num_cpus=1)
+def test_illegal_api_calls(ray_start_regular):
 
     # Verify that we cannot call put on an ObjectID.
     x = ray.put(1)
@@ -1291,10 +1347,9 @@ def test_illegal_api_calls(shutdown_only):
 # because plasma client isn't thread-safe. This needs to be fixed from the
 # Arrow side. See #4107 for relevant discussions.
 @pytest.mark.skipif(six.PY2, reason="Doesn't work in Python 2.")
-def test_multithreading(shutdown_only):
+def test_multithreading(ray_start_2_cpus):
     # This test requires at least 2 CPUs to finish since the worker does not
     # release resources when joining the threads.
-    ray.init(num_cpus=2)
 
     def run_test_in_multi_threads(test_case, num_threads=10, num_repeats=25):
         """A helper function that runs test cases in multiple threads."""
@@ -1433,9 +1488,8 @@ def test_free_objects_multi_node(ray_start_cluster):
     # This test will do following:
     # 1. Create 3 raylets that each hold an actor.
     # 2. Each actor creates an object which is the deletion target.
-    # 3. Invoke 64 methods on each actor to flush plasma client.
-    # 4. After flushing, the plasma client releases the targets.
-    # 5. Check that the deletion targets have been deleted.
+    # 3. Wait 0.1 second for the objects to be deleted.
+    # 4. Check that the deletion targets have been deleted.
     # Caution: if remote functions are used instead of actor methods,
     # one raylet may create more than one worker to execute the
     # tasks, so the flushing operations may be executed in different
@@ -1450,20 +1504,13 @@ def test_free_objects_multi_node(ray_start_cluster):
             _internal_config=config)
     ray.init(redis_address=cluster.redis_address)
 
-    @ray.remote(resources={"Custom0": 1})
-    class ActorOnNode0(object):
+    class RawActor(object):
         def get(self):
             return ray.worker.global_worker.plasma_client.store_socket_name
 
-    @ray.remote(resources={"Custom1": 1})
-    class ActorOnNode1(object):
-        def get(self):
-            return ray.worker.global_worker.plasma_client.store_socket_name
-
-    @ray.remote(resources={"Custom2": 1})
-    class ActorOnNode2(object):
-        def get(self):
-            return ray.worker.global_worker.plasma_client.store_socket_name
+    ActorOnNode0 = ray.remote(resources={"Custom0": 1})(RawActor)
+    ActorOnNode1 = ray.remote(resources={"Custom1": 1})(RawActor)
+    ActorOnNode2 = ray.remote(resources={"Custom2": 1})(RawActor)
 
     def create(actors):
         a = actors[0].get.remote()
@@ -1474,23 +1521,18 @@ def test_free_objects_multi_node(ray_start_cluster):
         assert len(l2) == 0
         return (a, b, c)
 
-    def flush(actors):
-        # Flush the Release History.
-        # Current Plasma Client Cache will maintain 64-item list.
-        # If the number changed, this will fail.
-        logger.info("Start Flush!")
-        for i in range(64):
-            ray.get([actor.get.remote() for actor in actors])
-        logger.info("Flush finished!")
-
-    def run_one_test(actors, local_only):
+    def run_one_test(actors, local_only, delete_creating_tasks):
         (a, b, c) = create(actors)
         # The three objects should be generated on different object stores.
         assert ray.get(a) != ray.get(b)
         assert ray.get(a) != ray.get(c)
         assert ray.get(c) != ray.get(b)
-        ray.internal.free([a, b, c], local_only=local_only)
-        flush(actors)
+        ray.internal.free(
+            [a, b, c],
+            local_only=local_only,
+            delete_creating_tasks=delete_creating_tasks)
+        # Wait for the objects to be deleted.
+        time.sleep(0.1)
         return (a, b, c)
 
     actors = [
@@ -1499,13 +1541,13 @@ def test_free_objects_multi_node(ray_start_cluster):
         ActorOnNode2.remote()
     ]
     # Case 1: run this local_only=False. All 3 objects will be deleted.
-    (a, b, c) = run_one_test(actors, False)
+    (a, b, c) = run_one_test(actors, False, False)
     (l1, l2) = ray.wait([a, b, c], timeout=0.01, num_returns=1)
     # All the objects are deleted.
     assert len(l1) == 0
     assert len(l2) == 3
     # Case 2: run this local_only=True. Only 1 object will be deleted.
-    (a, b, c) = run_one_test(actors, True)
+    (a, b, c) = run_one_test(actors, True, False)
     (l1, l2) = ray.wait([a, b, c], timeout=0.01, num_returns=3)
     # One object is deleted and 2 objects are not.
     assert len(l1) == 2
@@ -1514,6 +1556,17 @@ def test_free_objects_multi_node(ray_start_cluster):
     local_return = ray.worker.global_worker.plasma_client.store_socket_name
     for object_id in l1:
         assert ray.get(object_id) != local_return
+
+    # Case3: These cases test the deleting creating tasks for the object.
+    (a, b, c) = run_one_test(actors, False, False)
+    task_table = ray.tasks()
+    for obj in [a, b, c]:
+        assert ray._raylet.compute_task_id(obj).hex() in task_table
+
+    (a, b, c) = run_one_test(actors, False, True)
+    task_table = ray.tasks()
+    for obj in [a, b, c]:
+        assert ray._raylet.compute_task_id(obj).hex() not in task_table
 
 
 def test_local_mode(shutdown_only):
@@ -1533,22 +1586,21 @@ def test_local_mode(shutdown_only):
         return np.ones([3, 4, 5])
 
     xref = f.remote()
-    # Remote functions should return by value.
-    assert np.alltrue(xref == np.ones([3, 4, 5]))
-    # Check that ray.get is the identity.
-    assert np.alltrue(xref == ray.get(xref))
+    # Remote functions should return ObjectIDs.
+    assert isinstance(xref, ray.ObjectID)
+    assert np.alltrue(ray.get(xref) == np.ones([3, 4, 5]))
     y = np.random.normal(size=[11, 12])
-    # Check that ray.put is the identity.
-    assert np.alltrue(y == ray.put(y))
+    # Check that ray.get(ray.put) is the identity.
+    assert np.alltrue(y == ray.get(ray.put(y)))
 
     # Make sure objects are immutable, this example is why we need to copy
     # arguments before passing them into remote functions in python mode
     aref = local_mode_f.remote()
-    assert np.alltrue(aref == np.array([0, 0]))
-    bref = local_mode_g.remote(aref)
+    assert np.alltrue(ray.get(aref) == np.array([0, 0]))
+    bref = local_mode_g.remote(ray.get(aref))
     # Make sure local_mode_g does not mutate aref.
-    assert np.alltrue(aref == np.array([0, 0]))
-    assert np.alltrue(bref == np.array([1, 0]))
+    assert np.alltrue(ray.get(aref) == np.array([0, 0]))
+    assert np.alltrue(ray.get(bref) == np.array([1, 0]))
 
     # wait should return the first num_returns values passed in as the
     # first list and the remaining values as the second list
@@ -1558,6 +1610,25 @@ def test_local_mode(shutdown_only):
         object_ids, num_returns=num_returns, timeout=None)
     assert ready == object_ids[:num_returns]
     assert remaining == object_ids[num_returns:]
+
+    # Check that ray.put() and ray.internal.free() work in local mode.
+
+    v1 = np.ones(10)
+    v2 = np.zeros(10)
+
+    k1 = ray.put(v1)
+    assert np.alltrue(v1 == ray.get(k1))
+    k2 = ray.put(v2)
+    assert np.alltrue(v2 == ray.get(k2))
+
+    ray.internal.free([k1, k2])
+    with pytest.raises(Exception):
+        ray.get(k1)
+    with pytest.raises(Exception):
+        ray.get(k2)
+
+    # Should fail silently.
+    ray.internal.free([k1, k2])
 
     # Test actors in LOCAL_MODE.
 
@@ -1576,9 +1647,14 @@ def test_local_mode(shutdown_only):
             array[0] = -1
             self.array = array
 
+        @ray.method(num_return_vals=3)
+        def returns_multiple(self):
+            return 1, 2, 3
+
     test_actor = LocalModeTestClass.remote(np.arange(10))
-    # Remote actor functions should return by value
-    assert np.alltrue(test_actor.get_array.remote() == np.arange(10))
+    obj = test_actor.get_array.remote()
+    assert isinstance(obj, ray.ObjectID)
+    assert np.alltrue(ray.get(obj) == np.arange(10))
 
     test_array = np.arange(10)
     # Remote actor functions should not mutate arguments
@@ -1586,9 +1662,9 @@ def test_local_mode(shutdown_only):
     assert np.alltrue(test_array == np.arange(10))
     # Remote actor functions should keep state
     test_array[0] = -1
-    assert np.alltrue(test_array == test_actor.get_array.remote())
+    assert np.alltrue(test_array == ray.get(test_actor.get_array.remote()))
 
-    # Check that actor handles work in Python mode.
+    # Check that actor handles work in local mode.
 
     @ray.remote
     def use_actor_handle(handle):
@@ -1597,6 +1673,47 @@ def test_local_mode(shutdown_only):
         assert np.alltrue(array == ray.get(handle.get_array.remote()))
 
     ray.get(use_actor_handle.remote(test_actor))
+
+    # Check that exceptions are deferred until ray.get().
+
+    exception_str = "test_basic remote task exception"
+
+    @ray.remote
+    def throws():
+        raise Exception(exception_str)
+
+    obj = throws.remote()
+    with pytest.raises(Exception, match=exception_str):
+        ray.get(obj)
+
+    # Check that multiple return values are handled properly.
+
+    @ray.remote(num_return_vals=3)
+    def returns_multiple():
+        return 1, 2, 3
+
+    obj1, obj2, obj3 = returns_multiple.remote()
+    assert ray.get(obj1) == 1
+    assert ray.get(obj2) == 2
+    assert ray.get(obj3) == 3
+    assert ray.get([obj1, obj2, obj3]) == [1, 2, 3]
+
+    obj1, obj2, obj3 = test_actor.returns_multiple.remote()
+    assert ray.get(obj1) == 1
+    assert ray.get(obj2) == 2
+    assert ray.get(obj3) == 3
+    assert ray.get([obj1, obj2, obj3]) == [1, 2, 3]
+
+    @ray.remote(num_return_vals=2)
+    def returns_multiple_throws():
+        raise Exception(exception_str)
+
+    obj1, obj2 = returns_multiple_throws.remote()
+    with pytest.raises(Exception, match=exception_str):
+        ray.get(obj)
+        ray.get(obj1)
+    with pytest.raises(Exception, match=exception_str):
+        ray.get(obj2)
 
 
 def test_resource_constraints(shutdown_only):
@@ -1617,7 +1734,7 @@ def test_resource_constraints(shutdown_only):
                     ]))) == num_workers:
             break
 
-    time_buffer = 0.3
+    time_buffer = 2
 
     # At most 10 copies of this can run at once.
     @ray.remote(num_cpus=1)
@@ -1701,7 +1818,7 @@ def test_multi_resource_constraints(shutdown_only):
     def g(n):
         time.sleep(n)
 
-    time_buffer = 0.3
+    time_buffer = 2
 
     start_time = time.time()
     ray.get([f.remote(0.5), g.remote(0.5)])
@@ -1732,71 +1849,21 @@ def test_gpu_ids(shutdown_only):
     num_gpus = 10
     ray.init(num_cpus=10, num_gpus=num_gpus)
 
-    @ray.remote(num_gpus=0)
-    def f0():
+    def get_gpu_ids(num_gpus_per_worker):
         time.sleep(0.1)
         gpu_ids = ray.get_gpu_ids()
-        assert len(gpu_ids) == 0
+        assert len(gpu_ids) == num_gpus_per_worker
         assert (os.environ["CUDA_VISIBLE_DEVICES"] == ",".join(
             [str(i) for i in gpu_ids]))
         for gpu_id in gpu_ids:
             assert gpu_id in range(num_gpus)
         return gpu_ids
 
-    @ray.remote(num_gpus=1)
-    def f1():
-        time.sleep(0.1)
-        gpu_ids = ray.get_gpu_ids()
-        assert len(gpu_ids) == 1
-        assert (os.environ["CUDA_VISIBLE_DEVICES"] == ",".join(
-            [str(i) for i in gpu_ids]))
-        for gpu_id in gpu_ids:
-            assert gpu_id in range(num_gpus)
-        return gpu_ids
-
-    @ray.remote(num_gpus=2)
-    def f2():
-        time.sleep(0.1)
-        gpu_ids = ray.get_gpu_ids()
-        assert len(gpu_ids) == 2
-        assert (os.environ["CUDA_VISIBLE_DEVICES"] == ",".join(
-            [str(i) for i in gpu_ids]))
-        for gpu_id in gpu_ids:
-            assert gpu_id in range(num_gpus)
-        return gpu_ids
-
-    @ray.remote(num_gpus=3)
-    def f3():
-        time.sleep(0.1)
-        gpu_ids = ray.get_gpu_ids()
-        assert len(gpu_ids) == 3
-        assert (os.environ["CUDA_VISIBLE_DEVICES"] == ",".join(
-            [str(i) for i in gpu_ids]))
-        for gpu_id in gpu_ids:
-            assert gpu_id in range(num_gpus)
-        return gpu_ids
-
-    @ray.remote(num_gpus=4)
-    def f4():
-        time.sleep(0.1)
-        gpu_ids = ray.get_gpu_ids()
-        assert len(gpu_ids) == 4
-        assert (os.environ["CUDA_VISIBLE_DEVICES"] == ",".join(
-            [str(i) for i in gpu_ids]))
-        for gpu_id in gpu_ids:
-            assert gpu_id in range(num_gpus)
-        return gpu_ids
-
-    @ray.remote(num_gpus=5)
-    def f5():
-        time.sleep(0.1)
-        gpu_ids = ray.get_gpu_ids()
-        assert len(gpu_ids) == 5
-        assert (os.environ["CUDA_VISIBLE_DEVICES"] == ",".join(
-            [str(i) for i in gpu_ids]))
-        for gpu_id in gpu_ids:
-            assert gpu_id in range(num_gpus)
-        return gpu_ids
+    f0 = ray.remote(num_gpus=0)(lambda: get_gpu_ids(0))
+    f1 = ray.remote(num_gpus=1)(lambda: get_gpu_ids(1))
+    f2 = ray.remote(num_gpus=2)(lambda: get_gpu_ids(2))
+    f4 = ray.remote(num_gpus=4)(lambda: get_gpu_ids(4))
+    f5 = ray.remote(num_gpus=5)(lambda: get_gpu_ids(5))
 
     # Wait for all workers to start up.
     @ray.remote
@@ -1823,20 +1890,11 @@ def test_gpu_ids(shutdown_only):
     all_ids = [gpu_id for gpu_ids in list_of_ids for gpu_id in gpu_ids]
     assert set(all_ids) == set(range(10))
 
-    remaining = [f5.remote() for _ in range(20)]
-    for _ in range(10):
-        t1 = time.time()
-        ready, remaining = ray.wait(remaining, num_returns=2)
-        t2 = time.time()
-        # There are only 10 GPUs, and each task uses 2 GPUs, so there
-        # should only be 2 tasks scheduled at a given time, so if we wait
-        # for 2 tasks to finish, then it should take at least 0.1 seconds
-        # for each pair of tasks to finish.
-        assert t2 - t1 > 0.09
-        list_of_ids = ray.get(ready)
-        all_ids = [gpu_id for gpu_ids in list_of_ids for gpu_id in gpu_ids]
-        # Commenting out the below assert because it seems to fail a lot.
-        # assert set(all_ids) == set(range(10))
+    # There are only 10 GPUs, and each task uses 5 GPUs, so there should only
+    # be 2 tasks scheduled at a given time.
+    t1 = time.time()
+    ray.get([f5.remote() for _ in range(20)])
+    assert time.time() - t1 >= 10 * 0.1
 
     # Test that actors have CUDA_VISIBLE_DEVICES set properly.
 
@@ -1884,12 +1942,22 @@ def test_gpu_ids(shutdown_only):
 def test_zero_cpus(shutdown_only):
     ray.init(num_cpus=0)
 
+    # We should be able to execute a task that requires 0 CPU resources.
     @ray.remote(num_cpus=0)
     def f():
         return 1
 
-    # The task should be able to execute.
     ray.get(f.remote())
+
+    # We should be able to create an actor that requires 0 CPU resources.
+    @ray.remote(num_cpus=0)
+    class Actor(object):
+        def method(self):
+            pass
+
+    a = Actor.remote()
+    x = a.method.remote()
+    ray.get(x)
 
 
 def test_zero_cpus_actor(ray_start_cluster):
@@ -1905,7 +1973,7 @@ def test_zero_cpus_actor(ray_start_cluster):
         def method(self):
             return ray.worker.global_worker.plasma_client.store_socket_name
 
-    # Make sure tasks and actors run on the remote local scheduler.
+    # Make sure tasks and actors run on the remote raylet.
     a = Foo.remote()
     assert ray.get(a.method.remote()) != local_plasma
 
@@ -1961,10 +2029,10 @@ def test_fractional_resources(shutdown_only):
         Foo2._remote([], {}, resources={"Custom": 1.5})
 
 
-def test_multiple_local_schedulers(ray_start_cluster):
+def test_multiple_raylets(ray_start_cluster):
     # This test will define a bunch of tasks that can only be assigned to
-    # specific local schedulers, and we will check that they are assigned
-    # to the correct local schedulers.
+    # specific raylets, and we will check that they are assigned
+    # to the correct raylets.
     cluster = ray_start_cluster
     cluster.add_node(num_cpus=11, num_gpus=0)
     cluster.add_node(num_cpus=5, num_gpus=5)
@@ -1974,20 +2042,20 @@ def test_multiple_local_schedulers(ray_start_cluster):
 
     # Define a bunch of remote functions that all return the socket name of
     # the plasma store. Since there is a one-to-one correspondence between
-    # plasma stores and local schedulers (at least right now), this can be
-    # used to identify which local scheduler the task was assigned to.
+    # plasma stores and raylets (at least right now), this can be
+    # used to identify which raylet the task was assigned to.
 
-    # This must be run on the zeroth local scheduler.
+    # This must be run on the zeroth raylet.
     @ray.remote(num_cpus=11)
     def run_on_0():
         return ray.worker.global_worker.plasma_client.store_socket_name
 
-    # This must be run on the first local scheduler.
+    # This must be run on the first raylet.
     @ray.remote(num_gpus=2)
     def run_on_1():
         return ray.worker.global_worker.plasma_client.store_socket_name
 
-    # This must be run on the second local scheduler.
+    # This must be run on the second raylet.
     @ray.remote(num_cpus=6, num_gpus=1)
     def run_on_2():
         return ray.worker.global_worker.plasma_client.store_socket_name
@@ -1997,12 +2065,12 @@ def test_multiple_local_schedulers(ray_start_cluster):
     def run_on_0_1_2():
         return ray.worker.global_worker.plasma_client.store_socket_name
 
-    # This must be run on the first or second local scheduler.
+    # This must be run on the first or second raylet.
     @ray.remote(num_gpus=1)
     def run_on_1_2():
         return ray.worker.global_worker.plasma_client.store_socket_name
 
-    # This must be run on the zeroth or second local scheduler.
+    # This must be run on the zeroth or second raylet.
     @ray.remote(num_cpus=8)
     def run_on_0_2():
         return ray.worker.global_worker.plasma_client.store_socket_name
@@ -2032,19 +2100,19 @@ def test_multiple_local_schedulers(ray_start_cluster):
                 results.append(run_on_0_2.remote())
         return names, results
 
-    client_table = ray.global_state.client_table()
+    client_table = ray.nodes()
     store_names = []
     store_names += [
         client["ObjectStoreSocketName"] for client in client_table
-        if client["Resources"]["GPU"] == 0
+        if client["Resources"].get("GPU", 0) == 0
     ]
     store_names += [
         client["ObjectStoreSocketName"] for client in client_table
-        if client["Resources"]["GPU"] == 5
+        if client["Resources"].get("GPU", 0) == 5
     ]
     store_names += [
         client["ObjectStoreSocketName"] for client in client_table
-        if client["Resources"]["GPU"] == 1
+        if client["Resources"].get("GPU", 0) == 1
     ]
     assert len(store_names) == 3
 
@@ -2108,15 +2176,15 @@ def test_custom_resources(ray_start_cluster):
         ray.get([f.remote() for _ in range(5)])
         return ray.worker.global_worker.plasma_client.store_socket_name
 
-    # The f tasks should be scheduled on both local schedulers.
+    # The f tasks should be scheduled on both raylets.
     assert len(set(ray.get([f.remote() for _ in range(50)]))) == 2
 
     local_plasma = ray.worker.global_worker.plasma_client.store_socket_name
 
-    # The g tasks should be scheduled only on the second local scheduler.
-    local_scheduler_ids = set(ray.get([g.remote() for _ in range(50)]))
-    assert len(local_scheduler_ids) == 1
-    assert list(local_scheduler_ids)[0] != local_plasma
+    # The g tasks should be scheduled only on the second raylet.
+    raylet_ids = set(ray.get([g.remote() for _ in range(50)]))
+    assert len(raylet_ids) == 1
+    assert list(raylet_ids)[0] != local_plasma
 
     # Make sure that resource bookkeeping works when a task that uses a
     # custom resources gets blocked.
@@ -2162,16 +2230,16 @@ def test_two_custom_resources(ray_start_cluster):
         time.sleep(0.001)
         return ray.worker.global_worker.plasma_client.store_socket_name
 
-    # The f and g tasks should be scheduled on both local schedulers.
+    # The f and g tasks should be scheduled on both raylets.
     assert len(set(ray.get([f.remote() for _ in range(50)]))) == 2
     assert len(set(ray.get([g.remote() for _ in range(50)]))) == 2
 
     local_plasma = ray.worker.global_worker.plasma_client.store_socket_name
 
-    # The h tasks should be scheduled only on the second local scheduler.
-    local_scheduler_ids = set(ray.get([h.remote() for _ in range(50)]))
-    assert len(local_scheduler_ids) == 1
-    assert list(local_scheduler_ids)[0] != local_plasma
+    # The h tasks should be scheduled only on the second raylet.
+    raylet_ids = set(ray.get([h.remote() for _ in range(50)]))
+    assert len(raylet_ids) == 1
+    assert list(raylet_ids)[0] != local_plasma
 
     # Make sure that tasks with unsatisfied custom resource requirements do
     # not get scheduled.
@@ -2214,6 +2282,36 @@ def test_many_custom_resources(shutdown_only):
     ray.get(results)
 
 
+# TODO: 5 retry attempts may be too little for Travis and we may need to
+# increase it if this test begins to be flaky on Travis.
+def test_zero_capacity_deletion_semantics(shutdown_only):
+    ray.init(num_cpus=2, num_gpus=1, resources={"test_resource": 1})
+
+    def test():
+        resources = ray.available_resources()
+        MAX_RETRY_ATTEMPTS = 5
+        retry_count = 0
+
+        while resources and retry_count < MAX_RETRY_ATTEMPTS:
+            time.sleep(0.1)
+            resources = ray.available_resources()
+            retry_count += 1
+
+        if retry_count >= MAX_RETRY_ATTEMPTS:
+            raise RuntimeError(
+                "Resources were available even after five retries.")
+
+        return resources
+
+    function = ray.remote(
+        num_cpus=2, num_gpus=1, resources={"test_resource": 1})(test)
+    cluster_resources = ray.get(function.remote())
+
+    # All cluster resources should be utilized and
+    # cluster_resources must be empty
+    assert cluster_resources == {}
+
+
 @pytest.fixture
 def save_gpu_ids_shutdown_only():
     # Record the curent value of this environment variable so that we can
@@ -2254,9 +2352,7 @@ def test_specific_gpus(save_gpu_ids_shutdown_only):
     ray.get([g.remote() for _ in range(100)])
 
 
-def test_blocking_tasks(shutdown_only):
-    ray.init(num_cpus=1)
-
+def test_blocking_tasks(ray_start_regular):
     @ray.remote
     def f(i, j):
         return (i, j)
@@ -2291,9 +2387,7 @@ def test_blocking_tasks(shutdown_only):
     ray.get(sleep.remote())
 
 
-def test_max_call_tasks(shutdown_only):
-    ray.init(num_cpus=1)
-
+def test_max_call_tasks(ray_start_regular):
     @ray.remote(max_calls=1)
     def f():
         return os.getpid()
@@ -2332,8 +2426,8 @@ def attempt_to_load_balance(remote_function,
 
 
 def test_load_balancing(ray_start_cluster):
-    # This test ensures that tasks are being assigned to all local
-    # schedulers in a roughly equal manner.
+    # This test ensures that tasks are being assigned to all raylets
+    # in a roughly equal manner.
     cluster = ray_start_cluster
     num_nodes = 3
     num_cpus = 7
@@ -2351,9 +2445,8 @@ def test_load_balancing(ray_start_cluster):
 
 
 def test_load_balancing_with_dependencies(ray_start_cluster):
-    # This test ensures that tasks are being assigned to all local
-    # schedulers in a roughly equal manner even when the tasks have
-    # dependencies.
+    # This test ensures that tasks are being assigned to all raylets in a
+    # roughly equal manner even when the tasks have dependencies.
     cluster = ray_start_cluster
     num_nodes = 3
     for _ in range(num_nodes):
@@ -2365,9 +2458,8 @@ def test_load_balancing_with_dependencies(ray_start_cluster):
         time.sleep(0.010)
         return ray.worker.global_worker.plasma_client.store_socket_name
 
-    # This object will be local to one of the local schedulers. Make sure
-    # this doesn't prevent tasks from being scheduled on other local
-    # schedulers.
+    # This object will be local to one of the raylets. Make sure
+    # this doesn't prevent tasks from being scheduled on other raylets.
     x = ray.put(np.zeros(1000000))
 
     attempt_to_load_balance(f, [x], 100, num_nodes, 25)
@@ -2376,7 +2468,7 @@ def test_load_balancing_with_dependencies(ray_start_cluster):
 def wait_for_num_tasks(num_tasks, timeout=10):
     start_time = time.time()
     while time.time() - start_time < timeout:
-        if len(ray.global_state.task_table()) >= num_tasks:
+        if len(ray.tasks()) >= num_tasks:
             return
         time.sleep(0.1)
     raise Exception("Timed out while waiting for global state.")
@@ -2385,7 +2477,7 @@ def wait_for_num_tasks(num_tasks, timeout=10):
 def wait_for_num_objects(num_objects, timeout=10):
     start_time = time.time()
     while time.time() - start_time < timeout:
-        if len(ray.global_state.object_table()) >= num_objects:
+        if len(ray.objects()) >= num_objects:
             return
         time.sleep(0.1)
     raise Exception("Timed out while waiting for global state.")
@@ -2395,32 +2487,36 @@ def wait_for_num_objects(num_objects, timeout=10):
     os.environ.get("RAY_USE_NEW_GCS") == "on",
     reason="New GCS API doesn't have a Python API yet.")
 def test_global_state_api(shutdown_only):
-    with pytest.raises(Exception):
-        ray.global_state.object_table()
 
-    with pytest.raises(Exception):
-        ray.global_state.task_table()
+    error_message = ("The ray global state API cannot be used "
+                     "before ray.init has been called.")
 
-    with pytest.raises(Exception):
-        ray.global_state.client_table()
+    with pytest.raises(Exception, match=error_message):
+        ray.objects()
 
-    with pytest.raises(Exception):
-        ray.global_state.function_table()
+    with pytest.raises(Exception, match=error_message):
+        ray.tasks()
+
+    with pytest.raises(Exception, match=error_message):
+        ray.nodes()
+
+    with pytest.raises(Exception, match=error_message):
+        ray.jobs()
 
     ray.init(num_cpus=5, num_gpus=3, resources={"CustomResource": 1})
 
     resources = {"CPU": 5, "GPU": 3, "CustomResource": 1}
-    assert ray.global_state.cluster_resources() == resources
+    assert ray.cluster_resources() == resources
 
-    assert ray.global_state.object_table() == {}
+    assert ray.objects() == {}
 
-    driver_id = ray.experimental.state.binary_to_hex(
-        ray.worker.global_worker.worker_id)
+    job_id = ray.utils.compute_job_id_from_driver(
+        ray.WorkerID(ray.worker.global_worker.worker_id))
     driver_task_id = ray.worker.global_worker.current_task_id.hex()
 
     # One task is put in the task table which corresponds to this driver.
     wait_for_num_tasks(1)
-    task_table = ray.global_state.task_table()
+    task_table = ray.tasks()
     assert len(task_table) == 1
     assert driver_task_id == list(task_table.keys())[0]
     task_spec = task_table[driver_task_id]["TaskSpec"]
@@ -2429,11 +2525,11 @@ def test_global_state_api(shutdown_only):
     assert task_spec["TaskID"] == driver_task_id
     assert task_spec["ActorID"] == nil_id_hex
     assert task_spec["Args"] == []
-    assert task_spec["DriverID"] == driver_id
+    assert task_spec["JobID"] == job_id.hex()
     assert task_spec["FunctionID"] == nil_id_hex
     assert task_spec["ReturnObjectIDs"] == []
 
-    client_table = ray.global_state.client_table()
+    client_table = ray.nodes()
     node_ip_address = ray.worker.global_worker.node_ip_address
 
     assert len(client_table) == 1
@@ -2448,24 +2544,19 @@ def test_global_state_api(shutdown_only):
 
     # Wait for one additional task to complete.
     wait_for_num_tasks(1 + 1)
-    task_table = ray.global_state.task_table()
+    task_table = ray.tasks()
     assert len(task_table) == 1 + 1
     task_id_set = set(task_table.keys())
     task_id_set.remove(driver_task_id)
     task_id = list(task_id_set)[0]
 
-    function_table = ray.global_state.function_table()
     task_spec = task_table[task_id]["TaskSpec"]
     assert task_spec["ActorID"] == nil_id_hex
     assert task_spec["Args"] == [1, "hi", x_id]
-    assert task_spec["DriverID"] == driver_id
+    assert task_spec["JobID"] == job_id.hex()
     assert task_spec["ReturnObjectIDs"] == [result_id]
-    function_table_entry = function_table[task_spec["FunctionID"]]
-    assert function_table_entry["Name"] == "ray.tests.test_basic.f"
-    assert function_table_entry["DriverID"] == driver_id
-    assert function_table_entry["Module"] == "ray.tests.test_basic"
 
-    assert task_table[task_id] == ray.global_state.task_table(task_id)
+    assert task_table[task_id] == ray.tasks(task_id)
 
     # Wait for two objects, one for the x_id and one for result_id.
     wait_for_num_objects(2)
@@ -2474,7 +2565,7 @@ def test_global_state_api(shutdown_only):
         timeout = 10
         start_time = time.time()
         while time.time() - start_time < timeout:
-            object_table = ray.global_state.object_table()
+            object_table = ray.objects()
             tables_ready = (object_table[x_id]["ManagerIDs"] is not None and
                             object_table[result_id]["ManagerIDs"] is not None)
             if tables_ready:
@@ -2483,16 +2574,18 @@ def test_global_state_api(shutdown_only):
         raise Exception("Timed out while waiting for object table to "
                         "update.")
 
-    object_table = ray.global_state.object_table()
+    object_table = ray.objects()
     assert len(object_table) == 2
 
-    assert object_table[x_id]["IsEviction"][0] is False
-
-    assert object_table[result_id]["IsEviction"][0] is False
-
-    assert object_table[x_id] == ray.global_state.object_table(x_id)
-    object_table_entry = ray.global_state.object_table(result_id)
+    assert object_table[x_id] == ray.objects(x_id)
+    object_table_entry = ray.objects(result_id)
     assert object_table[result_id] == object_table_entry
+
+    job_table = ray.jobs()
+
+    assert len(job_table) == 1
+    assert job_table[0]["JobID"] == job_id.hex()
+    assert job_table[0]["NodeManagerAddress"] == node_ip_address
 
 
 # TODO(rkn): Pytest actually has tools for capturing stdout and stderr, so we
@@ -2597,18 +2690,10 @@ def test_workers(shutdown_only):
     while len(worker_ids) != num_workers:
         worker_ids = set(ray.get([f.remote() for _ in range(10)]))
 
-    worker_info = ray.global_state.workers()
-    assert len(worker_info) >= num_workers
-    for worker_id, info in worker_info.items():
-        assert "node_ip_address" in info
-        assert "plasma_store_socket" in info
-        assert "stderr_file" in info
-        assert "stdout_file" in info
 
-
-def test_specific_driver_id():
-    dummy_driver_id = ray.DriverID(b"00112233445566778899")
-    ray.init(num_cpus=1, driver_id=dummy_driver_id)
+def test_specific_job_id():
+    dummy_driver_id = ray.JobID.from_int(1)
+    ray.init(num_cpus=1, job_id=dummy_driver_id)
 
     # in driver
     assert dummy_driver_id == ray._get_runtime_context().current_driver_id
@@ -2633,12 +2718,33 @@ def test_object_id_properties():
         ray.ObjectID(id_bytes + b"1234")
     with pytest.raises(ValueError, match=r".*needs to have length 20.*"):
         ray.ObjectID(b"0123456789")
-    object_id = ray.ObjectID(_random_string())
+    object_id = ray.ObjectID.from_random()
     assert not object_id.is_nil()
     assert object_id.binary() != id_bytes
     id_dumps = pickle.dumps(object_id)
     id_from_dumps = pickle.loads(id_dumps)
     assert id_from_dumps == object_id
+    file_prefix = "test_object_id_properties"
+
+    # Make sure the ids are fork safe.
+    def write(index):
+        str = ray.ObjectID.from_random().hex()
+        with open("{}{}".format(file_prefix, index), "w") as fo:
+            fo.write(str)
+
+    def read(index):
+        with open("{}{}".format(file_prefix, index), "r") as fi:
+            for line in fi:
+                return line
+
+    processes = [Process(target=write, args=(_, )) for _ in range(4)]
+    for process in processes:
+        process.start()
+    for process in processes:
+        process.join()
+    hexes = {read(i) for i in range(4)}
+    [os.remove("{}{}".format(file_prefix, i)) for i in range(4)]
+    assert len(hexes) == 4
 
 
 @pytest.fixture
@@ -2677,9 +2783,7 @@ def test_wait_reconstruction(shutdown_only):
     assert len(ready_ids) == 1
 
 
-def test_ray_setproctitle(shutdown_only):
-    ray.init(num_cpus=2)
-
+def test_ray_setproctitle(ray_start_2_cpus):
     @ray.remote
     class UniqueName(object):
         def __init__(self):
@@ -2701,7 +2805,7 @@ def test_ray_setproctitle(shutdown_only):
 def test_duplicate_error_messages(shutdown_only):
     ray.init(num_cpus=0)
 
-    driver_id = ray.DriverID.nil()
+    driver_id = ray.WorkerID.nil()
     error_data = ray.gcs_utils.construct_error_message(driver_id, "test",
                                                        "message", 0)
 
@@ -2710,23 +2814,23 @@ def test_duplicate_error_messages(shutdown_only):
 
     r = ray.worker.global_worker.redis_client
 
-    r.execute_command("RAY.TABLE_APPEND", ray.gcs_utils.TablePrefix.ERROR_INFO,
-                      ray.gcs_utils.TablePubsub.ERROR_INFO, driver_id.binary(),
-                      error_data)
+    r.execute_command("RAY.TABLE_APPEND",
+                      ray.gcs_utils.TablePrefix.Value("ERROR_INFO"),
+                      ray.gcs_utils.TablePubsub.Value("ERROR_INFO_PUBSUB"),
+                      driver_id.binary(), error_data)
 
     # Before https://github.com/ray-project/ray/pull/3316 this would
     # give an error
-    r.execute_command("RAY.TABLE_APPEND", ray.gcs_utils.TablePrefix.ERROR_INFO,
-                      ray.gcs_utils.TablePubsub.ERROR_INFO, driver_id.binary(),
-                      error_data)
+    r.execute_command("RAY.TABLE_APPEND",
+                      ray.gcs_utils.TablePrefix.Value("ERROR_INFO"),
+                      ray.gcs_utils.TablePubsub.Value("ERROR_INFO_PUBSUB"),
+                      driver_id.binary(), error_data)
 
 
 @pytest.mark.skipif(
     os.getenv("TRAVIS") is None,
     reason="This test should only be run on Travis.")
-def test_ray_stack(shutdown_only):
-    ray.init(num_cpus=2)
-
+def test_ray_stack(ray_start_2_cpus):
     def unique_name_1():
         time.sleep(1000)
 
@@ -2775,19 +2879,17 @@ def test_pandas_parquet_serialization():
 
 
 def test_socket_dir_not_existing(shutdown_only):
-    random_name = ray.ObjectID(_random_string()).hex()
+    random_name = ray.ObjectID.from_random().hex()
     temp_raylet_socket_dir = "/tmp/ray/tests/{}".format(random_name)
     temp_raylet_socket_name = os.path.join(temp_raylet_socket_dir,
                                            "raylet_socket")
     ray.init(num_cpus=1, raylet_socket_name=temp_raylet_socket_name)
 
 
-def test_raylet_is_robust_to_random_messages(shutdown_only):
-
-    ray.init(num_cpus=1)
+def test_raylet_is_robust_to_random_messages(ray_start_regular):
     node_manager_address = None
     node_manager_port = None
-    for client in ray.global_state.client_table():
+    for client in ray.nodes():
         if "NodeManagerAddress" in client:
             node_manager_address = client["NodeManagerAddress"]
             node_manager_port = client["NodeManagerPort"]
@@ -2796,7 +2898,7 @@ def test_raylet_is_robust_to_random_messages(shutdown_only):
     # Try to bring down the node manager:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((node_manager_address, node_manager_port))
-    s.send(1000 * b'asdf')
+    s.send(1000 * b"asdf")
 
     @ray.remote
     def f():
@@ -2805,7 +2907,7 @@ def test_raylet_is_robust_to_random_messages(shutdown_only):
     assert ray.get(f.remote()) == 1
 
 
-def test_non_ascii_comment(ray_start):
+def test_non_ascii_comment(ray_start_regular):
     @ray.remote
     def f():
         # 日本語 Japanese comment
@@ -2872,3 +2974,101 @@ def test_load_code_from_local(shutdown_only):
     base_actor_class = ray.remote(num_cpus=1)(BaseClass)
     base_actor = base_actor_class.remote(message)
     assert ray.get(base_actor.get_data.remote()) == message
+
+
+def test_shutdown_disconnect_global_state():
+    ray.init(num_cpus=0)
+    ray.shutdown()
+
+    with pytest.raises(Exception) as e:
+        ray.objects()
+    assert str(e.value).endswith("ray.init has been called.")
+
+
+@pytest.mark.parametrize(
+    "ray_start_object_store_memory", [10**8], indirect=True)
+def test_redis_lru_with_set(ray_start_object_store_memory):
+    x = np.zeros(8 * 10**7, dtype=np.uint8)
+    x_id = ray.put(x)
+
+    # Remove the object from the object table to simulate Redis LRU eviction.
+    removed = False
+    start_time = time.time()
+    while time.time() < start_time + 10:
+        if ray.state.state.redis_clients[0].delete(b"OBJECT" +
+                                                   x_id.binary()) == 1:
+            removed = True
+            break
+    assert removed
+
+    # Now evict the object from the object store.
+    ray.put(x)  # This should not crash.
+
+
+def test_decorated_function(ray_start_regular):
+    def function_invocation_decorator(f):
+        def new_f(args, kwargs):
+            # Reverse the arguments.
+            return f(args[::-1], {"d": 5}), kwargs
+
+        return new_f
+
+    def f(a, b, c, d=None):
+        return a, b, c, d
+
+    f.__ray_invocation_decorator__ = function_invocation_decorator
+    f = ray.remote(f)
+
+    result_id, kwargs = f.remote(1, 2, 3, d=4)
+    assert kwargs == {"d": 4}
+    assert ray.get(result_id) == (3, 2, 1, 5)
+
+
+def test_get_postprocess(ray_start_regular):
+    def get_postprocessor(object_ids, values):
+        return [value for value in values if value > 0]
+
+    ray.worker.global_worker._post_get_hooks.append(get_postprocessor)
+
+    assert ray.get(
+        [ray.put(i) for i in [0, 1, 3, 5, -1, -3, 4]]) == [1, 3, 5, 4]
+
+
+def test_export_after_shutdown(ray_start_regular):
+    # This test checks that we can use actor and remote function definitions
+    # across multiple Ray sessions.
+
+    @ray.remote
+    def f():
+        pass
+
+    @ray.remote
+    class Actor(object):
+        def method(self):
+            pass
+
+    ray.get(f.remote())
+    a = Actor.remote()
+    ray.get(a.method.remote())
+
+    ray.shutdown()
+
+    # Start Ray and use the remote function and actor again.
+    ray.init(num_cpus=1)
+    ray.get(f.remote())
+    a = Actor.remote()
+    ray.get(a.method.remote())
+
+    ray.shutdown()
+
+    # Start Ray again and make sure that these definitions can be exported from
+    # workers.
+    ray.init(num_cpus=2)
+
+    @ray.remote
+    def export_definitions_from_worker(remote_function, actor_class):
+        ray.get(remote_function.remote())
+        actor_handle = actor_class.remote()
+        ray.get(actor_handle.method.remote())
+
+    ray.get(export_definitions_from_worker.remote(f, Actor))

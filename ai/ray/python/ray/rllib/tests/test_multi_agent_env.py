@@ -7,16 +7,16 @@ import random
 import unittest
 
 import ray
-from ray.rllib.agents.pg import PGAgent
-from ray.rllib.agents.pg.pg_policy_graph import PGPolicyGraph
-from ray.rllib.agents.dqn.dqn_policy_graph import DQNPolicyGraph
+from ray.rllib.agents.pg import PGTrainer
+from ray.rllib.agents.pg.pg_policy import PGTFPolicy
+from ray.rllib.agents.dqn.dqn_policy import DQNTFPolicy
 from ray.rllib.optimizers import (SyncSamplesOptimizer, SyncReplayOptimizer,
                                   AsyncGradientsOptimizer)
-from ray.rllib.tests.test_policy_evaluator import (MockEnv, MockEnv2,
-                                                   MockPolicyGraph)
-from ray.rllib.evaluation.policy_evaluator import PolicyEvaluator
-from ray.rllib.evaluation.policy_graph import PolicyGraph
+from ray.rllib.tests.test_rollout_worker import (MockEnv, MockEnv2, MockPolicy)
+from ray.rllib.evaluation.rollout_worker import RolloutWorker
+from ray.rllib.policy.policy import Policy
 from ray.rllib.evaluation.metrics import collect_metrics
+from ray.rllib.evaluation.worker_set import WorkerSet
 from ray.rllib.env.base_env import _MultiAgentEnvToBaseEnv
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from ray.tune.registry import register_env
@@ -282,8 +282,16 @@ class TestMultiAgentEnv(unittest.TestCase):
 
         # Reset processing
         self.assertRaises(
-            ValueError,
-            lambda: env.send_actions({0: {0: 0, 1: 0}, 1: {0: 0, 1: 0}}))
+            ValueError, lambda: env.send_actions({
+                0: {
+                    0: 0,
+                    1: 0
+                },
+                1: {
+                    0: 0,
+                    1: 0
+                }
+            }))
         self.assertEqual(env.try_reset(0), {0: 0, 1: 0})
         self.assertEqual(env.try_reset(1), {0: 0, 1: 0})
         env.send_actions({0: {0: 0, 1: 0}, 1: {0: 0, 1: 0}})
@@ -319,11 +327,11 @@ class TestMultiAgentEnv(unittest.TestCase):
     def testMultiAgentSample(self):
         act_space = gym.spaces.Discrete(2)
         obs_space = gym.spaces.Discrete(2)
-        ev = PolicyEvaluator(
+        ev = RolloutWorker(
             env_creator=lambda _: BasicMultiAgent(5),
-            policy_graph={
-                "p0": (MockPolicyGraph, obs_space, act_space, {}),
-                "p1": (MockPolicyGraph, obs_space, act_space, {}),
+            policy={
+                "p0": (MockPolicy, obs_space, act_space, {}),
+                "p1": (MockPolicy, obs_space, act_space, {}),
             },
             policy_mapping_fn=lambda agent_id: "p{}".format(agent_id % 2),
             batch_steps=50)
@@ -334,14 +342,47 @@ class TestMultiAgentEnv(unittest.TestCase):
         self.assertEqual(batch.policy_batches["p0"]["t"].tolist(),
                          list(range(25)) * 6)
 
+    def testMultiAgentSampleSyncRemote(self):
+        act_space = gym.spaces.Discrete(2)
+        obs_space = gym.spaces.Discrete(2)
+        ev = RolloutWorker(
+            env_creator=lambda _: BasicMultiAgent(5),
+            policy={
+                "p0": (MockPolicy, obs_space, act_space, {}),
+                "p1": (MockPolicy, obs_space, act_space, {}),
+            },
+            policy_mapping_fn=lambda agent_id: "p{}".format(agent_id % 2),
+            batch_steps=50,
+            num_envs=4,
+            remote_worker_envs=True,
+            remote_env_batch_wait_ms=99999999)
+        batch = ev.sample()
+        self.assertEqual(batch.count, 200)
+
+    def testMultiAgentSampleAsyncRemote(self):
+        act_space = gym.spaces.Discrete(2)
+        obs_space = gym.spaces.Discrete(2)
+        ev = RolloutWorker(
+            env_creator=lambda _: BasicMultiAgent(5),
+            policy={
+                "p0": (MockPolicy, obs_space, act_space, {}),
+                "p1": (MockPolicy, obs_space, act_space, {}),
+            },
+            policy_mapping_fn=lambda agent_id: "p{}".format(agent_id % 2),
+            batch_steps=50,
+            num_envs=4,
+            remote_worker_envs=True)
+        batch = ev.sample()
+        self.assertEqual(batch.count, 200)
+
     def testMultiAgentSampleWithHorizon(self):
         act_space = gym.spaces.Discrete(2)
         obs_space = gym.spaces.Discrete(2)
-        ev = PolicyEvaluator(
+        ev = RolloutWorker(
             env_creator=lambda _: BasicMultiAgent(5),
-            policy_graph={
-                "p0": (MockPolicyGraph, obs_space, act_space, {}),
-                "p1": (MockPolicyGraph, obs_space, act_space, {}),
+            policy={
+                "p0": (MockPolicy, obs_space, act_space, {}),
+                "p1": (MockPolicy, obs_space, act_space, {}),
             },
             policy_mapping_fn=lambda agent_id: "p{}".format(agent_id % 2),
             episode_horizon=10,  # test with episode horizon set
@@ -352,11 +393,11 @@ class TestMultiAgentEnv(unittest.TestCase):
     def testSampleFromEarlyDoneEnv(self):
         act_space = gym.spaces.Discrete(2)
         obs_space = gym.spaces.Discrete(2)
-        ev = PolicyEvaluator(
+        ev = RolloutWorker(
             env_creator=lambda _: EarlyDoneMultiAgent(),
-            policy_graph={
-                "p0": (MockPolicyGraph, obs_space, act_space, {}),
-                "p1": (MockPolicyGraph, obs_space, act_space, {}),
+            policy={
+                "p0": (MockPolicy, obs_space, act_space, {}),
+                "p1": (MockPolicy, obs_space, act_space, {}),
             },
             policy_mapping_fn=lambda agent_id: "p{}".format(agent_id % 2),
             batch_mode="complete_episodes",
@@ -368,10 +409,10 @@ class TestMultiAgentEnv(unittest.TestCase):
     def testMultiAgentSampleRoundRobin(self):
         act_space = gym.spaces.Discrete(2)
         obs_space = gym.spaces.Discrete(10)
-        ev = PolicyEvaluator(
+        ev = RolloutWorker(
             env_creator=lambda _: RoundRobinMultiAgent(5, increment_obs=True),
-            policy_graph={
-                "p0": (MockPolicyGraph, obs_space, act_space, {}),
+            policy={
+                "p0": (MockPolicy, obs_space, act_space, {}),
             },
             policy_mapping_fn=lambda agent_id: "p0",
             batch_steps=50)
@@ -404,7 +445,7 @@ class TestMultiAgentEnv(unittest.TestCase):
     def testCustomRNNStateValues(self):
         h = {"some": {"arbitrary": "structure", "here": [1, 2, 3]}}
 
-        class StatefulPolicyGraph(PolicyGraph):
+        class StatefulPolicy(Policy):
             def compute_actions(self,
                                 obs_batch,
                                 state_batches,
@@ -417,9 +458,9 @@ class TestMultiAgentEnv(unittest.TestCase):
             def get_initial_state(self):
                 return [{}]  # empty dict
 
-        ev = PolicyEvaluator(
+        ev = RolloutWorker(
             env_creator=lambda _: gym.make("CartPole-v0"),
-            policy_graph=StatefulPolicyGraph,
+            policy=StatefulPolicy,
             batch_steps=5)
         batch = ev.sample()
         self.assertEqual(batch.count, 5)
@@ -429,7 +470,7 @@ class TestMultiAgentEnv(unittest.TestCase):
         self.assertEqual(batch["state_out_0"][1], h)
 
     def testReturningModelBasedRolloutsData(self):
-        class ModelBasedPolicyGraph(PGPolicyGraph):
+        class ModelBasedPolicy(PGTFPolicy):
             def compute_actions(self,
                                 obs_batch,
                                 state_batches,
@@ -462,11 +503,11 @@ class TestMultiAgentEnv(unittest.TestCase):
         single_env = gym.make("CartPole-v0")
         obs_space = single_env.observation_space
         act_space = single_env.action_space
-        ev = PolicyEvaluator(
+        ev = RolloutWorker(
             env_creator=lambda _: MultiCartpole(2),
-            policy_graph={
-                "p0": (ModelBasedPolicyGraph, obs_space, act_space, {}),
-                "p1": (ModelBasedPolicyGraph, obs_space, act_space, {}),
+            policy={
+                "p0": (ModelBasedPolicy, obs_space, act_space, {}),
+                "p1": (ModelBasedPolicy, obs_space, act_space, {}),
             },
             policy_mapping_fn=lambda agent_id: "p0",
             batch_steps=5)
@@ -478,7 +519,7 @@ class TestMultiAgentEnv(unittest.TestCase):
     def testTrainMultiCartpoleSinglePolicy(self):
         n = 10
         register_env("multi_cartpole", lambda _: MultiCartpole(n))
-        pg = PGAgent(env="multi_cartpole", config={"num_workers": 0})
+        pg = PGTrainer(env="multi_cartpole", config={"num_workers": 0})
         for i in range(100):
             result = pg.train()
             print("Iteration {}, reward {}, timesteps {}".format(
@@ -499,14 +540,14 @@ class TestMultiAgentEnv(unittest.TestCase):
             }
             obs_space = single_env.observation_space
             act_space = single_env.action_space
-            return (PGPolicyGraph, obs_space, act_space, config)
+            return (None, obs_space, act_space, config)
 
-        pg = PGAgent(
+        pg = PGTrainer(
             env="multi_cartpole",
             config={
                 "num_workers": 0,
                 "multiagent": {
-                    "policy_graphs": {
+                    "policies": {
                         "policy_1": gen_policy(),
                         "policy_2": gen_policy(),
                     },
@@ -538,17 +579,17 @@ class TestMultiAgentEnv(unittest.TestCase):
             # happen since the replay buffer doesn't encode extra fields like
             # "advantages" that PG uses.
             policies = {
-                "p1": (DQNPolicyGraph, obs_space, act_space, dqn_config),
-                "p2": (DQNPolicyGraph, obs_space, act_space, dqn_config),
+                "p1": (DQNTFPolicy, obs_space, act_space, dqn_config),
+                "p2": (DQNTFPolicy, obs_space, act_space, dqn_config),
             }
         else:
             policies = {
-                "p1": (PGPolicyGraph, obs_space, act_space, {}),
-                "p2": (DQNPolicyGraph, obs_space, act_space, dqn_config),
+                "p1": (PGTFPolicy, obs_space, act_space, {}),
+                "p2": (DQNTFPolicy, obs_space, act_space, dqn_config),
             }
-        ev = PolicyEvaluator(
+        worker = RolloutWorker(
             env_creator=lambda _: MultiCartpole(n),
-            policy_graph=policies,
+            policy=policies,
             policy_mapping_fn=lambda agent_id: ["p1", "p2"][agent_id % 2],
             batch_steps=50)
         if optimizer_cls == AsyncGradientsOptimizer:
@@ -556,26 +597,30 @@ class TestMultiAgentEnv(unittest.TestCase):
             def policy_mapper(agent_id):
                 return ["p1", "p2"][agent_id % 2]
 
-            remote_evs = [
-                PolicyEvaluator.as_remote().remote(
+            remote_workers = [
+                RolloutWorker.as_remote().remote(
                     env_creator=lambda _: MultiCartpole(n),
-                    policy_graph=policies,
+                    policy=policies,
                     policy_mapping_fn=policy_mapper,
                     batch_steps=50)
             ]
         else:
-            remote_evs = []
-        optimizer = optimizer_cls(ev, remote_evs, {})
+            remote_workers = []
+        workers = WorkerSet._from_existing(worker, remote_workers)
+        optimizer = optimizer_cls(workers)
         for i in range(200):
-            ev.foreach_policy(
-                lambda p, _: p.set_epsilon(max(0.02, 1 - i * .02))
-                if isinstance(p, DQNPolicyGraph) else None)
+            worker.foreach_policy(lambda p, _: p.set_epsilon(
+                max(0.02, 1 - i * .02))
+                              if isinstance(p, DQNTFPolicy) else None)
             optimizer.step()
-            result = collect_metrics(ev, remote_evs)
+            result = collect_metrics(worker, remote_workers)
             if i % 20 == 0:
-                ev.foreach_policy(
-                    lambda p, _: p.update_target()
-                    if isinstance(p, DQNPolicyGraph) else None)
+
+                def do_update(p):
+                    if isinstance(p, DQNTFPolicy):
+                        p.update_target()
+
+                worker.foreach_policy(lambda p, _: do_update(p))
                 print("Iter {}, rew {}".format(i,
                                                result["policy_reward_mean"]))
                 print("Total reward", result["episode_reward_mean"])
@@ -600,18 +645,19 @@ class TestMultiAgentEnv(unittest.TestCase):
         obs_space = env.observation_space
         policies = {}
         for i in range(20):
-            policies["pg_{}".format(i)] = (PGPolicyGraph, obs_space, act_space,
+            policies["pg_{}".format(i)] = (PGTFPolicy, obs_space, act_space,
                                            {})
         policy_ids = list(policies.keys())
-        ev = PolicyEvaluator(
+        worker = RolloutWorker(
             env_creator=lambda _: MultiCartpole(n),
-            policy_graph=policies,
+            policy=policies,
             policy_mapping_fn=lambda agent_id: random.choice(policy_ids),
             batch_steps=100)
-        optimizer = SyncSamplesOptimizer(ev, [], {})
+        workers = WorkerSet._from_existing(worker, [])
+        optimizer = SyncSamplesOptimizer(workers)
         for i in range(100):
             optimizer.step()
-            result = collect_metrics(ev)
+            result = collect_metrics(worker)
             print("Iteration {}, rew {}".format(i,
                                                 result["policy_reward_mean"]))
             print("Total reward", result["episode_reward_mean"])
@@ -621,5 +667,5 @@ class TestMultiAgentEnv(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    ray.init()
+    ray.init(num_cpus=4)
     unittest.main(verbosity=2)

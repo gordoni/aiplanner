@@ -1,12 +1,11 @@
 RLlib: Scalable Reinforcement Learning
 ======================================
 
-RLlib is an open-source library for reinforcement learning that offers both a collection of reference algorithms and scalable primitives for composing new ones.
+RLlib is an open-source library for reinforcement learning that offers both high scalability and a unified API for a variety of applications.
 
 .. image:: rllib-stack.svg
 
-Learn more about RLlib's design by reading the `ICML paper <https://arxiv.org/abs/1712.09381>`__.
-To get started, take a look over the `custom env example <https://github.com/ray-project/ray/blob/master/python/ray/rllib/examples/custom_env.py>`__ and the `API documentation <rllib-training.html>`__.
+To get started, take a look over the `custom env example <https://github.com/ray-project/ray/blob/master/python/ray/rllib/examples/custom_env.py>`__ and the `API documentation <rllib-training.html>`__. If you're looking to develop custom algorithms with RLlib, also check out `concepts and custom algorithms <rllib-concepts.html>`__.
 
 Installation
 ------------
@@ -40,7 +39,16 @@ Environments
 * `Vectorized <rllib-env.html#vectorized>`__
 * `Multi-Agent and Hierarchical <rllib-env.html#multi-agent-and-hierarchical>`__
 * `Interfacing with External Agents <rllib-env.html#interfacing-with-external-agents>`__
-* `Batch Asynchronous <rllib-env.html#batch-asynchronous>`__
+* `Advanced Integrations <rllib-env.html#advanced-integrations>`__
+
+Models and Preprocessors
+------------------------
+* `RLlib Models and Preprocessors Overview <rllib-models.html>`__
+* `TensorFlow Models <rllib-models.html#tensorflow-models>`__
+* `PyTorch Models <rllib-models.html#pytorch-models>`__
+* `Custom Preprocessors <rllib-models.html#custom-preprocessors>`__
+* `Supervised Model Losses <rllib-models.html#supervised-model-losses>`__
+* `Variable-length / Parametric Action Spaces <rllib-models.html#variable-length-parametric-action-spaces>`__
 
 Algorithms
 ----------
@@ -79,22 +87,38 @@ Algorithms
 
    -  `Advantage Re-Weighted Imitation Learning (MARWIL) <rllib-algorithms.html#advantage-re-weighted-imitation-learning-marwil>`__
 
-Models and Preprocessors
-------------------------
-* `RLlib Models and Preprocessors Overview <rllib-models.html>`__
-* `Custom Models (TensorFlow) <rllib-models.html#custom-models-tensorflow>`__
-* `Custom Models (PyTorch) <rllib-models.html#custom-models-pytorch>`__
-* `Custom Preprocessors <rllib-models.html#custom-preprocessors>`__
-* `Supervised Model Losses <rllib-models.html#supervised-model-losses>`__
-* `Variable-length / Parametric Action Spaces <rllib-models.html#variable-length-parametric-action-spaces>`__
-* `Customizing Policy Graphs <rllib-models.html#customizing-policy-graphs>`__
-
 Offline Datasets
 ----------------
 * `Working with Offline Datasets <rllib-offline.html>`__
 * `Input Pipeline for Supervised Losses <rllib-offline.html#input-pipeline-for-supervised-losses>`__
 * `Input API <rllib-offline.html#input-api>`__
 * `Output API <rllib-offline.html#output-api>`__
+
+Concepts and Custom Algorithms
+------------------------------
+*  `Policies <rllib-concepts.html>`__
+
+   -  `Building Policies in TensorFlow <rllib-concepts.html#building-policies-in-tensorflow>`__
+
+   -  `Building Policies in TensorFlow Eager <rllib-concepts.html#building-policies-in-tensorflow-eager>`__
+
+   -  `Building Policies in PyTorch <rllib-concepts.html#building-policies-in-pytorch>`__
+
+   -  `Extending Existing Policies <rllib-concepts.html#extending-existing-policies>`__
+
+*  `Policy Evaluation <rllib-concepts.html#policy-evaluation>`__
+*  `Policy Optimization <rllib-concepts.html#policy-optimization>`__
+*  `Trainers <rllib-concepts.html#trainers>`__
+
+Examples
+--------
+
+* `Tuned Examples <rllib-examples.html#tuned-examples>`__
+* `Training Workflows <rllib-examples.html#training-workflows>`__
+* `Custom Envs and Models <rllib-examples.html#custom-envs-and-models>`__
+* `Serving and Offline <rllib-examples.html#serving-and-offline>`__
+* `Multi-Agent and Hierarchical <rllib-examples.html#multi-agent-and-hierarchical>`__
+* `Community Examples <rllib-examples.html#community-examples>`__
 
 Development
 -----------
@@ -105,12 +129,6 @@ Development
 * `Benchmarks <rllib-dev.html#benchmarks>`__
 * `Contributing Algorithms <rllib-dev.html#contributing-algorithms>`__
 
-Concepts
---------
-* `Policy Graphs <rllib-concepts.html>`__
-* `Policy Evaluation <rllib-concepts.html#policy-evaluation>`__
-* `Policy Optimization <rllib-concepts.html#policy-optimization>`__
-
 Package Reference
 -----------------
 * `ray.rllib.agents <rllib-package-ref.html#module-ray.rllib.agents>`__
@@ -119,11 +137,6 @@ Package Reference
 * `ray.rllib.models <rllib-package-ref.html#module-ray.rllib.models>`__
 * `ray.rllib.optimizers <rllib-package-ref.html#module-ray.rllib.optimizers>`__
 * `ray.rllib.utils <rllib-package-ref.html#module-ray.rllib.utils>`__
-
-Examples
---------
-
-You can find an index of RLlib code examples on `this page <rllib-examples.html>`__. This includes tuned hyperparameters, demo scripts on how to use specific features of RLlib, and several community examples of applications built on RLlib.
 
 Troubleshooting
 ---------------
@@ -136,4 +149,5 @@ try setting ``OMP_NUM_THREADS=1``. Similarly, check configured system limits wit
 If you encounter out-of-memory errors, consider setting ``redis_max_memory`` and ``object_store_memory`` in ``ray.init()`` to reduce memory usage.
 
 For debugging unexpected hangs or performance problems, you can run ``ray stack`` to dump
-the stack traces of all Ray workers on the current node. This requires py-spy to be installed.
+the stack traces of all Ray workers on the current node, and ``ray timeline`` to dump
+a timeline visualization of tasks to a file.

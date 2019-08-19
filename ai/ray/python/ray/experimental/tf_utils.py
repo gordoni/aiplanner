@@ -5,7 +5,9 @@ from __future__ import print_function
 from collections import deque, OrderedDict
 import numpy as np
 
-import tensorflow as tf
+from ray.rllib.utils import try_import_tf
+
+tf = try_import_tf()
 
 
 def unflatten(vector, shapes):
@@ -76,7 +78,8 @@ class TensorFlowVariables(object):
                 if control not in explored_inputs:
                     queue.append(control)
                     explored_inputs.add(control)
-            if "Variable" in tf_obj.node_def.op:
+            if ("Variable" in tf_obj.node_def.op
+                    or "VarHandle" in tf_obj.node_def.op):
                 variable_names.append(tf_obj.node_def.name)
         self.variables = OrderedDict()
         variable_list = [

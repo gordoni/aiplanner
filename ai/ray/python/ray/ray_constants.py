@@ -17,6 +17,12 @@ ID_SIZE = 20
 # The default maximum number of bytes to allocate to the object store unless
 # overridden by the user.
 DEFAULT_OBJECT_STORE_MAX_MEMORY_BYTES = 20 * 10**9
+# The default number of retries to call `put` when the object store is full.
+DEFAULT_PUT_OBJECT_RETRIES = 5
+# The default seconds for delay between calls to retry `put` when
+# the object store is full. This delay is exponentially doubled up to
+# DEFAULT_PUT_OBJECT_RETRIES times.
+DEFAULT_PUT_OBJECT_DELAY = 1
 # The smallest cap on the memory used by the object store that we allow.
 OBJECT_STORE_MINIMUM_MEMORY_BYTES = 10**7
 # The default maximum number of bytes that the non-primary Redis shards are
@@ -24,6 +30,17 @@ OBJECT_STORE_MINIMUM_MEMORY_BYTES = 10**7
 DEFAULT_REDIS_MAX_MEMORY_BYTES = 10**10
 # The smallest cap on the memory used by Redis that we allow.
 REDIS_MINIMUM_MEMORY_BYTES = 10**7
+
+# Default resource requirements for actors when no resource requirements are
+# specified.
+DEFAULT_ACTOR_METHOD_CPU_SIMPLE = 1
+DEFAULT_ACTOR_CREATION_CPU_SIMPLE = 0
+# Default resource requirements for actors when some resource requirements are
+# specified in .
+DEFAULT_ACTOR_METHOD_CPU_SPECIFIED = 0
+DEFAULT_ACTOR_CREATION_CPU_SPECIFIED = 1
+# Default number of return values for each actor method.
+DEFAULT_ACTOR_METHOD_NUM_RETURN_VALS = 1
 
 # If a remote function or actor (or some other export) has serialized size
 # greater than this quantity, print an warning.
@@ -89,7 +106,7 @@ LOGGER_FORMAT = (
     "%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s")
 LOGGER_FORMAT_HELP = "The logging format. default='{}'".format(LOGGER_FORMAT)
 LOGGER_LEVEL = "info"
-LOGGER_LEVEL_CHOICES = ['debug', 'info', 'warning', 'error', 'critical']
+LOGGER_LEVEL_CHOICES = ["debug", "info", "warning", "error", "critical"]
 LOGGER_LEVEL_HELP = ("The logging level threshold, choices=['debug', 'info',"
                      " 'warning', 'error', 'critical'], default='info'")
 
@@ -111,3 +128,8 @@ PROCESS_TYPE_REDIS_SERVER = "redis_server"
 PROCESS_TYPE_WEB_UI = "web_ui"
 
 LOG_MONITOR_MAX_OPEN_FILES = 200
+
+# A constant used as object metadata to indicate the object is raw binary.
+RAW_BUFFER_METADATA = b"RAW"
+
+AUTOSCALER_RESOURCE_REQUEST_CHANNEL = b"autoscaler_resource_request"

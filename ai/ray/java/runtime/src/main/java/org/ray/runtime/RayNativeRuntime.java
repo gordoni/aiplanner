@@ -1,103 +1,63 @@
 package org.ray.runtime;
 
-import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
-import java.lang.reflect.Field;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import org.apache.commons.lang3.ArrayUtils;
-import org.ray.api.Checkpointable.Checkpoint;
-import org.ray.api.id.UniqueId;
+import org.ray.api.id.JobId;
 import org.ray.runtime.config.RayConfig;
-import org.ray.runtime.config.WorkerMode;
+import org.ray.runtime.gcs.GcsClient;
 import org.ray.runtime.gcs.RedisClient;
-import org.ray.runtime.generated.ActorCheckpointIdData;
-import org.ray.runtime.generated.TablePrefix;
+import org.ray.runtime.generated.Common.WorkerType;
+import org.ray.runtime.objectstore.ObjectInterfaceImpl;
 import org.ray.runtime.objectstore.ObjectStoreProxy;
 import org.ray.runtime.raylet.RayletClientImpl;
 import org.ray.runtime.runner.RunManager;
-import org.ray.runtime.util.UniqueIdUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * native runtime for local box and cluster run.
+ * Native runtime for cluster mode.
  */
 public final class RayNativeRuntime extends AbstractRayRuntime {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RayNativeRuntime.class);
 
-  /**
-   * Redis client of the primary shard.
-   */
-  private RedisClient redisClient;
-  /**
-   * Redis clients of all shards.
-   */
-  private List<RedisClient> redisClients;
   private RunManager manager = null;
+
+  private ObjectInterfaceImpl objectInterfaceImpl = null;
 
   public RayNativeRuntime(RayConfig rayConfig) {
     super(rayConfig);
   }
 
-  private void resetLibraryPath() {
-    String path = System.getProperty("java.library.path");
-    if (Strings.isNullOrEmpty(path)) {
-      path = "";
-    } else {
-      path += ":";
-    }
-
-    path += String.join(":", rayConfig.libraryPath);
-
-    // This is a hack to reset library path at runtime,
-    // see https://stackoverflow.com/questions/15409223/.
-    System.setProperty("java.library.path", path);
-    //set sys_paths to null so that java.library.path will be re-evalueted next time it is needed
-    final Field sysPathsField;
-    try {
-      sysPathsField = ClassLoader.class.getDeclaredField("sys_paths");
-      sysPathsField.setAccessible(true);
-      sysPathsField.set(null, null);
-    } catch (NoSuchFieldException | IllegalAccessException e) {
-      e.printStackTrace();
-      LOGGER.error("Failed to set library path.", e);
-    }
-  }
-
   @Override
-  public void start() throws Exception {
-    // Load native libraries.
-    try {
-      resetLibraryPath();
-      System.loadLibrary("raylet_library_java");
-      System.loadLibrary("plasma_java");
-    } catch (Exception e) {
-      LOGGER.error("Failed to load native libraries.", e);
-      throw e;
-    }
+  public void start() {
+    // Reset library path at runtime.
+    resetLibraryPath();
 
     if (rayConfig.getRedisAddress() == null) {
       manager = new RunManager(rayConfig);
       manager.startRayProcesses(true);
     }
 
-    initRedisClients();
+    gcsClient = new GcsClient(rayConfig.getRedisAddress(), rayConfig.redisPassword);
 
-    // TODO(qwang): Get object_store_socket_name and raylet_socket_name from Redis.
-    objectStoreProxy = new ObjectStoreProxy(this, rayConfig.objectStoreSocketName);
+    if (rayConfig.getJobId() == JobId.NIL) {
+      rayConfig.setJobId(gcsClient.nextJobId());
+    }
 
+    workerContext = new WorkerContext(rayConfig.workerMode,
+        rayConfig.getJobId(), rayConfig.runMode);
     rayletClient = new RayletClientImpl(
         rayConfig.rayletSocketName,
         workerContext.getCurrentWorkerId(),
-        rayConfig.workerMode == WorkerMode.WORKER,
-        workerContext.getCurrentDriverId()
+        rayConfig.workerMode == WorkerType.WORKER,
+        workerContext.getCurrentJobId()
     );
+
+    // TODO(qwang): Get object_store_socket_name and raylet_socket_name from Redis.
+    objectInterfaceImpl = new ObjectInterfaceImpl(workerContext, rayletClient,
+        rayConfig.objectStoreSocketName);
+    objectStoreProxy = new ObjectStoreProxy(workerContext, objectInterfaceImpl);
 
     // register
     registerWorker();
@@ -106,27 +66,23 @@ public final class RayNativeRuntime extends AbstractRayRuntime {
         rayConfig.objectStoreSocketName, rayConfig.rayletSocketName);
   }
 
-  private void initRedisClients() {
-    redisClient = new RedisClient(rayConfig.getRedisAddress(), rayConfig.redisPassword);
-    int numRedisShards = Integer.valueOf(redisClient.get("NumRedisShards", null));
-    List<String> addresses = redisClient.lrange("RedisShards", 0, -1);
-    Preconditions.checkState(numRedisShards == addresses.size());
-    redisClients = addresses.stream().map(RedisClient::new)
-        .collect(Collectors.toList());
-    redisClients.add(redisClient);
-  }
-
   @Override
   public void shutdown() {
     if (null != manager) {
       manager.cleanup();
     }
+    objectInterfaceImpl.destroy();
+    workerContext.destroy();
   }
 
+  /**
+   * Register this worker or driver to GCS.
+   */
   private void registerWorker() {
+    RedisClient redisClient = new RedisClient(rayConfig.getRedisAddress(), rayConfig.redisPassword);
     Map<String, String> workerInfo = new HashMap<>();
     String workerId = new String(workerContext.getCurrentWorkerId().getBytes());
-    if (rayConfig.workerMode == WorkerMode.DRIVER) {
+    if (rayConfig.workerMode == WorkerType.DRIVER) {
       workerInfo.put("node_ip_address", rayConfig.nodeIp);
       workerInfo.put("driver_id", workerId);
       workerInfo.put("start_time", String.valueOf(System.currentTimeMillis()));
@@ -142,35 +98,5 @@ public final class RayNativeRuntime extends AbstractRayRuntime {
       //TODO: b"Workers:" + worker.workerId,
       redisClient.hmset("Workers:" + workerId, workerInfo);
     }
-  }
-
-  /**
-   * Get the available checkpoints for the given actor ID, return a list sorted by checkpoint
-   * timestamp in descending order.
-   */
-  List<Checkpoint> getCheckpointsForActor(UniqueId actorId) {
-    List<Checkpoint> checkpoints = new ArrayList<>();
-    // TODO(hchen): implement the equivalent of Python's `GlobalState`, to avoid looping over
-    //  all redis shards..
-    String prefix = TablePrefix.name(TablePrefix.ACTOR_CHECKPOINT_ID);
-    byte[] key = ArrayUtils.addAll(prefix.getBytes(), actorId.getBytes());
-    for (RedisClient client : redisClients) {
-      byte[] result = client.get(key, null);
-      if (result == null) {
-        continue;
-      }
-      ActorCheckpointIdData data = ActorCheckpointIdData
-          .getRootAsActorCheckpointIdData(ByteBuffer.wrap(result));
-
-      UniqueId[] checkpointIds
-          = UniqueIdUtil.getUniqueIdsFromByteBuffer(data.checkpointIdsAsByteBuffer());
-
-      for (int i = 0; i < checkpointIds.length; i++) {
-        checkpoints.add(new Checkpoint(checkpointIds[i], data.timestamps(i)));
-      }
-      break;
-    }
-    checkpoints.sort((x, y) -> Long.compare(y.timestamp, x.timestamp));
-    return checkpoints;
   }
 }
