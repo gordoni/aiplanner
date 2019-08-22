@@ -72,9 +72,10 @@ auth:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 head_node:
     InstanceType: m5.large
-    ImageId: ami-07262a45de118922e # Deep Learning AMI (Ubuntu) Version 23.1
-    # Do not use Version 24.0 or workers will exhibit a memory leak (5GB/hr).
-    # Version 21.2 apparently had no memory leak. 23.1 may leak slightly (30M/hr). 22.0 and 23.0 status unknown.
+    ImageId: ami-0a47106e391391252 # Deep Learning AMI (Ubuntu) Version 21.2
+    # Version 21.2 (TensorFlow 1.12) has no memory leak after 60 minute warm up period.
+    # Version 22.0 and 23.1 (TensorFlow 1.13) workers leak slightly (10M/hr and 40M/hr). 23.0 status unknown.
+    # Version 24.0 (TensorFlow 1.14) workers leak significantly (5GB/hr).
 
     # You can provision additional disk space with a conf as follows
     BlockDeviceMappings:
@@ -91,9 +92,7 @@ head_node:
 worker_nodes:
     KeyName: ray-autoscaler_us-east-2
     InstanceType: c5.4xlarge
-    ImageId: ami-07262a45de118922e # Deep Learning AMI (Ubuntu) Version 23.1
-    # Do not use Version 24.0 or workers will exhibit a memory leak (5GB/hr).
-    # Version 21.2 apparently had no memory leak. 23.1 may leak slightly (30M/hr). 22.0 and 23.0 status unknown.
+    ImageId: ami-0a47106e391391252 # Deep Learning AMI (Ubuntu) Version 21.2
 
     # Run workers on spot by default. Comment this out to use on-demand.
     InstanceMarketOptions:
