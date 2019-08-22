@@ -72,19 +72,26 @@ class InferEvaluateDaemon:
     def __init__(self, args, *, evaluate, gammas, logger, priority = 0):
 
         self.args = args
+        self.evaluate = evaluate
+        self.gammas = gammas
         self.logger = logger
+        self.priority = priority
+
+        self.restart()
+
+    def restart(self):
 
         models_dir = expanduser(self.args.models_dir)
         cmd = [
             environ['AIPLANNER_HOME'] + '/ai/eval_model.py',
             '--daemon',
-            '--nice', str(priority),
+            '--nice', str(self.priority),
             '--eval-no-warn',
             '--eval-no-display-returns',
             '--models-dir', models_dir,
             '--train-seeds', str(self.args.train_seeds),
             '--ensemble',
-            ('--' if evaluate else '--no-') + 'evaluate',
+            ('--' if self.evaluate else '--no-') + 'evaluate',
             ('--' if self.args.warm_cache else '--no-') + 'warm-cache',
             '-c', models_dir + '/base-scenario.txt',
             '--eval-num-timesteps', str(self.args.eval_num_timesteps),
@@ -92,7 +99,7 @@ class InferEvaluateDaemon:
             '--num-trace-episodes', str(self.args.num_trace_episodes),
             '--pdf-buckets', str(self.args.pdf_buckets),
         ]
-        for gamma in gammas:
+        for gamma in self.gammas:
             cmd += ['--gamma', str(gamma)]
         self.proc = Popen(cmd, stdin = PIPE, stdout = PIPE, stderr = self.logger.logfile_binary)
 
@@ -133,9 +140,11 @@ class InferEvaluateDaemon:
                 elif string != '\n':
                     self.logger.log_binary(line)
 
-        except IOError as e:
+        except (IOError, ConnectionError) as e:
 
-            return aid, '{"error": "No evaluator."}\n'.encode('utf-8')
+            self.proc.terminate()
+            self.restart()
+            return aid, '{"error": "Server process died. Restarting."}\n'.encode('utf-8')
 
         finally:
 
