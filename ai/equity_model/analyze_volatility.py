@@ -118,7 +118,7 @@ with open(ticker_dir + '/^GSPC.csv') as f:
     r = reader(f)
     next(r) # Skip header.
     yearly = []
-    prev_month = '0'
+    prev_month = '13'
     prev_year_adj_close = None
     for date, open_price, high, low, close, adj_close, volume in r:
         y, m, d = date.split('-')
@@ -159,6 +159,9 @@ print(mean(yearly), stdev(yearly), skew(yearly), kurtosis(yearly, fisher = False
 print('yearly log ret corr')
 print(np.corrcoef(yearly[:-1], yearly[1:]))
 print(spearmanr(yearly[:-1], yearly[1:]))
+
+print('return volatility correlation')
+print(np.corrcoef(yearly[1:], daily_vols[:-1]))
 
 # Observed log ret results:
 #           mean  stdev  auto corr  skew    kurtosis

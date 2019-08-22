@@ -19,10 +19,12 @@ import tensorflow as tf
 
 from baselines.common import tf_util as U
 
+from ray.rllib.evaluation.worker_set import WorkerSet
+
 class TFRunner:
 
     def __init__(self, *, train_dirs = ['aiplanner.tf'], checkpoint_name = None, eval_model_params, couple_net = True,
-        redis_address = None, num_workers = 1, num_environments = 1, num_cpu = None,
+        redis_address = None, num_workers = 1, worker_seed = 0, num_environments = 1, num_cpu = None,
         evaluator = True, export_model = False):
 
         self.couple_net = couple_net
@@ -53,12 +55,12 @@ class TFRunner:
             first = True
             for train_dir in train_dirs:
 
-                checkpoints = glob(train_dir + '/*/checkpoint_*')
+                checkpoints = glob(train_dir + '**/checkpoint_*', recursive = True)
                 if not checkpoint_name:
                     assert checkpoints, 'No Rllib checkpoints found: ' + train_dir
                     checkpoint_name = 'checkpoint_' + str(max(int(checkpoint.split('_')[-1]) for checkpoint in checkpoints))
-                checkpoint_dir, = glob(train_dir + '/*/' + checkpoint_name)
-                checkpoint, = glob(checkpoint_dir + '/checkpoint-*[0-9]')
+                checkpoint_dir, = glob(train_dir + '**/' + checkpoint_name)
+                checkpoint, = glob(checkpoint_dir + '/checkpoint-*[0-9]', recursive = True)
 
                 if first:
                     config_path = join(checkpoint_dir, '../params.pkl')
@@ -68,6 +70,7 @@ class TFRunner:
                     cls = get_agent_class(config['env_config']['algorithm'])
                     config['env_config'] = eval_model_params
                     config['num_envs_per_worker'] = num_environments
+                    config['seed'] = worker_seed
                     config['sample_mode'] = True # Rllib hack to return modal sample not a randomly perturbed one.
 
                 agent = cls(env = RayFinEnv, config = config)
@@ -85,17 +88,17 @@ class TFRunner:
                 if not evaluator:
                     return
 
-                weight = agent.local_evaluator.get_weights()['default']
+                weight = agent.get_weights()['default_policy']
                 weights.append(weight)
 
                 first = False
 
-            class EnsemblePolicyGraph(agent._policy_graph):
+            class EnsemblePolicy(agent._policy):
 
                 def __init__(self, observation_space, action_space, config, *args, **kwargs):
 
                     super().__init__(observation_space, action_space, config, *args, **kwargs)
-                    self.policy_graphs = []
+                    self.policies = []
                     for w in weights:
                         graph = tf.Graph()
                         with graph.as_default() as g:
@@ -104,40 +107,40 @@ class TFRunner:
                                 intra_op_parallelism_threads = num_cpu
                             )
                             with tf.Session(graph = graph, config = tf_config).as_default() as sess:
-                                policy_graph = agent._policy_graph(observation_space, action_space, config)
-                                self.policy_graphs.append(policy_graph)
+                                policy = agent._policy(observation_space, action_space, config, *args, **kwargs)
+                                self.policies.append(policy)
 
                 def set_weights(self, weights):
 
-                    for policy_graph, w in zip(self.policy_graphs, weights):
-                        policy_graph.set_weights(w)
+                    for policy, w in zip(self.policies, weights):
+                        policy.set_weights(w)
 
                 def compute_actions(self, *args, **kwargs):
 
-                    actions_ca = [policy_graph.compute_actions(*args, **kwargs) for policy_graph in self.policy_graphs]
+                    actions_ca = [policy.compute_actions(*args, **kwargs) for policy in self.policies]
                     actions = np.array([action[0] for action in actions_ca])
                     # Get slightly better CEs (retired, SPIAs, gamma=1.5) taking mean, than first dropping high/low.
                     #mean_action = (np.sum(actions, axis = 0) - np.amin(actions, axis = 0) - np.amax(actions, axis = 0)) / (actions.shape[0] - 2)
                     mean_action = np.mean(actions, axis = 0)
                     return [mean_action] + list(actions_ca[0][1:])
 
-                def copy(self, existing_inputs):
-                    return EnsemblePolicyGraph(self.observation_space, self.action_space, self.config, existing_inputs = existing_inputs)
+                #def copy(self, existing_inputs):
+                #    return EnsemblePolicy(self.observation_space, self.action_space, self.config, existing_inputs = existing_inputs)
 
-            agent_weights = {'default': weights}
+            policy = agent.workers.local_worker().get_policy()
 
-            local_evaluator = agent.make_local_evaluator(agent.env_creator, EnsemblePolicyGraph)
-            local_evaluator.set_weights(agent_weights)
-            self.policy_graph = local_evaluator.get_policy()
+            agent_weights = {'default_policy': weights}
 
-            # Delete local evaluator and optimizer, they cause deserialization to fail.
+            env_creator = lambda x: RayFinEnv(config['env_config'])
+            # Delete workers and optimizer, they cause deserialization to fail.
             # Not precisely sure why, but this fixes the problem. They aren't needed for remote evaluation.
-            del agent.local_evaluator
+            del agent.workers
             del agent.optimizer
-            self.remote_evaluators = agent.make_remote_evaluators(agent.env_creator, EnsemblePolicyGraph, num_workers)
-            weights = ray.put(agent_weights)
-            for e in self.remote_evaluators:
-                e.set_weights.remote(weights)
+            workers = WorkerSet(env_creator, EnsemblePolicy, agent.config, num_workers = num_workers)
+            workers.foreach_worker(lambda w: w.set_weights(agent_weights))
+            self.remote_evaluators = workers.remote_workers()
+
+            self.policy = workers.local_worker().get_policy()
 
         else:
 
@@ -148,12 +151,12 @@ class TFRunner:
                     tf_dir = train_dir + '/' + tf_name
                     graph = tf.Graph()
                     with graph.as_default() as g:
-                        tf_config = tf.ConfigProto(
+                        tf_config = tf.compat.v1.ConfigProto(
                             inter_op_parallelism_threads = num_cpu,
                             intra_op_parallelism_threads = num_cpu
                         )
-                        with tf.Session(graph = graph, config = tf_config).as_default() as session:
-                            metagraph = tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], tf_dir)
+                        with tf.compat.v1.Session(graph = graph, config = tf_config).as_default() as session:
+                            metagraph = tf.compat.v1.saved_model.load(session, [tf.saved_model.SERVING], tf_dir)
                             inputs = metagraph.signature_def['serving_default'].inputs
                             outputs = metagraph.signature_def['serving_default'].outputs
                             observation_tf = graph.get_tensor_by_name(inputs['observations'].name)
@@ -220,7 +223,7 @@ class TFRunner:
 
         else:
 
-            return self.policy_graph.compute_actions(obss)[0]
+            return self.policy.compute_actions(obss)[0]
 
     def run(self, obss):
 

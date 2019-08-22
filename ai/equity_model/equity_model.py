@@ -16,7 +16,7 @@ from csv import writer
 from math import ceil, exp, log, sqrt
 from os import environ
 from os.path import expanduser
-from random import random, randrange
+from random import random, randrange, seed
 from statistics import mean, median, stdev
 
 import numpy as np
@@ -39,7 +39,7 @@ end_date = '2018-12-31'
 
 MEDIAN_ANALYSIS_YEARS = 2018 - 1950 + 1
 
-BOOTSTRAP_BLOCK_YEARS = 5
+BOOTSTRAP_BLOCK_YEARS = 1e-10 # 5
     # Bootstrap based on a mean block size of 5 years (consider history as being made up of on average 5 year length blocks).
 
 TRADING_DAYS_PER_YEAR = 252
@@ -91,6 +91,8 @@ print(spearmanr(hist_vol, hist_sigmas[:- PERIODS_PER_YEAR]))
 print(np.corrcoef(hist_abs_ret, hist_sigmas[:- PERIODS_PER_YEAR]))
 print(spearmanr(hist_abs_ret, hist_sigmas[:- PERIODS_PER_YEAR]))
 
+seed(3)
+
 # Set mu and omega to yield desired ret and vol.
 mean_reversion_rate = 0.1 # Rough estimate
 exaggeration = 0.7 # Adjust to get reasonable looking above_trend.csv plot
@@ -124,6 +126,8 @@ while len(rets) < num_simulated_rets:
     sigma2_t = omega + ((alpha + gamma * int(z_t_1 < 0)) * z_t_1 ** 2 + beta) * sigma2_t_1
     sigma_t = sqrt(sigma2_t)
     z_t = z_hist[i]
+    #from random import normalvariate
+    #z_t = normalvariate(0, 1)
     epsilon_t = sigma_t * z_t
     r_t = mu - sigma2_t / (2 * SCALE) + epsilon_t
     r_t /= SCALE
@@ -193,6 +197,10 @@ print(spearmanr(exper_abs_ret[1:], obs_sigmas[:-1]))
 print(np.corrcoef(exper_vol[1:], exper_vol[:-1]))
 print(spearmanr(exper_vol[1:], exper_vol[:-1]))
 
+print('Return volatility correlation:')
+print(np.corrcoef(rets[1:], obs_sigmas[:-1]))
+print(spearmanr(rets[1:], obs_sigmas[:-1]))
+
 # Target values:
 #           mean  stdev  auto corr  skew    kurtosis  vol-sigma corr
 #      ret   6.5% 17.4%                                               from Credit-Suisse Yearbook
@@ -202,5 +210,5 @@ print(spearmanr(exper_vol[1:], exper_vol[:-1]))
 # Measured simulated values:
 #           mean  stdev  auto corr  skew    kurtosis
 #      ret   6.5% 17.4%
-#  log ret                 -0.04   -0.97      4.16        0.35
-#  log vol    -     -       0.25
+#  log ret                 -0.05   -0.94      4.11        0.35
+#  log vol    -     -       0.26

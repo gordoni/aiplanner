@@ -8,6 +8,11 @@
     "moduleResolution": "node",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "paths": {
+      "core-js/es7/reflect": [
+      "node_modules/core-js/proposals/reflect-metadata"
+      ]
+    },
     "target": "es5",
     "typeRoots": [
       "node_modules/@types"

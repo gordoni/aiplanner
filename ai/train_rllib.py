@@ -16,10 +16,9 @@ from os.path import abspath
 from shutil import rmtree
 
 from baselines.common import boolean_flag
-#from baselines.common.misc_util import set_global_seeds
 
 import ray
-from ray.tune import run_experiments, function
+from ray.tune import function, grid_search, run
 from ray.tune.config_parser import make_parser
 
 from gym_fin.common.cmd_util import arg_parser, fin_arg_parse
@@ -50,12 +49,9 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
     except FileNotFoundError:
         pass
 
-    #set_global_seeds(train_seed)
-        # Training is currently non-deterministic.
-        # Would probably need to call rllib.utils.seed.seed() from rllib.agents.agent.__init__() with a triply repeated config["seed"] parameter to fix.
-
     training_model_params['action_space_unbounded'] = True
     training_model_params['observation_space_ignores_range'] = True
+    training_model_params['observation_space_clip'] = True
 
     try:
         mkdir(model_dir)
@@ -143,48 +139,60 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
     }[algorithm]
     agent_config = dict(agent_config, **ray_kwargs['config'])
 
-    run = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
+    trainable = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
+    trial_name = lambda trial: 'seed_' + str(trial.config['seed'])
     checkpoint_freq = max(1, train_save_frequency // agent_config['train_batch_size']) if train_save_frequency != None else 0
 
-    run_experiments(
-        {
-            'seed_' + str(seed): {
+    # from pympler import tracker
+    # def on_train_result(info):
+    #     global tr
+    #     try:
+    #         tr
+    #     except NameError:
+    #         tr = tracker.SummaryTracker()
+    #     tr.print_diff()
 
-                'run': run,
+    run(
+        trainable,
+        name = './',
+        trial_name_creator = function(trial_name),
 
-                'config': dict({
-                    'env': RayFinEnv,
-                    'env_config': training_model_params,
-                    'clip_actions': False,
-                    'gamma': 1,
+        config = dict({
+            'env': RayFinEnv,
+            'env_config': training_model_params,
+            'clip_actions': False,
+            'gamma': 1,
+            'seed': grid_search(list(range(train_seed, train_seed + train_seeds))),
 
-                    #'num_gpus': 0,
-                    #'num_cpus_for_driver': 1,
-                    'num_workers': 1 if algorithm in ('A3C', 'APPO') else 0,
-                    #'num_envs_per_worker': 1,
-                    #'num_cpus_per_worker': 1,
-                    #'num_gpus_per_worker': 0,
+            #'num_gpus': 0,
+            #'num_cpus_for_driver': 1,
+            'num_workers': 1 if algorithm in ('A3C', 'APPO') else 0,
+            #'num_envs_per_worker': 1,
+            #'num_cpus_per_worker': 1,
+            #'num_gpus_per_worker': 0,
 
-                    'tf_session_args': {
-                        'intra_op_parallelism_threads': num_cpu,
-                        'inter_op_parallelism_threads': num_cpu,
-                    },
-                    'local_evaluator_tf_session_args': {
-                        'intra_op_parallelism_threads': num_cpu,
-                        'inter_op_parallelism_threads': num_cpu,
-                    }
-                }, **agent_config),
+            'tf_session_args': {
+                'intra_op_parallelism_threads': num_cpu,
+                'inter_op_parallelism_threads': num_cpu,
+            },
+            'local_tf_session_args': {
+                'intra_op_parallelism_threads': num_cpu,
+                'inter_op_parallelism_threads': num_cpu,
+            },
 
-                'stop': {
-                    'timesteps_total': train_num_timesteps,
-                },
+            # 'callbacks': {
+            #     'on_train_result': function(on_train_result),
+            # },
+        }, **agent_config),
 
-                'local_dir': abspath(model_dir),
-                'checkpoint_freq': checkpoint_freq,
-                'checkpoint_at_end': True,
-                'max_failures': train_max_failures,
-            } for seed in range(train_seed, train_seed + train_seeds)
+        stop = {
+            'timesteps_total': train_num_timesteps,
         },
+
+        local_dir = abspath(model_dir),
+        checkpoint_freq = checkpoint_freq,
+        checkpoint_at_end = True,
+        max_failures = train_max_failures,
         resume = train_resume,
         queue_trials = redis_address != None
     )
@@ -208,11 +216,11 @@ def main():
     parser.add_argument('--train-optimizer-epochs', type=int, default=30)
     parser.add_argument('--train-optimizer-step-size', type=float, default=5e-6)
         # PPO default is 5e-5. Trains rapidly, but training curve ends up having a lot of CE variability over timesteps.
-    parser.add_argument('--train-entropy-coefficient', type=float, default=0)
+    parser.add_argument('--train-entropy-coefficient', type=float, default=0.0)
         # Value might be critical to getting optimal performance.
         # Value to use probably depends on the complexity of the scenario.
         # A value of 1e-3 reduced CE stdev and increased CE mean for a 256x256 tf model on a Merton like model with stochastic life expectancy and guaranteed income.
-    parser.add_argument('--train-save-frequency', type=int, default=None)
+    parser.add_argument('--train-save-frequency', type=int, default=None) # Save frequency in timesteps.
     parser.add_argument('--train-max-failures', type=int, default=3)
     boolean_flag(parser, 'train-resume', default = False) # Resume training rather than starting new trials.
         # To resume running trials for which Ray appears to have hung with no running worker processes or worker nodes (check has redis died?),

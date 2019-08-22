@@ -226,7 +226,7 @@ export class ScenarioComponent implements OnInit {
        this.errorMessage = results.error;
        this.step--;
      } else {
-       this.results = results.result[0].sort(function(a, b) {return a - b});
+       this.results = results.result[0].sort(function(a, b) {return b.rra - a.rra});
        this.results.forEach((result, i) => {
          if (result.error) {
            this.errorMessage = 'Server error: ' + result.error + ' (aid: ' + result.aid + ')';

@@ -56,6 +56,8 @@ class FinEnv(Env):
             'reward_to_go_estimate', 'relative_ce_estimate_individual',
             'wealth_fraction', 'preretirement_income_wealth_fraction',
             'stocks_price', 'stocks_volatility', 'real_interest_rate')
+        self.observation_space_low  = (0, 0, 0,   0,   0,   0,   0, 0, -2e3,   0, 0, 0, 0, 0, -0.10)
+        self.observation_space_high = (1, 2, 1, 100, 100, 100, 100, 1,    0, 100, 1, 1, 4, 6,  0.15)
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple()
             #    in gym-fin/gym_fin/common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
@@ -66,13 +68,14 @@ class FinEnv(Env):
             # Models train poorly with extreme observation warnings, large negative mean rewards, and extreme rewards during training,
             # and/or a CE 10-40% below expected if observations (or at least reward_to_go observation) frequently and significanty exceed observation space range.
             # Most likely to occur for gamma=6, p=2e6, bucket.
-            low  = np.array((0, 0, 0,   0,   0,   0,   0, 0, -2e3,   0, 0, 0, 0, 0, -0.10)),
-            high = np.array((1, 2, 1, 100, 100, 100, 100, 1,    0, 100, 1, 1, 4, 6,  0.15)),
+            low = np.repeat(-1, len(self.observation_space_low)) if params.observation_space_ignores_range else np.array(self.observation_space_low),
+            high = np.repeat(1, len(self.observation_space_high)) if params.observation_space_ignores_range else np.array(self.observation_space_high),
             dtype = 'float32'
         )
 
         assert params.action_space_unbounded in (False, True)
         assert params.observation_space_ignores_range in (False, True)
+        assert params.observation_space_clip in (False, True)
 
         self.fin = Fin(self, direct_action, params)
 

@@ -183,13 +183,14 @@ class Fin:
     def __init__(self, fin_env, direct_action, params):
 
         self.observation_space_items = fin_env.observation_space_items
-        self.observation_space = fin_env.observation_space
+        self.observation_space_low = np.array(fin_env.observation_space_low)
+        self.observation_space_high = np.array(fin_env.observation_space_high)
         self.direct_action = direct_action
         self.params = params
 
-        self.observation_space_range = self.observation_space.high - self.observation_space.low
+        self.observation_space_range = self.observation_space_high - self.observation_space_low
         self.observation_space_scale = 2 / self.observation_space_range
-        self.observation_space_shift = -1 - self.observation_space.low * self.observation_space_scale
+        self.observation_space_shift = -1 - self.observation_space_low * self.observation_space_scale
         self.observation_space_extreme_range = self.params.observation_space_warn * self.observation_space_range
         self.observation_space_extreme_range[self.observation_space_items.index('reward_to_go_estimate')] *= 2
         self.observation_space_extreme_range[self.observation_space_items.index('relative_ce_estimate_individual')] *= 3
@@ -925,7 +926,7 @@ class Fin:
         p_taxable = max(p_taxable, 0)
         p_tax_deferred = max(p_tax_deferred, 0)
         if p_tax_free < 0:
-            assert p_tax_free > min(-1e-14 * self.p_plus_income, -1e-11), '{} {}'.format(p_tax_free, self.p_plus_income)
+            assert p_tax_free > min(-1e-13 * self.p_plus_income, -1e-10), '{} {}'.format(p_tax_free, self.p_plus_income)
             p_tax_free = 0
         delta_p_tax_deferred = self.p_tax_deferred - p_tax_deferred
 
@@ -1184,7 +1185,8 @@ class Fin:
 
         done = self.alive_single[self.episode_length] == 0
         if done:
-            observation = np.repeat(np.nan, self.observation_space.shape)
+            # Return any valid value.
+            observation = np.repeat(-1, len(self.observation_space_low)) if self.params.observation_space_ignores_range else self.observation_space_low
         else:
             self._pre_calculate()
             observation = self._observe()
@@ -1597,8 +1599,15 @@ class Fin:
     def encode_observation(self, observe):
 
         obs = np.array(observe, dtype = 'float32')
-        high = self.observation_space.high
-        low = self.observation_space.low
+        if self.params.observation_space_ignores_range:
+            try:
+                scaled_obs = obs * self.observation_space_scale + self.observation_space_shift
+            except FloatingPointError:
+                assert False, 'Overflow in observation rescaling.'
+        else:
+            scaled_obs = obs
+        high = self.observation_space_high
+        low = self.observation_space_low
         try:
             ok = all(low <= obs) and all(obs <= high)
         except FloatingPointError:
@@ -1622,12 +1631,12 @@ class Fin:
                             assert False, 'Infinite observation.'
                         if isnan(ob):
                             assert False, 'Undetected invalid observation.'
-        if self.params.observation_space_ignores_range:
-            try:
-                obs = obs * self.observation_space_scale + self.observation_space_shift
-            except FloatingPointError:
-                assert False, 'Overflow in observation rescaling.'
-        return obs
+            if self.params.observation_space_clip:
+                if self.params.observation_space_ignores_range:
+                    scaled_obs = np.clip(scaled_obs, -1, 1)
+                else:
+                    scaled_obs = np.clip(scaled_obs, low, high)
+        return scaled_obs
 
     def decode_observation(self, obs):
 

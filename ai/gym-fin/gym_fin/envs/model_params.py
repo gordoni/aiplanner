@@ -43,9 +43,10 @@ class ModelParams(object):
 
         self._param('debug-dummy-float', None) # Occasionally useful for debugging.
 
-        # This following three parameters are determined by the training algorithm, and can't be set by the user.
+        # This following four parameters are determined by the training algorithm, and can't be set by the user.
         self._boolean_flag('action-space-unbounded', None) # Whether the action space is unbounded, or bound to the range [-1, 1].
         self._boolean_flag('observation-space-ignores-range', None) # Whether observation space needs to roughly be in the range [-1, 1], or the range specified.
+        self._boolean_flag('observation-space-clip', None) # Whether observation space should be clipped to stay in range, or can occasionally be out of range.
         self._param('algorithm', None, tp = string_type) # For RLlib only, the training algorithm being used.
 
         self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.

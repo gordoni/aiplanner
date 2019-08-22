@@ -1,4 +1,4 @@
-# Modified from ray/python/ray/autoscaler/aws/example-full.yaml by gordoni@gordoni.com .
+# Modified from Ray: ray/python/ray/autoscaler/aws/example-full.yaml
 
 # An unique identifier for the head node and workers of this cluster.
 cluster_name: default
@@ -16,6 +16,11 @@ max_workers: 15
 # subsequent `ray up`) this number of nodes will be started.
 initial_workers: 0
 
+# Whether or not to autoscale aggressively. If this is enabled, if at any point
+#   we would start more workers, we start at least enough to bring us to
+#   initial_workers.
+autoscaling_mode: default
+
 # This executes all commands on all nodes in the docker container,
 # and opens all the necessary ports to support the Ray cluster.
 # Empty string means disabled.
@@ -23,6 +28,14 @@ docker:
     image: "" # e.g., tensorflow/tensorflow:1.5.0-py3
     container_name: "" # e.g. ray_docker
     run_options: []  # Extra options to pass into "docker run"
+
+    # Example of running a GPU head with CPU workers
+    # head_image: "tensorflow/tensorflow:1.13.1-py3"
+    # head_run_options:
+    #     - --runtime=nvidia
+
+    # worker_image: "ubuntu:18.04"
+    # worker_run_options: []
 
 # The autoscaler will scale up the cluster to this target fraction of resource
 # usage. For example, if a cluster of 10 nodes is 100% busy and
@@ -37,11 +50,11 @@ idle_timeout_minutes: 5
 # Cloud-provider specific configuration.
 provider:
     type: aws
-    region: us-east-1
+    region: us-east-2
     # Availability zone(s), comma-separated, that nodes may be launched in.
     # Nodes are currently spread between zones by a round-robin approach,
     # however this implementation detail should not be relied upon.
-    availability_zone: us-east-1d
+    availability_zone: us-east-2b
     use_internal_ips: True
 
 # How Ray will authenticate with newly launched nodes.
@@ -51,22 +64,23 @@ auth:
 # If you do so, make sure to also set "KeyName" in the head and worker node
 # configurations below.
 #    ssh_private_key: /path/to/your/key.pem
+    ssh_private_key: /home/ubuntu/.ssh/ray-autoscaler_us-east-2.pem
 
 # Provider-specific config for the head node, e.g. instance type. By default
 # Ray will auto-configure unspecified fields such as SubnetId and KeyName.
 # For more documentation on available fields, see:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 head_node:
-    #InstanceType: p2.xlarge # Use a GPU instance if building a GPU AMI
-    InstanceType: c5.large
-    #ImageId: ami-0c835d91df905128e # Default Ubuntu 16.04 AMI - https://cloud-images.ubuntu.com/locator/ec2/ hvm:ebs-ssd
-    ImageId: ami-0d96d570269578cd7 # Deep Learning AMI (Ubuntu) Version 21.2
+    InstanceType: m5.large
+    ImageId: ami-07262a45de118922e # Deep Learning AMI (Ubuntu) Version 23.1
+    # Do not use Version 24.0 or workers will exhibit a memory leak (5GB/hr).
+    # Version 21.2 apparently had no memory leak. 23.1 may leak slightly (30M/hr). 22.0 and 23.0 status unknown.
 
     # You can provision additional disk space with a conf as follows
     BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
-              VolumeSize: 75
+              VolumeSize: 100
 
     # Additional options in the boto docs.
 
@@ -75,13 +89,11 @@ head_node:
 # For more documentation on available fields, see:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 worker_nodes:
+    KeyName: ray-autoscaler_us-east-2
     InstanceType: c5.4xlarge
-    ImageId: ami-0d96d570269578cd7 # Deep Learning AMI (Ubuntu) Version 21.2
-
-    BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-              VolumeSize: 75
+    ImageId: ami-07262a45de118922e # Deep Learning AMI (Ubuntu) Version 23.1
+    # Do not use Version 24.0 or workers will exhibit a memory leak (5GB/hr).
+    # Version 21.2 apparently had no memory leak. 23.1 may leak slightly (30M/hr). 22.0 and 23.0 status unknown.
 
     # Run workers on spot by default. Comment this out to use on-demand.
     InstanceMarketOptions:
@@ -105,47 +117,42 @@ file_mounts: {
 initialization_commands: []
 
 # List of shell commands to run to set up nodes.
+# Won't be run by workers if invoke ray using:
+#     ray start --head --autoscaling-config=<this_file>
 setup_commands:
     # Note: if you're developing Ray, you probably want to create an AMI that
     # has your Ray repo pre-cloned. Then, you can replace the pip installs
     # below with a git checkout <your_sha> (and possibly a recompile).
-    # - sudo apt update
-    # - wget https://repo.continuum.io/archive/Anaconda3-5.0.1-Linux-x86_64.sh || true
-    # - bash Anaconda3-5.0.1-Linux-x86_64.sh -b -p $HOME/anaconda3/envs/tensorflow_p36 || true
-    - grep -q tensorflow_p36 ~/.dlamirc || echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.dlamirc
-    - grep -q tensorflow_p36 ~/.profile || echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.profile
-    - grep -q aiplanner ~/.bashrc || echo '. ~/aiplanner/ai/setenv' >> ~/.bashrc
-    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.7.0.dev1-cp27-cp27mu-manylinux1_x86_64.whl
-    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.7.0.dev1-cp35-cp35m-manylinux1_x86_64.whl
-    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.7.0.dev1-cp36-cp36m-manylinux1_x86_64.whl
-    - pip install -U ray==0.6.4
-    - pip install -U 'gym[atari]'
-    - pip install -U opencv-python-headless
-    - pip install -U lz4
-    # Replace ray.rllib by locally modified version
-    - RAY=`pip show ray | grep Location | awk '{print $2}'`/ray; [ ! -f $RAY/rllib.old ] && mv $RAY/rllib $RAY/rllib.old && ln -s ~/aiplanner/ai/ray/python/ray/rllib $RAY/rllib
-    # Pre-build tensorflow
-    - source activate tensorflow_p36
-    - python3 -c 'import tensorflow'
+    - echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
+    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.8.0.dev2-cp27-cp27mu-manylinux1_x86_64.whl
+    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.8.0.dev2-cp35-cp35m-manylinux1_x86_64.whl
+    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.8.0.dev2-cp36-cp36m-manylinux1_x86_64.whl
     # Consider uncommenting these if you also want to run apt-get commands during setup
     # - sudo pkill -9 apt-get || true
     # - sudo pkill -9 dpkg || true
     # - sudo dpkg --configure -a
-    # Only bother with remining commands if building a custom AMI
-    # - sudo apt update
-    # - sudo apt upgrade -y
-    # Free up 25G (takes 8 minutes; so only do if building a custom AMI)
-    # - rm -rf ~/anaconda3/envs/{[a-su-z]*,theano*,tensorflow_p27}
 
 # Custom commands that will be run on the head node after common setup.
 head_setup_commands:
     - pip install 'boto3>=1.4.8'  # 1.4.8 adds InstanceMarketOptions
 
 # Custom commands that will be run on worker nodes after common setup.
-worker_setup_commands: []
-    # If using a non-GPU AMI on a GPU instance switch to the GPU based tensorflow
-    # - pip uninstall tensorflow
-    # - pip install tensorflow-gpu==1.12.0
+worker_setup_commands:
+    - grep -q tensorflow_p36 ~/.profile || echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.profile
+    - grep -q tensorflow_p36 ~/.bashrc || echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
+    - grep -q aiplanner ~/.bashrc || echo '. ~/aiplanner/ai/setenv' >> ~/.bashrc
+    # Pre-build tensorflow
+    - source activate tensorflow_p36
+    - python3 -c 'import tensorflow'
+    - pip install -U gym
+    - pip install -U 'ray[debug]==0.7.3'
+    # Replace ray.rllib by locally modified version
+    - RAY=`pip show ray | grep Location | awk '{print $2}'`/ray; [ ! -f $RAY/rllib.old ] && mv $RAY/rllib $RAY/rllib.old && ln -s ~/aiplanner/ai/ray/python/ray/rllib $RAY/rllib
+    # Only bother with remining commands if building a custom AMI
+    # - sudo apt update
+    # - sudo apt upgrade -y
+    # Free up 30G (takes 4 minutes; so only do if building a custom AMI)
+    # - rm -rf ~/anaconda3/envs/{[a-su-z]*,theano*,tensorflow_p27}
 
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:

@@ -23,7 +23,7 @@ from sys import argv, stderr, stdin, stdout
 from traceback import print_exc
 
 from baselines.common import boolean_flag
-from baselines.common.misc_util import set_global_seeds
+#from baselines.common.misc_util import set_global_seeds
 
 from gym_fin.envs.asset_allocation import AssetAllocation
 from gym_fin.envs.model_params import dump_params, load_params_file
@@ -104,10 +104,12 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
         train_model_params = load_params_file(model_dir + '/params.txt')
         eval_model_params['action_space_unbounded'] = train_model_params['action_space_unbounded']
         eval_model_params['observation_space_ignores_range'] = train_model_params['observation_space_ignores_range']
+        eval_model_params['observation_space_clip'] = train_model_params.get('observation_space_clip', False)
     else:
         num_environments = 1
         eval_model_params['action_space_unbounded'] = True
         eval_model_params['observation_space_ignores_range'] = False
+        eval_model_params['observation_space_clip'] = False
 
     results = [[] for _ in range(len(api))] # Gets multiply overwritten but is not used, when train_seeds > 1 and not ensemble.
 
@@ -293,7 +295,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
     aid, num_workers, num_environments, num_trace_episodes, pdf_buckets):
 
     eval_seed += 1000000 # Use a different seed than might have been used during training.
-    set_global_seeds(eval_seed)
+    #set_global_seeds(eval_seed) # Not needed for Ray.
 
     env = make_fin_env(**eval_model_params, direct_action = not model)
     env = env.fin
@@ -352,7 +354,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
             runner = runner_cache[train_dirs[0]]
         except KeyError:
             runner = TFRunner(train_dirs = train_dirs, checkpoint_name = checkpoint_name, eval_model_params = eval_model_params, couple_net = eval_couple_net,
-                redis_address = redis_address, num_workers = num_workers, num_environments = num_environments, num_cpu = num_cpu).__enter__()
+                redis_address = redis_address, num_workers = num_workers, worker_seed = eval_seed, num_environments = num_environments, num_cpu = num_cpu).__enter__()
             if daemon: # Don't cache runner if not daemon as it prevents termination of Ray workers.
                 runner_cache[train_dirs[0]] = runner
         remote_evaluators = runner.remote_evaluators

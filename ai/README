@@ -69,7 +69,7 @@ not workable):
     apt install python3-boto3
     pip3 install tensorflow
     pip3 install gym
-    pip3 install ray[debug]==0.7.3
+    pip3 install 'ray[debug]==0.7.3'
     exit
 
 Installing additional required components on Amazon's Deep Learning
@@ -82,7 +82,7 @@ AMI (Ubuntu):
     #pip install mpi4py # only needed if using OpenAI baselines
     #pip install joblib # only needed if using OpenAI baselines
     pip install gym
-    pip install ray[debug]==0.7.3
+    pip install 'ray[debug]==0.7.3'
 
 Hack Ray to use our version of RLlib, not the default version:
 
@@ -93,13 +93,6 @@ Hack Ray to use our version of RLlib, not the default version:
 Note, you may need to disable this link if upgrading Ray to prevent
 pip clobbering the repository.
 
-If you plan to use a Ray compute cluster (described later), you may
-need to install the following additional packages:
-
-    pip install opencv-python-headless
-    pip install lz4
-    pip install 'boto3>=1.4.8'
-
 Install required components for the Angular website:
 
     [ Get latest Node.js per https://nodejs.org/en/download/ ]
@@ -109,6 +102,7 @@ Install required components for the Angular website:
 
 npm install -g typescript
 npm install -g @angular/cli
+npm install @angular-devkit/build-angular
 
 Cache the interest rate data
 ----------------------------
@@ -171,8 +165,9 @@ it to the .ssh directory of the AIPlanner host. Then create a security
 group tagged ray-autoscaler-default that allows all inbound traffic
 from itself, inbound ssh from the Internet if desired, and all
 outbound traffic. Finally generate an EC2 IAM role named
-ray-autoscaler-v1 with the following IAM policy atached (in which
-sg-AAA is replaced by the ray-autoscaler-default security group):
+ray-autoscaler-v1 with the following inline IAM policy attached (in
+which sg-AAA is replaced by the ray-autoscaler-default security group;
+use multiple security-group lines if have more than one region):
 
 {"Version": "2012-10-17",
     "Statement": [
@@ -198,7 +193,8 @@ sg-AAA is replaced by the ray-autoscaler-default security group):
                 "arn:aws:ec2:*:*:security-group/sg-AAA",
                 "arn:aws:ec2:*:*:volume/*",
                 "arn:aws:ec2:*:*:network-interface/*",
-                "arn:aws:ec2:*::image/*"
+                "arn:aws:ec2:*::image/*",
+                "arn:aws:ec2:*:*:key-pair/*"
             ]
         },
         {
@@ -232,10 +228,22 @@ sg-AAA is replaced by the ray-autoscaler-default security group):
             }
         },
         {
-            "Sid": "AllowDescribeInstances",
+            "Sid": "AllowDescribe",
             "Effect": "Allow",
-            "Action": "ec2:DescribeInstances",
+            "Action": [
+                "ec2:DescribeInstances",
+                "ec2:DescribeSecurityGroups",
+                "ec2:DescribeSubnets"
+            ],
             "Resource": "*"
+        },
+        {
+            "Sid": "AllowGetInstanceProfile",
+            "Effect": "Allow",
+            "Action": [
+                "iam:GetInstanceProfile"
+            ],
+            "Resource": "arn:aws:iam::*:instance-profile/ray-autoscaler-v1"
         }
     ]
 }
@@ -291,6 +299,12 @@ The cluster can be torn down using:
     ray down cluster.yaml
         # Terimanates any running worker nodes.
 
+A dedicated worker AMI image can be created to speed up the cluster
+start up process. To do this temporarily set min_workers to 1 in
+cluster.yaml and then start up the head node as above. From the EC2
+console select the instance and perform action - image - create image.
+Update the worker_nodes ImageId with the newly create AMI id.
+
 Setting up environment variables
 --------------------------------
 
@@ -314,11 +328,11 @@ fit it yourself perform the following steps.
     cd ~/aiplanner
     mkdir -p data/public
     mkdir -p data/private/ticker
-    [download the max time period ticker data for ^SP500TR from
-     https://finance.yahoo.com and store it in the just created
-     directory as ^SP500TR.csv ]
+    [download the max time period ticker data for ^SP500TR and ^GSPC
+     from https://finance.yahoo.com and store it in the just created
+     directory as ^SP500TR.csv and ^GSPC.csv ]
     cd ~/aiplanner/ai/equity_model
-    ./equity_model.py # Ignore the standard output
+    ./run
     cp standardized_residuals.csv ../../data/public
 
 Training the generic nueral network models
@@ -331,13 +345,15 @@ two InstanceType c5.24xlarge instances with Ray started with
     cd ~/aiplanner/ai/web
     nohup ./train > /tmp/train.out &
 
+Training logs will be written to /tmp/train* .
+
 The trained models will be placed in ~/aiplanner-data/models.new .
 
 The models should then be installed:
 
     cd ~/aiplanner-data
-    rm -rf models.old  # Delete prior model backups if required.
-    mv models models.old  # Save prior models if any as a backup.
+    rm -rf models.old # Delete prior model backups if required.
+    mv models models.old # Save prior models if any as a backup.
     mv models.new models
 
 Generating required assets (images)
@@ -509,6 +525,8 @@ On the same machine in another shell window run the Angular server:
     export PATH=$HOME/node-v10.16.3-linux-x64/bin:$PATH
     cd ~/aiplanner/ai/angular
     ng serve --host 0.0.0.0 --public-host <thishost.thisdomain>
+
+Ignore the circular dependency warning.
 
 Connect to the front end using a browser (need to open port 4200 of
 development machine firewall unless doing development on localhost):

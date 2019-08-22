@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -56,6 +56,7 @@ def train(training_model_params, eval_model_params, *, train_num_hidden_layers, 
     session = U.make_session(num_cpu=num_cpu).__enter__()
     training_model_params['action_space_unbounded'] = eval_model_params['action_space_unbounded'] = True
     training_model_params['observation_space_ignores_range'] = True
+    training_model_params['observation_space_clip'] = False
     dump_params_file(model_dir + '/params.txt', training_model_params)
     env = make_fin_env(training=True, **training_model_params)
     couple = training_model_params['sex2'] != None
