@@ -315,6 +315,8 @@ class Evaluator(object):
 
         consume_preretirement = env.params.consume_preretirement
 
+        if ce_max == 0:
+            ce_max = 1
         ce_step = max((ce_max - ce_min) / self.pdf_buckets, ce_max /  1000)
         consume_pdf = self.pdf('consume', self.rewards, 0, ce_max, ce_step, utility.utility, 1 + env.params.consume_additional if env.sex2 != None else 1)
 
