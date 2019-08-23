@@ -151,12 +151,12 @@ class TFRunner:
                     tf_dir = train_dir + '/' + tf_name
                     graph = tf.Graph()
                     with graph.as_default() as g:
-                        tf_config = tf.compat.v1.ConfigProto(
+                        tf_config = tf.ConfigProto(
                             inter_op_parallelism_threads = num_cpu,
                             intra_op_parallelism_threads = num_cpu
                         )
-                        with tf.compat.v1.Session(graph = graph, config = tf_config).as_default() as session:
-                            metagraph = tf.compat.v1.saved_model.load(session, [tf.saved_model.SERVING], tf_dir)
+                        with tf.Session(graph = graph, config = tf_config).as_default() as session:
+                            metagraph = tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], tf_dir)
                             inputs = metagraph.signature_def['serving_default'].inputs
                             outputs = metagraph.signature_def['serving_default'].outputs
                             observation_tf = graph.get_tensor_by_name(inputs['observations'].name)

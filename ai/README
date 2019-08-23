@@ -29,7 +29,7 @@ pre-installed.
 
      Region    Deep Learning Version          AMI
     us-east-1           21.2          ami-0d96d570269578cd7
-    us-east-2           24.0          ami-0944c173745e93dff
+    us-east-2           21.2          ami-0a47106e391391252
 
 For this instance 150G of storage is recommended. The default of 75G
 only leaves 5G for AIPlanner.
@@ -83,6 +83,7 @@ AMI (Ubuntu):
     #pip install joblib # only needed if using OpenAI baselines
     pip install gym
     pip install 'ray[debug]==0.7.3'
+    pip install opencv-python-headless # not needed if using Deep Learning AMI 24.0
 
 Hack Ray to use our version of RLlib, not the default version:
 
@@ -102,7 +103,6 @@ Install required components for the Angular website:
 
 npm install -g typescript
 npm install -g @angular/cli
-npm install @angular-devkit/build-angular
 
 Cache the interest rate data
 ----------------------------
@@ -285,7 +285,6 @@ If desired, the cluster can now be manually started using:
 
     cd ~/aiplaner/ai
     source activate tensorflow_p36
-    source ./setenv
     ray start --head --redis-port=6379 --autoscaling-config=cluster.yaml
 
 Worker nodes are created when needed, and terminated if idle for a
@@ -297,7 +296,7 @@ The cluster can be torn down using:
     ray stop
         # Stops Ray on the head node.
     ray down cluster.yaml
-        # Terimanates any running worker nodes.
+        # Terminates any running worker nodes.
 
 A dedicated worker AMI image can be created to speed up the cluster
 start up process. To do this temporarily set min_workers to 1 in
@@ -369,14 +368,21 @@ Build the website files
 
 Angular provides a single webpage app for interacting with the models.
 
-Angular downloads 350MB of node modules in order to build the website.
+Install the Angular builder:
+
+    export PATH=$HOME/node-v10.16.3-linux-x64/bin:$PATH
+    cd ~/aiplanner/ai/angular
+    npm ci @angular-devkit/build-angular
+
+Angular downloads 500MB of node modules in order to build the website.
 These files would slow down the process of synchronizing source trees
 when starting up a new Ray cluster node. Therefore if Ray is used it
 is recommended that the node modules be stored outside the source
 tree:
 
-    mkdir ~/node_modules
-    ln -s ~/node_modules ~/aiplanner/ai/angular/node_modules
+    cd ~/aiplanner/ai/angular
+    mv node_modules ~/
+    ln -s ~/node_modules ~/aiplanner/ai/angular/
 
 Build the website:
 

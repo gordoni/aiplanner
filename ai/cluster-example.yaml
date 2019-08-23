@@ -145,6 +145,7 @@ worker_setup_commands:
     - python3 -c 'import tensorflow'
     - pip install -U gym
     - pip install -U 'ray[debug]==0.7.3'
+    - pip install -U opencv-python-headless # not needed if using Deep Learning AMI 24.0
     # Replace ray.rllib by locally modified version
     - RAY=`pip show ray | grep Location | awk '{print $2}'`/ray; [ ! -f $RAY/rllib.old ] && mv $RAY/rllib $RAY/rllib.old && ln -s ~/aiplanner/ai/ray/python/ray/rllib $RAY/rllib
     # Only bother with remining commands if building a custom AMI
