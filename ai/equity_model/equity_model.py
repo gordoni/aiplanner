@@ -39,7 +39,7 @@ end_date = '2018-12-31'
 
 MEDIAN_ANALYSIS_YEARS = 2018 - 1950 + 1
 
-BOOTSTRAP_BLOCK_YEARS = 1e-10 # 5
+BOOTSTRAP_BLOCK_YEARS = 5
     # Bootstrap based on a mean block size of 5 years (consider history as being made up of on average 5 year length blocks).
 
 TRADING_DAYS_PER_YEAR = 252
@@ -91,7 +91,7 @@ print(spearmanr(hist_vol, hist_sigmas[:- PERIODS_PER_YEAR]))
 print(np.corrcoef(hist_abs_ret, hist_sigmas[:- PERIODS_PER_YEAR]))
 print(spearmanr(hist_abs_ret, hist_sigmas[:- PERIODS_PER_YEAR]))
 
-seed(3)
+seed(1)
 
 # Set mu and omega to yield desired ret and vol.
 mean_reversion_rate = 0.1 # Rough estimate
@@ -126,8 +126,6 @@ while len(rets) < num_simulated_rets:
     sigma2_t = omega + ((alpha + gamma * int(z_t_1 < 0)) * z_t_1 ** 2 + beta) * sigma2_t_1
     sigma_t = sqrt(sigma2_t)
     z_t = z_hist[i]
-    #from random import normalvariate
-    #z_t = normalvariate(0, 1)
     epsilon_t = sigma_t * z_t
     r_t = mu - sigma2_t / (2 * SCALE) + epsilon_t
     r_t /= SCALE
