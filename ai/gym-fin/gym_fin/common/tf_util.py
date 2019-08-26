@@ -59,8 +59,8 @@ class TFRunner:
                 if not checkpoint_name:
                     assert checkpoints, 'No Rllib checkpoints found: ' + train_dir
                     checkpoint_name = 'checkpoint_' + str(max(int(checkpoint.split('_')[-1]) for checkpoint in checkpoints))
-                checkpoint_dir, = glob(train_dir + '**/' + checkpoint_name)
-                checkpoint, = glob(checkpoint_dir + '/checkpoint-*[0-9]', recursive = True)
+                checkpoint_dir, = glob(train_dir + '**/' + checkpoint_name, recursive = True)
+                checkpoint, = glob(checkpoint_dir + '/checkpoint-*[0-9]')
 
                 if first:
                     config_path = join(checkpoint_dir, '../params.pkl')
@@ -69,6 +69,7 @@ class TFRunner:
 
                     cls = get_agent_class(config['env_config']['algorithm'])
                     config['env_config'] = eval_model_params
+                    config['num_workers'] = 0
                     config['num_envs_per_worker'] = num_environments
                     config['seed'] = worker_seed
                     config['sample_mode'] = True # Rllib hack to return modal sample not a randomly perturbed one.
