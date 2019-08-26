@@ -1,3 +1,5 @@
+# Modified from Ray: ray/python/ray/rllib/agents/impala/vtrace.py
+
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -97,7 +99,7 @@ def multi_log_probs_from_logits_and_actions(policy_logits, actions,
                                   tf.concat([[-1], a_shape[2:]], axis=0))
         log_probs.append(
             tf.reshape(
-                dist_class(policy_logits_flat).logp(actions_flat),
+                dist_class(policy_logits_flat, mode=False).logp(actions_flat),
                 a_shape[:2]))
 
     return log_probs

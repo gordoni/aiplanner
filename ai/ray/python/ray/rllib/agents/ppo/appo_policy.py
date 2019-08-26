@@ -1,3 +1,5 @@
+# Modified from Ray: ray/python/ray/rllib/agents/ppo/appo_policy.py
+
 """Adapted from VTraceTFPolicy to use the PPO surrogate loss.
 
 Keep in sync with changes to VTraceTFPolicy."""
@@ -182,7 +184,7 @@ def build_appo_surrogate_loss(policy, batch_tensors):
         behaviour_logits, output_hidden_shape, axis=1)
     unpacked_outputs = tf.split(policy.model_out, output_hidden_shape, axis=1)
     action_dist = policy.action_dist
-    prev_action_dist = policy.dist_class(behaviour_logits)
+    prev_action_dist = policy.dist_class(behaviour_logits, mode=False)
     values = policy.value_function
 
     if policy.state_in:
