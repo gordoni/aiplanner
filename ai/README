@@ -263,13 +263,7 @@ For syncing worker node result directories create a link:
 
     ln -s ~/.ssh/ray-autoscaler_us-east-2.pem ~/ray_bootstrap_key.pem
 
-Add the following line to the "auth" section of cluster.yaml:
-
-----
-    ssh_private_key: /home/ubuntu/.ssh/ray-autoscaler_us-east-2.pem
-----
-
-And to the "worker_nodes" section add:
+To the "worker_nodes" section of cluster.yaml add:
 
 ----
     SubnetIds:

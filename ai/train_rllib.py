@@ -88,12 +88,6 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
         'DDPG': {
         },
 
-        # APPO currently doesn't support action space Box. Hence currently not useful.
-        'APPO': {
-            'train_batch_size': 500,
-            'lr_schedule': lr_schedule,
-        },
-
         'PPO': {
             'model': {
                 # Changing the fully connected net size from 256x256 (the default) to 128x128 doesn't appear to appreciably alter CE values.
@@ -114,6 +108,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
                 # so if we get something far from this we don't want to train too hard on it.
             'kl_target': 1, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
             'lr_schedule': lr_schedule,
+            #'shuffle_sequences': False,
         },
 
         'PPO.baselines': { # Compatible with AIPlanner's OpenAI baselines ppo1 implementation.
@@ -136,12 +131,41 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
             #'observation_filter': 'NoFilter',
         },
 
+        'APPO': {
+            'num_workers': 2, # Default value.
+            'num_gpus': 0, # No speedup from GPUs for continuous control - https://www.reddit.com/r/MLQuestions/comments/akl6cs/hardware_for_reinforcement_learning/
+            # train_batch_size 200000 and num_sgd_iter 30 may learn more rapdly and reach a higher asymptote; not proven.
+            'train_batch_size': 200000, # Default value is 500.
+            'num_sgd_iter': 30, # Default value is 1.
+            'min_iter_time_s': 10, # Default value.
+            'vtrace': True, # Default is False. May help slightly for 2 workers and 200000 train_batch_size.
+            'opt_type': 'adam', # Default value. Have not tried 'rmsprop'.
+            'clip_param': 0.2, # Default is 0.4.
+            'lr': train_optimizer_step_size, # Default is 5e-4.
+            'entropy_coeff': 0.0, # Default is 0.01.
+        },
+
+        'IMPALA': {
+            'num_gpus': 0,
+            'min_iter_time_s': 10, # Default value.
+            'lr': train_optimizer_step_size, # Default is 5e-4.
+            'entropy_coeff': 0.0, # Default is 0.01.
+        }
+
     }[algorithm]
     agent_config = dict(agent_config, **ray_kwargs['config'])
 
     trainable = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
     trial_name = lambda trial: 'seed_' + str(trial.config['seed'])
-    checkpoint_freq = max(1, train_save_frequency // agent_config['train_batch_size']) if train_save_frequency != None else 0
+    if train_save_frequency == None:
+        checkpoint_freq = 0
+    elif trainable in ('PPO', ):
+        checkpoint_freq = max(1, train_save_frequency // agent_config['train_batch_size'])
+    elif trainable in ('APPO', 'IMPALA'):
+        rough_timestep_rate = 2000
+        checkpoint_freq = max(1, train_save_frequency // (rough_timestep_rate * agent_config['min_iter_time_s']))
+    else:
+        assert False
 
     # from pympler import tracker
     # def on_train_result(info):
@@ -166,7 +190,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
 
             #'num_gpus': 0,
             #'num_cpus_for_driver': 1,
-            'num_workers': 1 if algorithm in ('A3C', 'APPO') else 0,
+            'num_workers': 1 if algorithm in ('A3C', 'APPO', 'IMPALA') else 0,
             #'num_envs_per_worker': 1,
             #'num_cpus_per_worker': 1,
             #'num_gpus_per_worker': 0,

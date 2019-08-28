@@ -300,6 +300,8 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
     env = make_fin_env(**eval_model_params, direct_action = not model)
     env = env.fin
 
+    eval_model_params['display_returns'] = False # Only have at most one env display returns.
+
     skip_model = env.params.consume_policy != 'rl' and env.params.annuitization_policy != 'rl' and env.params.asset_allocation_policy != 'rl' and \
         (not env.params.real_bonds or env.params.real_bonds_duration != None) and \
         (not env.params.nominal_bonds or env.params.nominal_bonds_duration != None)
@@ -392,7 +394,6 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         envs = []
         for _ in range(num_environments):
             envs.append(make_fin_env(**eval_model_params, direct_action = not model))
-            eval_model_params['display_returns'] = False # Only have at most one env display returns.
 
         evaluator = Evaluator(envs, eval_seed, eval_num_timesteps,
             remote_evaluators = remote_evaluators, render = eval_render, num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets)

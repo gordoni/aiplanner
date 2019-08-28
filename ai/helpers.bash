@@ -87,13 +87,13 @@ train () {
 
         local TEMPFILE=`tempfile -p train`
         if [ $PARALLEL = True -o $PARALLEL = Jobs ]; then
-            $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED_START --train-seeds=$SEEDS $EXTRA_ARGS > $TEMPFILE 2>&1 &
+            $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seeds=$SEEDS $EXTRA_ARGS > $TEMPFILE 2>&1 &
             if [ $PARALLEL = True ]; then
                 wait
                 mv $TEMPFILE $MODEL_DIR/train.log
             fi
         else
-            $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED_START --train-seeds=$SEEDS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
+            $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seeds=$SEEDS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
             mv $TEMPFILE $MODEL_DIR/train.log
         fi
 

@@ -45,15 +45,15 @@ echo `date` Done
 # Single with no nominal spias:
 #     RLLib PPO and PPO.baselines outperforms baselines ppo1 (not sure why).
 #     RLlib PPO outperforms all other continuous action space RLlib algorithms:
-#         A2C - gave 0/100% stocks allocation; likely a bug.
+#         A2C - gave 0/100% stocks/bonds allocation; likely a bug.
 #         A3C - not tested; A3C asynchronous variant (reportedly inferior).
 #         PG - presumed inferior.
 #         DDPG - ran too slowly (50,000 timesteps per CPU hour without GPU).
-#         APPO - not tested; PPO asychronous variant; need Ray 0.7.1 for https://github.com/ray-project/ray/issues/4477
+#         APPO - PPO asychronous variant; enables faser PPO training.
 #         APEX-DDPG - not tested; DDPG variant.
 #         ES, ARS - not tested; need rollouts, which would be very expensive.
 #         MARWEL - not tested; offline algorithm.
-#         IMPALA - not tested; need Ray 0.7.1 for https://github.com/ray-project/ray/issues/4771
+#         IMPALA - inferior to PPO; tested batch size 500/200000, lr 5e-5/5e-6
 #     Baselines ppo1 outperforms all spinnup algorithms (td3, sac, trpo, ppo, ddpg, and vpg).
 #
 # PPO with issue 50 fixed:

@@ -42,8 +42,9 @@ master_bonds_date = '2018-12-31'
     # Initial yield curve is determined by the initial short rate, the typical yield curve, and the Hull-White parameters.
 master_bonds_date_start = None
 
-# Nominal MWR 105% outperforms real 94% which outperforms nominal 100%.
 master_real_spias = False # Not widely available, so suggest, but don't use.
+    # Nominal SPIAs (100% MWR) generally outperform real SPIAs (94% MWR) CE by 1-2%.
+    # Exception is gamma=6, p_tax_free=5e6, gi=20k tax free, where nominal and real SPIA CEs are equal.
 master_nominal_spias = False
 master_real_spias_mwr = 0.94 # Based on 2015 pricing.
 master_nominal_spias_mwr = 1.0 # Based on 2015 pricing exceeding 100%.
