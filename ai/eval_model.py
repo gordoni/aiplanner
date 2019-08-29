@@ -178,7 +178,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
                     object_ids, evaluator, initial_results = eval_model(model_params, daemon = daemon,
                         merton = merton, samuelson = samuelson, annuitize = annuitize, opal = opal,
-                        model = model, evaluate = evaluate, warm_cache = warm_cache, default_object_id = (scenario_num, sub_num),
+                        model = model, evaluate = evaluate, warm_cache = warm_cache, default_object_id = (i, scenario_num, sub_num),
                         train_dirs = train_dirs, out = out, aid = aid, num_environments = num_environments, **kwargs)
                     initial_results['cid'] = control_params['cid']
 
