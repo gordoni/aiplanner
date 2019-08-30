@@ -16,7 +16,7 @@ bonds_type = 'real_bonds'
 def scenario_space_update_params(model_params, control_params):
 
     model_params[spias_type] = control_params['spias']
-    model_params['p_taxable_' + bonds_type] = control_params['p_taxable_bonds']
+    model_params['p_taxable_' + bonds_type + '_low'] = model_params['p_taxable_' + bonds_type + '_high'] = control_params['p_taxable_bonds']
     model_params['p_taxable_' + bonds_type + '_basis'] = control_params['p_taxable_bonds_basis']
     if bonds_type == 'real_bonds':
         assert model_params['real_bonds']
