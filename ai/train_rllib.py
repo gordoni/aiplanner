@@ -134,7 +134,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
         'APPO': {
             'num_workers': 2, # Default value.
             'num_gpus': 0, # No speedup from GPUs for continuous control - https://www.reddit.com/r/MLQuestions/comments/akl6cs/hardware_for_reinforcement_learning/
-            # train_batch_size 200000 and num_sgd_iter 30 may learn more rapdly and reach a higher asymptote; not proven.
+            # train_batch_size 200000 and num_sgd_iter 30 learn more rapidly and reach a higher asymptote. Not clear if need one or both.
             'train_batch_size': 200000, # Default value is 500.
             'num_sgd_iter': 30, # Default value is 1.
             'min_iter_time_s': 10, # Default value.
