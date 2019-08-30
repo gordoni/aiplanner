@@ -1,7 +1,7 @@
 AIPlanner API documentation
 ***************************
 
-August 15, 2019.
+August 29, 2019.
 
 This document describes the AIPlanner - Deep Reinforcement Learning
 Financial Planner web based application programming interface.
@@ -30,6 +30,7 @@ which results in something like:
              "asset_allocation": [0.8695251175100378, 0.1304748824899622],
              "real_bonds_duration": 21.3,
              "nominal_bonds_duration": null,
+             "nominal_spias_adjust": null,
              "nominal_spias_purchase": null,
              "real_spias_purchase": null,
              "portfolio_wealth": 904693.3272722478,
@@ -464,6 +465,12 @@ nominal_bonds_duration: null
 
 This field is reserved for future use. Nominal bonds appear inferior
 to real bonds, and thus are not currently recommended by AIPlanner.
+
+nominal_spias_adjust: number or null
+
+The annual increase in the nominal SPIA payout intended to hopefully
+offset the effects of inflation. E.g. 0.02 represents a 2% annual
+increase in the nominal payout.
 
 nominal_spias_purchase: number or null
 

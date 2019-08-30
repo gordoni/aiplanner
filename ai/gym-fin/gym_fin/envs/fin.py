@@ -1007,6 +1007,7 @@ class Fin:
                 if self.income_preretirement_years > 0 or self.income_preretirement_years2 > 0 else None,
             'real_spias_purchase': real_spias_purchase if self.params.real_spias and self.spias else None,
             'nominal_spias_purchase': nominal_spias_purchase if self.params.nominal_spias and self.spias else None,
+            'nominal_spias_adjust': self.params.nominal_spias_adjust if self.params.nominal_spias and self.spias else None,
             'pv_spias_purchase': real_spias_purchase + nominal_spias_purchase - (real_tax_deferred_spias + nominal_tax_deferred_spias) * self.regular_tax_rate,
             'real_bonds_duration': real_bonds_duration,
             'nominal_bonds_duration': nominal_bonds_duration,

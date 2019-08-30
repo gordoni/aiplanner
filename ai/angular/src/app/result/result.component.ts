@@ -56,6 +56,7 @@ export class ResultComponent implements OnInit {
       'gamma': result.rra,
       'consume': Math.round(result.consume),
       'real_spias_purchase': result.real_spias_purchase == null ? null : Math.round(result.real_spias_purchase),
+      'nominal_spias_adjust': result.nominal_spias_adjust == null ? null : Math.round(result.nominal_spias_adjust * 1000) / 10,
       'nominal_spias_purchase': result.nominal_spias_purchase == null ? null : Math.round(result.nominal_spias_purchase),
       'asset_classes': asset_classes,
       'asset_allocation': asset_allocation,

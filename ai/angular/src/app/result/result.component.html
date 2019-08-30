@@ -43,7 +43,9 @@ PURPOSE.
         <div>
           Current recommended after tax consumption: {{results.consume}}
           <br>
-          Recommended {{results.asset_classes}} asset allocation: {{results.asset_allocation}}
+          Recommended diversified {{results.asset_classes}} asset allocation: {{results.asset_allocation}}
+          <br>
+          International diversification: optional
         </div>
         <div *ngIf="results.real_bonds_duration != null">
           Bonds duration: {{results.real_bonds_duration}} years ({{(results.real_bonds_duration <= 9) ? ((results.real_bonds_duration <= 2) ? "short" : "intermediate") : "long"}} term TIPS)
@@ -55,7 +57,7 @@ PURPOSE.
           Recommended retirement plan contribution: {{results.retirement_contribution}}
         </div>
         <div *ngIf="results.nominal_spias_purchase != null">
-          Recommended SPIA purchase amount: {{results.nominal_spias_purchase}}
+          Recommended SPIA purchase amount ({{results.nominal_spias_adjust}}% annual adjustment): {{results.nominal_spias_purchase}}
         </div>
         <div *ngIf="results.real_spias_purchase != null">
           Recommended inflation-indexed SPIA purchase amount: {{results.real_spias_purchase}}
