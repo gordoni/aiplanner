@@ -30,17 +30,19 @@ export class DefinedBenefit {
   constructor(scenario: ScenarioComponent, type: string, age: number) {
     this.scenario = scenario;
     this.type = type;
-    this.per = ['Home Proceeds', 'College Expenses', 'Home Purchase'].includes(type) ? 'year' : 'month';
+    this.per = ['Home Proceeds', 'College Expenses', 'Credit Card Debt', 'Home Purchase'].includes(type) ? 'year' : 'month';
     this.age = type == 'Social Security' ? 67 : age;
-    this.years = ['Mortgage', 'Child/Dependent'].includes(type) ? 20 : ['College Expenses'].includes(type) ? 4 :
-        ['Home Proceeds', 'Home Purchase'].includes(type) ? 1 : null;
-    this.inflationAdjustment = ['Social Security', 'Pension', 'Home Proceeds', 'Child/Dependent', 'College Expenses', 'Home Purchase'].includes(type) ? "cpi" :
+    this.years = ['Mortgage', 'Student Loans', 'Child/Dependent'].includes(type) ? 20 : ['Auto Loan'].includes(type) ? 10 : ['College Expenses'].includes(type) ? 4 :
+        ['Home Proceeds', 'Credit Card Debt', 'Home Purchase'].includes(type) ? 1 : null;
+    this.inflationAdjustment = ['Social Security', 'Pension', 'Home Proceeds', 'Child/Dependent', 'College Expenses', 'Home Purchase'].includes(type) ? 'cpi' :
         type == 'Income Annuity' ? 0.02 : 0;
     this.joint = ['Income Annuity', 'Reverse Mortgage'].includes(type) ? 'joint' : (['Pension'].includes(type) ? 'single' : 'survivor');
     this.payoutFractionPct = ['Pension', 'Income Annuity'].includes(type) ? 60 :
-        (['Reverse Mortgage', 'Home Proceeds', 'Mortgage', 'Child/Dependent', 'College Expenses', 'Home Purchase'].includes(type) ? 100 : 0);
+        (['Reverse Mortgage', 'Home Proceeds', 'Mortgage', 'Auto Loan', 'Credit Card Debt', 'Child/Dependent', 'College Expenses', 'Home Purchase'].includes(type)
+            ? 100 : 0);
     this.sourceOfFunds = type == 'Income Annuity' ? 'tax_deferred' :
-        (['Reverse Mortgage', 'Home Proceeds', 'Mortgage', 'Child/Dependent', 'College Expenses', 'Home Purchase'].includes(type) ? 'tax_free' : 'taxable');
+        (['Reverse Mortgage', 'Home Proceeds', 'Mortgage', 'Student Loans', 'Auto Loan', 'Credit Card Debt', 'Child/Dependent', 'College Expenses',
+            'Home Purchase'].includes(type) ? 'tax_free' : 'taxable');
   }
 
   amount() {

@@ -43,38 +43,53 @@ PURPOSE.
 
     <ng-template #elseBlock>
 
+      <div *ngIf="['Credit Card Debt'].includes(newData.type); else elseBlock">
+        Credit card debt should be paid off before saving for retirement.
+      </div>
+
       <div>
-        Number of years: <input type="number" class="small-numeric" required name="liabilityYears" #liabilityYears="ngModel" [(ngModel)]="newData.years">
-          <div class="error" *ngIf="liabilityYears.invalid">
+        Balance: <input type="number" step="1000" class="numeric" required name="dbAmountPer" #dbAmountPer="ngModel" [(ngModel)]="newData.amountPer">
+          <div class="error" *ngIf="dbAmountPer.invalid">
             Invalid numeric value.
           </div>
       </div>
 
-      <div>
-        Starting at your age: <input type="number" class="small-numeric" required name="liabilityAge" #liabilityAge="ngModel" [(ngModel)]="newData.age">
-          <div class="error" *ngIf="liabilityAge.invalid">
-            Invalid numeric value.
-          </div>
-      </div>
+      <ng-template #elseBlock>
 
-      <div>
-        Payment: <input type="number" step="1000" class="numeric" required name="liabilityAmountPer" #liabilityAmountPer="ngModel" [(ngModel)]="newData.amountPer">
-          <div class="error" *ngIf="liabilityAmountPer.invalid">
-            Invalid numeric value.
-          </div>
-        per <select name="liabilityPer" [(ngModel)]="newData.per">
-          <option value="month">month</option>
-          <option value="year">year</option>
-        </select>
-      </div>
+        <div>
+          Number of years: <input type="number" class="small-numeric" required name="liabilityYears" #liabilityYears="ngModel" [(ngModel)]="newData.years">
+            <div class="error" *ngIf="liabilityYears.invalid">
+              Invalid numeric value.
+            </div>
+        </div>
 
-      <div *ngIf="['Mortgage'].includes(newData.type)">
-        Annual inflation adjustment: none
-      </div>
+        <div>
+          Starting at your age: <input type="number" class="small-numeric" required name="liabilityAge" #liabilityAge="ngModel" [(ngModel)]="newData.age">
+            <div class="error" *ngIf="liabilityAge.invalid">
+              Invalid numeric value.
+            </div>
+        </div>
 
-      <div *ngIf="['Child/Dependent'].includes(newData.type)">
-        Annual inflation adjustment: CPI
-      </div>
+        <div>
+          Payment: <input type="number" step="1000" class="numeric" required name="liabilityAmountPer" #liabilityAmountPer="ngModel" [(ngModel)]="newData.amountPer">
+            <div class="error" *ngIf="liabilityAmountPer.invalid">
+              Invalid numeric value.
+            </div>
+          per <select name="liabilityPer" [(ngModel)]="newData.per">
+            <option value="month">month</option>
+            <option value="year">year</option>
+          </select>
+        </div>
+
+        <div *ngIf="['Mortgage', 'Student Loans'].includes(newData.type)">
+          Annual inflation adjustment: none
+        </div>
+
+        <div *ngIf="['Child/Dependent'].includes(newData.type)">
+          Annual inflation adjustment: CPI
+        </div>
+
+      </ng-template>
 
     </ng-template>
 

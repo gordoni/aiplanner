@@ -321,6 +321,7 @@ class ModelParams(object):
         self._param('bills-return', 0.009) # Annual real return for bill asset class.
         self._param('bills-volatility', 0.046) # Annual real return for bill asset class.
         self._param('bills-standard-error', 0.004) # Standard error of log real return for bills.
+        self._param('credit-rate', 0.15) # Annual real interest rate for borrowing cash.
 
         self._boolean_flag('observe-stocks-price', True) # Whether to observe stocks price relative to fair price pus noise.
         self._boolean_flag('observe-stocks-volatility', True) # Whether to observe bootstrap stocks volatility.

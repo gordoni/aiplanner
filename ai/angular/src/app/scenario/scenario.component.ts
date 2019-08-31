@@ -96,7 +96,7 @@ export class ScenarioComponent implements OnInit {
 
     var tot: number = 0;
     for (let db of definedItems) {
-      if (!['Home Proceeds', 'Home Purchase'].includes(db.type))
+      if (!['Home Proceeds', 'Credit Card Debt', 'Home Purchase'].includes(db.type))
         tot += db.amount()
     }
 
@@ -170,6 +170,12 @@ export class ScenarioComponent implements OnInit {
   }
 
   calculate() {
+
+    for (let dl of this.definedLiabilities) {
+      if (dl.type == 'Credit Card Debt') {
+        dl.age = this.age;
+      }
+    }
 
     var dbs = [];
     this.addToDbs(dbs, this.definedBenefits, true);

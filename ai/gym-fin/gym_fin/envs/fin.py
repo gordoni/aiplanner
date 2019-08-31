@@ -906,18 +906,14 @@ class Fin:
         assert 0 <= consume_fraction_period <= 1
 
         p = self.p_plus_income
-        if p < 0:
-            self.warn('Portfolio became negative')
-            p = 0
         if self.age < self.age_retirement:
             consume = self.consume_preretirement * self.params.time_period
         else:
             #consume_annual = consume_fraction * p
-            consume = consume_fraction_period * p
+            consume = consume_fraction_period * max(p, 0)
         p -= consume
         if p < 0:
-            self.warn('Consumption made portfolio negative')
-            p = 0
+            self.warn('Portfolio is negative')
 
         p_taxable = self.p_taxable + (p - self.p_sum())
         p_tax_deferred = self.p_tax_deferred + min(p_taxable, 0)
@@ -926,8 +922,11 @@ class Fin:
         p_taxable = max(p_taxable, 0)
         p_tax_deferred = max(p_tax_deferred, 0)
         if p_tax_free < 0:
-            assert p_tax_free > min(-1e-13 * self.p_plus_income, -1e-10), '{} {}'.format(p_tax_free, self.p_plus_income)
+            p_negative = p_tax_free
+            p = 0
             p_tax_free = 0
+        else:
+            p_negative = 0
         delta_p_tax_deferred = self.p_tax_deferred - p_tax_deferred
 
         retirement_contribution = contribution_limit(self.income_preretirement, self.age, self.have_401k, self.params.time_period) \
@@ -985,16 +984,16 @@ class Fin:
 
         p_taxable -= real_taxable_spias + nominal_taxable_spias
         if p_taxable < 0:
-            assert p_taxable / self.p_plus_income > -1e-15
+            assert p_taxable > -1e-15 * self.p_plus_income
             p_taxable = 0
 
-        return p_tax_free, p_tax_deferred, p_taxable, regular_income, social_security, consume, retirement_contribution, \
+        return p_tax_free, p_tax_deferred, p_taxable, p_negative, regular_income, social_security, consume, retirement_contribution, \
             real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias
 
     def interpret_spending(self, consume_fraction, asset_allocation, *, real_spias_fraction = 0, nominal_spias_fraction = 0,
         real_bonds_duration = None, nominal_bonds_duration = None):
 
-        p_tax_free, p_tax_deferred, p_taxable, regular_income, social_security, consume, retirement_contribution, \
+        p_tax_free, p_tax_deferred, p_taxable, p_negative, regular_income, social_security, consume, retirement_contribution, \
             real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias = \
             self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
 
@@ -1096,7 +1095,7 @@ class Fin:
         policified_action = policy(self, decoded_action)
         consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
 
-        p_tax_free, p_tax_deferred, p_taxable, regular_income, social_security, consume, retirement_contribution, \
+        p_tax_free, p_tax_deferred, p_taxable, p_negative, regular_income, social_security, consume, retirement_contribution, \
             real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias = \
             self.spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
         consume_rate = consume / self.params.time_period
@@ -1146,13 +1145,15 @@ class Fin:
         self.p_tax_free = p_tax_free
         self.p_tax_deferred = p_tax_deferred
         self.p_taxable = p_taxable
+        if p_negative < 0:
+            self.p_taxable += p_negative * (1 + self.params.credit_rate) ** self.params.time_period
 
         self.taxes_due += self.taxes.tax(regular_income, social_security, not self.couple, inflation) - self.taxes_paid
-        if self.age < self.age_retirement:
-            # Forgive taxes due that can't immediately be repaid pre-retirement.
-            # Otherwise if have no investment assets at retirement (consumption greater than income) we would be expected to pay the
+        if self.age_retirement - self.params.time_period <= self.age < self.age_retirement:
+            # Forgive taxes due that can't immediately be repaid upon retirement.
+            # Otherwise when training if have no investment assets at retirement (consumption greater than income) we would be expected to pay the
             # accumulated taxes which could be substantially more than the guaranteed income.
-            # Instead we forgive these amounts, the same way we forgive in preretirement when consumption would make investments negative.
+            # Instead we forgive these amounts.
             ability_to_pay = self.p_sum()
             self.taxes_due = min(self.taxes_due, ability_to_pay)
 
@@ -1469,7 +1470,7 @@ class Fin:
 
         p_sum = self.p_sum()
         gi_sum = self.gi_sum() * self.params.time_period
-        self.taxes_paid = min(self.taxes_due, p_sum + 0.9 * gi_sum) # Don't allow taxes to consume all of guaranteed income.
+        self.taxes_paid = self.taxes_due
         self.p_plus_income = p_sum + gi_sum - self.taxes_paid
 
         self.spias_ever = self.params.real_spias or self.params.nominal_spias

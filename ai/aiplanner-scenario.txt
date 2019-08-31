@@ -91,6 +91,7 @@ master_bills_return = 0.004 # Use present era bills returns.
     # This is the 1 month yield from the Treasury nominal yield curve on 2018-12-31 less the mean inflation rate of 2.0% for the prior 3 years from the BLS.
 master_bills_volatility = 0.000 # Treat bill returns as essentially known.
 master_bills_standard_error = 0.000
+master_credit_rate = 0.15
 
 eval_num_timesteps = 2000000 # Produces a 0.1-0.2% CE standard error.
 

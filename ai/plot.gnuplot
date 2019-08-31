@@ -16,7 +16,7 @@ set terminal svg dynamic size 800,400 name "AIPlanner"
 prefix = "`echo $AIPLANNER_FILE_PREFIX`"
 if (prefix eq "") prefix = "aiplanner"
 
-set xlabel "annual consumption"
+set xlabel "annual retirement consumption"
 set xrange [0:*]
 set format x "%.1s%c"
 set ylabel "probability"
