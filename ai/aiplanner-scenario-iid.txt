@@ -1,0 +1,37 @@
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+# Independent identically distributed returns model for validation against stochastic dynamic programming results.
+
+# Must be specified after aiplanner-scenario.txt and aiplanner-scenario-*-eval.txt.
+
+master_stocks_model = 'iid'
+master_stocks_return = 0.065
+master_stocks_volatility = 0.174
+
+master_real_bonds = False
+master_nominal_bonds = False
+master_iid_bonds = True
+master_iid_bonds_return = 0.010
+master_iid_bonds_volatility = 0.110
+master_bills = False
+
+master_returns_standard_error = False
+
+master_tax = True # Validation wealth is non-taxable, but train with taxable model to incorporate impact of tax model.
+
+# Real value of taxable basis decreases 2% per year due to inflation. Should not matter for validation.
+master_static_bonds = True
+master_fixed_real_bonds_rate = 0.01
+master_fixed_nominal_bonds_rate = 0.03
+master_real_short_rate_type = 'current'
+master_inflation_short_rate_type = 'current'
+
+eval_income_preretirement_taxable = False # Required for pre-retirement validation evaluation.

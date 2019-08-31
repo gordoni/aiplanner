@@ -49,7 +49,7 @@ echo `date` Done
 #         A3C - not tested; A3C asynchronous variant (reportedly inferior).
 #         PG - presumed inferior.
 #         DDPG - ran too slowly (50,000 timesteps per CPU hour without GPU).
-#         APPO - PPO asychronous variant; enables faser PPO training.
+#         APPO - PPO asychronous variant; enables faser PPO training; appears inferior to PPO.
 #         APEX-DDPG - not tested; DDPG variant.
 #         ES, ARS - not tested; need rollouts, which would be very expensive.
 #         MARWEL - not tested; offline algorithm.

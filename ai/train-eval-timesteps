@@ -19,14 +19,9 @@ cd ~/aiplanner-data/train-results
 
 PARALLEL=Jobs
 SCENARIO_ARGS=""
-#SCENARIO_ARGS="$SCENARIO_ARGS --master-stocks-model=iid --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-no-real-bonds --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.010 --master-iid-bonds-volatility=0.110 --master-no-bills --master-no-returns-standard-error --master-tax --master-static-bonds --master-fixed-real-bonds-rate=0.01 --master-fixed-nominal-bonds-rate=0.03 --master-real-short-rate-type=current --master-inflation-short-rate-type=current"
-    # Required for validation training and evaluation.
-    # Validation wealth is non-taxable, but train with taxable model to incorporate impact of tax model.
-    # Real value of taxable basis decreases 2% per year due to inflation. Should not matter for validation.
+#SCENARIO_ARGS="$SCENARIO_ARGS -c aiplanner-scenario-iid.txt" # For validation against stochastic dynamic programming results.
 TRAINING_ARGS=""
 EVALUATE_ARGS=""
-#EVALUATE_ARGS="$EVALUATE_ARGS --master-no-income-preretirement-taxable"
-    # Additional requirement for pre-retirement validation evaluation.
 EPISODE=generic
 TRAINING=generic
 UNIT=single
