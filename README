@@ -1,20 +1,60 @@
 This directory comprises three asset allocation and consumption
-planning calculators based on scientific principles, plus a SPIA
-pricing calulator.
+planning calculators based on mathematical principles, plus a SPIA
+pricing calculator.
 
 AIPlanner uses deep reinforcement learning. It is computationally
-demanding to train, but fast once trained.
+extremely demanding to train, but fast once trained.
 
-AACalc Alloc uses Merton's approach. It is fast, and easy to use.
+AACalc Alloc attempts to shoehorn everything into Merton's portfolio
+problem. It is fast, and easy to use.
 
-AACalc Opal is a research calculator. It is complex, and
-computationally demanding.
+Opal is a research calculator that uses stochastic dynamic
+programming. It is complex, computationally demanding, and limited in
+terms of the scenarios it can handle.
 
 The SPIA pricing calculator computes actuarially fair SPIA prices
 using up to date real, nominal, or corporate bond yield curves
 obtained from the U.S. Treasury.
 
-Notable featurss of AACalc Alloc:
+Notable features of AIPlanner:
+
+  - A heuristic approach that should deliver certainty equivalent
+    performance that is within a few percent of the optimal solution.
+
+  - The ability to train a single model for a variety of different
+    scenarios.
+
+  - Mortality handled probabilistically using mortality tables.
+
+  - A GJR-GARCH model of stock volatility. Volatility of stock returns
+    is partially predicatable, based on the prior period volatility.
+
+  - A Shiller-esque model of stock prices. Stock prices may be over or
+    undervalued, and mean revert to the random walk following fair
+    price.
+
+  - A Hull-White single factor bond model. Bonds have a yield curve,
+    the yield curve evolves over time, and bond prices and returns
+    reflect changes in the yield curve.
+
+  - Gradual SPIA annuitization depending on age, wealth, and relative
+    risk aversion.
+
+  - Incorporation of the effects of standard error on the known values
+    for stock and bond returns.
+
+  - Taxation of assets based on an approximation to the U.S. tax code.
+
+  - A web based API for strategy querying and evaluation.
+
+  - A Monte-Carlo simulator to assess strategy performance.
+
+  - An Angular web based front end.
+
+Notable features of AACalc Alloc:
+
+  - The closer the scenario is to Merton's portfolio problem, the more
+    accurate the results.
 
   - A balance sheet approach - asset allocation can't be performed in
     isolation, but must be performed by taking into account the
@@ -29,26 +69,26 @@ Notable featurss of AACalc Alloc:
     with a duration matching that of anticipated retirement cash flows
     are used as the risk free asset.
 
-  - Income annuities - income annuitiesa are a valuable tool in the
-    retirement toolbox. This caluclator optionally recommends the
+  - Income annuities - income annuities are a valuable tool in the
+    retirement toolbox. This calculator optionally recommends the
     purchase of inflation indexed income annuities, that is single
     premium immediate annuities or deferred income annuities.
 
   - Admit what we don't know - returns from the stock market are
     unpredictable. We generate a range of results for different
-    plausable scenarios.
+    plausible scenarios.
 
-Notable features of AACalc Opal:
+Notable features of Opal:
 
-  - A stochastic dynamic programming module to compute optimal asset
+  - Delivers, to within the limits of floating point calculations, the
+    optimal solution for the simplified scenarios it is capable of
+    handling.
+
+  - Uses stochastic dynamic programming to compute optimal asset
     allocation and consumption strategies assuming time-wise
     independent returns.
 
   - A Monte-Carlo simulator to assess strategy performance.
-
-  - A variety of pre-computed strategies: age in bonds, consensus
-    target date, fixed, fixed with guaranteed income treated as a
-    bond, 4% rule, constant percentage, VPW, RMD, 1/life etc.
 
   - A variety of correlation preserving bootstraping and synthetic
     return generation options for the Monte Carlo simulator.
@@ -62,12 +102,10 @@ Notable features of AACalc Opal:
 
   - Mortality handled stochastically using mortality tables.
 
-  - When computing or simulating the performance of a strategy, the
-    ability to use consumption utility functions indicative of floor
-    and upside consumption preferences.
-
   - In addition to the standard asset classes, the ability to handle
-    liability mathing bonds, real annuties, and nominal annuities.
+    liability matching bonds, real annuities, and nominal annuities.  Be
+    warned though the annuity code often appears to invoke numerical
+    instabilities.
 
   - When handling 3 or more asset classes the ability to speed up
     performance in exchange for some loss of optimality by using mean
@@ -78,96 +116,79 @@ Notable features of AACalc Opal:
 
   - An optional web based front end to the program.
 
+Notable features of the SPIA pricing calculator:
+
+  - A variety of mortality tables.
+
+  - Use of the current U.S. Treasury real and nominal yield curves,
+    and the high quality markets corporate bond curve.
+
+  - An optional web based front end.
+
 Demo:
 
-  - See https://www.aacalc.com/
+  - See https://www.aiplanner.com/ for AIPlanner.
 
-AACalc implementation:
+  - See https://www.aacalc.com/ for AACalc Alloc and the SPIA pricing
+    calculator.
 
-  - Open source. Licensed under the GNU Affero GPL. See the file
-    agpl-3.0.txt for details. I am experimenting with business models,
-    and other licensing terms may be available.
+Implementation:
 
-  - Runs on Ubuntu 16.04 Linux and possibly other systems. The Opal backend
-    should be readily portable to other *nix systems. Frontend should
-    be readily portable to other systems running Django 1.6.
+  - Opal, AACalc Alloc, and the SPIA pricing calculator have been
+    released as Open Source on github. See:
+
+        https://github.com/gordoni/aacalc
+
+    They are licensed under the GNU Affero GPL. See the file
+    agpl-3.0.txt in the relevant sub-directories for details. Note,
+    the Affero GPL requires that if you use the licensed code as part
+    of a web service then you must release your code.
+
+    AIPlanner is proprietary and has not been released as Open Source.
+    I am experimenting with business models, and various licensing
+    terms may be available.
+
+  - Runs on Ubuntu 16.04 Linux and possibly other systems.
+
+  - AIPlanner written in Python, on top of Ray RLlib and Tensorflow,
+    with calls out the GNUPLOT.
 
   - Opal backend written in Java with call outs to R and GNUPLOT.
 
-  - The Opal backend is able to take advantage of multicore computers
-    for performance.  On a 20 core m4.10xlarge instance computing the
-    optimal asset allocation takes a few seconds in the absence of
-    annuities, or half an hour in their presence.
+  - AIPlanner web frontend written in Angular. Remaining web frontends
+    written in Python using the Django framework.
 
-  - Web frontend written in Python using the Django framework.
+  - AIPlanner and Opal backends can be either run standalone, or in a
+    server configuration talking to the frontend.
 
-  - Opal backend can be either run standalone, or in a server
-    configuration talking to the frontend.
-
-  - Opal backend capable of running in an autoscaling load balancing
-    framework.
-
-  - Opal backend performs minimal input sanity checking;
+  - AIPlanner and Opal backends perform minimal input sanity checking;
     responsibility for input sanity checking pushed on to frontend.
 
   - Opal backend uses hill climbing to avoid exhaustive search of the
     solution space.
 
-  - Opal backend uses Shiller and a variety of other returns datasets.
-    Opal backend and Alloc use Social Security cohort mortality and a
-    variety of other mortality datasets.
-
 To do:
 
-  - Full scale optimization rather than MVO.
-
-  - Handle returns from a distribution. (Like risk_free but with a
-    mean, standard deviation, and distribution class such as
-    log_normal).
-
-  - Possibly support sticky market parameters (current value depends
-    on prior years value): volatily, correlations, inflation, interest
-    rate, etc. Sticky volatility doesn't look all that
-    promising. Ability to predict volatility on an annual basis is
-    probably 20-40%. See a 10% gain in metrics for expected versus
-    unexpected 200% volatility. If occurs 25% of the time, net gain
-    would only be 0.5-1%. Suspect stock-bond correlation is always
-    low, so little advantage except if have other asset
-    classes. Sticky inflation might influence nominal bond returns and
-    SPIA prices. Sticky interest rates might influence bond returns
-    and SPIA prices. Usually probably doesn't influence bond returns
-    much, the one exception being the present regime, in which nominal
-    interest rates can't fall much lower, so bond returns are at best
-    only likely to be weakly positive.
-
-  - Make lm_bonds asset class responsive to changes in the real
-    interest rate. Requires real interest rate be a dimension like
-    investment portfolio wealth and spia payouts.
-
   - Explore implications of using prospect theory to compute the
-    optimal strategy (treat previous consumption level as an extra
-    "wealth" dimension); will be slow.
+    optimal strategy (treat previous consumption level as an input).
 
 Getting started:
 
-  - It is suggested that Amazon EC2 be used for development work. A
-    Ubuntu 18.04 t2.micro instance works fine for Alloc. A c5.xlarge
-    instance is recommended for running Opal without annuities, or a
-    m5.12xlarge with annuities. Opal runs on Ubuntu 16.04 and
-    18.04.
+  - It is suggested that Amazon EC2 be used for development work.
 
-  - Obtain the sources:
+  - Obtain the sources. If using the sources released on github:
 
         sudo apt install git
         git clone https://github.com/gordoni/aacalc.git
 
-  - If might do developement work:
+  - If might do development work:
         cd aacalc
         git config --global user.name "<FirstName> <LastName>"
         git config --global user.email "<user@email.com>"
 
-  - See ai/README for the web Python Angular frontend based AIPlanner.
+  - See ai/README for the Angular frontended Python based AIPlanner.
 
-  - See web/README for the web Python Django based Alloc.
+  - See web/README for the Django frontended Python based AACalc
+    Alloc.
 
   - Optionally see opal/README for the Java based Opal.
