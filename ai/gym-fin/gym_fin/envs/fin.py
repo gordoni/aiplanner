@@ -226,7 +226,7 @@ class Fin:
         self.life_table_le_hi = LifeTable(self.params.life_table, self.params.sex, self.age_start,
             death_age = self.death_age, le_add = self.params.life_expectancy_additional_high, date_str = self.params.life_table_date, interpolate_q = False)
 
-        if self.params.stocks_model == 'bootstrap':
+        if self.params.stocks_model in ('normal_residuals', 'bootstrap'):
             std_res_fname = home_dir + '/data/public/standardized_residuals.csv'
             self.stocks = ReturnsEquity(self.params, std_res_fname = std_res_fname)
         else:
@@ -1621,12 +1621,8 @@ class Fin:
                 if not low[index] <= ob <= high[index]:
                     item = self.observation_space_items[index]
                     self.observation_space_range_exceeded[index] += 1
-                    try:
-                        fract = self.observation_space_range_exceeded[index] / self.env_timesteps
-                    except ZeroDivisionError:
-                        fract = float('inf')
-                    if fract > 1e-4:
-                        self.warn('Frequently out of range', item + ':', fract)
+                    if self.observation_space_range_exceeded[index] > 1 + 1e-4 * self.env_timesteps:
+                        self.warn('Frequently out of range', item + ':', self.observation_space_range_exceeded[index] / self.env_timesteps)
                     if not high[index] - extreme_range[index] < ob < low[index] + extreme_range[index]:
                         self.warn('Extreme', item + ', age:', ob, self.age)
                         if isinf(ob):

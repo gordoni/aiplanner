@@ -129,7 +129,10 @@ with open(ticker_dir + '/^GSPC.csv') as f:
                 yearly.append(ret)
             except TypeError:
                 pass
-            prev_year_adj_close = prev_adj_close
+            if prev_year_adj_close is None:
+                prev_year_adj_close = adj_close
+            else:
+                prev_year_adj_close = prev_adj_close
         prev_month = m
         prev_adj_close = adj_close
 
@@ -165,7 +168,7 @@ print(np.corrcoef(yearly[1:], daily_vols[:-1]))
 
 # Observed log ret results:
 #           mean  stdev  auto corr  skew    kurtosis
-# annual     7.1% 16.2%    -0.07   -0.90      4.10
+# annual     7.1% 16.2%    -0.07   -0.92      4.12
 #
 # Observed log vol results:
 #           mean  stdev  auto corr
@@ -179,6 +182,6 @@ print(np.corrcoef(yearly[1:], daily_vols[:-1]))
 #
 # Target values:
 #      ret   6.5% 17.4%                                from Credit-Suisse Yearbook
-#  log ret                  0.00   -0.90      4.10
+#  log ret                  0.00   -0.92      4.12
 #  log vol    -     -       0.40
 # Scale up because total global market is more volatile than the S&P 500.

@@ -53,12 +53,17 @@ class ReturnsEquity(Returns):
 
         assert self.params.stocks_sigma_level_type != 'invalid'
 
-        with open(std_res_fname) as f:
-            r = reader(f)
-            data = tuple(r)
-        self.z_hist = tuple(float(d[0]) for d in data)
-        self.sigma_hist = tuple(float(d[1]) for d in data)
-        self.sigma_average = sqrt(mean(sigma ** 2 for sigma in self.sigma_hist))
+        self.bootstrap = self.params.stocks_model == 'bootstrap'
+
+        if self.bootstrap or self.params.stocks_sigma_level_type == 'sample':
+            with open(std_res_fname) as f:
+                r = reader(f)
+                data = tuple(r)
+            self.z_hist = tuple(float(d[0]) for d in data)
+            self.sigma_hist = tuple(float(d[1]) for d in data)
+            self.sigma_average = sqrt(mean(sigma ** 2 for sigma in self.sigma_hist))
+        else:
+            self.z_hist = (0.0, ) # Dummy.
 
         self.bootstrap_years = self.params.stocks_bootstrap_years
         self.mu = self.params.stocks_mu
@@ -80,7 +85,7 @@ class ReturnsEquity(Returns):
         self.block_size = 0
         while self.block_size == 0:
             self.t = randrange(len(self.z_hist))
-            self.block_size = round(expovariate(1 / (self.bootstrap_years * self.periods_per_year)))
+            self.block_size = 1 if self.bootstrap_years == 0 else round(expovariate(1 / (self.bootstrap_years * self.periods_per_year)))
 
         if self.params.stocks_sigma_level_type == 'sample':
             # Allow to run through resets. Better than using sigma_hist on each reset as sigma_hist isn't an exact representation of the GJR-GARCH sigma distribution.
@@ -121,8 +126,8 @@ class ReturnsEquity(Returns):
         for _ in range(round(self.time_period * self.periods_per_year)):
             while self.block_size == 0:
                 self.t = randrange(len(self.z_hist))
-                self.block_size = round(expovariate(1 / (self.bootstrap_years * self.periods_per_year)))
-            z_t = self.z_hist[self.t]
+                self.block_size = 1 if self.bootstrap_years == 0 else round(expovariate(1 / (self.bootstrap_years * self.periods_per_year)))
+            z_t = self.z_hist[self.t] if self.bootstrap else normalvariate(0, 1)
             epsilon_t = self.sigma_t * z_t
             r_t = self.period_mu - sigma2_t / 2 + epsilon_t
             self.log_above_trend += self.price_exaggeration * epsilon_t
@@ -130,8 +135,9 @@ class ReturnsEquity(Returns):
             self.log_above_trend += log_reversion
             r_t += log_reversion
             ret += r_t
-            self.t = (self.t + 1) % len_z_hist
-            self.block_size -= 1
+            if self.bootstrap:
+                self.t = (self.t + 1) % len_z_hist
+                self.block_size -= 1
             z_t_1 = z_t
             sigma2_t_1 = sigma2_t
             sigma2_t = self.omega + ((self.alpha + (self.gamma if z_t_1 < 0 else 0)) * z_t_1 ** 2 + self.beta) * sigma2_t_1

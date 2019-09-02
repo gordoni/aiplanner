@@ -13,10 +13,10 @@
 # Determine GJR_GARCH parameters, write out standardized residuals, and simulate and evaluate equity model.
 
 from csv import writer
-from math import ceil, exp, log, sqrt
+from math import exp, log, sqrt
 from os import environ
 from os.path import expanduser
-from random import random, randrange, seed
+from random import normalvariate, random, randrange, seed
 from statistics import mean, median, stdev
 
 import numpy as np
@@ -27,7 +27,7 @@ import pandas
 from arch import arch_model
 
 start_date = '1970-01-01'
-    # Get weaker correlation between observed sigma_t and next year's monthly volatility if start from 1950, the earliest datefor which we have data.
+    # Get weaker correlation between observed sigma_t and next year's monthly volatility if start from 1950, the earliest date for which we have data.
     # Possibly because assets weren't priced as accurately back then due to the paucity of computers.
     # Get stronger correlation if follow V-lab (https://vlab.stern.nyu.edu/analysis/VOL.SPX%3AIND-R.GJR-GARCH) and use 1990 as the starting date for analysis.
     # The problem with using 1990 as the starting date is it represents a 29 year period with 2 major crashes, which is more frequent than usual.
@@ -39,18 +39,21 @@ end_date = '2018-12-31'
 
 MEDIAN_ANALYSIS_YEARS = 2018 - 1950 + 1
 
-BOOTSTRAP_BLOCK_YEARS = 5
-    # Bootstrap based on a mean block size of 5 years (consider history as being made up of on average 5 year length blocks).
+BOOTSTRAP = True
+    # If no bootstrap, use normal residuals.
+BOOTSTRAP_BLOCK_YEARS = 0
+    # Bootstrap based on a mean block size of this many years (consider history as being made up of on average this many year length blocks).
+    # Don't bootstrap with a non-zero block size, or else observed volatility - future return correlation will be at the mercy of the historical time period chosen.
 
 TRADING_DAYS_PER_YEAR = 252
 TRADING_DAYS_PER_PERIOD = 21
     # Monthly instead of daily model.
     # Need to compute returns monthly instead of daily for speed of simulation.
     # Use of an even faster quarterly model results in too large standard errors of GJR-GARCH model.
-PERIODS_PER_YEAR = ceil(TRADING_DAYS_PER_YEAR / TRADING_DAYS_PER_PERIOD)
+PERIODS_PER_YEAR = round(TRADING_DAYS_PER_YEAR / TRADING_DAYS_PER_PERIOD)
 
 SCALE = 100 # Need to make greater than 1 if have a small TRADING_DAYS_PER_PERIOD so as to prevent optimizer failing to fit parameters properly.
-    # mu and omega are scale dependent, whle alpha, gamma, and beta are scale independent.
+    # mu and omega are scale dependent, while alpha, gamma, and beta are scale independent.
 
 home_dir = environ.get('AIPLANNER_HOME', expanduser('~/aiplanner'))
 ticker_dir = home_dir + '/data/private/ticker'
@@ -80,35 +83,31 @@ with open('standardized_residuals.csv', 'w') as f:
     w = writer(f)
     w.writerows([[z, sqrt(PERIODS_PER_YEAR) * v / SCALE] for z, v in zip(z_hist, res.conditional_volatility)])
 
-print('Historically sigma_t has been higly predictive of following year volatility, and less so absolute return:')
+print('Historically sigma_t has been higly predictive of following year volatility:')
 hist_sigmas = sqrt(PERIODS_PER_YEAR) * res.conditional_volatility / SCALE
 hist_vol = tuple(sqrt(PERIODS_PER_YEAR) * stdev(returns[i:i + PERIODS_PER_YEAR] / SCALE) for i in range(len(returns) - PERIODS_PER_YEAR))
-hist_abs_ret = tuple(abs(sum(returns[i:i + PERIODS_PER_YEAR] - mu) / SCALE) for i in range(len(returns) - PERIODS_PER_YEAR))
 print(mean(hist_vol), stdev(hist_vol))
 print(mean(hist_sigmas), stdev(hist_sigmas))
 print(np.corrcoef(hist_vol, hist_sigmas[:- PERIODS_PER_YEAR]))
 print(spearmanr(hist_vol, hist_sigmas[:- PERIODS_PER_YEAR]))
-print(np.corrcoef(hist_abs_ret, hist_sigmas[:- PERIODS_PER_YEAR]))
-print(spearmanr(hist_abs_ret, hist_sigmas[:- PERIODS_PER_YEAR]))
 
-seed(1)
+seed(0)
 
 # Set mu and omega to yield desired ret and vol.
 mean_reversion_rate = 0.1 # Rough estimate
 exaggeration = 0.7 # Adjust to get reasonable looking above_trend.csv plot
-mu = 0.064 # Adjust to get 0.065 actual mean ret
-sigma = 0.164 # Adjust to get 0.174 actual vol
+mu = 0.065 # Adjust to get 0.065 actual mean ret
+sigma = 0.160 # Adjust to get 0.174 actual vol
 mu *= SCALE / PERIODS_PER_YEAR
 sigma /= sqrt(PERIODS_PER_YEAR)
 omega = SCALE ** 2 * (1 - alpha - gamma / 2 - beta) * sigma ** 2
 
-num_simulated_rets = 100000
+num_simulated_rets = 1000000
 num_trace_years = 1000
 mean_bootstrap_block_size = BOOTSTRAP_BLOCK_YEARS * PERIODS_PER_YEAR
 rets = []
 obs_sigmas = []
 exper_vol = []
-exper_abs_ret = []
 above_trend = []
 epsilon_t_1 = 0
 sigma_t_1 = sqrt(omega / (1 - alpha - gamma / 2 - beta))
@@ -122,10 +121,11 @@ i = randrange(len(z_hist))
 p = 0
 ret = 0
 retl = []
-while len(rets) < num_simulated_rets:
-    sigma2_t = omega + ((alpha + gamma * int(z_t_1 < 0)) * z_t_1 ** 2 + beta) * sigma2_t_1
+returns = 0
+while returns < num_simulated_rets:
+    sigma2_t = omega + ((alpha + (gamma if z_t_1 < 0 else 0)) * z_t_1 ** 2 + beta) * sigma2_t_1
     sigma_t = sqrt(sigma2_t)
-    z_t = z_hist[i]
+    z_t = z_hist[i] if BOOTSTRAP else normalvariate(0, 1)
     epsilon_t = sigma_t * z_t
     r_t = mu - sigma2_t / (2 * SCALE) + epsilon_t
     r_t /= SCALE
@@ -144,19 +144,20 @@ while len(rets) < num_simulated_rets:
         rets.append(ret)
         obs_sigmas.append(sqrt(PERIODS_PER_YEAR) * sigma_t / SCALE)
         exper_vol.append(sqrt(PERIODS_PER_YEAR) * stdev(retl))
-        exper_abs_ret.append(abs(sum(retl) - mu / SCALE))
         above_trend.append(exp(log_above_trend))
-        p = 0
-        ret = 0
+        returns += 1
         retl = []
+        ret = 0
+        p = 0
     z_t_1 = z_t
     sigma2_t_1 = sigma2_t
-    if random() < 1 / mean_bootstrap_block_size:
-        i = randrange(len(z_hist))
-    else:
-        i += 1
-        if i == len(z_hist):
-            i = 0
+    if BOOTSTRAP:
+        if random() * mean_bootstrap_block_size < 1:
+            i = randrange(len(z_hist))
+        else:
+            i += 1
+            if i == len(z_hist):
+                i = 0
 
 with open('index.csv', 'w') as f:
     w = writer(f)
@@ -190,8 +191,6 @@ print(mean(exper_vol), stdev(exper_vol))
 print(mean(obs_sigmas), stdev(obs_sigmas))
 print(np.corrcoef(exper_vol[1:], obs_sigmas[:-1]))
 print(spearmanr(exper_vol[1:], obs_sigmas[:-1]))
-print(np.corrcoef(exper_abs_ret[1:], obs_sigmas[:-1]))
-print(spearmanr(exper_abs_ret[1:], obs_sigmas[:-1]))
 print(np.corrcoef(exper_vol[1:], exper_vol[:-1]))
 print(spearmanr(exper_vol[1:], exper_vol[:-1]))
 
@@ -200,13 +199,13 @@ print(np.corrcoef(rets[1:], obs_sigmas[:-1]))
 print(spearmanr(rets[1:], obs_sigmas[:-1]))
 
 # Target values:
-#           mean  stdev  auto corr  skew    kurtosis  vol-sigma corr
-#      ret   6.5% 17.4%                                               from Credit-Suisse Yearbook
-#  log ret                  0.00   -0.90      4.10        0.39        from analyze_volatility.py; except vol-sigma corr from this script
-#  log vol    -     -       0.40                                      from analyze_volatility.py
+#           mean  stdev  auto corr  skew    kurtosis  vol-sigma corr  ret-sigma corr
+#      ret   6.5% 17.4%                                                               from Credit-Suisse Yearbook
+#  log ret                  0.00   -0.92      4.12                       unknown      from analyze_volatility.py; ecept ret-sigma corr
+#  log vol    -     -       0.40                          0.39                        from analyze_volatility.py; except vol-sigma corr from this script
 #
 # Measured simulated values:
 #           mean  stdev  auto corr  skew    kurtosis
 #      ret   6.5% 17.4%
-#  log ret                 -0.05   -0.94      4.11        0.35
-#  log vol    -     -       0.26
+#  log ret                  0.06   -0.97      4.84                       -0.07
+#  log vol    -     -       0.38                          0.46

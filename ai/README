@@ -327,6 +327,8 @@ fit it yourself perform the following steps.
     cd ~/aiplanner/ai/equity_model
     ./run
     cp standardized_residuals.csv ../../data/public
+    [and use the just determined --stocks-* parameters when training
+     and evaluating]
 
 Training the generic nueral network models
 ------------------------------------------
