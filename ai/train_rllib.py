@@ -106,7 +106,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
             'vf_clip_param': 10.0, # Currently equal to PPO default value.
                 # Clip value function advantage estimates. We expect most rewards to be roughly in [-1, 1],
                 # so if we get something far from this we don't want to train too hard on it.
-            'kl_target': 1, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
+            'kl_coeff': 0.0, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
             'lr_schedule': lr_schedule,
             #'shuffle_sequences': False,
         },
