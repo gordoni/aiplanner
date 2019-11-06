@@ -107,6 +107,8 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
                 # Clip value function advantage estimates. We expect most rewards to be roughly in [-1, 1],
                 # so if we get something far from this we don't want to train too hard on it.
             'kl_coeff': 0.0, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
+            'lr': train_optimizer_step_size,
+                # lr_schedule is ignored by Ray 0.7.1 through 0.7.6+ (Ray issue #6096), so need to ensure fallback learning rate is reasonable.
             'lr_schedule': lr_schedule,
             #'shuffle_sequences': False,
         },
