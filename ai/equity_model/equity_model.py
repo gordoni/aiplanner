@@ -91,16 +91,19 @@ print(mean(hist_sigmas), stdev(hist_sigmas))
 print(np.corrcoef(hist_vol, hist_sigmas[:- PERIODS_PER_YEAR]))
 print(spearmanr(hist_vol, hist_sigmas[:- PERIODS_PER_YEAR]))
 
+SCALE = 1 # Now arbitrary.
+
 seed(0)
 
 # Set mu and omega to yield desired ret and vol.
 mean_reversion_rate = 0.1 # Rough estimate
 exaggeration = 0.7 # Adjust to get reasonable looking above_trend.csv plot
+sigma_max = 1.0 # Max allowed annualized volatility (cap to prevent volatility occasionally spiking to close to 100 times normal).
 mu = 0.065 # Adjust to get 0.065 actual mean ret
-sigma = 0.160 # Adjust to get 0.174 actual vol
+sigma = 0.162 # Adjust to get 0.174 actual vol
+sigma_max *= SCALE / sqrt(PERIODS_PER_YEAR)
 mu *= SCALE / PERIODS_PER_YEAR
-sigma /= sqrt(PERIODS_PER_YEAR)
-omega = SCALE ** 2 * (1 - alpha - gamma / 2 - beta) * sigma ** 2
+omega = SCALE ** 2 * (1 - alpha - gamma / 2 - beta) * sigma ** 2 / PERIODS_PER_YEAR
 
 num_simulated_rets = 1000000
 num_trace_years = 1000
@@ -124,6 +127,7 @@ retl = []
 returns = 0
 while returns < num_simulated_rets:
     sigma2_t = omega + ((alpha + (gamma if z_t_1 < 0 else 0)) * z_t_1 ** 2 + beta) * sigma2_t_1
+    sigma2_t = min(sigma2_t, sigma_max ** 2)
     sigma_t = sqrt(sigma2_t)
     z_t = z_hist[i] if BOOTSTRAP else normalvariate(0, 1)
     epsilon_t = sigma_t * z_t
@@ -207,5 +211,5 @@ print(spearmanr(rets[1:], obs_sigmas[:-1]))
 # Measured simulated values:
 #           mean  stdev  auto corr  skew    kurtosis
 #      ret   6.5% 17.4%
-#  log ret                  0.06   -0.97      4.84                       -0.07
-#  log vol    -     -       0.38                          0.46
+#  log ret                  0.00   -0.98      4.85                        0.00
+#  log vol    -     -       0.34                          0.41

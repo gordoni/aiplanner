@@ -273,9 +273,11 @@ class ModelParams(object):
         self._param('stocks-bootstrap-years', 0) # Mean bootstrap residual block size in years for bootstrap stocks.
             # A value of zero results in residuals being drawn at random.
             # A value other than zero may result in unwanted corelations between volatility and next period return depending on the bootstrap data used.
+        self._param('stocks-sigma-max', 1.0) # Maximum allowed annual volatility for normal_residuals/bootstrap stocks.
+            # Without a maximum, the bootstrap GJR-GARCH volatility model can produce anualized volatilities as high as 15.0, which is unrealistic.
         self._param('stocks-mu', 0.065) # Annual real log return for normal_residuals/bootstrap stocks.
             # Yields 6.5% return for bootstrap stocks in absense of returns_standard_error.
-        self._param('stocks-sigma', 0.160) # Annual real log volatility for normal_residuals/bootstrap stocks.
+        self._param('stocks-sigma', 0.162) # Annual real log volatility for normal_residuals/bootstrap stocks.
             # Yields 17.4% volatility for bootstrap stocks in absense of returns_standard_error.
         self._param('stocks-alpha', 0.0000) # Monthly GJR-GARCH volatility model alpha parameter for normal_residuals/bootstrap stocks.
         self._param('stocks-gamma', 0.3188) # Monthly GJR-GARCH volatility model gamma parameter for normal_residuals/bootstrap stocks.

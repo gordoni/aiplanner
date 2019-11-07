@@ -24,6 +24,7 @@ class ReturnsEquity(Returns):
     sigma_hist: cython.double[:]
     sigma_average: cython.double
     bootstrap_years: cython.double
+    sigma_max: cython.double
     mu: cython.double
     sigma: cython.double
     alpha: cython.double
@@ -66,8 +67,9 @@ class ReturnsEquity(Returns):
             self.z_hist = (0.0, ) # Dummy.
 
         self.bootstrap_years = self.params.stocks_bootstrap_years
+        self.sigma_max = self.params.stocks_sigma_max
         self.mu = self.params.stocks_mu
-        self.sigma = self.params.stocks_sigma
+        self.sigma = min(self.params.stocks_sigma, self.sigma_max)
         self.alpha = self.params.stocks_alpha
         self.gamma = self.params.stocks_gamma
         self.beta = self.params.stocks_beta
@@ -76,10 +78,11 @@ class ReturnsEquity(Returns):
         self.price_high = self.params.stocks_price_high
         self.price_noise_sigma = self.params.stocks_price_noise_sigma
         self.mean_reversion_rate = self.params.stocks_mean_reversion_rate
-        self.standard_error = self.params.stocks_standard_error
+        self.standard_error = self.params.stocks_standard_error if self.params.returns_standard_error else 0.0
         self.time_period = self.params.time_period
 
         self.periods_per_year = 12 # Alpha, gamma, and beta would need to change if alter this.
+        self.sigma_max /= sqrt(self.periods_per_year)
         self.omega = (1 - self.alpha - self.gamma / 2 - self.beta) * self.sigma ** 2 / self.periods_per_year
 
         self.block_size = 0
@@ -142,6 +145,9 @@ class ReturnsEquity(Returns):
             sigma2_t_1 = sigma2_t
             sigma2_t = self.omega + ((self.alpha + (self.gamma if z_t_1 < 0 else 0)) * z_t_1 ** 2 + self.beta) * sigma2_t_1
             self.sigma_t = sigma2_t ** 0.5
+            if self.sigma_t > self.sigma_max:
+                self.sigma_t = self.sigma_max
+                sigma2_t = self.sigma_t ** 2
 
         sample = exp(ret)
 
