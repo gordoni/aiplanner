@@ -20,7 +20,7 @@ cd ~/aiplanner-data/validation/run.ai.4
 
 PARALLEL=Jobs
 
-SCENARIO_ARGS="-c aiplanner-scenario-iid.txt"
+SCENARIO_ARGS="-c $AI_DIR/aiplanner-scenario-iid.txt"
 TRAINING_ARGS=""
 EVALUATE_ARGS=""
 
