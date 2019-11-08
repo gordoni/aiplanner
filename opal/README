@@ -32,7 +32,7 @@ rm -r commons-math3-3.6.1/
 # If aacalc/opal/data hasn't been created (from setting up web component),
 # obtain the asset class returns, interest rate, and mortality data files:
 cd aacalc/opal
-curl http://www.gordoni.com/aacalc-data.tar.gz | tar -zxf -
+curl https://www.gordoni.com/aacalc-data.tar.gz | tar -zxf -
 
 Setting up Systematic Investor Toolbox and R packages for performing MVO
 ------------------------------------------------------------------------
