@@ -63,7 +63,11 @@ class Taxes(object):
                 (float('inf'), 0.2),
             )
 
-        elif self.params.tax_table_year == '2019' or self.params.tax_table_year == None:
+            self.contribution_limit_401k = 18500
+            self.contribution_limit_ira = 5500
+            self.contribution_limit_ira_catchup = 6500
+
+        elif self.params.tax_table_year == '2019':
 
             self.federal_standard_deduction_single = 12200
             self.federal_standard_deduction_joint = 24400
@@ -99,6 +103,51 @@ class Taxes(object):
                 (488850, 0.15),
                 (float('inf'), 0.2),
             )
+
+            self.contribution_limit_401k = 19000
+            self.contribution_limit_ira = 6000
+            self.contribution_limit_ira_catchup = 7000
+
+        elif self.params.tax_table_year == '2020' or self.params.tax_table_year == None:
+
+            self.federal_standard_deduction_single = 12400
+            self.federal_standard_deduction_joint = 24800
+
+            self.federal_table_single = (
+                (9875, 0.1),
+                (40125, 0.12),
+                (85525, 0.22),
+                (163300, 0.24),
+                (207350, 0.32),
+                (518400, 0.35),
+                (float('inf'), 0.37),
+            )
+
+            self.federal_table_joint = (
+                (19750, 0.1),
+                (80250, 0.12),
+                (171050, 0.22),
+                (326600, 0.24),
+                (414700, 0.32),
+                (622050, 0.35),
+                (float('inf'), 0.37),
+            )
+
+            self.federal_long_term_gains_single = (
+                (40000, 0),
+                (441450, 0.15),
+                (float('inf'), 0.2),
+            )
+
+            self.federal_long_term_gains_joint = (
+                (80000, 0),
+                (496600, 0.15),
+                (float('inf'), 0.2),
+            )
+
+            self.contribution_limit_401k = 19500
+            self.contribution_limit_ira = 6000
+            self.contribution_limit_ira_catchup = 7000
 
         else:
             assert False, 'No tax table for: ' + self.params.tax_table_year
@@ -232,12 +281,12 @@ class Taxes(object):
 
         return basis, cg_carry
 
-def contribution_limit(annual_income, age, have_401k, time_period):
+    def contribution_limit(self, annual_income, age, have_401k, time_period):
 
-    if have_401k:
-        limit = 18500
-    else:
-        limit = 5500 if age < 50 else 6500
-    annual_contribution = min(annual_income, limit)
+        if have_401k:
+            limit = self.contribution_limit_401k
+        else:
+            limit = self.contribution_limit_ira if age < 50 else self.contribution_limit_ira_catchup
+        annual_contribution = min(annual_income, limit)
 
-    return annual_contribution * time_period
+        return annual_contribution * time_period

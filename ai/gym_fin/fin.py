@@ -29,7 +29,7 @@ from ai.gym_fin.policies import policy
 from ai.gym_fin.returns import Returns, returns_report, yields_report
 from ai.gym_fin.returns_equity import ReturnsEquity
 from ai.gym_fin.returns_sample import ReturnsSample
-from ai.gym_fin.taxes import Taxes, contribution_limit
+from ai.gym_fin.taxes import Taxes
 from ai.gym_fin.utility import Utility
 
 class FinError(Exception):
@@ -929,8 +929,8 @@ class Fin:
             p_negative = 0
         delta_p_tax_deferred = self.p_tax_deferred - p_tax_deferred
 
-        retirement_contribution = contribution_limit(self.income_preretirement, self.age, self.have_401k, self.params.time_period) \
-            + contribution_limit(self.income_preretirement2, self.age2, self.have_401k2, self.params.time_period)
+        retirement_contribution = self.taxes.contribution_limit(self.income_preretirement, self.age, self.have_401k, self.params.time_period) \
+            + self.taxes.contribution_limit(self.income_preretirement2, self.age2, self.have_401k2, self.params.time_period)
         retirement_contribution = min(retirement_contribution, p_taxable)
         p_taxable -= retirement_contribution
         p_tax_deferred += retirement_contribution
