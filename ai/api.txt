@@ -1,7 +1,7 @@
 AIPlanner API documentation
 ***************************
 
-August 29, 2019.
+November 7, 2019.
 
 This document describes the AIPlanner - Deep Reinforcement Learning
 Financial Planner web based application programming interface.
@@ -123,6 +123,7 @@ Additional life expectancy for spouse in decimal years. Ignored if
 sex2 is null.
 
 age_retirement: number
+required
 
 Age of self in decimal years at start of retirement. Set to a value
 less than age if already retired.

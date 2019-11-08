@@ -35,3 +35,6 @@ master_real_short_rate_type = 'current'
 master_inflation_short_rate_type = 'current'
 
 eval_income_preretirement_taxable = False # Required for pre-retirement validation evaluation.
+   # IID pre-retirement evaluation has a net annual tax free income of 20,000,
+   # but during training the most tax free income we ever train with is 19,500 (have 401k=True, tax_table_year=2020).
+   # We ignore this presumably minor issue.
