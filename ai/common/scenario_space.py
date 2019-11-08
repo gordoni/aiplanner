@@ -43,8 +43,8 @@ def enumerate_model_params_api(gammas):
 
     return [({
         'age_start': age,
-        'age_retirement_low': 65,
-        'age_retirement_high': 65,
+        'age_retirement_low': 67,
+        'age_retirement_high': 67,
         'stocks_price_low': 1,
         'stocks_price_high': 1,
         'stocks_sigma_level_type': 'average',

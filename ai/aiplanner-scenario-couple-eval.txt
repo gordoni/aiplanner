@@ -15,7 +15,7 @@ master_life_expectancy_additional2 = 3
 master_age_start = 50
 master_age_start2 = 50
 
-master_age_retirement = 65
+master_age_retirement = 67
 
 master_income_preretirement = 5e4
 master_income_preretirement2 = 5e4

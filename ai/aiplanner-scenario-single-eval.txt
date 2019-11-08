@@ -13,7 +13,7 @@ master_couple_probability = 0
 master_life_expectancy_additional = 3 # Investors tend to be in better health than the average retiree.
 master_age_start = 50
 
-master_age_retirement = 65
+master_age_retirement = 67
 
 master_income_preretirement = 5e4
 master_consume_preretirement = 3e4

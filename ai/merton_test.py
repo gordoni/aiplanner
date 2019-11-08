@@ -48,7 +48,7 @@ class MertonEnv(Env):
         self.stocks_mu, self.stocks_sigma = self._mu_sigma(1.065, 0.174)
         self.bonds_mu, self.bonds_sigma = self._mu_sigma(1.010, 0.110)
         # Gompertz-Makeham mortality parameters.
-        self.age_start = 65
+        self.age_start = 67
         self.alpha = 0
         self.m = 82.3
         self.b = 11.4

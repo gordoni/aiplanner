@@ -64,13 +64,13 @@ while [ $TS -le $TIMESTEPS ]; do
         SPIAS_TAG=spias
     fi
     if [ $TRAINING = specific ]; then
-        make_train_dir aiplanner-gamma$GAMMA-retired65-guaranteed_income20e3-tax_free{2e5,5e5,1e6,2e6}.tf
+        make_train_dir aiplanner-gamma$GAMMA-retired67-guaranteed_income20e3-tax_free{2e5,5e5,1e6,2e6}.tf
     elif [ $TRAINING = specific-p-type ]; then
-        make_train_dir aiplanner-gamma$GAMMA-retired65-guaranteed_income20e3-${tax_free,tax_deferred,taxable}2e6.tf
+        make_train_dir aiplanner-gamma$GAMMA-retired67-guaranteed_income20e3-${tax_free,tax_deferred,taxable}2e6.tf
     elif [ $TRAINING = specific-spias ]; then
-        make_train_dir aiplanner-gamma$GAMMA-spias{65,75,85}-retired65-guaranteed_income20e3-tax_free{1e6,2e6}.tf
+        make_train_dir aiplanner-gamma$GAMMA-spias{67,75,85}-retired67-guaranteed_income20e3-tax_free{1e6,2e6}.tf
     elif [ $TRAINING = specific-spias-le ]; then
-        make_train_dir aiplanner-gamma$GAMMA-spias-retired65-le{-5,0,5}-guaranteed_income20e3-tax_free2e6.tf
+        make_train_dir aiplanner-gamma$GAMMA-spias-retired67-le{-5,0,5}-guaranteed_income20e3-tax_free2e6.tf
     elif [ $TRAINING = preretirement-gi ]; then
         make_train_dir aiplanner-preretirement-gamma$GAMMA-gi_fraction{0.03_0.1,0.1_0.3,0.3_1.0}.tf
     elif [ $TRAINING = retired-gi ]; then

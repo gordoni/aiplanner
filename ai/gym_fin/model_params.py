@@ -129,11 +129,11 @@ class ModelParams(object):
             # Fractional values only make sense during training.
         self._param('sex', 'female', tp = string_type, choices = ('male', 'female')) # Sex of first individual. Helps determine life expectancy table.
         self._param('sex2', 'male', tp = string_type, choices = ('male', 'female')) # Sex of second individual, if any.
-        self._param('age-start', 65, 65) # Age of first individual.
-        self._param('age-start2', (65, 65), 65) # Age of second individual.
+        self._param('age-start', 67, 67) # Age of first individual.
+        self._param('age-start2', (67, 67), 67) # Age of second individual.
         self._param('age-end', 151) # Model done when individuals reach this age.
             # Life table ends at 121. Specifying a larger value ensures no truncation of the life table occurs when life_expectancy_additional is specified.
-        self._param('age-retirement', (65, 65), 65) # Assess and optimize consumption from when first individual reaches this age.
+        self._param('age-retirement', (67, 67), 67) # Assess and optimize consumption from when first individual reaches this age.
         self._param('consume-additional', 0.6)
             # When a second individual is present we consume this fraction more than a single individual for the same per individual utility.
         self._param('couple-death-preretirement-consume', 'consume_additional', tp = string_type, choices = ('consume_additional', 'pro_rata', 'none'))

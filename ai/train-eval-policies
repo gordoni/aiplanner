@@ -45,7 +45,7 @@ for GAMMA in 1.5 3 6; do
     cd ..
 
     if [ $POLICY == age_nominal ]; then
-        for AGE in 65 75 85; do
+        for AGE in 67 75 85; do
             EP="$EPISODE-age_nominal$AGE"
             mkdir -p $EP
             cd $EP
