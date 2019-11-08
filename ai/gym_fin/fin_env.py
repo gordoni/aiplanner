@@ -13,7 +13,7 @@ import numpy as np
 from gym import Env
 from gym.spaces import Box
 
-from gym_fin.envs.fin import Fin
+from ai.gym_fin.fin import Fin
 
 class AttributeObject():
 
@@ -60,7 +60,7 @@ class FinEnv(Env):
         self.observation_space_high = (1, 2, 1, 100, 100, 100, 100, 1,    0, 100, 1, 1, 4, 7,  0.15)
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple()
-            #    in gym-fin/gym_fin/common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
+            #    in common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
             #
             # Values listed above are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.

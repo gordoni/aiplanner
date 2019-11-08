@@ -21,9 +21,9 @@ from baselines import logger
 from baselines.common import boolean_flag, tf_util as U
 from baselines.common.misc_util import set_global_seeds
 
-from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
-from gym_fin.common.evaluator import Evaluator
-from gym_fin.envs.model_params import dump_params_file
+from ai.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
+from ai.common.evaluator import Evaluator
+from ai.gym_fin.model_params import dump_params_file
 
 def save_model(dir, session):
     g = tf.get_default_graph()

@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -10,7 +10,7 @@
 
 from json import loads
 
-from gym_fin.envs.asset_allocation import AssetAllocation
+from ai.gym_fin.asset_allocation import AssetAllocation
 
 def _pmt(rate, nper, pv):
 

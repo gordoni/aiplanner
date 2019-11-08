@@ -10,9 +10,9 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-from gym_fin.envs.model_params import load_params_file
-from gym_fin.common.cmd_util import arg_parser, fin_arg_parse
-from gym_fin.common.tf_util import TFRunner
+from ai.common.cmd_util import arg_parser, fin_arg_parse
+from ai.common.tf_util import TFRunner
+from ai.gym_fin.model_params import load_params_file
 
 def export_models(*, redis_address, checkpoint_name, train_seeds, nice, train_seed, model_dir, **kwargs):
 

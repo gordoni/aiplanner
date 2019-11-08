@@ -14,7 +14,7 @@ from statistics import mean, stdev
 
 from spia import YieldCurve
 
-from gym_fin.envs.ou_process import OUProcess
+from ai.gym_fin.ou_process import OUProcess
 
 class Bonds:
     '''Short rate models - https://en.wikipedia.org/wiki/Short-rate_model .

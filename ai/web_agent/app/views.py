@@ -23,9 +23,9 @@ from django.core.exceptions import ValidationError
 from django.forms import BooleanField, CharField, FloatField, Form, HiddenInput, IntegerField, NumberInput, Textarea, TextInput
 from django.shortcuts import redirect, render
 
-from gym_fin.common.cmd_util import arg_parser, fin_arg_parse
-from gym_fin.envs.fin_env import FinEnv
-from gym_fin.envs.model_params import ModelParams
+from ai.common.cmd_util import arg_parser, fin_arg_parse
+from ai.gym_fin.fin_env import FinEnv
+from ai.gym_fin.model_params import ModelParams
 
 class HomeForm(Form):
 

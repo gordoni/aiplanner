@@ -28,8 +28,8 @@ setup(
     script_name = 'setup.py',
     script_args = ['build_ext', '--inplace', '--build-temp', build_temp],
     ext_modules = cythonize([
-        Extension('gym_fin.envs.fin', sources = ['gym_fin/envs/fin.pyx']),
-        Extension('gym_fin.envs.returns', sources = ['gym_fin/envs/returns.pyx']),
-        Extension('gym_fin.envs.returns_equity', sources = ['gym_fin/envs/returns_equity.pyx']),
-    ], include_path = ['.', 'gym_fin/envs'], annotate = True, force = False, compiler_directives = {'profile': True})
+        Extension('ai.gym_fin.fin', sources = ['gym_fin/fin.pyx']),
+        Extension('ai.gym_fin.returns', sources = ['gym_fin/returns.pyx']),
+        Extension('ai.gym_fin.returns_equity', sources = ['gym_fin/returns_equity.pyx']),
+    ], include_path = ['.', 'gym_fin'], annotate = True, force = False, compiler_directives = {'profile': True})
 )

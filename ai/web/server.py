@@ -31,8 +31,8 @@ from threading import BoundedSemaphore, Thread
 from time import sleep, time
 from traceback import print_exc
 
-from gym_fin.common.scenario_space import allowed_gammas
-from gym_fin.envs.model_params import load_params_file
+from ai.common.scenario_space import allowed_gammas
+from ai.gym_fin.model_params import load_params_file
 
 from spia import YieldCurve
 

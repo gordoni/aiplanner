@@ -17,12 +17,12 @@ from sys import stdout
 from baselines.common import boolean_flag
 from baselines.common.misc_util import set_global_seeds
 
-from gym_fin.envs.asset_allocation import AssetAllocation
-from gym_fin.envs.model_params import load_params_file
-from gym_fin.envs.policies import policy
-from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
-from gym_fin.common.evaluator import Evaluator
-from gym_fin.common.tf_util import TFRunner
+from ai.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
+from ai.common.evaluator import Evaluator
+from ai.common.tf_util import TFRunner
+from ai.gym_fin.asset_allocation import AssetAllocation
+from ai.gym_fin.model_params import load_params_file
+from ai.gym_fin.policies import policy
 
 def extract_model(eval_model_params, *, train_seed, redis_address, train_seeds, ensemble, checkpoint_name, result_dir,
     eval_couple_net, eval_seed, eval_num_timesteps, eval_render, nice, num_cpu, model_dir,

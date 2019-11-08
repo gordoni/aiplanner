@@ -19,8 +19,8 @@ import os
 
 from baselines.common import boolean_flag, set_global_seeds
 
-from gym_fin.envs import FinEnv, ModelParams
-from gym_fin.envs.model_params import dump_params
+from ai.gym_fin import FinEnv, ModelParams
+from ai.gym_fin.model_params import dump_params
 
 def make_fin_env(training = False, allow_early_resets = None, **kwargs):
     env = FinEnv(**kwargs)

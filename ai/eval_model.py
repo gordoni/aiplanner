@@ -25,14 +25,14 @@ from traceback import print_exc
 from baselines.common import boolean_flag
 #from baselines.common.misc_util import set_global_seeds
 
-from gym_fin.envs.asset_allocation import AssetAllocation
-from gym_fin.envs.model_params import dump_params, load_params_file
-from gym_fin.envs.policies import policy
-from gym_fin.common.api import parse_api_scenario
-from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
-from gym_fin.common.evaluator import Evaluator
-from gym_fin.common.scenario_space import allowed_gammas, enumerate_model_params_api, scenario_space_model_filename, scenario_space_update_params
-from gym_fin.common.tf_util import TFRunner
+from ai.common.api import parse_api_scenario
+from ai.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
+from ai.common.evaluator import Evaluator
+from ai.common.scenario_space import allowed_gammas, enumerate_model_params_api, scenario_space_model_filename, scenario_space_update_params
+from ai.common.tf_util import TFRunner
+from ai.gym_fin.asset_allocation import AssetAllocation
+from ai.gym_fin.model_params import dump_params, load_params_file
+from ai.gym_fin.policies import policy
 
 def pi_merton(env, obs, continuous_time = False):
     observation = env.decode_observation(obs)

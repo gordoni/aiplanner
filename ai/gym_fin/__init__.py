@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -8,5 +8,5 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-from gym_fin.envs.fin_env import FinEnv
-from gym_fin.envs.model_params import ModelParams
+from ai.gym_fin.fin_env import FinEnv
+from ai.gym_fin.model_params import ModelParams

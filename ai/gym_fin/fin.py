@@ -22,15 +22,15 @@ import cython
 
 from spia import LifeTable, YieldCurve, IncomeAnnuity
 
-from gym_fin.envs.asset_allocation import AssetAllocation
-from gym_fin.envs.bonds import BondsSet
-from gym_fin.envs.defined_benefit import DefinedBenefit
-from gym_fin.envs.policies import policy
-from gym_fin.envs.returns import Returns, returns_report, yields_report
-from gym_fin.envs.returns_equity import ReturnsEquity
-from gym_fin.envs.returns_sample import ReturnsSample
-from gym_fin.envs.taxes import Taxes, contribution_limit
-from gym_fin.envs.utility import Utility
+from ai.gym_fin.asset_allocation import AssetAllocation
+from ai.gym_fin.bonds import BondsSet
+from ai.gym_fin.defined_benefit import DefinedBenefit
+from ai.gym_fin.policies import policy
+from ai.gym_fin.returns import Returns, returns_report, yields_report
+from ai.gym_fin.returns_equity import ReturnsEquity
+from ai.gym_fin.returns_sample import ReturnsSample
+from ai.gym_fin.taxes import Taxes, contribution_limit
+from ai.gym_fin.utility import Utility
 
 class FinError(Exception):
 

@@ -21,9 +21,9 @@ import ray
 from ray.tune import function, grid_search, run
 from ray.tune.config_parser import make_parser
 
-from gym_fin.common.cmd_util import arg_parser, fin_arg_parse
-from gym_fin.envs.model_params import dump_params_file
-from gym_fin.envs.fin_env import FinEnv
+from ai.common.cmd_util import arg_parser, fin_arg_parse
+from ai.gym_fin.model_params import dump_params_file
+from ai.gym_fin.fin_env import FinEnv
 
 class RayFinEnv(FinEnv):
 

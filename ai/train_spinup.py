@@ -32,8 +32,8 @@ from spinup.algos.td3.core import mlp_actor_critic as td3_ac
 from spinup.algos.trpo.core import mlp_actor_critic as trpo_ac
 from spinup.algos.vpg.core import mlp_actor_critic as vpg_ac
 
-from gym_fin.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
-from gym_fin.envs.model_params import dump_params_file
+from ai.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
+from ai.gym_fin.model_params import dump_params_file
 
 class DummyEnv(Env):
 
