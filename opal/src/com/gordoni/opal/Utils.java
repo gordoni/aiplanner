@@ -1,6 +1,6 @@
 /*
  * AACalc - Asset Allocation Calculator
- * Copyright (C) 2009, 2011-2016 Gordon Irlam
+ * Copyright (C) 2009, 2011-2016, 2019 Gordon Irlam
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -28,7 +28,7 @@ public class Utils
                 String home_dir = System.getenv("OPAL_HOME");
 
                 if (home_dir == null)
-                        home_dir = System.getProperty("user.home") + "/aacalc/opal";
+                        home_dir = System.getProperty("user.home") + "/aiplanner/opal";
 
                 return home_dir;
         }

@@ -22,16 +22,16 @@ sudo apt install default-jre-headless default-jdk r-base gnuplot-nox
 sudo apt-get install gnuplot-qt
 
 # Obtaining the Java commons Math 3 library.
-cd aacalc/opal
+cd aiplanner/opal
 # In a web browser visit http://commons.apache.org/proper/commons-math/download_math.cgi and download commons-math3 tar.gz binary library.
 tar -zxf <path-to>/commons-math3-3.6.1-bin.tar.gz
 mkdir classes
 mv commons-math3-3.6.1/commons-math3-3.6.1.jar classes
 rm -r commons-math3-3.6.1/
 
-# If aacalc/opal/data hasn't been created (from setting up web component),
+# If aiplanner/opal/data hasn't been created (from setting up web component),
 # obtain the asset class returns, interest rate, and mortality data files:
-cd aacalc/opal
+cd aiplaner/opal
 curl https://www.gordoni.com/aacalc-data.tar.gz | tar -zxf -
 
 Setting up Systematic Investor Toolbox and R packages for performing MVO
@@ -59,12 +59,12 @@ q()
 # answer 'n' to save image
 
 # Using a web browser download: https://github.com/systematicinvestor/SIT/raw/master/sit.gz
-cp <path-to-download>/sit.gz aacalc/opal/
+cp <path-to-download>/sit.gz aiplanner/opal/
 
 Building Opal
 -------------
 
-cd aacalc/opal
+cd aiplanner/opal
 mkdir bin
 javac -d bin -cp 'classes/*' src/com/gordoni/opal/*.java
 jar cf classes/opal.jar -C bin .
@@ -72,7 +72,7 @@ jar cf classes/opal.jar -C bin .
 Running Opal
 ------------
 
-export OPAL_HOME=$HOME/aacalc/opal
+export OPAL_HOME=$HOME/aiplanner/opal
 java -ea -cp $OPAL_HOME/classes/'*' com.gordoni.opal.OPAL <option> ...
 
 Example:
@@ -89,7 +89,7 @@ options:
     Set variable var to value val.
     It is important to get quoting correct.
     E.g. to add small cap value asset class: -e "asset_classes=('stocks', 'bonds', 'sh')"
-    See aacalc/opal/src/com/gordoni/opal/Config.java for a list of variables and possible values.
+    See aiplanner/opal/src/com/gordoni/opal/Config.java for a list of variables and possible values.
     Note, not all combinations are valid, and the responsibility for sanity checking relies on the user.
  -c config_filename
     Read var=value lines from config_file, default opal-scenario.txt in current directory.
@@ -185,18 +185,18 @@ bug is fixed in patchlevel 4.
 Development
 -----------
 
-AACalc has a long history. First as a Monte Carlo PHP script, then as
-a SDP Python script for cleanliness, then as a Java program for
+Opal has a long history. First as a Monte Carlo PHP script, then as a
+SDP Python script for cleanliness, then as a Java program for
 performance. Some of the design decisions can be traced back to this
 history. E.g. most Java variables are in underscore lower case rather
 than camel case, an unusual indentation style, and increasing
 portfolio sizes being represented by decreasing bucket values.
 
-A lot of the complexity of AACalc is the result of it supporting a
-large number of experimental options which were added as it evolved.
+A lot of the complexity of Opal is the result of it supporting a large
+number of experimental options which were added as it evolved.
 
-A different way of implementing and structuring AACalc would be to use
-a generic SDP package, rather than the ad hoc asset allocation only
+A different way of implementing and structuring Opal would be to use a
+generic SDP package, rather than the ad hoc asset allocation only
 approach taken. Since this hasn't been done, it isn't known whether
 this would offer any advantages or disadvantages.
 
