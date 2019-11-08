@@ -30,7 +30,7 @@ validate () {
     $OPAL -c $AI_DIR/validation/opal-scenario4.txt -e "prefix='$MODEL_DIR/opal'" $ARGS 2>&1 | tee $MODEL_DIR/opal.log
 }
 
-for GAMMA in 1.5 3 5; do
+for GAMMA in 1.5 3 6; do
     validate gamma$GAMMA-age50-tax_free2e5 "-e utility_eta=$GAMMA -e start_tp=200000"
     validate gamma$GAMMA-age50-tax_free5e5 "-e utility_eta=$GAMMA -e start_tp=500000"
     validate gamma$GAMMA-age50-tax_free1e6 "-e utility_eta=$GAMMA -e start_tp=1000000"
