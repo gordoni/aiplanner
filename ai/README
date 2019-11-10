@@ -131,6 +131,13 @@ Create a cluster config file:
     cd ~/aiplanner/ai
     cp cluster-example.yaml cluster.yaml
     [edit] cluster.yaml
+        # Alter worker_nodes:InstanceType if desired.
+        # For maximum performance add --num-cpus=<num_cores> to
+        #     ray start in worker_start_ray_commands.
+        #     c5.4xlarge has 8 cores, but setting --num-cpus=10 is
+        #     probably better for playing around as typically train
+        #     10 models in parallel.
+        # Other changes as desired.
 
 Rather than have separate cluster head and worker nodes, we are going
 to have the AIPlanner host act as the head node. This allows the web
