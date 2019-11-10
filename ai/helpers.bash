@@ -259,7 +259,7 @@ train_args () {
     local GAMMA=$5
     local ARGS=$6
 
-    TARGS="--train-max-failures=20" # Recommended for long training runs.
+    TARGS="--train-max-failures=100" # Recommended for long training runs.
     if [ "$STAGE" = preretirement ]; then
         TARGS="$TARGS"
     elif [ "$STAGE" = retired ]; then
