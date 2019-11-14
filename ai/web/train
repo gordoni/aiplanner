@@ -19,19 +19,22 @@ cd ~/aiplanner-data/models.new
 
 PARALLEL=Jobs
 
-SPIAS_TYPE=nominal
 SAVESTEPS=2000000
 
 TRAINING=generic
 UNIT=single
+STAGES="preretirement retired"
+SPIAS_TYPES="none nominal"
 GAMMAS="1.5 3 6"
 
-for STAGE in preretirement retired; do
-    for SPIAS in none $SPIAS_TYPE; do
+for STAGE in $STAGES; do
+    for SPIAS in $SPIAS_TYPES; do
         for GAMMA in $GAMMAS; do
             TIMESTEPS=`timesteps $TRAINING $UNIT $STAGE $SPIAS $GAMMA`
             ARGS="--train-num-timesteps=$TIMESTEPS --train-save-frequency=$SAVESTEPS"
-            train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
+            if ! skip_model $TRAINING $UNIT $STAGE $SPIAS $GAMMA; then
+                train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
+            fi
         done
     done
 done

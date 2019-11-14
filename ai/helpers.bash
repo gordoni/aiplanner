@@ -474,3 +474,18 @@ timesteps () {
     echo "Unknown stage: $STAGE" >&2
     exit 1
 }
+
+skip_model () {
+
+    local TRAINING=$1
+    local UNIT=$2
+    local STAGE=$3
+    local SPIAS=$4
+    local GAMMA=$5
+
+    if [ $STAGE = retired -a \( $SPIAS != none -o `echo $GAMMA | awk '{print int($1)}'` -lt 6 \) ]; then
+        return 0
+    else
+        return 1
+    fi
+}

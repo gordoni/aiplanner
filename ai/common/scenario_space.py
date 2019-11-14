@@ -26,23 +26,33 @@ def scenario_space_update_params(model_params, control_params):
     if control_params['gammas'] == None:
         control_params['gammas'] = allowed_gammas
 
+def force_preretirement_model(stage, spias, gamma):
+
+    # Performance loss from using pre-retirement trained model in retirement is usually small, and it reduces the number of models we have to train.
+    # Performance loss is larger when no spias and gamma >= 6, so use a separately trained retirement model then.
+    return stage == 'retired' and (spias or gamma < 6)
+
 def scenario_space_model_filename(model_params):
 
-    spias = 'spias' if model_params['real_spias'] or model_params['nominal_spias'] else 'no_spias'
-    retired = 'retired' if model_params['age_start'] >= max(50, model_params['age_retirement_low']) else 'preretirement'
+    stage = 'retired' if model_params['age_start'] >= max(50, model_params['age_retirement_low']) else 'preretirement'
         # Retirement model is trained starting from age 50.
+    spias = model_params['real_spias'] or model_params['nominal_spias']
+    spias_str = 'spias' if spias else 'no_spias'
     assert model_params['gamma_low'] == model_params['gamma_high'], "Can't evaluate a gamma range."
     gamma = model_params['gamma_low']
     if int(gamma) == gamma:
         gamma = int(gamma)
     assert gamma in allowed_gammas, 'gamma values must be selected from ' + allowed_gammas
 
-    return 'aiplanner-' + retired + '-' + spias + '-gamma' + str(gamma) + '.tf'
+    if force_preretirement_model(stage, spias, gamma):
+        stage = 'preretirement'
+
+    return 'aiplanner-' + stage + '-' + spias_str + '-gamma' + str(gamma) + '.tf'
 
 def enumerate_model_params_api(gammas):
 
     return [({
-        'age_start': age,
+        'age_start': 20 if stage == 'preretirement' else 100,
         'age_retirement_low': 67,
         'age_retirement_high': 67,
         'stocks_price_low': 1,
@@ -52,5 +62,5 @@ def enumerate_model_params_api(gammas):
         'inflation_short_rate_type': 'current',
     }, [{
         'spias': spias,
-        'rra': gammas,
-    }]) for age in (20, 100) for spias in (False, True)]
+        'rra': [gamma for gamma in gammas if not force_preretirement_model(stage, spias, gamma)],
+    }]) for stage in ('preretirement', 'retired') for spias in (False, True) if not all((force_preretirement_model(stage, spias, gamma) for gamma in gammas))]
