@@ -929,11 +929,18 @@ class Fin:
             p_negative = 0
         delta_p_tax_deferred = self.p_tax_deferred - p_tax_deferred
 
-        retirement_contribution = self.taxes.contribution_limit(self.income_preretirement, self.age, self.have_401k, self.params.time_period) \
-            + self.taxes.contribution_limit(self.income_preretirement2, self.age2, self.have_401k2, self.params.time_period)
-        retirement_contribution = min(retirement_contribution, p_taxable)
-        p_taxable -= retirement_contribution
-        p_tax_deferred += retirement_contribution
+        if self.params.income_preretirement_taxable:
+            retirement_contribution = self.taxes.contribution_limit(self.income_preretirement, self.age, self.have_401k, self.params.time_period) \
+                + self.taxes.contribution_limit(self.income_preretirement2, self.age2, self.have_401k2, self.params.time_period)
+            retirement_contribution = min(retirement_contribution, p_taxable)
+            p_taxable -= retirement_contribution
+            p_tax_deferred += retirement_contribution
+        else:
+            retirement_contribution = 0
+            net_income_preretirement = self.income_preretirement + self.income_preretirement2 - self.consume_preretirement
+            net_income_preretirement = max(0, net_income_preretirement)
+            p_taxable -= net_income_preretirement
+            p_tax_free += net_income_preretirement
 
         if real_spias_fraction != None:
             real_spias_fraction *= self.params.time_period
