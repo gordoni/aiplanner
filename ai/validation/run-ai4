@@ -49,6 +49,12 @@ for STAGE in $STAGES; do
             ARGS="$SCENARIO_ARGS $EVALUATE_ARGS --ensemble"
             eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
             wait # Avoid exceeding head node's RAM.
+            if [ $STAGE = preretirement ]; then
+                # Retired evaluation using pre-retirement model.
+                FORCE_STAGE=preretirement
+                eval_scenarios $TRAINING $UNIT retired $SPIAS $GAMMA "$ARGS"
+                wait
+            fi
         done
     done
 done

@@ -414,12 +414,14 @@ eval_scenarios () {
         evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free5e5 "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=5e5"
         evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free1e6 "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=1e6"
         evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2e6"
-    elif [ $TRAINING = generic -a $STAGE = retired ]; then
-        evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_free2e5 "$EVAL_ARGS $ARGS --master-age-start=67 --master-p-tax-free=2e5"
-        evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_free5e5 "$EVAL_ARGS $ARGS --master-age-start=67 --master-p-tax-free=5e5"
-        evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-age-start=67 --master-p-tax-free=1e6"
-        evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=67 --master-p-tax-free=2e6"
-        evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_free5e6 "$EVAL_ARGS $ARGS --master-age-start=67 --master-p-tax-free=5e6"
+    fi
+    local MODEL_STAGE=${FORCE_STAGE:-$STAGE}
+    if [ $TRAINING = generic -a $STAGE = retired ]; then
+        evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_free2e5 "$EVAL_ARGS $ARGS --master-age-start=67 --master-p-tax-free=2e5"
+        evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_free5e5 "$EVAL_ARGS $ARGS --master-age-start=67 --master-p-tax-free=5e5"
+        evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_free1e6 "$EVAL_ARGS $ARGS --master-age-start=67 --master-p-tax-free=1e6"
+        evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_free2e6 "$EVAL_ARGS $ARGS --master-age-start=67 --master-p-tax-free=2e6"
+        evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_free5e6 "$EVAL_ARGS $ARGS --master-age-start=67 --master-p-tax-free=5e6"
     fi
 }
 
