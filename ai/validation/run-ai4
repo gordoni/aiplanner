@@ -48,7 +48,7 @@ for STAGE in $STAGES; do
         for GAMMA in $GAMMAS; do
             ARGS="$SCENARIO_ARGS $EVALUATE_ARGS --ensemble"
             eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
+            wait # Avoid exceeding head node's RAM.
         done
-        wait # Avoid exceeding head node's RAM.
     done
 done
