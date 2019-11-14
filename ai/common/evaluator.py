@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2019 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -18,6 +18,8 @@ from random import getstate, seed, setstate
 from statistics import mean, stdev, StatisticsError
 
 import numpy as np
+
+from scipy.signal import savgol_filter
 
 def weighted_percentiles(value_weights, pctls):
     if len(value_weights[0]) == 0:
@@ -92,7 +94,8 @@ def unpack_value_weights(value_weights):
 class Evaluator(object):
 
     def __init__(self, eval_envs, eval_seed, eval_num_timesteps, *,
-        remote_evaluators = None, render = False, eval_batch_monitor = False, num_trace_episodes = 0, pdf_buckets = 10):
+        remote_evaluators = None, render = False, eval_batch_monitor = False,
+        num_trace_episodes = 0, pdf_buckets = 100, pdf_raw_buckets = 10000, pdf_smoothing_window = 0.02):
 
         self.tstart = time.time()
 
@@ -104,6 +107,8 @@ class Evaluator(object):
         self.eval_batch_monitor = eval_batch_monitor # Unused.
         self.num_trace_episodes = num_trace_episodes
         self.pdf_buckets = pdf_buckets
+        self.pdf_raw_buckets = pdf_raw_buckets
+        self.pdf_smoothing_window = pdf_smoothing_window
 
         if self.remote_evaluators:
             self.eval_num_timesteps = ceil(self.eval_num_timesteps / len(self.remote_evaluators))
@@ -317,14 +322,14 @@ class Evaluator(object):
 
         if ce_max == 0:
             ce_max = 1
-        ce_step = max((ce_max - ce_min) / self.pdf_buckets, ce_max /  1000)
-        consume_pdf = self.pdf('consume', self.rewards, 0, ce_max, ce_step, utility.utility, 1 + env.params.consume_additional if env.sex2 != None else 1)
+        ce_step = max((ce_max - ce_min) / self.pdf_raw_buckets, ce_max / 100000)
+        consume_pdf = self.pdf('consume', self.rewards, 0, ce_min, ce_max, ce_step, utility.utility, 1 + env.params.consume_additional if env.sex2 != None else 1)
 
         estate_max, = weighted_percentiles(self.estates, [98])
         if estate_max == 0:
             estate_max = 1
-        estate_step = estate_max / self.pdf_buckets
-        estate_pdf = self.pdf('estate', self.estates, 0, estate_max, estate_step)
+        estate_step = estate_max / self.pdf_raw_buckets
+        estate_pdf = self.pdf('estate', self.estates, 0, 0, estate_max, estate_step)
 
         couple = env.sex2 != None
         if couple:
@@ -358,29 +363,32 @@ class Evaluator(object):
             'paths': self.trace,
         }
 
-    def pdf(self, what, value_weights, low, high, step, f = lambda x: x, multiplier = 1):
+    def pdf(self, what, value_weights, de_minus_low, low, high, step, f = lambda x: x, multiplier = 1):
 
-        pdf_bucket_weights = []
+        buckets = ceil((high - de_minus_low) / step)
+        polyorder = 3
+        half_window_size = max(2, self.pdf_smoothing_window * (high - low) / step // 2) # 2 * half_window_size + 1 must exceed polyorder.
+        bucket_weights = []
         w_tot = 0
-        c_ceil = low
+        c_ceil = de_minus_low
         u_ceil = f(c_ceil)
         u_floor = u_ceil
         for r, w in zip(*value_weights):
-            while r >= u_ceil:
-                if c_ceil >= high * (1 - 1e-15):
-                    break
-                pdf_bucket_weights.append(0)
+            while r >= u_ceil and len(bucket_weights) < buckets + half_window_size:
+                bucket_weights.append(0)
                 u_floor = u_ceil
                 c_ceil += step
                 u_ceil = f(c_ceil)
             if u_floor <= r < u_ceil:
-                pdf_bucket_weights[-1] += w
-            w_tot += w
+                bucket_weights[-1] += w
+        bucket_weights = savgol_filter(bucket_weights, half_window_size * 2 + 1, polyorder, mode = 'constant')
+        bucket_weights = tuple(max(0, bucket_weights[round(bucket / self.pdf_buckets * buckets)]) for bucket in range(self.pdf_buckets))
+        w_tot = sum(bucket_weights)
         pdf = {what: [], 'weight': []}
-        for bucket, w in enumerate(pdf_bucket_weights):
-            unit_c = step * (bucket + 0.5) * multiplier
+        for bucket in range(self.pdf_buckets):
+            unit_c = (de_minus_low + step * buckets / self.pdf_buckets * (bucket + 0.5)) * multiplier
             try:
-                w_ratio = w / w_tot
+                w_ratio = bucket_weights[bucket] / w_tot
             except ZeroDivisionError:
                 w_ratio = float('nan')
             pdf[what].append(unit_c)

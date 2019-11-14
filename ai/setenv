@@ -24,3 +24,9 @@ export OMP_NUM_THREADS=1
     # Most processes running in parallel show up as suspended unless have a single OMP thread, not sure why.
 export KMP_AFFINITY=none
     # Binding threads to physical resources can be problematic when runnning multiple jobs in parallel.
+
+# For Ray 0.7.3 on Amazon Deep Learning AMI (Ubuntu) Version 21.2 (Tensorflow 1.12)
+# eval_model.py fails when savgol_filter() calls linear algebra package,
+# with error "OMP: Error #15: Initializing libiomp5.so, but found libiomp5.so already initialized."
+# An unsupported work around is as follow:
+export KMP_DUPLICATE_LIB_OK=TRUE

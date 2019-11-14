@@ -98,6 +98,7 @@ class InferEvaluateDaemon:
             '--num-environment', str(self.args.num_environments),
             '--num-trace-episodes', str(self.args.num_trace_episodes),
             '--pdf-buckets', str(self.args.pdf_buckets),
+            '--pdf-smoothing-window', str(self.args.pdf_smoothing_window),
         ]
         for gamma in self.gammas:
             cmd += ['--gamma', str(gamma)]
@@ -694,7 +695,9 @@ def main():
     parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for a single model evaluation. Speeds up tensorflow.
     parser.add_argument('--num-trace-episodes', type = int, default = 5) # Default number of sample traces to generate.
     parser.add_argument('--num-trace-episodes-max', type = int, default = 10000)
-    parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
+    parser.add_argument('--pdf-buckets', type = int, default = 100) # Number of non de minus buckets to use in computing probability density distributions.
+    parser.add_argument('--pdf-smoothing-window', type = float, default = 0.1) # Width of smoothing window to use in computing probability density distributions.
+        # Larger than eval_model.py default due to smaller eval_num_timesteps.
 
     # HTTP subscribe options.
     parser.add_argument('--notify-email', default = 'notify@aiplanner.com')

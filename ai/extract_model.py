@@ -18,7 +18,6 @@ from baselines.common import boolean_flag
 from baselines.common.misc_util import set_global_seeds
 
 from ai.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
-from ai.common.evaluator import Evaluator
 from ai.common.tf_util import TFRunner
 from ai.gym_fin.asset_allocation import AssetAllocation
 from ai.gym_fin.model_params import load_params_file

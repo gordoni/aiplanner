@@ -292,7 +292,7 @@ runner_cache = {}
 def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal, opal_file, redis_address, checkpoint_name,
     evaluate, warm_cache, eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
     num_cpu, model, default_object_id, train_dirs, search_consume_initial_around, out,
-    aid, num_workers, num_environments, num_trace_episodes, pdf_buckets):
+    aid, num_workers, num_environments, num_trace_episodes, pdf_buckets, pdf_smoothing_window):
 
     eval_seed += 1000000 # Use a different seed than might have been used during training.
     #set_global_seeds(eval_seed) # Not needed for Ray.
@@ -396,7 +396,8 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
             envs.append(make_fin_env(**eval_model_params, direct_action = not model))
 
         evaluator = Evaluator(envs, eval_seed, eval_num_timesteps,
-            remote_evaluators = remote_evaluators, render = eval_render, num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets)
+            remote_evaluators = remote_evaluators, render = eval_render,
+            num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets, pdf_smoothing_window = pdf_smoothing_window)
 
         def pi(obss):
 
@@ -577,7 +578,8 @@ def main():
     parser.add_argument('--num-workers', type = int, default = 1) # Number of remote processes for Ray evaluation. Zero for local evaluation.
     parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for a single model. Speeds up tensorflow.
     parser.add_argument('--num-trace-episodes', type = int, default = 5) # Number of sample traces to generate.
-    parser.add_argument('--pdf-buckets', type = int, default = 20) # Number of non de minus buckets to use in computing consume probability density distribution.
+    parser.add_argument('--pdf-buckets', type = int, default = 100) # Number of non de minus buckets to use in computing probability density distributions.
+    parser.add_argument('--pdf-smoothing-window', type = float, default = 0.02) # Width of smoothing window to use in computing probability density distributions.
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, dump = False)
     if args['stdin']:
         args['daemon'] = True
