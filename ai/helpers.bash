@@ -20,7 +20,10 @@ PARALLEL=${PARALLEL:-True}
 # "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
 RAY_CLUSTER=${RAY_CLUSTER:-$AI_DIR/cluster.yaml}
 RAY_AUTOSCALER=${RAY_AUTOSCALER:-False} # Set to "True" to perform training with the Ray autoscaler enabled.
-RAY_AUTOSCALER_USE_HEAD=${RAY_AUTOSCALER_USE_HEAD:-False} # Set to True to make use of the head node or False to minimize computation on the head node.
+RAY_AUTOSCALER_USE_HEAD=${RAY_AUTOSCALER_USE_HEAD:-Minimal}
+    # "False": Head node will not be used as a worker. As a side effect a worker node will thus always be running.
+    # "Minimal": Head node will be used for a single cpu worker.
+    # "True": Head node will be used for possibly multiple cpu workers.
 RAY_REDIS_ADDRESS=${RAY_REDIS_ADDRESS:-localhost:6379}
 SEED_START=${SEED_START:-0}
 SEEDS=${SEEDS:-10}
@@ -46,7 +49,7 @@ start_ray_if_needed() {
         local ARGS
         if [ $RAY_AUTOSCALER = True ]; then
             ARGS="--autoscaling-config=$RAY_CLUSTER"
-            if [ $RAY_AUTOSCALER_USE_HEAD = False ]; then
+            if [ $RAY_AUTOSCALER_USE_HEAD != True ]; then
                 ARGS="$ARGS --num-cpus=1 --num-gpus=0"
                     # --num-cpus=0 results in a ray.tune.run_experiments() error.
             fi
@@ -54,7 +57,14 @@ start_ray_if_needed() {
             ARGS=
         fi
 
-        (ulimit -n 65536; nohup ray start --head --redis-port=$PORT $ARGS > /tmp/ray.out 2>&1)
+        (
+            ulimit -n 65536
+            nohup ray start --head --redis-port=$PORT $ARGS
+            if [ $RAY_AUTOSCALER = True -a $RAY_AUTOSCALER_USE_HEAD = False ]; then
+                # Block use of head node for a worker because it runs slower due to also running Ray.
+                nohup $AI_DIR/ray_sleeper $RAY_REDIS_ADDRESS &
+            fi
+        ) > /tmp/ray.out 2>&1
 
     fi
 }

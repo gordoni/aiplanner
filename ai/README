@@ -318,6 +318,19 @@ during training:
 
     export RAY_AUTOSCALER=True
 
+You can also specify:
+
+    export RAY_AUTOSCALER_USE_HEAD=False
+
+This will prevent running any of the training on the head node. The
+reason you may want to do this is the head node will likely be slower
+than the worker nodes because it is also running the Ray monitor
+process. This slows the training of multiple neural networks in
+parallel. The reason you may not want to do this is if you do it there
+will then always be at least one worker node running, even when Ray is
+otherwise idle. This can increase the financial cost of the resources
+used.
+
 Fit the equity volatility model
 -------------------------------
 
