@@ -3,15 +3,15 @@ AIPlanner - Deep Reinforcement Learning Financial Planner.
 Server requirements
 -------------------
 
-AIPLanner runs well in production on an 2 core 4 thread 16G RAM Amazon
+AIPlanner runs well in production on an 2 core 4 thread 16G RAM Amazon
 m5.xlarge instance (ideally want 3 cores and at least 16G of
-RAM). Training the neural network requires running 1 or 2 c5.24xlarge
-spot instances for about 3 days. The us-east-2 region currently
+RAM). Training the neural network requires running around 10 c5.4xlarge
+spot instances for 2-3 days. The us-east-2 region currently
 appears the cheapest region for performing this training work.
 
-For development a much smaller c5.large, or even a t3.small instance,
+For development a much smaller m5.large, or even a t3.small instance,
 can often be used, provided in the first case a Ray compute cluster is
-configured or in the second case the SEEDS=1 environment variable is
+configured, or in the second case the SEEDS=1 environment variable is
 set and the --tran-seeds=1 flag is passed to web/server.py .
 
 Tensorflow
@@ -94,7 +94,8 @@ Hack Ray to use our version of RLlib, not the default version:
 Note, you may need to disable this link if upgrading Ray to prevent
 pip clobbering the repository.
 
-Install required components for the Angular website:
+If plan to deploy the web UI then install the required components for
+the Angular website:
 
     [ Get latest Node.js per https://nodejs.org/en/download/ ]
     cd ~
@@ -353,9 +354,11 @@ fit it yourself perform the following steps.
 Training the generic nueral network models
 ------------------------------------------
 
-Training the neural network models (will take approximately 3 days on
-two InstanceType c5.24xlarge instances with Ray started with
---num-cpus=60; edit cluster.yaml accordingly):
+Training the neural network models (will take 2-3 days on around 10
+InstanceType c5.4xlarge instances with Ray started with --num-cpus=8;
+edit cluster.yaml accordingly; many smallish instances are preferable
+to a few very large instances as Amazon seems more likely to reclaim
+very large spot instances slowing the training process):
 
     cd ~/aiplanner/ai/web
     nohup ./train > /tmp/train.out &
@@ -374,7 +377,7 @@ The models should then be installed:
 Generating required assets (images)
 -----------------------------------
 
-Generate the images required for the website:
+Generate the images required for the UI website:
 
     cd ~/aiplanner/ai/angular/src/assets.generate
     ./run
@@ -411,8 +414,8 @@ Install the website:
     cd ~/aiplanner/ai/angular
     ./install
 
-Set up the website
-------------------
+Set up the UI website
+---------------------
 
     sudo apt install apache2
     sudo a2enmod ssl proxy proxy_http
@@ -529,12 +532,12 @@ result indicates a problem.
 Development
 -----------
 
-The model server has three functions:
+The api model server has three functions:
     - respond to the Angular server proxying to it to handle HTTP /api requests
     - purge old results from the directory ~/aiplanner-data/results
     - respond to HTTP /healthcheck requests
 
-The model server can be run in development as follows:
+The api model server can be run in development as follows:
 
     cd ~/aiplanner/ai/web
     # First stop any production apiserver
