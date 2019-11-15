@@ -74,7 +74,7 @@ def healthcheck(request):
     premium1, premium2, yield_curve_date = match('^.*Actuarially fair premium:.*?(\d+),(\d+).*?Yield curve date: (\d\d\d\d-\d\d).*$', page, DOTALL).groups()
     assert(100000 < int(premium1 + premium2) < 200000)
     quote = datetime.strptime(yield_curve_date, '%Y-%m').date()
-    assert(0 <= (today - quote).days <= 80)
+    assert(0 <= (today - quote).days <= 100)
 
     # Asset allocation.
     params = Alloc().default_alloc_params()
