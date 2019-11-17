@@ -372,7 +372,7 @@ class Evaluator(object):
             pdf[what].append(0)
             pdf['weight'].append(0)
             return pdf
-        polyorder = 3
+        polyorder = 4
         half_window_size = max(2, self.pdf_smoothing_window * (high - low) / step // 2) # 2 * half_window_size + 1 must exceed polyorder.
         bucket_weights = []
         w_tot = 0
