@@ -273,7 +273,7 @@ train_args () {
     if [ "$STAGE" = preretirement ]; then
         TARGS="$TARGS"
     elif [ "$STAGE" = retired ]; then
-        TARGS="$TARGS --master-age-start=50 --master-age-retirement=0 --master-p-weighted-high=1e7"
+        TARGS="$TARGS --master-age-start=50 --master-age-retirement=0 --master-p-weighted-low=1e4 --master-p-weighted-high=1e7"
     else
         echo "Unknown stage: $STAGE" >&2
         exit 1
