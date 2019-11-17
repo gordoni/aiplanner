@@ -27,6 +27,13 @@ master_returns_standard_error = False
 
 master_tax = True # Validation wealth is non-taxable, but train with taxable model to incorporate impact of tax model.
 
+master_p_taxable_iid_bonds = 0
+train_p_taxable_iid_bonds_weight_low = 0
+train_p_taxable_iid_bonds_weight_high = 20
+train_p_taxable_iid_bonds_basis_fraction_low = 0.7
+train_p_taxable_iid_bonds_basis_fraction_high = 1.1
+eval_p_taxable_iid_bonds_basis_fraction = 1
+
 # Real value of taxable basis decreases 2% per year due to inflation. Should not matter for validation.
 master_static_bonds = True
 master_fixed_real_bonds_rate = 0.01
