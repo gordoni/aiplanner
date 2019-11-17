@@ -365,7 +365,13 @@ class Evaluator(object):
 
     def pdf(self, what, value_weights, de_minus_low, low, high, step, f = lambda x: x, multiplier = 1):
 
-        buckets = ceil((high - de_minus_low) / step)
+        pdf = {what: [], 'weight': []}
+        try:
+            buckets = ceil((high - de_minus_low) / step)
+        except ValueError:
+            pdf[what].append(0)
+            pdf['weight'].append(0)
+            return pdf
         polyorder = 3
         half_window_size = max(2, self.pdf_smoothing_window * (high - low) / step // 2) # 2 * half_window_size + 1 must exceed polyorder.
         bucket_weights = []
@@ -384,7 +390,6 @@ class Evaluator(object):
         bucket_weights = savgol_filter(bucket_weights, half_window_size * 2 + 1, polyorder, mode = 'constant')
         bucket_weights = tuple(max(0, bucket_weights[round(bucket / self.pdf_buckets * buckets)]) for bucket in range(self.pdf_buckets))
         w_tot = sum(bucket_weights)
-        pdf = {what: [], 'weight': []}
         for bucket in range(self.pdf_buckets):
             unit_c = (de_minus_low + step * buckets / self.pdf_buckets * (bucket + 0.5)) * multiplier
             try:
