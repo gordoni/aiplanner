@@ -28,8 +28,8 @@ asset_classes = ('synthetic', 'synthetic2')
 # See justification in aiplanner-scenario.txt .
 synthetic_ret = 0.065
 synthetic_vol = 0.174
-synthetic2_ret = 0.010 # Chosen to match 15 year nominal bonds in the present era.
-synthetic2_vol = 0.110
+synthetic2_ret = 0.010 # Chosen to match 15 year real bonds in the present era.
+synthetic2_vol = 0.000 # No volatility for now. Bonds display reversion to the mean so adding in measured volatility would be an exaggeration.
 
 # Produce 1000 synthetic samples. Increasing beyond this doesn't effect generated CE.
 generate_start_year = 1
