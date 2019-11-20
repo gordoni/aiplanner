@@ -35,8 +35,8 @@ GAMMAS="1.5 3 6"
 for STAGE in $STAGES; do
     for SPIAS in $SPIAS_TYPES; do
         for GAMMA in $GAMMAS; do
-            TIMESTEPS=`timesteps $TRAINING $UNIT $STAGE $SPIAS $GAMMA`
-            ARGS="$SCENARIO_ARGS $TRAINING_ARGS --train-num-timesteps=$TIMESTEPS --train-save-frequency=$SAVESTEPS"
+            ARGS=`timesteps $TRAINING $UNIT $STAGE $SPIAS $GAMMA`
+            ARGS="$SCENARIO_ARGS $TRAINING_ARGS $ARGS --train-save-frequency=$SAVESTEPS"
             train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
         done
     done
