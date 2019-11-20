@@ -16,7 +16,7 @@ from glob import glob
 from json import dumps, loads
 from math import ceil, exp, isnan, sqrt
 from os import chmod, devnull, environ, getpriority, mkdir, PRIO_PROCESS, setpriority
-from os.path import exists
+from os.path import basename, exists, normpath
 from shlex import split
 from subprocess import CalledProcessError, run
 from sys import argv, stderr, stdin, stdout
@@ -78,7 +78,7 @@ def pi_opal(opal_data, env, obs):
     return consume_fraction, stocks
 
 def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, stdin,
-    merton, samuelson, annuitize, opal, models_dir, evaluate, warm_cache, gamma, train_seeds, ensemble, nice,
+    merton, samuelson, annuitize, opal, models_dir, models_adjust, evaluate, warm_cache, gamma, train_seeds, ensemble, nice,
     train_seed, model_dir, result_dir, aid, num_environments, permissive_api = False, **kwargs):
 
     priority = getpriority(PRIO_PROCESS, 0)
@@ -172,8 +172,30 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                         assert g in gamma, 'Unsupported gamma value: ' + str(g)
                         model_params['gamma_low'] = model_params['gamma_high'] = g
 
-                    if models_dir != None:
-                        model_dir = models_dir + '/' + scenario_space_model_filename(model_params)
+                    if models_dir == None:
+                        model_filename = basename(normpath(model_dir))
+                    else:
+                        model_filename = scenario_space_model_filename(model_params)
+                        model_dir = models_dir + '/' + model_filename
+
+                    if models_adjust:
+                        adjust_json = open(models_adjust).read()
+                        adjust = loads(adjust_json)
+                        try:
+                            adjust_model = adjust[model_filename]
+                        except KeyError:
+                            adjust_model = {}
+                        if adjust_model:
+                            if not daemon:
+                                print('Adjustments:')
+                            for param in sorted(adjust_model.keys()):
+                                if param in model_params:
+                                    if not daemon:
+                                        print('    ' + param + ' = ' + str(adjust_model[param]))
+                                    model_params[param] = adjust_model[param]
+                                else:
+                                    assert False, 'Unknown adjustment: ' + param
+
                     train_dirs = [model_dir + '/seed_' + str(train_dir_seed + j) for j in range(train_seeds if ensemble else 1)]
 
                     object_ids, evaluator, initial_results = eval_model(model_params, daemon = daemon,
@@ -563,6 +585,7 @@ def main():
     parser.add_argument('--opal-file', default = 'opal-linear.csv')
     parser.add_argument('--redis-address')
     parser.add_argument('--models-dir')
+    parser.add_argument('--models-adjust') # JSON file containing adjustments to apply to each model.
     parser.add_argument('--gamma', action = 'append', type = float, default = [])
     parser.add_argument('--train-seeds', type = int, default = 1) # Number of seeds to evaluate.
     boolean_flag(parser, 'ensemble', default = False)

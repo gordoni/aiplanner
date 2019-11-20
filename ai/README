@@ -363,9 +363,25 @@ very large spot instances slowing the training process):
     cd ~/aiplanner/ai/web
     nohup ./train > /tmp/train.out &
 
-Training logs will be written to /tmp/train* .
+Training logs will be written to /tmp/train* . Progress can be
+monitored using a command similar to:
+
+    tail -f /tmp/train* | grep seed
+
+Note that any AIPlanner warnings from a single model's training get
+duplicated across all log files.
 
 The trained models will be placed in ~/aiplanner-data/models.new .
+
+By default the trained models will be served without any adjustments
+for model biases. If you know the model is biased it is possible to
+apply corrections when serving that attempt to overcome the model
+bias:
+
+    [edit] ~/aiplanner-data/models.new/models-adjust.json
+
+See ~/aiplanner/ai/models-adjust-example.json for typical adjustments
+to apply, or perhaps simply copy this file to the above.
 
 The models should then be installed:
 

@@ -94,6 +94,7 @@ class InferEvaluateDaemon:
             ('--' if self.evaluate else '--no-') + 'evaluate',
             ('--' if self.args.warm_cache else '--no-') + 'warm-cache',
             '-c', models_dir + '/base-scenario.txt',
+            '--models-adjust', models_dir + '/models-adjust.json',
             '--eval-num-timesteps', str(self.args.eval_num_timesteps),
             '--num-environment', str(self.args.num_environments),
             '--num-trace-episodes', str(self.args.num_trace_episodes),
