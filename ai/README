@@ -1,18 +1,4 @@
-AIPlanner - Deep Reinforcement Learning Financial Planner.
-
-Server requirements
--------------------
-
-AIPlanner runs well in production on an 2 core 4 thread 16G RAM Amazon
-m5.xlarge instance (ideally want 3 cores and at least 16G of
-RAM). Training the neural network requires running around 10 c5.4xlarge
-spot instances for 2-3 days. The us-east-2 region currently
-appears the cheapest region for performing this training work.
-
-For development a much smaller m5.large, or even a t3.small instance,
-can often be used, provided in the first case a Ray compute cluster is
-configured, or in the second case the SEEDS=1 environment variable is
-set and the --tran-seeds=1 flag is passed to web/server.py .
+<AIPlanner - Deep Reinforcement Learning Financial Planner.
 
 Tensorflow
 ----------
@@ -34,6 +20,29 @@ pre-installed.
 For this instance 150G of storage is recommended. The default of 75G
 only leaves 5G for AIPlanner.
 
+Server requirements
+-------------------
+
+AIPlanner runs well in production on an 2 core 4 thread 16G RAM Amazon
+m5.xlarge instance (ideally want 3 cores and at least 16G of
+RAM). Training the neural network requires running around 10 c5.4xlarge
+spot instances for 2-3 days. The us-east-2 region currently
+appears the cheapest region for performing this training work.
+
+For development a much smaller m5.large, or even a t3.small instance,
+can often be used, provided in the first case a Ray compute cluster is
+configured, or in the second case the SEEDS=1 environment variable is
+set and the --tran-seeds=1 flag is passed to web/server.py .
+
+For deployment on the Internet the machine will need to have ports 80
+and 443 open (http and https), along with 20 (ssh) for administrative
+access. An elastic IP will need to be associated with the machine.
+And www.<thisdomain> and <thisdomain> should be CNAMES/A records for
+the elastic IP's public DNS name/address respectively.
+
+For deployment on an Intranet only ports 443 and 20 are required.
+Creating a CNAME for the private DNS name is probably also desirable.
+
 Set up hostname
 ---------------
 
@@ -51,7 +60,8 @@ Obtain the source
 -----------------
 
 Set up an EC2 instance with tensorflow, ssh in to it, and obtain the
-sources:
+sources (you will need to use the -A flag with ssh if you are pulling
+from a private repository):
 
     cd ~
     git clone <aiplanner-repository> aiplanner
@@ -354,6 +364,9 @@ fit it yourself perform the following steps.
 Training the generic nueral network models
 ------------------------------------------
 
+Unless you plan on serving pre-trained neural network models you will
+need to train the neural network models.
+
 Training the neural network models (will take 2-3 days on around 10
 InstanceType c5.4xlarge instances with Ray started with --num-cpus=8;
 edit cluster.yaml accordingly; many smallish instances are preferable
@@ -390,16 +403,19 @@ The models should then be installed:
     mv models models.old # Save prior models if any as a backup.
     mv models.new models
 
-Generating required assets (images)
------------------------------------
+Generating required assets for the UI website (images)
+------------------------------------------------------
+
+Both of the UI website sections can be skipped if you only wish to run
+the AIPlanner API server.
 
 Generate the images required for the UI website:
 
     cd ~/aiplanner/ai/angular/src/assets.generate
     ./run
 
-Build the website files
------------------------
+Build the UI website files
+--------------------------
 
 Angular provides a single webpage app for interacting with the models.
 
@@ -430,38 +446,55 @@ Install the website:
     cd ~/aiplanner/ai/angular
     ./install
 
-Set up the UI website
+Set up the web server
 ---------------------
+
+Even if only running the API server, you may wish to set up a
+webserver. In this case the webserver will be responsible for proxying
+/api TLS requests on port 443 to the API server.  If you don't intend
+to use TLS internally for talking to the API server you can skip this
+section and have applications connect to the API server directly
+withoout encryption, either on the default port (3000), or the http
+port (80) by adding the argument "--port 80" when installing the
+aiplanner-apiserver.service file later.
 
     sudo apt install apache2
     sudo a2enmod ssl proxy proxy_http
-    Ubuntu 18.04:
-        sudo apt install python3-certbot-apache
-    Ubuntu 16.04:
-        sudo add-apt-repository ppa:certbot/certbot
-        sudo apt update
-        sudo apt install python3-certbot-apache
-    sudo certbot --apache certonly
-    Email: <you@yourdomain>
-    If serving for www.<thisdomain>
-        Domain: <thisdomain>
-    If serving for a particular host:
-        Domain: <thishost.thisdomain>
+    service apache2 restart
 
     Select appropriate <site-ssl.conf> file:
         sudo cp aiplanner/ai/web/sites-examples/<sample-site-ssl.conf> /etc/apache2/sites-available/<site-ssl.conf>
     Edit site.conf appropriately:
         sudo <edit> /etc/apache2/sites-available/<site-ssl.conf>
-    sudo a2ensite <site-ssl>
-    sudo service apache2 reload
 
     Repeat installing <site.conf> or <site-ssl.conf> for additional
     sites to be served if desired, so that http://www.<site>/,
-    http://<site>/, and https://<site>/ all point to
+    http://<site>/, and https://<site>/ will all point to
     https://www.<site>/.
 
-Configure systemd to start the services upon booting
-----------------------------------------------------
+    Enable each plain <site.conf> (but not the <site-ssl.conf>s):
+        sudo a2ensite <site>
+
+    Ubuntu 18.04:
+        sudo apt install python3-certbot-apache
+    Ubuntu 16.04:
+        sudo add-apt-repository ppa:certbot/certbot
+        sudo apt update
+            # Ignore the nvidia package errors.
+        sudo apt install python3-certbot-apache
+    sudo certbot --apache certonly
+    Email: <you@yourdomain>
+    Domains: 
+        If serving for www.<thisdomain> then typically: <thisdomain>, www.<thisdomain>
+        If serving for a particular host: <thishost.thisdomain>
+
+    Enable each <site-ssl.conf>:
+        sudo a2ensite <site-ssl>
+
+    sudo service apache2 reload
+
+Configure systemd to start the api server upon booting
+------------------------------------------------------
 
 Set up the systemd config:
 
@@ -470,6 +503,7 @@ Set up the systemd config:
     cp aiplanner-apiserver.service ~/.config/systemd/user/
     [edit] ~/.config/systemd/user/aiplanner-apiserver.service
         # Change admin email you@yourdomain to <you@yourdomain>
+        # Possibly also add "--port 80" if running the api server within an Intranet
     systemctl --user enable aiplanner-apiserver
 
 Start the service up:
@@ -495,10 +529,11 @@ MAILTO=<you@yourdomain>
 Installing an outbound mailer
 -----------------------------
 
-A mail transfer agent is required to provide subscription
-notifications to the administrator.
+A mail transfer agent is only required to provide sign up subscription
+notifications generated by users of the web UI to the administrator.
 
     sudo apt install postfix
+        # Any choices here are fine as we are about to reconfigure.
     sudo dpkg-reconfigure postfix
         Config type: Internet Site
         Site: <thisdomain>
@@ -522,8 +557,11 @@ it don't end up in the spam folder. Something like:
     Value: v=spf1 ip4:18.206.41.110 ~all
     TTL: 3600
 
-You should also add a MX record so the server can receive and forward
-bounce messages addressed to root. Something like:
+Inbound mail flow isn't really required, but if you wish to enable
+it follow the remaining steps.
+
+You can add a MX record so the server can receive and forward bounce
+messages addressed to root. Something like:
 
     Type: MX
     Host: @
@@ -533,14 +571,14 @@ bounce messages addressed to root. Something like:
 
 Consult your domain provider for details of how to do these steps.
 
-Finally you may wish to create a firewall rule to allow inbound SMTP
+Finally you can create a firewall rule to allow inbound SMTP
 connections on port 25. Consult your service provider for details.
 
 Performing site health checks
 -----------------------------
 
 Uptime robot, or some other serivce should be used to perform periodic
-HTTP GET /healthcheck requests to port 3000 of the production server.
+HTTPS GET /healthcheck requests to port 443 of the production server.
 After about 10 seconds, the string "OK" should be returned as the body
 to indicate the system appears to be operating normally, any other
 result indicates a problem.
