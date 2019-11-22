@@ -31,7 +31,7 @@ for STAGE in $STAGES; do
     for SPIAS in $SPIAS_TYPES; do
         for GAMMA in $GAMMAS; do
             TIMESTEPS=`timesteps $TRAINING $UNIT $STAGE $SPIAS $GAMMA`
-            ARGS="--train-num-timesteps=$TIMESTEPS --train-save-frequency=$SAVESTEPS"
+            ARGS="$TIMESTEPS --train-save-frequency=$SAVESTEPS"
             if ! skip_model $TRAINING $UNIT $STAGE $SPIAS $GAMMA; then
                 train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
             fi
@@ -47,4 +47,5 @@ for MODEL_DIR in aiplanner-*.tf; do
 done
 
 cp $BASE_SCENARIO ./base-scenario.txt
+echo '{}' > ./models-adjust.json
 cp $AI_DIR/web/market-data.json ./

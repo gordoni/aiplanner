@@ -238,6 +238,7 @@ class Fin:
             self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
 
         self.bonds = BondsSet(fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate,
+            real_bonds_adjust = self.params.real_bonds_adjust, inflation_adjust = self.params.inflation_adjust, nominal_bonds_adjust = self.params.nominal_bonds_adjust,
             static_bonds = self.params.static_bonds, date_str = self.params.bonds_date, date_str_low = self.params.bonds_date_start,
             real_r0_type = self.params.real_short_rate_type, inflation_r0_type = self.params.inflation_short_rate_type)
         self.bonds.update(

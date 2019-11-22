@@ -300,7 +300,7 @@ class RealBonds(Bonds):
 
         '''
 
-        if next:
+        if next and not self.static_bonds:
             return self.oup.next_x
         else:
             return self.oup.x
@@ -323,11 +323,12 @@ class RealBonds(Bonds):
 
 class YieldCurveSum:
 
-    def __init__(self, yield_curve1, yield_curve2, *, weight = 1):
+    def __init__(self, yield_curve1, yield_curve2, *, weight = 1, offset = 0):
 
         self.yield_curve1 = yield_curve1
         self.yield_curve2 = yield_curve2
         self.weight = weight
+        self.offset = offset
 
         self.interest_rate = self.yield_curve1.interest_rate
         self.date = yield_curve1.date
@@ -335,17 +336,17 @@ class YieldCurveSum:
 
     def spot(self, y):
 
-        return self.yield_curve1.spot(y) + self.weight * self.yield_curve2.spot(y)
+        return self.yield_curve1.spot(y) + self.weight * self.yield_curve2.spot(y) + self.offset
 
     def forward(self, y):
 
-        return self.yield_curve1.forward(y) + self.weight * self.yield_curve2.forward(y)
+        return self.yield_curve1.forward(y) + self.weight * self.yield_curve2.forward(y) + self.offset
 
     def discount_rate(self, y):
 
-        return self.yield_curve1.discount_rate(y) * self.yield_curve2.discount_rate(y) ** self.weight
+        return self.yield_curve1.discount_rate(y) * self.yield_curve2.discount_rate(y) ** self.weight * exp(self.offset)
 
-class BreakEvenInflation(Bonds):
+class Inflation(Bonds):
 
     def __init__(self, real_bonds, *, inflation_a = 0.13, inflation_sigma = 0.014, bond_a = 0.13, bond_sigma = 0.014, model_bond_volatility = True,
         nominal_yield_curve, inflation_risk_premium = 0, real_liquidity_premium = 0, r0_type = 'current', r0 = None, standard_error = 0, static_bonds = False,
@@ -403,9 +404,8 @@ class BreakEvenInflation(Bonds):
             a = inflation_a
             sigma = inflation_sigma
 
-        self.adjust_rate = self.real_liquidity_premium - self.inflation_risk_premium
-
-        deflated_yield_curve = YieldCurveSum(nominal_yield_curve, real_bonds.yield_curve, weight = -1)
+        self.nominal_premium = self.inflation_risk_premium - self.real_liquidity_premium
+        deflated_yield_curve = YieldCurveSum(nominal_yield_curve, real_bonds.yield_curve, weight = -1, offset = - self.nominal_premium)
 
         self.interest_rate = 'inflation'
 
@@ -435,7 +435,7 @@ class BreakEvenInflation(Bonds):
 
         '''
 
-        if next:
+        if next and not self.static_bonds:
             t = self.t + self.time_period
             x = self.oup.next_x
         else:
@@ -458,7 +458,7 @@ class BreakEvenInflation(Bonds):
 
         #  https://en.wikipedia.org/wiki/Hull%E2%80%93White_model P(0, T).
         B = (1 - exp(- self.inflation_a * t)) / self.inflation_a
-        P = exp(self._log_p(t) + B * (self.sir_init - sir) - self.adjust_rate / self.time_period)
+        P = exp(self._log_p(t) + B * (self.sir_init - sir))
 
         return P
 
@@ -510,15 +510,17 @@ inflation_rate = {
 
 class NominalBonds(Bonds):
 
-    def __init__(self, real_bonds, inflation, *, time_period = 1):
+    def __init__(self, real_bonds, inflation, *, real_bonds_adjust = 0, nominal_bonds_adjust = 0, time_period = 1):
 
         self.real_bonds = real_bonds
         self.inflation = inflation
+        self.real_bonds_adjust = real_bonds_adjust
+        self.nominal_bonds_adjust = nominal_bonds_adjust
         self.time_period = time_period
 
         self.interest_rate = 'nominal'
 
-        self.yield_curve = inflation.nominal_yield_curve # Only used by _report() for expected values.
+        self.yield_curve = YieldCurveSum(inflation.nominal_yield_curve, inflation.nominal_yield_curve, weight = 0, offset = self.nominal_bonds_adjust - self.real_bonds_adjust) # Only used by _report() for expected values.
 
         self.reset()
 
@@ -531,24 +533,24 @@ class NominalBonds(Bonds):
 
     def _short_interest_rate(self, *, next = False):
 
-        return self.real_bonds._short_interest_rate(next = next) + self.inflation._short_interest_rate(next = next)
+        return self.real_bonds._short_interest_rate(next = next) - self.real_bonds_adjust + self.inflation._short_interest_rate(next = next) + self.inflation.nominal_premium + self.nominal_bonds_adjust
 
     def _log_present_value(self, t, *, next = False):
 
-        return self.real_bonds._log_present_value(t, next = next) + self.inflation._log_present_value(t, next = next)
+        return self.real_bonds._log_present_value(t, next = next) + self.inflation._log_present_value(t, next = next) - (self.inflation.nominal_premium + self.nominal_bonds_adjust) * t
 
     def _yield(self, t):
 
         _yield = super()._yield(t)
 
-        return _yield - self.inflation._yield(t)
+        return _yield - self.inflation._yield(t) - self.real_bonds_adjust
 
     def sample(self, duration = 7):
 
         sample = self.real_bonds.sample(duration) * self.inflation.sample(duration)
-        period_inflation = exp(self.inflation._log_present_value(self.time_period))
+        period_inflation_reduction = exp(self.inflation._log_present_value(self.time_period) + (self.inflation.nominal_premium + self.nominal_bonds_adjust - self.real_bonds_adjust) * self.time_period)
 
-        return sample * period_inflation
+        return sample * period_inflation_reduction
 
     def step(self):
 
@@ -623,7 +625,7 @@ class BondsMeasuredInNominalTerms(Bonds):
 class BondsSet:
 
     def __init__(self, need_real = True, need_nominal = True, need_inflation = True, fixed_real_bonds_rate = None, fixed_nominal_bonds_rate = None,
-        static_bonds = False, date_str = '2017-12-31', date_str_low = '2005-01-01',
+        real_bonds_adjust = 0, inflation_adjust = 0, nominal_bonds_adjust = 0, static_bonds = False, date_str = '2017-12-31', date_str_low = '2005-01-01',
         real_r0_type = 'current', inflation_r0_type = 'current', real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
         '''Create a BondsSet.
 
@@ -631,6 +633,11 @@ class BondsSet:
 
                 If not None use for a constant yield curve. Does not
                 supress random Hull-White temporal variability.
+
+            real_bonds_adjust, inflation_adjust, and
+            nominal_bonds_adjust:
+
+                Adjustments to apply across the yield curve.
 
             static_bonds
 
@@ -702,27 +709,32 @@ class BondsSet:
             need_real = True
 
         if need_real:
-            if fixed_real_bonds_rate:
-                yield_curve = YieldCurve('fixed', '2017-12-31', adjust = fixed_real_bonds_rate)
+            if fixed_real_bonds_rate != None:
+                adjust = (1 + fixed_real_bonds_rate) * (1 + real_bonds_adjust) - 1
+                yield_curve = YieldCurve('fixed', '2017-12-31', adjust = adjust)
             else:
-                yield_curve = YieldCurve('real', date_str, date_str_low = date_str_low, adjust = 0, permit_stale_days = 2)
+                yield_curve = YieldCurve('real', date_str, date_str_low = date_str_low, adjust = real_bonds_adjust, permit_stale_days = 2)
             self.real = RealBonds(yield_curve = yield_curve, static_bonds = static_bonds, r0_type = real_r0_type, standard_error = real_standard_error,
                 time_period = time_period)
         else:
             self.real = None
 
         if need_inflation:
-            if fixed_nominal_bonds_rate:
-                nominal_yield_curve = YieldCurve('fixed', '2017-12-31', adjust = fixed_nominal_bonds_rate)
+            if fixed_nominal_bonds_rate != None:
+                adjust = (1 + fixed_nominal_bonds_rate) * (1 + real_bonds_adjust) - 1
+                nominal_yield_curve = YieldCurve('fixed', '2017-12-31', adjust = adjust)
             else:
-                nominal_yield_curve = YieldCurve('nominal', date_str, date_str_low = date_str_low, adjust = 0, permit_stale_days = 2)
-            self.inflation = BreakEvenInflation(self.real, nominal_yield_curve = nominal_yield_curve, r0_type = inflation_r0_type,
+                nominal_yield_curve = YieldCurve('nominal', date_str, date_str_low = date_str_low, adjust = real_bonds_adjust, permit_stale_days = 2)
+            inflation_risk_premium = - log(1 + inflation_adjust)
+            self.inflation = Inflation(self.real, nominal_yield_curve = nominal_yield_curve, inflation_risk_premium = inflation_risk_premium, r0_type = inflation_r0_type,
                 standard_error = inflation_standard_error, static_bonds = static_bonds, time_period = time_period)
         else:
             self.inflation = None
 
         if need_nominal:
-            self.nominal = NominalBonds(self.real, self.inflation, time_period = time_period)
+            real_bonds_adjust = log(1 + real_bonds_adjust)
+            nominal_bonds_adjust = log(1 + nominal_bonds_adjust)
+            self.nominal = NominalBonds(self.real, self.inflation, real_bonds_adjust = real_bonds_adjust, nominal_bonds_adjust = nominal_bonds_adjust, time_period = time_period)
         else:
             self.nominal = None
 
@@ -745,7 +757,7 @@ if __name__ == '__main__':
     seed(0)
 
     bonds = BondsSet()
-    modeled_inflation = BreakEvenInflation(bonds.real, nominal_yield_curve = bonds.nominal.yield_curve, model_bond_volatility = False)
+    modeled_inflation = Inflation(bonds.real, nominal_yield_curve = bonds.nominal.yield_curve, model_bond_volatility = False)
     nominal_real_bonds = BondsMeasuredInNominalTerms(bonds.real, bonds.inflation)
     nominal_nominal_bonds = BondsMeasuredInNominalTerms(bonds.nominal, bonds.inflation)
 

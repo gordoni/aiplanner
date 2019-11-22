@@ -233,6 +233,9 @@ class ModelParams(object):
             # Does not remove side-effects of potential for temporal variability in bond prices; simply does not step bonds over time.
         self._param('fixed-real-bonds-rate', None) # Rate to model real bonds with a fixed mean yield curve (does not favor duration).
         self._param('fixed-nominal-bonds-rate', None) # Rate to model nominal bonds in determining inflation with a fixed mean yield curve (does not favor duration).
+        self._param('real-bonds-adjust', 0.0) # Rate adjustment to apply across the real bond yield curve.
+        self._param('inflation-adjust', 0.0) # Rate adjustment to apply across the inflation yield curve.
+        self._param('nominal-bonds-adjust', 0.0) # Rate adjustment to apply across the nominal bond yield curve.
         self._param('bonds-date', '2018-12-31', tp = string_type) # Date to use for typical bond yield curve if not fixed.
         self._param('bonds-date-start', None, tp = string_type) # Optional date to use for start of date range for average typical bond yield curve if not fixed.
 
