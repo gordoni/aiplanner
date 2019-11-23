@@ -499,16 +499,15 @@ Configure systemd to start the api server upon booting
 Set up the systemd config:
 
     cd ~/aiplanner/ai
-    mkdir -p ~/.config/systemd/user
-    cp aiplanner-apiserver.service ~/.config/systemd/user/
-    [edit] ~/.config/systemd/user/aiplanner-apiserver.service
+    sudo cp aiplanner-apiserver.service /etc/systemd/system/
+    sudo [edit] /etc/systemd/system/aiplanner-apiserver.service
         # Change admin email you@yourdomain to <you@yourdomain>
         # Possibly also add "--port 80" if running the api server within an Intranet
-    systemctl --user enable aiplanner-apiserver
+    sudo systemctl enable aiplanner-apiserver
 
 Start the service up:
 
-    systemctl --user start aiplanner-apiserver
+    sudo systemctl start aiplanner-apiserver
 
 Setting up cron
 ---------------
