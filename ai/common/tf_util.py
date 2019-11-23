@@ -23,7 +23,7 @@ from ray.rllib.evaluation.worker_set import WorkerSet
 
 class TFRunner:
 
-    def __init__(self, *, train_dirs = ['aiplanner.tf'], checkpoint_name = None, eval_model_params, couple_net = True,
+    def __init__(self, *, train_dirs = ['aiplanner.tf'], allow_tensorflow = True, checkpoint_name = None, eval_model_params, couple_net = True,
         redis_address = None, num_workers = 1, worker_seed = 0, num_environments = 1, num_cpu = None,
         evaluator = True, export_model = False):
 
@@ -39,7 +39,7 @@ class TFRunner:
         tf_dir = train_dirs[0] + '/' + tf_name
         tensorflow = isdir(tf_dir)
         #rllib_checkpoints = glob(train_dirs[0] + '/*/checkpoint_*')
-        if not tensorflow:
+        if not allow_tensorflow or not tensorflow:
 
             # Rllib.
             import ray

@@ -311,7 +311,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
 runner_cache = {}
 
-def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal, opal_file, redis_address, checkpoint_name,
+def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal, opal_file, redis_address, allow_tensorflow, checkpoint_name,
     evaluate, warm_cache, eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
     num_cpu, model, default_object_id, train_dirs, search_consume_initial_around, out,
     aid, num_workers, num_environments, num_trace_episodes, pdf_buckets, pdf_smoothing_window):
@@ -377,7 +377,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         try:
             runner = runner_cache[train_dirs[0]]
         except KeyError:
-            runner = TFRunner(train_dirs = train_dirs, checkpoint_name = checkpoint_name, eval_model_params = eval_model_params, couple_net = eval_couple_net,
+            runner = TFRunner(train_dirs = train_dirs, allow_tensorflow = allow_tensorflow, checkpoint_name = checkpoint_name, eval_model_params = eval_model_params, couple_net = eval_couple_net,
                 redis_address = redis_address, num_workers = num_workers, worker_seed = eval_seed, num_environments = num_environments, num_cpu = num_cpu).__enter__()
             if daemon: # Don't cache runner if not daemon as it prevents termination of Ray workers.
                 runner_cache[train_dirs[0]] = runner
@@ -590,6 +590,7 @@ def main():
     parser.add_argument('--train-seeds', type = int, default = 1) # Number of seeds to evaluate.
     boolean_flag(parser, 'ensemble', default = False)
         # Whether to evaluate the average recommendation of the seeds or to evaluate the seeds individually in parallel.
+    boolean_flag(parser, 'allow-tensorflow', default = True)
     parser.add_argument('--checkpoint-name')
     boolean_flag(parser, 'evaluate', default = True) # Inference and simulation, otherwise inference only.
     boolean_flag(parser, 'warm-cache', default = True) # Pre-load tensorflow/Rllib models.

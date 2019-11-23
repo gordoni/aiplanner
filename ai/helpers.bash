@@ -394,7 +394,7 @@ eval_scenarios () {
     fi
 
     if [ -n "$LABEL" ]; then
-        $LABEL="-$LABEL"
+        LABEL="-$LABEL"
     fi
 
     if [ $TRAINING = specific ]; then
