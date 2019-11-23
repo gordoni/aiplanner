@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+AI_DIR=$AIPLANNER_HOME/ai
+
+source $AI_DIR/helpers.bash
+
+mkdir -p ~/aiplanner-data/validation/run.ai.4-no_tax
+cd ~/aiplanner-data/validation/run.ai.4-no_tax
+
+PARALLEL=Jobs
+
+SCENARIO_ARGS="-c $AI_DIR/aiplanner-scenario-iid.txt --master-no-tax"
+TRAINING_ARGS=""
+EVALUATE_ARGS=""
+
+SAVESTEPS=2000000
+
+TRAINING=generic
+UNIT=single
+STAGES="preretirement retired"
+SPIAS_TYPES="none"
+GAMMAS="1.5 3 6"
+
+STAGES=retired
+GAMMAS="3 6"
+
+for STAGE in $STAGES; do
+    for SPIAS in $SPIAS_TYPES; do
+        for GAMMA in $GAMMAS; do
+            ARGS=`timesteps $TRAINING $UNIT $STAGE $SPIAS $GAMMA`
+            ARGS="$SCENARIO_ARGS $TRAINING_ARGS $ARGS --train-save-frequency=$SAVESTEPS"
+            train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
+        done
+    done
+done
+wait
+
+for STAGE in $STAGES; do
+    for SPIAS in $SPIAS_TYPES; do
+        for GAMMA in $GAMMAS; do
+            ARGS="$SCENARIO_ARGS $EVALUATE_ARGS --ensemble"
+            eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
+            wait # Avoid exceeding head node's RAM.
+            if [ $STAGE = preretirement ]; then
+                # Retired evaluation using pre-retirement model.
+                FORCE_STAGE=preretirement eval_scenarios $TRAINING $UNIT retired $SPIAS $GAMMA "$ARGS"
+                wait
+            fi
+        done
+    done
+done

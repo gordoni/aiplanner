@@ -1,0 +1,8 @@
+{
+    "aiplanner-preretirement-no_spias-gamma6.tf": {
+        "rl_stocks_bias": -0.15
+    },
+    "aiplanner-preretirement-spias-gamma6.tf": {
+        "rl_stocks_bias": -0.10
+    }
+}

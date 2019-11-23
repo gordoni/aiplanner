@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+AI_DIR=$AIPLANNER_HOME/ai
+
+source $AI_DIR/helpers.bash
+
+cd ~/aiplanner-data/models.new
+
+PARALLEL=Jobs
+
+SCENARIO_ARGS=""
+EVALUATE_ARGS=""
+
+TRAINING=generic
+UNIT=single
+STAGES="preretirement retired"
+SPIAS_TYPES="none nominal"
+GAMMAS="1.5 3 6"
+BIASES="-0.20 -0.15 -0.10 -0.05 0.0 0.05 0.10 0.15 0.20"
+
+# c5.24xlarge - 48 core, 192GB RAM (1.1GB per evaluation for local evaluation; or 0.6GB on head node per Ray remote evaluation (--no-allow-tensorflow) but cluster startup time is considerable)
+for STAGE in $STAGES; do
+    for SPIAS in $SPIAS_TYPES; do
+        for GAMMA in $GAMMAS; do
+            for BIAS in $BIASES; do
+                ARGS="$SCENARIO_ARGS $EVALUATE_ARGS --ensemble --master-rl-stocks-bias=$BIAS"
+                if skip_model $TRAINING $UNIT $STAGE $SPIAS $GAMMA; then
+                    FORCE_STAGE=preretirement eval_scenarios $TRAINING $UNIT retired $SPIAS $GAMMA "$ARGS" tax_diverse "rl_stocks_bias$BIAS"
+                else
+                    eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS" tax_diverse "rl_stocks_bias$BIAS"
+                fi
+            done
+        done
+        wait # Avoid exceeding head node's RAM.
+    done
+done
