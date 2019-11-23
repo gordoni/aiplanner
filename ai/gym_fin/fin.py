@@ -1480,6 +1480,7 @@ class Fin:
         gi_sum = self.gi_sum() * self.params.time_period
         self.taxes_paid = self.taxes_due
         self.p_plus_income = p_sum + gi_sum - self.taxes_paid
+        self.net_gi = (1 - self.regular_tax_rate) * gi_sum
 
         self.spias_ever = self.params.real_spias or self.params.nominal_spias
         if self.spias_ever and (self.params.preretirement_spias or self.preretirement_years == 0):

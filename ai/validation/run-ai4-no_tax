@@ -32,9 +32,6 @@ STAGES="preretirement retired"
 SPIAS_TYPES="none"
 GAMMAS="1.5 3 6"
 
-STAGES=retired
-GAMMAS="3 6"
-
 for STAGE in $STAGES; do
     for SPIAS in $SPIAS_TYPES; do
         for GAMMA in $GAMMAS; do
