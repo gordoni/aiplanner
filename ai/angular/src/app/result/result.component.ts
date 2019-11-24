@@ -70,7 +70,7 @@ export class ResultComponent implements OnInit {
       'consume_preretirement': Math.round(result.consume_preretirement),
       'consume_preretirement_ppf': Math.round(result.consume_preretirement_ppf * 100),
       'consume_low': Math.round(result.consume10),
-      'data_dir': '/api/data/' + result.aid,
+      'data_dir': '/webapi/data/' + result.aid,
     }
   }
 

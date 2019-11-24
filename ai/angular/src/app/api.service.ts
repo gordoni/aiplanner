@@ -1,5 +1,5 @@
 /* AIPlanner - Deep Learning Financial Planner
- * Copyright (C) 2018 Gordon Irlam
+ * Copyright (C) 2018-2019 Gordon Irlam
  *
  * All rights reserved. This program may not be used, copied, modified,
  * or redistributed without permission.
@@ -22,10 +22,10 @@ export class ApiService {
   ) { }
 
   get(method, params) {
-    return this.http.get('/api/' + method, params);
+    return this.http.get('/webapi/' + method, params);
   }
 
   post(method, params) {
-    return this.http.post('/api/' + method, params);
+    return this.http.post('/webapi/' + method, params);
   }
 }
