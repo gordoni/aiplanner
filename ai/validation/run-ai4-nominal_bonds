@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+AI_DIR=$AIPLANNER_HOME/ai
+
+source $AI_DIR/helpers.bash
+
+mkdir -p ~/aiplanner-data/validation/run.ai.4-nominal_bonds
+cd ~/aiplanner-data/validation/run.ai.4-nominal_bonds
+
+PARALLEL=Jobs
+
+SCENARIO_ARGS="--master-no-real-bonds --master-nominal-bonds"
+TRAINING_ARGS=""
+EVALUATE_ARGS=""
+
+SAVESTEPS=2000000
+
+TRAINING=generic
+UNIT=single
+STAGES=retired
+SPIAS_TYPES=none
+GAMMAS=6
+
+for STAGE in $STAGES; do
+    for SPIAS in $SPIAS_TYPES; do
+        for GAMMA in $GAMMAS; do
+            ARGS=`timesteps $TRAINING $UNIT $STAGE $SPIAS $GAMMA`
+            ARGS="$SCENARIO_ARGS $TRAINING_ARGS $ARGS --train-save-frequency=$SAVESTEPS"
+            mkdir nominal_bonds_adjust0.0
+            cd nominal_bonds_adjust0.0
+            train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
+            cd ..
+            mkdir nominal_bonds_adjust0.01
+            cd nominal_bonds_adjust0.01
+            train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS --master-nominal-bonds-adjust=0.01"
+            cd ..
+        done
+    done
+done
+wait
+
+for STAGE in $STAGES; do
+    for SPIAS in $SPIAS_TYPES; do
+        for GAMMA in $GAMMAS; do
+            ARGS="$SCENARIO_ARGS $EVALUATE_ARGS --ensemble"
+            cd nominal_bonds_adjust0.0
+            eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS" tax_diverse
+            cd ..
+            wait # Avoid exceeding head node's RAM.
+            cd nominal_bonds_adjust0.01
+            eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS --master-nominal-bonds-adjust=0.01" tax_diverse
+            cd ..
+        done
+    done
+done

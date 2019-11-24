@@ -773,6 +773,22 @@ if __name__ == '__main__':
 
     print()
 
+    print('Inflation rates:')
+    print()
+    print('period mean_inflation_rates standard_deviation_inflation_rates')
+    bonds.nominal.reset()
+    inflation = []
+    for _ in range(100000):
+        inflation.append(log(bonds.inflation.inflation()))
+        bonds.nominal.step()
+    durations = (1, 2, 5, 7, 10, 15, 20, 30)
+    for duration in durations:
+        block_length = round(duration / bonds.time_period)
+        infl = tuple(mean(inflation[i:i + block_length]) for i in range(0, len(inflation) - block_length + 1, block_length))
+        print(duration, mean(infl), stdev(infl))
+
+    print()
+
     print('Inflation (as used to provide nominal bond volatility):')
     print()
     bonds.inflation._report()
