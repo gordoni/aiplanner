@@ -123,6 +123,8 @@ class InferEvaluateDaemon:
             ]
             options = ' '.join(options) + '\n'
 
+            stdout_log = open(dir + '/eval.out', 'wb')
+
             self.proc.stdin.write(options.encode('utf-8') + data)
             self.proc.stdin.flush()
 
@@ -140,7 +142,7 @@ class InferEvaluateDaemon:
                     data = self.proc.stdout.read(length)
                     return aid, data
                 elif string != '\n':
-                    self.logger.log_binary(line)
+                    stdout_log.write(line)
 
         except (IOError, ConnectionError) as e:
 
@@ -149,6 +151,11 @@ class InferEvaluateDaemon:
             return aid, '{"error": "Server process died. Restarting."}\n'.encode('utf-8')
 
         finally:
+
+            try:
+                stdout_log.close()
+            except:
+                pass
 
             # Delete if empty.
             try:
@@ -498,7 +505,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             data = (dumps(results, sort_keys = True) + '\n').encode('utf-8')
         else:
             try:
-                aid, data = self.run_model(self.server.infer_daemon, api_data, options = options, prefix = prefix)
+                aid, result = self.run_model(self.server.infer_daemon, api_data, options = options, prefix = prefix)
+                data = (dumps(result) + '\n').encode('utf-8')
             except Overloaded as e:
                 self.server.logger.report_exception(e)
                 self.send_error(503, 'Overloaded: try again later')
@@ -541,8 +549,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         def run(i, gamma):
             try:
                 my_api_data = [dict(api_data[0], rra = [gamma])]
-                aid, data = self.run_model(self.server.evaluate_daemons[gamma], my_api_data, options = options, prefix = prefix)
-                result = loads(data.decode('utf-8'))
+                aid, result = self.run_model(self.server.evaluate_daemons[gamma], my_api_data, options = options, prefix = prefix)
                 if result['error']:
                     results[i] = result
                 else:
@@ -569,7 +576,15 @@ class RequestHandler(BaseHTTPRequestHandler):
         if daemons_and_lock.lock.acquire(timeout = daemons_and_lock.timeout):
             try:
                 daemon = daemons_and_lock.daemons.pop()
-                return daemon.infer_evaluate(api_data, options = options, prefix = prefix)
+                aid, data = daemon.infer_evaluate(api_data, options = options, prefix = prefix)
+                result = loads(data.decode('utf-8'))
+                if (result['error'] or any((any((scenario_result['error'] for scenario_result in scenario_result_set)) for scenario_result_set in result['result']))) and prefix != 'healthcheck-':
+                    try:
+                        msg = open(self.server.args.results_dir + '/' + aid + '/eval.err', 'r').read()
+                    except:
+                        msg = 'File not found: eval.err\n'
+                    self.notify_admin('error - ' + aid, msg)
+                return aid, result
             finally:
                 daemons_and_lock.daemons.append(daemon)
                 daemons_and_lock.lock.release()
@@ -589,23 +604,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         except IOError:
             raise
 
-        cmd = ['/usr/sbin/sendmail',
-            '-f', 'root',
-            self.server.args.admin_email,
-        ]
-        mta = Popen(cmd, stdin = PIPE, encoding = 'utf-8')
-
-        header = 'From: "' + self.server.args.notify_name + '" <' + self.server.args.notify_email + '''>
-To: ''' + self.server.args.admin_email + '''
-Subject: ''' + self.server.args.project_name + ': subscribe' + '''
-
-'''
-        body = email + '\n'
-
-        mta.stdin.write(header + body)
-        mta.stdin.close()
-
-        if mta.wait() != 0:
+        if not self.notify_admin('subscribe', email + 'has subscribed\n'):
             self.send_error(500) # Internal Server Error
             return
 
@@ -613,6 +612,31 @@ Subject: ''' + self.server.args.project_name + ': subscribe' + '''
             'error': None,
             'result': None,
         }
+
+    def notify_admin(self, subject, body):
+
+        if self.server.args.admin_email:
+
+            cmd = ['/usr/sbin/sendmail',
+                '-f', 'root',
+                self.server.args.admin_email,
+            ]
+            mta = Popen(cmd, stdin = PIPE, encoding = 'utf-8')
+
+            header = 'From: "' + self.server.args.notify_name + '" <' + self.server.args.notify_email + '''>
+To: ''' + self.server.args.admin_email + '''
+Subject: ''' + self.server.args.project_name + ': ' + subject + '''
+
+'''
+
+            mta.stdin.write(header + body)
+            mta.stdin.close()
+
+            return mta.wait() == 0
+
+        else:
+
+            return True
 
 class PurgeQueueServer:
 
@@ -700,7 +724,7 @@ def main():
     parser.add_argument('--pdf-smoothing-window', type = float, default = 0.1) # Width of smoothing window to use in computing probability density distributions.
         # Larger than eval_model.py default due to smaller eval_num_timesteps.
 
-    # HTTP subscribe options.
+    # Email options.
     parser.add_argument('--notify-email', default = 'notify@aiplanner.com')
     parser.add_argument('--notify-name', default = 'AIPlanner Notify')
     parser.add_argument('--admin-email', default = 'admin@aiplanner.com')

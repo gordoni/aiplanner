@@ -387,6 +387,8 @@ class Evaluator(object):
                 u_ceil = f(c_ceil)
             if u_floor <= r < u_ceil:
                 bucket_weights[-1] += w
+        while len(bucket_weights) < buckets + half_window_size:
+            bucket_weights.append(0)
         bucket_weights = savgol_filter(bucket_weights, half_window_size * 2 + 1, polyorder, mode = 'constant')
         bucket_weights = tuple(max(0, bucket_weights[round(bucket / self.pdf_buckets * buckets)]) for bucket in range(self.pdf_buckets))
         w_tot = sum(bucket_weights)

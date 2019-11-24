@@ -569,7 +569,7 @@ def plot(prefix, traces, consume_pdf, estate_pdf):
 
     try:
         environ['AIPLANNER_FILE_PREFIX'] = prefix
-        run([environ['AIPLANNER_HOME'] + '/ai/plot'], check = True)
+        run([environ['AIPLANNER_HOME'] + '/ai/plot'], stderr = stderr, check = True) # stderr = stderr is needed because stderr may have been reassigned.
     except CalledProcessError:
         assert not traces, 'Error ploting results.'
 
@@ -628,6 +628,8 @@ def main():
                     model_params = dict(eval_model_params, **model_params)
                     eval_args = dict(args, api = api, permissive_api = True, eval_num_timesteps = 1)
                     eval_models(model_params, **eval_args)
+            global stderr
+            original_stderr = stderr
             while True:
                 try:
                     line = stdin.readline()
@@ -643,6 +645,12 @@ def main():
                     assert api_content_length != None, 'No --api-content-length parameter.'
                     api_json = stdin.read(api_content_length)
                     api = loads(api_json)
+                    if args.get('aid'):
+                        try:
+                            mkdir(args['result_dir'])
+                        except FileExistsError:
+                            pass
+                        stderr = open(args['result_dir'] + '/eval.err', 'w')
                     assert len(api) <= 10000, 'Too many scenarios in a single request.'
                     results = {
                         'error': None,
@@ -650,10 +658,12 @@ def main():
                     }
                 except Exception as e:
                     print_exc(file = stderr)
-                    stderr.flush()
                     results = {'error': e.__class__.__name__ + ': ' + (str(e) or 'Exception encountered.')}
                 except SystemExit as e:
                     results = {'error': 'Invalid argument.'}
+                finally:
+                    stderr.flush()
+                    stderr = original_stderr
                 results_str = dumps(results, sort_keys = True) + '\n'
                 print('\nAIPlanner-Result')
                 print('Content-Length:', len(results_str.encode('utf-8')))
