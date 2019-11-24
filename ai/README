@@ -483,6 +483,7 @@ aiplanner-apiserver.service file later.
             # Ignore the nvidia package errors.
         sudo apt install python3-certbot-apache
     sudo certbot --apache certonly
+        # Add "--domains <thisdomain>" to force a particular domain.
     Email: <you@yourdomain>
     Domains: 
         If serving for www.<thisdomain> then typically: <thisdomain>, www.<thisdomain>
