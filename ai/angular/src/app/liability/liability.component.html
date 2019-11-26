@@ -45,13 +45,14 @@ PURPOSE.
 
       <div *ngIf="['Credit Card Debt'].includes(newData.type); else elseBlock">
         Credit card debt should be paid off before saving for retirement.
-      </div>
 
-      <div>
-        Balance: <input type="number" step="1000" class="numeric" required name="dbAmountPer" #dbAmountPer="ngModel" [(ngModel)]="newData.amountPer">
-          <div class="error" *ngIf="dbAmountPer.invalid">
-            Invalid numeric value.
-          </div>
+        <div>
+          Balance: <input type="number" step="1000" class="numeric" required name="dbAmountPer" #dbAmountPer="ngModel" [(ngModel)]="newData.amountPer">
+            <div class="error" *ngIf="dbAmountPer.invalid">
+              Invalid numeric value.
+            </div>
+        </div>
+
       </div>
 
       <ng-template #elseBlock>
