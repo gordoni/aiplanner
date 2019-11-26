@@ -61,6 +61,7 @@ for STAGE in $STAGES; do
             cd nominal_bonds_adjust0.01
             eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS --master-nominal-bonds-adjust=0.01" tax_diverse
             cd ..
+            wait
         done
     done
 done

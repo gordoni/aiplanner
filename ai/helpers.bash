@@ -454,6 +454,9 @@ eval_scenarios () {
                evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2.5e5 --master-p-tax-deferred=5.0e5 --master-p-taxable-stocks=1.5e5 --master-p-taxable-real-bonds=1.0e5"
                evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=0.5e6 --master-p-tax-deferred=1.0e6 --master-p-taxable-stocks=0.3e6 --master-p-taxable-real-bonds=0.2e6"
                ;;
+           p_none)
+               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age30-p_none$LABEL "$EVAL_ARGS $ARGS --master-age-start=30 --master-income-preretirement=80e3 --master-consume-preretirement=50e3"
+               ;;
         esac
     fi
     local MODEL_STAGE=${FORCE_STAGE:-$STAGE}

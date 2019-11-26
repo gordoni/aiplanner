@@ -426,7 +426,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
             if model:
 
                 if skip_model:
-                    action = None
+                    action = [None] * len(obss)
                 else:
                     action = runner.run(obss)
 

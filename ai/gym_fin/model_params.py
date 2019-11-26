@@ -52,10 +52,11 @@ class ModelParams(object):
         self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
 
         self._param('consume-policy', 'rl', tp = string_type,
-            choices = ('rl', 'constant', 'guyton_rule2', 'guyton_klinger', 'target_percentage', 'extended_rmd', 'pmt'))
+            choices = ('rl', 'constant', 'percent_rule', 'guyton_rule2', 'guyton_klinger', 'target_percentage', 'extended_rmd', 'pmt'))
             # Consumption policy.
             # "rl": reinforcement learning.
             # "constant": constant fixed amount consume_initial.
+            # "percent_rule": constant consume_fraction of initial investment portfolio at retirement.
             # "guyton_rule2": initially consume_initial,
             #     then no investment portfolio withdrawal inflation adjustment for period following period with a negative nominal market return.
             # "guyton_klinger": initially consume_initial, then increase investment consumption by 10% if below 80% of initial consumption rate,
@@ -69,18 +70,25 @@ class ModelParams(object):
         self._param('consume-initial', 0) # Initial consumption amount for particular consumption policies.
         self._param('consume-policy-life-expectancy', None) # Assumed life expectancy for particular consumption policies, or None to use actual life expectancy.
         self._param('consume-policy-return', 0) # Assumed annual return for particular consumption policies.
+        self._param('consume-policy-fraction', 0.04) # Consume fraction for percent_rule.
+        self._param('consume-policy-fraction-max', 1) # Maximum proportion of investent policy to consume; applies to all consumption policies including rl.
         self._param('annuitization-policy', 'rl', tp = string_type, choices = ('rl', 'age_real', 'age_nominal', 'none'))
             # Annuitization policy.
             # "rl": reinforcement learning.
-            # "age_real": fully annuitize using real SPIAs starting at annuitization_policy_age.
-            # "age_nominal": fully annuitize using nominal SPIAs starting at annuitization_policy_age.
+            # "age_real": annuitize using real SPIAs starting at annuitization_policy_age.
+            # "age_nominal": annuitize using nominal SPIAs starting at annuitization_policy_age.
             # 'none': no SPIA purchases.
-        self._param('annuitization-policy-age', 0) # Age (of youngest party) at which to switch from no annuitization to fully annuitized.
+        self._param('annuitization-policy-age', 0) # Age (of youngest party) at which to switch from no annuitization to annuitizing for age_real and age_nominal annuitization policies.
+        self._param('annuitization-policy-annuitization-fraction', 1) # Fraction of investment portfolio to annuitize at each time step for age_real and age_nominal annuitization policies.
         self._param('asset-allocation-policy', 'rl', tp = string_type)
             # Asset allocation policy.
             # "rl": reinforcement learning.
             # "age-in-nominal-bonds": age in years as nominal bonds percentage, remainder in stocks.
             # '{"<asset_class>":<allocation>, ...}': fixed allocation. Eg. '{"stocks":0.5, "nominal_bonds":0.5}'.
+        self._param('asset-allocation-annuitized-policy', 'asset_allocation_policy', tp = string_type)
+            # Asset allocation policy once annuitized.
+            # "asset_allocation_policy": use the same policy as asset_allocation_policy.
+            # '{"<asset_class>":<allocation>, ...}': fixed allocation. Eg. '{"stocks":1.0, "nominal_bonds":0.0}'.
         self._param('rl-consume-bias', 0.0, 0.0) # Bias the reinforcement learning conumption policy consumption fraction by this amount.
             # Useful for reversing the effects of training algorithm bias when evaluating.
             # Training bias should always be zero.
@@ -311,7 +319,7 @@ class ModelParams(object):
         self._boolean_flag('nominal-bonds', True) # Whether to model nominal bonds (with an interest rate model).
         self._param('nominal-bonds-duration', None) # Duration in years to use for nominal bonds, or None to allow duration to vary.
         self._param('nominal-bonds-duration-max', 30) # Maximum allowed nominal duration to use when duration is allowed to vary.
-        self._boolean_flag('nominal-bonds-duration-action-force', False) # Whether to employ a real bond model that has variable duration with a fixed duration.
+        self._boolean_flag('nominal-bonds-duration-action-force', False) # Whether to employ a nominal bond model that has variable duration with a fixed duration.
         self._boolean_flag('iid-bonds', False) # Whether to model independent identically distributed bonds (without any interest rate model).
         self._param('iid-bonds-type', None, tp = string_type, choices = ('real', 'nominal', None))
             # Derive iid bond returns from the specified bond model, or None if iid bond returns are lognormally distributed.

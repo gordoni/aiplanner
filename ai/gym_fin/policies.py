@@ -21,7 +21,7 @@ def _pmt(rate, nper, pv):
 
 def policy(env, action):
 
-    global consume_rate_initial, consume_prev, life_expectancy_initial, p_initial
+    global consume_rate_initial, consume_prev, life_expectancy_initial, p_initial, annuitized
 
     if action is not None:
         consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = action
@@ -29,9 +29,19 @@ def policy(env, action):
     if env.params.consume_policy == 'constant':
 
         consume_fraction = env.params.consume_initial / env.p_plus_income
-        consume_fraction = min(consume_fraction, 1 / env.params.time_period)
+
+    elif env.params.consume_policy == 'percent_rule':
+
+        if env.age < env.age_retirement:
+            consume_fraction = 0
+        else:
+            if env.age < env.age_retirement + env.params.time_period:
+                consume_rate_initial = env.params.consume_policy_fraction * env.p_wealth
+            consume_fraction = (env.net_gi + consume_rate_initial) / env.p_plus_income
 
     elif env.params.consume_policy == 'guyton_rule2':
+
+        assert env.age >= env.age_retirement
 
         if env.episode_length == 0:
             consume = env.params.consume_initial - env.net_gi
@@ -42,9 +52,10 @@ def policy(env, action):
         consume_prev = consume
         consume += env.net_gi
         consume_fraction = consume / env.p_plus_income
-        consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     elif env.params.consume_policy == 'guyton_klinger':
+
+        assert env.age >= env.age_retirement
 
         if env.params.consume_policy_life_expectancy == None:
             life_expectancy = env.life_expectancy_both[env.episode_length] + env.life_expectancy_one[env.episode_length]
@@ -64,9 +75,10 @@ def policy(env, action):
         consume_prev = consume
         consume += env.net_gi
         consume_fraction = consume / env.p_plus_income
-        consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     elif env.params.consume_policy == 'target_percentage':
+
+        assert env.age >= env.age_retirement
 
         if env.params.consume_policy_life_expectancy == None:
             life_expectancy = env.life_expectancy_both[env.episode_length] + env.life_expectancy_one[env.episode_length]
@@ -84,7 +96,6 @@ def policy(env, action):
         consume_prev = consume
         consume += env.net_gi
         consume_fraction = consume / env.p_plus_income
-        consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     elif env.params.consume_policy == 'extended_rmd':
 
@@ -161,7 +172,6 @@ def policy(env, action):
         rmd_period = extended_rmd_table[min(int(env.age), max(extended_rmd_table.keys()))]
         consume = env.net_gi + env.p_wealth / rmd_period * env.params.time_period
         consume_fraction = consume / env.p_plus_income
-        consume_fraction = min(consume_fraction, 1 / env.params.time_period)
 
     elif env.params.consume_policy == 'pmt':
 
@@ -172,19 +182,27 @@ def policy(env, action):
         life_expectancy = max(1, life_expectancy)
         consume = env.net_gi + _pmt(env.params.consume_policy_return, life_expectancy, env.p_wealth)
         consume_fraction = consume / env.p_plus_income
-        consume_fraction = min(consume_fraction, 1 / env.params.time_period)
+
+    consume_fraction = max(1e-6, min(consume_fraction, env.params.consume_policy_fraction_max / env.params.time_period))
 
     if env.params.annuitization_policy in ('age_real', 'age_nominal'):
 
-        if env.alive_single[env.episode_length] == None:
-            min_age = min(env.age, env.age2)
-        else:
-            min_age = env.age
+        if env.episode_length == 0:
+            annuitized = False
 
-        spias_allowed = (env.params.couple_spias or env.alive_single[env.episode_length] != None) and min_age >= env.params.spias_permitted_from_age
+        if env.couple:
+            min_age = min(env.age, env.age2)
+            max_age = max(env.age, env.age2)
+        else:
+            min_age = max_age = env.age2 if env.only_alive2 else env.age
+
+        spias_allowed = (env.params.couple_spias or not env.couple) and min_age >= env.params.spias_permitted_from_age and max_age <= env.params.spias_permitted_to_age
         spias = spias_allowed and min_age >= env.params.annuitization_policy_age
-        real_spias_fraction = 1 if spias and env.params.annuitization_policy == 'age_real' else 0
-        nominal_spias_fraction =  1 if spias and env.params.annuitization_policy == 'age_nominal' else 0
+        real_spias_fraction = env.params.annuitization_policy_annuitization_fraction if spias and env.params.annuitization_policy == 'age_real' else 0
+        nominal_spias_fraction =  env.params.annuitization_policy_annuitization_fraction if spias and env.params.annuitization_policy == 'age_nominal' else 0
+
+        if real_spias_fraction or nominal_spias_fraction:
+            annuitized = True
 
     elif env.params.annuitization_policy == 'none':
 
@@ -200,6 +218,11 @@ def policy(env, action):
     elif env.params.asset_allocation_policy != 'rl':
 
         asset_allocation = loads(env.params.asset_allocation_policy)
+        asset_allocation = AssetAllocation(**asset_allocation)
+
+    if env.params.asset_allocation_annuitized_policy != 'asset_allocation_policy' and annuitized:
+
+        asset_allocation = loads(env.params.asset_allocation_annuitized_policy)
         asset_allocation = AssetAllocation(**asset_allocation)
 
     if env.params.real_bonds:

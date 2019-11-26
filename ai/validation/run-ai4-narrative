@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+AI_DIR=$AIPLANNER_HOME/ai
+
+source $AI_DIR/helpers.bash
+
+cd ~/aiplanner-data/models.new
+
+PARALLEL=Jobs
+
+SCENARIO_ARGS=""
+TRAINING_ARGS=""
+EVALUATE_ARGS=""
+
+SAVESTEPS=2000000
+
+TRAINING=generic
+UNIT=single
+GAMMAS=6
+
+for GAMMA in $GAMMAS; do
+    ARGS="$SCENARIO_ARGS $EVALUATE_ARGS --ensemble"
+    # Percent rule. Plus consume cap of 30% to prevent negative portfolios on account of taxes due from prior period.
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=percent_rule --master-consume-policy-fraction=0.02 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-no-real-bonds --master-nominal-bonds --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' p_none percent_rule0.02_0.3-annuitization_none-stocks0.6-nominal_bonds20
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=percent_rule --master-consume-policy-fraction=0.03 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-no-real-bonds --master-nominal-bonds --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' p_none percent_rule0.03_0.3-annuitization_none-stocks0.6-nominal_bonds20
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=percent_rule --master-consume-policy-fraction=0.04 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-no-real-bonds --master-nominal-bonds --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' p_none percent_rule0.04_0.3-annuitization_none-stocks0.6-nominal_bonds20
+    # Boglehead VPW like pmt default values. Plus consume cap of 30%.
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-life-expectancy=69 --master-consume-policy-return=0.038 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-no-real-bonds --master-nominal-bonds --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' p_none pmt_69_0.038_0.3-annuitization_none-stocks0.6-nominal_bonds20
+    # Cap consume at 10%.
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-life-expectancy=69 --master-consume-policy-return=0.038 --master-consume-policy-fraction-max=0.1 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-no-real-bonds --master-nominal-bonds --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' p_none pmt_69_0.038_0.1-annuitization_none-stocks0.6-nominal_bonds20
+    # Bogleheads VPW like SPIA recommendation anuitization fraction determination (includes a 10% consume cap for SPIAs).
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-life-expectancy=69 --master-consume-policy-return=0.038 --master-consume-policy-fraction-max=0.1 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-annuitization-policy-annuitization-fraction=0.2 --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-no-real-bonds --master-nominal-bonds --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' p_none pmt_69_0.038_0.1-annuitization_80_0.2-stocks0.6-nominal_bonds20
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-life-expectancy=69 --master-consume-policy-return=0.038 --master-consume-policy-fraction-max=0.1 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-annuitization-policy-annuitization-fraction=0.3 --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-no-real-bonds --master-nominal-bonds --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' p_none pmt_69_0.038_0.1-annuitization_80_0.3-stocks0.6-nominal_bonds20
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-life-expectancy=69 --master-consume-policy-return=0.038 --master-consume-policy-fraction-max=0.1 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-annuitization-policy-annuitization-fraction=0.4 --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-no-real-bonds --master-nominal-bonds --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' p_none pmt_69_0.038_0.1-annuitization_80_0.4-stocks0.6-nominal_bonds20
+    # Real bonds.
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-life-expectancy=69 --master-consume-policy-return=0.038 --master-consume-policy-fraction-max=0.1 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-annuitization-policy-annuitization-fraction=0.3 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none pmt_69_0.038_0.1-annuitization_80_0.3-stocks0.6-real_bonds20
+    # Dynamic life expectancy (consume cap relaxed).
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.038 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-annuitization-policy-annuitization-fraction=0.3 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none pmt_le_0.038_0.3-annuitization_80_0.3-stocks0.6-real_bonds20
+    # Optimal pmt assumed rate of return and asset allocation assuming 100% stocks once annuitized. Changes anuitization fraction recommendation.
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.00 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-annuitization-policy-annuitization-fraction=0.7 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-asset-allocation-annuitized-policy={"stocks":1.0,"real_bonds":0.0} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none pmt_le_0.00_0.3-annuitization_80_0.7-stocks0.6_1.0-real_bonds20
+    # Vary consume_policy_return.
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=-0.01 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-annuitization-policy-annuitization-fraction=0.7 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-asset-allocation-annuitized-policy={"stocks":1.0,"real_bonds":0.0} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none pmt_le_-0.01_0.3-annuitization_80_0.7-stocks0.6_1.0-real_bonds20
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.01 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-annuitization-policy-annuitization-fraction=0.7 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-asset-allocation-annuitized-policy={"stocks":1.0,"real_bonds":0.0} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none pmt_le_0.01_0.3-annuitization_80_0.7-stocks0.6_1.0-real_bonds20
+    # Vary annuitization_policy_age and spias_permitted_to_age.
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.00 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=75 --master-spias-permitted-to-age=75 --master-annuitization-policy-annuitization-fraction=0.7 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-asset-allocation-annuitized-policy={"stocks":1.0,"real_bonds":0.0} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none pmt_le_0.00_0.3-annuitization_75_0.7-stocks0.6_1.0-real_bonds20
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.00 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=85 --master-spias-permitted-to-age=85 --master-annuitization-policy-annuitization-fraction=0.7 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-asset-allocation-annuitized-policy={"stocks":1.0,"real_bonds":0.0} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none pmt_le_0.00_0.3-annuitization_85_0.7-stocks0.6_1.0-real_bonds20
+    # Vary annuitization_policy_annuitization_fraction.
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.00 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-annuitization-policy-annuitization-fraction=0.6 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-asset-allocation-annuitized-policy={"stocks":1.0,"real_bonds":0.0} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none pmt_le_0.00_0.3-annuitization_80_0.6-stocks0.6_1.0-real_bonds20
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.00 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-annuitization-policy-annuitization-fraction=0.8 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-asset-allocation-annuitized-policy={"stocks":1.0,"real_bonds":0.0} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none pmt_le_0.00_0.3-annuitization_80_0.8-stocks0.6_1.0-real_bonds20
+    # Vary asset_allocation_policy.
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.00 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-annuitization-policy-annuitization-fraction=0.7 --master-asset-allocation-policy={"stocks":0.5,"real_bonds":0.5} --master-asset-allocation-annuitized-policy={"stocks":1.0,"real_bonds":0.0} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none pmt_le_0.00_0.3-annuitization_80_0.7-stocks0.5_1.0-real_bonds20
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.00 --master-consume-policy-fraction-max=0.3 --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-annuitization-policy-annuitization-fraction=0.7 --master-asset-allocation-policy={"stocks":0.7,"real_bonds":0.3} --master-asset-allocation-annuitized-policy={"stocks":1.0,"real_bonds":0.0} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none pmt_le_0.00_0.3-annuitization_80_0.7-stocks0.7_1.0-real_bonds20
+    # Blinded reinforcement learning.
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS --master-no-observe-stocks-price --master-no-observe-stocks-volatility --master-no-observe-interest-rate" p_none no_observe_stock_price-no_observe_volatility-no_observe_interest_rate
+    # Stock price and volatility and interest rates visible.
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS" p_none
+    # Bias corrected.
+    eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS --master-rl-stocks-bias=-0.10" p_none rl_stocks_bias-0.10
+    wait # Avoid exceeding RAM.
+done
