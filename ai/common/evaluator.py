@@ -406,11 +406,11 @@ class Evaluator(object):
             bucket_weights.append(0)
         bucket_weights = savgol_filter(bucket_weights, half_window_size * 2 + 1, polyorder, mode = 'constant')
         bucket_weights = tuple(max(0, bucket_weights[round(bucket / self.pdf_buckets * buckets)]) for bucket in range(self.pdf_buckets))
-        w_tot = sum(bucket_weights)
+        w_tot = sum(value_weights[1])
         for bucket in range(self.pdf_buckets):
             unit_c = (de_minus_low + step * buckets / self.pdf_buckets * (bucket + 0.5)) * multiplier
             try:
-                w_ratio = bucket_weights[bucket] / w_tot
+                w_ratio = bucket_weights[bucket] / w_tot / step
             except ZeroDivisionError:
                 w_ratio = float('nan')
             pdf[what].append(unit_c)

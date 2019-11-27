@@ -572,19 +572,20 @@ consumption being consume_preretirement or less.
 consume_pdf: {"consume": [<number>, ... ], "weight": [<number>, ... ]}
 
 Retirement consumption probability density function. "consume" is a
-list of consumption values, and "weight" is a list of the
-corresponding frequency of annual consumption near that consumption
-level. The sum of all weights would be 1, but consume is clipped at
-the 98th percentile, so the sum of the reported weights may be
-slightly less than 1. The results represent the aggregation of
-multiple possible futures.
+list of consumption values, and "weight" is a list of probability
+densities for those consumption values. The sum of all weights
+multiplied by the width of the consumption intervals would be 1,
+except consume is clipped at the 98th percentile, so the sum of the
+reported weights will be slightly less than 1. The results represent
+the aggregation of multiple possible futures.
 
 estate_pdf: {"estate": [<number>, ... ], "weight": [<number>, ... ]}
 
 Residual estate probability density function. "estate" is a list of
 before tax estate values, and "weight" is a list of the corresponding
-frequency of the residual estate being near that estate level. The sum
-of all weights will normally be slightly less than 1.
+residual estate probability densities. The sum of all weights
+multiplied by the estate interval widths will normally be slightly
+less than 1.
 
 sample_paths: [{
     "age":  [<number>, ... ],

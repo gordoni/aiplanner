@@ -338,7 +338,7 @@ PURPOSE.
   <div *ngIf="step == 5">
     <h1 class="title">Market conditions</h1>
     <p>
-      It is often a judgement call as to whether the market is fairly
+      It is often a judgment call as to whether the market is fairly
       valued. You can enter your personal opinion here. The rest of
       this section should normally be left alone.
     </p>
@@ -413,8 +413,8 @@ PURPOSE.
       The coefficient of relative risk aversion determines how much
       risk to take. The lower the coefficient the higher the expected
       consumption, but also the higher the uncertainty in realized
-      consumption. This is hypothetically illustrated for a single
-      time period in the table and graph below.
+      consumption. This is hypothetically illustrated for twenty years
+      by the table and graph below.
     </p>
     <table class="crra">
       <tr>
@@ -432,27 +432,25 @@ PURPOSE.
                 <td> 0 </td>
               </tr>
               <tr>
-                <td> 6.0 </td>
-                <td> 1% </td>
-                <td> 4% </td>
+                <td> 12 </td>
+                <td> 12% </td>
+                <td> 10% </td>
               </tr>
               <tr>
-                <td> 3.0 </td>
-                <td> 3% </td>
-                <td> 9% </td>
+                <td> 6 </td>
+                <td> 27% </td>
+                <td> 19% </td>
+              </tr>
+              <tr>
+                <td> 3 </td>
+                <td> 68% </td>
+                <td> 40% </td>
               </tr>
               <tr>
                 <td> 1.5 </td>
-                <td> 6% </td>
-                <td> 18% </td>
+                <td> 226% </td>
+                <td> 90% </td>
               </tr>
-              <!--
-              <tr>
-                <td> 1.0 </td>
-                <td> 10% </td>
-                <td> 29% </td>
-              </tr>
-              -->
             </table>
           </div>
         </td>
@@ -465,10 +463,15 @@ PURPOSE.
         </td>
       </tr>
     </table>
-    <br>
-    When you submit your scenario the near optimal strategy for
-    several different RRA coefficients will be simulated and you can
-    choose the one you prefer.
+    <p>
+      When you submit your scenario the near optimal strategy for
+      several different RRA coefficients will be simulated and you can
+      choose the one you prefer.
+    </p>
+    <p>
+      Note: Despite being a conceivable choice, AIPlanner does not
+      currently support a risk aversion coefficient of 12.
+    </p>
     <div>
       <div class="main-button float-left">
         <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
