@@ -18,4 +18,6 @@ source $AI_DIR/helpers.bash
 mkdir -p ~/aiplanner-data/validation
 cd ~/aiplanner-data/validation
 
+cp $AI_DIR/equity_model/{index.svg,above_trend.svg} .
+
 python3 $AI_DIR/gym_fin/bonds.py > bonds.out

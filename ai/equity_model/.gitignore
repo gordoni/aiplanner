@@ -1,4 +1,7 @@
 equity_model.out
 above_trend.csv
+above_trend.svg
 index.csv
+index.svg
+index-sigma.svg
 standardized_residuals.csv
