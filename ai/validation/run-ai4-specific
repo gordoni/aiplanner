@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+AI_DIR=$AIPLANNER_HOME/ai
+
+source $AI_DIR/helpers.bash
+
+mkdir -p ~/aiplanner-data/validation/run.ai.4-specific
+cd ~/aiplanner-data/validation/run.ai.4-specific
+
+PARALLEL=Jobs
+
+SCENARIO_ARGS=""
+TRAINING_ARGS=""
+EVALUATE_ARGS=""
+
+SAVESTEPS=2000000
+
+UNIT=single
+SPIAS_TYPES=nominal
+GAMMAS=6
+BIASES="-0.20 -0.15 -0.10 -0.05 0.0 0.05 0.10 0.15 0.20"
+
+for SPIAS in $SPIAS_TYPES; do
+    for GAMMA in $GAMMAS; do
+        ARGS=`timesteps specific-p_none $UNIT preretirement $SPIAS $GAMMA`
+        ARGS="$SCENARIO_ARGS $TRAINING_ARGS $ARGS --train-save-frequency=$SAVESTEPS"
+        train_scenarios specific-p_none $UNIT preretirement $SPIAS $GAMMA "$ARGS"
+        ARGS=`timesteps specific-p_none_complex $UNIT preretirement $SPIAS $GAMMA`
+        ARGS="$SCENARIO_ARGS $TRAINING_ARGS $ARGS --train-save-frequency=$SAVESTEPS"
+        train_scenarios specific-p_none_complex $UNIT preretirement $SPIAS $GAMMA "$ARGS"
+    done
+done
+wait
+
+for SPIAS in $SPIAS_TYPES; do
+    for GAMMA in $GAMMAS; do
+        for BIAS in $BIASES; do
+            ARGS="$SCENARIO_ARGS $EVALUATE_ARGS --ensemble --master-rl-stocks-bias=$BIAS"
+            eval_scenarios specific-p_none $UNIT preretirement $SPIAS $GAMMA "$ARGS" p_none "rl_stocks_bias$BIAS"
+            eval_scenarios specific-p_none_complex $UNIT preretirement $SPIAS $GAMMA "$ARGS" p_none_complex "rl_stocks_bias$BIAS"
+            (
+                # Generic eval for comparison.
+                cd ~/aiplanner-data/models.new
+                eval_scenarios generic $UNIT preretirement $SPIAS $GAMMA "$ARGS" p_none "rl_stocks_bias$BIAS"
+                eval_scenarios generic $UNIT preretirement $SPIAS $GAMMA "$ARGS" p_none_complex "rl_stocks_bias$BIAS"
+                wait
+            )
+            wait # Avoid exceeding head node's RAM.
+        done
+    done
+done

@@ -307,6 +307,14 @@ eval_args () {
     fi
 }
 
+COMPLEX_SCENARIO='--master-age-start=30 --master-income-preretirement=120e3 --master-consume-preretirement=50e3 --master-guaranteed-income=[{"start":null,"payout":20e3,"source_of_funds":"taxable","type":"social_security"},{"start":30,"end":50,"payout":-5e3,"inflation_adjustment":0,"source_of_funds":"tax_free"},{"start":30,"end":43,"payout":-10e3,"source_of_funds":"tax_free"},{"start":43,"end":47,"payout":-30e3,"source_of_funds":"tax_free"},{"start":35,"end":36,"payout":-50e3,"source_of_funds":"tax_free"},{"start":35,"end":65,"payout":-20e3,"inflation_adjustment":0,"source_of_funds":"tax_free"}]'
+    # 20k Social Security - taxable, unlike mistakenly non-taxable elsewhere.
+    # 5k nominal student loan - 20 years remaining.
+    # 10k child - child currently age 5 suppport until 18.
+    # 30k college - at child's age 18 for 4 years.
+    # 50k home down payment - at age 35.
+    # 20k nominal mortgage - at age 35 for 30 years (starting amount not adjusted for inflation).
+
 train_scenarios () {
 
     local TRAINING=$1
@@ -351,6 +359,10 @@ train_scenarios () {
     elif [ $TRAINING = specific-tax_diverse ]; then
         train gamma$GAMMA-age50-tax_diverse2e5 "$EVAL_ARGS $ARGS --master-age-start=50 --master-p-tax-free=0.5e5 --master-p-tax-deferred=1.0e5 --master-p-taxable-stocks=0.3e5 --master-p-taxable-real-bonds=0.2e5"
         train gamma$GAMMA-retired67-guaranteed_income20e3-tax_diverse1e6 "$EVAL_ARGS $ARGS --master-age-start=67 --master-p-tax-free=2.5e5 --master-p-tax-deferred=5.0e5 --master-p-taxable-stocks=1.5e5 --master-p-taxable-real-bonds=1e5"
+    elif [ $TRAINING = specific-p_none ]; then
+        train $SPIAS-gamma$GAMMA "$EVAL_ARGS $ARGS --master-age-start=30 --master-income-preretirement=80e3 --master-consume-preretirement=50e3"
+    elif [ $TRAINING = specific-p_none_complex ]; then
+        train $SPIAS-gamma$GAMMA-complex "$EVAL_ARGS $ARGS $COMPLEX_SCENARIO"
     elif [ $TRAINING = slice-gi ]; then
         # No spias case - slice and dice based on guaranteed income fraction.
         # If gi_fraction_low is set to zero, without any guaranteed income, during training at advanced ages the projected consumption
@@ -421,6 +433,10 @@ eval_scenarios () {
     elif [ $TRAINING = specific-tax_diverse ]; then
         evaluate gamma$GAMMA-age50-tax_diverse2e5 $UNIT-age50-tax_diverse2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-p-tax-free=0.5e5 --master-p-tax-deferred=1.0e5 --master-p-taxable-stocks=0.3e5 --master-p-taxable-real-bonds=0.2e5"
         evaluate gamma$GAMMA-retired67-guaranteed_income20e3-tax_diverse1e6 $UNIT-retired67-guaranteed_income20e3-tax_diverse1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-p-tax-free=2.5e5 --master-p-tax-deferred=5.0e5 --master-p-taxable-stocks=1.5e5 --master-p-taxable-real-bonds=1.0e5"
+    elif [ $TRAINING = specific-p_none ]; then
+        evaluate $SPIAS-gamma$GAMMA $UNIT$LABEL "$EVAL_ARGS $ARGS --master-age-start=30 --master-income-preretirement=80e3 --master-consume-preretirement=50e3"
+    elif [ $TRAINING = specific-p_none_complex ]; then
+        evaluate $SPIAS-gamma$GAMMA-complex $UNIT$LABEL "$EVAL_ARGS $ARGS $COMPLEX_SCENARIO"
     elif [ $TRAINING = slice-gi -a $STAGE = preretirement ]; then
         evaluate $STAGE-gamma$GAMMA-gi_fraction0.1_0.3 $UNIT-age50-tax_free1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=1e6" # gi_fraction: 0.27
     elif [ $TRAINING = slice-gi -a $STAGE = retired ]; then
@@ -456,6 +472,9 @@ eval_scenarios () {
                ;;
            p_none)
                evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age30-p_none$LABEL "$EVAL_ARGS $ARGS --master-age-start=30 --master-income-preretirement=80e3 --master-consume-preretirement=50e3"
+               ;;
+           p_none_complex)
+               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age30-p_none_complex$LABEL "$EVAL_ARGS $ARGS $COMPLEX_SCENARIO"
                ;;
         esac
     fi
@@ -510,7 +529,7 @@ timesteps () {
 
     case "$TRAINING" in
         specific*)
-            echo "--train-optimizer-step-size=5e-5 --train-num-timesteps=10000000" # Timesteps probably overkill for step size.
+            echo "--train-optimizer-step-size=5e-5 --train-num-timesteps=10000000 --train-batch-size=100000" # Timesteps may need tuning.
             return
             ;;
         *)
