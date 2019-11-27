@@ -95,7 +95,7 @@ class Evaluator(object):
 
     def __init__(self, eval_envs, eval_seed, eval_num_timesteps, *,
         remote_evaluators = None, render = False, eval_batch_monitor = False,
-        num_trace_episodes = 0, pdf_buckets = 100, pdf_raw_buckets = 10000, pdf_smoothing_window = 0.02):
+        num_trace_episodes = 0, pdf_buckets = 100, pdf_raw_buckets = 10000, pdf_smoothing_window = 0.02, pdf_constant_initial_consume = False):
 
         self.tstart = time.time()
 
@@ -109,6 +109,7 @@ class Evaluator(object):
         self.pdf_buckets = pdf_buckets
         self.pdf_raw_buckets = pdf_raw_buckets
         self.pdf_smoothing_window = pdf_smoothing_window
+        self.pdf_constant_initial_consume = pdf_constant_initial_consume
 
         if self.remote_evaluators:
             self.eval_num_timesteps = ceil(self.eval_num_timesteps / len(self.remote_evaluators))
@@ -161,6 +162,7 @@ class Evaluator(object):
             s = 0
             erews = [0 for _ in eval_envs]
             eweights = [0 for _ in eval_envs]
+            reward_initial = None
             weight_sum = 0
             consume_mean = 0
             consume_m2 = 0
@@ -184,6 +186,8 @@ class Evaluator(object):
                             rewards.append((reward, weight))
                             erews[i] += reward * weight
                             eweights[i] += weight
+                            if reward_initial == None and s == 1:
+                                reward_initial = reward
                             # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
                             weight_sum += weight
                             delta = consume - consume_mean
@@ -213,7 +217,7 @@ class Evaluator(object):
                     break
 
             return pack_value_weights(sorted(rewards)), pack_value_weights(sorted(erewards)), pack_value_weights(sorted(estates)), \
-                weight_sum, consume_mean, consume_m2, self.trace
+                reward_initial, weight_sum, consume_mean, consume_m2, self.trace
 
         self.object_ids = None
         self.exception = None
@@ -245,7 +249,7 @@ class Evaluator(object):
             seed(self.eval_seed)
 
             try:
-                self.rewards, self.erewards, self.estates, self.weight_sum, self.consume_mean, self.consume_m2, self.trace = rollout(self.eval_envs, pi)
+                self.rewards, self.erewards, self.estates, self.reward_initial, self.weight_sum, self.consume_mean, self.consume_m2, self.trace = rollout(self.eval_envs, pi)
             except Exception as e:
                 self.exception = e # Only want to know about failures in one place; later in summarize().
 
@@ -261,7 +265,7 @@ class Evaluator(object):
 
             rollouts = ray.get(self.object_ids)
 
-            rewards, erewards, estates, weight_sums, consume_means, consume_m2s, traces = zip(*chain(*rollouts))
+            rewards, erewards, estates, reward_initials, weight_sums, consume_means, consume_m2s, traces = zip(*chain(*rollouts))
             if len(rewards) > 1:
                 self.rewards = pack_value_weights(sorted(chain(*(unpack_value_weights(reward) for reward in rewards))))
                 self.erewards = pack_value_weights(sorted(chain(*(unpack_value_weights(ereward) for ereward in erewards))))
@@ -270,6 +274,8 @@ class Evaluator(object):
                 self.rewards = rewards[0]
                 self.erewards = erewards[0]
                 self.estates = estates[0]
+
+            self.reward_initial = reward_initials[0]
 
             # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
             self.weight_sum = 0
@@ -320,16 +326,29 @@ class Evaluator(object):
 
         consume_preretirement = env.params.consume_preretirement
 
-        if ce_max == 0:
-            ce_max = 1
-        ce_step = max((ce_max - ce_min) / self.pdf_raw_buckets, ce_max / 100000)
-        consume_pdf = self.pdf('consume', self.rewards, 0, ce_min, ce_max, ce_step, utility.utility, 1 + env.params.consume_additional if env.sex2 != None else 1)
-
         estate_max, = weighted_percentiles(self.estates, [98])
         if estate_max == 0:
             estate_max = 1
         estate_step = estate_max / self.pdf_raw_buckets
         estate_pdf = self.pdf('estate', self.estates, 0, 0, estate_max, estate_step)
+
+        del self.estates # Conserve RAM.
+
+        if ce_max == 0:
+            ce_max = 1
+        ce_step = max((ce_max - ce_min) / self.pdf_raw_buckets, ce_max / 100000)
+        if not self.pdf_constant_initial_consume and self.reward_initial != None:
+            # Removing any constant initial reward gets rid of a spike in pdf at first consumption value for retirement scenarios.
+            # Doing this is technically incorrect, but less confusing to niave users.
+            # Additionally the spike doesn't smooth well. It typically produces a trough before and after, which may be captured in the plot depending on where the steps fall.
+            j = np.where(self.rewards[0] == self.reward_initial)[0][0]
+            assert all(self.rewards[0][i] == self.reward_initial for i in range(j, j + len(self.erewards[0])))
+            self.rewards = tuple(np.delete(self.rewards[i], np.s_[j:j + len(self.erewards[0])]) for i in range(2))
+                # Should really only remove matching weights, but likelihood of non-initial reward matching exact floating point initial reward is minimal.
+        consume_pdf = self.pdf('consume', self.rewards, 0, ce_min, ce_max, ce_step, utility.utility, 1 + env.params.consume_additional if env.sex2 != None else 1)
+
+        del self.rewards # Conserve RAM.
+        del self.erewards
 
         couple = env.sex2 != None
         if couple:
@@ -339,10 +358,6 @@ class Evaluator(object):
             unit_high *= 1 + env.params.consume_additional
             unit_consume_mean *= 1 + env.params.consume_additional
             unit_consume_stdev *= 1 + env.params.consume_additional
-
-        del self.rewards # Conserve RAM.
-        del self.erewards
-        del self.estates
 
         return {
             'couple': couple,
@@ -372,7 +387,7 @@ class Evaluator(object):
             pdf[what].append(0)
             pdf['weight'].append(0)
             return pdf
-        polyorder = 4
+        polyorder = 3
         half_window_size = max(2, self.pdf_smoothing_window * (high - low) / step // 2) # 2 * half_window_size + 1 must exceed polyorder.
         bucket_weights = []
         w_tot = 0

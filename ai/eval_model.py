@@ -314,7 +314,7 @@ runner_cache = {}
 def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal, opal_file, redis_address, allow_tensorflow, checkpoint_name,
     evaluate, warm_cache, eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
     num_cpu, model, default_object_id, train_dirs, search_consume_initial_around, out,
-    aid, num_workers, num_environments, num_trace_episodes, pdf_buckets, pdf_smoothing_window):
+               aid, num_workers, num_environments, num_trace_episodes, pdf_buckets, pdf_smoothing_window, pdf_constant_initial_consume):
 
     eval_seed += 1000000 # Use a different seed than might have been used during training.
     #set_global_seeds(eval_seed) # Not needed for Ray.
@@ -417,9 +417,8 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         for _ in range(num_environments):
             envs.append(make_fin_env(**eval_model_params, direct_action = not model))
 
-        evaluator = Evaluator(envs, eval_seed, eval_num_timesteps,
-            remote_evaluators = remote_evaluators, render = eval_render,
-            num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets, pdf_smoothing_window = pdf_smoothing_window)
+        evaluator = Evaluator(envs, eval_seed, eval_num_timesteps, remote_evaluators = remote_evaluators, render = eval_render,
+            num_trace_episodes = num_trace_episodes, pdf_buckets = pdf_buckets, pdf_smoothing_window = pdf_smoothing_window, pdf_constant_initial_consume = pdf_constant_initial_consume)
 
         def pi(obss):
 
@@ -604,6 +603,7 @@ def main():
     parser.add_argument('--num-trace-episodes', type = int, default = 5) # Number of sample traces to generate.
     parser.add_argument('--pdf-buckets', type = int, default = 100) # Number of non de minus buckets to use in computing probability density distributions.
     parser.add_argument('--pdf-smoothing-window', type = float, default = 0.02) # Width of smoothing window to use in computing probability density distributions.
+    boolean_flag(parser, 'pdf-constant-initial-consume', default = False) # Whether to include the initial consumption spike for retired scenarios in the consumption probability density distribution.
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, dump = False)
     if args['stdin']:
         args['daemon'] = True
