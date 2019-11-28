@@ -37,11 +37,11 @@ for STAGE in $STAGES; do
         for GAMMA in $GAMMAS; do
             ARGS=`timesteps $TRAINING $UNIT $STAGE $SPIAS $GAMMA`
             ARGS="$SCENARIO_ARGS $TRAINING_ARGS $ARGS --train-save-frequency=$SAVESTEPS"
-            mkdir nominal_bonds_adjust0.0
+            mkdir -p nominal_bonds_adjust0.0
             cd nominal_bonds_adjust0.0
             train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
             cd ..
-            mkdir nominal_bonds_adjust0.01
+            mkdir -p nominal_bonds_adjust0.01
             cd nominal_bonds_adjust0.01
             train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS --master-nominal-bonds-adjust=0.01"
             cd ..
@@ -54,10 +54,28 @@ for STAGE in $STAGES; do
     for SPIAS in $SPIAS_TYPES; do
         for GAMMA in $GAMMAS; do
             ARGS="$SCENARIO_ARGS $EVALUATE_ARGS --ensemble"
+            (
+                # Substitute for stock and bond models without re-optimization and no bias correction (it is a hack that model real bonds recommendations can be used for nominal and iid).
+                cd ~/aiplanner-data/models.new
+                eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS --master-no-nominal-bonds --master-real-bonds --master-stocks-model=iid --master-stocks-return=0.065 --master-stocks-volatility=0.174 --master-stocks-standard-error=0.016" tax_diverse iid_stocks_0.065_0.174_0.16
+                wait # Avoid exceeding head node's RAM.
+                eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS" tax_diverse nominal_bonds
+                wait
+                eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS --master-nominal-bonds-adjust=0.01" tax_diverse nominal_bonds_nominal_bonds_adjust0.01
+                    # Caution: If $SPIAS not none, nominal_bonds_adjust will effect nominal spia prices.
+                wait
+                eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-type=nominal --master-iid-bonds-duration=20 --master-iid-bonds-duration-action-force" tax_diverse iid_nominal_bonds20
+                wait
+                eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-return=0.016 --master-iid-bonds-volatility=0.122 --master-bonds-standard-error=0.0 --master-iid-bonds-duration-action-force" tax_diverse iid_bonds_0.016_0.122_0.0 # Match 20 year nominal bond real return statistics, but lognormal distribution.
+                wait
+                eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS --master-no-nominal-bonds --master-iid-bonds --master-iid-bonds-type=real --master-iid-bonds-duration=20 --master-iid-bonds-duration-action-force" tax_diverse iid_real_bonds20
+                wait
+            )
+            wait
             cd nominal_bonds_adjust0.0
             eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS" tax_diverse
             cd ..
-            wait # Avoid exceeding head node's RAM.
+            wait
             cd nominal_bonds_adjust0.01
             eval_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS --master-nominal-bonds-adjust=0.01" tax_diverse
             cd ..

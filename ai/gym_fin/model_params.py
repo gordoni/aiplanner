@@ -326,6 +326,7 @@ class ModelParams(object):
         self._param('iid-bonds-duration', 15) # Duration to use when deriving iid bond returns from the bond model.
         self._param('iid-bonds-return', 0.025) # Annual real return for iid bonds when lognormal.
         self._param('iid-bonds-volatility', 0.110) # Annual real volatility for iid bonds when lognormal.
+        self._boolean_flag('iid-bonds-duration-action-force', False) # Whether to employ a real or nominal bond model that has variable duration for a durationless iid model.
         self._param('bonds-standard-error', 0.010) # Standard error of log real return for bonds.
         self._param('real-short-rate-type', 'sample', 'invalid', tp = string_type, choices = ('sample', 'current', 'value'))
             # Initial short real interest rate when using model.

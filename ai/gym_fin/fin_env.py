@@ -43,6 +43,8 @@ class FinEnv(Env):
                 actions += 1 # nominal_bonds_duration_action
         if params.iid_bonds:
             actions += 1 # iid_bonds_action
+            if params.iid_bonds_duration_action_force:
+                actions += 1 # dummy iid_bonds_duration_action
         if params.bills:
             actions += 1 # bills_action
 

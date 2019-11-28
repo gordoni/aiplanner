@@ -681,6 +681,8 @@ class Fin:
                 nominal_bonds_duration_action, *action = action
         if self.params.iid_bonds:
             iid_bonds_action, *action = action
+            if self.params.iid_bonds_duration_action_force:
+                _, *action = action
         if self.params.bills:
             bills_action, *action = action
         assert not action
