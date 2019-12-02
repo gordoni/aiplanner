@@ -234,7 +234,13 @@ class ModelParams(object):
         self._param('qualified-dividends-stocks', 1) # Qualified dividends fraction for stocks. Qualified dividends are taxed at capital gains rates.
         self._param('qualified-dividends-bonds', 0) # Qualified dividends fraction for bonds and bills.
         self._param('tax-state', 0.06) # Aggregate state, local, and property taxes as a percentage of income after standard deduction.
-            # Average state and local income tax rate is around 3%, and average state property tax is around 3% of income.
+            # Average state income tax rate is around 4%, and average property tax is around 3% of income.
+            # Ignores local income taxes, uses median rather than mean property taxes.
+            # State income taxes: $387b - https://en.wikipedia.org/wiki/State_tax_levels_in_the_United_States
+            # Number of housholds: 126m - https://www.statista.com/statistics/183635/number-of-households-in-the-us/
+            # Mean houshold income: $73k - https://en.wikipedia.org/wiki/Household_income_in_the_United_States
+            # Median property taxes: $3.3k - https://www.mortgagecalculator.org/helpful-advice/property-taxes.php
+            # Households that own rather than rent: 63% - https://www.pewresearch.org/fact-tank/2017/07/19/more-u-s-households-are-renting-than-at-any-point-in-50-years/
 
         self._boolean_flag('static-bonds', False)
             # Whether to model real bonds and inflation and thus nominal bonds and SPIAs as static (that is using a yield curve that does not vary over time).
@@ -305,7 +311,7 @@ class ModelParams(object):
            #     1 - d(fair price)/d(price).
            # Extent to which movement in stock price doesn't reflect movement in fair price.
            # Used to mimick implications from Shiller's data that stocks can be over/under-valued.
-           # A value of 0.7 produces a value/fair value of 60-150% the vast majority of the time.
+           # A value of 0.7 produces a value/fair value of 50-150% the vast majority of the time.
         self._param('stocks-price', (0.5, 2.0), (None, None)) # Initial observed price of stocks relative to fair price for bootstrap stocks with mean reversion.
         self._param('stocks-price-noise-sigma', 0.2) # Sigma of lognormal noise inherent in observation of stocks price relative to fair price for bootstrap stocks.
             # Used in the case of mean reversion.

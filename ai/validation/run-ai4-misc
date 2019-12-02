@@ -18,6 +18,7 @@ source $AI_DIR/helpers.bash
 mkdir -p ~/aiplanner-data/validation
 cd ~/aiplanner-data/validation
 
-cp $AI_DIR/equity_model/{index.svg,above_trend.svg} .
+cp $AI_DIR/equity_model/{index.csv,above_trend.csv} .
+cp $AI_DIR/angular/src/assets.generate/risk_aversion_{1.5,3,6,12}_pdf.csv .
 
 python3 $AI_DIR/gym_fin/bonds.py > bonds.out

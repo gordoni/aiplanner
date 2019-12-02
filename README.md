@@ -1,11 +1,13 @@
-This directory comprises three asset allocation and consumption
-planning calculators based on mathematical principles, plus a SPIA
-pricing calculator.
+# AIPlanner, AACalc, and Opal
+
+The sources contained here comprise three asset allocation and
+consumption planning calculators based on mathematical principles,
+plus a SPIA pricing calculator.
 
 AIPlanner uses deep reinforcement learning. It is computationally
 extremely demanding to train, but fast once trained.
 
-AACalc Alloc attempts to shoehorn everything into Merton's portfolio
+AACalc attempts to shoehorn everything into Merton's portfolio
 problem. It is fast, and easy to use.
 
 Opal is a research calculator that uses stochastic dynamic
@@ -15,6 +17,8 @@ terms of the scenarios it can handle.
 The SPIA pricing calculator computes actuarially fair SPIA prices
 using up to date real, nominal, or corporate bond yield curves
 obtained from the U.S. Treasury.
+
+## AIPlanner
 
 Notable features of AIPlanner:
 
@@ -51,7 +55,9 @@ Notable features of AIPlanner:
 
   - An Angular web based front end.
 
-Notable features of AACalc Alloc:
+## AACalc
+
+Notable features of AACalc:
 
   - The closer the scenario is to Merton's portfolio problem, the more
     accurate the results.
@@ -78,6 +84,8 @@ Notable features of AACalc Alloc:
     unpredictable. We generate a range of results for different
     plausible scenarios.
 
+## Opal
+
 Notable features of Opal:
 
   - Delivers, to within the limits of floating point calculations, the
@@ -90,7 +98,7 @@ Notable features of Opal:
 
   - A Monte-Carlo simulator to assess strategy performance.
 
-  - A variety of correlation preserving bootstraping and synthetic
+  - A variety of correlation preserving bootstrapping and synthetic
     return generation options for the Monte Carlo simulator.
 
   - The ability to report the odds of portfolio failure, the time
@@ -114,81 +122,82 @@ Notable features of Opal:
   - Graphical display of the optimal strategy and its performance
     thanks to GNUPLOT.
 
-  - An optional web based front end to the program.
+  - An optional deprecated web based front end to the program.
+
+## SPIA pricing calculator
 
 Notable features of the SPIA pricing calculator:
 
-  - A variety of mortality tables.
+  - Uses a variety of mortality tables.
 
   - Use of the current U.S. Treasury real and nominal yield curves,
     and the high quality markets corporate bond curve.
 
   - An optional web based front end.
 
-Demo:
+## Demo
 
   - See https://www.aiplanner.com/ for AIPlanner.
 
-  - See https://www.aacalc.com/ for AACalc Alloc and the SPIA pricing
+  - See https://www.aacalc.com/ for AACalc and the SPIA pricing
     calculator.
 
-Implementation:
+  - Opal no longer has a functioning web based front end that can be
+    used for demos. It is command line only.
 
-  - Opal, AACalc Alloc, and the SPIA pricing calculator have been
-    released as Open Source on github. See:
+## License
 
-        https://github.com/gordoni/aacalc
+  - AIPlanner is not Open Source, but is free for non-commercial use.
+    Commercial use licenses are also available.
 
-    They are licensed under the GNU Affero GPL. See the file
-    agpl-3.0.txt in the relevant sub-directories for details. Note,
+  - AACalc, Opal, and the SPIA pricing calculator have been released
+    as Open Source. They are licensed under the GNU Affero GPL. Note,
     the Affero GPL requires that if you use the licensed code as part
     of a web service then you must release your code.
 
-    AIPlanner is proprietary and has not been released as Open Source.
-    I am experimenting with business models, and various licensing
-    terms may be available.
+  - See the file LICENSE in the relevant sub-directories for further
+    details.
+
+## Implementation
 
   - Runs on Ubuntu 16.04 Linux and possibly other systems.
 
-  - AIPlanner written in Python, on top of Ray RLlib and Tensorflow,
-    with calls out the GNUPLOT.
+  - AIPlanner is written in Python, on top of Ray RLlib and
+    Tensorflow, with calls out to GNUPLOT.
 
-  - Opal backend written in Java with call outs to R and GNUPLOT.
+  - The Opal backend is written in Java with call outs to R and
+    GNUPLOT.
 
-  - AIPlanner web frontend written in Angular. Remaining web frontends
-    written in Python using the Django framework.
+  - The AIPlanner web frontend is written in Angular. The remaining
+    web frontends are written in Python using the Django framework.
 
-  - AIPlanner and Opal backends can be either run standalone, or in a
-    server configuration talking to the frontend.
+  - The AIPlanner and Opal backends can be either run standalone, or
+    in a server configuration talking to the frontend.
 
-  - AIPlanner and Opal backends perform minimal input sanity checking;
-    responsibility for input sanity checking pushed on to frontend.
+  - The AIPlanner and Opal backends perform minimal input sanity
+    checking; responsibility for input sanity checking pushed on to
+    frontend.
 
-  - Opal backend uses hill climbing to avoid exhaustive search of the
-    solution space.
+  - The Opal backend uses hill climbing to avoid exhaustive search of
+    the solution space.
 
-To do:
-
-  - Explore implications of using prospect theory to compute the
-    optimal strategy (treat previous consumption level as an input).
-
-Getting started:
+## Getting started
 
   - It is suggested that Amazon EC2 be used for development work.
 
-  - Obtain the sources. If using the sources released on github:
+  - Obtain the sources:
 
         sudo apt install git
-        git clone https://github.com/gordoni/aacalc.git
+        git clone https://github.com/gordoni/aiplanner.git
 
   - If might do development work:
+
         cd aacalc
         git config --global user.name "<FirstName> <LastName>"
         git config --global user.email "<user@email.com>"
 
   - See ai/README for the Angular frontended Python based AIPlanner.
 
-  - See web/README for the Django frontended Python based AACalc
-    Alloc.
+  - See web/README for the Django frontended Python based AACalc.
 
-  - Optionally see opal/README for the Java based Opal.
+  - See opal/README for the Java based Opal.

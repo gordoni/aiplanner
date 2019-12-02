@@ -1,9 +1,10 @@
-<AIPlanner - Deep Reinforcement Learning Financial Planner.
+AIPlanner - Deep Reinforcement Learning Financial Planner
+=========================================================
 
 Tensorflow
 ----------
 
-Tensorflow is the deep learning framework used. Would like to run on
+Tensorflow is the deep learning framework used. I would like to run on
 Ubuntu 18.04, but Ubuntu 18.04 has CUDA 9.1.  Google won't be
 releasing tensorflow for CUDA 9.1, will release for 9.2. Would thus
 need to manually install CUDA, which based on the tensorflow docs, is
@@ -60,13 +61,10 @@ Obtain the source
 -----------------
 
 Set up an EC2 instance with tensorflow, ssh in to it, and obtain the
-sources (you will need to use the -A flag with ssh if you are pulling
-from a private repository):
+sources:
 
     cd ~
-    git clone <aiplanner-repository> aiplanner
-    cd ~/aiplanner
-    git checkout ai
+    git clone https://github.com/gordoni/aiplanner.git
 
 Obtaining additional required components
 ----------------------------------------
