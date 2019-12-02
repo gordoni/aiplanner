@@ -499,9 +499,12 @@ PURPOSE.
 
 <div class="center" *ngIf="step == 8">
   <h1 class="title">Results</h1>
-  <span class="small-font">[<a href="sign_up" (click)="gotoStep(100)">Sign Up</a>]</span>
-  <br>
-  <br>
+  <div class="small-font center">
+    [<a href="home" (click)="gotoStep(0)">Home</a>]
+    [<a href="about" (click)="gotoStep(200)">About</a>]
+    [<a href="privacy_policy" (click)="gotoStep(300)">Privacy Policy</a>]
+    [<a href="sign_up" (click)="gotoStep(100)">Sign Up</a>]
+  </div>
   <div class="crra">
     <table>
       <tr>
@@ -537,8 +540,13 @@ PURPOSE.
 <div *ngIf="step == 100">
   <form class="scenario" #subscribeForm="ngForm">
     <h1 class="title">Sign Up</h1>
+    <div class="small-font center">
+      [<a href="home" (click)="gotoStep(0)">Home</a>]
+      [<a href="about" (click)="gotoStep(200)">About</a>]
+      [<a href="privacy_policy" (click)="gotoStep(300)">Privacy Policy</a>]
+    </div>
     <p>
-      Enter your email address to receive AIPlanner news and related
+      Enter your email address and receive AIPlanner news and related
       musings, unlikely to be more than 1 message every few months.
     </p>
     Your email address: <input type="email" class="text" pattern=".+@.+" required name="email" #scenarioEmail="ngModel" [(ngModel)]="email">
@@ -560,6 +568,11 @@ PURPOSE.
 
 <div class="scenario" *ngIf="step == 101">
   <h1 class="title">Subscribed</h1>
+  <div class="small-font center">
+    [<a href="home" (click)="gotoStep(0)">Home</a>]
+    [<a href="about" (click)="gotoStep(200)">About</a>]
+    [<a href="privacy_policy" (click)="gotoStep(300)">Privacy Policy</a>]
+  </div>
   <p class="center">
     Thank you!
   </p>
@@ -570,6 +583,11 @@ PURPOSE.
 
 <div class="scenario" *ngIf="step == 200">
   <h1 class="title">About</h1>
+  <div class="small-font center">
+    [<a href="home" (click)="gotoStep(0)">Home</a>]
+    [<a href="privacy_policy" (click)="gotoStep(300)">Privacy Policy</a>]
+    [<a href="sign_up" (click)="gotoStep(100)">Sign Up</a>]
+  </div>
   <p>
     AIPlaner was developed by Gordon Irlam.
   </p>
@@ -602,8 +620,13 @@ PURPOSE.
 
 <div class="scenario" *ngIf="step == 300">
   <h1 class="title">Privacy Policy</h1>
+  <div class="small-font center">
+    [<a href="home" (click)="gotoStep(0)">Home</a>]
+    [<a href="about" (click)="gotoStep(200)">About</a>]
+    [<a href="sign_up" (click)="gotoStep(100)">Sign Up</a>]
+  </div>
   <p class="center">
-    Version 1, July 30, 2019.
+    Version 1, December 1, 2019.
   </p>
   <p>
     By using our site, you consent to our privacy policy.
