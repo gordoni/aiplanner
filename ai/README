@@ -293,7 +293,7 @@ nodes, and the security group identifies ray-autoscaler-default.
 
 If desired, the cluster can now be manually started using:
 
-    cd ~/aiplaner/ai
+    cd ~/aiplanner/ai
     source activate tensorflow_p36
     ray start --head --redis-port=6379 --autoscaling-config=cluster.yaml
 
@@ -302,7 +302,7 @@ while.
 
 The cluster can be torn down using:
 
-    cd ~/aiplaner/ai
+    cd ~/aiplanner/ai
     ray stop
         # Stops Ray on the head node.
     ray down cluster.yaml

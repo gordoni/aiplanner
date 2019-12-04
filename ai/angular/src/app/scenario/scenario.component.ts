@@ -14,6 +14,7 @@ import { Component, OnInit } from '@angular/core';
 import { ApiService } from '../api.service';
 import { DefinedBenefit } from '../defined-benefit';
 import { ResultComponent } from '../result/result.component';
+import { Utils } from '../utils';
 
 @Component({
   selector: 'app-scenario',
@@ -70,6 +71,7 @@ export class ScenarioComponent implements OnInit {
 
   constructor(
     private apiService: ApiService,
+    private utils: Utils,
   ) {}
 
   health(individual: string) {
@@ -88,10 +90,6 @@ export class ScenarioComponent implements OnInit {
     return this.lifeExpectancyAdditional < 10 && this.lifeExpectancyAdditional2 < 10;
   }
 
-  comma(x) {
-    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  }
-
   dbTotal(definedItems) {
 
     var tot: number = 0;
@@ -100,15 +98,15 @@ export class ScenarioComponent implements OnInit {
         tot += db.amount()
     }
 
-    return this.comma(tot)
+    return this.utils.comma(tot)
   }
 
   pTotal() {
-    return this.comma(this.pTaxDeferred + this.pTaxFree + this.pTaxableBonds + this.pTaxableStocks);
+    return this.utils.comma(this.pTaxDeferred + this.pTaxFree + this.pTaxableBonds + this.pTaxableStocks);
   }
 
   basisTotal() {
-    return this.comma(this.pTaxableBondsBasis + this.pTaxableStocksBasis);
+    return this.utils.comma(this.pTaxableBondsBasis + this.pTaxableStocksBasis);
   }
 
   doEdit(db) {

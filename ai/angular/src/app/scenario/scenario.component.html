@@ -126,7 +126,7 @@ PURPOSE.
           <td class="left"> {{db.type}} </td>
           <td class="center"> {{db.owner}} </td>
           <td class="right"> {{db.age}} </td>
-          <td class="right"> {{comma(db.amount())}} </td>
+          <td class="right"> {{utils.comma(db.amount())}} </td>
           <td>
             <button type="button" (click)="doEdit(db)" [disabled]="editDefinedBenefit">Edit</button>
             <button type="button" (click)="deleteDb(definedBenefits, i)" [disabled]="editDefinedBenefit">Delete</button>
@@ -234,7 +234,7 @@ PURPOSE.
         <tr class="db-container" *ngFor="let db of definedLiabilities; index as i">
           <td> {{db.type}} </td>
           <td class="right"> {{db.years}} </td>
-          <td class="right"> {{comma(db.amount())}} </td>
+          <td class="right"> {{utils.comma(db.amount())}} </td>
           <td>
             <button type="button" (click)="doEdit(db)" [disabled]="editDefinedBenefit">Edit</button>
             <button type="button" (click)="deleteDb(definedLiabilities, i)" [disabled]="editDefinedBenefit">Delete</button>
