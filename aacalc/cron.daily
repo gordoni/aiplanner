@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DIR=/home/ubuntu/aacalc/spia
+DIR=/home/ubuntu/aiplanner/spia
 DATADIR=/home/ubuntu/.spia
 
 mkdir -p $DATADIR/{nominal,real,corporate}

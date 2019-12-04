@@ -35,7 +35,7 @@ from spia import LifeTable, Scenario, YieldCurve
 from aacalc.forms import AllocAaForm, AllocNumberForm, AllocRetireForm
 from settings import ROOT, STATIC_ROOT, STATIC_URL
 
-datapath = ('~/aacalc/opal/data/public', '~ubuntu/aacalc/opal/data/public')
+datapath = ('~/aiplanner/opal/data/public', '~ubuntu/aiplanner/opal/data/public')
 
 mwr = 0.96
     # In 2014, observed real MWRs were around 100% range for ages 40-80. At age 85 it was 9% lower when using aer2005-08-summary.
@@ -1425,7 +1425,7 @@ stocks,%(aa_equity)f
 bonds,%(aa_bonds)f
 ''' % result)
         f.close()
-        cmd = ROOT + '/web/plot.R'
+        cmd = ROOT + '/aacalc/plot.R'
         prefix = dirname + '/'
         check_call((cmd, '--args', prefix))
         return dirname

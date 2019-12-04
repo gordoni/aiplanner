@@ -37,15 +37,14 @@ Obtain the required data files
 ------------------------------
 
 # Obtain the HECM revere mortgage principal limit factors:
-cd aacalc/opal
-curl http://www.gordoni.com/aacalc-data.tar.gz | tar -zxf -
+cd aiplanner/opal
+curl https://www.gordoni.com/aacalc-data.tar.gz | tar -zxf -
 cd ../..
 
 Update the interest rate data
 -----------------------------
 
-mkdir -p aacalc/opal/data/public/{hqm,rcmt,cmt}
-aacalc/web/cron.daily
+aiplanner/aacalc/cron.daily
 
 Set up Django
 -------------
@@ -53,18 +52,18 @@ Set up Django
 # Create site files.
 mkdir aacalc.data/project
 touch aacalc.data/project/__init__.py
-cp aacalc/web/example-sitesettings.py aacalc.data/project/sitesettings.py
+cp aiplanner/aacalc/example-sitesettings.py aacalc.data/project/sitesettings.py
 
 [edit] aacalc.data/project/sitesettings.py
 # Optionally set DEBUG to True to display backtraces in the web browser (displays sensistive data).
-# Set ROOT to the path to the aacalc directory (no trailing slash).
+# Set ROOT to the path to the top level aiplanner directory (no trailing slash).
 # Set ADMINS to receive email messages.
 # Set ALLOWED_HOSTS to a list containing the web server hostname (or a suffix thereof).
 #     Can set to [ '*' ] but the Django docs suggest this may have security implications when DEBUG is False.
 # Make SECRETKEY unique.
 
 # Collect statically served files.
-aacalc/web/manage.py collectstatic --noinput
+aiplanner/aacalc/manage.py collectstatic --noinput
 
 Set up Apache
 -------------
@@ -73,7 +72,7 @@ sudo bash
 a2dissite 000-default
 # Select appropriate site.conf.
 # dev.aacalc.com is a sample development Apache conf file.
-cp aacalc/web/sites-available/<sample-site.conf-file> /etc/apache2/sites-available/<site.conf>
+cp aiplanner/aacalc/sites-available/<sample-site.conf-file> /etc/apache2/sites-available/<site.conf>
 # Edit site.conf appropriately.
 <edit> /etc/apache2/sites-available/<site.conf>
 a2ensite <site>
@@ -98,7 +97,7 @@ htpasswd -c ~/aacalc.data/aacalc.htpasswd <user>
 Set up cron
 -----------
 
-cat aacalc/web/crontab.example
+cat aiplanner/aacalc/crontab.example
 sudo crontab -e
 [edit to add crontab.example]
 

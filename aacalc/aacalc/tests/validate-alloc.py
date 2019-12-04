@@ -7,11 +7,11 @@ from math import isnan
 
 from django import setup
 
-path = '/home/ubuntu/aacalc/web'
+path = '/home/ubuntu/aacalc/aacalc'
 if path not in sys.path:
     sys.path.append(path)
 
-path = '/home/ubuntu/aacalc/web/project'
+path = '/home/ubuntu/aacalc/aacalc/project'
 if path not in sys.path:
     sys.path.append(path)
 

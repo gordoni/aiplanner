@@ -1,0 +1,6 @@
+MAILTO=gordoni@gordoni.com
+
+# m h  dom mon dow   command
+
+0 * * * * /home/ubuntu/aiplanner/aacalc/cron.hourly
+0 0 * * * perl -e '{sleep(rand(1000))}'; /home/ubuntu/aiplanner/aacalc/cron.daily
