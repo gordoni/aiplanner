@@ -1,8 +1,8 @@
-Web based frontend for the AACalc asset allocation and consumption
-planning calculator.
+AACalc - Merton's Method Financial Planner and SPIA Web Interface
+=================================================================
 
-Source files reside in aacalc, while running instance files reside in
-aacalc.data .
+Source files reside in aiplanner/aacalc, while running instance files
+reside in aacalc.data .
 
 Obtaining additional required components
 ----------------------------------------
@@ -46,7 +46,7 @@ Update the interest rate data
 
 cd aiplanner
 sudo aacalc/cron.daily
-sudo bash -c 'PYTHONPATH=. aacalc/gen_yield_curve_special > /var/www/.spia/nominal/nominal-special.csv'
+sudo bash -c 'HOME=/var/www PYTHONPATH=. aacalc/gen_yield_curve_special > /var/www/.spia/nominal/nominal-special.csv'
 
 Set up Django
 -------------
