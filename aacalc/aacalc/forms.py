@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2018 Gordon Irlam
+# Copyright (C) 2009, 2011-2019 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -179,7 +179,7 @@ class SpiaForm(Form):
         choices=(('iam2012-basic', 'Comparable to the average annuitant of the same sex and age.'), ('ssa-cohort', 'Comparable to the general population of the same sex and age.'), ('adjust', 'Adjust life table to match specified life expectancy.'), ),
         widget=VerticalRadioRenderer)
     ae = ChoiceField(
-        choices = (('none', 'no'), ('aer2005_08-summary', 'summary'), ('aer2005_08-full', 'age specific'), ))
+        choices = (('none', 'no'), ('aer2005_13-summary', 'summary'), ))
     le_set = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,
@@ -198,6 +198,10 @@ class SpiaForm(Form):
     bond_adjust_pct = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=-99)
+    adjust = DecimalField(
+        widget=TextInput(attrs={'class': 'small_numeric_input'}),
+        min_value=-20,
+        max_value=20)
     cpi_adjust = ChoiceField(
         choices = (('all', 'payout'), ('payout', 'anniversary of 1st payout'), ('calendar', 'January 1st'), ))
 

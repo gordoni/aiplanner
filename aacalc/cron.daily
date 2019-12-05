@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DIR=/home/ubuntu/aiplanner/spia
-DATADIR=/home/ubuntu/.spia
+DATADIR=/var/www/.spia
 
 mkdir -p $DATADIR/{nominal,real,corporate}
 

@@ -66,26 +66,26 @@ class IncomeAnnuity(object):
 
         'frequency' is the number of payouts per year.
 
-        'price_adjust' specifies when any price or real interest rate
-        adjustments takes place. It must be one of:
+        'price_adjust' specifies when any price adjustment takes
+        place. It must be one of:
 
             'all': At every payout.
 
             'payout': On the anniversary of the first payout.
 
-            'calendar': On January 1st.
+            'calendar': On January 1st. First adjustment pro-rata.
 
         'percentile' specifies a percentile value expressed as a
-        floating point number to compute the annuity value through to
-        the specified percentile of life expectancy, or None to
-        compute the total annuity value.
+        floating point number to compute the annuity value if the
+        annuitants were to live to the specified percentile of life
+        expectancy, or None to compute the total annuity value.
 
         'date_str' is an ISO format date specifying the date for which
         to compute the annuity's value. The default is to use the same
         date as the yield curve.
 
         'schedule' is either an optional function of one parameter,
-        the time offset from the current age of hte first annuitant
+        the time offset from the current age of the first annuitant
         specified in years, an array indexed by the time offset from
         the current age in years less the 'payout_delay' multiplied by
         'frequency', or a numeric value. It should yield a
@@ -114,7 +114,7 @@ class IncomeAnnuity(object):
         if joint_contingent != None:
             joint = joint_contingent
         if cpi_adjust != None:
-            price_adust = cpi_adjust
+            price_adjust = cpi_adjust
 
         self.yield_curve = yield_curve
         self.payout_delay = payout_delay
@@ -298,7 +298,7 @@ class IncomeAnnuity(object):
 
             'payout': On the anniversary of the first payout.
 
-            'calendar': On January 1st.
+            'calendar': On January 1st. First adjustment pro-rata.
 
         'delay_calcs' specifies whether to delay computation of the
         annuity's value. This enables complex payout schedules to be
@@ -378,7 +378,6 @@ class IncomeAnnuity(object):
             if self.percentile == None:
                 target_combined = -1
             else:
-                assert self.schedule == 1
                 target_combined = 1 - self.percentile / 100
             try:
                 alive1_init = self.alive1_array[self.alive_offset]
@@ -427,30 +426,20 @@ class IncomeAnnuity(object):
                         - self.sched_alive1_only[i + self.sched_offset] - self.sched_alive2_only[i + self.sched_offset])
                     payout1 = alive1 * self.sched_alive1_only[i + self.sched_offset]
                     payout2 = alive2 * self.sched_alive2_only[i + self.sched_offset]
-                if self.yield_curve.interest_rate != 'real' or self.price_adjust == 'all':
-                    spot = self.yield_curve.spot(y)
-                    y_eff = y
-                else:
-                    if months_since_adjust >= 12:
-                        spot = self.yield_curve.spot(y)
-                        y_eff = y
-                        months_since_adjust %= 12
-                    months_since_adjust += 12 / self.frequency
                 if self.percentile == None:
                     if i == 0 and self.yield_curve.interest_rate == 'le':
                         assert self.schedule == 1
-                        payout_fraction = 0.5  # Half credit after last payout recorded at start.
+                        payout_amount = 0.5 # Half credit after last payout recorded at start.
                     else:
-                        payout_fraction = payout
+                        payout_amount = payout
                         if self.life_table2:
-                            payout_fraction += payout1 + payout2
+                            payout_amount += payout1 + payout2
                 else:
-                    if combined >= target_combined:
-                        payout_fraction = 1
-                    else:
-                        payout_fraction = (prev_combined - target_combined) / (prev_combined - combined)
-                payout_amount = payout_fraction
-                discount = math.exp(spot * y_eff)
+                    payout_amount = self.sched_alive[i + self.sched_offset]
+                    if combined < target_combined:
+                        payout_amount *= (prev_combined - target_combined) / (prev_combined - combined)
+                spot = self.yield_curve.spot(y)
+                discount = math.exp(spot * y)
                 payout_value = payout_amount / discount
                 price += payout_value
                 if self.cacheable_payout:
@@ -465,10 +454,10 @@ class IncomeAnnuity(object):
                 duration += y * payout_value
                 annual_return += payout_amount * spot
                 total_payout += payout_amount
-                if self.calculate and payout_fraction != 0:
+                if self.calculate and payout_amount != 0:
                     r = math.exp(spot)
                     calc = {'i': i, 'y': y, 'alive': alive, 'joint': joint, 'combined': combined,
-                        'payout_fraction': payout_fraction, 'interest_rate': r, 'fair_price': payout_value}
+                        'payout_fraction': payout_amount, 'interest_rate': r, 'fair_price': payout_value}
                     self.calcs.append(calc)
                 i += 1
                 prev_combined = combined

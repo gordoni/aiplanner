@@ -44,7 +44,9 @@ cd ../..
 Update the interest rate data
 -----------------------------
 
-aiplanner/aacalc/cron.daily
+cd aiplanner
+sudo aacalc/cron.daily
+sudo bash -c 'PYTHONPATH=. aacalc/gen_yield_curve_special > /var/www/.spia/nominal/nominal-special.csv'
 
 Set up Django
 -------------
@@ -57,6 +59,7 @@ cp aiplanner/aacalc/example-sitesettings.py aacalc.data/project/sitesettings.py
 [edit] aacalc.data/project/sitesettings.py
 # Optionally set DEBUG to True to display backtraces in the web browser (displays sensistive data).
 # Set ROOT to the path to the top level aiplanner directory (no trailing slash).
+# Set STATIC_ROOT to the path to the aacalc.data directory (no trailing slash).
 # Set ADMINS to receive email messages.
 # Set ALLOWED_HOSTS to a list containing the web server hostname (or a suffix thereof).
 #     Can set to [ '*' ] but the Django docs suggest this may have security implications when DEBUG is False.

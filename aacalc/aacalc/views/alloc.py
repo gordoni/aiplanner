@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2018 Gordon Irlam
+# Copyright (C) 2009, 2011-2019 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -467,7 +467,7 @@ class Alloc:
 
         nominal_scenario = Scenario(self.yield_curve_nominal, 0, None, None, 0, self.life_table, life_table2 = self.life_table2, \
             joint_payout_fraction = 1, joint_contingent = True,
-            period_certain = self.pre_retirement_years, frequency = 12)
+            period_certain = self.pre_retirement_years, frequency = 12, calcs = True)
         nominal_scenario.price()
 
         def npv_credit_factor(delay, credit_line_delay):
@@ -1255,7 +1255,7 @@ class Alloc:
         self.age = float(data['age'])
         self.le_set = float(data['le_set']) - self.age if data['le_set'] else None
         self.life_table = LifeTable(self.table, self.sex, self.age, le_set = self.le_set, date_str = self.date_str)
-        self.life_table_annuity = LifeTable(self.table_annuity, self.sex, self.age, ae = 'aer2005_08-summary')
+        self.life_table_annuity = LifeTable(self.table_annuity, self.sex, self.age, ae = 'aer2005_13-summary')
 
         self.sex2 = data['sex2']
         if self.sex2 == 'none':
@@ -1266,7 +1266,7 @@ class Alloc:
             self.age2 = float(data['age2']);
             self.le_set2 = float(data['le_set2']) - self.age2 if data['le_set2'] else None
             self.life_table2 = LifeTable(self.table, self.sex2, self.age2, le_set = self.le_set2, date_str = self.date_str)
-            self.life_table2_annuity = LifeTable(self.table_annuity, self.sex2, self.age2, ae = 'aer2005_08-summary')
+            self.life_table2_annuity = LifeTable(self.table_annuity, self.sex2, self.age2, ae = 'aer2005_13-summary')
             self.min_age = min(self.age, self.age2)
 
         self.db = data['db']
@@ -1404,7 +1404,7 @@ class Alloc:
 
     def plot(self, mode, result, healthcheck):
         umask(0o077)
-        parent = STATIC_ROOT + 'results'
+        parent = STATIC_ROOT + '/results'
         prefix = 'healthcheck-' if healthcheck else 'aa-'
         dirname = mkdtemp(prefix=prefix, dir=parent)
         f = open(dirname + '/alloc.csv', 'w')

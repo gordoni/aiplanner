@@ -14,8 +14,6 @@ from sys import path
 path.append('/home/ubuntu/aacalc.data/project')
 from sitesettings import *
 
-STATIC_ROOT = ROOT + '.data/static/'
-
 SERVER_EMAIL = 'root@aacalc.com'
 #DEFAULT_FROM_EMAIL = 'noreply@aacalc.com'
 

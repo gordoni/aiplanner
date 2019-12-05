@@ -5,6 +5,7 @@ DEBUG = False
 TEMPLATE_DEBUG = DEBUG
 
 ROOT = '/home/ubuntu/aiplanner'
+STATIC_ROOT = '/home/ubuntu/aacalc.data/static'
 
 ADMINS = (
     ('<FirstName> <LastName>', '<user@email.com>'),

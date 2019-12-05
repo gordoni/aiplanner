@@ -3,7 +3,7 @@
 {% comment %}
 
 AACalc - Asset Allocation Calculator
-Copyright (C) 2009, 2011-2018 Gordon Irlam
+Copyright (C) 2009, 2011-2019 Gordon Irlam
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -66,6 +66,8 @@ may increase as a result of insurance companies investing premiums in
 assets more risky than the assumed bonds.
 </p>
 
+{% comment %}
+
 <p class="small">
 Source code to the SPIA module is made available in the hope this will
 lead to feedback and improvement. Files:
@@ -78,8 +80,10 @@ lead to feedback and improvement. Files:
 <a href="{% url 'file' 'monotone_convex.py' %}">montone_convex.py</a>,
 <a href="{% url 'file' 'fetch_yield_curve.py' %}">fetch_yield_curve.py</a>,
 <a href="{% url 'file' 'test.py' %}">test.py</a>, and
-<a href="{% url 'file' 'test %}">test</a>.
+<a href="{% url 'file' 'test' %}">test</a>.
 </p>
+
+{% endcomment %}
 
 <form  method="post">
 {% csrf_token %}
@@ -133,9 +137,9 @@ When using the annuitant life table adjust for contract duration by
 applying {{ spia_form.ae }} actual/expected data.
 {{ spia_form.ae.errors }}
 <div class="small">
-Long standing annuitants have a higher mortality than recent annuitants.
-This adjustment has a significant effect at advanced ages.
-Adjustment based on Society of Actuaries 2005-08 Individual Payout
+Long standing annuitants have a higher mortality than recent
+annuitants.  This adjustment has a significant effect at advanced
+ages.  Adjustment based on Society of Actuaries 2005-13 Individual
 Annuity Experience Report.
 </div>
 <br />
@@ -145,9 +149,9 @@ expected for the primary annuitant: {{ spia_form.le_set }} secondary annuitant:
 {{ spia_form.le_set.errors }}
 {{ spia_form.le_set2.errors }}
 <div class="small">
-Adjusted life table applies a constant factor to the q<sub>x</sub>
-values of the general population life table in order to reproduce the
-specified additional remaining life expectancy.
+Adjust life table adjusts the starting age of the general population
+life table in order to reproduce the specified additional remaining
+life expectancy.
 </div>
 
 </div>
@@ -159,24 +163,25 @@ specified additional remaining life expectancy.
 Assumed bond type: {{ spia_form.bond_type }}
 {{ spia_form.bond_type.errors }}
 <div class="small">
-For inflation indexed SPIAs the assumed bond type should be inflation
-indexed TIPS. For constant nominal payout SPIAs the assumed bond type can be
-either U.S. Treasury or U.S. corporate, depending on how you are
-likely to invest your safe assets in the absence of SPIAs.
+For constant nominal payout SPIAs the assumed bond type can be either
+U.S. Treasury or U.S. corporate, depending on how you are likely to
+invest your safe assets in the absence of SPIAs. For inflation indexed
+SPIAs the assumed bond type should be inflation indexed TIPS.
 </div>
+Annual adjustment {{ spia_form.adjust }}% applied every {{ spia_form.cpi_adjust }}
+{{ spia_form.adjust.errors }}
+{{ spia_form.cpi_adjust.errors }}
+<br />
 Quote date:
 {{ spia_form.date }}
 <span class="small">Determines interest rate yield curve.</span>
 {{ spia_form.date.errors }}
 <br />
-Apply any inflation adjustment every {{ spia_form.cpi_adjust }}
-{{ spia_form.cpi_adjust.errors }}
-<br />
 <div class="small">
-Inflation indexed and Treasury based SPIAs priced using the daily
+Treasury and inflation indexed SPIAs priced using the daily
 U.S. Treasury Yield Curves based on secondary market quotes.
 Corporate SPIAs priced using the U.S. Treasury High Quality Markets
-(AAA, AA, A) Corporate Bond Yield Curve.  The corporate bond yield
+(AAA, AA, A) Corporate Bond Yield Curve. The corporate bond yield
 curve is only produced monthly with a two week delay, so in times of
 rapidly changing rates the prices for corporate bonds may not be as
 accurate as desired.

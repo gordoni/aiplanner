@@ -820,7 +820,7 @@ class LifeTable:
         of 'le_set'. Specifying a 'date_str' may be required.
 
         'le_add' if specified causes a shift in the perceived age so
-        so that the reamining life expectancy in years matches the
+        so that the remaining life expectancy in years matches the
         underlying life expectancy (or the value of 'le_set'), plus
         'le_add' years. Specifying a 'date_str' may be required.
 
