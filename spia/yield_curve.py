@@ -290,12 +290,15 @@ class YieldCurve(object):
             except self.NoData:
                 stale_days = float('inf')
             else:
-                wanted_date = min(datetime.utcnow().date(), datetime.strptime(self.date, '%Y-%m-%d').date())
-                have_date = yield_curve_date
-                if self.interest_rate == 'corporate':
-                    have_date += '-28'
-                have_date = datetime.strptime(have_date, '%Y-%m-%d').date()
-                stale_days = (wanted_date - have_date).days
+                if self.date.startswith('special-'):
+                    stale_days = 0
+                else:
+                    wanted_date = min(datetime.utcnow().date(), datetime.strptime(self.date, '%Y-%m-%d').date())
+                    have_date = yield_curve_date
+                    if self.interest_rate == 'corporate':
+                        have_date += '-28'
+                    have_date = datetime.strptime(have_date, '%Y-%m-%d').date()
+                    stale_days = (wanted_date - have_date).days
 
             if stale_days <= self.permit_stale_days:
                 break

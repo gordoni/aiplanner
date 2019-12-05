@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2018 Gordon Irlam
+# Copyright (C) 2009, 2011-2019 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -34,9 +34,10 @@ def default_spia_params():
         'joint_type': 'contingent',
         'joint_payout_percent': 70,
         'table': 'iam2012-basic',
-        'ae' : 'aer2005_08-full',
+        'ae' : 'aer2005_13-summary',
         'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
-        'bond_type': 'real',
+        'bond_type': 'nominal',
+        'adjust': 2,
         'bond_adjust_pct': Decimal('0.0'),
         'cpi_adjust': 'calendar',
         'frequency': 12,
@@ -151,6 +152,7 @@ def spia(request):
                 joint_payout_fraction = float(data['joint_payout_percent']) / 100
                 joint_contingent = (data['joint_type'] == 'contingent')
                 frequency = int(data['frequency'])
+                adjust = float(data['adjust']) / 100
                 cpi_adjust = data['cpi_adjust']
                 payout_delay = float(data['payout_delay_months'])
                 if data['payout_delay_years']:
@@ -172,12 +174,12 @@ def spia(request):
 
                 scenario = Scenario(yield_curve, payout_delay, premium, payout, 0, life_table, life_table2 = life_table2, \
                     joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, period_certain = period_certain, \
-                                    frequency = frequency, cpi_adjust = cpi_adjust, mwr = mwr, calcs = True)
+                                    frequency = frequency, adjust = adjust, price_adjust = cpi_adjust, mwr = mwr, calcs = True)
                 price = scenario.price() * frequency
 
                 self_insure_scenario = Scenario(yield_curve, payout_delay, premium, payout, 0, life_table, life_table2 = life_table2, \
                     joint_payout_fraction = joint_payout_fraction, joint_contingent = joint_contingent, period_certain = period_certain, \
-                                                frequency = frequency, cpi_adjust = cpi_adjust, percentile = percentile, calcs = True)
+                                                frequency = frequency, adjust = adjust, price_adjust = cpi_adjust, percentile = percentile, calcs = True)
                 self_insure_price = self_insure_scenario.price() * frequency
 
                 results['fair'] = (mwr == 1)

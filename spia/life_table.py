@@ -1,5 +1,5 @@
-# SPIA - Income annuity (SPIA and DIA) price calculator
-# Copyright (C) 2014-2018 Gordon Irlam
+# SPIA - Income annuity (SPIA and DIA) price calculator.
+# Copyright (C) 2014-2019 Gordon Irlam
 #
 # This program may be licensed by you (at your option) under an Open
 # Source, Free for Non-Commercial Use, or Commercial Use License.
@@ -122,6 +122,20 @@ aer2014_actual_expected = {
         95: (None, None, 0.793, 1.147, ),
         100: (None, None, None, 1.313, ),
         'all': (0.454, 0.571, 0.929, 1.267, ),
+    }
+}
+
+# SOA 2005-13 Individual Annuity Experience Report: years: 2005-2013, benefit class: single life and single life period certain, immediate annuity, nonrefundable, income class: all, tax class: all
+# Actual/expected 2012 IAM Basic G2 aggregated by dollar amount
+
+aer2005_13_years = (1, 3, 6, 11)
+
+aer2005_13_actual_expected = {
+    'male': {
+        'all': (0.414, 0.652, 0.668, 1.283, ),
+    },
+    'female': {
+        'all': (0.375, 0.485, 0.779, 1.255, ),
     }
 }
 
@@ -759,7 +773,7 @@ class LifeTable:
 
     _age_add_cache = {}
 
-    def __init__(self, table, sex, age, *, death_age = float('inf'), ae = 'aer2005_08-summary',
+    def __init__(self, table, sex, age, *, death_age = float('inf'), ae = 'aer2005_13-summary',
                  le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
         '''Initialize an object representing a life expectancy table for an
         individual.
@@ -782,14 +796,18 @@ class LifeTable:
                 to be in better health than individuals that have
                 owned a annuity for a while. It may be one of:
 
-                   "none": No adjustment.
+                    "none": No adjustment.
 
-                   "aer2005_08-summary": Use the all ages summary.
-                   table.
+                    "aer2005_13-summary": Use the all ages 2005-13
+                    summary data.
 
-                  "aer2005_08-full": Use the full age specific
-                  table. This may be more accurate but due to the
-                  limits of sampling contains statistical noise.
+                    "aer2005_08-summary": Use the all ages 2005-08
+                    summary table.
+
+                    "aer2005_08-full": Use the full age 2005-08
+                    specific table. This may be more accurate but due
+                    to the limits of sampling contains statistical
+                    noise.
 
             "gompertz-makeham": Sythetic Gompertz-Makeham mortality
             table with parameters 'alpha', 'm', and 'b'. The
@@ -813,7 +831,7 @@ class LifeTable:
         of 'le_set'. Specifying a 'date_str' may be required.
 
         'le_add' if specified causes a shift in the perceived age so
-        so that the reamining life expectancy in years matches the
+        so that the remaining life expectancy in years matches the
         underlying life expectancy (or the value of 'le_set'), plus
         'le_add' years. Specifying a 'date_str' may be required.
 
@@ -840,7 +858,7 @@ class LifeTable:
             # 'none' - AER increases MWR 20% at age 90, and 5% at age 80.
             # 'aer2005_08-summary' - Use this value for compatibility with Opal.
             # 'aer2005_08-full' - Alters values 5% at age 85.
-        assert(ae in ('none', 'aer2005_08-summary', 'aer2005_08-full'))
+        assert(ae in ('none', 'aer2005_13-summary', 'aer2005_08-summary', 'aer2005_08-full'))
         self.le_set = le_set
         self.le_add = le_add
         self.date_str = date_str
@@ -903,12 +921,18 @@ class LifeTable:
                 contract_year = contract_age + 1  # AER starts at year 1.
                 if self.ae != 'none':
                     c = 0
-                    for cy in aer2014_years:
+                    if self.ae == 'aer2005_13-summary':
+                        aer_years = aer2005_13_years
+                    else:
+                        aer_years = aer2014_years
+                    for cy in aer_years:
                         if cy > contract_year:
                             break
                         c += 1
                     c -= 1
-                    if self.ae == 'aer2005_08-summary':
+                    if self.ae == 'aer2005_13-summary':
+                        ae = aer2005_13_actual_expected[self.sex]['all'][c]
+                    elif self.ae == 'aer2005_08-summary':
                         ae = aer2014_actual_expected[self.sex]['all'][c]
                     else:
                         age_5 = int(age / 5) * 5

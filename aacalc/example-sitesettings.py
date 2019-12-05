@@ -4,10 +4,11 @@
 DEBUG = False
 TEMPLATE_DEBUG = DEBUG
 
-ROOT = '/home/ubuntu/aacalc'
+ROOT = '/home/ubuntu/aiplanner'
+STATIC_ROOT = '/home/ubuntu/aacalc.data/static'
 
 ADMINS = (
-    ('<FirstName> <LastNmae>', '<user@email.com>'),
+    ('<FirstName> <LastName>', '<user@email.com>'),
 )
 
 ALLOWED_HOSTS = [

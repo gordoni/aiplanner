@@ -1,5 +1,5 @@
 # AACalc - Asset Allocation Calculator
-# Copyright (C) 2009, 2011-2016 Gordon Irlam
+# Copyright (C) 2009, 2011-2019 Gordon Irlam
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,6 +16,7 @@
 
 from datetime import datetime
 from re import DOTALL, match
+from traceback import format_exc
 
 from django.http import HttpResponse
 from django.test.client import RequestFactory
@@ -25,6 +26,17 @@ from aacalc.views.le import le
 from aacalc.views.spia import default_spia_params, spia
 
 def healthcheck(request):
+
+    try:
+        check()
+    except Exception:
+        text = 'FAIL\n\n' + format_exc()
+    else:
+        text = 'OK'
+
+    return HttpResponse(text, content_type = 'text/plain')
+
+def check():
 
     # Life expectancy.
     request_factory = RequestFactory()
@@ -48,6 +60,7 @@ def healthcheck(request):
     request_factory = RequestFactory()
     params = default_spia_params()
 
+    params['adjust'] = 0
     params['payout'] = 1000
     request = request_factory.post('/calculators/spia', params)
     response = spia(request)
@@ -98,5 +111,3 @@ def healthcheck(request):
     stocks, consume, _ = match('^.*<!-- healthcheck_aa --> (\d+)/\d+.*<!-- healthcheck_consume --> ((\d|,)+).*$', page, DOTALL).groups()
     assert(60 < float(stocks) <= 100)
     assert(80000 < float(consume.replace(',', '')) < 110000)
-
-    return HttpResponse('OK', content_type = 'text/plain')
