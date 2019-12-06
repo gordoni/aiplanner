@@ -11,7 +11,6 @@
 import csv
 import json
 import os
-import time
 from itertools import chain
 from math import ceil, sqrt
 from random import getstate, seed, setstate
@@ -96,8 +95,6 @@ class Evaluator(object):
     def __init__(self, eval_envs, eval_seed, eval_num_timesteps, *,
         remote_evaluators = None, render = False, eval_batch_monitor = False,
         num_trace_episodes = 0, pdf_buckets = 100, pdf_raw_buckets = 10000, pdf_smoothing_window = 0.02, pdf_constant_initial_consume = False):
-
-        self.tstart = time.time()
 
         self.eval_envs = eval_envs
         self.eval_seed = eval_seed

@@ -95,9 +95,6 @@ class InferEvaluateDaemon:
             ('--' if self.args.warm_cache else '--no-') + 'warm-cache',
             '-c', models_dir + '/base-scenario.txt',
             '--models-adjust', models_dir + '/models-adjust.json',
-            '--eval-num-timesteps', str(self.args.eval_num_timesteps),
-            '--num-environment', str(self.args.num_environments),
-            '--num-trace-episodes', str(self.args.num_trace_episodes),
             '--pdf-buckets', str(self.args.pdf_buckets),
             '--pdf-smoothing-window', str(self.args.pdf_smoothing_window),
         ]
@@ -396,7 +393,6 @@ class RequestHandler(BaseHTTPRequestHandler):
             'age_retirement': uniform(50, 80),
             'income_preretirement': uniform(20000, 200000),
             'income_preretirement2': uniform(20000, 200000),
-            'consume_preretirement': uniform(15000, 100000),
             'have_401k': choice((True, False)),
             'have_401k2': choice((True, False)),
 
@@ -430,6 +426,12 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             'num_evaluate_timesteps': self.server.args.eval_num_timesteps_healthcheck,
         }]
+
+        for scenario in api_data:
+            income = scenario['income_preretirement']
+            if scenario['sex2']:
+                income = scenario['income_preretirement2']
+            scenario['consume_preretirement'] = uniform(0.4 * income, 0.6 * income)
 
         if self.server.args.infer:
             data = self.run_models(api_data, evaluate = False, prefix = 'healthcheck-')
@@ -534,6 +536,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             eval_num_timesteps = self.server.args.eval_num_timesteps
         if not 0 <= eval_num_timesteps <= self.server.args.eval_num_timesteps_max:
             return {'error': 'num_evalate_timeteps out of range.'}
+        num_environments = self.server.args.num_environments_healthcheck if prefix == 'healthcheck-' else self.server.args.num_environments
         num_trace_episodes = api_data[0].get('num_sample_paths')
         if not isinstance(num_trace_episodes, (int, float)):
             num_trace_episodes = self.server.args.num_trace_episodes
@@ -541,6 +544,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             return {'error': 'num_sample_paths out of range.'}
         options += [
             '--eval-num-timesteps', str(eval_num_timesteps),
+            '--num-environments', str(num_environments),
             '--num-trace-episodes', str(num_trace_episodes),
         ]
         results = [None] * len(gammas)
@@ -718,6 +722,7 @@ def main():
     parser.add_argument('--eval-num-timesteps-healthcheck', type = int, default = 1000)
     parser.add_argument('--eval-num-timesteps-max', type = int, default = 100000)
     parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for a single model evaluation. Speeds up tensorflow.
+    parser.add_argument('--num-environments-healthcheck', type = int, default = 10)
     parser.add_argument('--num-trace-episodes', type = int, default = 5) # Default number of sample traces to generate.
     parser.add_argument('--num-trace-episodes-max', type = int, default = 10000)
     parser.add_argument('--pdf-buckets', type = int, default = 100) # Number of non de minus buckets to use in computing probability density distributions.
