@@ -1,0 +1,39 @@
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+# Example AIPlanner configuration file.
+
+port: 3000
+    # Local port on which to run the api server.
+    
+num_infer_jobs: null
+    # Number of parallel inference (/api/infer) jobs to run.
+    # Each job may have multiple scenarios and multiple RRA values.
+    # A value of null scales based on the number of physical cores present.
+    # Set to 0 to disable inference.
+
+num_evaluate_jobs: null
+    # Number of parallel evaluate (/api/evaluate) jobs to run.
+    # Each job has a single scenario and may have multiple RRA values.
+    # A value of null scales based on the number of physical cores present.
+    # Set to 0 to disable evaluation.
+
+admin_email: null
+    # Email address to receive system notification messages.
+    # These are usually generated when there is a problem processing a request.
+    # A value of null suppresses generation of system notification messages.
+
+notify_email: notify@aiplanner.com
+notify_name: 'AIPlanner Notify'
+    # Email address and user name any system notification messages
+    # appear to be coming from.
+
+project_name: AIPlanner
+    # Used in the subject line of system notification messages.

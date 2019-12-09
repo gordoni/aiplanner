@@ -18,4 +18,5 @@ $SPIA_DIR/fetch_yield_curve.py -t nominal
 $SPIA_DIR/fetch_yield_curve.py -t real
 $SPIA_DIR/fetch_yield_curve.py -t corporate
 
-/usr/sbin/logrotate $AI_DIR/logrotate.conf --state $HOME/aiplanner-data/logrotate.status
+#/usr/sbin/logrotate $AI_DIR/aiplanner.logrotate --state $HOME/aiplanner-data/logrotate.status
+    # logrotate can't be run as ubuntu as need to do a systemctl reload after rotate.

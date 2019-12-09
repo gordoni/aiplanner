@@ -1404,6 +1404,7 @@ class Fin:
         else:
             self.years_retired = self.retirement_expectancy_one[self.episode_length]
             self.couple_weight = 1
+        self.years_retired = max(self.years_retired, self.params.time_period) # Prevent divide by zeroes later.
 
         if growth_rate != 1:
             preretirement_growth = growth_rate ** self.preretirement_years

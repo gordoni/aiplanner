@@ -22,10 +22,10 @@ export class ApiService {
   ) { }
 
   get(method, params) {
-    return this.http.get('/webapi/' + method, params);
+    return this.http.get(method, params);
   }
 
   post(method, params) {
-    return this.http.post('/webapi/' + method, params);
+    return this.http.post(method, params);
   }
 }

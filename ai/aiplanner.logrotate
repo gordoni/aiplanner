@@ -1,0 +1,35 @@
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+/home/ubuntu/aiplanner-data/api.log /home/ubuntu/aiplanner-data/api.err {
+    weekly
+    rotate 5
+    missingok
+    compress
+    delaycompress
+    sharedscripts
+    postrotate
+        systemctl reload aiplanner-apiserver > /dev/null 2>&1
+        true
+    endscript
+}
+
+/home/ubuntu/aiplanner-data/web.log /home/ubuntu/aiplanner-data/web.err {
+    weekly
+    rotate 5
+    missingok
+    compress
+    delaycompress
+    sharedscripts
+    postrotate
+        systemctl reload aiplanner-webserver > /dev/null 2>&1
+        true
+    endscript
+}

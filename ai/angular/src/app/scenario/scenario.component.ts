@@ -216,7 +216,7 @@ export class ScenarioComponent implements OnInit {
     };
 
     this.errorMessage = null;
-    this.apiService.post('evaluate', [scenario]).subscribe(
+    this.apiService.post('/webapi/evaluate', [scenario]).subscribe(
       results => this.doResults(results),
       error => this.handleError(error)
     );
@@ -260,7 +260,7 @@ export class ScenarioComponent implements OnInit {
       'email': this.email,
     }
     this.errorMessage = null;
-    this.apiService.post('subscribe', request).subscribe(
+    this.apiService.post('/web/subscribe', request).subscribe(
       results => this.doSubscribe(results),
       error => this.subscribeError(error)
     );
@@ -281,7 +281,7 @@ export class ScenarioComponent implements OnInit {
   }
 
   market() {
-    this.apiService.get('market', {}).subscribe(
+    this.apiService.get('/webapi/market', {}).subscribe(
       results => this.doMarket(results),
       error => this.handleError(error)
     );

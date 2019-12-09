@@ -15,7 +15,7 @@ Description=AIPlanner API Webserver
 User=ubuntu
 Group=ubuntu
 Type=forking
-ExecStart=/home/ubuntu/aiplanner/ai/web/server --port=3000 --notify-email=notify@thisdomain --admin-email=you@yourdomain
+ExecStart=/home/ubuntu/aiplanner/ai/api/server
 ExecReload=/bin/kill -HUP $MAINPID
 
 [Install]

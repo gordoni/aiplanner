@@ -8,15 +8,15 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-/home/ubuntu/aiplanner-data/server.err /home/ubuntu/aiplanner-data/server.log {
-    weekly
-    rotate 5
-    missingok
-    compress
-    delaycompress
-    sharedscripts
-    postrotate
-        systemctl --user reload aiplanner-apiserver > /dev/null 2>&1
-        true
-    endscript
-}
+[Unit]
+Description=AIPlanner Webservice Webserver
+
+[Service]
+User=ubuntu
+Group=ubuntu
+Type=forking
+ExecStart=/home/ubuntu/aiplanner/ai/web/server
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target

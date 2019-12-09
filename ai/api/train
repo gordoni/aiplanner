@@ -48,4 +48,4 @@ done
 
 cp $BASE_SCENARIO ./base-scenario.txt
 echo '{}' > ./models-adjust.json
-cp $AI_DIR/web/market-data.json ./
+cp $AI_DIR/api/market-data.json ./

@@ -551,9 +551,6 @@ PURPOSE.
     </p>
     Your email address: <input type="email" class="text" pattern=".+@.+" required name="email" #scenarioEmail="ngModel" [(ngModel)]="email">
     <div>
-      <div type="button" class="main-button float-left">
-        <button type="button" class="button" (click)="gotoStep(0)">Home</button>
-      </div>
       <div type="submit" class="main-button float-right">
         <button type="submit" class="button" (click)="subscribe()" [disabled]="!subscribeForm.valid">Sign Up</button>
       </div>
