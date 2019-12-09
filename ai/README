@@ -612,11 +612,15 @@ connections on port 25. Consult your service provider for details.
 Performing site health checks
 -----------------------------
 
-Uptime robot, or some other serivce should be used to perform periodic
-HTTPS GET /web/healthcheck and /api/healthcheck requests to port 443
-of the production server.  After about 1 second, the string "OK"
-should be returned as the body to indicate the system appears to be
-operating normally, any other result indicates a problem.
+For a production website Uptime robot, or some other service should be
+used to perform periodic HTTPS GET /web/healthcheck and
+/webapi/healthcheck requests to port 443 of the production server.
+After about 1 second, the string "OK" should be returned as the body
+to indicate the system appears to be operating normally, any other
+result indicates a problem.
+
+For a production api server HTTP GET /api/healthcheck requests should
+be used.
 
 Building an api server docker container
 ---------------------------------------
