@@ -10,8 +10,24 @@
 
 # Example AIPlanner configuration file.
 
+update_interest_rates: yes
+update_stock_price: yes
+update_stock_volatility: yes
+    # Whether to periodically pull market data from the Internet:
+    #     real and nominal interest rates
+    #     stock price to fair value estimate
+    #     stock volatility
+
+host: 0.0.0.0
+    # Address on which to run the api server.
+    # The api server is run in production inside a docker container,
+    # and so needs to listen on the internal public interface. This
+    # should be mapped to localhost via:
+    #     docker run -p 127.0.0.1:3000:3000 ...
+    # For development host should be localhost, or the port should be
+    # firewalled.
 port: 3000
-    # Local port on which to run the api server.
+    # Port on which to run the api server.
     
 num_infer_jobs: null
     # Number of parallel inference (/api/infer) jobs to run.

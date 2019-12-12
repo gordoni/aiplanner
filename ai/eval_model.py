@@ -22,6 +22,8 @@ from subprocess import CalledProcessError, run
 from sys import argv, stderr, stdin, stdout
 from traceback import print_exc
 
+from setproctitle import setproctitle
+
 from baselines.common import boolean_flag
 #from baselines.common.misc_util import set_global_seeds
 
@@ -605,6 +607,7 @@ def main():
     parser.add_argument('--pdf-smoothing-window', type = float, default = 0.02) # Width of smoothing window to use in computing probability density distributions.
     boolean_flag(parser, 'pdf-constant-initial-consume', default = False) # Whether to include the initial consumption spike for retired scenarios in the consumption probability density distribution.
     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, dump = False)
+    setproctitle('evaluate' if args['evaluate'] else 'infer')
     if args['stdin']:
         args['daemon'] = True
     if not args['daemon']:

@@ -15,7 +15,9 @@
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 AI_DIR=$AIPLANNER_HOME/ai
 
-mkdir -p ~/aiplanner-data/models
+. $AI_DIR/setenv
 
-[ "`$AI_DIR/get_config update_stock_price`" == False ] || $AI_DIR/api/update_price.py
-[ "`$AI_DIR/get_config update_stock_volatility`" == False ] || $AI_DIR/api/update_volatility.py
+$AI_DIR/cron.daily
+$AI_DIR/cron.weekly
+
+$AI_DIR/api/server.py "$@"

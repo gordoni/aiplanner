@@ -542,13 +542,14 @@ Setting up cron
 Install crontabs to perform a daily refresh of the interest rate yield
 curves, and a weekly refresh of the fair market price and volatility.
 
+    cd ~/aiplanner/ai
+    cat crontab-example
     crontab -e
 
 ----
 # m h  dom mon dow   command
 MAILTO=<you@yourdomain>
-0 0 * * * perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/cron.daily
-0 0 * * 0 perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/cron.weekly
+<place output from cat "crontab-example" here>
 ----
 
 Seting up log rotation
@@ -625,12 +626,23 @@ be used.
 Building an api server docker container
 ---------------------------------------
 
-The api server may be distributed as a docker container.
+The api server can be distributed as a docker container.
 
-    cd ~/aiplanner/ai/ray
-    ./build-docker.sh --skip-examples
+    cd ~/aiplanner/ai
+    docker build -t aiplanner/base-deps docker/base-deps
+    tar cf docker/deploy/models.tar -C ~/aiplanner-data models --no-wildcards-match-slash --exclude 'seed_*_*'
+    tar cf docker/deploy/dotspia.tar -C ~/ .spia
+    git rev-parse HEAD > docker/deploy/git-rev
+    git archive -o docker/deploy/aiplanner.tar "$(cat docker/deploy/git-rev)"
+    docker build -t aiplanner/deploy docker/deploy
+    rm docker/deploy/{dotspia.tar,models.tar,git-rev,aiplanner.tar}
 
-    TBD
+Test it out:
+
+    docker run -ti -p 127.0.0.1:3000:3000 -v $PWD/aiplanner-docker-development.yaml:/aiplanner.yaml aiplanner/deploy
+
+Note, aiplanner-docker-development.yaml skips performing any market
+updates.
 
 Development
 -----------
@@ -644,7 +656,7 @@ The api server can be run in development as follows:
 
     cd ~/aiplanner/ai/api
     # First stop any production apiserver
-    systemctl --user stop aiplanner-apiserver
+    sudo systemctl stop aiplanner-apiserver
     # Then start up the development apiserver
     ./server.py
 

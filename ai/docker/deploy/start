@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-~aiplanner/aiplanner}
+AI_DIR=$AIPLANNER_HOME/ai
+
+ADMIN_EMAIL=`$AI_DIR/get_config admin_email`
+
+if [ "$ADMIN_EMAIL" != None ]; then
+    NOTIFY_EMAIL=`$AI_DIR/get_config notify_email`
+    if [ "$NOTIFY_EMAIL" = None ]; then
+        NOTIFY_EMAIL='notify@aiplanner.com'
+    fi
+    HOST=`echo $NOTIFY_EMAIL | sed 's/.*@//'`
+    echo $HOST > /etc/mailname
+    postconf -e "myhostname = $HOST"
+    postconf -e "mynetworks ="
+    echo "root: $ADMIN_EMAIL" > /etc/aliases
+    newaliases
+else
+    # Relay message to console.
+    chmod o+w /dev/console
+    echo "root: /dev/console" > /etc/aliases
+fi
+newaliases
+# Need postfix running to relay message to console even if no admin.
+service postfix start >/dev/null 2>&1
+
+cron
+
+su -l aiplanner -c "$AI_DIR/docker/deploy/start.aiplanner $@"

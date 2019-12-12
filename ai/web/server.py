@@ -236,6 +236,7 @@ def main():
         except OSError:
             f = None
     config = safe_load(f) if f else {}
+    web_config = config.get('web', {})
 
     parser = ArgumentParser()
 
@@ -245,8 +246,8 @@ def main():
 
     # HTTP server options.
     boolean_flag(parser, 'verbose', default = False)
-    parser.add_argument('--host', default = 'localhost')
-    parser.add_argument('--port', type = int, default = config.get('web', {}).get('port', 3001))
+    parser.add_argument('--host', default = web_config.get('host', 'localhost'))
+    parser.add_argument('--port', type = int, default = web_config.get('port', 3001))
 
     # Email options.
     parser.add_argument('--notify-email', default = config.get('notify_email', 'notify@aiplanner.com'))

@@ -10,13 +10,17 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+[ -e /opt/conda/bin/activate ] && source /opt/conda/bin/activate base
+
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 AI_DIR=$AIPLANNER_HOME/ai
 SPIA_DIR=$AIPLANNER_HOME/spia
 
-$SPIA_DIR/fetch_yield_curve.py -t nominal
-$SPIA_DIR/fetch_yield_curve.py -t real
-$SPIA_DIR/fetch_yield_curve.py -t corporate
+if [ "`$AI_DIR/get_config update_interest_rates`" != False ]; then
+    $SPIA_DIR/fetch_yield_curve.py -t nominal
+    $SPIA_DIR/fetch_yield_curve.py -t real
+    #$SPIA_DIR/fetch_yield_curve.py -t corporate
+fi
 
 #/usr/sbin/logrotate $AI_DIR/aiplanner.logrotate --state $HOME/aiplanner-data/logrotate.status
     # logrotate can't be run as ubuntu as need to do a systemctl reload after rotate.

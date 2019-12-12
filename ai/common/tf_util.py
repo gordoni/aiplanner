@@ -19,8 +19,6 @@ import tensorflow as tf
 
 from baselines.common import tf_util as U
 
-from ray.rllib.evaluation.worker_set import WorkerSet
-
 class TFRunner:
 
     def __init__(self, *, train_dirs = ['aiplanner.tf'], allow_tensorflow = True, checkpoint_name = None, eval_model_params, couple_net = True,
@@ -45,6 +43,7 @@ class TFRunner:
             import ray
             from ray.rllib.agents.registry import get_agent_class
             from ray.rllib.evaluation import PolicyGraph
+            from ray.rllib.evaluation.worker_set import WorkerSet
 
             from train_rllib import RayFinEnv
 

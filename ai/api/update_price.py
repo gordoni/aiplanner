@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
 # Copyright (C) 2019 Gordon Irlam
@@ -18,7 +18,7 @@ from re import search
 from sys import stdin
 from urllib.request import urlopen
 
-def update(models_dir, read_stdin, write_stdout):
+def update(root_dir, read_stdin, write_stdout):
 
     page = stdin.read() if read_stdin else urlopen('https://www.wsj.com/market-data/stocks/peyields').read().decode('utf-8')
 
@@ -45,26 +45,26 @@ def update(models_dir, read_stdin, write_stdout):
         print(level)
     else:
         try:
-            f = open(models_dir + '/market-data.json')
+            f = open(root_dir + '/market-data.json')
             data = loads(f.read())
         except IOError:
             data = {}
         data['stocks_price'] = level
         data['stocks_price_date'] = date_str
-        with open(models_dir + '/market-data.json', 'w') as f:
+        with open(root_dir + '/market-data.json', 'w') as f:
             print(dumps(data, indent = 4, sort_keys = True), file = f)
 
 def main():
 
     parser = ArgumentParser()
 
-    parser.add_argument('--models-dir', default = '~/aiplanner-data/models')
+    parser.add_argument('--root-dir', default = '~/aiplanner-data')
     parser.add_argument('--stdin', action = 'store_true', default = False)
     parser.add_argument('--stdout', action = 'store_true', default = False)
 
     args = parser.parse_args()
 
-    update(expanduser(args.models_dir), args.stdin, args.stdout)
+    update(expanduser(args.root_dir), args.stdin, args.stdout)
 
 if __name__ == '__main__':
     main()

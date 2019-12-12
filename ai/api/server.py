@@ -32,6 +32,7 @@ from time import sleep, time
 from traceback import print_exc
 
 from psutil import cpu_count
+from setproctitle import setproctitle
 from yaml import safe_load
 
 from ai.common.scenario_space import allowed_gammas
@@ -338,8 +339,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             elif self.path == '/api/market':
 
                 data = self.market()
-                data['real_short_rate'] = exp(data['real_short_rate']) - 1
-                data['nominal_short_rate'] = exp(data['nominal_short_rate']) - 1
+                data['real_short_rate'] = exp(data['real_short_rate']) - 1 if data['real_short_rate'] != None else None
+                data['nominal_short_rate'] = exp(data['nominal_short_rate']) - 1 if data['nominal_short_rate'] != None else None
                 data, filetype = (dumps(data, indent = 4, sort_keys = True) + '\n').encode('utf-8'), 'application/json'
                 headers.append(('Cache-Control', 'max-age=3600'))
 
@@ -456,29 +457,59 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def market(self, check_current = False):
 
-        with open(self.server.args.models_dir + '/market-data.json') as f:
+        with open(self.server.args.root_dir + '/market-data.json') as f:
             market_file = loads(f.read())
+
+        stocks_price = market_file['stocks_price']
+        stocks_volatility = market_file['stocks_volatility']
 
         now = datetime.utcnow()
         now_date = now.date().isoformat()
-        real_yield_curve = YieldCurve('real', now_date, permit_stale_days = 7)
-        real_short_rate = real_yield_curve.spot(0)
-        nominal_yield_curve = YieldCurve('nominal', now_date, permit_stale_days = 7)
-        nominal_short_rate = nominal_yield_curve.spot(0)
+
+        stocks_price_date = datetime.strptime(market_file['stocks_price_date'], '%Y-%m-%d')
+        stocks_volatility_date = datetime.strptime(market_file['stocks_volatility_date'], '%Y-%m-%d')
+
+        try:
+            real_yield_curve = YieldCurve('real', now_date)
+        except YieldCurve.NoData:
+            real_short_rate = None
+        else:
+            real_short_rate = real_yield_curve.spot(0)
+            real_date = datetime.strptime(real_yield_curve.yield_curve_date, '%Y-%m-%d')
+
+        try:
+            nominal_yield_curve = YieldCurve('nominal', now_date)
+        except YieldCurve.NoData:
+            nominal_short_rate = None
+        else:
+            nominal_short_rate = nominal_yield_curve.spot(0)
+            nominal_date = datetime.strptime(nominal_yield_curve.yield_curve_date, '%Y-%m-%d')
 
         if check_current:
             try:
-                assert now - timedelta(days = 14) < datetime.strptime(market_file['stocks_price_date'], '%Y-%m-%d') <= now
-                assert now - timedelta(days = 14) < datetime.strptime(market_file['stocks_volatility_date'], '%Y-%m-%d') <= now
-                assert now - timedelta(days = 14) < datetime.strptime(real_yield_curve.yield_curve_date, '%Y-%m-%d') <= now
-                assert now - timedelta(days = 14) < datetime.strptime(nominal_yield_curve.yield_curve_date, '%Y-%m-%d') <= now
+                assert now - timedelta(days = 14) < stocks_price_date <= now
+                assert now - timedelta(days = 14) < stocks_volatility_date <= now
+                assert real_short_rate != None
+                assert now - timedelta(days = 14) < real_date <= now
+                assert nominal_short_rate != None
+                assert now - timedelta(days = 14) < nominal_date <= now
             except AssertionError as e:
                 self.server.logger.report_exception(e)
                 return None
 
+        # Allow non-updating stock price/volatility with date 2000-01-01.
+        if datetime(2010, 1, 1) < stocks_price_date <= now - timedelta(days = 90):
+            stocks_price = None
+        if datetime(2010, 1, 1) < stocks_volatility_date <= now - timedelta(days = 90):
+            stocks_volatility = None
+        if real_date <= now - timedelta(days = 90):
+            real_short_rate = None
+        if nominal_date <= now - timedelta(days = 90):
+            nominal_short_rate = None
+
         return {
-            'stocks_price': market_file['stocks_price'],
-            'stocks_volatility': market_file['stocks_volatility'],
+            'stocks_price': stocks_price,
+            'stocks_volatility': stocks_volatility,
             'real_short_rate': real_short_rate,
             'nominal_short_rate': nominal_short_rate,
         }
@@ -494,13 +525,21 @@ class RequestHandler(BaseHTTPRequestHandler):
             if not isinstance(api_scenario, dict):
                 return '{"error": "Method body must be an array of JSON objects."}\n'.encode('utf-8')
             if not 'stocks_price' in api_scenario:
+                if market['stocks_price'] == None:
+                    return '{"error": "Stock price data is not current."}\n'.encode('utf-8')
                 api_scenario['stocks_price'] = market['stocks_price']
             if not 'stocks_volatility' in api_scenario:
+                if market['stocks_price'] == None:
+                    return '{"error": "Stock volatility data is not current."}\n'.encode('utf-8')
                 api_scenario['stocks_volatility'] = market['stocks_volatility']
             if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:
                 if not 'real_short_rate' in api_scenario:
+                    if market['real_short_rate'] == None:
+                        return '{"error": "Real interest rate data is not current."}\n'.encode('utf-8')
                     api_scenario['real_short_rate'] = exp(market['real_short_rate']) - 1
                 if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:
+                    if market['nominal_short_rate'] == None:
+                        return '{"error": "Nominal interest rate data is not current."}\n'.encode('utf-8')
                     api_scenario['nominal_short_rate'] = exp(market['nominal_short_rate']) - 1
 
         if evaluate:
@@ -583,11 +622,14 @@ class RequestHandler(BaseHTTPRequestHandler):
                 daemon = daemons_and_lock.daemons.pop()
                 aid, data = daemon.infer_evaluate(api_data, options = options, prefix = prefix)
                 result = loads(data.decode('utf-8'))
-                if (result['error'] or any((any((scenario_result['error'] for scenario_result in scenario_result_set)) for scenario_result_set in result['result']))) and prefix != 'healthcheck-':
+                if (result['error'] or any(any(scenario_result['error'] for scenario_result in scenario_result_set) for scenario_result_set in result['result'])) and prefix != 'healthcheck-':
                     try:
                         msg = open(self.server.args.results_dir + '/' + aid + '/eval.err', 'r').read()
                     except:
-                        msg = 'File not found: eval.err\n'
+                        if result['error']:
+                            msg = result['error']
+                        else:
+                            msg = '\n'.join('\n'.join(scenario_result['error'] for scenario_result in scenario_result_set) for scenario_result_set in result['result'])
                     self.notify_admin('error - ' + aid, msg)
                 return aid, result
             finally:
@@ -701,6 +743,8 @@ def boolean_flag(parser, name, default = False):
 
 def main():
 
+    setproctitle('apiserver')
+
     root_dir = expanduser('~/aiplanner-data')
 
     try:
@@ -720,7 +764,7 @@ def main():
 
     # HTTP server options.
     boolean_flag(parser, 'verbose', default = False)
-    parser.add_argument('--host', default = 'localhost')
+    parser.add_argument('--host', default = config.get('host', '0.0.0.0'))
     parser.add_argument('--port', type = int, default = config.get('port', 3000))
     boolean_flag(parser, 'warm-cache', default = True) # Pre-load tensorflow/Rllib models.
     parser.add_argument('--num-infer-jobs', type = int, default = config.get('num_infer_jobs')) # Each concurrent job may have multiple scenarios with multiple gamma values.

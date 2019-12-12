@@ -1,7 +1,7 @@
 AIPlanner API documentation
 ***************************
 
-November 7, 2019.
+December 11, 2019.
 
 This document describes the AIPlanner - Deep Reinforcement Learning
 Financial Planner web based application programming interface.
@@ -10,10 +10,10 @@ Invocation
 ==========
 
 Requests are made and results returned as JSON data via the HTTPS PUT
-method to the host api.aiplanner.com . E.g.,
+method to the api server. E.g.,
 
     curl -d '[{"age": 50, "age_retirement": 67, "p_tax_deferred": 1000000, "rra": [3]}]' \
-        https://api.aiplanner.com/api/infer
+        https://<apiserver_host>:<port>/api/infer
 
 which results in something like:
 
