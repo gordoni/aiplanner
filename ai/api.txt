@@ -13,7 +13,7 @@ Requests are made and results returned as JSON data via the HTTPS PUT
 method to the api server. E.g.,
 
     curl -d '[{"age": 50, "age_retirement": 67, "p_tax_deferred": 1000000, "rra": [3]}]' \
-        https://<apiserver_host>:<port>/api/infer
+        http://<apiserver_host>:<port>/api/infer
 
 which results in something like:
 

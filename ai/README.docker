@@ -1,0 +1,97 @@
+AIPlanner API Server
+====================
+
+This document deals with configuring and running the AIPlanner
+api server.
+
+Server requirements
+-------------------
+
+The api server can be run out of the box as a docker container on an 2
+core 4 thread 16G RAM Amazon m5.xlarge instance. Any Linux
+distribution should be able to be used. Because of the vagaries of
+Tensorflow the image itself is currently based on Ubuntu 16.04, but
+this shouldn't matter. You should allocate at least 20GB of storage,
+of which at least 10GB should be free.
+
+/api/infer requests rapidly return a recommended strategy for a given
+financial scenario. /api/evaluate requests perform a 30-60 second long
+Monte Carlo simulation of the recommended startegy and report its
+performance.
+
+By default the system will run 1 concurrent infer job per core, and
+number of cores divided by three rounded up concurrent evaluate
+jobs. The system needs 5G for each concurrent infer job, and 6G for
+each concurrent evaluate job.
+
+Infer is not compute intensive. If you are only performing infer you
+can configure num_evaluate_jobs=0 and run on a 1 core 2 thread 8G RAM
+r5.large instance or larger instances of this family.
+
+Evaluate is compute intensive. If you are only performing evaluate you
+can configure num_infer_jobs=0 and run on a 2 core 4 thread 8G RAM
+c5.xlarge instance or larger instances of this family. Each evaluate
+job normally comprises 3 compute bound processes, so you will get
+slightly faster evaluations if you use a 4 core 8 thread 16G RAM
+c5.2xlarge instance or larger.
+
+Obtaining access to the api server docker image
+-----------------------------------------------
+
+You need to have a docker account ( http://hub.docker.com/ ) and be
+granted access to the private <dockerhubid>/aiplanner-apiserver
+repository.
+
+Then on the system where you wish to run the api server:
+
+    docker login
+    docker pull <dockerhubid>/aiplanner-apiserver
+
+Configuring the container
+-------------------------
+
+The container is configured using a file called aiplanner.yaml .
+
+    cp aiplanner-example.yaml aiplanner.yaml
+    [edit] aiplanner.yaml
+
+If you make any changes to the configuration file you should create a
+new container.
+
+Running the container
+---------------------
+
+To run the api server at http://localhost:3000/ and print out the
+container id:
+
+    docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v $PWD/aiplanner.yaml:/aiplanner.yaml <dockhubid>/aiplanner-apiserver
+
+To confirm the container is running:
+
+    docker ps
+
+To test the container:
+
+    curl http://localhost:3000/api/healthcheck
+
+The string "OK" should be output.
+
+If port 80 is firewalled off from the Internet you could replace
+127.0.0.1:3000:3000 by 80:3000 to run the api server on a private
+Intranet as http://<my_apiserver_hostname>/ .
+
+Terminating the container
+-------------------------
+
+Stop the container:
+
+    docker stop <container_id>
+
+Remove it if you like:
+
+    docker rm <container_id>
+
+And if you wish to remove the image:
+
+    docker images
+    docker rmi <image_id>

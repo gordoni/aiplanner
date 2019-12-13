@@ -1,6 +1,12 @@
 AIPlanner - Deep Reinforcement Learning Financial Planner
 =========================================================
 
+This document deals with AIPlanner development and the AIPlanner
+website.
+
+See README.docker for information on configuring and running the
+AIPlanner api server.
+
 Tensorflow
 ----------
 
@@ -24,16 +30,18 @@ only leaves 5G for AIPlanner.
 Server requirements
 -------------------
 
-AIPlanner runs well in production on an 2 core 4 thread 16G RAM Amazon
-m5.xlarge instance (ideally want 3 cores and at least 16G of
-RAM). Training the neural network requires running around 10 c5.4xlarge
-spot instances for 2-3 days. The us-east-2 region currently
-appears the cheapest region for performing this training work.
+For the web server which includes the api server in a docker
+container, with num_infer_jobs=0 set, a 2 core 4 thread 8G RAM
+c5.xlarge instance can be used.
 
-For development a much smaller m5.large, or even a t3.small instance,
-can often be used, provided in the first case a Ray compute cluster is
-configured, or in the second case the SEEDS=1 environment variable is
-set and the --train-seeds=1 flag is passed to api/server.py .
+Training the neural network requires running around 10 c5.4xlarge spot
+instances for 2-3 days. The us-east-2 region currently appears the
+cheapest region for performing this training work.
+
+For development an m5.large, or even a t3.small instance, can often be
+used, provided in the first case a Ray compute cluster is configured,
+or in the second case the SEEDS=1 environment variable is set and the
+--train-seeds=1 flag is passed to api/server.py .
 
 For deployment on the Internet the machine will need to have ports 80
 and 443 open (http and https), along with 20 (ssh) for administrative
@@ -629,20 +637,27 @@ Building an api server docker container
 The api server can be distributed as a docker container.
 
     cd ~/aiplanner/ai
-    docker build -t aiplanner/base-deps docker/base-deps
-    tar cf docker/deploy/models.tar -C ~/aiplanner-data models --no-wildcards-match-slash --exclude 'seed_*_*'
-    tar cf docker/deploy/dotspia.tar -C ~/ .spia
-    git rev-parse HEAD > docker/deploy/git-rev
-    git archive -o docker/deploy/aiplanner.tar "$(cat docker/deploy/git-rev)"
-    docker build -t aiplanner/deploy docker/deploy
-    rm docker/deploy/{dotspia.tar,models.tar,git-rev,aiplanner.tar}
+    docker build -t aiplanner-base-deps docker/base-deps
+    tar cf docker/apiserver/models.tar -C ~/aiplanner-data models --no-wildcards-match-slash --exclude 'seed_*_*'
+    tar cf docker/apiserver/dotspia.tar -C ~/ .spia
+    git rev-parse HEAD > docker/apiserver/git-rev
+    git archive -o docker/apiserver/aiplanner.tar $(cat docker/apiserver/git-rev)
+    docker build -t aiplanner-apiserver docker/apiserver
+    rm docker/apiserver/{dotspia.tar,models.tar,git-rev,aiplanner.tar}
 
 Test it out:
 
-    docker run -ti -p 127.0.0.1:3000:3000 -v $PWD/aiplanner-docker-development.yaml:/aiplanner.yaml aiplanner/deploy
+    docker run -ti -p 127.0.0.1:3000:3000 -v $PWD/aiplanner-docker-development.yaml:/aiplanner.yaml aiplanner-apiserver
 
 Note, aiplanner-docker-development.yaml skips performing any market
 updates.
+
+Test the image thoroughly. If everything looks good publish the image
+to a private repo:
+
+    docker image tag aiplanner-apiserver <dockerhubid>/aiplanner-apiserver:<version>
+    docker login
+    docker image push <dockerhubid>/aiplanner-apiserver:<version>
 
 Development
 -----------

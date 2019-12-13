@@ -17,6 +17,8 @@ source $AIPLANNER_HOME/ai/helpers.bash
 mkdir -p ~/aiplanner-data/models.new
 cd ~/aiplanner-data/models.new
 
+(cd $AIPLANNER_HOME && git rev-parse HEAD) > ./git-rev
+
 PARALLEL=Jobs
 
 SAVESTEPS=2000000
@@ -26,8 +28,6 @@ UNIT=single
 STAGES="preretirement retired"
 SPIAS_TYPES="none nominal"
 GAMMAS="1.5 3 6"
-
-git rev-parse HEAD > ./git-rev
 
 for STAGE in $STAGES; do
     for SPIAS in $SPIAS_TYPES; do

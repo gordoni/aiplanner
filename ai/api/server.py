@@ -22,12 +22,12 @@ from random import choice, randrange, uniform
 from re import match
 from shlex import quote
 from shutil import rmtree
-from signal import SIGHUP, signal
+from signal import pause, SIGHUP, signal
 from socketserver import ThreadingMixIn
 from subprocess import PIPE, Popen
 from sys import stdout
 from tempfile import mkdtemp
-from threading import BoundedSemaphore, Thread
+from threading import BoundedSemaphore, Lock, Thread
 from time import sleep, time
 from traceback import print_exc
 
@@ -204,21 +204,23 @@ class ApiHTTPServer(ThreadingMixIn, HTTPServer):
         old_infer_daemon = self.infer_daemon
         self.infer_daemon = DaemonsAndLock([
             InferEvaluateDaemon(self.args, evaluate = False, gammas = self.args.gamma, logger = self.logger, priority = 10)
-                for _ in range(self.args.num_infer_jobs)
-        ])
+                for _ in range(self.args.num_infer_jobs)],
+            timeout = self.args.max_infer_queue_wait
+        )
         if old_infer_daemon:
             old_infer_daemon.stop()
+            sleep(self.args.infer_stop_time)
 
-        old_evaluate_daemons = self.evaluate_daemons
-        self.evaluate_daemons = {
-            gamma: DaemonsAndLock(
+        for gamma in self.args.gamma:
+            old_evaluate_daemon = self.evaluate_daemons.get(gamma)
+            self.evaluate_daemons[gamma] = DaemonsAndLock(
                 [InferEvaluateDaemon(self.args, evaluate = True, gammas = [gamma], logger = self.logger) for _ in range(self.args.num_evaluate_jobs)],
-                timeout = 60)
-                    # Development client resubmits request after 120 seconds, so keep timeout plus evaluation time below that.
-                for gamma in self.args.gamma
-        }
-        for old_evaluate_daemon in old_evaluate_daemons.values():
-            old_evaluate_daemon.stop()
+                timeout = self.args.max_evaluate_queue_wait
+            )
+            if old_evaluate_daemon != None:
+                old_evaluate_daemon.stop()
+                sleep(self.args.evaluate_stop_time)
+                    # Conserve RAM by waiting for one set of daemons to exit before starting up next set.
 
 class Overloaded(Exception):
 
@@ -769,6 +771,11 @@ def main():
     boolean_flag(parser, 'warm-cache', default = True) # Pre-load tensorflow/Rllib models.
     parser.add_argument('--num-infer-jobs', type = int, default = config.get('num_infer_jobs')) # Each concurrent job may have multiple scenarios with multiple gamma values.
     parser.add_argument('--num-evaluate-jobs', type = int, default = config.get('num_evaluate_jobs')) # Each concurrent job is a single scenario with multiple gamma values.
+    parser.add_argument('--max-infer-queue-wait', type = int, default = None) # Maximum time to wait for job to start or None to block.
+    parser.add_argument('--max-evaluate-queue-wait', type = int, default = 60)
+        # Development client resubmits request after 120 seconds, so keep timeout plus evaluation time below that.
+    parser.add_argument('--infer-stop-time', type = int, default = 10) # Time to wait for processes to exit when get log rotate sighup.
+    parser.add_argument('--evaluate-stop-time', type = int, default = 120) # Time to wait for processes with a given gamma value to exit when get log rotate sighup.
     parser.add_argument('--gamma', action = 'append', type = float, default = []) # Supported gamma values.
     parser.add_argument('--train-seeds', type = int, default = 10)
     parser.add_argument('--models-dir', default = '~/aiplanner-data/models')
@@ -822,15 +829,21 @@ def main():
         server = PurgeQueueServer(args, logger)
         Thread(target = server.serve_forever, daemon = True).start()
 
+    siglock = Lock()
+
     def rotate_logs(signum, frame):
-        logger.restart()
-        api_server.restart()
+        if siglock.acquire(blocking = False):
+            try:
+                logger.restart()
+                api_server.restart()
+            finally:
+                siglock.release()
 
     signal(SIGHUP, rotate_logs)
 
     try:
         while True:
-            sleep(86400)
+            pause()
     except KeyboardInterrupt:
         pass
 

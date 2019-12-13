@@ -8,7 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-FROM ubuntu:xenial
+FROM ubuntu:16.04
 RUN apt-get update \
     && echo "postfix postfix/main_mailer_type select Internet Site" | debconf-set-selections \
     && echo "postfix postfix/mailname string aiplanner.com" | debconf-set-selections \

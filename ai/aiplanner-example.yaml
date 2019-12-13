@@ -14,15 +14,17 @@ update_interest_rates: yes
 update_stock_price: yes
 update_stock_volatility: yes
     # Whether to periodically pull market data from the Internet:
-    #     real and nominal interest rates
-    #     stock price to fair value estimate
-    #     stock volatility
+    #     daily real and nominal interest rates (Treasury)
+    #     weekly stock price to fair value estimate (S&P 500 from WSJ)
+    #     weekly stock volatility (VIX from Marketwatch)
+    # If you choose not to pull this data you then will have to supply
+    # estimates of it when performing /api/infer or /api/evaluate.
 
 host: 0.0.0.0
     # Address on which to run the api server.
     # The api server is run in production inside a docker container,
-    # and so needs to listen on the internal public interface. This
-    # should be mapped to localhost via:
+    # and so needs to listen on the docker internal public interface
+    # 0.0.0.0. This should be mapped to localhost via:
     #     docker run -p 127.0.0.1:3000:3000 ...
     # For development host should be localhost, or the port should be
     # firewalled.
@@ -43,12 +45,13 @@ num_evaluate_jobs: null
 
 admin_email: null
     # Email address to receive system notification messages.
-    # These are usually generated when there is a problem processing a request.
-    # A value of null suppresses generation of system notification messages.
+    # These are usually generated when there is a problem processing a
+    # request. A value of null sends any system notification messages
+    # to the docker log.
 
 notify_email: notify@aiplanner.com
 notify_name: 'AIPlanner Notify'
-    # Email address and user name any system notification messages
+    # Email address and username that any system notification messages
     # appear to be coming from.
 
 project_name: AIPlanner

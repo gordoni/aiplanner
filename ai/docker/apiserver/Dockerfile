@@ -8,7 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-FROM aiplanner/base-deps
+FROM aiplanner-base-deps
 
 RUN groupadd -r syslog \
     && useradd -m -s /bin/bash -U aiplanner
@@ -32,7 +32,7 @@ RUN cp $AI_DIR/api/market-data.json aiplanner-data \
 USER root
 
 RUN cp $AI_DIR/aiplanner.logrotate /etc/logrotate.d/aiplanner \
-    && ln -s $AI_DIR/docker/deploy/start /
+    && ln -s $AI_DIR/docker/apiserver/start /
 
 EXPOSE 3000
 
