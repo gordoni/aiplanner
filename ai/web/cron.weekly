@@ -14,13 +14,8 @@
 
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 AI_DIR=$AIPLANNER_HOME/ai
-SPIA_DIR=$AIPLANNER_HOME/spia
 
-if [ "`$AI_DIR/get_config update_interest_rates`" != False ]; then
-    $SPIA_DIR/fetch_yield_curve.py -t nominal
-    $SPIA_DIR/fetch_yield_curve.py -t real
-    #$SPIA_DIR/fetch_yield_curve.py -t corporate
-fi
+mkdir -p ~/aiplanner-data/webroot/apiserver
 
-#/usr/sbin/logrotate $AI_DIR/aiplanner.logrotate --state $HOME/aiplanner-data/logrotate.status
-    # logrotate can't be run as ubuntu as need to do a systemctl reload after rotate.
+$AI_DIR/web/update_price.py
+$AI_DIR/web/update_volatility.py

@@ -15,23 +15,26 @@ AI_DIR=$AIPLANNER_HOME/ai
 
 ADMIN_EMAIL=`$AI_DIR/get_config admin_email`
 
+if [ -e /etc/aliases.orig ]; then
+    cp /etc/aliases.orig /etc/alaises
+else
+    cp /etc/aliases /etc/aliases.orig
+fi
+
 if [ "$ADMIN_EMAIL" != None ]; then
-    NOTIFY_EMAIL=`$AI_DIR/get_config notify_email`
-    if [ "$NOTIFY_EMAIL" = None ]; then
-        NOTIFY_EMAIL='notify@aiplanner.com'
-    fi
+    NOTIFY_EMAIL=`$AI_DIR/get_config notify_email "notify@aiplanner.com"`
     HOST=`echo $NOTIFY_EMAIL | sed 's/.*@//'`
     echo $HOST > /etc/mailname
     postconf -e "myhostname = $HOST"
     postconf -e "mynetworks ="
-    grep -q 'root:' /etc/aliases || echo "root: $ADMIN_EMAIL" >> /etc/aliases
+    echo "root: $ADMIN_EMAIL" >> /etc/aliases
 else
     # Relay message to console.
     if ! chmod o+w /dev/console; then
         echo 'Try docker run -t ...'
         exit 1
     fi
-    grep -q 'root:' /etc/aliases || echo "root: /dev/console" >> /etc/aliases
+    echo "root: /dev/console" >> /etc/aliases
 fi
 newaliases
 # Need postfix running to relay message to console even if no admin.

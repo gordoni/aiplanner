@@ -15,10 +15,11 @@ AIPLANNER_DATA=~/aiplanner-data
 
 mkdir -p $AIPLANNER_DATA/webroot.new
 
-(cd $AIPLANNER_HOME/ai/angular/dist/angular && tar cf - .) | (cd $AIPLANNER_DATA/webroot.new && tar xf -) || exit 1
+tar cf - -C $AIPLANNER_HOME/ai/angular/dist/angular . | tar xf - -C $AIPLANNER_DATA/webroot.new || exit 1
 
 rm -rf $AIPLANNER_DATA/webroot.old
 if [ -d $AIPLANNER_DATA/webroot ]; then
+    tar cf - -C $AIPLANNER_DATA/webroot apiserver | tar xf - -C $AIPLANNER_DATA/webroot.new
     mv $AIPLANNER_DATA/webroot $AIPLANNER_DATA/webroot.old || exit 1
 fi
 mv $AIPLANNER_DATA/webroot.new $AIPLANNER_DATA/webroot || exit 1

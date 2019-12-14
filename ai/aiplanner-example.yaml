@@ -8,17 +8,17 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-# Example AIPlanner configuration file.
+# Example AIPlanner configuration file with default values specified.
 
-update_interest_rates: yes
-update_stock_price: yes
-update_stock_volatility: yes
-    # Whether to periodically pull market data from the Internet:
-    #     daily real and nominal interest rates (Treasury)
-    #     weekly stock price to fair value estimate (S&P 500 from WSJ)
-    #     weekly stock volatility (VIX from Marketwatch)
-    # If you choose not to pull this data you then will have to supply
-    # estimates of it when performing /api/infer or /api/evaluate.
+market_data_url: https://www.aiplanner.com/apiserver/market-data.json
+    # Address to use to periodically pull market data:
+    #     real and nominal interest rates
+    #     stock price to fair value estimate
+    #     stock volatility
+    # Set to the value disable to prevent pulling of market data. You
+    # should then supply estimates of these parameters when performing
+    # /api/infer or /api/evaluate, otherwise possibly incorrect default
+    # values will be used.
 
 host: 0.0.0.0
     # Address on which to run the api server.

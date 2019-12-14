@@ -18,21 +18,22 @@ USER aiplanner
 WORKDIR /home/aiplanner
 
 RUN mkdir aiplanner-data
-ADD --chown=aiplanner:aiplanner models.tar aiplanner-data
-ADD --chown=aiplanner:aiplanner dotspia.tar ./
-RUN mkdir aiplanner
-ADD --chown=aiplanner:aiplanner aiplanner.tar aiplanner
+ADD models.tar aiplanner-data/
+ADD dotspia.tar ./
+ADD --chown=aiplanner:aiplanner aiplanner aiplanner/
 ADD --chown=aiplanner:aiplanner git-rev git-rev
 
-ENV AI_DIR /home/aiplanner/aiplanner/ai
+ENV API_DIR /home/aiplanner/aiplanner/ai/docker/apiserver
 
-RUN cp $AI_DIR/api/market-data.json aiplanner-data \
-    && crontab $AI_DIR/crontab-example
+RUN cp $API_DIR/market-data.json aiplanner-data \
+    && crontab $API_DIR/aiplanner.crontab
 
 USER root
 
-RUN cp $AI_DIR/aiplanner.logrotate /etc/logrotate.d/aiplanner \
-    && ln -s $AI_DIR/docker/apiserver/start /
+RUN cp aiplanner/LICENSE / \
+    && cp aiplanner/ai/aiplanner-example.yaml /aiplanner.yaml \
+    && cp $API_DIR/aiplanner.logrotate /etc/logrotate.d/aiplanner \
+    && ln -s $API_DIR/start /
 
 EXPOSE 3000
 

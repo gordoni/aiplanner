@@ -14,11 +14,11 @@ from csv import writer
 from os import scandir
 from sys import stdout
 
-from baselines.common import boolean_flag
-from baselines.common.misc_util import set_global_seeds
+#from baselines.common.misc_util import set_global_seeds
 
 from ai.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from ai.common.tf_util import TFRunner
+from ai.common.utils import boolean_flag
 from ai.gym_fin.asset_allocation import AssetAllocation
 from ai.gym_fin.model_params import load_params_file
 from ai.gym_fin.policies import policy
@@ -74,7 +74,7 @@ def extract_model(eval_model_params, *, train_seed, redis_address, train_seeds, 
                             act['real_bonds_duration'], act['nominal_bonds_duration'], *act['asset_allocation'].as_list()))
                     c.writerow(())
 
-    set_global_seeds(0) # Seed shouldn't matter, but just to be ultra-deterministic.
+    #set_global_seeds(0) # Seed shouldn't matter, but just to be ultra-deterministic.
 
     assert ensemble == (train_seeds > 1)
 

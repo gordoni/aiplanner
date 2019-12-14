@@ -45,7 +45,8 @@ repository.
 Then on the system where you wish to run the api server:
 
     docker login
-    docker pull <dockerhubid>/aiplanner-apiserver
+    docker pull gordoni/aiplanner-apiserver
+    docker logout
 
 Configuring the container
 -------------------------

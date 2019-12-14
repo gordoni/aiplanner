@@ -8,7 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-/home/aiplanner/aiplanner-data/api.log /home/aiplanner/aiplanner-data/api.err /home/ubuntu/aiplanner-data/api.log /home/ubuntu/aiplanner-data/api.err {
+/home/ubuntu/aiplanner-data/api.log /home/ubuntu/aiplanner-data/api.err {
     weekly
     rotate 5
     missingok
@@ -16,7 +16,7 @@
     delaycompress
     sharedscripts
     postrotate
-        systemctl reload aiplanner-apiserver > /dev/null 2>&1 || pkill -HUP apiserver
+        systemctl reload aiplanner-apiserver > /dev/null 2>&1
         true
     endscript
 }

@@ -1,7 +1,7 @@
 AIPlanner API documentation
 ***************************
 
-December 11, 2019.
+December 13, 2019.
 
 This document describes the AIPlanner - Deep Reinforcement Learning
 Financial Planner web based application programming interface.
@@ -64,12 +64,24 @@ strategy and the simulated performance of the investment strategy.
 
 Evaluation is slow. Perhaps 30 seconds for a single evaluation.
 
+/api/healthcheck
+----------------
+
+Takes no parameters.
+
+Creates a random scenario and performs inference and/or a short
+running evaluation on it. Returns the string "OK" on success. Any
+other value indicates an error.
+
 Parameters
 ==========
 
 A scenario is represented as a JSON object containing the keys listed
 below. Most keys are optional, taking on the specified default value,
 unless otherwise indicated.
+
+Customer id
+-----------
 
 cid: any valid JSON value
 default: null
@@ -80,25 +92,40 @@ associated with the correct individual. It should be an opaque
 value. Private account numbers and customer identifying information
 should not be transmitted to AIPlanner.
 
+Sex
+---
+
 sex: "female" or "male"
 default: "female"
 
 Sex of primary individual/self.
+
+Secondary sex
+-------------
 
 sex2: "female", "male", or null
 default: null
 
 Sex of secondary individual/spouse. Null if none.
 
+Age
+---
+
 age: number
 required
 
 Age of self in possibly decimal years.
 
+Secondary age
+-------------
+
 age2: number
 required if sex2 is not null.
 
 Age of spouse. Ignored if sex2 is null.
+
+Health
+------
 
 life_expectancy_additional: number
 default: 0
@@ -116,11 +143,17 @@ living to any particular age. Rather the probabilities of death for
 all ages up to 120 are calculated, and then the results for each
 different possible age of death aggregated.
 
+Secondary health
+----------------
+
 life_expectancy_additional2: number
 default: 0
 
 Additional life expectancy for spouse in decimal years. Ignored if
 sex2 is null.
+
+Retirement age
+--------------
 
 age_retirement: number
 required
@@ -131,6 +164,9 @@ less than age if already retired.
 Retirement is the period in which the neural network calculates the
 consumption amount. Prior to retirement consumption is fully
 determined by the user.
+
+Pre-retirement income
+---------------------
 
 income_preretirement: number
 default: 0
@@ -143,10 +179,16 @@ labor income one day being modeled as volatile, reflecting possible
 changes in employment status, something which guaranteed_income
 doesn't support.
 
+Secondary pre-retirement income
+-------------------------------
+
 income_preretirement2: number
 default: 0
 
 Current post FICA pre-tax income of spouse. Ignored if sex2 is null.
+
+Pre-retirement income ending age
+--------------------------------
 
 income_preretirement_age_end: number or null
 default: null
@@ -155,25 +197,40 @@ Age of self in decimal years at which pre-retirement income is first
 no longer received, or null to correspond to self reaching
 age_retirement.
 
+Secondary pre-retirement income ending age
+------------------------------------------
+
 income_preretirement_age_end2: number or null
 
 Age of spouse when their pre-retirement income ceases, or null to
 correspond to self reaching age retirement, or no spouse.
+
+Pre-retirement consumption
+--------------------------
 
 consume_preretirement: number
 default: 0
 
 Annual pre-retirement consumption.
 
+401(k) available
+----------------
+
 have_401k: true or false
 default: true
 
 Whether self has access to a 401(k) scheme.
 
+Secondary 401(k) available
+--------------------------
+
 have_401k2: true or false
 default: true
 
 Whether spouse has access to a 401(k) scheme.
+
+Guaranteed income
+-----------------
 
 guaranteed_income: array of JSON objects
 default: []
@@ -272,40 +329,61 @@ such income or expense. The fields of each object are as follows:
     amount of the payout in today's dollars. Not adjusted for
     inflation.
 
+Tax deferred portfolio size
+---------------------------
+
 p_tax_deferred: number
 default: 0
 
 Pre-tax traditional IRA, 401(k), 403(b), and 457 portfolio balance.
+
+Tax free portfolio size
+-----------------------
 
 p_tax_free: number
 default: 0
 
 After tax Roth IRA, Roth 401(k), and Roth 403(b) portfolio balance.
 
+Taxable stocks portfolio size
+-----------------------------
+
 p_taxable_stocks: number
 default: 0
 
 Value of taxable stock holdings.
+
+Taxable stocks basis
+--------------------
 
 p_taxable_stocks_basis: number
 default: p_taxable_stocks if specified otherwise 0
 
 Tax cost basis of taxable stock holdings.
 
+Taxable bonds portfolio size
+----------------------------
+
 p_taxable_bonds: number
 default: 0
 
 Value of taxable bond holdings.
+
+Taxable bonds basis
+-------------------
 
 p_taxable_bonds_basis: number
 default: p_taxable_bonds if specified otherwise 0
 
 Tax cost basis of taxable bond holdings.
 
+Stock price to fair value
+-------------------------
+
 stocks_price: number
 default: based on an assessment of current market conditions
 
-Current price of stocks relative to fair price.
+Current price of stocks relative to fair value.
 
 This indicator is based on the premise that sometimes stocks are
 richly valued and sometimes they are cheap. It should be set to 1 if
@@ -314,6 +392,9 @@ markets followed a purely random walk over the long term.
 Currently the default value is the average of the S&P 500 12 month
 forward and trailing 12 month P/E ratios divided by their long term
 average value.
+
+Stocks volatility
+-----------------
 
 stocks_volatility: number
 default: based on an assessment of current market conditions
@@ -329,6 +410,9 @@ predictive power than if rebalancing was performed more frequently.
 Currently the default value is based on the value of the VIX index
 divided by its long term average.
 
+Nominal short interest rate
+---------------------------
+
 nominal_short_rate: number
 default: based on the current Treasury yield curve
 
@@ -338,11 +422,17 @@ E.g. 0.03
 At most two of nominal_short_rate, real_short_rate, and inflation_rate
 may be specified.
 
+Real short interest rate
+------------------------
+
 real_short_rate: number
 default: based on the current Treasury yield curve
 
 The annualized real interest rate available for short term cash.
 E.g. 0.01
+
+Inflation short rate
+--------------------
 
 inflation_short_rate: number
 default: based on the current Treasury yield curve
@@ -353,6 +443,9 @@ AIPlanner assumes the current inflation rate is equal to the break
 even inflation rate. That is the inflation risk premium and the real
 liquidity premium offset each other.
 
+SPIAs permitted
+---------------
+
 spias: true or false
 default: true
 
@@ -361,6 +454,9 @@ Premium Immediate Annuities.
 
 SPIAs are particularly beneficial for healthy clients in their late
 70's and early 80's.
+
+Relative risk aversion
+----------------------
 
 rra: array of number
 default: [1.5, 3, 6]
@@ -372,6 +468,9 @@ Each RRA value is associated with a differently trained neural
 network.  As a result, currently the only values that are supported
 are 1.5, 3, and 6.
 
+Evaluation timesteps
+--------------------
+
 num_evaluate_timesteps: number
 default: 50000
 
@@ -379,16 +478,20 @@ The number of years to simulate when performing evaluation.
 
 This value may be reduced to get less accurate results rapidly, or
 increased to get more accurate results albeit more slowly.  This value
-is currently capped at 100000.
+is currently capped at 2000000.
 
 The default value is subject to change.
+
+Sample paths
+------------
 
 num_sample_paths: number
 default: 5
 
 The number of sample investment paths to return in the results.
 Sample paths take up a considerable amount of returned data, hence by
-default only a few are returned.
+default only a few are returned. This value is currently capped at
+10000.
 
 Results
 =======
@@ -421,31 +524,50 @@ or
    {"error": null, "<key>": <value>, ...}
 
 Common result keys
-------------------
+==================
 
-If error is null, at least the following key values will be defined:
+If error is null, at least the following key values will be defined by
+/api/infer and /api/evaluate scenario results.
+
+Customer id
+-----------
 
 cid: any valid JSON value
 
 The customer id supplied with the request, or null if none.
+
+AIPlanner id
+------------
 
 aid: string
 
 The identifier assigned to this request by AIPlanner. May be useful
 for debugging.
 
+Relative risk aversion
+----------------------
+
 rra: number
 
 The coefficient of relative risk aversion associated with this result.
+
+Current consumption target
+--------------------------
 
 consume: number
 
 The current recommended retirement consumption amount, or
 consume_preretirement if not yet retired.
 
+Retirement plan contribution
+----------------------------
+
 retirement_contribution: number
 
 The recommended retirement plan contribution amount.
+
+Asset class names
+-----------------
 
 asset_classes: ["<asset_class_name>", ... ]
 
@@ -453,19 +575,31 @@ The names of the asset classes.
 
 Currently always ["stocks", "real_bonds"].
 
+Asset allocation
+----------------
+
 asset_allocation: [<number>, ... ]
 
 The fractional allocations of the investment portfolio to the asset
 classes in the same order as asset_classes.
 
+Real bonds duration
+-------------------
+
 real_bonds_duration: number
 
 The recommended duration for real bonds.
+
+Reserved
+--------
 
 nominal_bonds_duration: null
 
 This field is reserved for future use. Nominal bonds appear inferior
 to real bonds, and thus are not currently recommended by AIPlanner.
+
+Nominal SPIAs annual adjustment
+-------------------------------
 
 nominal_spias_adjust: number or null
 
@@ -473,16 +607,24 @@ The annual increase in the nominal SPIA payout intended to hopefully
 offset the effects of inflation. E.g. 0.02 represents a 2% annual
 increase in the nominal payout.
 
+Nominal SPIAs purchase amount
+-----------------------------
+
 nominal_spias_purchase: number or null
 
 The current recommended nominal SPIA purchase amount.
 
+Reserved
+--------
+
 real_spias_purchase: null
 
 This field is reserved for future use. Real SPIAs appear slightly
-inferior to nominal SPIAs (although this may change if the break even
-inflation rate model is improved), and thus are not currently not
-recommended by AIPlanner.
+inferior to nominal SPIAs, and thus are not currently not recommended
+by AIPlanner.
+
+Total portfolio wealth
+----------------------
 
 portfolio_wealth: number
 
@@ -490,15 +632,24 @@ The present value of the taxable, tax deferred, and tax free
 investment portfolios, less an estimate of future taxes assessed
 against the taxable and tax deferred portfolios.
 
+Pre-retirement income present value
+-----------------------------------
+
 pv_preretirement_income: number or null
 
 The present value of any pre-retirement guaranteed income less
 expenses and taxes. Null if retired.
 
+Retirement income present value
+-------------------------------
+
 pv_retired_income: number
 
 The present value of any post-retirement guaranteed income less
 expenses and taxes.
+
+Current SPIA purchase present value
+-----------------------------------
 
 pv_spias_purchase: number
 
@@ -506,15 +657,21 @@ The present value of any current SPIA purchase, less an estimate of
 the future taxes associated with purchase of a SPIA using tax deferred
 funds.
 
+Future taxes present value
+--------------------------
+
 pv_future_taxes: number
 
 The present value of future taxes.
 
 Additional evaluation result keys
----------------------------------
+=================================
 
 /api/evaluate includes all of the above keys, plus the following
 additional keys:
+
+Certainty equivalent consumption
+--------------------------------
 
 ce: number
 
@@ -536,23 +693,38 @@ evaluating the goodness of a particular strategy.
 
 CE's computed with different RRA coefficients are not comparable.
 
+Certainty equivalent consumption standard error
+-----------------------------------------------
+
 ce_stderr: number
 
 An estimate of the standard error of measurement of the CE. Standard
 error is ill-defined for weighted correlated samples. As a result, in
 computing the standard error we err on the high side.
 
+10th percentile consumption
+---------------------------
+
 consume10: number
 
 The 10th percentile of consumption in retirement.
+
+90th percentile consumption
+---------------------------
 
 consume90: number
 
 The 90th percentile of consumption in retirement.
 
+Mean consumption
+----------------
+
 consume_mean: number
 
 The mean consumption in retirement.
+
+Consumption standard deviation
+------------------------------
 
 consume_stdev: number
 
@@ -560,14 +732,23 @@ The standard deviation of consumption in retirement. This is not the
 standard deviation that might be realized over a single future, but
 the standard deviation of consumption over all possible futures.
 
+Pre-retirement consumption
+--------------------------
+
 consume_preretirement: number
 
 The consume_preretirement input.
+
+Consumption probability
+-----------------------
 
 consume_preretirement_ppf: number
 
 The probability (expressed as a decimal fraction) of retirement
 consumption being consume_preretirement or less.
+
+Consumption histogram
+---------------------
 
 consume_pdf: {"consume": [<number>, ... ], "weight": [<number>, ... ]}
 
@@ -579,6 +760,9 @@ except consume is clipped at the 98th percentile, so the sum of the
 reported weights will be slightly less than 1. The results represent
 the aggregation of multiple possible futures.
 
+Estate histogram
+----------------
+
 estate_pdf: {"estate": [<number>, ... ], "weight": [<number>, ... ]}
 
 Residual estate probability density function. "estate" is a list of
@@ -586,6 +770,9 @@ before tax estate values, and "weight" is a list of the corresponding
 residual estate probability densities. The sum of all weights
 multiplied by the estate interval widths will normally be slightly
 less than 1.
+
+Sample paths
+------------
 
 sample_paths: [{
     "age":  [<number>, ... ],

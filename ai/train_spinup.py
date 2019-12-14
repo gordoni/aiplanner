@@ -18,7 +18,6 @@ import numpy as np
 
 import tensorflow as tf
 
-from baselines.common import boolean_flag
 from baselines.common.misc_util import set_global_seeds
 
 from gym import Env
@@ -33,6 +32,7 @@ from spinup.algos.trpo.core import mlp_actor_critic as trpo_ac
 from spinup.algos.vpg.core import mlp_actor_critic as vpg_ac
 
 from ai.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
+from ai.common.utils import boolean_flag
 from ai.gym_fin.model_params import dump_params_file
 
 class DummyEnv(Env):

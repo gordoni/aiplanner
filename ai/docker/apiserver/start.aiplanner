@@ -17,7 +17,6 @@ AI_DIR=$AIPLANNER_HOME/ai
 
 . $AI_DIR/setenv
 
-$AI_DIR/cron.daily
-$AI_DIR/cron.weekly
+$AI_DIR/docker/apiserver/cron.daily
 
 $AI_DIR/api/server.py "$@"

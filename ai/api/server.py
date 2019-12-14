@@ -36,9 +36,8 @@ from setproctitle import setproctitle
 from yaml import safe_load
 
 from ai.common.scenario_space import allowed_gammas
+from ai.common.utils import boolean_flag
 from ai.gym_fin.model_params import load_params_file
-
-from spia import YieldCurve
 
 class Logger:
 
@@ -286,14 +285,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                     else:
                         self.send_error(403) # Forbidden
 
-                elif self.path == '/api/subscribe':
-
-                    result = self.subscribe(request)
-                    if result != None:
-                        data = (dumps(result, indent = 4, sort_keys = True) + '\n').encode('utf-8')
-                    else:
-                        data = None
-
                 else:
 
                     self.send_error(404) # Not Found
@@ -341,8 +332,6 @@ class RequestHandler(BaseHTTPRequestHandler):
             elif self.path == '/api/market':
 
                 data = self.market()
-                data['real_short_rate'] = exp(data['real_short_rate']) - 1 if data['real_short_rate'] != None else None
-                data['nominal_short_rate'] = exp(data['nominal_short_rate']) - 1 if data['nominal_short_rate'] != None else None
                 data, filetype = (dumps(data, indent = 4, sort_keys = True) + '\n').encode('utf-8'), 'application/json'
                 headers.append(('Cache-Control', 'max-age=3600'))
 
@@ -462,87 +451,61 @@ class RequestHandler(BaseHTTPRequestHandler):
         with open(self.server.args.root_dir + '/market-data.json') as f:
             market_file = loads(f.read())
 
-        stocks_price = market_file['stocks_price']
-        stocks_volatility = market_file['stocks_volatility']
-
-        now = datetime.utcnow()
-        now_date = now.date().isoformat()
-
-        stocks_price_date = datetime.strptime(market_file['stocks_price_date'], '%Y-%m-%d')
-        stocks_volatility_date = datetime.strptime(market_file['stocks_volatility_date'], '%Y-%m-%d')
-
-        try:
-            real_yield_curve = YieldCurve('real', now_date)
-        except YieldCurve.NoData:
-            real_short_rate = None
-        else:
-            real_short_rate = real_yield_curve.spot(0)
-            real_date = datetime.strptime(real_yield_curve.yield_curve_date, '%Y-%m-%d')
-
-        try:
-            nominal_yield_curve = YieldCurve('nominal', now_date)
-        except YieldCurve.NoData:
-            nominal_short_rate = None
-        else:
-            nominal_short_rate = nominal_yield_curve.spot(0)
-            nominal_date = datetime.strptime(nominal_yield_curve.yield_curve_date, '%Y-%m-%d')
-
         if check_current:
+
+            real_short_rate = market_file['real_short_rate']
+            nominal_short_rate = market_file['nominal_short_rate']
+            stocks_price = market_file['stocks_price']
+            stocks_volatility = market_file['stocks_volatility']
+
+            real_short_rate_date = datetime.strptime(market_file['real_short_rate_date'], '%Y-%m-%d')
+            nominal_short_rate_date = datetime.strptime(market_file['nominal_short_rate_date'], '%Y-%m-%d')
+            stocks_price_date = datetime.strptime(market_file['stocks_price_date'], '%Y-%m-%d')
+            stocks_volatility_date = datetime.strptime(market_file['stocks_volatility_date'], '%Y-%m-%d')
+
+            now = datetime.utcnow()
+            epoch = datetime(2000, 1, 1) # Allow non-updating market data with date 2000-01-01.
+
             try:
-                assert now - timedelta(days = 14) < stocks_price_date <= now
-                assert now - timedelta(days = 14) < stocks_volatility_date <= now
-                assert real_short_rate != None
-                assert now - timedelta(days = 14) < real_date <= now
-                assert nominal_short_rate != None
-                assert now - timedelta(days = 14) < nominal_date <= now
+                assert now - timedelta(days = 14) < real_short_rate_date <= now or real_short_rate_date == epoch
+                assert now - timedelta(days = 14) < nominal_short_rate_date <= now or nominal_short_rate_date == epoch
+                assert now - timedelta(days = 14) < stocks_price_date <= now or stocks_price_date == epoch
+                assert now - timedelta(days = 14) < stocks_volatility_date <= now or stocks_volatility_date == epoch
             except AssertionError as e:
                 self.server.logger.report_exception(e)
                 return None
 
-        # Allow non-updating stock price/volatility with date 2000-01-01.
-        if datetime(2010, 1, 1) < stocks_price_date <= now - timedelta(days = 90):
-            stocks_price = None
-        if datetime(2010, 1, 1) < stocks_volatility_date <= now - timedelta(days = 90):
-            stocks_volatility = None
-        if real_date <= now - timedelta(days = 90):
-            real_short_rate = None
-        if nominal_date <= now - timedelta(days = 90):
-            nominal_short_rate = None
-
-        return {
-            'stocks_price': stocks_price,
-            'stocks_volatility': stocks_volatility,
-            'real_short_rate': real_short_rate,
-            'nominal_short_rate': nominal_short_rate,
-        }
+        return market_file
 
     def run_models(self, api_data, *, evaluate, options = [], prefix = ''):
 
-        market = self.market(check_current = prefix == 'healthcheck-')
-        if market == None:
-            return '{"error": "Market data is not current."}\n'.encode('utf-8')
+        healthcheck = prefix == 'healthcheck-'
+        market = self.market(check_current = healthcheck)
+        now = datetime.utcnow()
+        old = now - timedelta(days = 90)
+        old_date = old.date().isoformat()
         if not isinstance(api_data, list):
             return '{"error": "Method body must be a JSON array."}\n'.encode('utf-8')
         for api_scenario in api_data:
             if not isinstance(api_scenario, dict):
                 return '{"error": "Method body must be an array of JSON objects."}\n'.encode('utf-8')
             if not 'stocks_price' in api_scenario:
-                if market['stocks_price'] == None:
+                if market['stocks_price_date'] <= old_date and not healthcheck:
                     return '{"error": "Stock price data is not current."}\n'.encode('utf-8')
                 api_scenario['stocks_price'] = market['stocks_price']
             if not 'stocks_volatility' in api_scenario:
-                if market['stocks_price'] == None:
+                if market['stocks_volatility_date'] <= old_date and not healthcheck:
                     return '{"error": "Stock volatility data is not current."}\n'.encode('utf-8')
                 api_scenario['stocks_volatility'] = market['stocks_volatility']
             if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:
                 if not 'real_short_rate' in api_scenario:
-                    if market['real_short_rate'] == None:
+                    if market['real_short_rate_date'] <= old_date and not healthcheck:
                         return '{"error": "Real interest rate data is not current."}\n'.encode('utf-8')
-                    api_scenario['real_short_rate'] = exp(market['real_short_rate']) - 1
+                    api_scenario['real_short_rate'] = market['real_short_rate']
                 if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:
-                    if market['nominal_short_rate'] == None:
+                    if market['nominal_short_rate_date'] <= old_date and not healthcheck:
                         return '{"error": "Nominal interest rate data is not current."}\n'.encode('utf-8')
-                    api_scenario['nominal_short_rate'] = exp(market['nominal_short_rate']) - 1
+                    api_scenario['nominal_short_rate'] = market['nominal_short_rate']
 
         if evaluate:
             results = self.run_evaluate(api_data, options = options, prefix = prefix)
@@ -625,13 +588,15 @@ class RequestHandler(BaseHTTPRequestHandler):
                 aid, data = daemon.infer_evaluate(api_data, options = options, prefix = prefix)
                 result = loads(data.decode('utf-8'))
                 if (result['error'] or any(any(scenario_result['error'] for scenario_result in scenario_result_set) for scenario_result_set in result['result'])) and prefix != 'healthcheck-':
+                    if result['error']:
+                        msg = result['error']
+                    else:
+                        msg = '\n'.join('\n'.join(scenario_result['error'] for scenario_result in scenario_result_set) for scenario_result_set in result['result'])
                     try:
-                        msg = open(self.server.args.results_dir + '/' + aid + '/eval.err', 'r').read()
-                    except:
-                        if result['error']:
-                            msg = result['error']
-                        else:
-                            msg = '\n'.join('\n'.join(scenario_result['error'] for scenario_result in scenario_result_set) for scenario_result_set in result['result'])
+                        err = open(self.server.args.results_dir + '/' + aid + '/eval.err', 'r').read()
+                        msg += '\n\n' + err
+                    except OSError:
+                        pass
                     self.notify_admin('error - ' + aid, msg)
                 return aid, result
             finally:
@@ -640,52 +605,26 @@ class RequestHandler(BaseHTTPRequestHandler):
         else:
             raise Overloaded('Try again later')
 
-    def subscribe(self, request):
-
-        email = request.get('email', '')
-        email = email.strip()
-        if not match('^\S+@\S+\.\S+$', email):
-            return {'error': 'Invalid email address.'}
-
-        try:
-            with open(self.server.args.root_dir + '/subscribe.txt', 'a') as f:
-                f.write(email + '\n')
-        except IOError:
-            raise
-
-        if not self.notify_admin('subscribe', email + ' has subscribed\n'):
-            self.send_error(500) # Internal Server Error
-            return
-
-        return {
-            'error': None,
-            'result': None,
-        }
-
     def notify_admin(self, subject, body):
 
-        if self.server.args.admin_email:
+        email = self.server.args.admin_email or 'root'
 
-            cmd = ['/usr/sbin/sendmail',
-                '-f', 'root',
-                self.server.args.admin_email,
-            ]
-            mta = Popen(cmd, stdin = PIPE, encoding = 'utf-8')
+        cmd = ['/usr/sbin/sendmail',
+            '-f', 'root',
+               email,
+        ]
+        mta = Popen(cmd, stdin = PIPE, encoding = 'utf-8')
 
-            header = 'From: "' + self.server.args.notify_name + '" <' + self.server.args.notify_email + '''>
-To: ''' + self.server.args.admin_email + '''
+        header = 'From: "' + self.server.args.notify_name + '" <' + self.server.args.notify_email + '''>
+To: ''' + email + '''
 Subject: ''' + self.server.args.project_name + ': ' + subject + '''
 
 '''
 
-            mta.stdin.write(header + body)
-            mta.stdin.close()
+        mta.stdin.write(header + body)
+        mta.stdin.close()
 
-            return mta.wait() == 0
-
-        else:
-
-            return True
+        return mta.wait() == 0
 
 class PurgeQueueServer:
 
@@ -737,12 +676,6 @@ class PurgeQueueServer:
                 assert dir.startswith(self.args.results_dir)
                 rmtree(dir, onerror = rmfail)
 
-def boolean_flag(parser, name, default = False):
-
-    under_dest = name.replace('-', '_')
-    parser.add_argument('--' + name, action = "store_true", default = default, dest = under_dest)
-    parser.add_argument('--' + 'no-' + name, action = "store_false", dest = under_dest)
-
 def main():
 
     setproctitle('apiserver')
@@ -781,7 +714,7 @@ def main():
     parser.add_argument('--models-dir', default = '~/aiplanner-data/models')
     parser.add_argument('--eval-num-timesteps', type = int, default = 50000)
     parser.add_argument('--eval-num-timesteps-healthcheck', type = int, default = 1000)
-    parser.add_argument('--eval-num-timesteps-max', type = int, default = 100000)
+    parser.add_argument('--eval-num-timesteps-max', type = int, default = 2000000)
     parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for a single model evaluation. Speeds up tensorflow.
     parser.add_argument('--num-environments-healthcheck', type = int, default = 10)
     parser.add_argument('--num-trace-episodes', type = int, default = 5) # Default number of sample traces to generate.

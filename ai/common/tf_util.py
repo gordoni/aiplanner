@@ -17,8 +17,6 @@ import numpy as np
 
 import tensorflow as tf
 
-from baselines.common import tf_util as U
-
 class TFRunner:
 
     def __init__(self, *, train_dirs = ['aiplanner.tf'], allow_tensorflow = True, checkpoint_name = None, eval_model_params, couple_net = True,
@@ -144,6 +142,11 @@ class TFRunner:
 
         else:
 
+            tf_config = tf.ConfigProto(
+                inter_op_parallelism_threads = num_cpu,
+                intra_op_parallelism_threads = num_cpu
+            )
+
             try:
 
                 # Rllib tensorflow.
@@ -151,10 +154,6 @@ class TFRunner:
                     tf_dir = train_dir + '/' + tf_name
                     graph = tf.Graph()
                     with graph.as_default() as g:
-                        tf_config = tf.ConfigProto(
-                            inter_op_parallelism_threads = num_cpu,
-                            intra_op_parallelism_threads = num_cpu
-                        )
                         with tf.Session(graph = graph, config = tf_config).as_default() as session:
                             metagraph = tf.saved_model.loader.load(session, [tf.saved_model.tag_constants.SERVING], tf_dir)
                             inputs = metagraph.signature_def['serving_default'].inputs
@@ -167,7 +166,7 @@ class TFRunner:
 
             except KeyError:
 
-                self.session = U.make_session(num_cpu = num_cpu).__enter__()
+                self.session = tf.Session(config = tf_config).__enter__()
 
                 try:
 

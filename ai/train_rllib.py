@@ -15,13 +15,13 @@ from os import getpriority, mkdir, PRIO_PROCESS, setpriority
 from os.path import abspath
 from shutil import rmtree
 
-from baselines.common import boolean_flag
 
 import ray
 from ray.tune import function, grid_search, run
 from ray.tune.config_parser import make_parser
 
 from ai.common.cmd_util import arg_parser, fin_arg_parse
+from ai.common.utils import boolean_flag
 from ai.gym_fin.model_params import dump_params_file
 from ai.gym_fin.fin_env import FinEnv
 

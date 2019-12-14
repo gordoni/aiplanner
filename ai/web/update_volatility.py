@@ -20,26 +20,27 @@ from urllib.request import urlopen
 
 def update(root_dir, read_stdin, write_stdout):
 
-    page = stdin.read() if read_stdin else urlopen('https://www.wsj.com/market-data/stocks/peyields').read().decode('utf-8')
+    page = stdin.read() if read_stdin else urlopen('https://www.marketwatch.com/investing/index/vix').read().decode('utf-8')
 
-    date, trailing, forward = search('Other Indexes.*?<tr[^>]*><th[^>]*></th><th[^>]*>(\d+/\d+/\d{2})[^<]*</th><th[^>]*>Year ago[^<]*</th><th[^>]*>Estimate.*?<tr[^>]*><td[^>]*>S&amp;P 500 Index</td><td[^>]*>(\d+.\d+)[^<]*</td><td[^>]*>\d+.\d+</td><td[^>]*>(\d+.\d+)', page).groups()
-    date = datetime.strptime(date, '%m/%d/%y')
-    trailing = float(trailing)
-    forward = float(forward)
+    vix = search('<meta name="price" content="(\d+\.\d+)"', page).group(1)
+    vix = float(vix)
+
+    date = search('<meta name="quoteTime" content="(\w+ \d+, \d+) .*"', page).group(1)
+    date = datetime.strptime(date, '%b %d, %Y')
     date_str = date.date().isoformat()
 
     if write_stdout:
-        print(date_str, trailing ,forward)
+        print(date_str, vix)
 
-    # Estimate of current observed stock market price to fair price.
-    # For 1950-2017 the harmonic mean S&P 500 P/E ratio (not CAPE) was 14.85 (based on Shiller's data).
-
-    # Take average of trailing and forward S&P 500 P/E. Serves as a reasonable rough estimate most of the time.
-    level = ((trailing + forward) / 2) / 14.85
+    # Estimate of current observed monthly annualized stock market volatility relative to long term average.
+    # For 1950-2108 the daily volatility of log returns of the S&P 500 was 14.0.
+    #
+    # VIX is a measure of the expected volatility of the S&P 500 over the next month rather than the current volatility, but hopefully this is close enough.
+    level = vix / 14.0
 
     now = datetime.utcnow()
-    assert now - timedelta(days = 14) < date <= now
-    assert 0.4 < level < 4.0
+    assert now - timedelta(days = 7) < date <= now
+    assert 0.5 < level < 5.0
 
     if write_stdout:
         print(level)
@@ -49,8 +50,8 @@ def update(root_dir, read_stdin, write_stdout):
             data = loads(f.read())
         except IOError:
             data = {}
-        data['stocks_price'] = level
-        data['stocks_price_date'] = date_str
+        data['stocks_volatility'] = level
+        data['stocks_volatility_date'] = date_str
         with open(root_dir + '/market-data.json', 'w') as f:
             print(dumps(data, indent = 4, sort_keys = True), file = f)
 
@@ -58,7 +59,7 @@ def main():
 
     parser = ArgumentParser()
 
-    parser.add_argument('--root-dir', default = '~/aiplanner-data')
+    parser.add_argument('--root-dir', default = '~/aiplanner-data/webroot/apiserver')
     parser.add_argument('--stdin', action = 'store_true', default = False)
     parser.add_argument('--stdout', action = 'store_true', default = False)
 

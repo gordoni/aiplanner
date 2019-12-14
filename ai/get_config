@@ -28,7 +28,11 @@ def main():
             f = None
     config = safe_load(f) if f else {}
 
-    print(config.get(argv[1]))
+    try:
+        default = argv[2]
+    except IndexError:
+        default = None
+    print(config.get(argv[1], default))
 
 if __name__ == '__main__':
     main()

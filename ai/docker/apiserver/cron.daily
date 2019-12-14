@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+AIPLANNER_DATA=${AIPLANNER_DATA:-$HOME/aiplanner-data}
+AI_DIR=$AIPLANNER_HOME/ai
+
+MARKET_DATA_URL=`$AI_DIR/get_config market_data_url "https://www.aiplanner.com/apiserver/market-data.json"`
+
+if [ "$MARKET_DATA_URL"  != disable ]; then
+
+    curl -s -S "$MARKET_DATA_URL" > $AIPLANNER_DATA/market-data.json.new || exit 1
+
+    if python3 -c "from json import loads; loads(open('$AIPLANNER_DATA/market-data.json.new').read())" 2>&1; then
+        mv $AIPLANNER_DATA/market-data.json.new $AIPLANNER_DATA/market-data.json
+    else
+        echo "Market data retrieved from: $MARKET_DATA_URL" 1>&2
+        echo "Invalid JSON market data: $AIPLANNER_DATA/market-data.json.new" 1>&2
+        exit 1
+    fi
+fi

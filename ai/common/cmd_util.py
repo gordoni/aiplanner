@@ -17,8 +17,7 @@ Helpers for scripts like train_ppo1.py.
 import argparse
 import os
 
-from baselines.common import boolean_flag, set_global_seeds
-
+from ai.common.utils import boolean_flag
 from ai.gym_fin import FinEnv, ModelParams
 from ai.gym_fin.model_params import dump_params
 

@@ -8,4 +8,15 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-num_infer_jobs: 0
+/home/aiplanner/aiplanner-data/api.log /home/aiplanner/aiplanner-data/api.err {
+    weekly
+    rotate 5
+    missingok
+    compress
+    delaycompress
+    sharedscripts
+    postrotate
+        pkill -HUP apiserver
+        true
+    endscript
+}

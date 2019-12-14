@@ -9,5 +9,4 @@
 # PURPOSE.
 
 # m h  dom mon dow   command
-0 0 * * * perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/cron.daily
-0 0 * * 0 perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/cron.weekly
+0 0 * * * perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/docker/apiserver/cron.daily

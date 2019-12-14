@@ -551,13 +551,13 @@ Install crontabs to perform a daily refresh of the interest rate yield
 curves, and a weekly refresh of the fair market price and volatility.
 
     cd ~/aiplanner/ai
-    cat crontab-example
+    cat web/aiplanner.crontab
     crontab -e
 
 ----
 # m h  dom mon dow   command
 MAILTO=<you@yourdomain>
-<place output from cat "crontab-example" here>
+<place output from "cat web/aiplanner.crontab" here>
 ----
 
 Seting up log rotation
@@ -566,7 +566,7 @@ Seting up log rotation
     sudo chmod g-w ~/aiplanner-data/ # Required by logrotate.
 
     cd ~/aiplanner/ai
-    sudo cp aiplanner.logrotate /etc/logrotate.d/aiplanner
+    sudo cp web/aiplanner.logrotate /etc/logrotate.d/aiplanner
 
 Installing an outbound mailer
 -----------------------------
@@ -641,9 +641,10 @@ The api server can be distributed as a docker container.
     tar cf docker/apiserver/models.tar -C ~/aiplanner-data models --no-wildcards-match-slash --exclude 'seed_*_*'
     tar cf docker/apiserver/dotspia.tar -C ~/ .spia
     git rev-parse HEAD > docker/apiserver/git-rev
-    git archive -o docker/apiserver/aiplanner.tar $(cat docker/apiserver/git-rev)
+    mkdir -p docker/apiserver/aiplanner
+    git archive `cat docker/apiserver/git-rev` | tar xf - -C docker/apiserver/aiplanner `cat docker/apiserver/MANIFEST.aiplanner`
     docker build -t aiplanner-apiserver docker/apiserver
-    rm docker/apiserver/{dotspia.tar,models.tar,git-rev,aiplanner.tar}
+    rm -r docker/apiserver/{dotspia.tar,models.tar,git-rev,aiplanner}
 
 Test it out:
 
@@ -656,8 +657,11 @@ Test the image thoroughly. If everything looks good publish the image
 to a private repo:
 
     docker image tag aiplanner-apiserver <dockerhubid>/aiplanner-apiserver:<version>
+    docker image tag aiplanner-apiserver <dockerhubid>/aiplanner-apiserver:latest
     docker login
-    docker image push <dockerhubid>/aiplanner-apiserver:<version>
+    docker push <dockerhubid>/aiplanner-apiserver:<version>
+    docker push <dockerhubid>/aiplanner-apiserver:latest
+    docker logout
 
 Development
 -----------
