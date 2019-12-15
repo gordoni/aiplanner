@@ -268,7 +268,6 @@ def main():
 
     def rotate_logs(signum, frame):
         logger.restart()
-        api_server.restart()
 
     signal(SIGHUP, rotate_logs)
 
