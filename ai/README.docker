@@ -91,9 +91,16 @@ To test the container:
 
 The string "OK" should be output.
 
-If port 80 is firewalled off from the Internet you could replace
-127.0.0.1:3000:3000 by 80:3000 to run the api server on a private
+If port 80 is firewalled off from the Internet you could replace -p
+127.0.0.1:3000:3000 by -p 80:3000 to run the api server on a private
 Intranet as http://<my_apiserver_hostname>/ .
+
+If you wish to encrypt traffic to and from the API server you should
+use -p 3000:3000 and run a web proxy server externally on the
+container host. The Apache web server can be configured as a TLS
+supporting proxy by using an Apache configuration file directive like:
+
+    ProxyPass /api http://localhost:3000/api
 
 Terminating the container
 -------------------------
