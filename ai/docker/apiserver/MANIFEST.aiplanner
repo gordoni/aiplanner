@@ -1,7 +1,4 @@
-LICENSE
-README.md
 spia
-ai/LICENSE
 ai/README.api
 ai/README.docker
 ai/aiplanner-example.yaml
@@ -9,6 +6,7 @@ ai/aiplanner-scenario.txt
 ai/aiplanner-scenario-train.txt
 ai/api
 ai/common
+ai/docker/apiserver/LICENSE
 ai/docker/apiserver/aiplanner.crontab
 ai/docker/apiserver/aiplanner.logrotate
 ai/docker/apiserver/cron.daily
