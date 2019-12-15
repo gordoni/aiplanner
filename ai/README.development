@@ -516,7 +516,7 @@ The api server can be distributed as a docker container.
     cd ~/aiplanner/ai
     docker build -t aiplanner-base-deps docker/base-deps
     tar cf docker/apiserver/dotspia.tar -C ~/ .spia
-    tar cf docker/apiserver/models.tar -C ~/aiplanner-data/models . --no-wildcards-match-slash --exclude 'seed_*_*'
+    tar zcf docker/apiserver/models.tgz -C ~/aiplanner-data/models . --no-wildcards-match-slash --exclude 'seed_*_*'
     git rev-parse HEAD > docker/apiserver/git-rev
     mkdir -p docker/apiserver/aiplanner
     git archive `cat docker/apiserver/git-rev` | tar xf - -C docker/apiserver/aiplanner `cat docker/apiserver/MANIFEST.aiplanner`
