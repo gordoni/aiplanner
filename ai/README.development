@@ -413,10 +413,6 @@ The models should then be installed:
     mv models models.old # Save prior models if any as a backup.
     mv models.new models
 
-Finally, the market price and volatility levels should be updated:
-
-    ~/aiplanner/ai/cron.weekly
-
 Generating required assets for the UI website (images)
 ------------------------------------------------------
 
@@ -542,8 +538,8 @@ Set up the aiplanner system configuration file
 ----------------------------------------------
 
     cd ~/aiplanner/ai
-    cp aiplanner-example.yaml ~/aiplanner-data/aiplanner-docker.yaml
-    sudo [edit] ~/aiplanner-data/aiplanner-docker.yaml
+    cp aiplanner-example.yaml ~/aiplanner-data/aiplanner.yaml
+    sudo [edit] ~/aiplanner-data/aiplanner.yaml
         # Possibly change port to 80 if running the api server within an Intranet
         # Set num_infer_jobs to 0 if only running the website
         # Set notify_email to the address that will send notifications notify@<thisdomain>
@@ -555,7 +551,7 @@ Run the api server in production
     docker login
     docker pull <dockerhubid>/aiplanner-apiserver
     docker logout
-    docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data/aiplanner-docker.yaml:/aiplanner.yaml <dockerhubid>/aiplanner-apiserver
+    docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data/aiplanner.yaml:/aiplanner.yaml <dockerhubid>/aiplanner-apiserver
 
 Setup the backend web server
 ----------------------------
@@ -675,7 +671,7 @@ The api server can be run in development as follows:
     docker ps
     docker stop <containerid>
     # Then start up the development apiserver
-    api/server.py
+    api/server.py --host=localhost
 
 On the same machine in another shell window run the Angular server:
 
