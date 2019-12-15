@@ -19,7 +19,7 @@ WORKDIR /home/aiplanner
 
 ADD dotspia.tar ./
 RUN mkdir -p aiplanner-data/models
-ADD models.tar aiplanner-data/models
+ADD models.tgz aiplanner-data/models
 ADD --chown=aiplanner:aiplanner aiplanner aiplanner/
 ADD --chown=aiplanner:aiplanner git-rev git-rev
 
