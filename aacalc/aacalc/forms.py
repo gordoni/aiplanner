@@ -179,7 +179,7 @@ class SpiaForm(Form):
         choices=(('iam2012-basic', 'Comparable to the average annuitant of the same sex and age.'), ('ssa-cohort', 'Comparable to the general population of the same sex and age.'), ('adjust', 'Adjust life table to match specified life expectancy.'), ),
         widget=VerticalRadioRenderer)
     ae = ChoiceField(
-        choices = (('none', 'no'), ('aer2005_13-summary', 'summary'), ))
+        choices = (('none', 'no'), ('aer2005_13-grouped', 'age-grouped'), ('aer2005_13-summary', 'summary'), ))
     le_set = DecimalField(
         widget=TextInput(attrs={'class': 'small_numeric_input'}),
         min_value=0,

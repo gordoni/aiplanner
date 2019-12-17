@@ -34,7 +34,7 @@ def default_spia_params():
         'joint_type': 'contingent',
         'joint_payout_percent': 70,
         'table': 'iam2012-basic',
-        'ae' : 'aer2005_13-summary',
+        'ae' : 'aer2005_13-grouped',
         'date': (datetime.utcnow() + timedelta(hours = -24)).date().isoformat(),  # Yesterday's quotes are retrieved at midnight.
         'bond_type': 'nominal',
         'adjust': 2,

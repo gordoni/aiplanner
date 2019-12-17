@@ -1255,7 +1255,7 @@ class Alloc:
         self.age = float(data['age'])
         self.le_set = float(data['le_set']) - self.age if data['le_set'] else None
         self.life_table = LifeTable(self.table, self.sex, self.age, le_set = self.le_set, date_str = self.date_str)
-        self.life_table_annuity = LifeTable(self.table_annuity, self.sex, self.age, ae = 'aer2005_13-summary')
+        self.life_table_annuity = LifeTable(self.table_annuity, self.sex, self.age, ae = 'aer2005_13-grouped')
 
         self.sex2 = data['sex2']
         if self.sex2 == 'none':
@@ -1266,7 +1266,7 @@ class Alloc:
             self.age2 = float(data['age2']);
             self.le_set2 = float(data['le_set2']) - self.age2 if data['le_set2'] else None
             self.life_table2 = LifeTable(self.table, self.sex2, self.age2, le_set = self.le_set2, date_str = self.date_str)
-            self.life_table2_annuity = LifeTable(self.table_annuity, self.sex2, self.age2, ae = 'aer2005_13-summary')
+            self.life_table2_annuity = LifeTable(self.table_annuity, self.sex2, self.age2, ae = 'aer2005_13-grouped')
             self.min_age = min(self.age, self.age2)
 
         self.db = data['db']
