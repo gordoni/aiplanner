@@ -522,7 +522,7 @@ The api server can be distributed as a docker container.
 
 Test it out:
 
-    docker run -ti -p 127.0.0.1:3000:3000 -v $PWD/aiplanner-docker-development.yaml:/aiplanner.yaml aiplanner-apiserver
+    docker run --rm -ti -p 127.0.0.1:3000:3000 -v $PWD/aiplanner-docker-development.yaml:/aiplanner.yaml aiplanner-apiserver
 
 Test the image thoroughly. If everything looks good publish the image
 to a private repo:
@@ -551,6 +551,8 @@ Run the api server in production
     docker login
     docker pull <dockerhubid>/aiplanner-apiserver
     docker logout
+    docker ps
+    docker stop <containerid>
     docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data/aiplanner.yaml:/aiplanner.yaml <dockerhubid>/aiplanner-apiserver
 
 Setup the backend web server
