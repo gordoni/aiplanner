@@ -29,11 +29,11 @@ le_labels = ('80th', '90th', '95th', '98th', '99th', )
 def get_le(table, date_str, sex, age, sex2, age2):
 
     yield_curve = YieldCurve('le', date_str)
-    life_table = LifeTable(table, sex, age, ae = 'aer2005_13-summary')
+    life_table = LifeTable(table, sex, age, ae = 'aer2005_13-grouped')
     if sex2 == None:
         life_table2 = None
     else:
-        life_table2 = LifeTable(table, sex2, age2, ae = 'aer2005_13-summary')
+        life_table2 = LifeTable(table, sex2, age2, ae = 'aer2005_13-grouped')
     le = []
     for percentile in le_percentiles:
         scenario = Scenario(yield_curve, 0, None, None, 0, life_table, life_table2 = life_table2, frequency = 12, percentile = percentile)

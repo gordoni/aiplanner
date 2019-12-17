@@ -114,17 +114,23 @@ aer2014_actual_expected = {
     }
 }
 
-# SOA 2005-13 Individual Annuity Experience Report: years: 2005-2013, benefit class: single life and single life period certain, immediate annuity, nonrefundable, income class: all, tax class: all
-# Actual/expected 2012 IAM Basic G2 aggregated by dollar amount
+# SOA 2005-13 Individual Annuity Experience Report: years: 2005-2013, benefit class: all, contract type: immediate annuity, annuity type: nonrefundable, income class: all, tax class: all
+# Actual/expected 2012 IAM Basic G2 aggregated by amount exposed
 
 aer2005_13_years = (1, 3, 6, 11)
 
 aer2005_13_actual_expected = {
     'male': {
-        'all': (0.414, 0.652, 0.668, 1.283, ),
+        0:     (0.714, 0.884, 1.282, 1.626, ), # 0 - 69
+        70:    (0.448, 0.938, 0.875, 1.344, ), # 70 - 79
+        80:    (0.548, 0.639, 0.687, 1.187, ), # 80+
+        'all': (0.535, 0.711, 0.728, 1.210, ),
     },
     'female': {
-        'all': (0.375, 0.485, 0.779, 1.255, ),
+        0:     (0.462, 1.005, 1.200, 1.492, ),
+        70:    (0.353, 0.684, 0.991, 1.141, ),
+        80:    (0.404, 0.475, 0.791, 1.240, ),
+        'all': (0.397, 0.507, 0.808, 1.235, ),
     }
 }
 
@@ -762,7 +768,7 @@ class LifeTable:
 
     _age_add_cache = {}
 
-    def __init__(self, table, sex, age, *, death_age = float('inf'), ae = 'aer2005_13-summary',
+    def __init__(self, table, sex, age, *, death_age = float('inf'), ae = 'aer2005_13-grouped',
                  le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
         '''Initialize an object representing a life expectancy table for an
         individual.
@@ -787,8 +793,11 @@ class LifeTable:
 
                     "none": No adjustment.
 
+                    "aer2005_13-grouped": Use the age-grouped 2005-13
+                    data.
+
                     "aer2005_13-summary": Use the all ages 2005-13
-                    summary data.
+                    data.
 
                     "aer2005_08-summary": Use the all ages 2005-08
                     summary table.
@@ -847,7 +856,7 @@ class LifeTable:
             # 'none' - AER increases MWR 20% at age 90, and 5% at age 80.
             # 'aer2005_08-summary' - Use this value for compatibility with Opal.
             # 'aer2005_08-full' - Alters values 5% at age 85.
-        assert(ae in ('none', 'aer2005_13-summary', 'aer2005_08-summary', 'aer2005_08-full'))
+        assert(ae in ('none', 'aer2005_13-grouped', 'aer2005_13-summary', 'aer2005_08-summary', 'aer2005_08-full'))
         self.le_set = le_set
         self.le_add = le_add
         self.date_str = date_str
@@ -919,7 +928,15 @@ class LifeTable:
                             break
                         c += 1
                     c -= 1
-                    if self.ae == 'aer2005_13-summary':
+                    if self.ae == 'aer2005_13-grouped':
+                        if age < 70:
+                            aa = 0
+                        elif age < 80:
+                            aa = 70
+                        else:
+                            aa = 80
+                        ae = aer2005_13_actual_expected[self.sex][aa][c]
+                    elif self.ae == 'aer2005_13-summary':
                         ae = aer2005_13_actual_expected[self.sex]['all'][c]
                     elif self.ae == 'aer2005_08-summary':
                         ae = aer2014_actual_expected[self.sex]['all'][c]
