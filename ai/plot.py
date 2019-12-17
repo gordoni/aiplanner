@@ -111,13 +111,13 @@ def main():
     spias = interp['pv_spias_purchase']
     wealth_classes = list(asset_classes)
     wealth_allocation = list(aa * (p - spias) for aa in asset_allocation)
-    wealth_classes.append('guaranteed\nincome')
+    wealth_classes.append('retirement\nguaranteed\nincome')
     wealth_allocation.append(gi)
     if real_spias != None or nominal_spias != None:
         wealth_classes.append('new\nincome\nannuities')
         wealth_allocation.append(spias)
     if pv_preretirement != None:
-        wealth_classes.append('pre-\nretirement\ncontributions')
+        wealth_classes.append('pre-\nretirement\nincome')
         wealth_allocation.append(pv_preretirement)
     wealth_classes.append('set aside\nfor future\ntaxes')
     wealth_allocation.append(taxes)

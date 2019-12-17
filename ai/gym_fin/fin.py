@@ -553,7 +553,7 @@ class Fin:
 
                 self._pre_calculate_wealth(growth_rate = 1) # By convention use no growth for determining guaranteed income bucket.
 
-                preretirement_ok = self.raw_preretirement_income_wealth >= 0
+                preretirement_ok = self.raw_preretirement_income_wealth + self.p_wealth >= 0
                 if not preretirement_ok:
                     continue
 
