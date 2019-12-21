@@ -14,6 +14,8 @@
 
 master_welfare = 0
 
+master_life_table_interpolate_q = False # For Opal le_add compatability.
+
 master_stocks_model = 'iid'
 master_stocks_return = 0.065
 master_stocks_volatility = 0.174

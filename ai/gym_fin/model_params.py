@@ -136,6 +136,8 @@ class ModelParams(object):
         self._param('life-expectancy-additional', (0, 0), 0) # Initial age adjustment for first individual.
             # Shift initial age so as to add this many years to the life expectancy of the first individual.
         self._param('life-expectancy-additional2', (0, 0), 0) # Initial age adjustment for second individual.
+        self._boolean_flag('life-table-interpolate-q', True) # Whether to interpolate conditional death probabilities for fractional ages.
+            # Should only be set to False for Opal compatibility.
         self._param('life-table-spia', 'iam2012-basic', tp = string_type) # Life expectancy table to use for pricing spia purchases.
         self._param('couple-probability', 0) # Probability family unit is a couple, not single.
             # Fractional values only make sense during training.

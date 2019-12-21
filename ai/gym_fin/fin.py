@@ -224,7 +224,8 @@ class Fin:
         self.age_start = self.params.age_start
         self.death_age = self.params.age_end - self.params.time_period
         self.life_table_le_hi = LifeTable(self.params.life_table, self.params.sex, self.age_start,
-            death_age = self.death_age, le_add = self.params.life_expectancy_additional_high, date_str = self.params.life_table_date, interpolate_q = False)
+            death_age = self.death_age, le_add = self.params.life_expectancy_additional_high, date_str = self.params.life_table_date,
+            interpolate_q = self.params.life_table_interpolate_q)
 
         if self.params.stocks_model in ('normal_residuals', 'bootstrap'):
             std_res_fname = home_dir + '/data/public/standardized_residuals.csv'
@@ -238,7 +239,8 @@ class Fin:
             self.params.bills_standard_error if self.params.returns_standard_error else 0, self.params.time_period)
 
         self.bonds = BondsSet(fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate,
-            real_bonds_adjust = self.params.real_bonds_adjust, inflation_adjust = self.params.inflation_adjust, nominal_bonds_adjust = self.params.nominal_bonds_adjust,
+            real_bonds_adjust = self.params.real_bonds_adjust, inflation_adjust = self.params.inflation_adjust,
+            nominal_bonds_adjust = self.params.nominal_bonds_adjust,
             static_bonds = self.params.static_bonds, date_str = self.params.bonds_date, date_str_low = self.params.bonds_date_start,
             real_r0_type = self.params.real_short_rate_type, inflation_r0_type = self.params.inflation_short_rate_type)
         self.bonds.update(
@@ -412,7 +414,7 @@ class Fin:
 
         if self.age != self.life_table_age or le_add != self.life_table_le_add:
             self.life_table = LifeTable(self.params.life_table, self.params.sex, self.age,
-                death_age = self.death_age, le_add = le_add, date_str = self.params.life_table_date, interpolate_q = False)
+                death_age = self.death_age, le_add = le_add, date_str = self.params.life_table_date, interpolate_q = self.params.life_table_interpolate_q)
             self.life_table_age = self.age
             self.life_table_le_add = le_add
         else:
@@ -421,7 +423,7 @@ class Fin:
             self.life_table2 = None
         elif self.age2 != self.life_table2_age or le_add2 != self.life_table_le_add2 or self.life_table2 == None:
             self.life_table2 = LifeTable(self.params.life_table, self.sex2, self.age2,
-                death_age = self.death_age, le_add = le_add2, date_str = self.params.life_table_date, interpolate_q = False)
+                death_age = self.death_age, le_add = le_add2, date_str = self.params.life_table_date, interpolate_q = self.params.life_table_interpolate_q)
             self.life_table2_age = self.age2
             self.life_table_le_add2 = le_add2
         else:
@@ -440,11 +442,13 @@ class Fin:
 
         # As a speedup create special matching life tables that cover just the preretirement years.
         self.life_table_preretirement = LifeTable(self.params.life_table, self.params.sex, self.age,
-            death_age = self.age + self.preretirement_years + self.params.time_period, date_str = self.params.life_table_date, interpolate_q = False)
+            death_age = self.age + self.preretirement_years + self.params.time_period, date_str = self.params.life_table_date,
+            interpolate_q = self.params.life_table_interpolate_q)
         self.life_table_preretirement.age_add = self.life_table.age_add
         if self.sex2 != None:
             self.life_table2_preretirement = LifeTable(self.params.life_table, self.sex2, self.age2,
-                death_age = self.age2 + self.preretirement_years + self.params.time_period, date_str = self.params.life_table_date, interpolate_q = False)
+                death_age = self.age2 + self.preretirement_years + self.params.time_period, date_str = self.params.life_table_date,
+                interpolate_q = self.params.life_table_interpolate_q)
             self.life_table2_preretirement.age_add = self.life_table2.age_add
         else:
             self.life_table2_preretirement = None
