@@ -19,6 +19,21 @@ def _pmt(rate, nper, pv):
     except ZeroDivisionError:
         return pv / nper
 
+def bonds_type(env):
+
+    assert sum(int(env.params.real_bonds) + int(env.params.nominal_bonds) + int(env.params.iid_bonds) + (env.params.bills)) == 1
+
+    if env.params.real_bonds:
+        return 'real_bonds'
+    elif env.params.nominal_bonds:
+        return 'nominal_bonds'
+    elif env.params.iid_bonds:
+        return 'iid_bonds'
+    elif env.params.bills:
+        return 'bills'
+    else:
+        assert False
+
 def policy(env, action):
 
     global consume_rate_initial, consume_prev, life_expectancy_initial, p_initial, annuitized
@@ -209,11 +224,25 @@ def policy(env, action):
         real_spias_fraction = 0
         nominal_spias_fraction = 0
 
-    if env.params.asset_allocation_policy == 'age-in-nominal-bonds':
+    if env.params.asset_allocation_policy == 'age-in-bonds':
 
         bonds = max(env.age / 100, 1)
-        stocks = 1 - bonds
-        asset_allocation = AssetAllocation(stocks = stocks, nominal_bonds = bonds)
+        asset_allocation = AssetAllocation(**{'stocks': 1 - bonds, bonds_type(env): bonds})
+
+    elif env.params.asset_allocation_policy == 'glide-path':
+
+        t = env.age - env.age_retirement
+        t0, stocks0 = env.params.asset_allocation_glide_path[0]
+        for t1, stocks1 in env.params.asset_allocation_glide_path:
+            if t < t1:
+                break
+            t0, stocks0 = t1, stocks1
+        if t0 == t1:
+            stocks = stocks0
+        else:
+            t = min(max(t0, t), t1)
+            stocks = (stocks0 * (t1 - t) + stocks1 * (t - t0)) / (t1 - t0)
+        asset_allocation = AssetAllocation(**{'stocks': stocks, bonds_type(env): 1 - stocks})
 
     elif env.params.asset_allocation_policy != 'rl':
 

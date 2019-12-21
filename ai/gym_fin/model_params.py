@@ -83,8 +83,12 @@ class ModelParams(object):
         self._param('asset-allocation-policy', 'rl', tp = string_type)
             # Asset allocation policy.
             # "rl": reinforcement learning.
-            # "age-in-nominal-bonds": age in years as nominal bonds percentage, remainder in stocks.
+            # "age-in-bonds": age in years as bonds percentage, remainder in stocks.
+            # "glide-path": glide path specified by asset_allocation_glide_path.
             # '{"<asset_class>":<allocation>, ...}': fixed allocation. Eg. '{"stocks":0.5, "nominal_bonds":0.5}'.
+        self._param('asset-allocation-glide-path', '[[-25, 0.9], [0, 0.4]]', tp = string_type)
+            # Glide path specified as a series of tuples: [age - age_retirement, stocks_fraction]. Remainder in bonds.
+            # Interpolated with constant allocations outside range.
         self._param('asset-allocation-annuitized-policy', 'asset_allocation_policy', tp = string_type)
             # Asset allocation policy once annuitized.
             # "asset_allocation_policy": use the same policy as asset_allocation_policy.
