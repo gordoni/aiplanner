@@ -10,6 +10,9 @@
 
 master_couple_hide = True
 
+master_welfare = 9000
+    # SSI is $9.4k for an individual and $14.1k for a couple in 2020 - https://www.ssa.gov/OACT/COLA/SSI.html
+
 # Observation is of life expectancy, so the fact that we train using
 # parameters that don't match those of the user has a second order
 # impact only.

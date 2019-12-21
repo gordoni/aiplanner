@@ -554,6 +554,7 @@ class Fin:
                 self._pre_calculate_wealth(growth_rate = 1) # By convention use no growth for determining guaranteed income bucket.
 
                 preretirement_ok = self.raw_preretirement_income_wealth + self.p_wealth >= 0
+                    # Very basic sanity check only. Ignores taxation.
                 if not preretirement_ok:
                     continue
 
@@ -911,12 +912,17 @@ class Fin:
         p = self.p_plus_income
         if self.age < self.age_retirement:
             consume = self.consume_preretirement * self.params.time_period
+            welfare = 0
         else:
             #consume_annual = consume_fraction * p
             consume = consume_fraction_period * max(p, 0)
+            welfare = (1 + self.params.consume_additional if self.couple else 1) * self.params.welfare
+            consume = max(consume, welfare)
         p -= consume
         if p < 0:
-            self.warn('Portfolio is negative')
+            p = min(p + welfare, 0)
+            if p < 0:
+                self.warn('Portfolio is negative')
 
         p_taxable = self.p_taxable + (p - self.p_sum())
         p_tax_deferred = self.p_tax_deferred + min(p_taxable, 0)
@@ -1159,13 +1165,13 @@ class Fin:
             self.p_taxable += p_negative * (1 + self.params.credit_rate) ** self.params.time_period
 
         self.taxes_due += self.taxes.tax(regular_income, social_security, not self.couple, inflation) - self.taxes_paid
-        if self.age_retirement - self.params.time_period <= self.age < self.age_retirement:
-            # Forgive taxes due that can't immediately be repaid upon retirement.
-            # Otherwise when training if have no investment assets at retirement (consumption greater than income) we would be expected to pay the
-            # accumulated taxes which could be substantially more than the guaranteed income.
-            # Instead we forgive these amounts.
-            ability_to_pay = self.p_sum()
-            self.taxes_due = min(self.taxes_due, ability_to_pay)
+        # if self.age_retirement - self.params.time_period <= self.age < self.age_retirement:
+        #     # Forgive taxes due that can't immediately be repaid upon retirement.
+        #     # Otherwise when training if have no investment assets at retirement (consumption greater than income) we would be expected to pay the
+        #     # accumulated taxes which could be substantially more than the guaranteed income.
+        #     # Instead we forgive these amounts.
+        #     ability_to_pay = self.p_sum()
+        #     self.taxes_due = min(self.taxes_due, ability_to_pay)
 
         if self.age < self.age_retirement:
             self.reward_weight = 0
@@ -1425,9 +1431,9 @@ class Fin:
 
         self.p_wealth = self.wealth_tax_free + self.wealth_tax_deferred + self.wealth_taxable
         self.raw_preretirement_income_wealth = sum(self.pv_preretirement_income.values()) # Should factor in investment growth.
-        self.net_wealth_pretax = self.retired_income_wealth_pretax + max(0, self.p_wealth + self.raw_preretirement_income_wealth - self.taxes_due * total_growth)
+        self.net_wealth_pretax = self.retired_income_wealth_pretax + self.p_wealth + self.raw_preretirement_income_wealth - self.taxes_due * total_growth
 
-        self.rough_ce_estimate_individual = self.net_wealth_pretax / self.years_retired / self.couple_weight
+        self.rough_ce_estimate_individual = max(self.params.welfare, self.net_wealth_pretax / self.years_retired / self.couple_weight)
 
     def _pre_calculate(self):
 
@@ -1465,7 +1471,7 @@ class Fin:
         self.retired_income_wealth = max(0, self.net_wealth - self.p_wealth - self.preretirement_income_wealth)
 
         income_estimate = self.net_wealth / self.years_retired
-        self.ce_estimate_individual = income_estimate / self.couple_weight
+        self.ce_estimate_individual = max(self.params.welfare, income_estimate / self.couple_weight)
 
         try:
             self.consume_net_wealth_estimate = income_estimate / self.net_wealth

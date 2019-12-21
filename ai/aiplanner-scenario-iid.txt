@@ -12,6 +12,8 @@
 
 # Must be specified after aiplanner-scenario.txt and aiplanner-scenario-*-eval.txt.
 
+master_welfare = 0
+
 master_stocks_model = 'iid'
 master_stocks_return = 0.065
 master_stocks_volatility = 0.174

@@ -103,10 +103,10 @@ class ModelParams(object):
         # Defined by "real-bonds-duration" and "nominal-bonds-duration" below; None for reinforcement learning, or a fixed age in years.
 
         self._param('observation-space-warn', 1.0) # Warn when observation outside this factor of the expected range.
-        self._param('consume-floor', 0) # Minimum expected consumption level model is trained for.
-        self._param('consume-ceiling', float('inf')) # Maximum expected consumption level model is trained for.
-        #self._param('consume-utility-floor', 10000) # Scale utility to have a value of -1 for this consumption amount.
-            # Utility needs to be scaled to prevent floating point overflow.
+        self._param('consume-floor', 0) # Minimum expected individual consumption level model is trained for.
+        self._param('consume-ceiling', float('inf')) # Maximum expected individual consumption level model is trained for.
+        self._param('welfare', 0) # Supplemental Security Income or other minimum individual consumption level irrespective of assets.
+            # Minimum consumption level for a couple is 1 + consume_additiional times this value.
         self._param('reward-warn', 2e3, 1e1) # Warn reward values not lying within [-reward_warn, reward_warn].
             # During training poor rewards are expected to be generated.
         self._param('reward-clip', 1e15, float('inf')) # Clip reward values to lie within [-reward_clip, reward_clip].
@@ -182,9 +182,8 @@ class ModelParams(object):
 
         self._param('time-period', 1) # Rebalancing time interval in years.
         self._param('gamma', (3, 3), 3) # Coefficient of relative risk aversion.
-            # Will probably need smaller [consume_floor, consume_ceiling] ranges if use a large gamma value such as 6.
 
-        self._param('gi-fraction', (0, 1), (0, 1)) # Allowed values of guaranteed income as a fraction of total wealth.
+        self._param('gi-fraction', (float('-inf'), float('inf'))) # Allowed values of guaranteed income as a fraction of total wealth.
         self._param('guaranteed-income', '[{"payout": [1e3, 1e5]}]', '[]', tp = string_type)
             # Guaranteed income and expenses represented as a JSON array of objects. Object fields:
             #     "type": Type of defined benefit or expense. Arbitrary string. Default "income_annuity".
