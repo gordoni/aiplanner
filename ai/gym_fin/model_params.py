@@ -238,12 +238,13 @@ class ModelParams(object):
         self._param('dividend-yield-bonds', 0.04) # Dividend yield for bonds and bills.
         self._param('qualified-dividends-stocks', 1) # Qualified dividends fraction for stocks. Qualified dividends are taxed at capital gains rates.
         self._param('qualified-dividends-bonds', 0) # Qualified dividends fraction for bonds and bills.
-        self._param('tax-state', 0.06) # Aggregate state, local, and property taxes as a percentage of income after standard deduction.
-            # Average state income tax rate is around 4%, and average property tax is around 3% of income.
+        self._param('tax-state', 0.11) # Aggregate state, local, and property taxes as a percentage of income after standard deduction.
+            # Average state income tax rate is around 6.4%, and average property tax is around 4.3% of income after standard deduction.
             # Ignores local income taxes, uses median rather than mean property taxes.
             # State income taxes: $387b - https://en.wikipedia.org/wiki/State_tax_levels_in_the_United_States
             # Number of housholds: 126m - https://www.statista.com/statistics/183635/number-of-households-in-the-us/
             # Mean houshold income: $73k - https://en.wikipedia.org/wiki/Household_income_in_the_United_States
+            # Standard deduction for a couple: $25k - 2020.
             # Median property taxes: $3.3k - https://www.mortgagecalculator.org/helpful-advice/property-taxes.php
             # Households that own rather than rent: 63% - https://www.pewresearch.org/fact-tank/2017/07/19/more-u-s-households-are-renting-than-at-any-point-in-50-years/
 
@@ -256,7 +257,8 @@ class ModelParams(object):
         self._param('inflation-adjust', 0.0) # Rate adjustment to apply across the inflation yield curve.
         self._param('nominal-bonds-adjust', 0.0) # Rate adjustment to apply across the nominal bond yield curve.
         self._param('bonds-date', '2018-12-31', tp = string_type) # Date to use for typical bond yield curve if not fixed.
-        self._param('bonds-date-start', None, tp = string_type) # Optional date to use for start of date range for average typical bond yield curve if not fixed.
+        self._param('bonds-date-start', '2005-01-01', tp = string_type)
+             # None or optional date to use for start of date range for average typical bond yield curve if not fixed.
 
         self._boolean_flag('real-spias', False) # Enable purchase of real SPIAs.
         self._param('real-spias-mwr', 0.94) # Money's Worth Ratio for real SPIAs (after any guarantee association tax).
@@ -318,7 +320,7 @@ class ModelParams(object):
            # Used to mimick implications from Shiller's data that stocks can be over/under-valued.
            # A value of 0.7 produces a value/fair value of 50-150% the vast majority of the time.
         self._param('stocks-price', (0.5, 2.0), (None, None)) # Initial observed price of stocks relative to fair price for bootstrap stocks with mean reversion.
-        self._param('stocks-price-noise-sigma', 0.2) # Sigma of lognormal noise inherent in observation of stocks price relative to fair price for bootstrap stocks.
+        self._param('stocks-price-noise-sigma', 0.15) # Sigma of lognormal noise inherent in observation of stocks price relative to fair price for bootstrap stocks.
             # Used in the case of mean reversion.
         self._param('stocks-return', 0.065) # Annual real return for iid stocks.
         self._param('stocks-volatility', 0.174) # Annual real volatility for iid stocks.

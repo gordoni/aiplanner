@@ -1510,9 +1510,9 @@ class Fin:
 
     def spia_life_tables(self, age, age2):
 
-        life_table = LifeTable(self.params.life_table_spia, self.params.sex, age, ae = 'aer2005_08-summary')
+        life_table = LifeTable(self.params.life_table_spia, self.params.sex, age, ae = 'aer2005_13-grouped')
         if self.sex2:
-            life_table2 = LifeTable(self.params.life_table_spia, self.sex2, age2, ae = 'aer2005_08-summary')
+            life_table2 = LifeTable(self.params.life_table_spia, self.sex2, age2, ae = 'aer2005_13-grouped')
             if not self.couple:
                 if self.only_alive2:
                     life_table = life_table2

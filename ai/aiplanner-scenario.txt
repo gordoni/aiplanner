@@ -41,9 +41,9 @@ master_tax = True
 master_tax_table_year = '2020'
 
 master_bonds_date = '2018-12-31'
-    # Date of the typical yield curve, not the initial yield curve.
+master_bonds_date_start = '2005-01-01'
+    # Date range for the typical yield curve, not the initial yield curve.
     # Initial yield curve is determined by the initial short rate, the typical yield curve, and the Hull-White parameters.
-master_bonds_date_start = None
 
 master_real_spias = False # Not widely available, so suggest, but don't use.
     # Nominal SPIAs (100% MWR) generally outperform real SPIAs (94% MWR) CE by 1-2%.
@@ -78,7 +78,7 @@ master_stocks_gamma = 0.3188
 master_stocks_beta = 0.7116
 master_stocks_mean_reversion_rate = 0.1 # Rough estimate of mean reversion rate based on Shiller data.
 master_stocks_price_exaggeration = 0.7 # Generates reasonable price to fair price ratios.
-master_stocks_price_noise_sigma = 0.2 # Rough estimate of noise in stock price to fair price observations.
+master_stocks_price_noise_sigma = 0.15 # Rough estimate of noise in stock price to fair price observations.
 master_stocks_standard_error = 0.016
 master_real_bonds = True
 master_real_bonds_duration = None
