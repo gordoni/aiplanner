@@ -50,14 +50,14 @@ master_real_spias = False # Not widely available, so suggest, but don't use.
     # Exception is gamma=6, p_tax_free=5e6, gi=20k tax free, where nominal and real SPIA CEs are equal.
 master_nominal_spias = False
 master_real_spias_mwr = 0.94 # Based on 2015 pricing.
-master_nominal_spias_mwr = 1.0 # Based on 2015 pricing exceeding 100%.
+master_nominal_spias_mwr = 0.98 # Based on 2019 pricing of 100.2% for ages 60-75 and >100% ages 80-90 against Treasury before 2.35% non-qualified CA tax.
 master_nominal_spias_adjust = 0.02
 master_spias_partial = True
 master_spias_min_purchase_fraction = 0.1
 master_preretirement_spias = False
 master_couple_spias = True
     # Improves CE for couple age 65, gi=20e3, p=2e6 by 1%, 2% and 11% for gamma = 1.5, 3, and 6 relative to no_couple_spias.
-master_spias_permitted_to_age = 85 # Age at which availability of quotes starts to decrease.
+master_spias_permitted_to_age = 90 # Age at which availability of quotes stops.
 master_spias_from_age = 200
     # Improves CE at age 65 by 0.5-1.0% versus requiring SPIAs from age 85.
 
