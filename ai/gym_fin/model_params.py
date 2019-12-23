@@ -177,7 +177,8 @@ class ModelParams(object):
         self._boolean_flag('income-preretirement-concordant', False) # Whether second member of couple's income follows the same fluctuations as the first.
         self._boolean_flag('income-preretirement-taxable', True) # Whether pre-tax pre-retirement income is taxable.
         self._param('consume-preretirement', 0) # Annual pre-retirement consumption.
-        self._param('consume-preretirement-income-ratio', (0, 0)) # Fraction of initial pre-retirement income to add to pre-retirement consumption.
+        self._param('consume-preretirement-income-ratio', (0, 0))
+            # Fraction of initial after tax before IRA/401(k) pre-retirement income to add to pre-retirement consumption.
 
         self._param('have-401k', (True, True), True, tp = bool) # 401(k) available to first individual.
         self._param('have-401k2', (True, True), True, tp = bool) # 401(k) available to second individual.

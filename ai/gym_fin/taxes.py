@@ -231,7 +231,7 @@ class Taxes(object):
         taxable_capital_gains = max(taxable_capital_gains, 0)
 
         nii = max(self.capital_gains + self.qualified_dividends + self.non_qualified_dividends, 0)
-        nii_taxable = min(nii, max(regular_income - (self.niit_threshold_single if single else self.niit_threshold_couple), 0))
+        nii_taxable = min(nii, max(regular_income - (self.niit_threshold_single if single else self.niit_threshold_couple) / self.cpi, 0))
 
         regular_tax = self.tax_table(self.federal_table_single if single else self.federal_table_joint, taxable_regular_income, 0) \
             if taxable_regular_income != 0 else 0

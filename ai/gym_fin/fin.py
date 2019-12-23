@@ -507,11 +507,6 @@ class Fin:
                 self.income_preretirement = self.start_income_preretirement if self.income_preretirement_years > 0 else 0
                 self.income_preretirement2 = self.start_income_preretirement2 if self.income_preretirement_years2 > 0 else 0
 
-                assert not self.params.consume_preretirement or not self.params.consume_preretirement_income_ratio_high
-                self.consume_preretirement = self.params.consume_preretirement + \
-                    uniform(self.params.consume_preretirement_income_ratio_low, self.params.consume_preretirement_income_ratio_high) * \
-                    (self.income_preretirement + self.income_preretirement2)
-
                 p_tax_free_weight = uniform(self.params.p_tax_free_weight_low, self.params.p_tax_free_weight_high)
                 p_tax_deferred_weight = uniform(self.params.p_tax_deferred_weight_low, self.params.p_tax_deferred_weight_high)
                 p_taxable_stocks_weight = uniform(self.params.p_taxable_stocks_weight_low, self.params.p_taxable_stocks_weight_high) if self.params.stocks else 0
@@ -550,6 +545,40 @@ class Fin:
                         p_weighted * p_taxable_bills_weight / total_weight
                 self.p_taxable = sum(taxable_assets.aa.values())
 
+                taxable_basis = AssetAllocation(fractional = False)
+                if self.params.stocks:
+                    assert not self.params.p_taxable_stocks_basis or not self.params.p_taxable_stocks_basis_fraction_high
+                    taxable_basis.aa['stocks'] = self.params.p_taxable_stocks_basis + \
+                        uniform(self.params.p_taxable_stocks_basis_fraction_low,
+                                self.params.p_taxable_stocks_basis_fraction_high) * taxable_assets.aa['stocks']
+                if self.params.real_bonds:
+                    assert not self.params.p_taxable_real_bonds_basis or not self.params.p_taxable_real_bonds_basis_fraction_high
+                    taxable_basis.aa['real_bonds'] = self.params.p_taxable_real_bonds_basis + \
+                        uniform(self.params.p_taxable_real_bonds_basis_fraction_low,
+                                self.params.p_taxable_real_bonds_basis_fraction_high) * taxable_assets.aa['real_bonds']
+                if self.params.nominal_bonds:
+                    assert not self.params.p_taxable_nominal_bonds_basis or not self.params.p_taxable_nominal_bonds_basis_fraction_high
+                    taxable_basis.aa['nominal_bonds'] = self.params.p_taxable_nominal_bonds_basis + \
+                        uniform(self.params.p_taxable_nominal_bonds_basis_fraction_low,
+                                self.params.p_taxable_nominal_bonds_basis_fraction_high) * taxable_assets.aa['nominal_bonds']
+                if self.params.iid_bonds:
+                    assert not self.params.p_taxable_iid_bonds_basis or not self.params.p_taxable_iid_bonds_basis_fraction_high
+                    taxable_basis.aa['iid_bonds'] = self.params.p_taxable_iid_bonds_basis + \
+                        uniform(self.params.p_taxable_iid_bonds_basis_fraction_low,
+                                self.params.p_taxable_iid_bonds_basis_fraction_high) * taxable_assets.aa['iid_bonds']
+                if self.params.bills:
+                    assert not self.params.p_taxable_bills_basis or not self.params.p_taxable_bills_basis_fraction_high
+                    taxable_basis.aa['bills'] = self.params.p_taxable_bills_basis + \
+                        uniform(self.params.p_taxable_bills_basis_fraction_low,
+                                self.params.p_taxable_bills_basis_fraction_high) * taxable_assets.aa['bills']
+                self.taxes = Taxes(self.params, taxable_assets, taxable_basis)
+
+                assert not self.params.consume_preretirement or not self.params.consume_preretirement_income_ratio_high
+                income_preretirement = self.income_preretirement + self.income_preretirement2
+                income_preretirement -= sum(self.taxes.calculate_taxes(income_preretirement, 0, 0, not self.couple))
+                self.consume_preretirement = self.params.consume_preretirement + \
+                    uniform(self.params.consume_preretirement_income_ratio_low, self.params.consume_preretirement_income_ratio_high) * income_preretirement
+
                 self._pre_calculate_wealth(growth_rate = 1.05) # Use a typical stock growth rate for determining expected consume range.
                 ce_estimate_ok = self.params.consume_floor <= self.rough_ce_estimate_individual <= self.params.consume_ceiling
                 if not ce_estimate_ok:
@@ -584,30 +613,6 @@ class Fin:
                 raise FinError('Guaranteed income falls outside model training range.')
 
         #print('wealth:', self.net_wealth_pretax, self.raw_preretirement_income_wealth, self.retired_income_wealth_pretax, self.p_wealth)
-
-        taxable_basis = AssetAllocation(fractional = False)
-        if self.params.stocks:
-            assert not self.params.p_taxable_stocks_basis or not self.params.p_taxable_stocks_basis_fraction_high
-            taxable_basis.aa['stocks'] = self.params.p_taxable_stocks_basis + \
-                uniform(self.params.p_taxable_stocks_basis_fraction_low, self.params.p_taxable_stocks_basis_fraction_high) * taxable_assets.aa['stocks']
-        if self.params.real_bonds:
-            assert not self.params.p_taxable_real_bonds_basis or not self.params.p_taxable_real_bonds_basis_fraction_high
-            taxable_basis.aa['real_bonds'] = self.params.p_taxable_real_bonds_basis + \
-                uniform(self.params.p_taxable_real_bonds_basis_fraction_low, self.params.p_taxable_real_bonds_basis_fraction_high) * taxable_assets.aa['real_bonds']
-        if self.params.nominal_bonds:
-            assert not self.params.p_taxable_nominal_bonds_basis or not self.params.p_taxable_nominal_bonds_basis_fraction_high
-            taxable_basis.aa['nominal_bonds'] = self.params.p_taxable_nominal_bonds_basis + \
-                uniform(self.params.p_taxable_nominal_bonds_basis_fraction_low, self.params.p_taxable_nominal_bonds_basis_fraction_high) * \
-                taxable_assets.aa['nominal_bonds']
-        if self.params.iid_bonds:
-            assert not self.params.p_taxable_iid_bonds_basis or not self.params.p_taxable_iid_bonds_basis_fraction_high
-            taxable_basis.aa['iid_bonds'] = self.params.p_taxable_iid_bonds_basis + \
-                uniform(self.params.p_taxable_iid_bonds_basis_fraction_low, self.params.p_taxable_iid_bonds_basis_fraction_high) * taxable_assets.aa['iid_bonds']
-        if self.params.bills:
-            assert not self.params.p_taxable_bills_basis or not self.params.p_taxable_bills_basis_fraction_high
-            taxable_basis.aa['bills'] = self.params.p_taxable_bills_basis + \
-                uniform(self.params.p_taxable_bills_basis_fraction_low, self.params.p_taxable_bills_basis_fraction_high) * taxable_assets.aa['bills']
-        self.taxes = Taxes(self.params, taxable_assets, taxable_basis)
 
         self._pre_calculate()
 
@@ -1402,6 +1407,7 @@ class Fin:
             self.pv_preretirement_income[source] += self.income_preretirement * min(self.income_preretirement_years, self.preretirement_years)
             self.pv_preretirement_income[source] += self.income_preretirement2 * min(self.income_preretirement_years2, self.preretirement_years)
             self.pv_preretirement_income['tax_free'] -= self.consume_preretirement * self.preretirement_years
+            # Currently no need to reduce taxable and increase tax_deferred by 401(k)/IRA contributions as only ever consider pre-retirement taxable + tax_deferred.
         self.pv_retired_income[source] += self.income_preretirement * max(0, self.income_preretirement_years - self.preretirement_years)
         self.pv_retired_income[source] += self.income_preretirement2 * max(0, self.income_preretirement_years2 - self.preretirement_years)
 
