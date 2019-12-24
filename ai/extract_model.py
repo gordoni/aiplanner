@@ -21,7 +21,6 @@ from ai.common.tf_util import TFRunner
 from ai.common.utils import boolean_flag
 from ai.gym_fin.asset_allocation import AssetAllocation
 from ai.gym_fin.model_params import load_params_file
-from ai.gym_fin.policies import policy
 
 def extract_model(eval_model_params, *, train_seed, redis_address, train_seeds, ensemble, checkpoint_name, result_dir,
     eval_couple_net, eval_seed, eval_num_timesteps, eval_render, nice, num_cpu, model_dir,

@@ -25,7 +25,7 @@ from spia import LifeTable, YieldCurve, IncomeAnnuity
 from ai.gym_fin.asset_allocation import AssetAllocation
 from ai.gym_fin.bonds import BondsSet
 from ai.gym_fin.defined_benefit import DefinedBenefit
-from ai.gym_fin.policies import policy
+from ai.gym_fin.policies import Policy
 from ai.gym_fin.returns import Returns, returns_report, yields_report
 from ai.gym_fin.returns_equity import ReturnsEquity
 from ai.gym_fin.returns_sample import ReturnsSample
@@ -618,6 +618,8 @@ class Fin:
 
         self.set_reward_level()
 
+        self.policy = Policy(self)
+
         self.prev_asset_allocation = None
         self.prev_taxable_assets = taxable_assets
         self.prev_real_spias_rate = None
@@ -1045,7 +1047,7 @@ class Fin:
             decoded_action = None
         else:
             decoded_action = self.decode_action(action)
-        policified_action = policy(self, decoded_action)
+        policified_action = self.policy.policy(decoded_action)
         consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
         return self.interpret_spending(consume_fraction, asset_allocation, real_spias_fraction = real_spias_fraction, nominal_spias_fraction = nominal_spias_fraction,
             real_bonds_duration = real_bonds_duration, nominal_bonds_duration = nominal_bonds_duration)
@@ -1117,7 +1119,7 @@ class Fin:
             decoded_action = None
         else:
             decoded_action = self.decode_action(action)
-        policified_action = policy(self, decoded_action)
+        policified_action = self.policy.policy(decoded_action)
         consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = policified_action
 
         p_tax_free, p_tax_deferred, p_taxable, p_negative, regular_income, social_security, consume, retirement_contribution, \

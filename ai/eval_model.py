@@ -34,7 +34,6 @@ from ai.common.tf_util import TFRunner
 from ai.common.utils import boolean_flag
 from ai.gym_fin.asset_allocation import AssetAllocation
 from ai.gym_fin.model_params import dump_params, load_params_file
-from ai.gym_fin.policies import policy
 
 def pi_merton(env, obs, continuous_time = False):
     observation = env.decode_observation(obs)
