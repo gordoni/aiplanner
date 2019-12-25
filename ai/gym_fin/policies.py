@@ -188,8 +188,11 @@ class Policy:
             }
 
             assert self.env.alive_single[self.env.episode_length] != None or self.env.age == self.env.age2
-            rmd_period = extended_rmd_table[min(int(self.env.age), max(extended_rmd_table.keys()))]
-            consume = self.env.net_gi + self.env.p_wealth / rmd_period * self.env.params.time_period
+            if self.env.age < self.env.age_retirement:
+                consume = 0
+            else:
+                rmd_period = extended_rmd_table[min(int(self.env.age), max(extended_rmd_table.keys()))]
+                consume = self.env.net_gi + self.env.p_wealth / rmd_period * self.env.params.time_period
             consume_fraction = consume / self.env.p_plus_income
 
         elif self.env.params.consume_policy == 'pmt':
