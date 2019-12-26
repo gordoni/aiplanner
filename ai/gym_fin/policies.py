@@ -27,7 +27,7 @@ class Policy:
 
     def _bonds_type(self):
 
-        assert sum(int(self.env.params.real_bonds) + int(self.env.params.nominal_bonds) + int(self.env.params.iid_bonds) + (self.env.params.bills)) == 1
+        assert int(self.env.params.real_bonds) + int(self.env.params.nominal_bonds) + int(self.env.params.iid_bonds) + int(self.env.params.bills) == 1
 
         if self.env.params.real_bonds:
             return 'real_bonds'
@@ -241,8 +241,9 @@ class Policy:
         elif self.env.params.asset_allocation_policy == 'glide-path':
 
             t = self.env.age - self.env.age_retirement
-            t0, stocks0 = self.env.params.asset_allocation_glide_path[0]
-            for t1, stocks1 in self.env.params.asset_allocation_glide_path:
+            glide_path = loads(self.env.params.asset_allocation_glide_path)
+            t0, stocks0 = glide_path[0]
+            for t1, stocks1 in glide_path:
                 if t < t1:
                     break
                 t0, stocks0 = t1, stocks1
