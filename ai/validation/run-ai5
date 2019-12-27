@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+AI_DIR=$AIPLANNER_HOME/ai
+
+source $AI_DIR/helpers.bash
+
+mkdir -p ~/aiplanner-data/validation/run.ai5
+cd ~/aiplanner-data/validation/run.ai5
+
+PARALLEL=Jobs
+
+SCENARIO_ARGS=""
+TRAINING_ARGS=""
+EVALUATE_ARGS=""
+
+SAVESTEPS=2000000
+
+TRAINING=generic
+UNIT=single
+STAGES="preretirement retired"
+SPIAS_TYPES="none nominal"
+GAMMAS="6"
+
+# Note, real_bonds_nominal_spias/aiplanner-retired-spias-gamma6.tf should have been be skipped.
+# Note, real_bonds and nominal_bonds pre-retirement presently not used.
+for STAGE in $STAGES; do
+    for SPIAS in $SPIAS_TYPES; do
+        for GAMMA in $GAMMAS; do
+            ARGS=`timesteps $TRAINING $UNIT $STAGE $SPIAS $GAMMA`
+            ARGS="$SCENARIO_ARGS $TRAINING_ARGS $ARGS --train-save-frequency=$SAVESTEPS"
+            if [ $SPIAS = none ]; then
+                mkdir -p real_bonds
+                cd real_bonds
+            else
+                mkdir -p real_bonds_nominal_spias
+                cd real_bonds_nominal_spias
+            fi
+            train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
+            cd ..
+            if [ $SPIAS = none ]; then
+                mkdir -p nominal_bonds
+                cd nominal_bonds
+                train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS --master-no-real-bonds --master-nominal-bonds"
+                cd ..
+            fi
+        done
+    done
+done
+wait
+
+start_ray_if_needed
+TEMPFILE=`tempfile -p train`
+for DIR in nominal_bonds real_bonds real_bonds_nominal_spias; do
+    cd $DIR
+    for MODEL_DIR in aiplanner-*.tf; do
+        $AI_DIR/export_model.py --redis-address=$RAY_REDIS_ADDRESS --model-dir=$MODEL_DIR --train-seed=$SEED_START --train-seeds=$SEEDS >> $TEMPFILE 2>&1
+    done
+    cd ..
+done

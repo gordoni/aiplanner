@@ -1,0 +1,185 @@
+#!/bin/bash
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2019 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+AI_DIR=$AIPLANNER_HOME/ai
+
+source $AI_DIR/helpers.bash
+
+cd ~/aiplanner-data/validation/run.ai5
+
+PARALLEL=Jobs
+
+SCENARIO_ARGS=""
+TRAINING_ARGS=""
+EVALUATE_ARGS="--ensemble"
+
+SAVESTEPS=2000000
+
+TRAINING=generic
+UNIT=single
+GAMMA=6
+
+# c5.24xlarge
+
+# Rule comparison.
+
+cd nominal_bonds
+ARGS="$SCENARIO_ARGS $EVALUATE_ARGS --master-no-real-bonds --master-nominal-bonds"
+
+# Percent rule.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=percent_rule --master-consume-policy-fraction=0.035 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds percent_rule0.035-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=percent_rule --master-consume-policy-fraction=0.03 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds percent_rule0.03-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=percent_rule --master-consume-policy-fraction=0.04 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds percent_rule0.04-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=percent_rule --master-consume-policy-fraction=0.035 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.4,"nominal_bonds":0.6} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds percent_rule0.035-annuitization_none-stocks0.4-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=percent_rule --master-consume-policy-fraction=0.035 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds percent_rule0.035-annuitization_none-stocks0.6-nominal_bonds20
+
+# Guyton rule 2.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=guyton_rule2 --master-consume-initial=55000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds guyton_rule2_55000-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=guyton_rule2 --master-consume-initial=50000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds guyton_rule2_50000-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=guyton_rule2 --master-consume-initial=60000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds guyton_rule2_60000-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=guyton_rule2 --master-consume-initial=55000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.4,"nominal_bonds":0.6} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds guyton_rule2_55000-annuitization_none-stocks0.4-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=guyton_rule2 --master-consume-initial=55000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds guyton_rule2_55000-annuitization_none-stocks0.6-nominal_bonds20
+
+# Guyton-Klinger, life expectancy 35.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=guyton_klinger --master-consume-policy-life-expectancy=35 --master-consume-initial=65000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds guyton_klinger35_65000-annuitization_none-stocks0.6-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=guyton_klinger --master-consume-policy-life-expectancy=35 --master-consume-initial=60000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds guyton_klinger35_60000-annuitization_none-stocks0.6-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=guyton_klinger --master-consume-policy-life-expectancy=35 --master-consume-initial=70000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds guyton_klinger35_70000-annuitization_none-stocks0.6-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=guyton_klinger --master-consume-policy-life-expectancy=35 --master-consume-initial=65000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds guyton_klinger35_65000-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=guyton_klinger --master-consume-policy-life-expectancy=35 --master-consume-initial=65000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.7,"nominal_bonds":0.3} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds guyton_klinger35_65000-annuitization_none-stocks0.7-nominal_bonds20
+
+# Target Percentage, life expectancy 35.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=target_percentage --master-consume-policy-return=-0.02 --master-consume-policy-life-expectancy=35 --master-consume-initial=55000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds target_percentage-0.02_35_55000-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=target_percentage --master-consume-policy-return=-0.03 --master-consume-policy-life-expectancy=35 --master-consume-initial=55000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds target_percentage-0.03_35_55000-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=target_percentage --master-consume-policy-return=-0.01 --master-consume-policy-life-expectancy=35 --master-consume-initial=55000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds target_percentage-0.01_35_55000-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=target_percentage --master-consume-policy-return=-0.02 --master-consume-policy-life-expectancy=35 --master-consume-initial=50000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds target_percentage-0.02_35_50000-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=target_percentage --master-consume-policy-return=-0.02 --master-consume-policy-life-expectancy=35 --master-consume-initial=60000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds target_percentage-0.02_35_60000-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=target_percentage --master-consume-policy-return=-0.02 --master-consume-policy-life-expectancy=35 --master-consume-initial=55000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.4,"nominal_bonds":0.6} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds target_percentage-0.02_35_55000-annuitization_none-stocks0.4-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=target_percentage --master-consume-policy-return=-0.02 --master-consume-policy-life-expectancy=35 --master-consume-initial=55000 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds target_percentage-0.02_35_55000-annuitization_none-stocks0.6-nominal_bonds20
+
+# PMT, life expectancy 35.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.03 --master-consume-policy-life-expectancy=35 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds pmt0.03_35-annuitization_none-stocks0.6-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.02 --master-consume-policy-life-expectancy=35 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds pmt0.02_35-annuitization_none-stocks0.6-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.04 --master-consume-policy-life-expectancy=35 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds pmt0.04_35-annuitization_none-stocks0.6-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.03 --master-consume-policy-life-expectancy=35 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds pmt0.03_35-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=0.03 --master-consume-policy-life-expectancy=35 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.7,"nominal_bonds":0.3} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds pmt0.03_35-annuitization_none-stocks0.7-nominal_bonds20
+
+# PMT, life expectancy dynamic.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=-0.03 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.7,"nominal_bonds":0.3} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds pmt-0.03_dynamic-annuitization_none-stocks0.7-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=-0.02 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.7,"nominal_bonds":0.3} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds pmt-0.02_dynamic-annuitization_none-stocks0.7-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=-0.04 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.7,"nominal_bonds":0.3} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds pmt-0.04_dynamic-annuitization_none-stocks0.7-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=-0.03 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds pmt-0.03_dynamic-annuitization_none-stocks0.6-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=pmt --master-consume-policy-return=-0.03 --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.8,"nominal_bonds":0.2} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds pmt-0.03_dynamic-annuitization_none-stocks0.8-nominal_bonds20
+
+# Extended RMD.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds extended_rmd-annuitization_none-stocks0.6-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds extended_rmd-annuitization_none-stocks0.5-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.7,"nominal_bonds":0.3} --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds extended_rmd-annuitization_none-stocks0.7-nominal_bonds20
+
+# Blinded reinforcement learning.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS --master-no-observe-stocks-price --master-no-observe-stocks-volatility --master-no-observe-interest-rate --master-rl-stocks-bias=0.0" tax_diverse1e6_nominal_bonds no_observe_stock_price-no_observe_volatility-no_observe_interest_rate-rl_stocks_bias0.0
+
+# Reinforcement learning.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS --master-rl-stocks-bias=0.0" tax_diverse1e6_nominal_bonds rl_stocks_bias0.0
+
+# Instruments comparison.
+
+# Nominal bonds + 1%.
+
+# Extended RMD.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"nominal_bonds":0.4} --master-nominal-bonds-adjust=0.01 --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds extended_rmd-annuitization_none-stocks0.6-nominal_bonds_adjust0.01-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"nominal_bonds":0.5} --master-nominal-bonds-adjust=0.01 --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds extended_rmd-annuitization_none-stocks0.5-nominal_bonds_adjust0.01-nominal_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.7,"nominal_bonds":0.3} --master-nominal-bonds-adjust=0.01 --master-nominal-bonds-duration=20 --master-nominal-bonds-duration-action-force' tax_diverse1e6_nominal_bonds extended_rmd-annuitization_none-stocks0.7-nominal_bonds_adjust0.01-nominal_bonds20
+
+# Reinforcement learning.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS --master-rl-stocks-bias=0.0 --master-nominal-bonds-adjust=0.01" tax_diverse1e6_nominal_bonds rl_stocks_bias0.0-nominal_bonds_adjust0.01
+
+cd ..
+
+# Real bonds.
+
+cd real_bonds
+ARGS="$SCENARIO_ARGS $EVALUATE_ARGS"
+
+# Extended RMD.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"real_bonds":0.5} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' tax_diverse1e6 extended_rmd-annuitization_none-stocks0.5-real_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.4,"real_bonds":0.6} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' tax_diverse1e6 extended_rmd-annuitization_none-stocks0.4-real_bonds20
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' tax_diverse1e6 extended_rmd-annuitization_none-stocks0.6-real_bonds20
+
+# Reinforcement learning.
+eval_scenarios $TRAINING $UNIT retired none $GAMMA "$ARGS --master-rl-stocks-bias=0.0" tax_diverse1e6 rl_stocks_bias0.0
+
+cd ..
+
+# Real bonds nominal SPIAs.
+
+cd real_bonds_nominal_spias
+ARGS="$SCENARIO_ARGS $EVALUATE_ARGS"
+
+# Extended RMD.
+#FORCE_STAGE=preretirement eval_scenarios $TRAINING $UNIT retired nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=70 --master-spias-permitted-to-age=70 --master-asset-allocation-policy={"stocks":0.5,"real_bonds":0.5} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' tax_diverse1e6 extended_rmd-annuitization70-stocks0.5-real_bonds20
+#FORCE_STAGE=preretirement eval_scenarios $TRAINING $UNIT retired nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=67 --master-spias-permitted-to-age=67 --master-asset-allocation-policy={"stocks":0.5,"real_bonds":0.5} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' tax_diverse1e6 extended_rmd-annuitization67-stocks0.5-real_bonds20
+#FORCE_STAGE=preretirement eval_scenarios $TRAINING $UNIT retired nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=75 --master-spias-permitted-to-age=75 --master-asset-allocation-policy={"stocks":0.5,"real_bonds":0.5} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' tax_diverse1e6 extended_rmd-annuitization75-stocks0.5-real_bonds20
+#FORCE_STAGE=preretirement eval_scenarios $TRAINING $UNIT retired nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=70 --master-spias-permitted-to-age=70 --master-asset-allocation-policy={"stocks":0.4,"real_bonds":0.6} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' tax_diverse1e6 extended_rmd-annuitization70-stocks0.4-real_bonds20
+#FORCE_STAGE=preretirement eval_scenarios $TRAINING $UNIT retired nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=70 --master-spias-permitted-to-age=70 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' tax_diverse1e6 extended_rmd-annuitization70-stocks0.6-real_bonds20
+
+# Reinforcement learning.
+#FORCE_STAGE=preretirement eval_scenarios $TRAINING $UNIT retired nominal $GAMMA "$ARGS --master-rl-stocks-bias=0.0" tax_diverse1e6 rl_stocks_bias0.0
+#FORCE_STAGE=preretirement eval_scenarios $TRAINING $UNIT retired nominal $GAMMA "$ARGS --master-rl-stocks-bias=-0.10" tax_diverse1e6 rl_stocks_bias-0.10
+
+cd ..
+
+# Lifecycle comparison.
+
+# Real bonds.
+
+cd real_bonds
+ARGS="$SCENARIO_ARGS $EVALUATE_ARGS"
+
+# Extended RMD, fixed aa.
+eval_scenarios $TRAINING $UNIT preretirement none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none extended_rmd-annuitization_none-stocks0.6-real_bonds20
+eval_scenarios $TRAINING $UNIT preretirement none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.5,"real_bonds":0.5} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none extended_rmd-annuitization_none-stocks0.5-real_bonds20
+eval_scenarios $TRAINING $UNIT preretirement none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy={"stocks":0.7,"real_bonds":0.3} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none extended_rmd-annuitization_none-stocks0.7-real_bonds20
+
+# Extended RMD, glide path.
+eval_scenarios $TRAINING $UNIT preretirement none $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=none --master-asset-allocation-policy=glide-path --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none extended_rmd-annuitization_none-glide_path-real_bonds20
+
+# Reinforcement learning.
+eval_scenarios $TRAINING $UNIT preretirement none $GAMMA "$ARGS --master-rl-stocks-bias=0.0" p_none rl_stocks_bias0.0
+eval_scenarios $TRAINING $UNIT preretirement none $GAMMA "$ARGS --master-rl-stocks-bias=-0.15" p_none rl_stocks_bias-0.15
+
+cd ..
+
+# Real bonds nominal SPIAs.
+
+cd real_bonds_nominal_spias
+ARGS="$SCENARIO_ARGS $EVALUATE_ARGS"
+
+# Extended RMD, fixed aa.
+eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none extended_rmd-annuitization80-stocks0.6-real_bonds20
+eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=75 --master-spias-permitted-to-age=75 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none extended_rmd-annuitization75-stocks0.6-real_bonds20
+eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=85 --master-spias-permitted-to-age=85 --master-asset-allocation-policy={"stocks":0.6,"real_bonds":0.4} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none extended_rmd-annuitization85-stocks0.6-real_bonds20
+eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-asset-allocation-policy={"stocks":0.5,"real_bonds":0.5} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none extended_rmd-annuitization80-stocks0.5-real_bonds20
+eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-asset-allocation-policy={"stocks":0.7,"real_bonds":0.3} --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none extended_rmd-annuitization80-stocks0.7-real_bonds20
+
+# Extended RMD, glide path.
+eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=80 --master-spias-permitted-to-age=80 --master-asset-allocation-policy=glide-path --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none extended_rmd-annuitization80-glide_path-real_bonds20
+eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=75 --master-spias-permitted-to-age=75 --master-asset-allocation-policy=glide-path --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none extended_rmd-annuitization75-glide_path-real_bonds20
+eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS "'--master-consume-policy=extended_rmd --master-annuitization-policy=age_nominal --master-annuitization-policy-age=85 --master-spias-permitted-to-age=85 --master-asset-allocation-policy=glide-path --master-real-bonds-duration=20 --master-real-bonds-duration-action-force' p_none extended_rmd-annuitization85-glide_path-real_bonds20
+
+# Reinforcement learning.
+eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS --master-rl-stocks-bias=0.0" p_none rl_stocks_bias0.0
+eval_scenarios $TRAINING $UNIT preretirement nominal $GAMMA "$ARGS --master-rl-stocks-bias=-0.10" p_none rl_stocks_bias-0.10
+
+cd ..
+
+wait
