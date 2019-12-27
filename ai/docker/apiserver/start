@@ -16,10 +16,12 @@ AI_DIR=$AIPLANNER_HOME/ai
 ADMIN_EMAIL=`$AI_DIR/get_config admin_email`
 
 if [ -e /etc/aliases.orig ]; then
-    cp /etc/aliases.orig /etc/alaises
+    cp /etc/aliases.orig /etc/aliases
 else
     cp /etc/aliases /etc/aliases.orig
 fi
+
+echo "aiplanner: root" >> /etc/aliases
 
 if [ "$ADMIN_EMAIL" != None ]; then
     NOTIFY_EMAIL=`$AI_DIR/get_config notify_email "notify@aiplanner.com"`

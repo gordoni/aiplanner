@@ -427,7 +427,10 @@ class RequestHandler(BaseHTTPRequestHandler):
             scenario['consume_preretirement'] = uniform(0.4 * income, 0.6 * income)
 
         if self.server.args.num_infer_jobs:
-            data = self.run_models(api_data, evaluate = False, prefix = 'healthcheck-')
+            try:
+                data = self.run_models(api_data, evaluate = False, prefix = 'healthcheck-')
+            except:
+                return False
             if data == None:
                 return None
             result = loads(data.decode('utf-8'))
@@ -436,7 +439,10 @@ class RequestHandler(BaseHTTPRequestHandler):
                 return False
 
         if self.server.args.num_evaluate_jobs:
-            data = self.run_models(api_data, evaluate = True, prefix = 'healthcheck-')
+            try:
+                data = self.run_models(api_data, evaluate = True, prefix = 'healthcheck-')
+            except:
+                return False
             if data == None:
                 return None
             result = loads(data.decode('utf-8'))
@@ -473,7 +479,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 assert now - timedelta(days = 14) < stocks_volatility_date <= now or stocks_volatility_date == epoch
             except AssertionError as e:
                 self.server.logger.report_exception(e)
-                return None
+                raise
 
         return market_file
 

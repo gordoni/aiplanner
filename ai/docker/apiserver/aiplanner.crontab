@@ -8,5 +8,6 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+PATH=/usr/local/bin:/usr/bin:/bin
 # m h  dom mon dow   command
 0 0 * * * perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/docker/apiserver/cron.daily
