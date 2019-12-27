@@ -23,7 +23,6 @@ unset ytics
 
 set output 'risk_aversion_pdf.svg'
 plot \
-    'risk_aversion_12_pdf.csv' using 1:2 with lines title 'RRA coefficient = 12', \
     'risk_aversion_6_pdf.csv' using 1:2 with lines title 'RRA coefficient = 6', \
     'risk_aversion_3_pdf.csv' using 1:2 with lines title 'RRA coefficient = 3', \
     'risk_aversion_1.5_pdf.csv' using 1:2 with lines title 'RRA coefficient = 1.5'

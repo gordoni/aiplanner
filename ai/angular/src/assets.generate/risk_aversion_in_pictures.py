@@ -14,7 +14,7 @@ from math import ceil, exp, floor, log, sqrt
 
 from scipy.stats import lognorm
 
-gammas = (1.5, 3, 6, 12)
+gammas = (1.5, 3, 6)
 
 # Credit Suisse Yearbook 2019.
 m = 1.065
