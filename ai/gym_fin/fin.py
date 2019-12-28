@@ -32,18 +32,22 @@ from ai.gym_fin.returns_sample import ReturnsSample
 from ai.gym_fin.taxes import Taxes
 from ai.gym_fin.utility import Utility
 
-class FinError(Exception):
-
-    pass
-
 @cython.cclass
 class Fin:
 
-    def warn(self, *args):
+    def warn(self, *args, timestep_ok_fraction = 0):
 
         if self.params.warn:
             stderr.write('AIPLANNER: ' + ' '.join(str(arg) for arg in args) + '\n')
             stderr.flush()
+
+        try:
+            self.warnings[args[0]]['count'] += 1
+        except KeyError:
+            self.warnings[args[0]] = {
+                'count': 1,
+                'timestep_ok_fraction': timestep_ok_fraction,
+            }
 
     def _compute_vital_stats(self, age_start, age_start2, preretirement):
 
@@ -212,6 +216,8 @@ class Fin:
         np.seterr(divide = 'raise', over = 'raise', under = 'ignore', invalid = 'raise')
 
         home_dir = environ.get('AIPLANNER_HOME', expanduser('~/aiplanner'))
+
+        self.warnings = {}
 
         self._cvs_key = None
 
@@ -482,14 +488,14 @@ class Fin:
         self.episode_length = 0
 
         found = False
-        gi_fraction = 0
-        for _ in range(1000):
+        last_rough_ce_estimate_individual = None
+        for i in range(1000):
 
             self.parse_defined_benefits()
             for db in self.defined_benefits.values():
                 db.step(0) # Pick up non-zero schedule for observe.
 
-            for _ in range(20):
+            for j in range(20):
 
                 self.start_income_preretirement = self.log_uniform(self.params.income_preretirement_low, self.params.income_preretirement_high)
                 self.start_income_preretirement2 = self.log_uniform(self.params.income_preretirement2_low, self.params.income_preretirement2_high)
@@ -581,36 +587,35 @@ class Fin:
 
                 self._pre_calculate_wealth(growth_rate = 1.05) # Use a typical stock growth rate for determining expected consume range.
                 ce_estimate_ok = self.params.consume_floor <= self.rough_ce_estimate_individual <= self.params.consume_ceiling
-                if not ce_estimate_ok:
-                    continue
 
                 self._pre_calculate_wealth(growth_rate = 1) # By convention use no growth for determining guaranteed income bucket.
-
                 preretirement_ok = self.raw_preretirement_income_wealth + self.p_wealth >= 0
                     # Very basic sanity check only. Ignores taxation.
-                if not preretirement_ok:
-                    continue
 
                 try:
                     gi_fraction = self.retired_income_wealth_pretax / self.net_wealth_pretax
                 except ZeroDivisionError:
                     gi_fraction = 1
-                if not self.params.gi_fraction_low <= gi_fraction <= self.params.gi_fraction_high:
-                    continue
+                gi_ok = self.params.gi_fraction_low <= gi_fraction <= self.params.gi_fraction_high
 
-                found = True
-                break
+                if ce_estimate_ok and preretirement_ok and gi_ok or \
+                    i == 1 and j == 1 and self.rough_ce_estimate_individual == last_rough_ce_estimate_individual:
+                        # ce estimates equal implies fixed parameter values with very high probability. No point in repeatedly retrying.
+                    found = True
+                    break
+
+                if i == 0 and j == 0:
+                    last_rough_ce_estimate_individual = self.rough_ce_estimate_individual
 
             if found:
                 break
 
-        if not found:
-            if not ce_estimate_ok:
-                raise FinError('Expected consumption falls outside model training range.')
-            elif not preretirement_ok:
-                raise FinError('Insufficient pre-retirement wages and wealth to support pre-retirement consumption.')
-            else:
-                raise FinError('Guaranteed income falls outside model training range.')
+        if not ce_estimate_ok:
+            self.warn('Expected consumption falls outside model training range.')
+        if not preretirement_ok:
+            self.warn('Insufficient pre-retirement wages and wealth to support pre-retirement consumption.')
+        if not gi_ok:
+            self.warn('Net existing guaranteed income in retirement falls outside model training range.')
 
         #print('wealth:', self.net_wealth_pretax, self.raw_preretirement_income_wealth, self.retired_income_wealth_pretax, self.p_wealth)
 
@@ -933,7 +938,7 @@ class Fin:
         if p < 0:
             p = min(p + welfare, 0)
             if p < 0:
-                self.warn('Portfolio is negative')
+                self.warn('Portfolio is often negative.', timestep_ok_fraction = 1e-3)
 
         p_taxable = self.p_taxable + (p - self.p_sum())
         p_tax_deferred = self.p_tax_deferred + min(p_taxable, 0)
@@ -992,7 +997,7 @@ class Fin:
         regular_income = self.gi_sum(source = ('tax_deferred', 'taxable')) - retirement_contribution + delta_p_tax_deferred
         if regular_income < 0:
             if regular_income < -1e-12 * (self.gi_sum(source = ('tax_deferred', 'taxable')) + self.p_tax_deferred):
-                self.warn('Negative regular income:', regular_income)
+                self.warn('Negative regular income observed.', 'regular income:', regular_income, timestep_ok_fraction = 1e-3)
                     # Possible if taxable real SPIA non-taxable amount exceeds payout due to deflation.
             regular_income = 0
         social_security = self.gi_sum(type = 'social_security')
@@ -1193,12 +1198,12 @@ class Fin:
             self.reward_weight, self.reward_consume, self.reward_value = self.raw_reward(consume_rate)
             reward_unclipped = self.reward_weight * self.reward_scale * self.reward_value
             if isinf(reward_unclipped):
-                self.warn('Infinite reward')
+                self.warn('Infinite reward.')
             elif not - self.params.reward_warn <= reward_unclipped <= self.params.reward_warn:
-                self.warn('Extreme reward - age, consume, reward:', self.age, consume_rate, reward_unclipped)
+                self.warn('Extreme reward observed.', 'age, consume, reward:', self.age, consume_rate, reward_unclipped)
             reward = min(max(reward_unclipped, - self.params.reward_clip), self.params.reward_clip)
             if reward != reward_unclipped:
-                self.warn('Reward clipped - age, consume, reward:', self.age, consume_rate, reward_unclipped)
+                self.warn('Reward clipped.', 'age, consume, reward:', self.age, consume_rate, reward_unclipped)
 
         alive0 = self.alive_single[self.episode_length]
         if alive0 == None:
@@ -1643,7 +1648,7 @@ class Fin:
         try:
             ok = all(low <= obs) and all(obs <= high)
         except FloatingPointError:
-            self.warn('Invalid observation:', observe, obs, np.isnan(obs))
+            self.warn('Invalid observation.', observe, obs, np.isnan(obs))
             assert False, 'Invalid observation.'
         if not ok:
             extreme_range = self.observation_space_extreme_range
@@ -1652,9 +1657,10 @@ class Fin:
                     item = self.observation_space_items[index]
                     self.observation_space_range_exceeded[index] += 1
                     if self.observation_space_range_exceeded[index] > 1 + 1e-4 * self.env_timesteps:
-                        self.warn('Frequently out of range', item + ':', self.observation_space_range_exceeded[index] / self.env_timesteps)
+                        self.warn('Frequently out of range ' + item + '.', 'frequency:', self.observation_space_range_exceeded[index] / self.env_timesteps,
+                            timestep_ok_fraction = 1e-3)
                     if not high[index] - extreme_range[index] < ob < low[index] + extreme_range[index]:
-                        self.warn('Extreme', item + ', age:', ob, self.age)
+                        self.warn('Extreme ' + item + '.', 'value, age:', ob, self.age, timestep_ok_fraction = 1e-4)
                         if isinf(ob):
                             assert False, 'Infinite observation.'
                         if isnan(ob):

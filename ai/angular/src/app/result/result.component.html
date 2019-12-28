@@ -22,6 +22,9 @@ PURPOSE.
     </p>
   </div>
   <div class="center">
+    <div class="error" *ngFor="let warning of results.warnings">
+      WARNING: {{warning}}
+    </div>
     <div class="padded">
       <a href="{{results.data_dir}}/asset_allocation.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/asset_allocation.svg" width="30%"></a>
       <img width="10%">

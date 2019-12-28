@@ -544,6 +544,17 @@ aid: string
 The identifier assigned to this request by AIPlanner. May be useful
 for debugging.
 
+Warning messages
+----------------
+
+warnings: [ string, ... ]
+
+A typically empty list of warning messages associated with this
+result. Warning messages are used to convey the fact that the
+parameters being simulated fall outside the model training range, or
+other observed unusual situations. Warning messages should normally be
+displayed to the end user.
+
 Relative risk aversion
 ----------------------
 
