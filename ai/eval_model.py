@@ -262,6 +262,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
                 final_results = dict(results[scenario_num][sub_num], **{
                     'error': None,
+                    'warnings': res['warnings'],
                     'ce': res['ce'],
                     'ce_stderr': None if isnan(res['ce_stderr']) else res['ce_stderr'],
                     'consume10': res['consume10'],

@@ -145,6 +145,18 @@ class Evaluator(object):
             self.trace.append(episode)
             del self.episode[i]
 
+    def merge_warnings(self, warnings_list):
+
+        warnings = {}
+        for warnings in warnings_list:
+            for msg, data in warnings.items():
+                try:
+                    warnings[msg]['count'] += data['count']
+                except KeyError:
+                    warnings[msg] = dict(data)
+
+        return warnings
+
     def evaluate(self, pi):
 
         def rollout(eval_envs, pi):
@@ -213,8 +225,10 @@ class Evaluator(object):
                 if all(finished):
                     break
 
+            warnings = self.merge_warnings(env.warnings for env in envs)
+
             return pack_value_weights(sorted(rewards)), pack_value_weights(sorted(erewards)), pack_value_weights(sorted(estates)), \
-                reward_initial, weight_sum, consume_mean, consume_m2, self.trace
+                reward_initial, weight_sum, consume_mean, consume_m2, self.trace, warnings
 
         self.object_ids = None
         self.exception = None
@@ -246,7 +260,8 @@ class Evaluator(object):
             seed(self.eval_seed)
 
             try:
-                self.rewards, self.erewards, self.estates, self.reward_initial, self.weight_sum, self.consume_mean, self.consume_m2, self.trace = rollout(self.eval_envs, pi)
+                self.rewards, self.erewards, self.estates, self.reward_initial, self.weight_sum, self.consume_mean, self.consume_m2, self.trace, self.warnings = \
+                    rollout(self.eval_envs, pi)
             except Exception as e:
                 self.exception = e # Only want to know about failures in one place; later in summarize().
 
@@ -262,7 +277,7 @@ class Evaluator(object):
 
             rollouts = ray.get(self.object_ids)
 
-            rewards, erewards, estates, reward_initials, weight_sums, consume_means, consume_m2s, traces = zip(*chain(*rollouts))
+            rewards, erewards, estates, reward_initials, weight_sums, consume_means, consume_m2s, traces, warnings = zip(*chain(*rollouts))
             if len(rewards) > 1:
                 self.rewards = pack_value_weights(sorted(chain(*(unpack_value_weights(reward) for reward in rewards))))
                 self.erewards = pack_value_weights(sorted(chain(*(unpack_value_weights(ereward) for ereward in erewards))))
@@ -285,6 +300,8 @@ class Evaluator(object):
                     self.consume_m2 += consume_m2 + delta ** 2 * self.weight_sum * weight_sum / (self.weight_sum + weight_sum)
 
             self.trace = tuple(chain(*traces))[:self.num_trace_episodes]
+
+            self.warnings = self.merge_warnings(warnings)
 
         else:
 
@@ -356,6 +373,8 @@ class Evaluator(object):
             unit_consume_mean *= 1 + env.params.consume_additional
             unit_consume_stdev *= 1 + env.params.consume_additional
 
+        warnings = sorted(msg for msg, data in self.warnings.items() if data['count'] > data['timestep_ok_fraction'] * self.eval_num_timesteps)
+
         return {
             'couple': couple,
             'ce': unit_ce,
@@ -373,6 +392,7 @@ class Evaluator(object):
             'consume_pdf': consume_pdf,
             'estate_pdf': estate_pdf,
             'paths': self.trace,
+            'warnings': warnings,
         }
 
     def pdf(self, what, value_weights, de_minus_low, low, high, step, f = lambda x: x, multiplier = 1):

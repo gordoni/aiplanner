@@ -53,6 +53,7 @@ export class ResultComponent implements OnInit {
 
     this.results = {
       'error': null,
+      'warnings': result.warnings,
       'gamma': result.rra,
       'consume': this.utils.comma(result.consume),
       'real_spias_purchase': result.real_spias_purchase == null ? null : this.utils.comma(result.real_spias_purchase),
