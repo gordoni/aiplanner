@@ -175,15 +175,16 @@ class Evaluator(object):
             weight_sum = 0
             consume_mean = 0
             consume_m2 = 0
+            tracing = [i < self.num_trace_episodes for i in range(len(eval_envs))]
+            et = sum(tracing)
             finished = [self.eval_num_timesteps == 0 for _ in eval_envs]
             while True:
                 actions = pi(obss)
-                if et < self.num_trace_episodes:
-                    for i in range(len(eval_envs)):
-                        self.trace_step(i, envs[i], actions[i], False)
                 if self.eval_render:
                     eval_envs[0].render()
                 for i, (eval_env, env, action) in enumerate(zip(eval_envs, envs, actions)):
+                    if tracing[i]:
+                        self.trace_step(i, env, action, False)
                     if not finished[i]:
                         obs, r, done, info = eval_env.step(action)
                         s += 1
@@ -204,9 +205,12 @@ class Evaluator(object):
                             delta2 = consume - consume_mean
                             consume_m2 += weight * delta * delta2
                         if done:
-                            if et < self.num_trace_episodes:
+                            if tracing[i]:
                                 self.trace_step(i, env, None, done)
-                                et += 1
+                                if et < self.num_trace_episodes:
+                                    et += 1
+                                else:
+                                    tracing[i] = False
                             e += 1
                             try:
                                 er = erews[i] / eweights[i]
@@ -335,10 +339,15 @@ class Evaluator(object):
         except (ValueError, ZeroDivisionError):
             unit_consume_stdev = indiv_consume_stdev = float('nan')
 
-        utility_preretirement = utility.utility(env.params.consume_preretirement)
-        preretirement_ppf = weighted_ppf(self.rewards, utility_preretirement) / 100
-
         consume_preretirement = env.params.consume_preretirement
+        consume_ppf = consume_preretirement
+
+        couple = env.sex2 != None
+        if couple:
+            consume_ppf /= 1 + env.params.consume_additional
+
+        utility_preretirement = utility.utility(consume_ppf)
+        preretirement_ppf = weighted_ppf(self.rewards, utility_preretirement) / 100
 
         estate_max, = weighted_percentiles(self.estates, [98])
         if estate_max == 0:
@@ -364,7 +373,6 @@ class Evaluator(object):
         del self.rewards # Conserve RAM.
         del self.erewards
 
-        couple = env.sex2 != None
         if couple:
             unit_ce *= 1 + env.params.consume_additional
             unit_ce_stderr *= 1 + env.params.consume_additional
