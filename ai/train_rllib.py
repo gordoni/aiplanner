@@ -89,6 +89,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
         },
 
         'PPO': {
+            #'num_workers': 31, # PPO performs poorly for num_workers 31, num_sgd_iter 1.
             'model': {
                 # Changing the fully connected net size from 256x256 (the default) to 128x128 doesn't appear to appreciably alter CE values.
                 # At least not when the only actions are consumption and stock allocation with 4m timesteps.
@@ -100,9 +101,11 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
                 #'fcnet_hiddens': (128, 128),
             },
             'train_batch_size': train_batch_size,
+                # Batch size from each worker. Total batch size is num_workers times train_batch_size.
             'sgd_minibatch_size': train_minibatch_size,
             'num_sgd_iter': train_optimizer_epochs,
             'entropy_coeff': train_entropy_coefficient,
+                # Entropy for diagnal gaussian may be wrong (Ray issue #6393).
             'vf_clip_param': 10.0, # Currently equal to PPO default value.
                 # Clip value function advantage estimates. We expect most rewards to be roughly in [-1, 1],
                 # so if we get something far from this we don't want to train too hard on it.
@@ -134,23 +137,41 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
         },
 
         'APPO': {
-            'num_workers': 2, # Default value.
+            # 1500m timesteps: inferior to 50m x 30 num_sgd_iter, 0 num_workers PPO.
+            'num_workers': 31, # Default value is 2.
             'num_gpus': 0, # No speedup from GPUs for continuous control - https://www.reddit.com/r/MLQuestions/comments/akl6cs/hardware_for_reinforcement_learning/
-            # train_batch_size 200000 and num_sgd_iter 30 learn more rapidly and reach a higher asymptote. Not clear if need one or both.
-            'train_batch_size': 200000, # Default value is 500.
-            'num_sgd_iter': 30, # Default value is 1.
+            'sample_batch_size': 50, # Default value is 50.
+            'train_batch_size': train_minibatch_size, # Default value is 500.
+            'minibatch_buffer_size': 1, #train_batch_size // train_minibatch_size, # Default value is 1. No effect if num_sgd_iter == 1.
+            'num_sgd_iter': 1, # Default value is 1.
+            'vtrace': False, # Default is False.
+            'replay_proportion': 0.0, #train_optimizer_epochs - 1,
+            'replay_buffer_num_slots': 0, #train_batch_size // 50,
             'min_iter_time_s': 10, # Default value.
-            'vtrace': True, # Default is False. May help slightly for 2 workers and 200000 train_batch_size.
             'opt_type': 'adam', # Default value. Have not tried 'rmsprop'.
-            'clip_param': 0.2, # Default is 0.4.
+            'clip_param': 0.3, # Default is 0.4. PPO default is 0.3.
             'lr': train_optimizer_step_size, # Default is 5e-4.
+            'lr_schedule': lr_schedule,
+            'vf_loss_coeff': 0.5, # Default is 0.5.
             'entropy_coeff': 0.0, # Default is 0.01.
         },
 
         'IMPALA': {
+            # 1500m timesteps: better than APPO, but inferior to 50m x 30 num_sgd_iter, 0 num_workers PPO.
+            'num_workers': 31, # Default value is 2.
             'num_gpus': 0,
+            'sample_batch_size': 50, # Default value is 50.
+            'train_batch_size': 500, # Default value is 500.
+            'minibatch_buffer_size': 1, # Default value is 1. No effect if num_sgd_iter == 1.
+            'num_sgd_iter': 1, # Default value is 1.
+            'replay_proportion': 0.0, # Default value is 0.0.
+            'replay_buffer_num_slots': 0, # Default valueis 0.
             'min_iter_time_s': 10, # Default value.
-            'lr': train_optimizer_step_size, # Default is 5e-4.
+            'learner_queue_timeout': 300, # Default value.
+            'opt_type': 'adam', # Default value.
+            'lr': train_optimizer_step_size, # Default is 5e-4. 5e-5 performs a lot worse than 5e-6.
+            'lr_schedule': lr_schedule,
+            'vf_loss_coeff': 0.5, # Default is 0.5.
             'entropy_coeff': 0.0, # Default is 0.01.
         }
 
@@ -188,7 +209,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
             'env_config': training_model_params,
             'clip_actions': False,
             'gamma': 1,
-            'seed': grid_search(list(range(train_seed, train_seed + train_seeds))),
+            'seed': grid_search(list(range(train_seed, train_seed + 1000 * train_seeds, 1000))), # Workers are assigned consecutive seeds.
 
             #'num_gpus': 0,
             #'num_cpus_for_driver': 1,

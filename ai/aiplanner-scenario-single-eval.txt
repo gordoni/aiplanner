@@ -27,10 +27,15 @@ eval_guaranteed_income = '[{"owner": "self", "start": null, "payout": 20e3, "sou
 
 master_p_weighted = 0
 master_p_tax_free = 0
+master_p_tax_free_weight = 50
 master_p_tax_deferred = 0
+master_p_tax_deferred_weight = 100
 master_p_taxable_stocks = 0
+master_p_taxable_stocks_weight = 30
 master_p_taxable_real_bonds = 0
+master_p_taxable_real_bonds_weight = 20
 master_p_taxable_nominal_bonds = 0
+master_p_taxable_nominal_bonds_weight = 20
 master_p_taxable_stocks_basis_fraction = 1
 master_p_taxable_real_bonds_basis_fraction = 1
 master_p_taxable_nominal_bonds_basis_fraction = 1
