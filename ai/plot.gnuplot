@@ -55,3 +55,10 @@ set format y "%.1s%c"
 set output prefix . "-paths-p.svg"
 plot prefix . "-paths.csv" using 1:($2 == 1 ? $5 : NaN) with lines title 'couple' lt 2, \
     prefix . "-paths.csv" using 1:($3 == 1 ? $5 : NaN) with lines title 'single' lt 1
+
+set ylabel "stocks / investments"
+set yrange [0:100]
+set format y "%g%%"
+set output prefix . "-paths-stocks.svg"
+plot prefix . "-paths.csv" using 1:($2 == 1 ? $9 * 100 : NaN) with lines title 'couple' lt 2, \
+    prefix . "-paths.csv" using 1:($3 == 1 ? $9 * 100 : NaN) with lines title 'single' lt 1
