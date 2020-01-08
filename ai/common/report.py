@@ -8,7 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from html import escape
 from re import sub
 
@@ -18,8 +18,6 @@ from reportlab.lib.units import inch
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table
 from reportlab.platypus.flowables import TopPadder
 from svglib.svglib import svg2rlg
-
-from pytz import timezone
 
 def generate_report(api, result_dir, results, results_dir):
 
@@ -68,9 +66,13 @@ def generate_report(api, result_dir, results, results_dir):
     if scenario_name:
         s = '<para alignment="center">' + escape(scenario_name) + '</para>'
         contents.append(Paragraph(s, styleH))
-    tz = timezone('US/Eastern')
-    date = datetime.now(tz).strftime('%B %-d, %Y')
-    s = '<para alignment="center">' + date + '</para>'
+    # Don't want to rely on third party pytz library.
+    #from pytz import timezone
+    #tz = timezone('US/Eastern')
+    #date = datetime.now()
+    date = datetime.utcnow() - timedelta(hours = 5)
+    date_str = date.strftime('%B %-d, %Y')
+    s = '<para alignment="center">' + date_str + '</para>'
     contents.append(Paragraph(s, styleN))
     for result in sorted(results, key = lambda r: r.get('rra', 0), reverse = True):
         if not result['error']:
