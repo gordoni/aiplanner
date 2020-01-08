@@ -1,7 +1,7 @@
 <!--
 
 AIPlanner - Deep Learning Financial Planner
-Copyright (C) 2018-2019 Gordon Irlam
+Copyright (C) 2018-2020 Gordon Irlam
 
 All rights reserved. This program may not be used, copied, modified,
 or redistributed without permission.
@@ -40,6 +40,22 @@ PURPOSE.
 
   <div *ngIf="step == 1">
     <h1 class="title">Longevity</h1>
+    <table class="username">
+      <tr>
+        <td class="first"> Optional name: </td>
+        <td class="last"> <input type="text" class="text" name="scenarioCustomerName" [(ngModel)]="customerName"> </td>
+      </tr>
+      <tr>
+        <td class="center"> &amp; </td>
+        <td> </td>
+      </tr>
+      <tr>
+        <td class="first"> Scenario name: </td>
+        <td class="last"> <input type="text" class="text" name="scenarioScenarioName" [(ngModel)]="scenarioName"> </td>
+      </tr>
+    </table>
+    <br>
+    <br>
     <table class="le">
       <tr>
         <td class="noborderleft noborderright nobordertop"> </td>
@@ -497,6 +513,10 @@ PURPOSE.
     [<a href="sign_up" (click)="gotoStep(100)">Sign Up</a>]
   </div>
   <br>
+  <div class="small-font">
+    <a href="/webapi/data/{{report}}" target="_blank">Download/print results (PDF)</a>
+  </div>
+  <br>
   <div class="crra">
     <table>
       <tr>
@@ -581,7 +601,7 @@ PURPOSE.
     AIPlanner was developed by Gordon Irlam.
   </p>
   <p>
-    AIPlanner is Copyright &copy; 2018-2019 Gordon Irlam. It is
+    AIPlanner Copyright &copy; 2018-2020 Gordon Irlam. AIPlanner is
     provided without any warranty; without even the implied warranty
     of merchantability or fitness for a particular purpose.
   </p>

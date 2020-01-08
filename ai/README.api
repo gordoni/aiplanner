@@ -1,7 +1,7 @@
 AIPlanner API documentation
 ***************************
 
-December 13, 2019.
+January 7, 2020.
 
 This document describes the AIPlanner - Deep Reinforcement Learning
 Financial Planner web based application programming interface.
@@ -19,26 +19,29 @@ which results in something like:
 
     {
         "error": null,
-         "result": [[{
-             "error": null,
+        "result": [{
              "cid": null,
-             "aid": "e_j3yewn",
-             "rra": 3
-             "consume": 0.0,
-             "retirement_contribution": 0.0,
-             "asset_classes": ["stocks", "real_bonds"],
-             "asset_allocation": [0.8695251175100378, 0.1304748824899622],
-             "real_bonds_duration": 21.3,
-             "nominal_bonds_duration": null,
-             "nominal_spias_adjust": null,
-             "nominal_spias_purchase": null,
-             "real_spias_purchase": null,
-             "portfolio_wealth": 904693.3272722478,
-             "pv_preretirement_income": 0,
-             "pv_retired_income": 0,
-             "pv_spias_purchase": 0.0,
-             "pv_future_taxes": 95306.67272775219,
-        }]]
+             "results": [{
+                 "error": null,
+                 "cid": null,
+                 "aid": "e_j3yewn",
+                 "rra": 3,
+                 "consume": 0.0,
+                 "retirement_contribution": 0.0,
+                 "asset_classes": ["stocks", "real_bonds"],
+                 "asset_allocation": [0.8695251175100378, 0.1304748824899622],
+                 "real_bonds_duration": 21.3,
+                 "nominal_bonds_duration": null,
+                 "nominal_spias_adjust": null,
+                 "nominal_spias_purchase": null,
+                 "real_spias_purchase": null,
+                 "portfolio_wealth": 904693.3272722478,
+                 "pv_preretirement_income": 0,
+                 "pv_retired_income": 0,
+                 "pv_spias_purchase": 0.0,
+                 "pv_future_taxes": 95306.67272775219,
+            }]
+        }]
     }
 
 Paths
@@ -90,7 +93,23 @@ The customer id is not used by AIPlanner. It is returned in the
 results as received as an aid to ensure the correct results are
 associated with the correct individual. It should be an opaque
 value. Private account numbers and customer identifying information
-should not be transmitted to AIPlanner.
+should not normally be transmitted to AIPlanner.
+
+Customer name
+-------------
+
+customer_name: string
+default: ""
+
+An optional name for this customer; used in generated reports.
+
+Scenario name
+-------------
+
+scenario_name: string
+default: ""
+
+An optional name for this scenario; used in generated reports.
 
 Sex
 ---
@@ -505,23 +524,34 @@ in the event of an error, and
 
     {"error": null, "result": [ <scenario_result_set>, ... ]}
 
-representing a list of result sets in the case of infer in the same
-order as the original scenarios, or a list containing a single result
-set in the case of evaluate.
+representing a list of scenario result sets in the case of infer in
+the same order as the original scenarios, or a list containing a
+single scenario result set in the case of evaluate.
 
-Each result set is itself a list of JSON result objects, one for each
-coefficient of relative risk aversion included in the original
-request, in the same order as they were specified.
+Each result set object contains "results" a list of JSON result
+objects, one for each coefficient of relative risk aversion included
+in the original request, in the same order as they were specified.
 
-<scenario_result_set> ::= [ <scenario_result>, ... ]
+For /api/infer a scenario result set has the form:
+
+    {"cid": <customer_id>, "results": [ <scenario_result>, ... ]}
+
+For /api/evaluate a scenario result set has the form:
+
+    {"cid": <customer_id>, "report": <report_id>, "results": [ <scenario_result>, ... ]}
+
+<report_id> identifies a PDF report of the results. The report may be
+retrieved using a HTTP GET request:
+
+    curl http://<apiserver_host>:<port>/api/data/<report_id>
 
 Each <scenario_result> is of the form:
 
-    {"error": <error_message>, "cid": <customer_id>}
+    {"error": <error_message>}
 
 or
 
-   {"error": null, "<key>": <value>, ...}
+    {"error": null, "<key>": <value>, ...}
 
 Common result keys
 ==================

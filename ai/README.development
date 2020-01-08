@@ -86,6 +86,7 @@ not workable):
     pip3 install tensorflow
     pip3 install gym
     pip3 install 'ray[debug]==0.7.3'
+    pip3 install setproctitle pyyaml reportlab svglib
     exit
 
 Installing additional required components on Amazon's Deep Learning
@@ -100,6 +101,7 @@ AMI (Ubuntu):
     pip install gym
     pip install 'ray[debug]==0.7.3'
     pip install opencv-python-headless # not needed if using Deep Learning AMI 24.0
+    pip install setproctitle pyyaml reportlab svglib
 
 Hack Ray to use our version of RLlib, not the default version:
 

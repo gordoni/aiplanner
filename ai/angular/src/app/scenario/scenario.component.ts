@@ -1,5 +1,5 @@
 /* AIPlanner - Deep Learning Financial Planner
- * Copyright (C) 2018-2019 Gordon Irlam
+ * Copyright (C) 2018-2020 Gordon Irlam
  *
  * All rights reserved. This program may not be used, copied, modified,
  * or redistributed without permission.
@@ -30,6 +30,9 @@ export class ScenarioComponent implements OnInit {
   public stocksVolatilityPct: string;
   public nominalShortRatePct: string;
   public inflationShortRatePct: string;
+
+  public customerName: string = "";
+  public scenarioName: string = "";
 
   public sex: string = "female";
   public age: number = 50;
@@ -62,6 +65,7 @@ export class ScenarioComponent implements OnInit {
   public have401k2: boolean = true;
   public spias: boolean = true;
 
+  private report: string;
   private results: any[];
   private activeResultIndex: number = 0;
 
@@ -151,7 +155,7 @@ export class ScenarioComponent implements OnInit {
 
   addToDbs(dbs, definedItems, benefit) {
     for (let db of definedItems) {
-        dbs.push({
+        var d = {
             'type': db.type.toLowerCase().replace(/ /, '_'),
             'owner': db.owner,
             'start': db.age,
@@ -163,7 +167,12 @@ export class ScenarioComponent implements OnInit {
             'source_of_funds': db.sourceOfFunds,
             'exclusion_period': db.exclusionPeriod,
             'exclusion_amount': db.exclusionAmount(),
-        });
+        };
+        if (! (d.exclusion_period || d.exclusion_amount)) {
+            delete d.exclusion_period;
+            delete d.exclusion_amount;
+        }
+        dbs.push(d);
     }
   }
 
@@ -184,6 +193,9 @@ export class ScenarioComponent implements OnInit {
         'stocks_volatility': Number(this.stocksVolatilityPct) / 100,
         'real_short_rate': (1 + Number(this.nominalShortRatePct) / 100) / (1 + Number(this.inflationShortRatePct) / 100) - 1,
         'inflation_short_rate': Number(this.inflationShortRatePct) / 100,
+
+        'customer_name': this.customerName,
+        'scenario_name': this.scenarioName,
 
         'sex': this.sex,
         'sex2': (this.sex2 == 'none') ? null : this.sex2,
@@ -214,6 +226,13 @@ export class ScenarioComponent implements OnInit {
 
         'rra': null,
     };
+    if (scenario.sex2 == null) {
+        delete scenario.age2;
+        delete scenario.life_expectancy_additional2;
+        delete scenario.income_preretirement2;
+        delete scenario.income_preretirement_age_end2;
+        delete scenario.have_401k2;
+    }
 
     this.errorMessage = null;
     this.apiService.post('/webapi/evaluate', [scenario]).subscribe(
@@ -230,7 +249,8 @@ export class ScenarioComponent implements OnInit {
        this.errorMessage = results.error;
        this.step--;
      } else {
-       this.results = results.result[0].sort(function(a, b) {return b.rra - a.rra});
+       this.report = results.result[0].report;
+       this.results = results.result[0].results.sort(function(a, b) {return b.rra - a.rra});
        this.results.forEach((result, i) => {
          if (result.error) {
            this.errorMessage = 'Server error: ' + result.error + ' (aid: ' + result.aid + ')';

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -16,7 +16,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from io import TextIOWrapper
 from json import dumps, loads
 from math import ceil, exp
-from os import chmod, environ, listdir, makedirs, rmdir, scandir, stat, statvfs
+from os import chmod, environ, listdir, makedirs, mkdir, rmdir, scandir, stat, statvfs
 from os.path import expanduser
 from random import choice, randrange, uniform
 from re import match
@@ -36,6 +36,7 @@ from setproctitle import setproctitle
 from yaml import safe_load
 
 from ai.common.scenario_space import allowed_gammas
+from ai.common.report import generate_report
 from ai.common.utils import boolean_flag
 from ai.gym_fin.model_params import load_params_file
 
@@ -105,25 +106,21 @@ class InferEvaluateDaemon:
             cmd += ['--gamma', str(gamma)]
         self.proc = Popen(cmd, stdin = PIPE, stdout = PIPE, stderr = self.logger.logfile_binary)
 
-    def infer_evaluate(self, api_data, *, options = [], prefix = ''):
-
-        makedirs(self.args.results_dir, exist_ok = True)
-        dir = mkdtemp(prefix = prefix, dir = self.args.results_dir)
-        chmod(dir, 0o755)
+    def infer_evaluate(self, api_data, result_dir, *, options = [], prefix = ''):
 
         try:
 
-            aid = dir[len(self.args.results_dir) + 1:]
+            aid = result_dir[len(self.args.results_dir) + 1:]
             data = dumps(api_data).encode('utf-8')
 
             options = list(options) + [
                 '--aid', quote(aid),
-                '--result-dir', quote(dir),
+                '--result-dir', quote(result_dir),
                 '--api-content-length', str(len(data)),
             ]
             options = ' '.join(options) + '\n'
 
-            stdout_log = open(dir + '/eval.out', 'wb')
+            stdout_log = open(result_dir + '/eval.out', 'wb')
 
             self.proc.stdin.write(options.encode('utf-8') + data)
             self.proc.stdin.flush()
@@ -159,8 +156,8 @@ class InferEvaluateDaemon:
 
             # Delete if empty.
             try:
-                rmdir(dir + '/seed_all')
-                rmdir(dir)
+                rmdir(result_dir + '/seed_all')
+                rmdir(result_dir)
             except:
                 pass
 
@@ -323,11 +320,17 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             elif self.path.startswith('/api/data/'):
 
-                m  = match('^/api/data/(.+?)(/(.+))?$', self.path)
-                if not m:
-                    self.send_error(404) # Not Found
-                    return
-                data, filetype = self.get_file(m[1], m[3])
+                m  = match('^/api/data/(.+/.+)/(.+)$', self.path)
+                if m:
+                    path = m[1] + '/seed_all/aiplanner-' + m[2]
+                else:
+                    m = match('^/api/data/(.+)$', self.path)
+                    if m:
+                        path = m[1]
+                    else:
+                        self.send_error(404) # Not Found
+                        return
+                data, filetype = self.get_file(path)
 
             elif self.path == '/api/market':
 
@@ -347,16 +350,13 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.server.logger.report_exception(e)
             self.send_error(500) # Internal Server Error
 
-    def get_file(self, aid, name):
-
-        filename = 'aiplanner-' + name
-        path = aid + '/seed_all/' + filename
+    def get_file(self, path):
 
         filetype = None
         if '..' not in path:
-            if filename.endswith('.csv'):
-                filetype = 'text/csv'
-            elif filename.endswith('.svg'):
+            if path.endswith('.pdf'):
+                filetype = 'application/pdf'
+            elif path.endswith('.svg'):
                 filetype = 'image/svg+xml'
 
         data = None
@@ -513,12 +513,16 @@ class RequestHandler(BaseHTTPRequestHandler):
                         return '{"error": "Nominal interest rate data is not current."}\n'.encode('utf-8')
                     api_scenario['nominal_short_rate'] = market['nominal_short_rate']
 
+        makedirs(self.server.args.results_dir, exist_ok = True)
+        result_dir = mkdtemp(prefix = prefix, dir = self.server.args.results_dir)
+        chmod(result_dir, 0o755)
+
         if evaluate:
-            results = self.run_evaluate(api_data, options = options, prefix = prefix)
+            results = self.run_evaluate(api_data, result_dir, options = options, prefix = prefix)
             data = (dumps(results, sort_keys = True) + '\n').encode('utf-8')
         else:
             try:
-                aid, result = self.run_model(self.server.infer_daemon, api_data, options = options, prefix = prefix)
+                aid, result = self.run_model(self.server.infer_daemon, api_data, result_dir, options = options, prefix = prefix)
                 data = (dumps(result) + '\n').encode('utf-8')
             except Overloaded as e:
                 self.server.logger.report_exception(e)
@@ -526,7 +530,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 return
         return data
 
-    def run_evaluate(self, api_data, *, options = [], prefix = ''):
+    def run_evaluate(self, api_data, result_dir, *, options = [], prefix = ''):
 
         if len(api_data) == 0:
             return {'error': None, 'result': []}
@@ -537,6 +541,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             gammas = self.server.args.gamma
         if not isinstance(gammas, list):
             return {'error': 'Expecting list of rra values.'}
+        gammas = tuple(int(gamma) if gamma == int(gamma) else gamma for gamma in gammas)
         if len(gammas) != len(set(gammas)):
             return {'error': 'Duplicate rra values.'}
         for gamma in gammas:
@@ -564,11 +569,13 @@ class RequestHandler(BaseHTTPRequestHandler):
         def run(i, gamma):
             try:
                 my_api_data = [dict(api_data[0], rra = [gamma])]
-                aid, result = self.run_model(self.server.evaluate_daemons[gamma], my_api_data, options = options, prefix = prefix)
+                my_result_dir = result_dir + '/rra' + str(gamma)
+                mkdir(my_result_dir)
+                aid, result = self.run_model(self.server.evaluate_daemons[gamma], my_api_data, my_result_dir, options = options, prefix = prefix)
                 if result['error']:
                     results[i] = result
                 else:
-                    results[i] = result['result'][0][0]
+                    results[i] = result['result'][0]['results'][0]
             except Exception as e:
                 self.server.logger.report_exception(e)
                 results[i] = {'error': e.__class__.__name__ + ': ' + (str(e) or 'Exception encountered.')}
@@ -581,23 +588,28 @@ class RequestHandler(BaseHTTPRequestHandler):
             threads.append(thread)
         for thread in threads:
             thread.join()
+        report = generate_report(api_data[0], result_dir, results, self.server.args.results_dir)
         return {
             'error': None,
-            'result': [results],
+            'result': [{
+                "cid": api_data[0].get('cid'),
+                "report": result_dir[len(self.server.args.results_dir) + 1:] + '/' + report,
+                "results": results,
+            }],
         }
 
-    def run_model(self, daemons_and_lock, api_data, *, options = [], prefix = ''):
+    def run_model(self, daemons_and_lock, api_data, result_dir, *, options = [], prefix = ''):
 
         if daemons_and_lock.lock.acquire(timeout = daemons_and_lock.timeout):
             try:
                 daemon = daemons_and_lock.daemons.pop()
-                aid, data = daemon.infer_evaluate(api_data, options = options, prefix = prefix)
+                aid, data = daemon.infer_evaluate(api_data, result_dir, options = options, prefix = prefix)
                 result = loads(data.decode('utf-8'))
-                if (result['error'] or any(any(scenario_result['error'] for scenario_result in scenario_result_set) for scenario_result_set in result['result'])) and prefix != 'healthcheck-':
+                if (result['error'] or any(any(scenario_result['error'] for scenario_result in scenario_result_set['results']) for scenario_result_set in result['result'])) and prefix != 'healthcheck-':
                     if result['error']:
                         msg = result['error']
                     else:
-                        msg = '\n'.join('\n'.join(scenario_result['error'] for scenario_result in scenario_result_set) for scenario_result_set in result['result'])
+                        msg = '\n'.join('\n'.join(scenario_result['error'] for scenario_result in scenario_result_set['results']) for scenario_result_set in result['result'])
                     try:
                         err = open(self.server.args.results_dir + '/' + aid + '/eval.err', 'r').read()
                         msg += '\n\n' + err

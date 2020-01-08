@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019 Gordon Irlam
+# Copyright (C) 2019-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -60,6 +60,8 @@ def parse_api_scenario(api_scenario, *, permissive = False):
 
     schema = object({
         'cid': anything,
+        'customer_name': string,
+        'scenario_name': string,
 
         'sex': enumeration(['female', 'male']),
         'sex2': enumeration(['female', 'male', None]),

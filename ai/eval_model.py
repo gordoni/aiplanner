@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -112,7 +112,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
         eval_model_params['observation_space_ignores_range'] = False
         eval_model_params['observation_space_clip'] = False
 
-    results = [[] for _ in range(len(api))] # Gets multiply overwritten but is not used, when train_seeds > 1 and not ensemble.
+    results = [{'cid': a.get('cid'), 'results': []} for a in api] # Gets multiply overwritten but is not used, when train_seeds > 1 and not ensemble.
 
     any_exception = None
     object_id_to_evaluator = {}
@@ -221,7 +221,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                         'error': error_msg,
                     }
 
-                results[scenario_num].append(initial_results)
+                results[scenario_num]['results'].append(initial_results)
 
                 if (not daemon or evaluate) and not warm_cache:
                     initial_str = dumps(initial_results, indent = 4, sort_keys = True)
@@ -259,7 +259,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
                 plot(prefix, res['paths'], res['consume_pdf'], res['estate_pdf'])
 
-                final_results = dict(results[scenario_num][sub_num], **{
+                final_results = dict(results[scenario_num]['results'][sub_num], **{
                     'error': None,
                     'warnings': res['warnings'],
                     'ce': res['ce'],
@@ -283,11 +283,11 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                 error_msg = e.__class__.__name__ + ': ' + (str(e) or 'Exception encountered.')
                 final_results = {
                     'aid': aid,
-                    'cid': results[scenario_num][sub_num]['cid'],
+                    'cid': results[scenario_num]['results'][sub_num]['cid'],
                     'error': error_msg,
                 }
 
-            results[scenario_num][sub_num] = final_results
+            results[scenario_num]['results'][sub_num] = final_results
 
             #final_str = dumps(final_results, indent = 4, sort_keys = True)
             #with open(prefix + '.json', 'w') as w:
@@ -299,7 +299,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
     if daemon and not warm_cache:
 
-        failures = [scenario for scenario, result in zip(api, results) if any((sub_result['error'] != None for sub_result in result))]
+        failures = [scenario for scenario, result in zip(api, results) if any((sub_result['error'] != None for sub_result in result['results']))]
         if failures:
             failures_str = dumps(failures, indent = 4, sort_keys = True)
             with open(result_seed_dir + '/failures.json', 'w') as w:
