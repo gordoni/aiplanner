@@ -22,10 +22,9 @@ PURPOSE.
       [<a href="sign_up" (click)="gotoStep(100)">Sign Up</a>]
     </div>
     <p>
-      AIPlanner uses <a href="http://ssrn.com/abstract=3201703" target="_blank" rel="noopener">deep
-      reinforcement learning</a> to compute a near optimal spending
-      and investment strategy to maximize lifetime well-being.
-      AIPlanner is optimized for the U.S. tax code.
+      AIPlanner uses deep reinforcement learning to compute a near
+      optimal spending and investment strategy to maximize lifetime
+      well-being.  AIPlanner is optimized for the U.S. tax code.
     </p>
     <div class="center small-font" *ngIf="!doneMarket">
       [Loading market data]
@@ -598,13 +597,15 @@ PURPOSE.
     [<a href="sign_up" (click)="gotoStep(100)">Sign Up</a>]
   </div>
   <p>
-    AIPlanner was developed by Gordon Irlam.
+    AIPlanner was developed by <a href="https://www.gordoni.com/" target="_blank" rel="noopener">Gordon Irlam</a>.
   </p>
   <p>
-    AIPlanner Copyright &copy; 2018-2020 Gordon Irlam. AIPlanner is
-    provided without any warranty; without even the implied warranty
-    of merchantability or fitness for a particular purpose.
+    AIPlanner is described in:
   </p>
+  <ul>
+    <li> <a href="http://ssrn.com/abstract=3201703" target="_blank" rel="noopener">Financial Planning via Deep Reinforcement Learning AI</a> </li>
+    <li> <a href="http://ssrn.com/abstract=3516480" target="_blank" rel="noopener">Multi Scenario Financial Planning via Deep Reinforcement Learning AI</a> </li>
+  </ul>
   <p>
     Plese contact me to find out more about reinforcement learning
     based financial planning solutions.
@@ -623,8 +624,10 @@ PURPOSE.
     <br>
     United States
   </p>
-  <p class="indent">
-    <a href="https://www.gordoni.com/" target="_blank" rel="noopener">www.gordoni.com</a>
+  <p>
+    AIPlanner Copyright &copy; 2018-2020 Gordon Irlam. AIPlanner is
+    provided without any warranty; without even the implied warranty
+    of merchantability or fitness for a particular purpose.
   </p>
   <div class="main-button">
     <button type="button" class="button" (click)="gotoStep(0)">Home</button>
