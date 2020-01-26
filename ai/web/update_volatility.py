@@ -20,14 +20,11 @@ from urllib.request import urlopen
 
 def update(root_dir, read_stdin, write_stdout):
 
-    page = stdin.read() if read_stdin else urlopen('https://www.marketwatch.com/investing/index/vix').read().decode('utf-8')
+    page = stdin.read() if read_stdin else urlopen('https://docs.google.com/spreadsheets/d/1ZsyjisPp59vllL3JdHniK10t_2edj6Z-UxlpY8u_9yE/export?format=csv').read().decode('utf-8')
 
-    vix = search('<meta name="price" content="(\d+\.\d+)"', page).group(1)
-    vix = float(vix)
-
-    date = search('<meta name="quoteTime" content="(\w+ \d+, \d+) .*"', page).group(1)
-    date = datetime.strptime(date, '%b %d, %Y')
-    date_str = date.date().isoformat()
+    vix_str, date_str = search('VIX,(\d+\.\d+),,(\d{4}-\d{2}-\d{2})', page).groups()
+    vix = float(vix_str)
+    date = datetime.strptime(date_str, '%Y-%m-%d')
 
     if write_stdout:
         print(date_str, vix)
