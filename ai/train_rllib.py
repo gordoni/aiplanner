@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019 Gordon Irlam
+# Copyright (C) 2019-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -30,7 +30,7 @@ class RayFinEnv(FinEnv):
     def __init__(self, config):
         super().__init__(**config)
 
-def train(training_model_params, *, redis_address, train_anneal_num_timesteps, train_seeds,
+def train(training_model_params, *, redis_address, train_num_workers, train_anneal_num_timesteps, train_seeds,
     train_batch_size, train_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_entropy_coefficient,
     train_save_frequency, train_max_failures, train_resume,
     train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
@@ -89,7 +89,6 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
         },
 
         'PPO': {
-            #'num_workers': 31, # PPO performs poorly for num_workers 31, num_sgd_iter 1.
             'model': {
                 # Changing the fully connected net size from 256x256 (the default) to 128x128 doesn't appear to appreciably alter CE values.
                 # At least not when the only actions are consumption and stock allocation with 4m timesteps.
@@ -101,18 +100,53 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
                 #'fcnet_hiddens': (128, 128),
             },
             'train_batch_size': train_batch_size,
-                # Batch size from each worker. Total batch size is num_workers times train_batch_size.
+                # Increasing the batch size might reduce aa variability due to training for the last batch seen.
+                # Results for lr 2e-5, minibatch_size 500.
+                # train_batch_size 200k, num_sgd_iter 10: CE dist 81200 stderr 250
+                # train_batch_size 500k, num_sgd_iter 10: CE dist 81800 stderr 300
+                # train_batch_size 1m, num_sgd_iter 5: CE dist 81100 stderr 450
+                # i.e. 500k seems like a good choice (previously used 200k).
             'sgd_minibatch_size': train_minibatch_size,
+                # Results for train_batch_size 200k, num_sgd_iter 30.
+                # minibatch_size 128, lr 2e-6: CE dist 80900 stderr 550; grad time ~180 sec
+                # minibatch_size 250, lr 5e-6: CE dist 81550 stderr 600; grad_time ~115 sec
+                # minibatch_size 500, lr 1e-5: CE dist 81500 stderr 450; grad time ~85 sec
+                # minibatch_size 1000, lr 2e-5: CE dist 81500 stderr 250; grad time ~80 sec
+                # minibatch_size 5000, lr 1e-4: CE dist 80100 stderr 500; grad time ~80 sec
+                # i.e. 500 seems like a good choice (previously used 128).
             'num_sgd_iter': train_optimizer_epochs,
+                # Results for train_batch_size 200k, minibatch_size 500, lr 2e-5.
+                # A smaller num_sgd_iter increases the CE, but also increases the amount of rollout cpu time.
+                # num_sgd_iter 30: CE dist 80500 stderr 500 (possibly didn't complete sufficient timesteps)
+                # num_sgd_iter 10: CE dist 81200 stderr 250
+                # i.e. 10 seems like a good choice even though increases rollout cpu time significantly (previously used 30).
             'entropy_coeff': train_entropy_coefficient,
-                # Entropy for diagnal gaussian may be wrong (Ray issue #6393).
+                # After fixing entropy for diagonal gaussian (Ray issue #6393).
+                # Entropy may not make any difference. Results for lr 2e-6, sgd_minibatch_size 128, train_batch_size 200k, num_sgd_iter 30.
+                # Entropy 0: CE dist 80550 stderr 500
+                # Entropy 1e-4: CE dist 80900 stderr 500
+                # Entropy 1e-3: CE dist 80800 stderr 500
+                # Entropy 5e-3: seed zero diverges
+                # Use entropy 1e-4 by default; might not help but unlikely to harm.
             'vf_clip_param': 10.0, # Currently equal to PPO default value.
                 # Clip value function advantage estimates. We expect most rewards to be roughly in [-1, 1],
                 # so if we get something far from this we don't want to train too hard on it.
             'kl_coeff': 0.0, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
             'lr': train_optimizer_step_size,
                 # lr_schedule is ignored by Ray 0.7.1 through 0.7.6+ (Ray issue #6096), so need to ensure fallback learning rate is reasonable.
+                # A smaller lr requires more timesteps but produces a higher CE.
+                # Results for train_batch_size 500k, minibatch_size 500, num_sgd_iter 30.
+                # lr 1e-5: CE dist 81500 stderr 450
+                # lr 2e-5: CE dist 80500 stderr 500 (possibly didn't complete sufficient timesteps)
+                # Results.
+                # train_batch_size 200k, minibatch_size 128, num_sgd_iter 30, lr 5e-6, entropy_coeff 0.0: CE dist 81700 stderr 400
+                # train_batch_size 500k, minibatch_size 500, num_sgd_iter 10, lr 2e-5, entropy_coeff 1e-4: CE dist 81800 stderr 300
+                # i.e. 2e-5 seems like a good choice; less (weakly parallelizable) grad time in exchange for more (strongly) parallelizable rollout time
+                # allows quicker computation of results (previously used 5e-6). Drops training time from 28.5 hours to 11 hours.
+                #
+                # If need better CE reduce lr.
             'lr_schedule': lr_schedule,
+            'batch_mode': 'complete_episodes', # Unknown whether helps, but won't harm.
             #'shuffle_sequences': False,
         },
 
@@ -137,7 +171,7 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
         },
 
         'APPO': {
-            # 1500m timesteps: inferior to 50m x 30 num_sgd_iter, 0 num_workers PPO.
+            # 1500m timesteps: inferior to 50m x 30 num_sgd_iter PPO.
             'num_workers': 31, # Default value is 2.
             'num_gpus': 0, # No speedup from GPUs for continuous control - https://www.reddit.com/r/MLQuestions/comments/akl6cs/hardware_for_reinforcement_learning/
             'sample_batch_size': 50, # Default value is 50.
@@ -157,19 +191,21 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
         },
 
         'IMPALA': {
-            # 1500m timesteps: better than APPO, but inferior to 50m x 30 num_sgd_iter, 0 num_workers PPO.
+            # 1500m timesteps: better than APPO, but possibly inferior (within training noise) to 50m x 30 num_sgd_iter PPO.
             'num_workers': 31, # Default value is 2.
             'num_gpus': 0,
             'sample_batch_size': 50, # Default value is 50.
-            'train_batch_size': 500, # Default value is 500.
-            'minibatch_buffer_size': 1, # Default value is 1. No effect if num_sgd_iter == 1.
+            'train_batch_size': 500, # Default value is 500. 128 performs much worse. 5000 performs no better.
+            'minibatch_buffer_size': 1, # 1, # Default value is 1. No effect if num_sgd_iter == 1.
+                # Bad results for minibatch_buffer_size 400, num_sgd_iter 30, lr 5e-6. Probably need smaller stepsize, but then will take longer to train.
             'num_sgd_iter': 1, # Default value is 1.
             'replay_proportion': 0.0, # Default value is 0.0.
-            'replay_buffer_num_slots': 0, # Default valueis 0.
+                # Bad results for replay_proportion 29.0, replay_buffer_num_slots 4000, lr 5e-6. Probably need smaller stepsize, but then will take longer to train.
+            'replay_buffer_num_slots': 0, # Default value is 0.
             'min_iter_time_s': 10, # Default value.
             'learner_queue_timeout': 300, # Default value.
             'opt_type': 'adam', # Default value.
-            'lr': train_optimizer_step_size, # Default is 5e-4. 5e-5 performs a lot worse than 5e-6.
+            'lr': train_optimizer_step_size, # Default is 5e-4. 5e-5 performs a lot worse than 5e-6. 5e-7 performs much slower than 5e-6.
             'lr_schedule': lr_schedule,
             'vf_loss_coeff': 0.5, # Default is 0.5.
             'entropy_coeff': 0.0, # Default is 0.01.
@@ -179,7 +215,11 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
     agent_config = dict(agent_config, **ray_kwargs['config'])
 
     trainable = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
-    trial_name = lambda trial: 'seed_' + str(trial.config['seed'])
+    trial_name = lambda trial: 'seed_' + str(trial.config['seed'] // 1000)
+    if train_num_workers == None:
+        num_workers = agent_config.get('num_workers', 1 if algorithm in ('A3C', 'APPO', 'IMPALA') else 0)
+    else:
+        num_workers = train_num_workers
     if train_save_frequency == None:
         checkpoint_freq = 0
     elif trainable in ('PPO', ):
@@ -209,27 +249,27 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
             'env_config': training_model_params,
             'clip_actions': False,
             'gamma': 1,
-            'seed': grid_search(list(range(train_seed, train_seed + 1000 * train_seeds, 1000))), # Workers are assigned consecutive seeds.
+            'seed': grid_search(list(range(train_seed * 1000, (train_seed + train_seeds) * 1000, 1000))), # Workers are assigned consecutive seeds.
 
             #'num_gpus': 0,
             #'num_cpus_for_driver': 1,
-            'num_workers': 1 if algorithm in ('A3C', 'APPO', 'IMPALA') else 0,
+            'num_workers': num_workers,
             #'num_envs_per_worker': 1,
             #'num_cpus_per_worker': 1,
             #'num_gpus_per_worker': 0,
 
             'tf_session_args': {
-                'intra_op_parallelism_threads': num_cpu,
-                'inter_op_parallelism_threads': num_cpu,
+                'intra_op_parallelism_threads': 1,
+                'inter_op_parallelism_threads': 1,
             },
             'local_tf_session_args': {
                 'intra_op_parallelism_threads': num_cpu,
                 'inter_op_parallelism_threads': num_cpu,
             },
 
-            # 'callbacks': {
-            #     'on_train_result': function(on_train_result),
-            # },
+            'callbacks': {
+                # 'on_train_result': function(on_train_result),
+            },
         }, **agent_config),
 
         stop = {
@@ -247,26 +287,15 @@ def train(training_model_params, *, redis_address, train_anneal_num_timesteps, t
 def main():
     parser = make_parser(lambda: arg_parser(evaluate=False))
     parser.add_argument('--redis-address')
-    # --train-num-timesteps:
-        # Increased mean CE levels are likely for a large number of timesteps, but it is a case of diminishing returns.
-        # Eg. for a gamma of 6 and a large portfolio, going from 2m to 4m increases the CE by 1.1%, but going to 6m only increases it by a further 0.5%.
+    parser.add_argument('--train-num-workers', type=int, default=8) # Number of rollout worker processes.
+        # Default appropriate for a short elapsed time with train_optimizer_epochs 10.
     parser.add_argument('--train-anneal-num-timesteps', type=int, default=0)
     parser.add_argument('--train-seeds', type=int, default=1) # Number of parallel seeds to train.
-    parser.add_argument('--train-batch-size', type=int, default=200000)
-        # PPO default batch size is 4000. For a gamma of 6 and a large portfolio it results in asset allocation heavily biased in favor of stocks, and a poor mean CE.
-        # The poor CE is probably the result of each batch being non-representative of the overall situation given the stochastic nature of the problem.
-        # Inceasing value too 50000 or more improves performance and reduces the asset allocation bias, but never eliminates it.
-        # It would appear the larger the batch size the higher the mean CE, but also the larger the number of timesteps it takes to reach that CE level.
-        # A value of 100000 appears best for 3m to 7m timesteps with a 5e-5 step size.
-        # 200000 is probably marginally better than 100000 for 50m timesteps for a 5e-6 step size.
-    parser.add_argument('--train-minibatch-size', type=int, default=128)
-    parser.add_argument('--train-optimizer-epochs', type=int, default=30)
-    parser.add_argument('--train-optimizer-step-size', type=float, default=5e-6)
-        # PPO default is 5e-5. Trains rapidly, but training curve ends up having a lot of CE variability over timesteps.
-    parser.add_argument('--train-entropy-coefficient', type=float, default=0.0)
-        # Value might be critical to getting optimal performance.
-        # Value to use probably depends on the complexity of the scenario.
-        # A value of 1e-3 reduced CE stdev and increased CE mean for a 256x256 tf model on a Merton like model with stochastic life expectancy and guaranteed income.
+    parser.add_argument('--train-batch-size', type=int, default=500000)
+    parser.add_argument('--train-minibatch-size', type=int, default=500)
+    parser.add_argument('--train-optimizer-epochs', type=int, default=10)
+    parser.add_argument('--train-optimizer-step-size', type=float, default=2e-5)
+    parser.add_argument('--train-entropy-coefficient', type=float, default=1e-4)
     parser.add_argument('--train-save-frequency', type=int, default=None) # Save frequency in timesteps.
     parser.add_argument('--train-max-failures', type=int, default=3)
     boolean_flag(parser, 'train-resume', default = False) # Resume training rather than starting new trials.

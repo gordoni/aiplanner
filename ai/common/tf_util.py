@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -68,6 +68,10 @@ class TFRunner:
                     config['env_config'] = eval_model_params
                     config['num_workers'] = 0
                     config['num_envs_per_worker'] = num_environments
+                    config['local_tf_session_args'] = {
+                        'intra_op_parallelism_threads': num_cpu,
+                        'inter_op_parallelism_threads': num_cpu,
+                    }
                     config['seed'] = worker_seed
                     config['sample_mode'] = True # Rllib hack to return modal sample not a randomly perturbed one.
 
