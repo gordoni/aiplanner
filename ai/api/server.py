@@ -553,7 +553,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             num_trace_episodes = self.server.args.num_trace_episodes
         if not 0 <= num_trace_episodes <= self.server.args.num_trace_episodes_max:
             return {'error': 'num_sample_paths out of range.'}
-        options += [
+        options = list(options) + [
             '--eval-num-timesteps', str(eval_num_timesteps),
             '--num-environments', str(num_environments),
             '--num-trace-episodes', str(num_trace_episodes),
