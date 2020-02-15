@@ -90,24 +90,29 @@ def train(training_model_params, *, redis_address, train_num_workers, train_anne
 
         'PPO': {
             'model': {
-                # Changing the fully connected net size from 256x256 (the default) to 128x128 doesn't appear to appreciably alter CE values.
-                # At least not when the only actions are consumption and stock allocation with 4m timesteps.
-                # Keep at 256x256 in case need more net capacity for duration and SPIA decisions, or beyond 4m timesteps.
+                # Changing the fully connected net size from 256x256 (the default) to 128x128 reduces CE values.
+                # At least for retired model with nominal_spias.
+                # Results for preretirement, nominal_spias, train_batch_size 500k, minibach_size 500, lr 2e-5, num_sgd_iter 30, entropy 1e-4:
+                # fcnet_hiddens 128x128: CE dist 81900 stderr 350
+                # fcnet_hiddens 256x256: CE dist 81700 stderr 350
+                # Results for retired, nominal_spias, train_batch_size 500k, minibach_size 500, lr 2e-5, num_sgd_iter 30, entropy 1e-4:
+                # fcnet_hiddens 128x128: CE dist 85700 stderr 200
+                # fcnet_hiddens 256x256: CE dist 86200 stderr 200
                 # Reducing size is unlikely to improve the run time performance as it is dominated by fixed overhead costs:
                 #     runner.run(obss, policy_graph = runner.local_policy_graph):
                 #         256x256 (r5.large): 1.1ms + 0.013ms x num_observations_in_batch
                 #         128x128 (r5.large): 1.1ms + 0.009ms x num_observations_in_batch
-                #'fcnet_hiddens': (128, 128),
+                'fcnet_hiddens': (256, 256),
             },
             'train_batch_size': train_batch_size,
                 # Increasing the batch size might reduce aa variability due to training for the last batch seen.
-                # Results for lr 2e-5, minibatch_size 500.
+                # Results for lr 2e-5, minibatch_size 500, fcnet_hiddens 256x256.
                 # train_batch_size 200k, num_sgd_iter 10: CE dist 81200 stderr 250
-                # train_batch_size 500k, num_sgd_iter 10: CE dist 81800 stderr 300
+                # train_batch_size 500k, num_sgd_iter 10: CE dist 82000 stderr 250
                 # train_batch_size 1m, num_sgd_iter 5: CE dist 81100 stderr 450
                 # i.e. 500k seems like a good choice (previously used 200k).
             'sgd_minibatch_size': train_minibatch_size,
-                # Results for train_batch_size 200k, num_sgd_iter 30.
+                # Results for train_batch_size 200k, num_sgd_iter 30, fcnet_hiddens 256x256.
                 # minibatch_size 128, lr 2e-6: CE dist 80900 stderr 550; grad time ~180 sec
                 # minibatch_size 250, lr 5e-6: CE dist 81550 stderr 600; grad_time ~115 sec
                 # minibatch_size 500, lr 1e-5: CE dist 81500 stderr 450; grad time ~85 sec
@@ -115,14 +120,17 @@ def train(training_model_params, *, redis_address, train_num_workers, train_anne
                 # minibatch_size 5000, lr 1e-4: CE dist 80100 stderr 500; grad time ~80 sec
                 # i.e. 500 seems like a good choice (previously used 128).
             'num_sgd_iter': train_optimizer_epochs,
-                # Results for train_batch_size 200k, minibatch_size 500, lr 2e-5.
                 # A smaller num_sgd_iter increases the CE, but also increases the amount of rollout cpu time.
-                # num_sgd_iter 30: CE dist 80500 stderr 500 (possibly didn't complete sufficient timesteps)
+                # Results for train_batch_size 200k, minibatch_size 500, lr 2e-5, fcnet_hiddens 256x256.
+                # num_sgd_iter 30: CE dist 81000 stderr 500
                 # num_sgd_iter 10: CE dist 81200 stderr 250
+                # Results for train_batch_size 500k, minibatch_size 500, lr 2e-5, fcnet_hiddens 256x256.
+                # num_sgd_iter 30: CE dist 81450 stderr 100
+                # num_sgd_iter 10: CE dist 82000 stderr 250
                 # i.e. 10 seems like a good choice even though increases rollout cpu time significantly (previously used 30).
             'entropy_coeff': train_entropy_coefficient,
                 # After fixing entropy for diagonal gaussian (Ray issue #6393).
-                # Entropy may not make any difference. Results for lr 2e-6, sgd_minibatch_size 128, train_batch_size 200k, num_sgd_iter 30.
+                # Entropy may not make any difference. Results for lr 2e-6, sgd_minibatch_size 128, train_batch_size 200k, num_sgd_iter 30, fcnet_hiddens 256x256.
                 # Entropy 0: CE dist 80550 stderr 500
                 # Entropy 1e-4: CE dist 80900 stderr 500
                 # Entropy 1e-3: CE dist 80800 stderr 500
@@ -135,17 +143,23 @@ def train(training_model_params, *, redis_address, train_num_workers, train_anne
             'lr': train_optimizer_step_size,
                 # lr_schedule is ignored by Ray 0.7.1 through 0.7.6+ (Ray issue #6096), so need to ensure fallback learning rate is reasonable.
                 # A smaller lr requires more timesteps but produces a higher CE.
-                # Results for train_batch_size 500k, minibatch_size 500, num_sgd_iter 30.
+                # Results for train_batch_size 500k, minibatch_size 500, num_sgd_iter 30, fcnet_hiddens 256x256.
                 # lr 1e-5: CE dist 81500 stderr 450
-                # lr 2e-5: CE dist 80500 stderr 500 (possibly didn't complete sufficient timesteps)
+                # lr 2e-5: CE dist 81000 stderr 500
                 # Results.
                 # train_batch_size 200k, minibatch_size 128, num_sgd_iter 30, lr 5e-6, entropy_coeff 0.0: CE dist 81700 stderr 400
-                # train_batch_size 500k, minibatch_size 500, num_sgd_iter 10, lr 2e-5, entropy_coeff 1e-4: CE dist 81800 stderr 300
+                # train_batch_size 500k, minibatch_size 500, num_sgd_iter 10, lr 2e-5, entropy_coeff 1e-4: CE dist 82000 stderr 250
                 # i.e. 2e-5 seems like a good choice; less (weakly parallelizable) grad time in exchange for more (strongly) parallelizable rollout time
                 # allows quicker computation of results (previously used 5e-6). Drops training time from 28.5 hours to 11 hours.
                 #
                 # If need better CE reduce lr.
             'lr_schedule': lr_schedule,
+            'clip_param': 0.3,
+                # Reducing clip_param may very slightly improve results but incurs increased training time.
+                # Results for train_batch_size 500k, minibatch_size 500, num_sgd_iter 10, lr 2e-5, entropy_coeff 1e-4, fcnet_hiddens 256x256.
+                # clip_param 0.2: CE dist 82000 stderr 300 (asymptote at ckpt 260)
+                # clip_param 0.3: CE dist 82000 stderr 250 (asymptote at ckpt 220)
+            # i.e. the PPO default 0.3 seems reasonable.
             'batch_mode': 'complete_episodes', # Unknown whether helps, but won't harm.
             #'shuffle_sequences': False,
         },
@@ -289,6 +303,7 @@ def main():
     parser.add_argument('--redis-address')
     parser.add_argument('--train-num-workers', type=int, default=8) # Number of rollout worker processes.
         # Default appropriate for a short elapsed time with train_optimizer_epochs 10.
+        # Set to 0, or possibly 1, for deterministic training.
     parser.add_argument('--train-anneal-num-timesteps', type=int, default=0)
     parser.add_argument('--train-seeds', type=int, default=1) # Number of parallel seeds to train.
     parser.add_argument('--train-batch-size', type=int, default=500000)

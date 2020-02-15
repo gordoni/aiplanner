@@ -34,9 +34,9 @@ For the web server which includes the api server in a docker
 container, with num_infer_jobs=0 set, a 2 core 4 thread 8G RAM
 c5.xlarge instance can be used.
 
-Training the neural network requires running around 10 c5.4xlarge spot
-instances for 2-3 days. The us-east-2 region currently appears the
-cheapest region for performing this training work.
+Training the neural network requires running about 7 c5.24xlarge spot
+instances for around 20 hours. The us-east-2 region currently appears
+the cheapest region for performing this training work.
 
 For development an m5.large, or even a t3.small instance, can often be
 used, provided in the first case a Ray compute cluster is configured,
@@ -157,9 +157,9 @@ Create a cluster config file:
         # Alter worker_nodes:InstanceType if desired.
         # For maximum performance add --num-cpus=<num_cores> to
         #     ray start in worker_start_ray_commands.
-        #     c5.4xlarge has 8 cores, but setting --num-cpus=10 is
+        #     c5.24xlarge has 48 cores, but setting --num-cpus=91 is
         #     probably better for playing around as typically train
-        #     10 models in parallel.
+        #     10 models each with 8 workers and 1 driver in parallel.
         # Other changes as desired.
 
 Rather than have separate cluster head and worker nodes, we are going
@@ -379,9 +379,9 @@ Training the generic nueral network models
 Unless you plan on serving pre-trained neural network models you will
 need to train the neural network models.
 
-Training the neural network models (will take 2-3 days on around 10
-InstanceType c5.4xlarge instances with Ray started with --num-cpus=8;
-edit cluster.yaml accordingly; many smallish instances are preferable
+Training the neural network models (will take arond 20 hours on about 7
+InstanceType c5.24xlarge instances with Ray started with --num-cpus=91;
+edit cluster.yaml accordingly; many smallish instances may be preferable
 to a few very large instances as Amazon seems more likely to reclaim
 very large spot instances slowing the training process):
 

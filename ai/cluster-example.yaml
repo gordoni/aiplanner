@@ -91,7 +91,7 @@ head_node:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 worker_nodes:
     KeyName: ray-autoscaler_us-east-2
-    InstanceType: c5.4xlarge
+    InstanceType: c5.24xlarge
     ImageId: ami-0a47106e391391252 # Deep Learning AMI (Ubuntu) Version 21.2
 
     # Run workers on spot by default. Comment this out to use on-demand.

@@ -37,7 +37,7 @@ def arg_parser(training = True, evaluate = True):
     parser = argparse.ArgumentParser(formatter_class = argparse.ArgumentDefaultsHelpFormatter, parents = [_config_parser()])
 
     if training:
-        parser.add_argument('--train-num-timesteps', type = int, default = int(50e6))
+        parser.add_argument('--train-num-timesteps', type = int, default = int(200e6))
         parser.add_argument('--train-single-num-timesteps', type = int, default = int(1e9))
         parser.add_argument('--train-couple-num-timesteps', type = int, default = int(1e9))
     if evaluate and training:
@@ -51,9 +51,9 @@ def arg_parser(training = True, evaluate = True):
             # A lower value such as 10000 may be more appropriate when performing inter-run comparisons, as the evaluation episodes are identical for each run.
         boolean_flag(parser, 'eval-render', default = False)
     parser.add_argument('--nice', type = int, default = 0)
-    parser.add_argument('--num-cpu', type = int, default = 1)
+    parser.add_argument('--num-cpu', type = int, default = 1 if evaluate else 4)
         # Change default to None to use system selected value.
-        # Using a value of 1 appears to give slightly faster run times, significiantly higher throughput, and possibly even determinism.
+        # Using a value of 1 gives significiantly higher throughput, and possibly even determinism.
 
     parser.add_argument('--model-dir', default = 'aiplanner.tf')
     parser.add_argument('--train-seed', type = int, default = 0)

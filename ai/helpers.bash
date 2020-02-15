@@ -536,20 +536,32 @@ timesteps () {
             return
             ;;
         *)
+            # train: PPO, batch_size=500k, minibatch_size=500, optimizer_epochs=10, optimizer_step_size=2e-5, entropy_coefficient=1e-4, fcnet_hiddens 256x256
+            # eval: gamma=6, age_start=50, age_retirement=50, p_weighted=2e6
+            # old train: PPO, batch_size=200k, minibatch_size=128, optimizer_epochs=30, optimizer_step_size=5e-6, entropy_coefficient=0, fcnet_hiddens 256x256
+            # old eval: gamma=6, p_weighted=2e6
             if [ $STAGE = preretirement ]; then
                 if [ $SPIAS = none ]; then
-                    echo "--train-num-timesteps=100000000" # gamma=6, evaluate p=1e6: good 60m, asymptote 70m
+                    echo "--train-num-timesteps=200000000"
+                    # good (99.9%) 120m, asymptote 130m
+                    # old: good 60m, asymptote 70m
                     return
                 elif [ $SPIAS = real -o $SPIAS = nominal ]; then
-                    echo "--train-num-timesteps=100000000" # gamma=6, evaluate p=2e6; good 30m, asymptote 40m
+                    echo "--train-num-timesteps=200000000"
+                    # good (99.9%) 130m, aymptote 140m
+                    # old: good 30m, asymptote 40m
                     return
                 fi
             elif [ $STAGE = retired ]; then
                 if [ $SPIAS = none ]; then
-                    echo "--train-num-timesteps=50000000" # gamma=6, evaluate p=2e6: good 30m, asymptote 40m
+                    echo "--train-num-timesteps=150000000"
+                    # good (99.9%) 100m, aymptote 110m
+                    # old: good 30m, asymptote 40m
                     return
                 elif [ $SPIAS = real -o $SPIAS = nominal ]; then
-                    echo "--train-num-timesteps=100000000" # gamma=6, evaluate p=2e6; good 60m, asymptote 80m
+                    echo "--train-num-timesteps=200000000"
+                    # good (99.9%) 160m, asymptote 170m
+                    # old: good 60m, asymptote 80m
                     return
                 fi
             fi
