@@ -30,6 +30,7 @@ class Taxes(object):
 
             self.federal_standard_deduction_single = 12000
             self.federal_standard_deduction_joint = 24000
+            # Ignore small increase in standard deduction for age 65+.
 
             self.federal_table_single = (
                 (9525, 0.1),
@@ -64,6 +65,7 @@ class Taxes(object):
             )
 
             self.contribution_limit_401k = 18500
+            self.contribution_limit_401k_catchup = 24500
             self.contribution_limit_ira = 5500
             self.contribution_limit_ira_catchup = 6500
 
@@ -71,6 +73,7 @@ class Taxes(object):
 
             self.federal_standard_deduction_single = 12200
             self.federal_standard_deduction_joint = 24400
+            # Ignore small increase in standard deduction for age 65+.
 
             self.federal_table_single = (
                 (9700, 0.1),
@@ -105,6 +108,7 @@ class Taxes(object):
             )
 
             self.contribution_limit_401k = 19000
+            self.contribution_limit_401k_catchup = 25000
             self.contribution_limit_ira = 6000
             self.contribution_limit_ira_catchup = 7000
 
@@ -112,6 +116,7 @@ class Taxes(object):
 
             self.federal_standard_deduction_single = 12400
             self.federal_standard_deduction_joint = 24800
+            # Ignore small increase in standard deduction for age 65+.
 
             self.federal_table_single = (
                 (9875, 0.1),
@@ -146,6 +151,7 @@ class Taxes(object):
             )
 
             self.contribution_limit_401k = 19500
+            self.contribution_limit_401k_catchup = 26000
             self.contribution_limit_ira = 6000
             self.contribution_limit_ira_catchup = 7000
 
@@ -284,7 +290,7 @@ class Taxes(object):
     def contribution_limit(self, annual_income, age, have_401k, time_period):
 
         if have_401k:
-            limit = self.contribution_limit_401k
+            limit = self.contribution_limit_401k if age < 50 else self.contribution_limit_401k_catchup
         else:
             limit = self.contribution_limit_ira if age < 50 else self.contribution_limit_ira_catchup
         annual_contribution = min(annual_income, limit)
