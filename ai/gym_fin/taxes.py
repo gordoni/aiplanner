@@ -272,7 +272,8 @@ class Taxes(object):
             self.basis[ac] /= inflation
         self.cg_carry /= inflation
 
-        self.cpi *= inflation
+        if not self.params.tax_inflation_adjust_all:
+            self.cpi *= inflation
 
         return regular_tax + capital_gains_tax
 

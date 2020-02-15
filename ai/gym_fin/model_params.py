@@ -235,6 +235,11 @@ class ModelParams(object):
         self._boolean_flag('tax', False) # Whether income is taxed.
         self._boolean_flag('income-aggregate', True) # When income isn't taxed, whether to aggregate tax_free, tax_deferred, and taxable observations.
         self._param('tax-table-year', None, tp = string_type) # Tax table to use, or use latest tax table if None.
+        self._param('tax-inflation-adjust-all', True) # Whether to inflation adjust values that are not inflation adjusted in the tax code.
+            # Set to true to reflect the expectation that in the long term the tax code will be revised and values will be adjusted to reflect inflation.
+            # Set to true so that taxation is independent of time period. Taxation effects for all 50 year olds will be the same irrespective of initial age,
+            # hopefully making multi-scenario models easier to train.
+            # Set to false to faithfully adhere to the current tax code.
         self._param('dividend-yield-stocks', 0.02) # Dividend yield for stocks.
         self._param('dividend-yield-bonds', 0.04) # Dividend yield for bonds and bills.
         self._param('qualified-dividends-stocks', 1) # Qualified dividends fraction for stocks. Qualified dividends are taxed at capital gains rates.
