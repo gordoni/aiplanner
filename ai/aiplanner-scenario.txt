@@ -44,13 +44,15 @@ master_bonds_date = '2018-12-31'
 master_bonds_date_start = '2005-01-01'
     # Date range for the typical yield curve, not the initial yield curve.
     # Initial yield curve is determined by the initial short rate, the typical yield curve, and the Hull-White parameters.
+master_corporate_nominal_spread = 0.013 # Average of BofA Merrill Corporate A option adjusted spread ( https://fred.stlouisfed.org/series/BAMLC0A3CA ) 1997-2019.
+    # Corporate bonds are used to price nominal SPIAs.
 
 master_real_spias = False # Not widely available, so suggest, but don't use.
     # Nominal SPIAs (100% MWR) generally outperform real SPIAs (94% MWR) CE by 1-2%.
     # Exception is gamma=6, p_tax_free=5e6, gi=20k tax free, where nominal and real SPIA CEs are equal.
 master_nominal_spias = False
 master_real_spias_mwr = 0.94 # Based on 2015 pricing.
-master_nominal_spias_mwr = 0.98 # Based on 2019 pricing of 100.2% for ages 60-75 and >100% ages 80-90 against Treasury before 2.35% non-qualified CA tax.
+master_nominal_spias_mwr = 0.94 # Based on 2019 average pricing of 96.2% for ages 60-90 against Treasury +1.3% before 2.35% non-qualified CA tax.
 master_nominal_spias_adjust = 0.02
 master_spias_partial = True
 master_spias_min_purchase_fraction = 0.1

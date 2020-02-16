@@ -94,7 +94,7 @@ class DefinedBenefit:
 
     def _spia_payout(self, payout_delay, adjustment, payout_fraction, premium, mwr):
 
-        bonds = self.env.bonds.real if self.real else self.env.bonds.nominal
+        bonds = self.env.bonds.real if self.real else self.env.bonds.corporate
         life_table, life_table2 = self.env.spia_life_tables(self.env.age, self.env.age2)
 
         spia = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint = True,

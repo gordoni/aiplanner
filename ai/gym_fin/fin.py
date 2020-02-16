@@ -246,7 +246,7 @@ class Fin:
 
         self.bonds = BondsSet(fixed_real_bonds_rate = self.params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self.params.fixed_nominal_bonds_rate,
             real_bonds_adjust = self.params.real_bonds_adjust, inflation_adjust = self.params.inflation_adjust,
-            nominal_bonds_adjust = self.params.nominal_bonds_adjust,
+            nominal_bonds_adjust = self.params.nominal_bonds_adjust, corporate_nominal_spread = self.params.corporate_nominal_spread,
             static_bonds = self.params.static_bonds, date_str = self.params.bonds_date, date_str_low = self.params.bonds_date_start,
             real_r0_type = self.params.real_short_rate_type, inflation_r0_type = self.params.inflation_short_rate_type)
         self.bonds.update(
@@ -1523,9 +1523,9 @@ class Fin:
 
     def spia_life_tables(self, age, age2):
 
-        life_table = LifeTable(self.params.life_table_spia, self.params.sex, age, ae = 'aer2005_13-grouped')
+        life_table = LifeTable(self.params.life_table_spia, self.params.sex, age, ae = 'none')
         if self.sex2:
-            life_table2 = LifeTable(self.params.life_table_spia, self.sex2, age2, ae = 'aer2005_13-grouped')
+            life_table2 = LifeTable(self.params.life_table_spia, self.sex2, age2, ae = 'none')
             if not self.couple:
                 if self.only_alive2:
                     life_table = life_table2

@@ -578,6 +578,19 @@ class NominalBonds(Bonds):
 
         return 1 + inflation_rate[year]
 
+class CorporateBonds:
+
+    def __init__(self, nominal_bonds, corporate_nominal_spread):
+
+        self.nominal_bonds = nominal_bonds
+        self.corporate_nominal_spread = corporate_nominal_spread
+
+        self.interest_rate = 'corporate'
+
+    def spot(self, t):
+
+        return self.nominal_bonds.spot(t) * (1 + self.corporate_nominal_spread)
+
 class BondsMeasuredInNominalTerms(Bonds):
 
     def __init__(self, bonds, inflation):
@@ -627,8 +640,10 @@ class BondsMeasuredInNominalTerms(Bonds):
 
 class BondsSet:
 
-    def __init__(self, need_real = True, need_nominal = True, need_inflation = True, fixed_real_bonds_rate = None, fixed_nominal_bonds_rate = None,
-        real_bonds_adjust = 0, inflation_adjust = 0, nominal_bonds_adjust = 0, static_bonds = False, date_str = '2018-12-31', date_str_low = '2005-01-01',
+    def __init__(self, need_real = True, need_nominal = True, need_inflation = True, need_corporate = True,
+        fixed_real_bonds_rate = None, fixed_nominal_bonds_rate = None,
+        real_bonds_adjust = 0, inflation_adjust = 0, nominal_bonds_adjust = 0, corporate_nominal_spread = 0,
+        static_bonds = False, date_str = '2018-12-31', date_str_low = '2005-01-01',
         real_r0_type = 'current', inflation_r0_type = 'current', real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
         '''Create a BondsSet.
 
@@ -638,7 +653,7 @@ class BondsSet:
                 supress random Hull-White temporal variability.
 
             real_bonds_adjust, inflation_adjust, and
-            nominal_bonds_adjust:
+            nominal_bonds_adjust, corporate_nominal_spread:
 
                 Adjustments to apply across the yield curve.
 
@@ -652,9 +667,10 @@ class BondsSet:
                 yield curve to use.
 
         Returns a BondsSet object having attributes "real", "nominal",
-        and "inflation" representing a bond and inflation model. They
-        are each either None if they are not needed and have not been
-        computed or provide the following methods:
+        "corporate", and "inflation" representing a bond and inflation
+        model. They are each either None if they are not needed and
+        have not been computed or provide the following methods
+        (except for "corporate" which only provides spot()):
 
             reset()
 
@@ -706,6 +722,8 @@ class BondsSet:
         self.fixed_nominal_bonds_rate = fixed_nominal_bonds_rate
         self.time_period = time_period
 
+        if need_corporate:
+            need_nominal = True
         if need_nominal:
             need_inflation = True
         if need_inflation:
@@ -736,10 +754,16 @@ class BondsSet:
 
         if need_nominal:
             real_bonds_adjust = log(1 + real_bonds_adjust)
-            nominal_bonds_adjust = log(1 + nominal_bonds_adjust)
-            self.nominal = NominalBonds(self.real, self.inflation, real_bonds_adjust = real_bonds_adjust, nominal_bonds_adjust = nominal_bonds_adjust, time_period = time_period)
+            adjust = log(1 + nominal_bonds_adjust)
+            self.nominal = NominalBonds(self.real, self.inflation, real_bonds_adjust = real_bonds_adjust, nominal_bonds_adjust = adjust, time_period = time_period)
         else:
             self.nominal = None
+
+        if need_corporate:
+            corporate_nominal_spread = (1 + corporate_nominal_spread) / (1 + nominal_bonds_adjust) - 1
+            self.corporate = CorporateBonds(self.nominal, corporate_nominal_spread)
+        else:
+            self.corporate = None
 
     def update(self, *, fixed_real_bonds_rate, fixed_nominal_bonds_rate, real_short_rate, inflation_short_rate,
         real_standard_error, inflation_standard_error, time_period):
