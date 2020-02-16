@@ -34,8 +34,8 @@ def update(root_dir, read_stdin, write_stdout):
     # Estimate of current observed stock market price to fair price.
     # For 1950-2017 the harmonic mean S&P 500 P/E ratio (not CAPE) was 14.85 (based on Shiller's data).
 
-    # Take average of trailing and forward S&P 500 P/E. Serves as a reasonable rough estimate most of the time.
-    level = ((trailing + forward) / 2) / 14.85
+    # Take harmonic mean of trailing and forward S&P 500 P/E. Serves as a reasonable rough estimate most of the time.
+    level = (1 / ((1 / trailing + 1 / forward) / 2)) / 14.85
 
     now = datetime.utcnow()
     assert now - timedelta(days = 14) < date <= now
