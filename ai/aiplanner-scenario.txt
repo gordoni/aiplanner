@@ -36,6 +36,7 @@ master_p_taxable_real_bonds = 0
 master_p_taxable_nominal_bonds = 0
 master_p_taxable_iid_bonds = 0
 master_p_taxable_bills = 0
+master_p_taxable_other = 0
 
 master_tax = True
 master_tax_table_year = '2020'

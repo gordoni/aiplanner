@@ -97,10 +97,13 @@ def parse_api_scenario(api_scenario, *, permissive = False):
 
         'p_tax_deferred': number,
         'p_tax_free': number,
+        'p_taxable_cash': number,
         'p_taxable_bonds': number,
         'p_taxable_stocks': number,
-        'p_taxable_stocks_basis': number,
+        'p_taxable_other': number,
         'p_taxable_bonds_basis': number,
+        'p_taxable_stocks_basis': number,
+        'p_taxable_other_basis': number,
 
         'stocks_price': number,
         'stocks_volatility': number,
@@ -182,10 +185,14 @@ def parse_api_scenario(api_scenario, *, permissive = False):
             model_params['real_short_rate_value'] = log(1 + api_scenario['nominal_short_rate']) - log(1 + api_scenario['inflation_short_rate'])
         else:
             assert False, 'nominal_short_rate requires a value for real_short_rate or inflation_short_rate also be specified.'
+    cash = api_scenario.get('p_taxable_cash', 0)
+    model_params['p_taxable_other_low'] = model_params['p_taxable_other_high'] = api_scenario.get('p_taxable_other', 0) + cash
     model_params['p_taxable_stocks_basis'] = api_scenario.get('p_taxable_stocks_basis', api_scenario.get('p_taxable_stocks', 0))
+    model_params['p_taxable_other_basis'] = api_scenario.get('p_taxable_other_basis', api_scenario.get('p_taxable_other', 0)) + cash
     model_params['p_taxable_stocks_basis_fraction_low'] = model_params['p_taxable_stocks_basis_fraction_high'] = 0
     model_params['p_taxable_real_bonds_basis_fraction_low'] = model_params['p_taxable_real_bonds_basis_fraction_high'] = 0
     model_params['p_taxable_nominal_bonds_basis_fraction_low'] = model_params['p_taxable_nominal_bonds_basis_fraction_high'] = 0
+    model_params['p_taxable_other_basis_fraction_low'] = model_params['p_taxable_other_basis_fraction_high'] = 0
 
     model_params['couple_probability'] = int(api_scenario.get('sex2') != None)
 

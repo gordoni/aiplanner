@@ -189,6 +189,23 @@ PURPOSE.
             </td>
           </tr>
           <tr>
+            <td class="left"> Taxable stocks: </td>
+            <td> <input type="number"step="1000" class="numeric" required name="scenarioPTaxableStocks" #scenarioPTaxableStocks="ngModel" [(ngModel)]="pTaxableStocks">
+              <div class="error" *ngIf="scenarioPTaxableStocks.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
+            <td class="left">
+              Stocks cost basis:
+            </td>
+            <td>
+              <input type="number" step="1000" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
+              <div class="error" *ngIf="scenarioPTaxableStocksBasis.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
+          </tr>
+          <tr>
             <td class="left"> Taxable bonds: </td>
             <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableBonds" #scenarioPTaxableBonds="ngModel" [(ngModel)]="pTaxableBonds">
               <div class="error" *ngIf="scenarioPTaxableBonds.invalid">
@@ -206,18 +223,32 @@ PURPOSE.
             </td>
           </tr>
           <tr>
-            <td class="left"> Taxable stocks: </td>
-            <td> <input type="number"step="1000" class="numeric" required name="scenarioPTaxableStocks" #scenarioPTaxableStocks="ngModel" [(ngModel)]="pTaxableStocks">
-              <div class="error" *ngIf="scenarioPTaxableStocks.invalid">
+            <td class="left"> Taxable cash: </td>
+            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableCash" #scenarioPTaxableCash="ngModel" [(ngModel)]="pTaxableCash">
+              <div class="error" *ngIf="scenarioPTaxableCash.invalid">
                 Invalid numeric value.
               </div>
             </td>
             <td class="left">
-              Stocks cost basis:
+              Cash cost basis:
+            </td>
+            <td class="right">
+              {{pCash()}}
+            </td>
+          </tr>
+          <tr>
+            <td class="left"> Taxable other: </td>
+            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableOther" #scenarioPTaxableOther="ngModel" [(ngModel)]="pTaxableOther">
+              <div class="error" *ngIf="scenarioPTaxableOther.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
+            <td class="left">
+              Other cost basis:
             </td>
             <td>
-              <input type="number" step="1000" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
-              <div class="error" *ngIf="scenarioPTaxableStocksBasis.invalid">
+              <input type="number" step="1000" class="numeric" required name="scenarioPTaxableOtherBasis" #scenarioPTaxableOtherBasis="ngModel" [(ngModel)]="pTaxableOtherBasis">
+              <div class="error" *ngIf="scenarioPTaxableOtherBasis.invalid">
                 Invalid numeric value.
               </div>
             </td>

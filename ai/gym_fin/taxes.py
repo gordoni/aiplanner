@@ -15,14 +15,14 @@
 
 class Taxes(object):
 
-    def __init__(self, params, taxable_assets, taxable_basis):
+    def __init__(self, params, taxable_assets, taxable_basis, cg_init):
 
         self.params = params
         self.value = dict(taxable_assets.aa)
         self.basis = dict(taxable_basis.aa)
         self.cpi = 1
         self.cg_carry = 0
-        self.capital_gains = 0
+        self.capital_gains = cg_init
         self.qualified_dividends = 0
         self.non_qualified_dividends = 0
 
@@ -218,7 +218,7 @@ class Taxes(object):
 
         return rate
 
-    def calculate_taxes(self, regular_income, social_security, capital_gains, single):
+    def calculate_taxes(self, regular_income, social_security, capital_gains, nii, single):
 
         if not self.params.tax:
             return 0, 0
@@ -236,7 +236,6 @@ class Taxes(object):
         taxable_regular_income = max(taxable_regular_income, 0)
         taxable_capital_gains = max(taxable_capital_gains, 0)
 
-        nii = max(self.capital_gains + self.qualified_dividends + self.non_qualified_dividends, 0)
         nii_taxable = min(nii, max(regular_income - (self.niit_threshold_single if single else self.niit_threshold_couple) / self.cpi, 0))
 
         regular_tax = self.tax_table(self.federal_table_single if single else self.federal_table_joint, taxable_regular_income, 0) \
@@ -261,8 +260,9 @@ class Taxes(object):
         self.cg_carry = capital_gains - current_capital_gains
         regular_income += min(current_capital_gains, 0)
         capital_gains = max(current_capital_gains, 0)
+        nii = max(self.capital_gains + self.qualified_dividends + self.non_qualified_dividends, 0)
 
-        regular_tax, capital_gains_tax = self.calculate_taxes(regular_income, social_security, capital_gains, single)
+        regular_tax, capital_gains_tax = self.calculate_taxes(regular_income, social_security, capital_gains, nii, single)
 
         self.capital_gains = 0
         self.qualified_dividends = 0
@@ -281,7 +281,7 @@ class Taxes(object):
 
         if self.params.tax:
             basis = sum(self.basis.values())
-            cg_carry = self.cg_carry
+            cg_carry = self.cg_carry + self.capital_gains # Add in capital_gains to observe effect of cg_init.
         else:
             basis = 0
             cg_carry = 0

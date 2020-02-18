@@ -1,7 +1,7 @@
 AIPlanner API documentation
 ***************************
 
-January 7, 2020.
+February 17, 2020.
 
 This document describes the AIPlanner - Deep Reinforcement Learning
 Financial Planner web based application programming interface.
@@ -395,6 +395,34 @@ p_taxable_bonds_basis: number
 default: p_taxable_bonds if specified otherwise 0
 
 Tax cost basis of taxable bond holdings.
+
+Taxable cash portfolio size
+---------------------------
+
+p_taxable_cash: number
+default: 0
+
+Value of taxable cash holdings.
+
+Currently cash will get reallocated to stocks and bonds.
+
+Taxable other portfolio size
+----------------------------
+
+p_taxable_other: number
+default: 0
+
+Value of taxable other holdings (REITs, commodities etc.).
+
+Currently other holdings will get reallocated to stocks and bonds.
+
+Taxable other basis
+-------------------
+
+p_taxable_other_basis: number
+default: p_taxable_other if specified otherwise 0
+
+Tax cost basis of taxable other holdings (REITs, commodities etc.).
 
 Stock price to fair value
 -------------------------
@@ -823,7 +851,7 @@ sample_paths: [{
     "nominal_spias_purchase":  [<number> or null, ... ],
     "real_spias_purchase":  [<number> or null, ... ],
     "total_guaranteed_income":  [<number>, ... ],
-    "portfolio_wealth":  [<number>, ... ]
+    "portfolio_wealth_pretax":  [<number>, ... ]
 }]
 
 Sample paths provides a JSON array of sample path objects that
@@ -866,8 +894,7 @@ array of consecutive values describing the path. The keys are:
 
     The current sum of guaranteed income amounts less expenses.
 
-    portfolio_wealth
+    portfolio_wealth_pretax
 
     The present value of the taxable, tax deferred, and tax free
-    portfolios, less an estimate of future taxes assessed against the
-    taxable and tax deferred portfolios.
+    portfolios.

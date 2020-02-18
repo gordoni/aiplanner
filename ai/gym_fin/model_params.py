@@ -220,16 +220,20 @@ class ModelParams(object):
         self._param('p-taxable-iid-bonds-weight', (0, 100), 0) # Weight for p_weighted allocated to taxable iid bonds.
         self._param('p-taxable-bills', (0, 0), 0) # Taxable additive portfolio bills.
         self._param('p-taxable-bills-weight', (0, 100), 0) # Weight for p_weighted allocated to taxable bills.
+        self._param('p-taxable-other', (0, 0), 0) # Taxable additive portfolio other.
+        self._param('p-taxable-other-weight', (0, 0), 0) # Weight for p_weighted allocated to taxable other.
         self._param('p-taxable-stocks-basis', 0) # Taxable portfolio stocks cost basis.
         self._param('p-taxable-real-bonds-basis', 0) # Taxable portfolio real bonds cost basis.
         self._param('p-taxable-nominal-bonds-basis', 0) # Taxable portfolio nominal bonds cost basis.
         self._param('p-taxable-iid-bonds-basis', 0) # Taxable portfolio iid bonds cost basis.
         self._param('p-taxable-bills-basis', 0) # Taxable portfolio bills cost basis.
+        self._param('p-taxable-other-basis', 0) # Taxable portfolio other cost basis.
         self._param('p-taxable-stocks-basis-fraction', (0, 2), 1) # Taxable portfolio stocks cost basis as a fraction of stocks value.
         self._param('p-taxable-real-bonds-basis-fraction', (0.7, 1.1), 1) # Taxable portfolio real bonds cost basis as a fraction of real bonds value.
         self._param('p-taxable-nominal-bonds-basis-fraction', (0.7, 1.1), 1) # Taxable portfolio nominal bonds cost basis as a fraction of nominal bonds value.
         self._param('p-taxable-iid-bonds-basis-fraction', (0.7, 1.1), 1) # Taxable portfolio iid bonds cost basis as a fraction of iid bonds value.
         self._param('p-taxable-bills-basis-fraction', (0.7, 1.1), 1) # Taxable portfolio bills cost basis as a fraction of bills value.
+        self._param('p-taxable-other-basis-fraction', (0, 2), 1) # Taxable portfolio other cost basis as a fraction of other value.
         # Consumption order is assumed to be p_taxable, p_tax_deferred, p_notax.
 
         self._boolean_flag('tax', False) # Whether income is taxed.

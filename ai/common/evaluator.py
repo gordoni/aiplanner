@@ -130,7 +130,7 @@ class Evaluator(object):
                     ('age', env.age),
                     ('alive_count', env.alive_count[env.episode_length]),
                     ('total_guaranteed_income', env.gi_sum() if not done else None),
-                    ('portfolio_wealth', env.p_wealth),
+                    ('portfolio_wealth_pretax', env.p_wealth_pretax),
                     ('consume', decoded_action['consume'] if not done else None),
                     ('real_spias_purchase', decoded_action['real_spias_purchase'] if not done else None),
                     ('nominal_spias_purchase', decoded_action['nominal_spias_purchase'] if not done else None),

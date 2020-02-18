@@ -48,10 +48,13 @@ export class ScenarioComponent implements OnInit {
 
   public pTaxDeferred: number = 0;
   public pTaxFree: number = 0;
-  public pTaxableBonds: number = 0;
   public pTaxableStocks: number = 0;
-  public pTaxableBondsBasis: number = 0;
+  public pTaxableBonds: number = 0;
+  public pTaxableCash: number = 0;
+  public pTaxableOther: number = 0;
   public pTaxableStocksBasis: number = 0;
+  public pTaxableBondsBasis: number = 0;
+  public pTaxableOtherBasis: number = 0;
 
   public ageRetirement: number = 67;
   public incomePreretirement: number = 50000;
@@ -106,11 +109,15 @@ export class ScenarioComponent implements OnInit {
   }
 
   pTotal() {
-    return this.utils.comma(this.pTaxDeferred + this.pTaxFree + this.pTaxableBonds + this.pTaxableStocks);
+    return this.utils.comma(this.pTaxDeferred + this.pTaxFree + this.pTaxableStocks + this.pTaxableBonds + this.pTaxableCash + this.pTaxableOther);
+  }
+
+  pCash() {
+    return this.utils.comma(this.pTaxableCash);
   }
 
   basisTotal() {
-    return this.utils.comma(this.pTaxableBondsBasis + this.pTaxableStocksBasis);
+    return this.utils.comma(this.pTaxableStocksBasis + this.pTaxableBondsBasis + this.pTaxableCash + this.pTaxableOtherBasis);
   }
 
   doEdit(db) {
@@ -208,10 +215,13 @@ export class ScenarioComponent implements OnInit {
 
         'p_tax_deferred': this.pTaxDeferred,
         'p_tax_free': this.pTaxFree,
-        'p_taxable_bonds':  this.pTaxableBonds,
-        'p_taxable_bonds_basis': this.pTaxableBondsBasis,
         'p_taxable_stocks': this.pTaxableStocks,
         'p_taxable_stocks_basis': this.pTaxableStocksBasis,
+        'p_taxable_bonds':  this.pTaxableBonds,
+        'p_taxable_bonds_basis': this.pTaxableBondsBasis,
+        'p_taxable_cash':  this.pTaxableCash,
+        'p_taxable_other':  this.pTaxableOther,
+        'p_taxable_other_basis': this.pTaxableOtherBasis,
 
         'age_retirement': this.ageRetirement,
         'income_preretirement': this.incomePreretirement,

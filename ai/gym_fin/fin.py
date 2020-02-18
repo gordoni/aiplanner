@@ -523,8 +523,10 @@ class Fin:
                 p_taxable_iid_bonds_weight = uniform(self.params.p_taxable_iid_bonds_weight_low, self.params.p_taxable_iid_bonds_weight_high) \
                     if self.params.iid_bonds  else 0
                 p_taxable_bills_weight = uniform(self.params.p_taxable_bills_weight_low, self.params.p_taxable_bills_weight_high) if self.params.bills else 0
+                p_taxable_other_weight = uniform(self.params.p_taxable_other_weight_low, self.params.p_taxable_other_weight_high)
                 total_weight = p_tax_free_weight + p_tax_deferred_weight + \
-                    p_taxable_stocks_weight + p_taxable_real_bonds_weight + p_taxable_nominal_bonds_weight + p_taxable_iid_bonds_weight + p_taxable_bills_weight
+                    p_taxable_stocks_weight + p_taxable_real_bonds_weight + p_taxable_nominal_bonds_weight + p_taxable_iid_bonds_weight + p_taxable_bills_weight + \
+                    p_taxable_other_weight
                 p_weighted = self.log_uniform(self.params.p_weighted_low, self.params.p_weighted_high)
                 if total_weight == 0:
                     assert p_weighted == 0
@@ -549,7 +551,9 @@ class Fin:
                 if self.params.bills:
                     taxable_assets.aa['bills'] = self.log_uniform(self.params.p_taxable_bills_low, self.params.p_taxable_bills_high) + \
                         p_weighted * p_taxable_bills_weight / total_weight
-                self.p_taxable = sum(taxable_assets.aa.values())
+                taxable_assets_aa_other = self.log_uniform(self.params.p_taxable_other_low, self.params.p_taxable_other_high) + \
+                    p_weighted * p_taxable_other_weight / total_weight
+                self.p_taxable = sum(taxable_assets.aa.values()) + taxable_assets_aa_other
 
                 taxable_basis = AssetAllocation(fractional = False)
                 if self.params.stocks:
@@ -577,11 +581,16 @@ class Fin:
                     taxable_basis.aa['bills'] = self.params.p_taxable_bills_basis + \
                         uniform(self.params.p_taxable_bills_basis_fraction_low,
                                 self.params.p_taxable_bills_basis_fraction_high) * taxable_assets.aa['bills']
-                self.taxes = Taxes(self.params, taxable_assets, taxable_basis)
+                assert not self.params.p_taxable_other_basis or not self.params.p_taxable_other_basis_fraction_high
+                taxable_basis_aa_other = self.params.p_taxable_other_basis + \
+                    uniform(self.params.p_taxable_other_basis_fraction_low,
+                        self.params.p_taxable_other_basis_fraction_high) * taxable_assets_aa_other
+                cg_init = taxable_assets_aa_other - taxable_basis_aa_other
+                self.taxes = Taxes(self.params, taxable_assets, taxable_basis, cg_init)
 
                 assert not self.params.consume_preretirement or not self.params.consume_preretirement_income_ratio_high
                 income_preretirement = self.income_preretirement + self.income_preretirement2
-                income_preretirement -= sum(self.taxes.calculate_taxes(income_preretirement, 0, 0, not self.couple))
+                income_preretirement -= sum(self.taxes.calculate_taxes(income_preretirement, 0, 0, 0, not self.couple))
                 self.consume_preretirement = self.params.consume_preretirement + \
                     uniform(self.params.consume_preretirement_income_ratio_low, self.params.consume_preretirement_income_ratio_high) * income_preretirement
 
@@ -589,7 +598,7 @@ class Fin:
                 ce_estimate_ok = self.params.consume_floor <= self.rough_ce_estimate_individual <= self.params.consume_ceiling
 
                 self._pre_calculate_wealth(growth_rate = 1) # By convention use no growth for determining guaranteed income bucket.
-                preretirement_ok = self.raw_preretirement_income_wealth + self.p_wealth >= 0
+                preretirement_ok = self.raw_preretirement_income_wealth + self.p_wealth_pretax >= 0
                     # Very basic sanity check only. Ignores taxation.
 
                 try:
@@ -1008,8 +1017,8 @@ class Fin:
             # Ensure leave enough taxable assets to cover any taxes due.
             max_capital_gains = self.taxes.unrealized_gains()
             if max_capital_gains > 0:
-                max_capital_gains_taxes = sum(self.taxes.calculate_taxes(regular_income, social_security, max_capital_gains, not self.couple)) \
-                    - sum(self.taxes.calculate_taxes(regular_income, social_security, 0, not self.couple))
+                max_capital_gains_taxes = sum(self.taxes.calculate_taxes(regular_income, social_security, max_capital_gains, 0, not self.couple)) \
+                    - sum(self.taxes.calculate_taxes(regular_income, social_security, 0, 0, not self.couple))
                 new_taxable_spias = min(taxable_spias, max(0, p_taxable - max_capital_gains_taxes))
                 real_taxable_spias *= new_taxable_spias / taxable_spias
                 nominal_taxable_spias *= new_taxable_spias / taxable_spias
@@ -1360,7 +1369,7 @@ class Fin:
         else:
             assert p_taxable_basis != None
             self.p_taxable = sum(p_taxable_assets.aa.values())
-            self.taxes = Taxes(self.params, p_taxable_assets, p_taxable_basis)
+            self.taxes = Taxes(self.params, p_taxable_assets, p_taxable_basis, 0)
         if taxes_due != None:
             self.taxes_due = 0
 
@@ -1446,9 +1455,9 @@ class Fin:
             self.wealth_tax_deferred = 0
             self.wealth_taxable = 0
 
-        self.p_wealth = self.wealth_tax_free + self.wealth_tax_deferred + self.wealth_taxable
+        self.p_wealth_pretax = self.wealth_tax_free + self.wealth_tax_deferred + self.wealth_taxable
         self.raw_preretirement_income_wealth = sum(self.pv_preretirement_income.values()) # Should factor in investment growth.
-        self.net_wealth_pretax = self.retired_income_wealth_pretax + self.p_wealth + self.raw_preretirement_income_wealth - self.taxes_due * total_growth
+        self.net_wealth_pretax = self.p_wealth_pretax + self.retired_income_wealth_pretax + self.raw_preretirement_income_wealth
 
         self.rough_ce_estimate_individual = max(self.params.welfare, self.net_wealth_pretax / self.years_retired / self.couple_weight)
 
@@ -1457,8 +1466,7 @@ class Fin:
         self._pre_calculate_wealth()
 
         p_basis, cg_carry = self.taxes.observe()
-        assert p_basis >= 0 and cg_carry <= 0
-        self.taxable_basis = p_basis - cg_carry
+        assert p_basis >= 0
 
         average_asset_years = self.preretirement_years + self.years_retired / 2
         total_years = self.preretirement_years + self.years_retired
@@ -1466,11 +1474,13 @@ class Fin:
         pv_regular_income = self.pv_preretirement_income['tax_deferred'] + self.pv_preretirement_income['taxable'] + \
             self.pv_retired_income['tax_deferred'] + self.pv_retired_income['taxable'] + self.wealth_tax_deferred
         pv_social_security = self.pv_social_security
-        pv_capital_gains = self.wealth_taxable - self.taxable_basis / self.bonds_constant_inflation.discount_rate(average_asset_years) ** average_asset_years
+        pv_capital_gains = cg_carry + self.wealth_taxable - p_basis / self.bonds_constant_inflation.discount_rate(average_asset_years) ** average_asset_years
             # Fails to take into consideration non-qualified dividends.
             # Taxable basis does not get adjusted for inflation.
+        pv_nii = pv_capital_gains
         regular_tax, capital_gains_tax = \
-            self.taxes.calculate_taxes(pv_regular_income / total_years, pv_social_security / total_years, pv_capital_gains / total_years, not self.couple)
+            self.taxes.calculate_taxes(pv_regular_income / total_years, pv_social_security / total_years, pv_capital_gains / total_years, pv_nii / total_years,
+                not self.couple)
                 # Assumes income smoothing.
         pv_regular_tax = total_years * regular_tax
         pv_capital_gains_tax = total_years * capital_gains_tax
@@ -1480,11 +1490,10 @@ class Fin:
             self.regular_tax_rate = pv_regular_tax / pv_regular_income
         except ZeroDivisionError:
             self.regular_tax_rate = 0
-        self.p_wealth -= self.regular_tax_rate * self.wealth_tax_deferred
+        self.p_wealth = max(0, self.p_wealth_pretax - self.regular_tax_rate * self.wealth_tax_deferred - pv_capital_gains_tax - self.taxes_due)
         self.raw_preretirement_income_wealth -= self.regular_tax_rate * (self.pv_preretirement_income['tax_deferred'] + self.pv_preretirement_income['taxable'])
-        self.p_wealth = max(0, self.p_wealth - pv_capital_gains_tax)
         self.preretirement_income_wealth = max(0, self.raw_preretirement_income_wealth)
-        self.net_wealth = max(0, self.net_wealth_pretax - self.pv_taxes)
+        self.net_wealth = max(0, self.net_wealth_pretax - self.pv_taxes - self.taxes_due)
         self.retired_income_wealth = max(0, self.net_wealth - self.p_wealth - self.preretirement_income_wealth)
 
         income_estimate = self.net_wealth / self.years_retired

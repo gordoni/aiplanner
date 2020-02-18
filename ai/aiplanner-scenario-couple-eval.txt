@@ -36,9 +36,11 @@ master_p_tax_deferred = 0
 master_p_taxable_stocks = 0
 master_p_taxable_real_bonds = 0
 master_p_taxable_nominal_bonds = 0
+master_p_taxable_other = 0
 master_p_taxable_stocks_basis_fraction = 1
 master_p_taxable_real_bonds_basis_fraction = 1
 master_p_taxable_nominal_bonds_basis_fraction = 1
+master_p_taxable_other_basis_fraction = 1
 
 master_stocks_price = 1
 master_stocks_sigma_level_type = 'value'
