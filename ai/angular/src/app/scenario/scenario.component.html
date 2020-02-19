@@ -119,6 +119,14 @@ PURPOSE.
       take into consideration the possibilities you live longer or
       shorter than expected.
     </div>
+    <div class="main-button float-left">
+      <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !healthValid()">Back</button>
+    </div>
+    <div class="main-button float-right">
+      <button type="button" class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !healthValid()">Next</button>
+    </div>
+    <div class="float-clear">
+    </div>
   </div>
 
   <div class="center" *ngIf="step == 2">
@@ -262,6 +270,16 @@ PURPOSE.
         </table>
       </div>
     </div>
+    <div *ngIf="!editDefinedBenefit">
+      <div class="main-button float-left">
+        <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
+      </div>
+      <div class="main-button float-right">
+        <button type="button" class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !dbValid()">Next</button>
+      </div>
+      <div class="float-clear">
+      </div>
+    </div>
   </div>
 
   <div  *ngIf="step == 3">
@@ -305,6 +323,16 @@ PURPOSE.
     </div>
     <div *ngIf="editDefinedBenefit">
       <app-liability [data]="editDefinedBenefit"></app-liability>
+    </div>
+    <div *ngIf="!editDefinedBenefit">
+      <div class="main-button float-left">
+        <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
+      </div>
+      <div class="main-button float-right">
+        <button type="button" class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !dbValid()">Next</button>
+      </div>
+      <div class="float-clear">
+      </div>
     </div>
   </div>
 
@@ -379,6 +407,14 @@ PURPOSE.
     </div>
     <br>
     Allow income annuity purchases in retirement: <input type="checkbox" name="spias" [(ngModel)]="spias">
+    <div class="main-button float-left">
+      <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid">Back</button>
+    </div>
+    <div class="main-button float-right">
+      <button type="button" class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid">Next</button>
+    </div>
+    <div class="float-clear">
+    </div>
   </div>
 
   <div *ngIf="step == 5">
@@ -440,14 +476,11 @@ PURPOSE.
         </tr>
       </table>
     </div>
-  </div>
-
-  <div *ngIf="1 <= step && step < 6 && !editDefinedBenefit">
     <div class="main-button float-left">
-      <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !healthValid() || !dbValid()">Back</button>
+      <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid">Back</button>
     </div>
     <div class="main-button float-right">
-      <button type="button" class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !healthValid() || !dbValid()">Next</button>
+      <button type="button" class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid">Next</button>
     </div>
     <div class="float-clear">
     </div>
@@ -468,9 +501,9 @@ PURPOSE.
           <div>
             <table>
               <tr>
-                <td class="first"> RRA coefficient </td>
-                <td class="first"> Extra consumption </td>
-                <td class="first"> Consumption uncertainty </td>
+                <td class="first"> RRA coefficient <span class="small-font"> <br> &nbsp; </span> </td>
+                <td class="first"> Extra consumption <span class="small-font"> <br> based on mean consumption </span> </td>
+                <td class="first"> Consumption uncertainty <span class="small-font"> <br> standard deviation / mean </span> </td>
               </tr>
               <tr>
                 <td> &infin; </td>
@@ -550,9 +583,9 @@ PURPOSE.
   <div class="crra">
     <table>
       <tr>
-        <td class="first"> RRA coefficient </td>
-        <td class="first"> Extra consumption in retirement </td>
-        <td class="first"> Consumption uncertainty </td>
+        <td class="first"> RRA coefficient <span class="small-font"> <br> &nbsp; </span> </td>
+        <td class="first"> Extra consumption in retirement <span class="small-font"> <br> based on mean consumption </span> </td>
+        <td class="first"> Consumption uncertainty <span class="small-font"> <br> standard deviation / mean </span> </td>
       </tr>
       <tr class="pointer {{(i == activeResultIndex) ? 'selected' : ''}}" (click)="gotoRisk(i)" *ngFor="let result of results; index as i">
         <td> {{result.rra}} </td>
