@@ -1565,7 +1565,7 @@ class Fin:
             duration = Fin._spia_years_cache[key]
         except KeyError:
             life_table, life_table2 = self.spia_life_tables(age, age2)
-            payout_delay = 0 # Observe better training for a generic model with a payout delay of 0 than self.params.time_period; not sure why.
+            payout_delay = self.params.time_period
             payout_fraction = 1 / (1 + self.params.consume_additional)
             spia = IncomeAnnuity(self.bonds_zero, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint = True,
                 payout_fraction = payout_fraction, frequency = 1 / self.params.time_period, price_adjust = 'all', date_str = date)
