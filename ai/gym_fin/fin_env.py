@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -56,10 +56,11 @@ class FinEnv(Env):
             'preretirement_years', 'years_retired',
             'lifespan_percentile_years', 'spia_expectancy_years', 'final_spias_purchase',
             'reward_to_go_estimate', 'relative_ce_estimate_individual',
+            'log_ce_estimate_individual',
             'wealth_fraction', 'preretirement_income_wealth_fraction',
             'stocks_price', 'stocks_volatility', 'real_interest_rate')
-        self.observation_space_low  = (0, 0, 0,   0,   0,   0,   0, 0, -2e3,   0, 0, 0, 0, 0, -0.10)
-        self.observation_space_high = (1, 2, 1, 100, 100, 100, 100, 1,    0, 100, 1, 1, 4, 7,  0.15)
+        self.observation_space_low  = (0, 0, 0,   0,   0,   0,   0, 0, -2e3,   0,  0, 0, 0, 0, 0, -0.10)
+        self.observation_space_high = (1, 2, 1, 100, 100, 100, 100, 1,    0, 100, 20, 1, 1, 4, 7,  0.15)
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple()
             #    in common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.

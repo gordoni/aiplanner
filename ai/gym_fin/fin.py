@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -1613,6 +1613,9 @@ class Fin:
         reward_estimate = reward_weight * self.reward_scale * reward_value
         reward_estimate = max(-1e30, reward_estimate) # Prevent observation of -inf reward estimate during training.
 
+        # Existence of welfare breaks scale invariance, so allow model to see scale.
+        log_ce_estimate_individual = log(max(1, self.ce_estimate_individual))
+
         # When mean reversion rate is zero, avoid observing spurious noise for better training.
         stocks_price, stocks_volatility = self.stocks.observe()
         if not self.params.observe_stocks_price or self.params.stocks_mean_reversion_rate == 0:
@@ -1635,6 +1638,7 @@ class Fin:
             # Best results (especially when gamma=6) if provide both a rewards to go estimate that can be fine tuned and a relative CE estimate.
             reward_estimate, self.ce_estimate_individual / self.consume_scale,
             # Nature of wealth/income observations.
+            log_ce_estimate_individual,
             # Obseve fractionality to hopefully take advantage of iso-elasticity of utility.
             self.p_fraction, self.preretirement_fraction,
             # Market condition obsevations.
