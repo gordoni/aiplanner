@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019 Gordon Irlam
+# Copyright (C) 2019-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -35,9 +35,9 @@ start_date = '1970-01-01'
     # So we compromise and use 1970 as the starting date.
     # We adjust the mean and volatility to match the longer historical record.
     # In summary, we use 1970 on for volatility predictability, and the longer historical record for volatility level and returns.
-end_date = '2018-12-31'
+end_date = '2019-12-31'
 
-MEDIAN_ANALYSIS_YEARS = 2018 - 1950 + 1
+MEDIAN_ANALYSIS_YEARS = 2019 - 1950 + 1
 
 BOOTSTRAP = True
     # If no bootstrap, use normal residuals.
@@ -99,7 +99,7 @@ seed(0)
 mean_reversion_rate = 0.1 # Rough estimate
 exaggeration = 0.7 # Adjust to get reasonable looking above_trend.csv plot
 sigma_max = 1.0 # Max allowed annualized volatility (cap to prevent volatility occasionally spiking to close to 100 times normal).
-mu = 0.065 # Adjust to get 0.065 actual mean ret
+mu = 0.066 # Adjust to get 0.066 actual mean ret
 sigma = 0.162 # Adjust to get 0.174 actual vol
 sigma_max *= SCALE / sqrt(PERIODS_PER_YEAR)
 mu *= SCALE / PERIODS_PER_YEAR
@@ -202,14 +202,14 @@ print('Return volatility correlation:')
 print(np.corrcoef(rets[1:], obs_sigmas[:-1]))
 print(spearmanr(rets[1:], obs_sigmas[:-1]))
 
-# Target values:
+# Target values 1950-2019:
 #           mean  stdev  auto corr  skew    kurtosis  vol-sigma corr  ret-sigma corr
-#      ret   6.5% 17.4%                                                               from Credit-Suisse Yearbook
-#  log ret                  0.00   -0.92      4.12                       unknown      from analyze_volatility.py; ecept ret-sigma corr
-#  log vol    -     -       0.40                          0.39                        from analyze_volatility.py; except vol-sigma corr from this script
+#      ret   6.6% 17.4%                                                               from Credit-Suisse Yearbook
+#  log ret                  0.00   -0.92      4.12                       unknown      from analyze_volatility.py [1950-2018]; ecept ret-sigma corr
+#  log vol    -     -       0.40                          0.39                        from analyze_volatility.py [1950-2018]; except vol-sigma corr from this script
 #
 # Measured simulated values:
 #           mean  stdev  auto corr  skew    kurtosis
-#      ret   6.5% 17.4%
-#  log ret                  0.00   -0.98      4.85                        0.00
-#  log vol    -     -       0.34                          0.41
+#      ret   6.6% 17.4%
+#  log ret                  0.00   -0.95      4.77                        0.00
+#  log vol    -     -       0.33                          0.41

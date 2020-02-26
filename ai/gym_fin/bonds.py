@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -270,14 +270,14 @@ class RealBonds(Bonds):
     def __init__(self, *, a = 0.14, sigma = 0.011, yield_curve, r0_type = 'current', r0 = None, standard_error = 0, static_bonds = False, time_period = 1):
         '''Chosen value of sigma, 0.011, intended to produce a short term real
         yield volatility of 0.9-1.0%. The measured value over
-        2005-2018 was 0.99%. Obtained value is 0.99%.
+        2005-2019 was 0.99%. Obtained value is 0.99%.
 
         Chosen value of a, 0.14, intended to produce a long term (15
-        year) real return standard deviation of about 7%. The observed
-        value over 2005-2018 was 8.9% (when rates were volatile). The
+        year) real return standard deviation of about 6.5%. The observed
+        value over 2005-2019 was 8.9% (when rates were volatile). The
         real nominal bond observed standard deviation is 14.9% whereas
-        according to the Credit Suisse Yearbook 11.0% is more typical,
-        so by a simple scaling 6.6% seems a reasonable expectation for
+        according to the Credit Suisse Yearbook 10.9% is more typical,
+        so by a simple scaling 6.5% seems a reasonable expectation for
         real bonds. Obtained value is 6.7%.
 
         Chosen default yield curve intended to be indicative of the
@@ -359,20 +359,20 @@ class Inflation(Bonds):
         Chosen value of inflation_sigma, 0.015, produces a reasonable
         estimate of the long term (15 year) standard deviation of the
         inflation rate (as modeled to provide inflation
-        volatility). Measured value was 0.56%. Obtained value was
-        1.18%. This seems quite reasonable given inflation has
+        volatility). Measured value was 0.55%. Obtained value was
+        1.20%. This seems quite reasonable given inflation has
         recently been constrained. Additionally. the measured short
-        term inflation yield volatility is 1.28%, compared to a
-        obtained value of 1.36%.
+        term inflation yield volatility is 1.23%, compared to a
+        obtained value of 1.34%.
 
         Chosen value of bond_a, 0.14, the same as in the real case.
 
         Chosen value of bond_sigma, 0.015, intended to produce a long
         term (15 year) nominal bond real return standard deviation of
-        about 11%. The measured value over 2005-2018 was 14.9% (when
+        about 11%. The measured value over 2005-2019 was 14.4% (when
         rates were volatile). Obtained value is 11.0%. As in the real
         case this is less than the observed value, and is inline with
-        the 11.0% standard deviation for long term government bonds
+        the 10.9% standard deviation for long term government bonds
         reported in the Credit Suisse Global Investment Returns
         Yearbook 2019.
 
@@ -509,6 +509,7 @@ inflation_rate = {
     2016: 0.021,
     2017: 0.021,
     2018: 0.019,
+    2019: 0.023,
 }
 
 class NominalBonds(Bonds):
@@ -643,7 +644,7 @@ class BondsSet:
     def __init__(self, need_real = True, need_nominal = True, need_inflation = True, need_corporate = True,
         fixed_real_bonds_rate = None, fixed_nominal_bonds_rate = None,
         real_bonds_adjust = 0, inflation_adjust = 0, nominal_bonds_adjust = 0, corporate_nominal_spread = 0,
-        static_bonds = False, date_str = '2018-12-31', date_str_low = '2005-01-01',
+        static_bonds = False, date_str = '2019-12-31', date_str_low = '2005-01-01',
         real_r0_type = 'current', inflation_r0_type = 'current', real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
         '''Create a BondsSet.
 

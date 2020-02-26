@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -21,9 +21,9 @@ master_age_start2_high = 30
 # Ensure life expectancy isn't a proxy for age.
 # This helps ensure we use spias_purchase_years rather than life expectancy in determining whether to purchase SPIAs.
 master_life_expectancy_additional_low = -3
-master_life_expectancy_additional_high = 5
+master_life_expectancy_additional_high = 7
 master_life_expectancy_additional2_low = -3
-master_life_expectancy_additional2_high = 5
+master_life_expectancy_additional2_high = 7
 
 master_age_retirement_low = 50
 master_age_retirement_high = 80
@@ -56,7 +56,7 @@ master_guaranteed_income = '''[
     {"owner": "spouse", "start": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "taxable"},
     {"owner": "spouse", "start": null, "probability": 1.0, "payout": [5e3, 5e4], "source_of_funds": "taxable", "type": "social_security"}
 ]'''
-    # Maximum Social Security in 2019 is $45k if file at 70 - https://www.ssa.gov/OACT/COLA/examplemax.html
+    # Maximum Social Security in 2020 is $46k if file at 70 - https://www.ssa.gov/OACT/COLA/examplemax.html
     #
     # Probability of Social Security set to 1, even though it is slightly less, to avoid the possibility of very large negative reward to go and reward values
     # at very advanced ages for large gamma values. At very advanced ages, without any guaranteed income, life expectancy is roughly 2, and initially

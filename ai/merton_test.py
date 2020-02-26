@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019 Gordon Irlam
+# Copyright (C) 2019-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -45,8 +45,8 @@ class MertonEnv(Env):
         self.rra = 6 # Relative risk aversion.
         self.income = 20000
         self.wealth0 = 2000000
-        self.stocks_mu, self.stocks_sigma = self._mu_sigma(1.065, 0.174)
-        self.bonds_mu, self.bonds_sigma = self._mu_sigma(1.010, 0.110)
+        self.stocks_mu, self.stocks_sigma = self._mu_sigma(1.066, 0.174)
+        self.bonds_mu, self.bonds_sigma = self._mu_sigma(1.003, 0.109)
         # Gompertz-Makeham mortality parameters.
         self.age_start = 67
         self.alpha = 0

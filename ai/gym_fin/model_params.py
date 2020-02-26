@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -268,7 +268,7 @@ class ModelParams(object):
         self._param('nominal-bonds-adjust', 0.0) # Rate adjustment to apply across the nominal bond yield curve.
         self._param('corporate-nominal-spread', 0.013) # Rate adjustment to apply across the nominal bond yield curve to generate corporate yields.
             # Average of BofA Merrill Corporate A option adjusted spread ( https://fred.stlouisfed.org/series/BAMLC0A3CA ) 1997-2019: 1.32%
-        self._param('bonds-date', '2018-12-31', tp = string_type) # Date to use for typical bond yield curve if not fixed.
+        self._param('bonds-date', '2019-12-31', tp = string_type) # Date to use for typical bond yield curve if not fixed.
         self._param('bonds-date-start', '2005-01-01', tp = string_type)
              # None or optional date to use for start of date range for average typical bond yield curve if not fixed.
 
@@ -295,9 +295,9 @@ class ModelParams(object):
         self._param('spias-from-age', 200)
             # Minimum age (of oldest party) from which must be fully annuitize even if no couple_spias provided age permitted and meets minimum purchase fraction.
 
-        # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2019 for 1900-2018.
-            # For equities the reported real return is 6.5% +/- 17.4%, standard error 1.6% (geometric 5.0%).
-            # For nominal government bonds the reported real return is 2.5% +/- 11.0%, standard error 1.0% (geometric 1.9%).
+        # Market parameters are based on World and U.S. averages from the Credit Suisse Global Investment Returns Yearbook 2020 for 1900-2019.
+            # For equities the reported real return is 6.6% +/- 17.4%, standard error 1.6% (geometric 5.2%).
+            # For nominal government bonds the reported real return is 2.5% +/- 10.9%, standard error 1.0% (geometric 2.0%).
             # For U.S. Treasury bills the reported real return is 0.9% +/- 4.6%, standard error 0.4% (geometric 0.8%) [from 2017 Yearbook].
             # The reported U.S. inflation rate is 3.0% +/- 4.7%, standard error 0.4% (geometric 2.9%) [from 2017 Yearbook].
         self._boolean_flag('returns-standard-error', True) # Whether to model the standard error of returns.
@@ -311,13 +311,13 @@ class ModelParams(object):
             # A value other than zero may result in unwanted corelations between volatility and next period return depending on the bootstrap data used.
         self._param('stocks-sigma-max', 1.0) # Maximum allowed annual volatility for normal_residuals/bootstrap stocks.
             # Without a maximum, the bootstrap GJR-GARCH volatility model can produce anualized volatilities as high as 15.0, which is unrealistic.
-        self._param('stocks-mu', 0.065) # Annual real log return for normal_residuals/bootstrap stocks.
+        self._param('stocks-mu', 0.066) # Annual real log return for normal_residuals/bootstrap stocks.
             # Yields 6.5% return for bootstrap stocks in absense of returns_standard_error.
         self._param('stocks-sigma', 0.162) # Annual real log volatility for normal_residuals/bootstrap stocks.
             # Yields 17.4% volatility for bootstrap stocks in absense of returns_standard_error.
         self._param('stocks-alpha', 0.0000) # Monthly GJR-GARCH volatility model alpha parameter for normal_residuals/bootstrap stocks.
-        self._param('stocks-gamma', 0.3188) # Monthly GJR-GARCH volatility model gamma parameter for normal_residuals/bootstrap stocks.
-        self._param('stocks-beta', 0.7116) # Monthly GJR-GARCH volatility model beta parameter for normal_residuals/bootstrap stocks.
+        self._param('stocks-gamma', 0.3112) # Monthly GJR-GARCH volatility model gamma parameter for normal_residuals/bootstrap stocks.
+        self._param('stocks-beta', 0.7130) # Monthly GJR-GARCH volatility model beta parameter for normal_residuals/bootstrap stocks.
         self._param('stocks-sigma-level-type', 'sample', 'invalid', tp = string_type, choices = ('sample', 'average', 'value'))
             # Monthly GJR-GARCH volatility model current log volatility relative to long term average for normal_residuals/bootstrap stocks.
             # 'sample' chooses initial value at random, 'average' uses the average model value, 'value' uses a specific value.
@@ -350,7 +350,7 @@ class ModelParams(object):
             # Derive iid bond returns from the specified bond model, or None if iid bond returns are lognormally distributed.
         self._param('iid-bonds-duration', 15) # Duration to use when deriving iid bond returns from the bond model.
         self._param('iid-bonds-return', 0.025) # Annual real return for iid bonds when lognormal.
-        self._param('iid-bonds-volatility', 0.110) # Annual real volatility for iid bonds when lognormal.
+        self._param('iid-bonds-volatility', 0.109) # Annual real volatility for iid bonds when lognormal.
         self._boolean_flag('iid-bonds-duration-action-force', False) # Whether to employ a real or nominal bond model that has variable duration for a durationless iid model.
         self._param('bonds-standard-error', 0.010) # Standard error of log real return for bonds.
         self._param('real-short-rate-type', 'sample', 'invalid', tp = string_type, choices = ('sample', 'current', 'value'))
