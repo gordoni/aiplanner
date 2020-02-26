@@ -65,12 +65,13 @@ class ModelParams(object):
             #     with a negative nominal market return and the investment consumption rate exceeds the initial consumption rate.
             # "target_percentage": initially consume_initial, then no investment portfolio withdrawal inflation adjustment for periods where investment
             #     portfolio is below expected value based upon consume_policy_life_expectancy and consume_policy_annual_return.
-            # "extended_rmd": consume according to IRS Required Minimum Distribution table extended to start from age 50.
+            # "extended_rmd": consume according to IRS Required Minimum Distribution table extended to start from an earlier start age.
             # "pmt": payout with life expectancy consume_policy_life_expectancy and return amount consume_policy_return.
         self._param('consume-initial', 0) # Initial consumption amount for particular consumption policies.
         self._param('consume-policy-life-expectancy', None) # Assumed life expectancy for particular consumption policies, or None to use actual life expectancy.
         self._param('consume-policy-return', 0) # Assumed annual return for particular consumption policies.
         self._param('consume-policy-fraction', 0.04) # Consume fraction for percent_rule.
+        self._param('consume-policy-extended-rmd-table', '2021', tp = string_type, choices = ('2003', '2021')) # RMD table to use for extended_rmd.
         self._param('consume-policy-fraction-max', 1) # Maximum proportion of investent policy to consume; applies to all consumption policies including rl.
         self._param('annuitization-policy', 'rl', tp = string_type, choices = ('rl', 'age_real', 'age_nominal', 'none'))
             # Annuitization policy.
