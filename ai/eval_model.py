@@ -78,6 +78,8 @@ def pi_opal(opal_data, env, obs):
     consume_fraction = max(0, min(consume_fraction, 1 / env.params.time_period))
     return consume_fraction, stocks
 
+params_cache = {}
+
 def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, stdin,
     merton, samuelson, annuitize, opal, models_dir, models_adjust, evaluate, warm_cache, gamma, train_seeds, ensemble, nice,
     train_seed, model_dir, result_dir, aid, num_environments, permissive_api = False, **kwargs):
@@ -98,19 +100,6 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
             mkdir(result_dir)
         except FileExistsError:
             pass
-
-    if model:
-        if models_dir != None:
-            model_dir = models_dir + '/' + scenario_space_model_filename(eval_model_params)
-        train_model_params = load_params_file(model_dir + '/params.txt')
-        eval_model_params['action_space_unbounded'] = train_model_params['action_space_unbounded']
-        eval_model_params['observation_space_ignores_range'] = train_model_params['observation_space_ignores_range']
-        eval_model_params['observation_space_clip'] = train_model_params.get('observation_space_clip', False)
-    else:
-        num_environments = 1
-        eval_model_params['action_space_unbounded'] = True
-        eval_model_params['observation_space_ignores_range'] = False
-        eval_model_params['observation_space_clip'] = False
 
     results = [{'cid': a.get('cid'), 'results': []} for a in api] # Gets multiply overwritten but is not used, when train_seeds > 1 and not ensemble.
 
@@ -178,6 +167,20 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                     else:
                         model_filename = scenario_space_model_filename(model_params)
                         model_dir = models_dir + '/' + model_filename
+
+                    if model:
+                        try:
+                            train_model_params = params_cache[model_dir]
+                        except KeyError:
+                            train_model_params = params_cache[model_dir] = load_params_file(model_dir + '/params.txt')
+                        model_params['action_space_unbounded'] = train_model_params['action_space_unbounded']
+                        model_params['observation_space_ignores_range'] = train_model_params['observation_space_ignores_range']
+                        model_params['observation_space_clip'] = train_model_params.get('observation_space_clip', False)
+                    else:
+                        num_environments = 1
+                        model_params['action_space_unbounded'] = True
+                        model_params['observation_space_ignores_range'] = False
+                        model_params['observation_space_clip'] = False
 
                     if models_adjust:
                         adjust_json = open(models_adjust).read()
@@ -299,6 +302,11 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
     if daemon and not warm_cache:
 
+        if evaluate:
+            api_str = dumps(api, indent = 4, sort_keys = True)
+            with open(result_seed_dir + '/api.json', 'w') as w:
+                w.write(api_str + '\n')
+
         failures = [scenario for scenario, result in zip(api, results) if any((sub_result['error'] != None for sub_result in result['results']))]
         if failures:
             failures_str = dumps(failures, indent = 4, sort_keys = True)
@@ -381,7 +389,9 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         except KeyError:
             runner = TFRunner(train_dirs = train_dirs, allow_tensorflow = allow_tensorflow, checkpoint_name = checkpoint_name, eval_model_params = eval_model_params, couple_net = eval_couple_net,
                 redis_address = redis_address, num_workers = num_workers, worker_seed = eval_seed, num_environments = num_environments, num_cpu = num_cpu).__enter__()
-            if daemon: # Don't cache runner if not daemon as it prevents termination of Ray workers.
+            if daemon and not runner.remote_evaluators:
+                # Don't cache runner if not daemon as it prevents termination of Ray workers.
+                # Don't cache runner if remote evaluators as remote evaluators would cache old eval_model_params.
                 runner_cache[train_dirs[0]] = runner
         remote_evaluators = runner.remote_evaluators
 
@@ -394,6 +404,9 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         'rra': env.params.gamma_low,
         'asset_classes': initial_results['asset_allocation'].classes(),
         'asset_allocation': initial_results['asset_allocation'].as_list(),
+        'asset_allocation_tax_free': initial_results['asset_allocation_tax_free'].as_list() if initial_results['asset_allocation_tax_free'] else None,
+        'asset_allocation_tax_deferred': initial_results['asset_allocation_tax_deferred'].as_list() if initial_results['asset_allocation_tax_deferred'] else None,
+        'asset_allocation_taxable': initial_results['asset_allocation_taxable'].as_list() if initial_results['asset_allocation_taxable'] else None,
         'pv_preretirement_income': env.preretirement_income_wealth if env.preretirement_years > 0 else None,
         'pv_retired_income': env.retired_income_wealth,
         'pv_future_taxes': env.pv_taxes,

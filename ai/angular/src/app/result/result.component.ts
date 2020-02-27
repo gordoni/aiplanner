@@ -1,5 +1,5 @@
 /* AIPlanner - Deep Learning Financial Planner
- * Copyright (C) 2018-2019 Gordon Irlam
+ * Copyright (C) 2018-2020 Gordon Irlam
  *
  * All rights reserved. This program may not be used, copied, modified,
  * or redistributed without permission.
@@ -29,6 +29,24 @@ export class ResultComponent implements OnInit {
     private utils: Utils,
   ) {}
 
+  aaStr(aa) {
+
+    if (aa) {
+      var asset_allocation = '';
+      var carry = 0;
+      for (let alloc of aa) {
+        if (asset_allocation)
+          asset_allocation += '/';
+        var val = Math.round(alloc * 100 + carry);
+        asset_allocation += val;
+        carry += alloc * 100 - val;
+      }
+      return asset_allocation;
+    } else {
+      return null;
+    }
+  }
+
   doResult(result) {
 
     var asset_classes = '';
@@ -41,16 +59,6 @@ export class ResultComponent implements OnInit {
         asset_classes += ac;
     }
 
-    var asset_allocation = '';
-    var carry = 0;
-    for (let alloc of result.asset_allocation) {
-      if (asset_allocation)
-        asset_allocation += '/';
-      var val = Math.round(alloc * 100 + carry);
-      asset_allocation += val;
-      carry += alloc * 100 - val;
-    }
-
     this.results = {
       'error': null,
       'warnings': result.warnings,
@@ -60,7 +68,10 @@ export class ResultComponent implements OnInit {
       'nominal_spias_adjust': result.nominal_spias_adjust == null ? null : Math.round(result.nominal_spias_adjust * 1000) / 10,
       'nominal_spias_purchase': result.nominal_spias_purchase == null ? null : this.utils.comma(result.nominal_spias_purchase),
       'asset_classes': asset_classes,
-      'asset_allocation': asset_allocation,
+      'asset_allocation': this.aaStr(result.asset_allocation),
+      'asset_allocation_tax_free': this.aaStr(result.asset_allocation_tax_free),
+      'asset_allocation_tax_deferred': this.aaStr(result.asset_allocation_tax_deferred),
+      'asset_allocation_taxable': this.aaStr(result.asset_allocation_taxable),
       'real_bonds_duration': result.real_bonds_duration == null ? null : Math.round(result.real_bonds_duration),
       'nominal_bonds_duration': result.nominal_bonds_duration == null ? null : Math.round(result.nominal_bonds_duration),
       'retirement_contribution': result.retirement_contribution == null ? null : this.utils.comma(result.retirement_contribution),

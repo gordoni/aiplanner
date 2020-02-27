@@ -1,7 +1,7 @@
 AIPlanner API documentation
 ***************************
 
-February 17, 2020.
+February 26, 2020.
 
 This document describes the AIPlanner - Deep Reinforcement Learning
 Financial Planner web based application programming interface.
@@ -30,6 +30,9 @@ which results in something like:
                  "retirement_contribution": 0.0,
                  "asset_classes": ["stocks", "real_bonds"],
                  "asset_allocation": [0.8695251175100378, 0.1304748824899622],
+                 "asset_allocation_tax_free": null,
+                 "asset_allocation_tax_deferred": [0.8695251175100378, 0.1304748824899622],
+                 "asset_allocation_taxable": null,
                  "real_bonds_duration": 21.3,
                  "nominal_bonds_duration": null,
                  "nominal_spias_adjust": null,
@@ -649,8 +652,35 @@ Asset allocation
 
 asset_allocation: [<number>, ... ]
 
-The fractional allocations of the investment portfolio to the asset
-classes in the same order as asset_classes.
+The fractional allocations of the overall investment portfolio to the
+asset classes in the same order as asset_classes.
+
+Asset allocation tax free
+-------------------------
+
+asset_allocation_tax_free: [<number>, ... ] or null
+
+The fractional allocations of the tax free investment portfolio to the
+asset classes in the same order as asset_classes, or null if tax free
+assets are zero after the recommended consume amount.
+
+Asset allocation tax deferred
+-----------------------------
+
+asset_allocation_tax_deferred: [<number>, ... ] or null
+
+The fractional allocations of the tax deferred investment portfolio to
+the asset classes in the same order as asset_classes, or null if tax
+deferred assets are zero after the recommended consume amount.
+
+Asset allocation taxable
+------------------------
+
+asset_allocation_taxable: [<number>, ... ] or null
+
+The fractional allocations of the taxable investment portfolio to the
+asset classes in the same order as asset_classes, or null if taxable
+assets are zero after the recommended consume amount.
 
 Real bonds duration
 -------------------

@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -229,7 +229,7 @@ class Evaluator(object):
                 if all(finished):
                     break
 
-            warnings = self.merge_warnings(env.warnings for env in envs)
+            warnings = self.merge_warnings(tuple(env.warnings for env in envs))
 
             return pack_value_weights(sorted(rewards)), pack_value_weights(sorted(erewards)), pack_value_weights(sorted(estates)), \
                 reward_initial, weight_sum, consume_mean, consume_m2, self.trace, warnings
@@ -299,9 +299,10 @@ class Evaluator(object):
             self.consume_m2 = 0
             for weight_sum, consume_mean, consume_m2 in zip(weight_sums, consume_means, consume_m2s):
                 if weight_sum > 0:
+                    self.weight_sum += weight_sum
                     delta = consume_mean - self.consume_mean
-                    self.consume_mean = (self.weight_sum * self.consume_mean + weight_sum * consume_mean) / (self.weight_sum + weight_sum)
-                    self.consume_m2 += consume_m2 + delta ** 2 * self.weight_sum * weight_sum / (self.weight_sum + weight_sum)
+                    self.consume_mean += (weight_sum / self.weight_sum) * delta
+                    self.consume_m2 += consume_m2 + delta ** 2 * (self.weight_sum - weight_sum) * weight_sum / self.weight_sum
 
             self.trace = tuple(chain(*traces))[:self.num_trace_episodes]
 

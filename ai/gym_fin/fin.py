@@ -1040,9 +1040,22 @@ class Fin:
 
         real_spias_purchase = real_tax_free_spias + real_tax_deferred_spias + real_taxable_spias
         nominal_spias_purchase = nominal_tax_free_spias + nominal_tax_deferred_spias + nominal_taxable_spias
+
+        tax_free_assets, tax_deferred_assets, taxable_assets = self.allocate_aa(p_tax_free, p_tax_deferred, p_taxable, asset_allocation)
+
+        def normalize_aa(assets, p_value):
+            s = sum(assets.aa.values())
+            if p_value > 0 and s > 0:
+                return AssetAllocation(**{ac: alloc / s for ac, alloc in assets.aa.items()})
+            else:
+                return None
+
         return {
             'consume': consume / self.params.time_period,
             'asset_allocation': asset_allocation,
+            'asset_allocation_tax_free': normalize_aa(tax_free_assets, p_tax_free),
+            'asset_allocation_tax_deferred': normalize_aa(tax_deferred_assets, p_tax_deferred),
+            'asset_allocation_taxable': normalize_aa(taxable_assets, p_taxable),
             'retirement_contribution': retirement_contribution / self.params.time_period \
                 if self.income_preretirement_years > 0 or self.income_preretirement_years2 > 0 else None,
             'real_spias_purchase': real_spias_purchase if self.params.real_spias and self.spias else None,

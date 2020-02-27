@@ -519,14 +519,24 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         if evaluate:
             results = self.run_evaluate(api_data, result_dir, options = options, prefix = prefix)
-            data = (dumps(results, sort_keys = True) + '\n').encode('utf-8')
+            try:
+                data = (dumps(results, allow_nan = False, sort_keys = True) + '\n').encode('utf-8')
+            except ValueError:
+                self.notify_admin('error', 'Nan/inf in JSON result')
+                self.send_error(500, 'Internal Server Error: Nan/inf in JSON result')
+                return
         else:
             try:
                 aid, result = self.run_model(self.server.infer_daemon, api_data, result_dir, options = options, prefix = prefix)
-                data = (dumps(result) + '\n').encode('utf-8')
             except Overloaded as e:
                 self.server.logger.report_exception(e)
                 self.send_error(503, 'Overloaded: try again later')
+                return
+            try:
+                data = (dumps(result, allow_nan = False) + '\n').encode('utf-8')
+            except ValueError:
+                self.notify_admin('error', 'Nan/inf in JSON result')
+                self.send_error(500, 'Internal Server Error: Nan/inf in JSON result')
                 return
         return data
 

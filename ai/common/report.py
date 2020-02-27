@@ -34,7 +34,26 @@ def generate_report(api, result_dir, results, results_dir):
 
     def dollar(x):
 
-        return '$' + sub(r'\B(?=(\d{3})+(?!\d))', ',', str(round(x)))
+        try:
+            return '$' + sub(r'\B(?=(\d{3})+(?!\d))', ',', str(round(x)))
+        except ValueError:
+            return str(x) # NaN.
+
+    def aa_str(aa):
+
+        if aa:
+            asset_allocation = ''
+            carry = 0
+            for alloc in aa:
+                if asset_allocation:
+                    asset_allocation += '/'
+                val = round(alloc * 100 + carry)
+                asset_allocation += str(val)
+                carry += alloc * 100 - val
+        else:
+            asset_allocation = None
+
+        return asset_allocation
 
     filename = 'aiplanner.pdf'
 
@@ -99,17 +118,19 @@ def generate_report(api, result_dir, results, results_dir):
                     asset_classes += 'bonds'
                 else:
                     asset_classes += ac
-            asset_allocation = ''
-            carry = 0
-            for alloc in result['asset_allocation']:
-                if asset_allocation:
-                    asset_allocation += '/'
-                val = round(alloc * 100 + carry)
-                asset_allocation += str(val)
-                carry += alloc * 100 - val
+            asset_allocation = aa_str(result['asset_allocation'])
+            asset_allocation_tax_free = aa_str(result['asset_allocation_tax_free'])
+            asset_allocation_tax_deferred = aa_str(result['asset_allocation_tax_deferred'])
+            asset_allocation_taxable = aa_str(result['asset_allocation_taxable'])
             s = 'Current recommended after tax consumption: ' + dollar(result['consume']) + '<br/>' + \
-                'Recommended diversified ' + asset_classes + ' asset allocation: ' + asset_allocation + '<br/>' + \
-                'International diversification: optional'
+                'Recommended diversified ' + asset_classes + ' asset allocation: ' + asset_allocation + '<br/>'
+            if asset_allocation_tax_free and (asset_allocation_tax_deferred or asset_allocation_taxable):
+                s += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tax free (Roth): ' + asset_allocation_tax_free + '<br/>'
+            if asset_allocation_tax_deferred and (asset_allocation_tax_free or asset_allocation_taxable):
+                s += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tax deferred (traditional): ' + asset_allocation_tax_deferred + '<br/>'
+            if asset_allocation_taxable and (asset_allocation_tax_free or asset_allocation_tax_deferred):
+                s += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tax free (Roth): ' + asset_allocation_taxable + '<br/>'
+            s += 'International diversification: optional'
             def duration(d):
                 return 'short' if d <= 2 else 'intermediate' if d <= 9 else 'long'
             if result['real_bonds_duration'] != None:

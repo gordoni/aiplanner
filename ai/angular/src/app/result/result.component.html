@@ -1,7 +1,7 @@
 <!--
 
 AIPlanner - Deep Learning Financial Planner
-Copyright (C) 2018-2019 Gordon Irlam
+Copyright (C) 2018-2020 Gordon Irlam
 
 All rights reserved. This program may not be used, copied, modified,
 or redistributed without permission.
@@ -47,7 +47,17 @@ PURPOSE.
           Current recommended after tax consumption: {{results.consume}}
           <br>
           Recommended diversified {{results.asset_classes}} asset allocation: {{results.asset_allocation}}
-          <br>
+        </div>
+        <div class="indent" *ngIf="results.asset_allocation_tax_free && (results.asset_allocation_tax_deferred || results.asset_allocation_taxable)">
+          Tax free (Roth): {{results.asset_allocation_tax_free}}
+        </div>
+        <div class="indent" *ngIf="results.asset_allocation_tax_deferred && (results.asset_allocation_tax_free || results.asset_allocation_taxable)">
+          Tax deferred (traditional): {{results.asset_allocation_tax_deferred}}
+        </div>
+        <div class="indent" *ngIf="results.asset_allocation_taxable && (results.asset_allocation_tax_free || results.asset_allocation_tax_deferred)">
+          Taxable: {{results.asset_allocation_taxable}}
+        </div>
+        <div>
           International diversification: optional
         </div>
         <div *ngIf="results.real_bonds_duration != null">
