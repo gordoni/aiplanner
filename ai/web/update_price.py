@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019 Gordon Irlam
+# Copyright (C) 2019-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -13,29 +13,73 @@
 from argparse import ArgumentParser
 from datetime import datetime, timedelta
 from json import dumps, loads
+from math import isnan
+from os import remove
 from os.path import expanduser
-from re import search
 from sys import stdin
+from tempfile import NamedTemporaryFile
 from urllib.request import urlopen
+
+import pandas as pd
 
 def update(root_dir, read_stdin, write_stdout):
 
-    page = stdin.read() if read_stdin else urlopen('https://www.wsj.com/market-data/stocks/peyields').read().decode('utf-8')
+    data = stdin.buffer.read() if read_stdin else urlopen('https://us.spindices.com/documents/additional-material/sp-500-eps-est.xlsx').read()
+    tmp = NamedTemporaryFile(suffix = '.xlsx', delete = False)
+    try:
+        tmp.write(data)
+        tmp.close()
+        df = pd.read_excel(tmp.name, keep_default_na = False)
+    finally:
+        remove(tmp.name)
 
-    date, trailing, forward = search('Other Indexes.*?<tr[^>]*><th[^>]*></th><th[^>]*>(\d+/\d+/\d{2})[^<]*</th><th[^>]*>Year ago[^<]*</th><th[^>]*>Estimate.*?<tr[^>]*><td[^>]*>S&amp;P 500 Index</td><td[^>]*>(\d+.\d+)[^<]*</td><td[^>]*>\d+.\d+</td><td[^>]*>(\d+.\d+)', page).groups()
-    date = datetime.strptime(date, '%m/%d/%y')
-    trailing = float(trailing)
-    forward = float(forward)
-    date_str = date.date().isoformat()
+    table = df.values
+    q_dates = []
+    q_earn = []
+    seen_estimates = False
+    seen_actuals = False
+    for i, row in enumerate(table):
+        if row[0] == 'Data as of the close of:':
+            try:
+                date = datetime.strptime(row[3], '%m/%d/%Y')
+            except TypeError:
+                date = row[3]
+            date_str = date.date().isoformat()
+        elif row[0] == 'S&P 500 close of:':
+            price = row[3]
+        elif row[0] == 'ESTIMATES':
+            seen_estimates = True
+            assert table[i - 5][3] == 'AS REPORTED'
+            assert table[i - 3][3] == 'PER SHR'
+        elif row[0] == 'ACTUALS':
+            seen_actuals = True
+        elif row[0] == '':
+            if seen_actuals:
+                break
+        elif seen_estimates:
+            try:
+                q_date = datetime.strptime(row[0].split()[0], '%m/%d/%Y')
+            except AttributeError:
+                q_date = row[0]
+            q_date_str = q_date.date().isoformat()
+            q_dates.insert(0, q_date_str)
+            q_earn.insert(0, row[3])
+
+    for i, q_date in enumerate(q_dates):
+        if q_date > date_str:
+            break
+
+    trailing = price / sum(q_earn[i - 4:i])
+    forward = price / sum(q_earn[i:i + 4])
 
     if write_stdout:
-        print(date_str, trailing ,forward)
+        print(date_str, trailing, forward)
 
     # Estimate of current observed stock market price to fair price.
-    # For 1950-2017 the harmonic mean S&P 500 P/E ratio (not CAPE) was 14.85 (based on Shiller's data).
+    # For 1950-2019 the harmonic mean S&P 500 P/E ratio (not CAPE) was 14.99 (based on Shiller's data).
 
     # Take harmonic mean of trailing and forward S&P 500 P/E. Serves as a reasonable rough estimate most of the time.
-    level = (1 / ((1 / trailing + 1 / forward) / 2)) / 14.85
+    level = (1 / ((1 / trailing + 1 / forward) / 2)) / 14.99
 
     now = datetime.utcnow()
     assert now - timedelta(days = 14) < date <= now

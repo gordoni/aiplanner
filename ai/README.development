@@ -81,7 +81,7 @@ Installing additional required components on Ubuntu 18.04 (currently
 not workable):
 
     sudo
-    apt install catdoc gnuplot-nox python3-pip python3-dev python3-mpi4py nodejs npm
+    apt install catdoc gnuplot-nox python3-xlrd python3-pip python3-dev python3-mpi4py nodejs npm
     apt install python3-boto3
     pip3 install tensorflow
     pip3 install gym
@@ -93,6 +93,7 @@ Installing additional required components on Amazon's Deep Learning
 AMI (Ubuntu):
 
     sudo apt install catdoc gnuplot-nox
+    sudo apt install python3-xlrd # for web/update_price.py
     source activate tensorflow_p36
     pip install arch --install-option='--no-binary'
         # only needed if you wish to fit your own volatility model
