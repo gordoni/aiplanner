@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -23,6 +23,8 @@ PARALLEL=Jobs
 
 SAVESTEPS=2000000
 
+EXTRA_TRAIN_ARGS="$*"
+
 TRAINING=generic
 UNIT=single
 STAGES="preretirement retired"
@@ -33,7 +35,7 @@ for STAGE in $STAGES; do
     for SPIAS in $SPIAS_TYPES; do
         for GAMMA in $GAMMAS; do
             TIMESTEPS=`timesteps $TRAINING $UNIT $STAGE $SPIAS $GAMMA`
-            ARGS="$TIMESTEPS --train-save-frequency=$SAVESTEPS"
+            ARGS="$TIMESTEPS --train-save-frequency=$SAVESTEPS $EXTRA_TRAIN_ARGS"
             if ! skip_model $TRAINING $UNIT $STAGE $SPIAS $GAMMA; then
                 train_scenarios $TRAINING $UNIT $STAGE $SPIAS $GAMMA "$ARGS"
             fi

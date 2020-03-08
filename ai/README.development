@@ -389,6 +389,15 @@ very large spot instances slowing the training process):
     cd ~/aiplanner/ai/api
     nohup ./train > /tmp/train.out &
 
+A presumed bug in Ray 0.7.3 means that completion of training of the
+first training run kills all the other training workers. This can be
+worked around by specifying:
+
+    nohup ./train --train-num-workers=0 --num-cpu=1 > /tmp/train.out &
+
+but it increases the elapsed training time (to around 100 hours on a
+single c5.24xlarge instance).
+
 Training logs will be written to /tmp/train* . Progress can be
 monitored using a command similar to:
 
