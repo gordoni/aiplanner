@@ -465,10 +465,10 @@ eval_scenarios () {
                 evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2e6"
                 ;;
            tax_diverse)
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=0.5e5 --master-p-tax-deferred=1.0e5 --master-p-taxable-stocks=0.3e5 --master-p-taxable-real-bonds=0.2e5"
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse5e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=1.25e5 --master-p-tax-deferred=2.5e5 --master-p-taxable-stocks=0.75e5 --master-p-taxable-real-bonds=0.5e5"
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2.5e5 --master-p-tax-deferred=5.0e5 --master-p-taxable-stocks=1.5e5 --master-p-taxable-real-bonds=1.0e5"
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=0.5e6 --master-p-tax-deferred=1.0e6 --master-p-taxable-stocks=0.3e6 --master-p-taxable-real-bonds=0.2e6"
+               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=2e5"
+               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse5e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=5e5"
+               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=1e6"
+               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=2e6"
                ;;
            p_none)
                evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age30-p_none$LABEL "$EVAL_ARGS $ARGS --master-age-start=30 --master-income-preretirement=80e3 --master-consume-preretirement=50e3"
@@ -495,8 +495,8 @@ eval_scenarios () {
                 evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_diverse2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-age-start2=67 --master-p-weighted=2e6"
                 evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_diverse5e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-age-start2=67 --master-p-weighted=5e6"
                 ;;
-            tax_diverse1e6)
-                evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_diverse1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-age-start2=67 --master-p-weighted=1e6"
+            tax_diverse2e6)
+                evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_diverse2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-age-start2=67 --master-p-weighted=2e6"
                 ;;
         esac
     fi

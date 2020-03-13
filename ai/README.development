@@ -415,8 +415,11 @@ bias:
 
     [edit] ~/aiplanner-data/models.new/models-adjust.json
 
-See ~/aiplanner/ai/models-adjust-example.json for typical adjustments
-to apply, or perhaps simply copy this file to the above.
+See ~/aiplanner/ai/validation/run-ai6-bias for an example script for
+assessing bias. Correcting for bias only seems to be important for
+RRA=6. See ~/aiplanner/ai/models-adjust-example.json for an example of
+how to represent the bias adjustments. Note that the same bias
+adjustment is applied to all uses of a particular model.
 
 The models should then be installed:
 
@@ -524,7 +527,7 @@ The api server can be distributed as a docker container.
     cd ~/aiplanner/ai
     docker build -t aiplanner-base-deps docker/base-deps
     tar cf docker/apiserver/dotspia.tar -C ~/ .spia
-    tar zcf docker/apiserver/models.tgz -C ~/aiplanner-data/models . --no-wildcards-match-slash --exclude 'seed_*_*'
+    tar zcf docker/apiserver/models.tgz -C ~/aiplanner-data/models . --no-wildcards-match-slash --exclude 'seed_*_*' --exclude '*bias*'
     git rev-parse HEAD > docker/apiserver/git-rev
     rm -rf docker/apiserver/aiplanner
     mkdir -p docker/apiserver/aiplanner
