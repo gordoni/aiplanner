@@ -446,7 +446,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             if data == None:
                 return None
             result = loads(data.decode('utf-8'))
-            if result['error'] or result['result'][0][0]['error']:
+            if result['error'] or result['result'][0]['results'][0]['error']:
                 self.server.logger.log_binary(data)
                 return False
 

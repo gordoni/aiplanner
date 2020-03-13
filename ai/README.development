@@ -684,7 +684,9 @@ The api server has three functions:
 The api server can be run in development as follows:
 
     cd ~/aiplanner/ai
-    # First stop any running apiserver container
+    # First create a default market-data.json file
+    cp docker/apiserver/market-data.json ~/aiplanner-data/
+    # Stop any running apiserver container
     docker ps
     docker stop <containerid>
     # Then start up the development apiserver
