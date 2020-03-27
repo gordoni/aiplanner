@@ -37,7 +37,7 @@ def update(root_dir, read_stdin, write_stdout):
 
     now = datetime.utcnow()
     assert now - timedelta(days = 7) < date <= now
-    assert 0.5 < level < 5.0
+    assert 0.3 < level < 10.0
 
     if write_stdout:
         print(level)
