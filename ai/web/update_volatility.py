@@ -22,7 +22,7 @@ def update(root_dir, read_stdin, write_stdout):
 
     page = stdin.read() if read_stdin else urlopen('https://docs.google.com/spreadsheets/d/1ZsyjisPp59vllL3JdHniK10t_2edj6Z-UxlpY8u_9yE/export?format=csv').read().decode('utf-8')
 
-    vix_str, date_str = search('VIX,(\d+\.\d+),,(\d{4}-\d{2}-\d{2})', page).groups()
+    vix_str, _, date_str = search('VIX,(\d+(\.\d+)?),,(\d{4}-\d{2}-\d{2})', page).groups()
     vix = float(vix_str)
     date = datetime.strptime(date_str, '%Y-%m-%d')
 
