@@ -39,7 +39,7 @@ def update(root_dir, read_stdin, write_stdout):
     seen_estimates = False
     seen_actuals = False
     for i, row in enumerate(table):
-        if row[0] == 'Data as of the close of:':
+        if row[0] == 'Date' or row[0] == 'Data as of the close of:':
             try:
                 date = datetime.strptime(row[3], '%m/%d/%Y')
             except TypeError:

@@ -475,7 +475,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             try:
                 assert now - timedelta(days = 14) < real_short_rate_date <= now or real_short_rate_date == epoch
                 assert now - timedelta(days = 14) < nominal_short_rate_date <= now or nominal_short_rate_date == epoch
-                assert now - timedelta(days = 14) < stocks_price_date <= now or stocks_price_date == epoch
+                assert now - timedelta(days = 21) < stocks_price_date <= now or stocks_price_date == epoch
                 assert now - timedelta(days = 14) < stocks_volatility_date <= now or stocks_volatility_date == epoch
             except AssertionError as e:
                 self.server.logger.report_exception(e)
