@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import logging
 import numpy as np
 
@@ -45,7 +41,7 @@ class AsyncHyperBandScheduler(FIFOScheduler):
                  metric="episode_reward_mean",
                  mode="max",
                  max_t=100,
-                 grace_period=10,
+                 grace_period=1,
                  reduction_factor=4,
                  brackets=1):
         assert max_t > 0, "Max (time_attr) not valid!"
@@ -92,6 +88,8 @@ class AsyncHyperBandScheduler(FIFOScheduler):
 
     def on_trial_result(self, trial_runner, trial, result):
         action = TrialScheduler.CONTINUE
+        if self._time_attr not in result or self._metric not in result:
+            return action
         if result[self._time_attr] >= self._max_t:
             action = TrialScheduler.STOP
         else:
@@ -103,6 +101,8 @@ class AsyncHyperBandScheduler(FIFOScheduler):
         return action
 
     def on_trial_complete(self, trial_runner, trial, result):
+        if self._time_attr not in result or self._metric not in result:
+            return
         bracket = self._trial_info[trial.trial_id]
         bracket.on_result(trial, result[self._time_attr],
                           self._metric_op * result[self._metric])
@@ -124,12 +124,12 @@ class _Bracket():
     the correct rung corresponding to the current iteration of the result.
 
     Example:
-        >>> b = _Bracket(1, 10, 2, 3)
+        >>> b = _Bracket(1, 10, 2, 0)
         >>> b.on_result(trial1, 1, 2)  # CONTINUE
         >>> b.on_result(trial2, 1, 4)  # CONTINUE
         >>> b.cutoff(b._rungs[-1][1]) == 3.0  # rungs are reversed
         >>> b.on_result(trial3, 1, 1)  # STOP
-        >>> b.cutoff(b._rungs[0][1]) == 2.0
+        >>> b.cutoff(b._rungs[3][1]) == 2.0
     """
 
     def __init__(self, min_t, max_t, reduction_factor, s):
@@ -141,7 +141,8 @@ class _Bracket():
     def cutoff(self, recorded):
         if not recorded:
             return None
-        return np.percentile(list(recorded.values()), (1 - 1 / self.rf) * 100)
+        return np.nanpercentile(
+            list(recorded.values()), (1 - 1 / self.rf) * 100)
 
     def on_result(self, trial, cur_iter, cur_rew):
         action = TrialScheduler.CONTINUE

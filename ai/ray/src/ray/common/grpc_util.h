@@ -1,9 +1,26 @@
+// Copyright 2017 The Ray Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef RAY_COMMON_GRPC_UTIL_H
 #define RAY_COMMON_GRPC_UTIL_H
 
 #include <google/protobuf/map.h>
 #include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>
+
+#include <sstream>
+
 #include "status.h"
 
 namespace ray {
@@ -13,30 +30,40 @@ template <class Message>
 class MessageWrapper {
  public:
   /// Construct an empty message wrapper. This should not be used directly.
-  MessageWrapper() {}
+  MessageWrapper() : message_(std::make_shared<Message>()) {}
 
   /// Construct from a protobuf message object.
   /// The input message will be **copied** into this object.
   ///
   /// \param message The protobuf message.
-  explicit MessageWrapper(const Message message) : message_(std::move(message)) {}
+  explicit MessageWrapper(const Message message)
+      : message_(std::make_shared<Message>(std::move(message))) {}
+
+  /// Construct from a protobuf message shared_ptr.
+  ///
+  /// \param message The protobuf message.
+  explicit MessageWrapper(std::shared_ptr<Message> message) : message_(message) {}
 
   /// Construct from protobuf-serialized binary.
   ///
   /// \param serialized_binary Protobuf-serialized binary.
-  explicit MessageWrapper(const std::string &serialized_binary) {
-    message_.ParseFromString(serialized_binary);
+  explicit MessageWrapper(const std::string &serialized_binary)
+      : message_(std::make_shared<Message>()) {
+    message_->ParseFromString(serialized_binary);
   }
 
+  /// Get const reference of the protobuf message.
+  const Message &GetMessage() const { return *message_; }
+
   /// Get reference of the protobuf message.
-  const Message &GetMessage() const { return message_; }
+  Message &GetMutableMessage() { return *message_; }
 
   /// Serialize the message to a string.
-  const std::string Serialize() const { return message_.SerializeAsString(); }
+  const std::string Serialize() const { return message_->SerializeAsString(); }
 
  protected:
   /// The wrapped message.
-  Message message_;
+  std::shared_ptr<Message> message_;
 };
 
 /// Helper function that converts a ray status to gRPC status.
@@ -54,7 +81,11 @@ inline Status GrpcStatusToRayStatus(const grpc::Status &grpc_status) {
   if (grpc_status.ok()) {
     return Status::OK();
   } else {
-    return Status::IOError(grpc_status.error_message());
+    std::stringstream msg;
+    msg << grpc_status.error_code();
+    msg << ": ";
+    msg << grpc_status.error_message();
+    return Status::IOError(msg.str());
   }
 }
 
@@ -70,17 +101,6 @@ template <class T>
 inline std::vector<T> VectorFromProtobuf(
     const ::google::protobuf::RepeatedField<T> &pb_repeated) {
   return std::vector<T>(pb_repeated.begin(), pb_repeated.end());
-}
-
-template <typename Message>
-using AddFunction = void (Message::*)(const ::std::string &value);
-/// Add a vector of type ID to protobuf message.
-template <typename ID, typename Message>
-inline void IdVectorToProtobuf(const std::vector<ID> &ids, Message &message,
-                               AddFunction<Message> add_func) {
-  for (const auto &id : ids) {
-    (message.*add_func)(id.Binary());
-  }
 }
 
 /// Converts a Protobuf `RepeatedField` to a vector of IDs.

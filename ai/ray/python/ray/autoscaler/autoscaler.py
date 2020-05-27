@@ -1,150 +1,42 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+from collections import defaultdict
 import copy
 import hashlib
 import json
+import jsonschema
 import logging
 import math
+import numpy as np
 import os
 import subprocess
 import threading
-import traceback
 import time
-from collections import defaultdict
-
-import numpy as np
-import ray.services as services
 import yaml
-from ray.worker import global_worker
+
+import ray
 from ray.autoscaler.docker import dockerize_if_needed
 from ray.autoscaler.node_provider import get_node_provider, \
     get_default_config
 from ray.autoscaler.tags import (TAG_RAY_LAUNCH_CONFIG, TAG_RAY_RUNTIME_CONFIG,
                                  TAG_RAY_NODE_STATUS, TAG_RAY_NODE_TYPE,
-                                 TAG_RAY_NODE_NAME)
+                                 TAG_RAY_NODE_NAME, STATUS_UP_TO_DATE,
+                                 STATUS_UNINITIALIZED, NODE_TYPE_WORKER)
 from ray.autoscaler.updater import NodeUpdaterThread
 from ray.ray_constants import AUTOSCALER_MAX_NUM_FAILURES, \
     AUTOSCALER_MAX_LAUNCH_BATCH, AUTOSCALER_MAX_CONCURRENT_LAUNCHES, \
     AUTOSCALER_UPDATE_INTERVAL_S, AUTOSCALER_HEARTBEAT_TIMEOUT_S, \
-    AUTOSCALER_RESOURCE_REQUEST_CHANNEL
-from six import string_types
+    AUTOSCALER_RESOURCE_REQUEST_CHANNEL, MEMORY_RESOURCE_UNIT_BYTES
+import ray.services as services
+from ray.worker import global_worker
 from six.moves import queue
 
 logger = logging.getLogger(__name__)
 
 REQUIRED, OPTIONAL = True, False
-
-# For (a, b), if a is a dictionary object, then
-# no extra fields can be introduced.
-
-CLUSTER_CONFIG_SCHEMA = {
-    # An unique identifier for the head node and workers of this cluster.
-    "cluster_name": (str, REQUIRED),
-
-    # The minimum number of workers nodes to launch in addition to the head
-    # node. This number should be >= 0.
-    "min_workers": (int, OPTIONAL),
-
-    # The maximum number of workers nodes to launch in addition to the head
-    # node. This takes precedence over min_workers.
-    "max_workers": (int, REQUIRED),
-
-    # The number of workers to launch initially, in addition to the head node.
-    "initial_workers": (int, OPTIONAL),
-
-    # The mode of the autoscaler e.g. default, aggressive
-    "autoscaling_mode": (str, OPTIONAL),
-
-    # The autoscaler will scale up the cluster to this target fraction of
-    # resources usage. For example, if a cluster of 8 nodes is 100% busy
-    # and target_utilization was 0.8, it would resize the cluster to 10.
-    "target_utilization_fraction": (float, OPTIONAL),
-
-    # If a node is idle for this many minutes, it will be removed.
-    "idle_timeout_minutes": (int, OPTIONAL),
-
-    # Cloud-provider specific configuration.
-    "provider": (
-        {
-            "type": (str, REQUIRED),  # e.g. aws
-            "region": (str, OPTIONAL),  # e.g. us-east-1
-            "availability_zone": (str, OPTIONAL),  # e.g. us-east-1a
-            "module": (str,
-                       OPTIONAL),  # module, if using external node provider
-            "project_id": (None, OPTIONAL),  # gcp project id, if using gcp
-            "head_ip": (str, OPTIONAL),  # local cluster head node
-            "worker_ips": (list, OPTIONAL),  # local cluster worker nodes
-            "use_internal_ips": (bool, OPTIONAL),  # don't require public ips
-            "extra_config": (dict, OPTIONAL),  # provider-specific config
-        },
-        REQUIRED),
-
-    # How Ray will authenticate with newly launched nodes.
-    "auth": (
-        {
-            "ssh_user": (str, REQUIRED),  # e.g. ubuntu
-            "ssh_private_key": (str, OPTIONAL),
-        },
-        REQUIRED),
-
-    # Docker configuration. If this is specified, all setup and start commands
-    # will be executed in the container.
-    "docker": (
-        {
-            "image": (str, OPTIONAL),  # e.g. tensorflow/tensorflow:1.5.0-py3
-            "container_name": (str, OPTIONAL),  # e.g., ray_docker
-            # shared options for starting head/worker docker
-            "run_options": (list, OPTIONAL),
-
-            # image for head node, takes precedence over "image" if specified
-            "head_image": (str, OPTIONAL),
-            # head specific run options, appended to run_options
-            "head_run_options": (list, OPTIONAL),
-            # analogous to head_image
-            "worker_image": (str, OPTIONAL),
-            # analogous to head_run_options
-            "worker_run_options": (list, OPTIONAL),
-        },
-        OPTIONAL),
-
-    # Provider-specific config for the head node, e.g. instance type.
-    "head_node": (dict, OPTIONAL),
-
-    # Provider-specific config for worker nodes. e.g. instance type.
-    "worker_nodes": (dict, OPTIONAL),
-
-    # Map of remote paths to local paths, e.g. {"/tmp/data": "/my/local/data"}
-    "file_mounts": (dict, OPTIONAL),
-
-    # List of commands that will be run before `setup_commands`. If docker is
-    # enabled, these commands will run outside the container and before docker
-    # is setup.
-    "initialization_commands": (list, OPTIONAL),
-
-    # List of common shell commands to run to setup nodes.
-    "setup_commands": (list, OPTIONAL),
-
-    # Commands that will be run on the head node after common setup.
-    "head_setup_commands": (list, OPTIONAL),
-
-    # Commands that will be run on worker nodes after common setup.
-    "worker_setup_commands": (list, OPTIONAL),
-
-    # Command to start ray on the head node. You shouldn't need to modify this.
-    "head_start_ray_commands": (list, OPTIONAL),
-
-    # Command to start ray on worker nodes. You shouldn't need to modify this.
-    "worker_start_ray_commands": (list, OPTIONAL),
-
-    # Whether to avoid restarting the cluster during updates. This field is
-    # controlled by the ray --no-restart flag and cannot be set by the user.
-    "no_restart": (None, OPTIONAL),
-}
+RAY_SCHEMA_PATH = os.path.join(
+    os.path.dirname(ray.autoscaler.__file__), "ray-schema.json")
 
 
-class LoadMetrics(object):
+class LoadMetrics:
     """Container for cluster load metrics.
 
     Metrics here are updated from raylet heartbeats. The autoscaler
@@ -157,9 +49,11 @@ class LoadMetrics(object):
         self.last_heartbeat_time_by_ip = {}
         self.static_resources_by_ip = {}
         self.dynamic_resources_by_ip = {}
+        self.resource_load_by_ip = {}
         self.local_ip = services.get_node_ip_address()
 
-    def update(self, ip, static_resources, dynamic_resources):
+    def update(self, ip, static_resources, dynamic_resources, resource_load):
+        self.resource_load_by_ip[ip] = resource_load
         self.static_resources_by_ip[ip] = static_resources
 
         # We are not guaranteed to have a corresponding dynamic resource for
@@ -204,6 +98,7 @@ class LoadMetrics(object):
         prune(self.last_used_time_by_ip)
         prune(self.static_resources_by_ip)
         prune(self.dynamic_resources_by_ip)
+        prune(self.resource_load_by_ip)
         prune(self.last_heartbeat_time_by_ip)
 
     def approx_workers_used(self):
@@ -213,12 +108,20 @@ class LoadMetrics(object):
         return self._info()["NumNodesConnected"]
 
     def get_resource_usage(self):
+        num_nodes = len(self.static_resources_by_ip)
         nodes_used = 0.0
+        num_nonidle = 0
+        has_saturated_node = False
         resources_used = {}
         resources_total = {}
         for ip, max_resources in self.static_resources_by_ip.items():
             avail_resources = self.dynamic_resources_by_ip[ip]
+            resource_load = self.resource_load_by_ip[ip]
             max_frac = 0.0
+            for resource_id, amount in resource_load.items():
+                if amount > 0:
+                    has_saturated_node = True
+                    max_frac = 1.0  # the resource is saturated
             for resource_id, amount in max_resources.items():
                 used = amount - avail_resources[resource_id]
                 if resource_id not in resources_used:
@@ -232,6 +135,14 @@ class LoadMetrics(object):
                     if frac > max_frac:
                         max_frac = frac
             nodes_used += max_frac
+            if max_frac > 0:
+                num_nonidle += 1
+
+        # If any nodes have a queue buildup, assume all non-idle nodes are 100%
+        # busy, plus the head node. This guards against the case of not scaling
+        # up due to poor task packing.
+        if has_saturated_node:
+            nodes_used = min(num_nonidle + 1.0, num_nodes)
 
         return nodes_used, resources_used, resources_total
 
@@ -248,17 +159,25 @@ class LoadMetrics(object):
             now - t for t in self.last_heartbeat_time_by_ip.values()
         ]
         most_delayed_heartbeats = sorted(
-            list(self.last_heartbeat_time_by_ip.items()),
+            self.last_heartbeat_time_by_ip.items(),
             key=lambda pair: pair[1])[:5]
         most_delayed_heartbeats = {
             ip: (now - t)
             for ip, t in most_delayed_heartbeats
         }
+
+        def format_resource(key, value):
+            if key in ["object_store_memory", "memory"]:
+                return "{} GiB".format(
+                    round(value * MEMORY_RESOURCE_UNIT_BYTES / 1e9, 2))
+            else:
+                return round(value, 2)
+
         return {
             "ResourceUsage": ", ".join([
                 "{}/{} {}".format(
-                    round(resources_used[rid], 2),
-                    round(resources_total[rid], 2), rid)
+                    format_resource(rid, resources_used[rid]),
+                    format_resource(rid, resources_total[rid]), rid)
                 for rid in sorted(resources_used)
             ]),
             "NumNodesConnected": len(self.static_resources_by_ip),
@@ -284,7 +203,7 @@ class NodeLauncher(threading.Thread):
         super(NodeLauncher, self).__init__(*args, **kwargs)
 
     def _launch_node(self, config, count):
-        worker_filter = {TAG_RAY_NODE_TYPE: "worker"}
+        worker_filter = {TAG_RAY_NODE_TYPE: NODE_TYPE_WORKER}
         before = self.provider.non_terminated_nodes(tag_filters=worker_filter)
         launch_hash = hash_launch_conf(config["worker_nodes"], config["auth"])
         self.log("Launching {} nodes.".format(count))
@@ -292,8 +211,8 @@ class NodeLauncher(threading.Thread):
             config["worker_nodes"], {
                 TAG_RAY_NODE_NAME: "ray-{}-worker".format(
                     config["cluster_name"]),
-                TAG_RAY_NODE_TYPE: "worker",
-                TAG_RAY_NODE_STATUS: "uninitialized",
+                TAG_RAY_NODE_TYPE: NODE_TYPE_WORKER,
+                TAG_RAY_NODE_STATUS: STATUS_UNINITIALIZED,
                 TAG_RAY_LAUNCH_CONFIG: launch_hash,
             }, count)
         after = self.provider.non_terminated_nodes(tag_filters=worker_filter)
@@ -316,7 +235,7 @@ class NodeLauncher(threading.Thread):
         logger.info(prefix + " {}".format(statement))
 
 
-class ConcurrentCounter():
+class ConcurrentCounter:
     def __init__(self):
         self._value = 0
         self._lock = threading.Lock()
@@ -338,7 +257,7 @@ class ConcurrentCounter():
             return self._value
 
 
-class StandardAutoscaler(object):
+class StandardAutoscaler:
     """The autoscaling control loop for a Ray cluster.
 
     There are two ways to start an autoscaling cluster: manually by running
@@ -515,15 +434,18 @@ class StandardAutoscaler(object):
             nodes = self.workers()
             self.log_info_string(nodes, target_workers)
 
-        # Update nodes with out-of-date files
-        T = [
-            threading.Thread(
-                target=self.spawn_updater,
-                args=(node_id, commands),
-            ) for node_id, commands in (self.should_update(node_id)
-                                        for node_id in nodes)
-            if node_id is not None
-        ]
+        # Update nodes with out-of-date files.
+        # TODO(edoakes): Spawning these threads directly seems to cause
+        # problems. They should at a minimum be spawned as daemon threads.
+        # See https://github.com/ray-project/ray/pull/5903 for more info.
+        T = []
+        for node_id, commands, ray_start in (self.should_update(node_id)
+                                             for node_id in nodes):
+            if node_id is not None:
+                T.append(
+                    threading.Thread(
+                        target=self.spawn_updater,
+                        args=(node_id, commands, ray_start)))
         for t in T:
             t.start()
         for t in T:
@@ -622,7 +544,8 @@ class StandardAutoscaler(object):
             cluster_name=self.config["cluster_name"],
             file_mounts={},
             initialization_commands=[],
-            setup_commands=with_head_node_ip(
+            setup_commands=[],
+            ray_start_commands=with_head_node_ip(
                 self.config["worker_start_ray_commands"]),
             runtime_hash=self.runtime_hash,
             process_runner=self.process_runner,
@@ -632,23 +555,26 @@ class StandardAutoscaler(object):
 
     def should_update(self, node_id):
         if not self.can_update(node_id):
-            return (None, None)
+            return None, None, None  # no update
 
-        if self.files_up_to_date(node_id):
-            return (None, None)
+        status = self.provider.node_tags(node_id).get(TAG_RAY_NODE_STATUS)
+        if status == STATUS_UP_TO_DATE and self.files_up_to_date(node_id):
+            return None, None, None  # no update
 
         successful_updated = self.num_successful_updates.get(node_id, 0) > 0
         if successful_updated and self.config.get("restart_only", False):
-            init_commands = self.config["worker_start_ray_commands"]
+            init_commands = []
+            ray_commands = self.config["worker_start_ray_commands"]
         elif successful_updated and self.config.get("no_restart", False):
             init_commands = self.config["worker_setup_commands"]
+            ray_commands = []
         else:
-            init_commands = (self.config["worker_setup_commands"] +
-                             self.config["worker_start_ray_commands"])
+            init_commands = self.config["worker_setup_commands"]
+            ray_commands = self.config["worker_start_ray_commands"]
 
-        return (node_id, init_commands)
+        return (node_id, init_commands, ray_commands)
 
-    def spawn_updater(self, node_id, init_commands):
+    def spawn_updater(self, node_id, init_commands, ray_start_commands):
         updater = NodeUpdaterThread(
             node_id=node_id,
             provider_config=self.config["provider"],
@@ -659,6 +585,7 @@ class StandardAutoscaler(object):
             initialization_commands=with_head_node_ip(
                 self.config["initialization_commands"]),
             setup_commands=with_head_node_ip(init_commands),
+            ray_start_commands=with_head_node_ip(ray_start_commands),
             runtime_hash=self.runtime_hash,
             process_runner=self.process_runner,
             use_internal_ip=True)
@@ -683,7 +610,7 @@ class StandardAutoscaler(object):
 
     def workers(self):
         return self.provider.non_terminated_nodes(
-            tag_filters={TAG_RAY_NODE_TYPE: "worker"})
+            tag_filters={TAG_RAY_NODE_TYPE: NODE_TYPE_WORKER})
 
     def log_info_string(self, nodes, target):
         logger.info("StandardAutoscaler: {}".format(
@@ -714,76 +641,24 @@ class StandardAutoscaler(object):
 
     def kill_workers(self):
         logger.error("StandardAutoscaler: kill_workers triggered")
-
-        while True:
-            try:
-                nodes = self.workers()
-                if nodes:
-                    self.provider.terminate_nodes(nodes)
-                logger.error(
-                    "StandardAutoscaler: terminated {} node(s)".format(
-                        len(nodes)))
-            except Exception:
-                traceback.print_exc()
-
-            time.sleep(10)
+        nodes = self.workers()
+        if nodes:
+            self.provider.terminate_nodes(nodes)
+        logger.error("StandardAutoscaler: terminated {} node(s)".format(
+            len(nodes)))
 
 
-def typename(v):
-    if isinstance(v, type):
-        return v.__name__
-    else:
-        return type(v).__name__
-
-
-def check_required(config, schema):
-    # Check required schema entries
-    if not isinstance(config, dict):
-        raise ValueError("Config is not a dictionary")
-
-    for k, (v, kreq) in schema.items():
-        if v is None:
-            continue  # None means we don't validate the field
-        if kreq is REQUIRED:
-            if k not in config:
-                type_str = typename(v)
-                raise ValueError(
-                    "Missing required config key `{}` of type {}".format(
-                        k, type_str))
-            if not isinstance(v, type):
-                check_required(config[k], v)
-
-
-def check_extraneous(config, schema):
-    """Make sure all items of config are in schema"""
-    if not isinstance(config, dict):
-        raise ValueError("Config {} is not a dictionary".format(config))
-    for k in config:
-        if k not in schema:
-            raise ValueError("Unexpected config key `{}` not in {}".format(
-                k, list(schema.keys())))
-        v, kreq = schema[k]
-        if v is None:
-            continue
-        elif isinstance(v, type):
-            if not isinstance(config[k], v):
-                if v is str and isinstance(config[k], string_types):
-                    continue
-                raise ValueError(
-                    "Config key `{}` has wrong type {}, expected {}".format(
-                        k,
-                        type(config[k]).__name__, v.__name__))
-        else:
-            check_extraneous(config[k], v)
-
-
-def validate_config(config, schema=CLUSTER_CONFIG_SCHEMA):
+def validate_config(config):
     """Required Dicts indicate that no extra fields can be introduced."""
     if not isinstance(config, dict):
         raise ValueError("Config {} is not a dictionary".format(config))
 
-    check_required(config, schema)
-    check_extraneous(config, schema)
+    with open(RAY_SCHEMA_PATH) as f:
+        schema = json.load(f)
+    try:
+        jsonschema.validate(config, schema)
+    except jsonschema.ValidationError as e:
+        raise jsonschema.ValidationError(message=e.message) from None
 
 
 def fillout_defaults(config):
@@ -791,6 +666,7 @@ def fillout_defaults(config):
     defaults.update(config)
     merge_setup_commands(defaults)
     dockerize_if_needed(defaults)
+    defaults["auth"] = defaults.get("auth", {})
     return defaults
 
 

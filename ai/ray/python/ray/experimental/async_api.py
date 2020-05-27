@@ -1,37 +1,23 @@
-# Note: asyncio is only compatible with Python 3
-
 import asyncio
+
 import ray
-from ray.experimental.async_plasma import PlasmaProtocol, PlasmaEventHandler
+from ray.experimental.async_plasma import PlasmaEventHandler
+from ray.services import logger
 
 handler = None
-transport = None
-protocol = None
-
-
-async def _async_init():
-    global handler, transport, protocol
-    if handler is None:
-        worker = ray.worker.global_worker
-        loop = asyncio.get_event_loop()
-        worker.plasma_client.subscribe()
-        rsock = worker.plasma_client.get_notification_socket()
-        handler = PlasmaEventHandler(loop, worker)
-        transport, protocol = await loop.create_connection(
-            lambda: PlasmaProtocol(worker.plasma_client, handler), sock=rsock)
 
 
 def init():
-    """
-    Initialize synchronously.
-    """
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        raise Exception("You must initialize the Ray async API by calling "
-                        "async_api.init() or async_api.as_future(obj) before "
-                        "the event loop starts.")
-    else:
-        asyncio.get_event_loop().run_until_complete(_async_init())
+    """Initialize plasma event handlers for asyncio support."""
+    assert ray.is_initialized(), "Please call ray.init before async_api.init"
+
+    global handler
+    if handler is None:
+        worker = ray.worker.global_worker
+        loop = asyncio.get_event_loop()
+        handler = PlasmaEventHandler(loop, worker)
+        worker.core_worker.set_plasma_added_callback(handler)
+        logger.debug("AsyncPlasma Connection Created!")
 
 
 def as_future(object_id):
@@ -53,10 +39,7 @@ def shutdown():
 
     Cancels all related tasks and all the socket transportation.
     """
-    global handler, transport, protocol
+    global handler
     if handler is not None:
         handler.close()
-        transport.close()
         handler = None
-        transport = None
-        protocol = None

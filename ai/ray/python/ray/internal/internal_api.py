@@ -1,11 +1,32 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import ray.worker
 from ray import profiling
 
-__all__ = ["free"]
+__all__ = ["free", "global_gc"]
+
+
+def global_gc():
+    """Trigger gc.collect() on all workers in the cluster."""
+
+    worker = ray.worker.global_worker
+    worker.core_worker.global_gc()
+
+
+def memory_summary():
+    """Returns a formatted string describing memory usage in the cluster."""
+
+    import grpc
+    from ray.core.generated import node_manager_pb2
+    from ray.core.generated import node_manager_pb2_grpc
+
+    # We can ask any Raylet for the global memory info.
+    raylet = ray.nodes()[0]
+    raylet_address = "{}:{}".format(raylet["NodeManagerAddress"],
+                                    ray.nodes()[0]["NodeManagerPort"])
+    channel = grpc.insecure_channel(raylet_address)
+    stub = node_manager_pb2_grpc.NodeManagerServiceStub(channel)
+    reply = stub.FormatGlobalMemoryInfo(
+        node_manager_pb2.FormatGlobalMemoryInfoRequest(), timeout=30.0)
+    return reply.memory_summary
 
 
 def free(object_ids, local_only=False, delete_creating_tasks=False):
@@ -21,6 +42,11 @@ def free(object_ids, local_only=False, delete_creating_tasks=False):
     the some of the objects are in use, object stores will delete them later
     when the ref count is down to 0.
 
+    Examples:
+        >>> x_id = f.remote()
+        >>> ray.get(x_id)  # wait for x to be created first
+        >>> free([x_id])  # unpin & delete x globally
+
     Args:
         object_ids (List[ObjectID]): List of object IDs to delete.
         local_only (bool): Whether only deleting the list of objects in local
@@ -28,7 +54,7 @@ def free(object_ids, local_only=False, delete_creating_tasks=False):
         delete_creating_tasks (bool): Whether also delete the object creating
             tasks.
     """
-    worker = ray.worker.get_global_worker()
+    worker = ray.worker.global_worker
 
     if isinstance(object_ids, ray.ObjectID):
         object_ids = [object_ids]
@@ -43,14 +69,10 @@ def free(object_ids, local_only=False, delete_creating_tasks=False):
             raise TypeError("Attempting to call `free` on the value {}, "
                             "which is not an ray.ObjectID.".format(object_id))
 
-    if ray.worker._mode() == ray.worker.LOCAL_MODE:
-        worker.local_mode_manager.free(object_ids)
-        return
-
     worker.check_connected()
     with profiling.profile("ray.free"):
         if len(object_ids) == 0:
             return
 
-        worker.raylet_client.free_objects(object_ids, local_only,
-                                          delete_creating_tasks)
+        worker.core_worker.free_objects(object_ids, local_only,
+                                        delete_creating_tasks)

@@ -1,13 +1,13 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import logging
+
+import numpy as np
 
 import ray.ray_constants as ray_constants
 
+logger = logging.getLogger(__name__)
 
-class RayParams(object):
+
+class RayParams:
     """A class used to store the parameters used by Ray.
 
     Attributes:
@@ -23,6 +23,7 @@ class RayParams(object):
         num_gpus (int): Number of GPUs to configure the raylet with.
         resources: A dictionary mapping the name of a resource to the quantity
             of that resource available.
+        memory: Total available memory for workers requesting memory.
         object_store_memory: The amount of memory (in bytes) to start the
             object store with.
         redis_max_memory: The max amount of memory (in bytes) to allow redis
@@ -32,12 +33,12 @@ class RayParams(object):
         object_manager_port int: The port to use for the object manager.
         node_manager_port: The port to use for the node manager.
         node_ip_address (str): The IP address of the node that we are on.
+        raylet_ip_address (str): The IP address of the raylet that this node
+            connects to.
         object_id_seed (int): Used to seed the deterministic generation of
             object IDs. The same value can be used across multiple runs of the
             same job in order to generate the object IDs in a consistent
             manner. However, the same ID should not be used for different jobs.
-        local_mode (bool): True if the code should be executed serially
-            without Ray. This is useful for debugging.
         redirect_worker_output: True if the stdout and stderr of worker
             processes should be redirected to files.
         redirect_output (bool): True if stdout and stderr for non-worker
@@ -55,7 +56,13 @@ class RayParams(object):
         huge_pages: Boolean flag indicating whether to start the Object
             Store with hugetlbfs support. Requires plasma_directory.
         include_webui: Boolean flag indicating whether to start the web
-            UI, which displays the status of the Ray cluster.
+            UI, which displays the status of the Ray cluster. If this value is
+            None, then the UI will be started if the relevant dependencies are
+            present.
+        webui_host: The host to bind the web UI server to. Can either be
+            localhost (127.0.0.1) or 0.0.0.0 (available from all interfaces).
+            By default, this is set to localhost to prevent access from
+            external machines.
         logging_level: Logging level, default will be logging.INFO.
         logging_format: Logging format, default contains a timestamp,
             filename, line number, and message. See ray_constants.py.
@@ -71,7 +78,7 @@ class RayParams(object):
         autoscaling_config: path to autoscaling config file.
         include_java (bool): If True, the raylet backend can also support
             Java worker.
-        java_worker_options (str): The command options for Java worker.
+        java_worker_options (list): The command options for Java worker.
         load_code_from_local: Whether load code from local file or from GCS.
         _internal_config (str): JSON configuration for overriding
             RayConfig defaults. For testing purposes ONLY.
@@ -82,6 +89,7 @@ class RayParams(object):
                  num_cpus=None,
                  num_gpus=None,
                  resources=None,
+                 memory=None,
                  object_store_memory=None,
                  redis_max_memory=None,
                  redis_port=None,
@@ -89,18 +97,19 @@ class RayParams(object):
                  object_manager_port=None,
                  node_manager_port=None,
                  node_ip_address=None,
+                 raylet_ip_address=None,
                  object_id_seed=None,
-                 local_mode=False,
                  driver_mode=None,
                  redirect_worker_output=None,
                  redirect_output=None,
                  num_redis_shards=None,
                  redis_max_clients=None,
-                 redis_password=None,
+                 redis_password=ray_constants.REDIS_DEFAULT_PASSWORD,
                  plasma_directory=None,
                  worker_path=None,
                  huge_pages=False,
                  include_webui=None,
+                 webui_host="localhost",
                  logging_level=logging.INFO,
                  logging_format=ray_constants.LOGGER_FORMAT,
                  plasma_store_socket_name=None,
@@ -116,15 +125,16 @@ class RayParams(object):
         self.redis_address = redis_address
         self.num_cpus = num_cpus
         self.num_gpus = num_gpus
-        self.resources = resources
+        self.memory = memory
         self.object_store_memory = object_store_memory
+        self.resources = resources
         self.redis_max_memory = redis_max_memory
         self.redis_port = redis_port
         self.redis_shard_ports = redis_shard_ports
         self.object_manager_port = object_manager_port
         self.node_manager_port = node_manager_port
         self.node_ip_address = node_ip_address
-        self.local_mode = local_mode
+        self.raylet_ip_address = raylet_ip_address
         self.driver_mode = driver_mode
         self.redirect_worker_output = redirect_worker_output
         self.redirect_output = redirect_output
@@ -135,6 +145,7 @@ class RayParams(object):
         self.worker_path = worker_path
         self.huge_pages = huge_pages
         self.include_webui = include_webui
+        self.webui_host = webui_host
         self.plasma_store_socket_name = plasma_store_socket_name
         self.raylet_socket_name = raylet_socket_name
         self.temp_dir = temp_dir
@@ -195,3 +206,10 @@ class RayParams(object):
         if self.redirect_output is not None:
             raise DeprecationWarning(
                 "The redirect_output argument is deprecated.")
+
+        # Parse the numpy version.
+        numpy_version = np.__version__.split(".")
+        numpy_major, numpy_minor = int(numpy_version[0]), int(numpy_version[1])
+        if numpy_major <= 1 and numpy_minor < 16:
+            logger.warning("Using ray with numpy < 1.16.0 will result in slow "
+                           "serialization. Upgrade numpy if using with ray.")

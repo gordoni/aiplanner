@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import random
 import unittest
 
@@ -59,7 +55,7 @@ class AutoMLSearcherTest(unittest.TestCase):
 
         self.assertEqual(len(searcher.next_trials()), 0)
         for i, trial in enumerate(trials):
-            rewards = [x for x in range(i, i + 10)]
+            rewards = list(range(i, i + 10))
             random.shuffle(rewards)
             for reward in rewards:
                 searcher.on_trial_result(trial.trial_id, {"reward": reward})
@@ -67,3 +63,9 @@ class AutoMLSearcherTest(unittest.TestCase):
         best_trial = searcher.get_best_trial()
         self.assertEqual(best_trial, trials[-1])
         self.assertEqual(best_trial.best_result["reward"], 3 + 10 - 1)
+
+
+if __name__ == "__main__":
+    import pytest
+    import sys
+    sys.exit(pytest.main(["-v", __file__]))

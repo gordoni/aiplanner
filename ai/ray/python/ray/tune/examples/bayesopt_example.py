@@ -2,10 +2,6 @@
 
 It also checks that it is usable with a separate scheduler.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import ray
 from ray.tune import run
 from ray.tune.schedulers import AsyncHyperBandScheduler
@@ -44,7 +40,6 @@ if __name__ == "__main__":
     }
     algo = BayesOptSearch(
         space,
-        max_concurrent=4,
         metric="mean_loss",
         mode="min",
         utility_kwargs={

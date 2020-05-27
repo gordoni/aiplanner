@@ -1,9 +1,4 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
-import itertools
 import logging
 import json
 import math
@@ -13,6 +8,7 @@ import shutil
 
 from ray.tune.error import TuneError
 from ray.tune.result import TRAINING_ITERATION
+from ray.tune.logger import _SafeFallbackEncoder
 from ray.tune.schedulers import FIFOScheduler, TrialScheduler
 from ray.tune.suggest.variant_generator import format_vars
 from ray.tune.trial import Trial, Checkpoint
@@ -20,7 +16,7 @@ from ray.tune.trial import Trial, Checkpoint
 logger = logging.getLogger(__name__)
 
 
-class PBTTrialState(object):
+class PBTTrialState:
     """Internal PBT state tracked per-trial."""
 
     def __init__(self, trial):
@@ -109,7 +105,13 @@ class PopulationBasedTraining(FIFOScheduler):
     This Tune PBT implementation considers all trials added as part of the
     PBT population. If the number of trials exceeds the cluster capacity,
     they will be time-multiplexed as to balance training progress across the
-    population.
+    population. To run multiple trials, use `tune.run(num_samples=<int>)`.
+
+    In {LOG_DIR}/{MY_EXPERIMENT_NAME}/, all mutations are logged in
+    `pbt_global.txt` and individual policy perturbations are recorded
+    in pbt_policy_{i}.txt. Tune logs: [target trial tag, clone trial tag,
+    target trial iteration, clone trial iteration, old config, new config]
+    on each perturbation step.
 
     Args:
         time_attr (str): The training result attr to use for comparing time.
@@ -147,22 +149,27 @@ class PopulationBasedTraining(FIFOScheduler):
             local_dir at each exploit. Allows config schedule to be
             reconstructed.
 
-    Example:
-        >>> pbt = PopulationBasedTraining(
-        >>>     time_attr="training_iteration",
-        >>>     metric="episode_reward_mean",
-        >>>     mode="max",
-        >>>     perturbation_interval=10,  # every 10 `time_attr` units
-        >>>                                # (training_iterations in this case)
-        >>>     hyperparam_mutations={
-        >>>         # Perturb factor1 by scaling it by 0.8 or 1.2. Resampling
-        >>>         # resets it to a value sampled from the lambda function.
-        >>>         "factor_1": lambda: random.uniform(0.0, 20.0),
-        >>>         # Perturb factor2 by changing it to an adjacent value, e.g.
-        >>>         # 10 -> 1 or 10 -> 100. Resampling will choose at random.
-        >>>         "factor_2": [1, 10, 100, 1000, 10000],
-        >>>     })
-        >>> run_experiments({...}, scheduler=pbt)
+    .. code-block:: python
+
+        import random
+        from ray import tune
+        from ray.tune.schedulers import PopulationBasedTraining
+
+        pbt = PopulationBasedTraining(
+            time_attr="training_iteration",
+            metric="episode_reward_mean",
+            mode="max",
+            perturbation_interval=10,  # every 10 `time_attr` units
+                                       # (training_iterations in this case)
+            hyperparam_mutations={
+                # Perturb factor1 by scaling it by 0.8 or 1.2. Resampling
+                # resets it to a value sampled from the lambda function.
+                "factor_1": lambda: random.uniform(0.0, 20.0),
+                # Perturb factor2 by changing it to an adjacent value, e.g.
+                # 10 -> 1 or 10 -> 100. Resampling will choose at random.
+                "factor_2": [1, 10, 100, 1000, 10000],
+            })
+        tune.run({...}, num_samples=8, scheduler=pbt)
     """
 
     def __init__(self,
@@ -176,6 +183,11 @@ class PopulationBasedTraining(FIFOScheduler):
                  resample_probability=0.25,
                  custom_explore_fn=None,
                  log_config=True):
+        for value in hyperparam_mutations.values():
+            if not (isinstance(value, (list, dict)) or callable(value)):
+                raise TypeError("`hyperparam_mutation` values must be either "
+                                "a List, Dict, or callable.")
+
         if not hyperparam_mutations and not custom_explore_fn:
             raise TuneError(
                 "You must specify at least one of `hyperparam_mutations` or "
@@ -219,6 +231,8 @@ class PopulationBasedTraining(FIFOScheduler):
         self._trial_state[trial] = PBTTrialState(trial)
 
     def on_trial_result(self, trial_runner, trial, result):
+        if self._time_attr not in result or self._metric not in result:
+            return TrialScheduler.CONTINUE
         time = result[self._time_attr]
         state = self._trial_state[trial]
 
@@ -231,8 +245,10 @@ class PopulationBasedTraining(FIFOScheduler):
         lower_quantile, upper_quantile = self._quantiles()
 
         if trial in upper_quantile:
+            # The trial last result is only updated after the scheduler
+            # callback. So, we override with the current result.
             state.last_checkpoint = trial_runner.trial_executor.save(
-                trial, Checkpoint.MEMORY)
+                trial, Checkpoint.MEMORY, result=result)
             self._num_checkpoints += 1
         else:
             state.last_checkpoint = None  # not a top trial
@@ -254,13 +270,11 @@ class PopulationBasedTraining(FIFOScheduler):
 
         For each step, logs: [target trial tag, clone trial tag, target trial
         iteration, clone trial iteration, old config, new config].
-
         """
         trial_name, trial_to_clone_name = (trial_state.orig_tag,
                                            new_state.orig_tag)
-        trial_id = "".join(itertools.takewhile(str.isdigit, trial_name))
-        trial_to_clone_id = "".join(
-            itertools.takewhile(str.isdigit, trial_to_clone_name))
+        trial_id = trial.trial_id
+        trial_to_clone_id = trial_to_clone.trial_id
         trial_path = os.path.join(trial.local_dir,
                                   "pbt_policy_" + trial_id + ".txt")
         trial_to_clone_path = os.path.join(
@@ -274,21 +288,19 @@ class PopulationBasedTraining(FIFOScheduler):
         ]
         # Log to global file.
         with open(os.path.join(trial.local_dir, "pbt_global.txt"), "a+") as f:
-            f.write(json.dumps(policy) + "\n")
+            print(json.dumps(policy, cls=_SafeFallbackEncoder), file=f)
         # Overwrite state in target trial from trial_to_clone.
         if os.path.exists(trial_to_clone_path):
             shutil.copyfile(trial_to_clone_path, trial_path)
         # Log new exploit in target trial log.
         with open(trial_path, "a+") as f:
-            f.write(json.dumps(policy) + "\n")
+            f.write(json.dumps(policy, cls=_SafeFallbackEncoder) + "\n")
 
     def _exploit(self, trial_executor, trial, trial_to_clone):
         """Transfers perturbed state from trial_to_clone -> trial.
 
         If specified, also logs the updated hyperparam state.
-
         """
-
         trial_state = self._trial_state[trial]
         new_state = self._trial_state[trial_to_clone]
         if not new_state.last_checkpoint:
@@ -311,15 +323,20 @@ class PopulationBasedTraining(FIFOScheduler):
                                       self._hyperparam_mutations)
         reset_successful = trial_executor.reset_trial(trial, new_config,
                                                       new_tag)
+
+        # TODO(ujvl): Refactor Scheduler abstraction to abstract
+        #  mechanism for trial restart away. We block on restore
+        #  and suppress train on start as a stop-gap fix to
+        #  https://github.com/ray-project/ray/issues/7258.
         if reset_successful:
             trial_executor.restore(
-                trial, Checkpoint.from_object(new_state.last_checkpoint))
+                trial, new_state.last_checkpoint, block=True)
         else:
             trial_executor.stop_trial(trial, stop_logger=False)
             trial.config = new_config
             trial.experiment_tag = new_tag
             trial_executor.start_trial(
-                trial, Checkpoint.from_object(new_state.last_checkpoint))
+                trial, new_state.last_checkpoint, train=False)
 
         self._num_perturbations += 1
         # Transfer over the last perturbation time as well
@@ -329,9 +346,7 @@ class PopulationBasedTraining(FIFOScheduler):
         """Returns trials in the lower and upper `quantile` of the population.
 
         If there is not enough data to compute this, returns empty lists.
-
         """
-
         trials = []
         for trial, state in self._trial_state.items():
             if state.last_score is not None and not trial.is_finished():
@@ -353,9 +368,7 @@ class PopulationBasedTraining(FIFOScheduler):
 
         This enables the PBT scheduler to support a greater number of
         concurrent trials than can fit in the cluster at any given time.
-
         """
-
         candidates = []
         for trial in trial_runner.get_trials():
             if trial.status in [Trial.PENDING, Trial.PAUSED] and \

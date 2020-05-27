@@ -1,3 +1,17 @@
+// Copyright 2017 The Ray Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef RAY_RAYLET_SCHEDULING_QUEUE_H
 #define RAY_RAYLET_SCHEDULING_QUEUE_H
 
@@ -132,12 +146,11 @@ class ReadyQueue : public TaskQueue {
   /// \brief Get a mapping from resource shape to tasks.
   ///
   /// \return Mapping from resource set to task IDs with these resource requirements.
-  const std::unordered_map<ResourceSet, ordered_set<TaskID>> &GetTasksWithResources()
-      const;
+  const std::unordered_map<SchedulingClass, ordered_set<TaskID>> &GetTasksByClass() const;
 
  private:
-  /// Index from resource shape to tasks that require these resources.
-  std::unordered_map<ResourceSet, ordered_set<TaskID>> tasks_with_resources_;
+  /// Index from task description to tasks queued of that type.
+  std::unordered_map<SchedulingClass, ordered_set<TaskID>> tasks_by_class_;
 };
 
 /// \class SchedulingQueue
@@ -183,7 +196,7 @@ class SchedulingQueue {
   /// Get a reference to the queue of ready tasks.
   ///
   /// \return A reference to the queue of ready tasks.
-  const std::unordered_map<ResourceSet, ordered_set<TaskID>> &GetReadyTasksWithResources()
+  const std::unordered_map<SchedulingClass, ordered_set<TaskID>> &GetReadyTasksByClass()
       const;
 
   /// Get a task from the queue of a given state. The caller must ensure that
@@ -302,6 +315,11 @@ class SchedulingQueue {
   /// \return Aggregate resource demand from ready tasks.
   ResourceSet GetReadyQueueResources() const;
 
+  /// Returns the number of running tasks in this class.
+  ///
+  /// \return int.
+  int NumRunning(const SchedulingClass &cls) const;
+
   /// Returns debug string for class.
   ///
   /// \return string.
@@ -331,6 +349,8 @@ class SchedulingQueue {
 
   // A pointer to the ready queue.
   const std::shared_ptr<ReadyQueue> ready_queue_;
+  /// Track the breakdown of tasks by class in the RUNNING queue.
+  std::unordered_map<SchedulingClass, int32_t> num_running_tasks_;
   // A pointer to the task queues. These contain all tasks that have a task
   // state < TaskState::kNumTaskQueues.
   std::array<std::shared_ptr<TaskQueue>, static_cast<int>(TaskState::kNumTaskQueues)>

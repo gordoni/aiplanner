@@ -1,3 +1,17 @@
+// Copyright 2017 The Ray Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <string.h>
 #include <sstream>
 
@@ -585,7 +599,7 @@ int HashUpdate_DoWrite(RedisModuleCtx *ctx, RedisModuleString **argv, int argc,
     // This code path means they are updating command.
     size_t total_size = gcs_entry.entries_size();
     REPLY_AND_RETURN_IF_FALSE(total_size % 2 == 0, "Invalid Hash Update data vector.");
-    for (int i = 0; i < total_size; i += 2) {
+    for (size_t i = 0; i < total_size; i += 2) {
       // Reconstruct a key-value pair from a flattened list.
       RedisModuleString *entry_key = RedisModule_CreateString(
           ctx, gcs_entry.entries(i).data(), gcs_entry.entries(i).size());
@@ -603,7 +617,7 @@ int HashUpdate_DoWrite(RedisModuleCtx *ctx, RedisModuleString **argv, int argc,
     updated.set_change_mode(gcs_entry.change_mode());
 
     size_t total_size = gcs_entry.entries_size();
-    for (int i = 0; i < total_size; i++) {
+    for (size_t i = 0; i < total_size; i++) {
       RedisModuleString *entry_key = RedisModule_CreateString(
           ctx, gcs_entry.entries(i).data(), gcs_entry.entries(i).size());
       int deleted_num = RedisModule_HashSet(key, REDISMODULE_HASH_NONE, entry_key,
@@ -929,7 +943,7 @@ Status IsNil(bool *out, const std::string &data) {
     return Status::RedisError("Size of data doesn't match size of UniqueID");
   }
   const uint8_t *d = reinterpret_cast<const uint8_t *>(data.data());
-  for (int i = 0; i < kUniqueIDSize; ++i) {
+  for (size_t i = 0; i < kUniqueIDSize; ++i) {
     if (d[i] != 255) {
       *out = false;
     }
@@ -977,7 +991,10 @@ extern "C" {
 
 /// This function must be present on each Redis module. It is used in order to
 /// register the commands into the Redis server.
-int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+    int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
   REDISMODULE_NOT_USED(argv);
   REDISMODULE_NOT_USED(argc);
 

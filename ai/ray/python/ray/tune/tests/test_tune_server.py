@@ -1,14 +1,10 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import unittest
+import requests
 import socket
 import subprocess
+import unittest
 import json
 
 import ray
-from ray import tune
 from ray.rllib import _register_all
 from ray.tune.trial import Trial, Resources
 from ray.tune.web_server import TuneClient
@@ -94,11 +90,9 @@ class TuneServerSuite(unittest.TestCase):
             "__fake",
             trial_id="function_trial",
             stopping_criterion={"training_iteration": 3},
-            config={
-                "callbacks": {
-                    "on_episode_start": tune.function(lambda x: None)
-                }
-            })
+            config={"callbacks": {
+                "on_episode_start": lambda x: None
+            }})
         runner.add_trial(test_trial)
 
         for i in range(3):
@@ -126,6 +120,22 @@ class TuneServerSuite(unittest.TestCase):
         self.assertEqual(
             len([t for t in all_trials if t["status"] == Trial.RUNNING]), 0)
 
+    def testStopExperiment(self):
+        """Check if stop_experiment works."""
+        runner, client = self.basicSetup()
+        for i in range(2):
+            runner.step()
+        all_trials = client.get_all_trials()["trials"]
+        self.assertEqual(
+            len([t for t in all_trials if t["status"] == Trial.RUNNING]), 1)
+
+        client.stop_experiment()
+        runner.step()
+        self.assertTrue(runner.is_finished())
+        self.assertRaises(
+            requests.exceptions.ReadTimeout,
+            lambda: client.get_all_trials(timeout=1))
+
     def testCurlCommand(self):
         """Check if Stop Trial works."""
         runner, client = self.basicSetup()
@@ -147,4 +157,6 @@ class TuneServerSuite(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    import pytest
+    import sys
+    sys.exit(pytest.main(["-v", __file__]))
