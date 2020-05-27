@@ -28,6 +28,9 @@ idle_timeout_minutes: 5
 docker:
     image: "" # e.g., tensorflow/tensorflow:1.5.0-py3
     container_name: "" # e.g. ray_docker
+    # If true, pulls latest version of image. Otherwise, `docker run` will only pull the image
+    # if no cached version is present.
+    pull_before_run: True
     run_options: []  # Extra options to pass into "docker run"
 
 # Local specific configuration.
@@ -77,4 +80,4 @@ head_start_ray_commands:
 # Command to start ray on worker nodes. You don't need to change this.
 worker_start_ray_commands:
     - ray stop
-    - ray start --redis-address=$RAY_HEAD_IP:6379
+    - ray start --address=$RAY_HEAD_IP:6379

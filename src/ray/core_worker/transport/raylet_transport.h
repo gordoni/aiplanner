@@ -1,64 +1,62 @@
+// Copyright 2017 The Ray Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef RAY_CORE_WORKER_RAYLET_TRANSPORT_H
 #define RAY_CORE_WORKER_RAYLET_TRANSPORT_H
 
 #include <list>
 
-#include "ray/core_worker/object_interface.h"
-#include "ray/core_worker/transport/transport.h"
-#include "ray/rpc/raylet/raylet_client.h"
-#include "ray/rpc/worker/worker_server.h"
+#include "ray/common/ray_object.h"
+#include "ray/core_worker/reference_count.h"
+#include "ray/raylet/raylet_client.h"
+#include "ray/rpc/worker/core_worker_server.h"
 
 namespace ray {
 
-using rpc::RayletClient;
-
-/// In raylet task submitter and receiver, a task is submitted to raylet, and possibly
-/// gets forwarded to another raylet on which node the task should be executed, and
-/// then a worker on that node gets this task and starts executing it.
-
-class CoreWorkerRayletTaskSubmitter : public CoreWorkerTaskSubmitter {
+class CoreWorkerRayletTaskReceiver {
  public:
-  CoreWorkerRayletTaskSubmitter(std::unique_ptr<RayletClient> &raylet_client);
+  using TaskHandler =
+      std::function<Status(const TaskSpecification &task_spec,
+                           const std::shared_ptr<ResourceMappingType> &resource_ids,
+                           std::vector<std::shared_ptr<RayObject>> *return_objects,
+                           ReferenceCounter::ReferenceTableProto *borrower_refs)>;
 
-  /// Submit a task for execution to raylet.
-  ///
-  /// \param[in] task The task spec to submit.
-  /// \return Status.
-  virtual Status SubmitTask(const TaskSpecification &task_spec) override;
-
- private:
-  /// Raylet client.
-  std::unique_ptr<RayletClient> &raylet_client_;
-};
-
-class CoreWorkerRayletTaskReceiver : public CoreWorkerTaskReceiver,
-                                     public rpc::WorkerTaskHandler {
- public:
-  CoreWorkerRayletTaskReceiver(std::unique_ptr<RayletClient> &raylet_client,
-                               CoreWorkerObjectInterface &object_interface,
-                               boost::asio::io_service &io_service,
-                               rpc::GrpcServer &server, const TaskHandler &task_handler);
+  CoreWorkerRayletTaskReceiver(const WorkerID &worker_id,
+                               std::shared_ptr<raylet::RayletClient> &raylet_client,
+                               const TaskHandler &task_handler);
 
   /// Handle a `AssignTask` request.
-  /// The implementation can handle this request asynchronously. When hanling is done, the
-  /// `send_reply_callback` should be called.
+  /// The implementation can handle this request asynchronously. When handling is done,
+  /// the `send_reply_callback` should be called.
   ///
   /// \param[in] request The request message.
   /// \param[out] reply The reply message.
   /// \param[in] send_reply_callback The callback to be called when the request is done.
   void HandleAssignTask(const rpc::AssignTaskRequest &request,
                         rpc::AssignTaskReply *reply,
-                        rpc::SendReplyCallback send_reply_callback) override;
+                        rpc::SendReplyCallback send_reply_callback);
 
  private:
-  /// Raylet client.
-  std::unique_ptr<RayletClient> &raylet_client_;
-  // Object interface.
-  CoreWorkerObjectInterface &object_interface_;
-  /// The rpc service for `WorkerTaskService`.
-  rpc::WorkerTaskGrpcService task_service_;
+  // WorkerID of this worker.
+  WorkerID worker_id_;
+  /// Reference to the core worker's raylet client. This is a pointer ref so that it
+  /// can be initialized by core worker after this class is constructed.
+  std::shared_ptr<raylet::RayletClient> &raylet_client_;
   /// The callback function to process a task.
   TaskHandler task_handler_;
+  /// The callback to process arg wait complete.
+  std::function<void(int64_t)> on_wait_complete_;
 };
 
 }  // namespace ray

@@ -1,8 +1,23 @@
+// Copyright 2017 The Ray Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef RAY_RPC_CLIENT_CALL_H
 #define RAY_RPC_CLIENT_CALL_H
 
 #include <grpcpp/grpcpp.h>
 #include <boost/asio.hpp>
+#include "absl/synchronization/mutex.h"
 
 #include "ray/common/grpc_util.h"
 #include "ray/common/status.h"
@@ -22,6 +37,8 @@ class ClientCall {
   virtual void OnReplyReceived() = 0;
   /// Return status.
   virtual ray::Status GetStatus() = 0;
+  /// Set return status.
+  virtual void SetReturnStatus() = 0;
 
   virtual ~ClientCall() = default;
 };
@@ -46,11 +63,24 @@ class ClientCallImpl : public ClientCall {
   /// \param[in] callback The callback function to handle the reply.
   explicit ClientCallImpl(const ClientCallback<Reply> &callback) : callback_(callback) {}
 
-  Status GetStatus() override { return GrpcStatusToRayStatus(status_); }
+  Status GetStatus() override {
+    absl::MutexLock lock(&mutex_);
+    return return_status_;
+  }
+
+  void SetReturnStatus() override {
+    absl::MutexLock lock(&mutex_);
+    return_status_ = GrpcStatusToRayStatus(status_);
+  }
 
   void OnReplyReceived() override {
+    ray::Status status;
+    {
+      absl::MutexLock lock(&mutex_);
+      status = return_status_;
+    }
     if (callback_ != nullptr) {
-      callback_(GrpcStatusToRayStatus(status_), reply_);
+      callback_(status, reply_);
     }
   }
 
@@ -62,10 +92,20 @@ class ClientCallImpl : public ClientCall {
   ClientCallback<Reply> callback_;
 
   /// The response reader.
-  std::unique_ptr<grpc::ClientAsyncResponseReader<Reply>> response_reader_;
+  std::unique_ptr<grpc_impl::ClientAsyncResponseReader<Reply>> response_reader_;
 
   /// gRPC status of this request.
   grpc::Status status_;
+
+  /// Mutex to protect the return_status_ field.
+  absl::Mutex mutex_;
+
+  /// This is the status to be returned from GetStatus(). It is safe
+  /// to read from other threads while they hold mutex_. We have
+  /// return_status_ = GrpcStatusToRayStatus(status_) but need
+  /// a separate variable because status_ is set internally by
+  /// GRPC and we cannot control it holding the lock.
+  ray::Status return_status_ GUARDED_BY(mutex_);
 
   /// Context for the client. It could be used to convey extra information to
   /// the server and/or tweak certain RPC behaviors.
@@ -106,9 +146,9 @@ class ClientCallTag {
 /// \tparam Request Type of the request message.
 /// \tparam Reply Type of the reply message.
 template <class GrpcService, class Request, class Reply>
-using PrepareAsyncFunction = std::unique_ptr<grpc::ClientAsyncResponseReader<Reply>> (
-    GrpcService::Stub::*)(grpc::ClientContext *context, const Request &request,
-                          grpc::CompletionQueue *cq);
+using PrepareAsyncFunction =
+    std::unique_ptr<grpc_impl::ClientAsyncResponseReader<Reply>> (GrpcService::Stub::*)(
+        grpc::ClientContext *context, const Request &request, grpc::CompletionQueue *cq);
 
 /// `ClientCallManager` is used to manage outgoing gRPC requests and the lifecycles of
 /// `ClientCall` objects.
@@ -123,16 +163,26 @@ class ClientCallManager {
   ///
   /// \param[in] main_service The main event loop, to which the callback functions will be
   /// posted.
-  explicit ClientCallManager(boost::asio::io_service &main_service)
-      : main_service_(main_service) {
-    // Start the polling thread.
-    polling_thread_ =
-        std::thread(&ClientCallManager::PollEventsFromCompletionQueue, this);
+  explicit ClientCallManager(boost::asio::io_service &main_service, int num_threads = 1)
+      : main_service_(main_service), num_threads_(num_threads), shutdown_(false) {
+    rr_index_ = rand() % num_threads_;
+    // Start the polling threads.
+    cqs_.reserve(num_threads_);
+    for (int i = 0; i < num_threads_; i++) {
+      cqs_.emplace_back();
+      polling_threads_.emplace_back(&ClientCallManager::PollEventsFromCompletionQueue,
+                                    this, i);
+    }
   }
 
   ~ClientCallManager() {
-    cq_.Shutdown();
-    polling_thread_.join();
+    shutdown_ = true;
+    for (auto &cq : cqs_) {
+      cq.Shutdown();
+    }
+    for (auto &polling_thread : polling_threads_) {
+      polling_thread.join();
+    }
   }
 
   /// Create a new `ClientCall` and send request.
@@ -155,8 +205,9 @@ class ClientCallManager {
       const Request &request, const ClientCallback<Reply> &callback) {
     auto call = std::make_shared<ClientCallImpl<Reply>>(callback);
     // Send request.
-    call->response_reader_ =
-        (stub.*prepare_async_function)(&call->context_, request, &cq_);
+    // Find the next completion queue to wait for response.
+    call->response_reader_ = (stub.*prepare_async_function)(
+        &call->context_, request, &cqs_[rr_index_++ % num_threads_]);
     call->response_reader_->StartCall();
     // Create a new tag object. This object will eventually be deleted in the
     // `ClientCallManager::PollEventsFromCompletionQueue` when reply is received.
@@ -174,21 +225,37 @@ class ClientCallManager {
   /// This function runs in a background thread. It keeps polling events from the
   /// `CompletionQueue`, and dispatches the event to the callbacks via the `ClientCall`
   /// objects.
-  void PollEventsFromCompletionQueue() {
+  void PollEventsFromCompletionQueue(int index) {
     void *got_tag;
     bool ok = false;
     // Keep reading events from the `CompletionQueue` until it's shutdown.
-    while (cq_.Next(&got_tag, &ok)) {
-      auto tag = reinterpret_cast<ClientCallTag *>(got_tag);
-      if (ok && !main_service_.stopped()) {
-        // Post the callback to the main event loop.
-        main_service_.post([tag]() {
-          tag->GetCall()->OnReplyReceived();
-          // The call is finished, and we can delete this tag now.
+    // NOTE(edoakes): we use AsyncNext here because for some unknown reason,
+    // synchronous cq_.Next blocks indefinitely in the case that the process
+    // received a SIGTERM.
+    while (true) {
+      auto deadline = gpr_time_add(gpr_now(GPR_CLOCK_REALTIME),
+                                   gpr_time_from_millis(250, GPR_TIMESPAN));
+      auto status = cqs_[index].AsyncNext(&got_tag, &ok, deadline);
+      if (status == grpc::CompletionQueue::SHUTDOWN) {
+        break;
+      } else if (status == grpc::CompletionQueue::TIMEOUT && shutdown_) {
+        // If we timed out and shutdown, then exit immediately. This should not
+        // be needed, but gRPC seems to not return SHUTDOWN correctly in these
+        // cases (e.g., test_wait will hang on shutdown without this check).
+        break;
+      } else if (status != grpc::CompletionQueue::TIMEOUT) {
+        auto tag = reinterpret_cast<ClientCallTag *>(got_tag);
+        tag->GetCall()->SetReturnStatus();
+        if (ok && !main_service_.stopped() && !shutdown_) {
+          // Post the callback to the main event loop.
+          main_service_.post([tag]() {
+            tag->GetCall()->OnReplyReceived();
+            // The call is finished, and we can delete this tag now.
+            delete tag;
+          });
+        } else {
           delete tag;
-        });
-      } else {
-        delete tag;
+        }
       }
     }
   }
@@ -196,11 +263,20 @@ class ClientCallManager {
   /// The main event loop, to which the callback functions will be posted.
   boost::asio::io_service &main_service_;
 
-  /// The gRPC `CompletionQueue` object used to poll events.
-  grpc::CompletionQueue cq_;
+  /// The number of polling threads.
+  int num_threads_;
 
-  /// Polling thread to check the completion queue.
-  std::thread polling_thread_;
+  /// Whether the client has shutdown.
+  std::atomic<bool> shutdown_;
+
+  /// The index to send RPCs in a round-robin fashion
+  std::atomic<unsigned int> rr_index_;
+
+  /// The gRPC `CompletionQueue` object used to poll events.
+  std::vector<grpc::CompletionQueue> cqs_;
+
+  /// Polling threads to check the completion queue.
+  std::vector<std::thread> polling_threads_;
 };
 
 }  // namespace rpc

@@ -1,13 +1,26 @@
+// Copyright 2017 The Ray Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef RAY_RAYLET_TASK_DEPENDENCY_MANAGER_H
 #define RAY_RAYLET_TASK_DEPENDENCY_MANAGER_H
 
 // clang-format off
 #include "ray/common/id.h"
-#include "ray/common/ray_config.h"
 #include "ray/common/task/task.h"
+#include "ray/gcs/redis_gcs_client.h"
 #include "ray/object_manager/object_manager.h"
 #include "ray/raylet/reconstruction_policy.h"
-#include "ray/util/util.h"
 // clang-format on
 
 namespace ray {
@@ -35,7 +48,7 @@ class TaskDependencyManager {
                         ReconstructionPolicyInterface &reconstruction_policy,
                         boost::asio::io_service &io_service, const ClientID &client_id,
                         int64_t initial_lease_period_ms,
-                        gcs::TableInterface<TaskID, TaskLeaseData> &task_lease_table);
+                        std::shared_ptr<gcs::GcsClient> gcs_client);
 
   /// Check whether an object is locally available.
   ///
@@ -228,8 +241,8 @@ class TaskDependencyManager {
   /// added to the GCS. The lease expiration period is doubled every time the
   /// lease is renewed.
   const int64_t initial_lease_period_ms_;
-  /// The storage system for the task lease table.
-  gcs::TableInterface<TaskID, TaskLeaseData> &task_lease_table_;
+  /// A client connection to the GCS.
+  std::shared_ptr<gcs::GcsClient> gcs_client_;
   /// A mapping from task ID of each subscribed task to its list of object
   /// dependencies, either task arguments or objects passed into `ray.get`.
   std::unordered_map<ray::TaskID, TaskDependencies> task_dependencies_;

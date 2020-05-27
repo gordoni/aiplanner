@@ -1,11 +1,28 @@
+// Copyright 2017 The Ray Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef RAY_RAYLET_WORKER_POOL_H
 #define RAY_RAYLET_WORKER_POOL_H
 
 #include <inttypes.h>
+
+#include <boost/asio/io_service.hpp>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "gtest/gtest.h"
 #include "ray/common/client_connection.h"
 #include "ray/common/task/task.h"
 #include "ray/common/task/task_common.h"
@@ -27,22 +44,26 @@ class Worker;
 /// is a container for a unit of work.
 class WorkerPool {
  public:
-  /// Create a pool and asynchronously start the specified number of worker processes.
-  /// Once each worker process has registered with an external server,
-  /// the process should create and register the specified number of workers,
-  /// and add them to the pool.
+  /// Create a pool and asynchronously start at least the specified number of workers per
+  /// language.
+  /// Once each worker process has registered with an external server, the
+  /// process should create and register the specified number of workers, and add them to
+  /// the pool.
   ///
-  /// \param num_worker_processes The number of worker processes to start, per language.
-  /// \param num_workers_per_process The number of workers per process.
+  /// \param num_workers The number of workers to start, per language.
   /// \param maximum_startup_concurrency The maximum number of worker processes
   /// that can be started in parallel (typically this should be set to the number of CPU
   /// resources on the machine).
   /// \param worker_commands The commands used to start the worker process, grouped by
   /// language.
-  WorkerPool(int num_worker_processes, int num_workers_per_process,
-             int maximum_startup_concurrency,
-             std::shared_ptr<gcs::RedisGcsClient> gcs_client,
-             const WorkerCommandMap &worker_commands);
+  /// \param raylet_config The raylet config list of this node.
+  /// \param starting_worker_timeout_callback The callback that will be triggered once
+  /// it times out to start a worker.
+  WorkerPool(boost::asio::io_service &io_service, int num_workers,
+             int maximum_startup_concurrency, std::shared_ptr<gcs::GcsClient> gcs_client,
+             const WorkerCommandMap &worker_commands,
+             const std::unordered_map<std::string, std::string> &raylet_config,
+             std::function<void()> starting_worker_timeout_callback);
 
   /// Destructor responsible for freeing a set of workers owned by this class.
   virtual ~WorkerPool();
@@ -51,27 +72,30 @@ class WorkerPool {
   /// pool after it becomes idle (e.g., requests a work assignment).
   ///
   /// \param The Worker to be registered.
-  void RegisterWorker(const WorkerID &worker_id, const std::shared_ptr<Worker> &worker);
+  /// \return If the registration is successful.
+  Status RegisterWorker(const std::shared_ptr<Worker> &worker, pid_t pid);
 
   /// Register a new driver.
-  /// Driver is a treated as a special worker, so use WorkerID as key here.
   ///
   /// \param The driver to be registered.
-  void RegisterDriver(const WorkerID &driver_id, const std::shared_ptr<Worker> &worker);
+  /// \return If the registration is successful.
+  Status RegisterDriver(const std::shared_ptr<Worker> &worker);
 
   /// Get the client connection's registered worker.
   ///
   /// \param The client connection owned by a registered worker.
   /// \return The Worker that owns the given client connection. Returns nullptr
   /// if the client has not registered a worker yet.
-  std::shared_ptr<Worker> GetRegisteredWorker(const WorkerID &worker_id) const;
+  std::shared_ptr<Worker> GetRegisteredWorker(
+      const std::shared_ptr<ClientConnection> &connection) const;
 
   /// Get the client connection's registered driver.
   ///
   /// \param The client connection owned by a registered driver.
   /// \return The Worker that owns the given client connection. Returns nullptr
   /// if the client has not registered a driver.
-  std::shared_ptr<Worker> GetRegisteredDriver(const WorkerID &driver_id) const;
+  std::shared_ptr<Worker> GetRegisteredDriver(
+      const std::shared_ptr<ClientConnection> &connection) const;
 
   /// Disconnect a registered worker.
   ///
@@ -111,6 +135,16 @@ class WorkerPool {
   std::vector<std::shared_ptr<Worker>> GetWorkersRunningTasksForJob(
       const JobID &job_id) const;
 
+  /// Get all the workers.
+  ///
+  /// \return A list containing all the workers.
+  const std::vector<std::shared_ptr<Worker>> GetAllWorkers() const;
+
+  /// Get all the drivers.
+  ///
+  /// \return A list containing all the drivers.
+  const std::vector<std::shared_ptr<Worker>> GetAllDrivers() const;
+
   /// Whether there is a pending worker for the given task.
   /// Note that, this is only used for actor creation task with dynamic options.
   /// And if the worker registered but isn't assigned a task,
@@ -120,6 +154,10 @@ class WorkerPool {
   /// \param task_id The task that we want to query.
   bool HasPendingWorkerForTask(const Language &language, const TaskID &task_id);
 
+  /// Get the set of active object IDs from all workers in the worker pool.
+  /// \return A set containing the active object IDs.
+  std::unordered_set<ObjectID> GetActiveObjectIDs() const;
+
   /// Returns debug string for class.
   ///
   /// \return string.
@@ -128,20 +166,10 @@ class WorkerPool {
   /// Record metrics.
   void RecordMetrics() const;
 
-  /// Tick the heartbeat timer and get the workers that have timed out.
-  /// A worker which has missed `max_missed_heartbeats` times would be treated as a
-  /// dead process or the network to it has been down.
-  ///
-  /// \param[in] max_missed_heartbeats The maximum number of heartbeats that can be
-  /// missed before a worker times out.
-  /// \param[out] dead_workers Workers whose processes have been dead.
-  void TickHeartbeatTimer(int max_missed_heartbeats,
-                          std::vector<std::shared_ptr<Worker>> *dead_workers);
-
  protected:
   /// Asynchronously start a new worker process. Once the worker process has
   /// registered with an external server, the process should create and
-  /// register num_workers_per_process_ workers, then add them to the pool.
+  /// register num_workers_per_process workers, then add them to the pool.
   /// Failure to start the worker process is a fatal error. If too many workers
   /// are already being started, then this function will return without starting
   /// any workers.
@@ -150,14 +178,16 @@ class WorkerPool {
   /// \param dynamic_options The dynamic options that we should add for worker command.
   /// \return The id of the process that we started if it's positive,
   /// otherwise it means we didn't start a process.
-  int StartWorkerProcess(const Language &language,
-                         const std::vector<std::string> &dynamic_options = {});
+  Process StartWorkerProcess(const Language &language,
+                             const std::vector<std::string> &dynamic_options = {});
 
   /// The implementation of how to start a new worker process with command arguments.
+  /// The lifetime of the process is tied to that of the returned object,
+  /// unless the caller manually detaches the process after the call.
   ///
   /// \param worker_command_args The command arguments of new worker process.
-  /// \return The process ID of started worker process.
-  virtual pid_t StartProcess(const std::vector<std::string> &worker_command_args);
+  /// \return An object representing the started worker process.
+  virtual Process StartProcess(const std::vector<std::string> &worker_command_args);
 
   /// Push an warning message to user if worker pool is getting to big.
   virtual void WarnAboutSize();
@@ -166,6 +196,8 @@ class WorkerPool {
   struct State {
     /// The commands and arguments used to start the worker process
     std::vector<std::string> worker_command;
+    /// The number of workers per process.
+    int num_workers_per_process;
     /// The pool of dedicated workers for actor creation tasks
     /// with prefix or suffix worker command.
     std::unordered_map<TaskID, std::shared_ptr<Worker>> idle_dedicated_workers;
@@ -175,39 +207,58 @@ class WorkerPool {
     std::unordered_map<ActorID, std::shared_ptr<Worker>> idle_actor;
     /// All workers that have registered and are still connected, including both
     /// idle and executing.
-    std::unordered_map<WorkerID, std::shared_ptr<Worker>> registered_workers;
+    std::unordered_set<std::shared_ptr<Worker>> registered_workers;
     /// All drivers that have registered and are still connected.
-    std::unordered_map<WorkerID, std::shared_ptr<Worker>> registered_drivers;
+    std::unordered_set<std::shared_ptr<Worker>> registered_drivers;
     /// A map from the pids of starting worker processes
     /// to the number of their unregistered workers.
-    std::unordered_map<pid_t, int> starting_worker_processes;
+    std::unordered_map<Process, int> starting_worker_processes;
     /// A map for looking up the task with dynamic options by the pid of
     /// worker. Note that this is used for the dedicated worker processes.
-    std::unordered_map<pid_t, TaskID> dedicated_workers_to_tasks;
+    std::unordered_map<Process, TaskID> dedicated_workers_to_tasks;
     /// A map for speeding up looking up the pending worker for the given task.
-    std::unordered_map<TaskID, pid_t> tasks_to_dedicated_workers;
+    std::unordered_map<TaskID, Process> tasks_to_dedicated_workers;
+    /// We'll push a warning to the user every time a multiple of this many
+    /// worker processes has been started.
+    int multiple_for_warning;
+    /// The last size at which a warning about the number of registered workers
+    /// was generated.
+    int64_t last_warning_multiple;
   };
 
-  /// The number of workers per process.
-  int num_workers_per_process_;
   /// Pool states per language.
   std::unordered_map<Language, State, std::hash<int>> states_by_lang_;
 
  private:
+  /// Force-start at least num_workers workers for this language. Used for internal and
+  /// test purpose only.
+  ///
+  /// \param num_workers The number of workers to start, per language.
+  void Start(int num_workers);
+
   /// A helper function that returns the reference of the pool state
   /// for a given language.
   State &GetStateForLanguage(const Language &language);
 
-  /// We'll push a warning to the user every time a multiple of this many
-  /// workers has been started.
-  int multiple_for_warning_;
-  /// The maximum number of workers that can be started concurrently.
+  /// Start a timer to monitor the starting worker process.
+  ///
+  /// If any workers in this process don't register within the timeout
+  /// (due to worker process crash or any other reasons), remove them
+  /// from `starting_worker_processes`. Otherwise if we'll mistakenly
+  /// think there are unregistered workers, and won't start new workers.
+  void MonitorStartingWorkerProcess(const Process &proc, const Language &language);
+
+  /// For Process class for managing subprocesses (e.g. reaping zombies).
+  boost::asio::io_service *io_service_;
+  /// The maximum number of worker processes that can be started concurrently.
   int maximum_startup_concurrency_;
-  /// The last size at which a warning about the number of registered workers
-  /// was generated.
-  int64_t last_warning_multiple_;
   /// A client connection to the GCS.
-  std::shared_ptr<gcs::RedisGcsClient> gcs_client_;
+  std::shared_ptr<gcs::GcsClient> gcs_client_;
+  /// The raylet config list of this node.
+  std::unordered_map<std::string, std::string> raylet_config_;
+  /// The callback that will be triggered once it times out to start a worker.
+  std::function<void()> starting_worker_timeout_callback_;
+  FRIEND_TEST(WorkerPoolTest, InitialWorkerProcessCount);
 };
 
 }  // namespace raylet

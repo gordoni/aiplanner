@@ -1,3 +1,17 @@
+// Copyright 2017 The Ray Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef RAY_RPC_SERVER_CALL_H
 #define RAY_RPC_SERVER_CALL_H
 
@@ -63,9 +77,6 @@ class ServerCall {
   /// `GrpcServer` when the request is received.
   virtual void HandleRequest() = 0;
 
-  /// Get the factory that created this `ServerCall`.
-  virtual const ServerCallFactory &GetFactory() const = 0;
-
   /// Invoked when sending reply successes.
   virtual void OnReplySent() = 0;
 
@@ -81,8 +92,6 @@ class ServerCallFactory {
  public:
   /// Create a new `ServerCall` and request gRPC runtime to start accepting the
   /// corresponding type of requests.
-  ///
-  /// \return Pointer to the `ServerCall` object.
   virtual void CreateCall() const = 0;
 
   virtual ~ServerCallFactory() = default;
@@ -141,6 +150,13 @@ class ServerCallImpl : public ServerCall {
 
   void HandleRequestImpl() {
     state_ = ServerCallState::PROCESSING;
+    // NOTE(hchen): This `factory` local variable is needed. Because `SendReply` runs in
+    // a different thread, and will cause `this` to be deleted.
+    const auto &factory = factory_;
+    // Create a new `ServerCall` to accept the next incoming request.
+    // We create this before handling the request so that the it can be populated by
+    // the completion queue in the background if a new request comes in.
+    factory.CreateCall();
     (service_handler_.*handle_request_function_)(
         request_, &reply_,
         [this](Status status, std::function<void()> success,
@@ -156,8 +172,6 @@ class ServerCallImpl : public ServerCall {
           SendReply(status);
         });
   }
-
-  const ServerCallFactory &GetFactory() const override { return factory_; }
 
   void OnReplySent() override {
     if (send_reply_success_callback_ && !io_service_.stopped()) {
@@ -197,7 +211,7 @@ class ServerCallImpl : public ServerCall {
   grpc::ServerContext context_;
 
   /// The response writer.
-  grpc::ServerAsyncResponseWriter<Reply> response_writer_;
+  grpc_impl::ServerAsyncResponseWriter<Reply> response_writer_;
 
   /// The event loop.
   boost::asio::io_service &io_service_;
@@ -225,7 +239,7 @@ class ServerCallImpl : public ServerCall {
 /// \tparam Reply Type of the reply message.
 template <class GrpcService, class Request, class Reply>
 using RequestCallFunction = void (GrpcService::AsyncService::*)(
-    grpc::ServerContext *, Request *, grpc::ServerAsyncResponseWriter<Reply> *,
+    grpc::ServerContext *, Request *, grpc_impl::ServerAsyncResponseWriter<Reply> *,
     grpc::CompletionQueue *, grpc::ServerCompletionQueue *, void *);
 
 /// Implementation of `ServerCallFactory`

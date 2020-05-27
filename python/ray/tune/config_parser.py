@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import argparse
 import json
 import os
@@ -10,7 +6,8 @@ import os
 from six import string_types
 
 from ray.tune import TuneError
-from ray.tune.trial import Trial, json_to_resources
+from ray.tune.trial import Trial
+from ray.tune.resources import json_to_resources
 from ray.tune.logger import _SafeFallbackEncoder
 
 
@@ -76,10 +73,18 @@ def make_parser(parser_creator=None, **kwargs):
         help="Whether to checkpoint at the end of the experiment. "
         "Default is False.")
     parser.add_argument(
+        "--no-sync-on-checkpoint",
+        action="store_true",
+        help="Disable sync-down of trial checkpoint, which is enabled by "
+        "default to guarantee recoverability. If set, checkpoint syncing from "
+        "worker to driver is asynchronous. Set this only if synchronous "
+        "checkpointing is too slow and trial restoration failures can be "
+        "tolerated")
+    parser.add_argument(
         "--keep-checkpoints-num",
         default=None,
         type=int,
-        help="Number of last checkpoints to keep. Others get "
+        help="Number of best checkpoints to keep. Others get "
         "deleted. Default (None) keeps all checkpoints.")
     parser.add_argument(
         "--checkpoint-score-attr",
@@ -174,8 +179,10 @@ def create_trial_from_spec(spec, output_path, parser, **trial_kwargs):
         local_dir=os.path.join(spec["local_dir"], output_path),
         # json.load leads to str -> unicode in py2.7
         stopping_criterion=spec.get("stop", {}),
+        remote_checkpoint_dir=spec.get("remote_checkpoint_dir"),
         checkpoint_freq=args.checkpoint_freq,
         checkpoint_at_end=args.checkpoint_at_end,
+        sync_on_checkpoint=not args.no_sync_on_checkpoint,
         keep_checkpoints_num=args.keep_checkpoints_num,
         checkpoint_score_attr=args.checkpoint_score_attr,
         export_formats=spec.get("export_formats", []),

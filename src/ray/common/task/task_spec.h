@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/synchronization/mutex.h"
+#include "ray/common/function_descriptor.h"
 #include "ray/common/grpc_util.h"
 #include "ray/common/id.h"
 #include "ray/common/task/scheduling_resources.h"
@@ -16,8 +18,12 @@ extern "C" {
 }
 
 namespace ray {
+typedef std::pair<ResourceSet, ray::FunctionDescriptor> SchedulingClassDescriptor;
+typedef int SchedulingClass;
 
 /// Wrapper class of protobuf `TaskSpec`, see `common.proto` for details.
+/// TODO(ekl) we should consider passing around std::unique_ptrs<TaskSpecification>
+/// instead `const TaskSpecification`, since this class is actually mutable.
 class TaskSpecification : public MessageWrapper<rpc::TaskSpec> {
  public:
   /// Construct an empty task specification. This should not be used directly.
@@ -27,7 +33,15 @@ class TaskSpecification : public MessageWrapper<rpc::TaskSpec> {
   /// The input message will be **copied** into this object.
   ///
   /// \param message The protobuf message.
-  explicit TaskSpecification(rpc::TaskSpec message) : MessageWrapper(std::move(message)) {
+  explicit TaskSpecification(rpc::TaskSpec message) : MessageWrapper(message) {
+    ComputeResources();
+  }
+
+  /// Construct from a protobuf message shared_ptr.
+  ///
+  /// \param message The protobuf message.
+  explicit TaskSpecification(std::shared_ptr<rpc::TaskSpec> message)
+      : MessageWrapper(message) {
     ComputeResources();
   }
 
@@ -48,7 +62,7 @@ class TaskSpecification : public MessageWrapper<rpc::TaskSpec> {
 
   size_t ParentCounter() const;
 
-  std::vector<std::string> FunctionDescriptor() const;
+  ray::FunctionDescriptor FunctionDescriptor() const;
 
   size_t NumArgs() const;
 
@@ -60,18 +74,36 @@ class TaskSpecification : public MessageWrapper<rpc::TaskSpec> {
 
   ObjectID ArgId(size_t arg_index, size_t id_index) const;
 
-  ObjectID ReturnId(size_t return_index) const;
+  ObjectID ReturnId(size_t return_index, TaskTransportType transport_type) const;
 
-  const uint8_t *ArgVal(size_t arg_index) const;
+  ObjectID ReturnIdForPlasma(size_t return_index) const {
+    return ReturnId(return_index, TaskTransportType::RAYLET);
+  }
 
-  size_t ArgValLength(size_t arg_index) const;
+  const uint8_t *ArgData(size_t arg_index) const;
+
+  size_t ArgDataSize(size_t arg_index) const;
+
+  const uint8_t *ArgMetadata(size_t arg_index) const;
+
+  size_t ArgMetadataSize(size_t arg_index) const;
+
+  /// Return the ObjectIDs that were inlined in this task argument.
+  const std::vector<ObjectID> ArgInlinedIds(size_t arg_index) const;
+
+  /// Return the scheduling class of the task. The scheduler makes a best effort
+  /// attempt to fairly dispatch tasks of different classes, preventing
+  /// starvation of any single class of task.
+  ///
+  /// \return The scheduling class used for fair task queueing.
+  const SchedulingClass GetSchedulingClass() const;
 
   /// Return the resources that are to be acquired during the execution of this
   /// task.
   ///
   /// \return The resources that will be acquired during the execution of this
   /// task.
-  const ResourceSet GetRequiredResources() const;
+  const ResourceSet &GetRequiredResources() const;
 
   /// Return the resources that are required for a task to be placed on a node.
   /// This will typically be the same as the resources acquired during execution
@@ -82,7 +114,13 @@ class TaskSpecification : public MessageWrapper<rpc::TaskSpec> {
   /// so the placement of the actor should take this into account.
   ///
   /// \return The resources that are required to place a task on a node.
-  const ResourceSet GetRequiredPlacementResources() const;
+  const ResourceSet &GetRequiredPlacementResources() const;
+
+  /// Return the dependencies of this task. This is recomputed each time, so it can
+  /// be used if the task spec is mutated.
+  ///
+  /// \return The recomputed dependencies for the task.
+  std::vector<ObjectID> GetDependencies() const;
 
   bool IsDriverTask() const;
 
@@ -109,7 +147,9 @@ class TaskSpecification : public MessageWrapper<rpc::TaskSpec> {
 
   ActorID ActorId() const;
 
-  ActorHandleID ActorHandleId() const;
+  TaskID CallerId() const;
+
+  const rpc::Address &CallerAddress() const;
 
   uint64_t ActorCounter() const;
 
@@ -117,20 +157,58 @@ class TaskSpecification : public MessageWrapper<rpc::TaskSpec> {
 
   ObjectID PreviousActorTaskDummyObjectId() const;
 
-  std::vector<ActorHandleID> NewActorHandles() const;
+  bool IsDirectCall() const;
+
+  int MaxActorConcurrency() const;
+
+  bool IsAsyncioActor() const;
+
+  bool IsDetachedActor() const;
 
   ObjectID ActorDummyObject() const;
 
   std::string DebugString() const;
 
+  // A one-word summary of the task func as a call site (e.g., __main__.foo).
+  std::string CallSiteString() const;
+
+  static SchedulingClassDescriptor &GetSchedulingClassDescriptor(SchedulingClass id);
+
  private:
   void ComputeResources();
-  /// Field storing required resources. Initalized in constructor.
-  ResourceSet required_resources_;
-  /// Field storing required placement resources. Initalized in constructor.
-  ResourceSet required_placement_resources_;
+
+  /// Field storing required resources. Initialized in constructor.
+  /// TODO(ekl) consider optimizing the representation of ResourceSet for fast copies
+  /// instead of keeping shared pointers here.
+  std::shared_ptr<ResourceSet> required_resources_;
+  /// Field storing required placement resources. Initialized in constructor.
+  std::shared_ptr<ResourceSet> required_placement_resources_;
+  /// Cached scheduling class of this task.
+  SchedulingClass sched_cls_id_;
+
+  /// Below static fields could be mutated in `ComputeResources` concurrently due to
+  /// multi-threading, we need a mutex to protect it.
+  static absl::Mutex mutex_;
+  /// Keep global static id mappings for SchedulingClass for performance.
+  static std::unordered_map<SchedulingClassDescriptor, SchedulingClass> sched_cls_to_id_
+      GUARDED_BY(mutex_);
+  static std::unordered_map<SchedulingClass, SchedulingClassDescriptor> sched_id_to_cls_
+      GUARDED_BY(mutex_);
+  static int next_sched_id_ GUARDED_BY(mutex_);
 };
 
 }  // namespace ray
+
+/// We must define the hash since it's not auto-defined for vectors.
+namespace std {
+template <>
+struct hash<ray::SchedulingClassDescriptor> {
+  size_t operator()(ray::SchedulingClassDescriptor const &k) const {
+    size_t seed = std::hash<ray::ResourceSet>()(k.first);
+    seed ^= k.second->Hash();
+    return seed;
+  }
+};
+}  // namespace std
 
 #endif  // RAY_COMMON_TASK_TASK_SPEC_H

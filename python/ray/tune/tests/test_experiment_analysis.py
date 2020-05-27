@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 import shutil
 import tempfile
@@ -10,13 +6,13 @@ import os
 import pandas as pd
 
 import ray
-from ray.tune import run, sample_from, Analysis
+from ray.tune import run, sample_from
 from ray.tune.examples.async_hyperband_example import MyTrainableClass
 
 
 class ExperimentAnalysisSuite(unittest.TestCase):
     def setUp(self):
-        ray.init(local_mode=True)
+        ray.init(local_mode=False)
         self.test_dir = tempfile.mkdtemp()
         self.test_name = "analysis_exp"
         self.num_samples = 10
@@ -31,11 +27,10 @@ class ExperimentAnalysisSuite(unittest.TestCase):
     def run_test_exp(self):
         self.ea = run(
             MyTrainableClass,
-            global_checkpoint_period=0,
             name=self.test_name,
             local_dir=self.test_dir,
-            return_trials=False,
             stop={"training_iteration": 1},
+            checkpoint_freq=1,
             num_samples=self.num_samples,
             config={
                 "width": sample_from(
@@ -48,6 +43,10 @@ class ExperimentAnalysisSuite(unittest.TestCase):
 
         self.assertTrue(isinstance(df, pd.DataFrame))
         self.assertEquals(df.shape[0], self.num_samples)
+
+    def testStats(self):
+        assert self.ea.stats()
+        assert self.ea.runner_data()
 
     def testTrialDataframe(self):
         checkpoints = self.ea._checkpoints
@@ -71,6 +70,37 @@ class ExperimentAnalysisSuite(unittest.TestCase):
         self.assertTrue(logdir2.startswith(self.test_path))
         self.assertNotEquals(logdir, logdir2)
 
+    def testGetTrialCheckpointsPathsByTrial(self):
+        best_trial = self.ea.get_best_trial(self.metric)
+        checkpoints_metrics = self.ea.get_trial_checkpoints_paths(best_trial)
+        logdir = self.ea.get_best_logdir(self.metric)
+        expected_path = os.path.join(logdir, "checkpoint_1", "checkpoint")
+        assert checkpoints_metrics[0][0] == expected_path
+        assert checkpoints_metrics[0][1] == 1
+
+    def testGetTrialCheckpointsPathsByPath(self):
+        logdir = self.ea.get_best_logdir(self.metric)
+        checkpoints_metrics = self.ea.get_trial_checkpoints_paths(logdir)
+        expected_path = os.path.join(logdir, "checkpoint_1/", "checkpoint")
+        assert checkpoints_metrics[0][0] == expected_path
+        assert checkpoints_metrics[0][1] == 1
+
+    def testGetTrialCheckpointsPathsWithMetricByTrial(self):
+        best_trial = self.ea.get_best_trial(self.metric)
+        paths = self.ea.get_trial_checkpoints_paths(best_trial, self.metric)
+        logdir = self.ea.get_best_logdir(self.metric)
+        expected_path = os.path.join(logdir, "checkpoint_1", "checkpoint")
+        assert paths[0][0] == expected_path
+        assert paths[0][1] == best_trial.metric_analysis[self.metric]["last"]
+
+    def testGetTrialCheckpointsPathsWithMetricByPath(self):
+        best_trial = self.ea.get_best_trial(self.metric)
+        logdir = self.ea.get_best_logdir(self.metric)
+        paths = self.ea.get_trial_checkpoints_paths(best_trial, self.metric)
+        expected_path = os.path.join(logdir, "checkpoint_1", "checkpoint")
+        assert paths[0][0] == expected_path
+        assert paths[0][1] == best_trial.metric_analysis[self.metric]["last"]
+
     def testAllDataframes(self):
         dataframes = self.ea.trial_dataframes
         self.assertTrue(len(dataframes) == self.num_samples)
@@ -82,7 +112,6 @@ class ExperimentAnalysisSuite(unittest.TestCase):
     def testIgnoreOtherExperiment(self):
         analysis = run(
             MyTrainableClass,
-            global_checkpoint_period=0,
             name="test_example",
             local_dir=self.test_dir,
             return_trials=False,
@@ -97,47 +126,7 @@ class ExperimentAnalysisSuite(unittest.TestCase):
         self.assertEquals(df.shape[0], 1)
 
 
-class AnalysisSuite(unittest.TestCase):
-    def setUp(self):
-        ray.init(local_mode=True)
-        self.test_dir = tempfile.mkdtemp()
-        self.num_samples = 10
-        self.metric = "episode_reward_mean"
-        self.run_test_exp(test_name="analysis_exp1")
-        self.run_test_exp(test_name="analysis_exp2")
-
-    def run_test_exp(self, test_name=None):
-        run(MyTrainableClass,
-            global_checkpoint_period=0,
-            name=test_name,
-            local_dir=self.test_dir,
-            return_trials=False,
-            stop={"training_iteration": 1},
-            num_samples=self.num_samples,
-            config={
-                "width": sample_from(
-                    lambda spec: 10 + int(90 * random.random())),
-                "height": sample_from(lambda spec: int(100 * random.random())),
-            })
-
-    def tearDown(self):
-        shutil.rmtree(self.test_dir, ignore_errors=True)
-        ray.shutdown()
-
-    def testDataframe(self):
-        analysis = Analysis(self.test_dir)
-        df = analysis.dataframe()
-        self.assertTrue(isinstance(df, pd.DataFrame))
-        self.assertEquals(df.shape[0], self.num_samples * 2)
-
-    def testBestLogdir(self):
-        analysis = Analysis(self.test_dir)
-        logdir = analysis.get_best_logdir(self.metric)
-        self.assertTrue(logdir.startswith(self.test_dir))
-        logdir2 = analysis.get_best_logdir(self.metric, mode="min")
-        self.assertTrue(logdir2.startswith(self.test_dir))
-        self.assertNotEquals(logdir, logdir2)
-
-
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    import pytest
+    import sys
+    sys.exit(pytest.main(["-v", __file__]))

@@ -1,11 +1,13 @@
 from ray.tune.suggest.search import SearchAlgorithm
 from ray.tune.suggest.basic_variant import BasicVariantGenerator
-from ray.tune.suggest.suggestion import SuggestionAlgorithm
+from ray.tune.suggest.suggestion import (SearchGenerator, Searcher,
+                                         ConcurrencyLimiter)
 from ray.tune.suggest.variant_generator import grid_search
+from ray.tune.suggest.repeater import Repeater
 
 __all__ = [
-    "SearchAlgorithm", "BasicVariantGenerator", "SuggestionAlgorithm",
-    "grid_search"
+    "SearchAlgorithm", "Searcher", "BasicVariantGenerator", "SearchGenerator",
+    "grid_search", "Repeater", "ConcurrencyLimiter"
 ]
 
 

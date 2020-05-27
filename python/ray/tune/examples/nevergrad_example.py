@@ -2,10 +2,6 @@
 
 It also checks that it is usable with a separate scheduler.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import ray
 from ray.tune import run
 from ray.tune.schedulers import AsyncHyperBandScheduler
@@ -51,11 +47,7 @@ if __name__ == "__main__":
     # parameter_names = None  # names are provided by the instrumentation
     optimizer = optimizerlib.OnePlusOne(instrumentation)
     algo = NevergradSearch(
-        optimizer,
-        parameter_names,
-        max_concurrent=4,
-        metric="mean_loss",
-        mode="min")
+        optimizer, parameter_names, metric="mean_loss", mode="min")
     scheduler = AsyncHyperBandScheduler(metric="mean_loss", mode="min")
     run(easy_objective,
         name="nevergrad",

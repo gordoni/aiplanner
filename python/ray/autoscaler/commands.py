@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import hashlib
 import json
@@ -23,7 +19,7 @@ from ray.autoscaler.autoscaler import validate_config, hash_runtime_conf, \
     hash_launch_conf, fillout_defaults
 from ray.autoscaler.node_provider import get_node_provider, NODE_PROVIDERS
 from ray.autoscaler.tags import TAG_RAY_NODE_TYPE, TAG_RAY_LAUNCH_CONFIG, \
-    TAG_RAY_NODE_NAME
+    TAG_RAY_NODE_NAME, NODE_TYPE_WORKER, NODE_TYPE_HEAD
 from ray.autoscaler.updater import NodeUpdaterThread
 from ray.autoscaler.log_timer import LogTimer
 from ray.autoscaler.docker import with_docker_exec
@@ -70,45 +66,49 @@ def _bootstrap_config(config):
     return resolved_config
 
 
-def teardown_cluster(config_file, yes, workers_only, override_cluster_name):
+def teardown_cluster(config_file, yes, workers_only, override_cluster_name,
+                     keep_min_workers):
     """Destroys all nodes of a Ray cluster described by a config json."""
 
     config = yaml.safe_load(open(config_file).read())
     if override_cluster_name is not None:
         config["cluster_name"] = override_cluster_name
-    validate_config(config)
     config = fillout_defaults(config)
+    validate_config(config)
 
     confirm("This will destroy your cluster", yes)
 
     provider = get_node_provider(config["provider"], config["cluster_name"])
-
     try:
 
         def remaining_nodes():
-            if workers_only:
-                A = []
-            else:
-                A = [
-                    node_id for node_id in provider.non_terminated_nodes({
-                        TAG_RAY_NODE_TYPE: "head"
-                    })
-                ]
 
-            A += [
-                node_id for node_id in provider.non_terminated_nodes({
-                    TAG_RAY_NODE_TYPE: "worker"
-                })
-            ]
-            return A
+            workers = provider.non_terminated_nodes({
+                TAG_RAY_NODE_TYPE: NODE_TYPE_WORKER
+            })
+
+            if keep_min_workers:
+                min_workers = config.get("min_workers", 0)
+                logger.info("teardown_cluster: "
+                            "Keeping {} nodes...".format(min_workers))
+                workers = random.sample(workers, len(workers) - min_workers)
+
+            if workers_only:
+                return workers
+
+            head = provider.non_terminated_nodes({
+                TAG_RAY_NODE_TYPE: NODE_TYPE_HEAD
+            })
+
+            return head + workers
 
         # Loop here to check that both the head and worker nodes are actually
         #   really gone
         A = remaining_nodes()
-        with LogTimer("teardown_cluster: Termination done."):
+        with LogTimer("teardown_cluster: done."):
             while A:
                 logger.info("teardown_cluster: "
-                            "Terminating {} nodes...".format(len(A)))
+                            "Shutting down {} nodes...".format(len(A)))
                 provider.terminate_nodes(A)
                 time.sleep(1)
                 A = remaining_nodes()
@@ -128,9 +128,11 @@ def kill_node(config_file, yes, hard, override_cluster_name):
 
     provider = get_node_provider(config["provider"], config["cluster_name"])
     try:
-        nodes = provider.non_terminated_nodes({TAG_RAY_NODE_TYPE: "worker"})
+        nodes = provider.non_terminated_nodes({
+            TAG_RAY_NODE_TYPE: NODE_TYPE_WORKER
+        })
         node = random.choice(nodes)
-        logger.info("kill_node: Terminating worker {}".format(node))
+        logger.info("kill_node: Shutdown worker {}".format(node))
         if hard:
             provider.terminate_node(node)
         else:
@@ -143,6 +145,7 @@ def kill_node(config_file, yes, hard, override_cluster_name):
                 file_mounts=config["file_mounts"],
                 initialization_commands=[],
                 setup_commands=[],
+                ray_start_commands=[],
                 runtime_hash="")
 
             _exec(updater, "ray stop", False, False)
@@ -170,9 +173,10 @@ def get_or_create_head_node(config, config_file, no_restart, restart_only, yes,
                             override_cluster_name):
     """Create the cluster head node, which in turn creates the workers."""
     provider = get_node_provider(config["provider"], config["cluster_name"])
+    config_file = os.path.abspath(config_file)
     try:
         head_node_tags = {
-            TAG_RAY_NODE_TYPE: "head",
+            TAG_RAY_NODE_TYPE: NODE_TYPE_HEAD,
         }
         nodes = provider.non_terminated_nodes(head_node_tags)
         if len(nodes) > 0:
@@ -193,7 +197,7 @@ def get_or_create_head_node(config, config_file, no_restart, restart_only, yes,
                         yes)
                 logger.info(
                     "get_or_create_head_node: "
-                    "Terminating outdated head node {}".format(head_node))
+                    "Shutting down outdated head node {}".format(head_node))
                 provider.terminate_node(head_node)
             logger.info("get_or_create_head_node: Launching new head node...")
             head_node_tags[TAG_RAY_LAUNCH_CONFIG] = launch_hash
@@ -201,9 +205,16 @@ def get_or_create_head_node(config, config_file, no_restart, restart_only, yes,
                 config["cluster_name"])
             provider.create_node(config["head_node"], head_node_tags, 1)
 
-        nodes = provider.non_terminated_nodes(head_node_tags)
-        assert len(nodes) == 1, "Failed to create head node."
-        head_node = nodes[0]
+        start = time.time()
+        head_node = None
+        while True:
+            if time.time() - start > 5:
+                raise RuntimeError("Failed to create head node.")
+            nodes = provider.non_terminated_nodes(head_node_tags)
+            if len(nodes) == 1:
+                head_node = nodes[0]
+                break
+            time.sleep(1)
 
         # TODO(ekl) right now we always update the head node even if the hash
         # matches. We could prompt the user for what they want to do here.
@@ -211,9 +222,10 @@ def get_or_create_head_node(config, config_file, no_restart, restart_only, yes,
         logger.info("get_or_create_head_node: Updating files on head node...")
 
         # Rewrite the auth config so that the head node can update the workers
-        remote_key_path = "~/ray_bootstrap_key.pem"
         remote_config = copy.deepcopy(config)
-        remote_config["auth"]["ssh_private_key"] = remote_key_path
+        if config["provider"]["type"] != "kubernetes":
+            remote_key_path = "~/ray_bootstrap_key.pem"
+            remote_config["auth"]["ssh_private_key"] = remote_key_path
 
         # Adjust for new file locations
         new_mounts = {}
@@ -228,17 +240,22 @@ def get_or_create_head_node(config, config_file, no_restart, restart_only, yes,
         remote_config_file.write(json.dumps(remote_config))
         remote_config_file.flush()
         config["file_mounts"].update({
-            remote_key_path: config["auth"]["ssh_private_key"],
             "~/ray_bootstrap_config.yaml": remote_config_file.name
         })
+        if config["provider"]["type"] != "kubernetes":
+            config["file_mounts"].update({
+                remote_key_path: config["auth"]["ssh_private_key"],
+            })
 
         if restart_only:
-            init_commands = config["head_start_ray_commands"]
+            init_commands = []
+            ray_start_commands = config["head_start_ray_commands"]
         elif no_restart:
             init_commands = config["head_setup_commands"]
+            ray_start_commands = []
         else:
-            init_commands = (config["head_setup_commands"] +
-                             config["head_start_ray_commands"])
+            init_commands = config["head_setup_commands"]
+            ray_start_commands = config["head_start_ray_commands"]
 
         updater = NodeUpdaterThread(
             node_id=head_node,
@@ -249,6 +266,7 @@ def get_or_create_head_node(config, config_file, no_restart, restart_only, yes,
             file_mounts=config["file_mounts"],
             initialization_commands=config["initialization_commands"],
             setup_commands=init_commands,
+            ray_start_commands=ray_start_commands,
             runtime_hash=runtime_hash,
         )
         updater.start()
@@ -271,7 +289,8 @@ def get_or_create_head_node(config, config_file, no_restart, restart_only, yes,
             "Head node up-to-date, IP address is: {}".format(head_node_ip))
 
         monitor_str = "tail -n 100 -f /tmp/ray/session_*/logs/monitor*"
-        use_docker = bool(config["docker"]["container_name"])
+        use_docker = "docker" in config and bool(
+            config["docker"]["container_name"])
         if override_cluster_name:
             modifiers = " --cluster-name={}".format(
                 quote(override_cluster_name))
@@ -279,28 +298,29 @@ def get_or_create_head_node(config, config_file, no_restart, restart_only, yes,
             modifiers = ""
         print("To monitor auto-scaling activity, you can run:\n\n"
               "  ray exec {} {}{}{}\n".format(
-                  config_file, "--docker " if use_docker else " ",
+                  config_file, "--docker " if use_docker else "",
                   quote(monitor_str), modifiers))
         print("To open a console on the cluster:\n\n"
               "  ray attach {}{}\n".format(config_file, modifiers))
 
-        print("To ssh manually to the cluster, run:\n\n"
-              "  ssh -i {} {}@{}\n".format(config["auth"]["ssh_private_key"],
-                                           config["auth"]["ssh_user"],
-                                           head_node_ip))
+        print("To get a remote shell to the cluster manually, run:\n\n"
+              "  {}\n".format(updater.cmd_runner.remote_shell_command_str()))
     finally:
         provider.cleanup()
 
 
-def attach_cluster(config_file, start, use_tmux, override_cluster_name, new):
+def attach_cluster(config_file, start, use_screen, use_tmux,
+                   override_cluster_name, new, port_forward):
     """Attaches to a screen for the specified cluster.
 
     Arguments:
         config_file: path to the cluster yaml
         start: whether to start the cluster if it isn't up
+        use_screen: whether to use screen as multiplexer
         use_tmux: whether to use tmux as multiplexer
         override_cluster_name: set the name of the cluster
         new: whether to force a new screen
+        port_forward (int or list[int]): port(s) to forward
     """
 
     if use_tmux:
@@ -308,18 +328,31 @@ def attach_cluster(config_file, start, use_tmux, override_cluster_name, new):
             cmd = "tmux new"
         else:
             cmd = "tmux attach || tmux new"
-    else:
+    elif use_screen:
         if new:
             cmd = "screen -L"
         else:
             cmd = "screen -L -xRR"
+    else:
+        if new:
+            raise ValueError(
+                "--new only makes sense if passing --screen or --tmux")
+        cmd = "$SHELL"
 
     exec_cluster(config_file, cmd, False, False, False, False, start,
-                 override_cluster_name, None)
+                 override_cluster_name, port_forward)
 
 
-def exec_cluster(config_file, cmd, docker, screen, tmux, stop, start,
-                 override_cluster_name, port_forward):
+def exec_cluster(config_file,
+                 cmd=None,
+                 docker=False,
+                 screen=False,
+                 tmux=False,
+                 stop=False,
+                 start=False,
+                 override_cluster_name=None,
+                 port_forward=None,
+                 with_output=False):
     """Runs a command on the specified cluster.
 
     Arguments:
@@ -331,7 +364,7 @@ def exec_cluster(config_file, cmd, docker, screen, tmux, stop, start,
         stop: whether to stop the cluster after command run
         start: whether to start the cluster if it isn't up
         override_cluster_name: set the name of the cluster
-        port_forward: port to forward
+        port_forward (int or list[int]): port(s) to forward
     """
     assert not (screen and tmux), "Can specify only one of `screen` or `tmux`."
 
@@ -354,6 +387,7 @@ def exec_cluster(config_file, cmd, docker, screen, tmux, stop, start,
             file_mounts=config["file_mounts"],
             initialization_commands=[],
             setup_commands=[],
+            ray_start_commands=[],
             runtime_hash="",
         )
 
@@ -364,23 +398,24 @@ def exec_cluster(config_file, cmd, docker, screen, tmux, stop, start,
             return with_docker_exec(
                 [command], container_name=container_name)[0]
 
-        cmd = wrap_docker(cmd) if docker else cmd
+        if cmd:
+            cmd = wrap_docker(cmd) if docker else cmd
 
-        if stop:
-            shutdown_cmd = (
-                "ray stop; ray teardown ~/ray_bootstrap_config.yaml "
-                "--yes --workers-only")
-            if docker:
-                shutdown_cmd = wrap_docker(shutdown_cmd)
-            cmd += ("; {}; sudo shutdown -h now".format(shutdown_cmd))
+            if stop:
+                shutdown_cmd = (
+                    "ray stop; ray teardown ~/ray_bootstrap_config.yaml "
+                    "--yes --workers-only")
+                if docker:
+                    shutdown_cmd = wrap_docker(shutdown_cmd)
+                cmd += ("; {}; sudo shutdown -h now".format(shutdown_cmd))
 
-        _exec(
+        result = _exec(
             updater,
             cmd,
             screen,
             tmux,
-            expect_error=stop,
-            port_forward=port_forward)
+            port_forward=port_forward,
+            with_output=with_output)
 
         if tmux or screen:
             attach_command_parts = ["ray attach", config_file]
@@ -396,11 +431,12 @@ def exec_cluster(config_file, cmd, docker, screen, tmux, stop, start,
             attach_info = "Use `{}` to check on command status.".format(
                 attach_command)
             logger.info(attach_info)
+        return result
     finally:
         provider.cleanup()
 
 
-def _exec(updater, cmd, screen, tmux, expect_error=False, port_forward=None):
+def _exec(updater, cmd, screen, tmux, port_forward=None, with_output=False):
     if cmd:
         if screen:
             cmd = [
@@ -415,14 +451,20 @@ def _exec(updater, cmd, screen, tmux, expect_error=False, port_forward=None):
                 quote(cmd + "; exec bash")
             ]
             cmd = " ".join(cmd)
-        updater.ssh_cmd(
-            cmd,
-            allocate_tty=True,
-            expect_error=expect_error,
-            port_forward=port_forward)
+    return updater.cmd_runner.run(
+        cmd,
+        allocate_tty=True,
+        exit_on_fail=True,
+        port_forward=port_forward,
+        with_output=with_output)
 
 
-def rsync(config_file, source, target, override_cluster_name, down):
+def rsync(config_file,
+          source,
+          target,
+          override_cluster_name,
+          down,
+          all_nodes=False):
     """Rsyncs files.
 
     Arguments:
@@ -431,6 +473,7 @@ def rsync(config_file, source, target, override_cluster_name, down):
         target: target dir
         override_cluster_name: set the name of the cluster
         down: whether we're syncing remote -> local
+        all_nodes: whether to sync worker nodes in addition to the head node
     """
     assert bool(source) == bool(target), (
         "Must either provide both or neither source and target.")
@@ -439,31 +482,46 @@ def rsync(config_file, source, target, override_cluster_name, down):
     if override_cluster_name is not None:
         config["cluster_name"] = override_cluster_name
     config = _bootstrap_config(config)
-    head_node = _get_head_node(
-        config, config_file, override_cluster_name, create_if_needed=False)
 
     provider = get_node_provider(config["provider"], config["cluster_name"])
     try:
-        updater = NodeUpdaterThread(
-            node_id=head_node,
-            provider_config=config["provider"],
-            provider=provider,
-            auth_config=config["auth"],
-            cluster_name=config["cluster_name"],
-            file_mounts=config["file_mounts"],
-            initialization_commands=[],
-            setup_commands=[],
-            runtime_hash="",
-        )
-        if down:
-            rsync = updater.rsync_down
-        else:
-            rsync = updater.rsync_up
+        nodes = []
+        if all_nodes:
+            # technically we re-open the provider for no reason
+            # in get_worker_nodes but it's cleaner this way
+            # and _get_head_node does this too
+            nodes = _get_worker_nodes(config, override_cluster_name)
 
-        if source and target:
-            rsync(source, target, check_error=False)
-        else:
-            updater.sync_file_mounts(rsync)
+        nodes += [
+            _get_head_node(
+                config,
+                config_file,
+                override_cluster_name,
+                create_if_needed=False)
+        ]
+
+        for node_id in nodes:
+            updater = NodeUpdaterThread(
+                node_id=node_id,
+                provider_config=config["provider"],
+                provider=provider,
+                auth_config=config["auth"],
+                cluster_name=config["cluster_name"],
+                file_mounts=config["file_mounts"],
+                initialization_commands=[],
+                setup_commands=[],
+                ray_start_commands=[],
+                runtime_hash="",
+            )
+            if down:
+                rsync = updater.rsync_down
+            else:
+                rsync = updater.rsync_up
+
+            if source and target:
+                rsync(source, target)
+            else:
+                updater.sync_file_mounts(rsync)
 
     finally:
         provider.cleanup()
@@ -498,12 +556,29 @@ def get_worker_node_ips(config_file, override_cluster_name):
 
     provider = get_node_provider(config["provider"], config["cluster_name"])
     try:
-        nodes = provider.non_terminated_nodes({TAG_RAY_NODE_TYPE: "worker"})
+        nodes = provider.non_terminated_nodes({
+            TAG_RAY_NODE_TYPE: NODE_TYPE_WORKER
+        })
 
         if config.get("provider", {}).get("use_internal_ips", False) is True:
             return [provider.internal_ip(node) for node in nodes]
         else:
             return [provider.external_ip(node) for node in nodes]
+    finally:
+        provider.cleanup()
+
+
+def _get_worker_nodes(config, override_cluster_name):
+    """Returns worker node ids for given configuration."""
+    # todo: technically could be reused in get_worker_node_ips
+    if override_cluster_name is not None:
+        config["cluster_name"] = override_cluster_name
+
+    provider = get_node_provider(config["provider"], config["cluster_name"])
+    try:
+        return provider.non_terminated_nodes({
+            TAG_RAY_NODE_TYPE: NODE_TYPE_WORKER
+        })
     finally:
         provider.cleanup()
 
@@ -515,7 +590,7 @@ def _get_head_node(config,
     provider = get_node_provider(config["provider"], config["cluster_name"])
     try:
         head_node_tags = {
-            TAG_RAY_NODE_TYPE: "head",
+            TAG_RAY_NODE_TYPE: NODE_TYPE_HEAD,
         }
         nodes = provider.non_terminated_nodes(head_node_tags)
     finally:

@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "ray/protobuf/common.pb.h"
+#include "ray/raylet/format/node_manager_generated.h"
 
 namespace ray {
 
@@ -16,6 +16,9 @@ namespace ray {
 constexpr double kResourceConversionFactor = 10000;
 
 const std::string kCPU_ResourceLabel = "CPU";
+const std::string kGPU_ResourceLabel = "GPU";
+const std::string kTPU_ResourceLabel = "TPU";
+const std::string kMemory_ResourceLabel = "memory";
 
 /// \class FractionalResourceQuantity
 /// \brief Converts the resource quantities to an internal representation to
@@ -64,6 +67,11 @@ class FractionalResourceQuantity {
 /// GPUs, and custom labels.
 class ResourceSet {
  public:
+  static std::shared_ptr<ResourceSet> Nil() {
+    static auto nil = std::make_shared<ResourceSet>();
+    return nil;
+  }
+
   /// \brief empty ResourceSet constructor.
   ResourceSet();
 
@@ -422,10 +430,18 @@ class ResourceIdSet {
   /// \return A human-readable string version of the object.
   std::string ToString() const;
 
-  /// \brief Convert this object to a vector of protobuf `ResourceIdSetInfo`s.
+  /// \brief Serialize this object using flatbuffers.
   ///
-  /// \return A vector inclusing resource id set infos.
-  std::vector<rpc::ResourceIdSetInfo> ToProtobuf() const;
+  /// \param fbb A flatbuffer builder object.
+  /// \return A flatbuffer serialized version of this object.
+  std::vector<flatbuffers::Offset<ray::protocol::ResourceIdSetInfo>> ToFlatbuf(
+      flatbuffers::FlatBufferBuilder &fbb) const;
+
+  /// \brief Serialize this object as a string.
+  ///
+  /// \return A serialized string of this object.
+  /// TODO(zhijunfu): this can be removed after raylet client is migrated to grpc.
+  const std::string Serialize() const;
 
  private:
   /// A mapping from resource name to a set of resource IDs for that resource.
@@ -498,7 +514,7 @@ class SchedulingResources {
   /// \param resource_name: Name of the resource to be modified
   /// \param capacity: New capacity of the resource.
   /// \return Void.
-  void UpdateResource(const std::string &resource_name, int64_t capacity);
+  void UpdateResourceCapacity(const std::string &resource_name, int64_t capacity);
 
   /// \brief Delete resource from total, available and load resources.
   ///

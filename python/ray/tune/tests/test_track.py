@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import pandas as pd
 import unittest
@@ -82,3 +78,9 @@ class TrackApiTest(unittest.TestCase):
         self.assertTrue(_check_json_val(result_path, "test", 1))
         track.log(iteration=1, test=2)
         self.assertTrue(_check_json_val(result_path, "test", 2))
+
+
+if __name__ == "__main__":
+    import pytest
+    import sys
+    sys.exit(pytest.main(["-v", __file__]))
