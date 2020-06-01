@@ -540,7 +540,7 @@ The api server can be distributed as a docker container.
     cd ~/aiplanner/ai
     sudo docker build -t aiplanner-base-deps docker/base-deps
     tar cf docker/apiserver/dotspia.tar -C ~/ .spia
-    (cd ~/aiplanner-data/models; find * -name '*.tf' -prune -o -print) | grep -v bias > docker/apiserver/MANIFEST.models
+    (cd ~/aiplanner-data/models; find * -name 'seed_*_*' -prune -o -type f -print) | grep -v bias > docker/apiserver/MANIFEST.models
     (cd ~/aiplanner-data/models; for d in *.tf/seed_*_*; do echo $d/checkpoint_`ls $d | sed 's/checkpoint_//' | sort -n | tail -n 1`; done) >> docker/apiserver/MANIFEST.models
     tar zcf docker/apiserver/models.tgz -C ~/aiplanner-data/models `cat docker/apiserver/MANIFEST.models`
     git rev-parse HEAD > docker/apiserver/git-rev

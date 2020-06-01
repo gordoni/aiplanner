@@ -21,14 +21,9 @@ from ray.tune import grid_search, run
 from ray.tune.config_parser import make_parser
 
 from ai.common.cmd_util import arg_parser, fin_arg_parse
+from ai.common.tf_util import RayFinEnv
 from ai.common.utils import boolean_flag
 from ai.gym_fin.model_params import dump_params_file
-from ai.gym_fin.fin_env import FinEnv
-
-class RayFinEnv(FinEnv):
-
-    def __init__(self, config):
-        super().__init__(**config)
 
 def train(training_model_params, *, address, train_num_workers, train_anneal_num_timesteps, train_seeds,
     train_batch_size, train_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_entropy_coefficient,
