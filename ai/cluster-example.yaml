@@ -14,7 +14,7 @@ max_workers: 15
 # The initial number of worker nodes to launch in addition to the head
 # node. When the cluster is first brought up (or when it is refreshed with a
 # subsequent `ray up`) this number of nodes will be started.
-initial_workers: 0
+initial_workers: 1
 
 # Whether or not to autoscale aggressively. If this is enabled, if at any point
 #   we would start more workers, we start at least enough to bring us to
@@ -27,6 +27,9 @@ autoscaling_mode: default
 docker:
     image: "" # e.g., tensorflow/tensorflow:1.5.0-py3
     container_name: "" # e.g. ray_docker
+    # If true, pulls latest version of image. Otherwise, `docker run` will only pull the image
+    # if no cached version is present.
+    pull_before_run: True
     run_options: []  # Extra options to pass into "docker run"
 
     # Example of running a GPU head with CPU workers
@@ -92,7 +95,13 @@ head_node:
 worker_nodes:
     KeyName: ray-autoscaler_us-east-2
     InstanceType: c5.24xlarge
-    ImageId: ami-0a47106e391391252 # Deep Learning AMI (Ubuntu) Version 21.2
+    #ImageId: ami-0a47106e391391252 # Deep Learning AMI (Ubuntu) Version 21.2
+    ImageId: ami-0e84e211558a022c0 # Ubuntu 20.04
+
+    BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+              VolumeSize: 15 # Default of 8G runs out of space installing ray.
 
     # Run workers on spot by default. Comment this out to use on-demand.
     InstanceMarketOptions:
@@ -118,14 +127,14 @@ initialization_commands: []
 # List of shell commands to run to set up nodes.
 # Won't be run by workers if invoke ray using:
 #     ray start --head --autoscaling-config=<this_file>
-setup_commands:
+setup_commands: []
     # Note: if you're developing Ray, you probably want to create an AMI that
     # has your Ray repo pre-cloned. Then, you can replace the pip installs
     # below with a git checkout <your_sha> (and possibly a recompile).
-    - echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
-    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.8.0.dev2-cp27-cp27mu-manylinux1_x86_64.whl
-    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.8.0.dev2-cp35-cp35m-manylinux1_x86_64.whl
-    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.8.0.dev2-cp36-cp36m-manylinux1_x86_64.whl
+    # - echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
+    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.9.0.dev0-cp27-cp27mu-manylinux1_x86_64.whl
+    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.9.0.dev0-cp35-cp35m-manylinux1_x86_64.whl
+    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.9.0.dev0-cp36-cp36m-manylinux1_x86_64.whl
     # Consider uncommenting these if you also want to run apt-get commands during setup
     # - sudo pkill -9 apt-get || true
     # - sudo pkill -9 dpkg || true
@@ -133,26 +142,26 @@ setup_commands:
 
 # Custom commands that will be run on the head node after common setup.
 head_setup_commands:
-    - pip install 'boto3>=1.4.8'  # 1.4.8 adds InstanceMarketOptions
+    - pip install boto3==1.4.8  # 1.4.8 adds InstanceMarketOptions
 
 # Custom commands that will be run on worker nodes after common setup.
-worker_setup_commands:
-    - grep -q tensorflow_p36 ~/.profile || echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.profile
-    - grep -q tensorflow_p36 ~/.bashrc || echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
-    - grep -q aiplanner ~/.bashrc || echo '. ~/aiplanner/ai/setenv' >> ~/.bashrc
-    # Pre-build tensorflow
-    - source activate tensorflow_p36
-    - python3 -c 'import tensorflow'
-    - pip install -U gym
-    - pip install -U 'ray[debug]==0.7.3'
-    - pip install -U opencv-python-headless # not needed if using Deep Learning AMI 24.0
-    # Replace ray.rllib by locally modified version
-    - RAY=`pip show ray | grep Location | awk '{print $2}'`/ray; [ ! -e $RAY/rllib.old ] && mv $RAY/rllib $RAY/rllib.old && ln -s ~/aiplanner/ai/ray/python/ray/rllib $RAY/rllib
-    # Only bother with remining commands if building a custom AMI
-    # - sudo apt update
-    # - sudo apt upgrade -y
-    # Free up 30G (takes 4 minutes; so only do if building a custom AMI)
-    # - rm -rf ~/anaconda3/envs/{[a-su-z]*,theano*,tensorflow_p27}
+worker_setup_commands: #[]
+    - sleep 5 # Brief delay, otherwise update sometimes doesn't seem to work properly, and apt-get install fails
+    - sudo apt-get update
+    - sudo apt-get install -y python3-pip
+    - sudo apt-get install -y libsm6 libxrender1 cython3
+    # RLlib currently depends on atari-py which requires cmake and bazel which requires uzip to install
+    - sudo apt-get install -y unzip cmake
+    # Bazel version based on: ray/ci/travis/install-bazel.sh
+    - curl -s -L -R -o install-bazel.sh https://github.com/bazelbuild/bazel/releases/download/1.1.0/bazel-1.1.0-installer-linux-x86_64.sh
+    - sudo bash install-bazel.sh
+    - sudo pip3 install torch 'ray[rllib,debug]==0.8.5'
+    - grep -q aiplanner/ai/setenv ~/.bashrc || echo '. ~/aiplanner/ai/setenv' >> ~/.bashrc
+    # # Replace ray.rllib by locally modified version
+    # - RAY=`pip show ray | grep Location | awk '{print $2}'`/ray; [ ! -e $RAY/rllib.old ] && mv $RAY/rllib $RAY/rllib.old && ln -s ~/aiplanner/ai/ray/python/ray/rllib $RAY/rllib
+    # # Only bother with remining commands if building a custom AMI
+    # # - sudo apt update
+    # # - sudo apt upgrade -y
 
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:

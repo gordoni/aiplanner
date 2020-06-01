@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -9,8 +9,6 @@
 # This program is distributed WITHOUT ANY WARRANTY; without even the
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
-
-source $HOME/anaconda3/bin/activate tensorflow_p36 # Doesn't belong here, but needed somewhere if want to start apiserver on system startup.
 
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 

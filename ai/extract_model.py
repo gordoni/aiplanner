@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -22,14 +22,14 @@ from ai.common.utils import boolean_flag
 from ai.gym_fin.asset_allocation import AssetAllocation
 from ai.gym_fin.model_params import load_params_file
 
-def extract_model(eval_model_params, *, train_seed, redis_address, train_seeds, ensemble, checkpoint_name, result_dir,
+def extract_model(eval_model_params, *, train_seed, address, train_seeds, ensemble, checkpoint_name, result_dir,
     eval_couple_net, eval_seed, eval_num_timesteps, eval_render, nice, num_cpu, model_dir,
     num_age_steps, num_p_steps, age_range, p_range, p_type):
 
     def extract_timestep(train_dirs, checkpoint_name, output_fname):
 
         with TFRunner(train_dirs = train_dirs, checkpoint_name = checkpoint_name, eval_model_params = eval_model_params,
-                      couple_net = eval_couple_net, redis_address = redis_address, num_workers = 0, num_cpu = num_cpu) as runner:
+                      couple_net = eval_couple_net, address = address, num_workers = 0, num_cpu = num_cpu) as runner:
             with open(output_fname, 'w') as f:
                 c = writer(f)
                 for age_index in range(num_age_steps + 1):
@@ -99,7 +99,7 @@ def extract_model(eval_model_params, *, train_seed, redis_address, train_seeds, 
 
 def main():
     parser = arg_parser(training = False, evaluate = True)
-    parser.add_argument('--redis-address')
+    parser.add_argument('--address')
     parser.add_argument('--train-seeds', type = int, default = 1) # Number of seeds to evaluate for an ensemble.
     boolean_flag(parser, 'ensemble', default = False)
     parser.add_argument('--checkpoint-name')

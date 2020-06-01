@@ -321,7 +321,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
 runner_cache = {}
 
-def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal, opal_file, redis_address, allow_tensorflow, checkpoint_name,
+def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal, opal_file, address, allow_tensorflow, checkpoint_name,
     evaluate, warm_cache, eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
     num_cpu, model, default_object_id, train_dirs, search_consume_initial_around, out,
                aid, num_workers, num_environments, num_trace_episodes, pdf_buckets, pdf_smoothing_window, pdf_constant_initial_consume):
@@ -388,7 +388,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
             runner = runner_cache[train_dirs[0]]
         except KeyError:
             runner = TFRunner(train_dirs = train_dirs, allow_tensorflow = allow_tensorflow, checkpoint_name = checkpoint_name, eval_model_params = eval_model_params, couple_net = eval_couple_net,
-                redis_address = redis_address, num_workers = num_workers, worker_seed = eval_seed, num_environments = num_environments, num_cpu = num_cpu).__enter__()
+                address = address, num_workers = num_workers, worker_seed = eval_seed, num_environments = num_environments, num_cpu = num_cpu).__enter__()
             if daemon and not runner.remote_evaluators:
                 # Don't cache runner if not daemon as it prevents termination of Ray workers.
                 # Don't cache runner if remote evaluators as remote evaluators would cache old eval_model_params.
@@ -597,7 +597,7 @@ def main():
     boolean_flag(parser, 'annuitize', default = False)
     boolean_flag(parser, 'opal', default = False)
     parser.add_argument('--opal-file', default = 'opal-linear.csv')
-    parser.add_argument('--redis-address')
+    parser.add_argument('--address')
     parser.add_argument('--models-dir')
     parser.add_argument('--models-adjust') # JSON file containing adjustments to apply to each model.
     parser.add_argument('--gamma', action = 'append', type = float, default = [])

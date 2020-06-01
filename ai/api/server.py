@@ -578,6 +578,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         error_result = None
         def run(i, gamma):
             try:
+                aid = None
                 my_api_data = [dict(api_data[0], rra = [gamma])]
                 my_result_dir = result_dir + '/rra' + str(gamma)
                 mkdir(my_result_dir)

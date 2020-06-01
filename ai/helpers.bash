@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -19,17 +19,16 @@ PARALLEL=${PARALLEL:-True}
     # "True": run seeds of a job in parallel.
 # "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
 RAY_CLUSTER=${RAY_CLUSTER:-$AI_DIR/cluster.yaml}
-RAY_AUTOSCALER=${RAY_AUTOSCALER:-False} # Set to "True" to perform training with the Ray autoscaler enabled.
-RAY_AUTOSCALER_USE_HEAD=${RAY_AUTOSCALER_USE_HEAD:-Minimal}
-    # "False": Head node will not be used as a worker. As a side effect a worker node will thus always be running.
-    # "Minimal": Head node will be used for a single cpu worker.
+RAY_AUTOSCALER=${RAY_AUTOSCALER:-True} # Set to "False" to perform training without the Ray autoscaler enabled.
+RAY_AUTOSCALER_USE_HEAD=${RAY_AUTOSCALER_USE_HEAD:-False}
+    # "False": Head node will not be used as a worker.
     # "True": Head node will be used for possibly multiple cpu workers.
-RAY_REDIS_ADDRESS=${RAY_REDIS_ADDRESS:-localhost:6379}
+RAY_ADDRESS=${RAY_ADDRESS:-localhost:6379}
 SEED_START=${SEED_START:-0}
 SEEDS=${SEEDS:-10}
 POLICY=${POLICY:-none}
 ALGORITHM=${ALGORITHM:-PPO}
-EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py --redis-address=$RAY_REDIS_ADDRESS}
+EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py --address=$RAY_ADDRESS}
 BASE_SCENARIO=${BASE_SCENARIO:-$AI_DIR/aiplanner-scenario.txt}
 BASE_ARGS=${BASE_ARGS:--c $BASE_SCENARIO}
 TRAIN_ARGS=${TRAIN_ARGS:--c $AI_DIR/aiplanner-scenario-train.txt}
@@ -39,8 +38,8 @@ COUPLE_EVAL_ARGS="-c $AI_DIR/aiplanner-scenario-couple-eval.txt"
 
 start_ray_if_needed() {
 
-    local HOST=`echo $RAY_REDIS_ADDRESS | sed 's/:.*//'`
-    local PORT=`echo $RAY_REDIS_ADDRESS | sed 's/.*://'`
+    local HOST=`echo $RAY_ADDRESS | sed 's/:.*//'`
+    local PORT=`echo $RAY_ADDRESS | sed 's/.*://'`
 
     nc -z $HOST $PORT && return
 
@@ -50,8 +49,7 @@ start_ray_if_needed() {
         if [ $RAY_AUTOSCALER = True ]; then
             ARGS="--autoscaling-config=$RAY_CLUSTER"
             if [ $RAY_AUTOSCALER_USE_HEAD != True ]; then
-                ARGS="$ARGS --num-cpus=1 --num-gpus=0"
-                    # --num-cpus=0 results in a ray.tune.run_experiments() error.
+                ARGS="$ARGS --num-cpus=0 --num-gpus=0"
             fi
         else
             ARGS=
@@ -60,10 +58,6 @@ start_ray_if_needed() {
         (
             ulimit -n 65536
             nohup ray start --head --redis-port=$PORT $ARGS
-            if [ $RAY_AUTOSCALER = True -a $RAY_AUTOSCALER_USE_HEAD = False ]; then
-                # Block use of head node for a worker because it runs slower due to also running Ray.
-                nohup $AI_DIR/ray_sleeper $RAY_REDIS_ADDRESS &
-            fi
         ) > /tmp/ray.out 2>&1
 
     fi
@@ -77,7 +71,7 @@ train () {
     case $ALGORITHM in
         A2C|A3C|PG|DDPG|APPO|PPO|PPO.baselines)
             start_ray_if_needed
-            local TRAINER="$AI_DIR/train_rllib.py --redis-address=$RAY_REDIS_ADDRESS --train-algorithm=$ALGORITHM"
+            local TRAINER="$AI_DIR/train_rllib.py --address=$RAY_ADDRESS --train-algorithm=$ALGORITHM"
             local TRAINER_PARALLEL=True
             ;;
         ppo1)

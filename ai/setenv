@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -10,7 +10,7 @@
 
 export AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 AI_DIR=$AIPLANNER_HOME/ai
-PYTHONPATH_ADD=$AI_DIR/baselines:$AIPLANNER_HOME
+PYTHONPATH_ADD=$AIPLANNER_HOME
 if [ -z "$PYTHONPATH" ]; then
     export PYTHONPATH=$PYTHONPATH_ADD
 else
@@ -29,4 +29,4 @@ export KMP_AFFINITY=none
 # eval_model.py fails when savgol_filter() calls linear algebra package,
 # with error "OMP: Error #15: Initializing libiomp5.so, but found libiomp5.so already initialized."
 # An unsupported work around is as follow:
-export KMP_DUPLICATE_LIB_OK=TRUE
+#export KMP_DUPLICATE_LIB_OK=TRUE

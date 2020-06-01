@@ -8,39 +8,30 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 RUN apt-get update \
     && echo "postfix postfix/main_mailer_type select Internet Site" | debconf-set-selections \
     && echo "postfix postfix/mailname string aiplanner.com" | debconf-set-selections \
-    && apt-get install -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y \
         curl \
         build-essential \
-        libreadline-gplv2-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev \
         python3-pip \
         cron \
         logrotate \
         postfix \
+        cython3 \
+        python3-setproctitle \
         gnuplot-nox \
+        python3-reportlab \
     && apt-get clean \
-    && curl -O https://www.python.org/ftp/python/3.6.5/Python-3.6.5.tgz \
-    && tar -zxf Python-3.6.5.tgz \
-    && rm Python-3.6.5.tgz \
-    && cd Python-3.6.5 \
-    && ./configure \
-    && make \
-    && make install \
-    && cd .. \
-    && rm -r Python-3.6.5 \
+    && apt-get install -y unzip cmake \
+    && curl -s -L -R -o install-bazel.sh https://github.com/bazelbuild/bazel/releases/download/1.1.0/bazel-1.1.0-installer-linux-x86_64.sh \
+    && bash ./install-bazel.sh \
     && pip3 install \
-        cython==0.29.0 \
-        numpy==1.15.4 \
-        scipy \
-        tensorflow==1.12.0 \
-        gym \
+        torch \
+        'ray[rllib]==0.8.5' \
         psutil \
-        setproctitle \
         pyyaml \
-        reportlab \
         svglib
-    # Need python 3.6+ because aiplanner source code uses type annotations.
-    # libreadline... needed for python build otherwise pip3 ssl fails.
+    # RLlib currently depends on atari-py which requires cmake and bazel which requires uzip to install
+    # Bazel version based on: ray/ci/travis/install-bazel.sh

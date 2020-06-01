@@ -7,28 +7,12 @@ website.
 See README.docker for information on configuring and running the
 AIPlanner api server.
 
-Tensorflow
-----------
-
-Tensorflow is the deep learning framework used. I would like to run on
-Ubuntu 18.04, but Ubuntu 18.04 has CUDA 9.1.  Google won't be
-releasing tensorflow for CUDA 9.1, will release for 9.2. Would thus
-need to manually install CUDA, which based on the tensorflow docs, is
-messy.
-
-Hence for time being using Amazon's Deep Learning AMI (Ubuntu)
-currently based on Ubuntu 16.04 - CUDA 9 - with tensorflow
-pre-installed.
-
-     Region    Deep Learning Version          AMI
-    us-east-1           21.2          ami-0d96d570269578cd7
-    us-east-2           21.2          ami-0a47106e391391252
-
-For this instance 150G of storage is recommended. The default of 75G
-only leaves 5G for AIPlanner.
-
 Server requirements
 -------------------
+
+AIPlanner runs on Ubuntu 20.04 on Amazon EC2. For production 50G of
+disk space should be plenty, but for development 100G might be desired
+to enable saving multiple checkpoints from multiple training runs.
 
 For the web server which includes the api server in a docker
 container, with num_infer_jobs=0 set, a 2 core 4 thread 8G RAM
@@ -68,61 +52,56 @@ exit
 Obtain the source
 -----------------
 
-Set up an EC2 instance with tensorflow, ssh in to it, and obtain the
-sources:
+Set up an EC2 instance, ssh in to it, and obtain the sources:
 
     cd ~
-    git clone https://github.com/gordoni/aiplanner.git
+    git clone git@git.assembla.com:aaa.git aiplanner
+        # Or perhaps someday:
+        #git clone https://github.com/gordoni/aiplanner.git
+    cd aiplanner
+    # For now AIPlanner is not on master, so:
+    git checkout aiplanner
+    git config --global user.name "<FirstName> <LastName>"
+    git config --global user.email "<user@email.com>"
 
 Obtaining additional required components
 ----------------------------------------
 
-Installing additional required components on Ubuntu 18.04 (currently
-not workable):
+Installing additional required components on Ubuntu 20.04:
 
     sudo
-    apt install catdoc gnuplot-nox python3-xlrd python3-pip python3-dev python3-mpi4py nodejs npm
-    apt install python3-boto3
-    pip3 install tensorflow
-    pip3 install gym
-    pip3 install 'ray[debug]==0.7.3'
-    pip3 install setproctitle pyyaml reportlab svglib
+    apt install catdoc python3-setproctitle gnuplot-nox python3-reportlab docker.io
+    apt install python3-xlrd # for web/update_price.py
+    apt install python3-pip python3-dev python3-boto3
+    #apt install python3-mpi4py joblib # only needed if using OpenAI baselines
+    pip3 install arch
+        # Only needed if you wish to fit your own volatility model.
+        # May require: --install-option='--no-binary'
+    apt install nodejs node-typescript npm
+    pip3 install torch
+    #pip3 install tensorflow # No longer used; use pytorch instead.
+    # RLlib currently depends on atari-py which requires cmake and bazel which requires uzip to install.
+    apt install unzip cmake
+    (cd aiplanner && ai/ray/ci/travis/install-bazel.sh) # Install bazel in /home/ubuntu/bin
+    PATH=/home/ubuntu/bin:$PATH pip3 install 'ray[rllib,debug]==0.8.5'
+    pip3 install pyyaml svglib
     exit
 
-Installing additional required components on Amazon's Deep Learning
-AMI (Ubuntu):
+The standard version of Ray (0.8.5) works unmodified, but if you need
+to use a locally modified version proceed as follows (the current
+local version of Ray has no changes from the official release):
 
-    sudo apt install catdoc gnuplot-nox
-    sudo apt install python3-xlrd # for web/update_price.py
-    source activate tensorflow_p36
-    pip install arch --install-option='--no-binary'
-        # only needed if you wish to fit your own volatility model
-    #pip install mpi4py # only needed if using OpenAI baselines
-    #pip install joblib # only needed if using OpenAI baselines
-    pip install gym
-    pip install 'ray[debug]==0.7.3'
-    pip install opencv-python-headless # not needed if using Deep Learning AMI 24.0
-    pip install setproctitle pyyaml reportlab svglib
-
-Hack Ray to use our version of RLlib, not the default version:
-
+    # Hack Ray to use our version of RLlib, not the default version:
     RAY=`pip show ray | grep Location | awk '{print $2}'`/ray
     mv $RAY/rllib $RAY/rllib.old
-    ln -s ~/aiplanner/ai/ray/python/ray/rllib $RAY/rllib
-
-Note, you may need to disable this link if upgrading Ray to prevent
-pip clobbering the repository.
+    ln -s ~/aiplanner/ai/ray//rllib $RAY/rllib
+    # Note, you may need to disable this link if upgrading Ray to
+    # prevent pip clobbering the repository.
 
 If plan to deploy the web UI then install the required components for
 the Angular website:
 
-    [ Get latest Node.js per https://nodejs.org/en/download/ ]
-    cd ~
-    curl https://nodejs.org/dist/v10.16.3/node-v10.16.3-linux-x64.tar.xz | tar xJf -
-    export PATH=$HOME/node-v10.16.3-linux-x64/bin:$PATH
-
-npm install -g typescript
-npm install -g @angular/cli
+    sudo npm install -g @angular/cli
 
 Cache the interest rate data
 ----------------------------
@@ -309,7 +288,6 @@ nodes, and the security group identifies ray-autoscaler-default.
 If desired, the cluster can now be manually started using:
 
     cd ~/aiplanner/ai
-    source activate tensorflow_p36
     ray start --head --redis-port=6379 --autoscaling-config=cluster.yaml
 
 Worker nodes are created when needed, and terminated if idle for a
@@ -332,28 +310,71 @@ Update the worker_nodes ImageId with the newly create AMI id.
 Setting up environment variables
 --------------------------------
 
-Various environment variables need to be set up for production or
-development tasks:
+If you don't want to use a Ray compute cluster during training:
 
-    source activate tensorflow_p36
+    export RAY_AUTOSCALER=False
 
-If you have set up a Ray compute cluster indicate you want to use it
-during training:
+Seperately, you may want to specify:
+
+    export RAY_AUTOSCALER_USE_HEAD=True
+
+This will allow training on the head node. The reason you may not want
+to do this is the head node will likely be slower than the worker
+nodes because it is also running the Ray monitor process. This slows
+the training of multiple neural networks in parallel.
+
+Testing a few things out
+------------------------
+
+You might wish to test a few low level commands are working.
+
+    cd ~aiplanner/ai
+    source helpers.bash # Setup routines and environment variables.
+
+Local model training:
+
+    ./train_rllib.py --train-seeds=1 --train-num-workers=0 --train-batch-size=10000 --train-num-timesteps=20000 -c aiplanner-scenario.txt -c aiplanner-scenario-train.txt
+    # Ray checkpoints saved in aiplanner.tf
+
+Cluster based training:
 
     export RAY_AUTOSCALER=True
-
-You can also specify:
-
     export RAY_AUTOSCALER_USE_HEAD=False
+    start_ray_if_needed
+    ./train_rllib.py --address=localhost:6379 --train-seeds=1 --train-num-workers=2 --train-batch-size=10000 --train-num-timesteps=20000 -c aiplanner-scenario.txt -c aiplanner-scenario-train.txt
+    # Ray checkpoints saved in aiplanner.tf
+    ray stop
+    ray down cluster.yaml
 
-This will prevent running any of the training on the head node. The
-reason you may want to do this is the head node will likely be slower
-than the worker nodes because it is also running the Ray monitor
-process. This slows the training of multiple neural networks in
-parallel. The reason you may not want to do this is if you do it there
-will then always be at least one worker node running, even when Ray is
-otherwise idle. This can increase the financial cost of the resources
-used.
+Cluster based checkpoint evaluation (optional):
+
+    export RAY_AUTOSCALER=True
+    export RAY_AUTOSCALER_USE_HEAD=False
+    start_ray_if_needed
+    ./eval_model.py --address=localhost:6379 --train-seeds=1 --eval-num-timesteps=10000 -c aiplanner-scenario.txt -c aiplanner-scenario-single-eval.txt
+    # Results saved in results/seed_0
+    ray stop
+    ray down cluster.yaml
+
+Convert Ray checkpoints to export format (only for TensorFlow
+non-eager):
+
+    ./export_model.py --train-seeds=1
+    # Tensorflow model saved to aiplanner.tf
+
+But AIPlaner doesn't current work with TensorFlow non-eager.
+
+Ray 0.8.5 is unable to export TensorFlow eager and PyTorch based
+models, consequently all evaluation is currently based on checkpoint
+models. TensorFlow based checkpoint models take around 3 seconds of
+cpu time to load (per seed), and as a result the model server would
+take several minutes to start up. Fortunately PyTorch based checkpoint
+models only take 0.2 seconds of cpu time to load.
+
+Local TensorFlow model or checkpoint evaluation:
+
+    # Saved tensorflow model takes precedence over Ray checkpoints
+    ./eval_model.py --train-seeds=1 --eval-num-timesteps=10000 -c aiplanner-scenario.txt -c aiplanner-scenario-single-eval.txt
 
 Fit the equity volatility model
 -------------------------------
@@ -363,7 +384,6 @@ typically used. The model has already been fitted, but if you wish to
 fit it yourself perform the following steps.
 
     cd ~/aiplanner
-    mkdir -p data/public
     mkdir -p data/private/ticker
     [download the max time period ticker data for ^SP500TR and ^GSPC
      from https://finance.yahoo.com and store it in the just created
@@ -374,7 +394,7 @@ fit it yourself perform the following steps.
     [and use the just determined --stocks-* parameters when training
      and evaluating]
 
-Training the generic nueral network models
+Training the generic neural network models
 ------------------------------------------
 
 Unless you plan on serving pre-trained neural network models you will
@@ -389,9 +409,10 @@ very large spot instances slowing the training process):
     cd ~/aiplanner/ai/api
     nohup ./train > /tmp/train.out &
 
-A presumed bug in Ray 0.7.3 means that completion of training of the
-first training run kills all the other training workers. This can be
-worked around by specifying:
+A presumed bug in Ray 0.7.3 meant that completion of training of the
+first training run kills all the other training workers. It is fixed
+in the current Ray 0.8.5, but if it recurs, it can be worked around by
+specifying:
 
     nohup ./train --train-num-workers=0 --num-cpu=1 > /tmp/train.out &
 
@@ -446,7 +467,6 @@ Angular provides a single webpage app for interacting with the models.
 
 Install the Angular builder:
 
-    export PATH=$HOME/node-v10.16.3-linux-x64/bin:$PATH
     cd ~/aiplanner/ai/angular
     npm ci @angular-devkit/build-angular
 
@@ -462,7 +482,6 @@ tree:
 
 Build the website:
 
-    export PATH=$HOME/node-v10.16.3-linux-x64/bin:$PATH
     cd ~/aiplanner/ai/angular
     ng build --prod
 
@@ -476,16 +495,16 @@ Set up the web server
 
 Even if only running the API server, you may wish to set up a
 webserver. In this case the webserver will be responsible for proxying
-/api TLS requests on port 443 to the API server.  If you don't intend
-to use TLS internally for talking to the API server you can skip this
-section and have applications connect to the API server directly
-withoout encryption, either on the default port (3000), or the http
-port (80) by adding the argument "--port 80" when installing the
+/webapi TLS requests on port 443 to the API server. If you don't
+intend to use TLS internally for talking to the API server you can
+skip this section and have applications connect to the API server
+directly without encryption, either on the default port (3000), or the
+http port (80) by adding the argument "--port 80" when installing the
 aiplanner-apiserver.service file later.
 
     sudo apt install apache2
     sudo a2enmod ssl proxy proxy_http
-    sudo service apache2 restart
+    sudo systemctl restart apache2
 
     Select appropriate <site-ssl.conf> file:
         sudo cp aiplanner/ai/web/sites-examples/<sample-site-ssl.conf> /etc/apache2/sites-available/<site-ssl.conf>
@@ -500,13 +519,7 @@ aiplanner-apiserver.service file later.
     Enable each plain <site.conf> (but not the <site-ssl.conf>s):
         sudo a2ensite <site>
 
-    Ubuntu 18.04:
-        sudo apt install python3-certbot-apache
-    Ubuntu 16.04:
-        sudo add-apt-repository ppa:certbot/certbot
-        sudo apt update
-            # Ignore the nvidia package errors.
-        sudo apt install python3-certbot-apache
+    sudo apt install python3-certbot-apache
     sudo certbot --apache certonly
         # Add "--domains <thisdomain>" to force a particular domain.
     Email: <you@yourdomain>
@@ -517,7 +530,7 @@ aiplanner-apiserver.service file later.
     Enable each <site-ssl.conf>:
         sudo a2ensite <site-ssl>
 
-    sudo service apache2 reload
+    sudo systemctl reload apache2
 
 Building an api server docker container
 ---------------------------------------
@@ -525,28 +538,30 @@ Building an api server docker container
 The api server can be distributed as a docker container.
 
     cd ~/aiplanner/ai
-    docker build -t aiplanner-base-deps docker/base-deps
+    sudo docker build -t aiplanner-base-deps docker/base-deps
     tar cf docker/apiserver/dotspia.tar -C ~/ .spia
-    tar zcf docker/apiserver/models.tgz -C ~/aiplanner-data/models . --no-wildcards-match-slash --exclude 'seed_*_*' --exclude '*bias*'
+    (cd ~/aiplanner-data/models; find * -name '*.tf' -prune -o -print) | grep -v bias > docker/apiserver/MANIFEST.models
+    (cd ~/aiplanner-data/models; for d in *.tf/seed_*_*; do echo $d/checkpoint_`ls $d | sed 's/checkpoint_//' | sort -n | tail -n 1`; done) >> docker/apiserver/MANIFEST.models
+    tar zcf docker/apiserver/models.tgz -C ~/aiplanner-data/models `cat docker/apiserver/MANIFEST.models`
     git rev-parse HEAD > docker/apiserver/git-rev
     rm -rf docker/apiserver/aiplanner
     mkdir -p docker/apiserver/aiplanner
     (cd ..; git archive `cat ai/docker/apiserver/git-rev`) | tar xf - -C docker/apiserver/aiplanner `cat docker/apiserver/MANIFEST.aiplanner`
-    docker build -t aiplanner-apiserver docker/apiserver
-    rm -r docker/apiserver/{dotspia.tar,models.tgz,git-rev,aiplanner}
+    sudo docker build -t aiplanner-apiserver docker/apiserver
+    rm -r docker/apiserver/{dotspia.tar,MANIFEST.models,models.tgz,git-rev,aiplanner}
 
 Test it out:
 
-    docker run --rm -ti -p 127.0.0.1:3000:3000 -v $PWD/aiplanner-docker-development.yaml:/aiplanner.yaml aiplanner-apiserver
+    sudo docker run --rm -ti -p 127.0.0.1:3000:3000 -v $PWD/aiplanner-docker-development.yaml:/aiplanner.yaml aiplanner-apiserver
 
 Test the image thoroughly. If everything looks good publish the image
 to a private repo:
 
-    docker image tag aiplanner-apiserver <dockerhubid>/aiplanner-apiserver:<version>
-    docker image tag aiplanner-apiserver <dockerhubid>/aiplanner-apiserver:latest
+    sudo docker image tag aiplanner-apiserver <dockerhubid>/aiplanner-apiserver:<version>
+    sudo docker image tag aiplanner-apiserver <dockerhubid>/aiplanner-apiserver:latest
     docker login
-    docker push <dockerhubid>/aiplanner-apiserver:<version>
-    docker push <dockerhubid>/aiplanner-apiserver:latest
+    sudo docker push <dockerhubid>/aiplanner-apiserver:<version>
+    sudo docker push <dockerhubid>/aiplanner-apiserver:latest
     docker logout
 
 Set up the aiplanner system configuration file
@@ -564,17 +579,17 @@ Run the api server in production
 --------------------------------
 
     docker login
-    docker pull <dockerhubid>/aiplanner-apiserver
+    sudo docker pull <dockerhubid>/aiplanner-apiserver
     docker logout
-    docker ps
-    docker stop <containerid>
-    docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data/aiplanner.yaml:/aiplanner.yaml <dockerhubid>/aiplanner-apiserver
+    sudo docker ps
+    sudo docker stop <containerid>
+    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data/aiplanner.yaml:/aiplanner.yaml <dockerhubid>/aiplanner-apiserver
 
 Setup the backend web server
 ----------------------------
 
 The backend web server responds to requests for web related services
-from the website. Curretly this only comprises handling email
+from the website. Currently this only comprises handling email
 subscription requests.
 
 Set up the systemd config:
@@ -684,17 +699,17 @@ The api server has three functions:
 The api server can be run in development as follows:
 
     cd ~/aiplanner/ai
+    source setenv # Setup environment variables.
     # First create a default market-data.json file
     cp docker/apiserver/market-data.json ~/aiplanner-data/
     # Stop any running apiserver container
-    docker ps
-    docker stop <containerid>
+    sudo docker ps
+    sudo docker stop <containerid>
     # Then start up the development apiserver
     api/server.py --host=localhost
 
 On the same machine in another shell window run the Angular server:
 
-    export PATH=$HOME/node-v10.16.3-linux-x64/bin:$PATH
     cd ~/aiplanner/ai/angular
     ng serve --host 0.0.0.0 --public-host <thishost.thisdomain>
 

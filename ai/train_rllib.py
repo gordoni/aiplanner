@@ -17,7 +17,7 @@ from shutil import rmtree
 
 
 import ray
-from ray.tune import function, grid_search, run
+from ray.tune import grid_search, run
 from ray.tune.config_parser import make_parser
 
 from ai.common.cmd_util import arg_parser, fin_arg_parse
@@ -30,7 +30,7 @@ class RayFinEnv(FinEnv):
     def __init__(self, config):
         super().__init__(**config)
 
-def train(training_model_params, *, redis_address, train_num_workers, train_anneal_num_timesteps, train_seeds,
+def train(training_model_params, *, address, train_num_workers, train_anneal_num_timesteps, train_seeds,
     train_batch_size, train_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_entropy_coefficient,
     train_save_frequency, train_max_failures, train_resume,
     train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
@@ -59,7 +59,7 @@ def train(training_model_params, *, redis_address, train_num_workers, train_anne
         pass
     dump_params_file(model_dir + '/params.txt', training_model_params)
 
-    ray.init(redis_address=redis_address)
+    ray.init(address=address)
     #ray.init(object_store_memory=int(2e9))
 
     algorithm = training_model_params['algorithm']
@@ -256,7 +256,7 @@ def train(training_model_params, *, redis_address, train_num_workers, train_anne
     run(
         trainable,
         name = './',
-        trial_name_creator = function(trial_name),
+        trial_name_creator = trial_name,
 
         config = dict({
             'env': RayFinEnv,
@@ -282,8 +282,19 @@ def train(training_model_params, *, redis_address, train_num_workers, train_anne
             },
 
             'callbacks': {
-                # 'on_train_result': function(on_train_result),
+                # 'on_train_result': on_train_result,
             },
+
+            # Use PyTorch to avoid the slowdown of TensorFlow eager.
+            'use_pytorch': True,
+                # For Ray after 0.8.5 need to replace with:
+                #'framework': 'torch',
+            # TensorFlow non-eager mode is only available as a backwards compatibility in TensorFlow 2; using eager is therefor encouraged.
+            # Unfortunately TensorFlow eager mode reduces performance by a factor of 2 compared to TensorFlow 1.x.
+            # Additionally, attempting to use non-eager mode fails during evaluation with Ray error: No variables in the input matched those in the network.
+            'eager': True,
+                # For Ray after 0.8.5 need to replace with:
+                #'framework': 'tfe',
         }, **agent_config),
 
         stop = {
@@ -295,12 +306,12 @@ def train(training_model_params, *, redis_address, train_num_workers, train_anne
         checkpoint_at_end = True,
         max_failures = train_max_failures,
         resume = train_resume,
-        queue_trials = redis_address != None
+        queue_trials = address != None
     )
 
 def main():
     parser = make_parser(lambda: arg_parser(evaluate=False))
-    parser.add_argument('--redis-address')
+    parser.add_argument('--address')
     parser.add_argument('--train-num-workers', type=int, default=8) # Number of rollout worker processes.
         # Default appropriate for a short elapsed time with train_optimizer_epochs 10.
         # Set to 0, or possibly 1, for deterministic training.

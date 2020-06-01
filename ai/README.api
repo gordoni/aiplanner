@@ -578,7 +578,7 @@ retrieved using a HTTP GET request:
 
 Each <scenario_result> is of the form:
 
-    {"error": <error_message>}
+    {"error": <error_message>, "cid": <cid>, "aid": <aid>}
 
 or
 
@@ -600,7 +600,7 @@ The customer id supplied with the request, or null if none.
 AIPlanner id
 ------------
 
-aid: string
+aid: string or null
 
 The identifier assigned to this request by AIPlanner. May be useful
 for debugging.

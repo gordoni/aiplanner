@@ -71,8 +71,10 @@ class FinEnv(Env):
             # Models train poorly with extreme observation warnings, large negative mean rewards, and extreme rewards during training,
             # and/or a CE 10-40% below expected if observations (or at least reward_to_go observation) frequently and significanty exceed observation space range.
             # Most likely to occur for gamma=6, p=2e6, bucket.
-            low = np.repeat(-1, len(self.observation_space_low)) if params.observation_space_ignores_range else np.array(self.observation_space_low),
-            high = np.repeat(1, len(self.observation_space_high)) if params.observation_space_ignores_range else np.array(self.observation_space_high),
+            low = np.repeat(-1, len(self.observation_space_low)).astype(np.float32) if params.observation_space_ignores_range
+                else np.array(self.observation_space_low, dtype = np.float32),
+            high = np.repeat(1, len(self.observation_space_high)).astype(np.float32) if params.observation_space_ignores_range
+                else np.array(self.observation_space_high, dtype = np.float32),
             dtype = 'float32'
         )
 

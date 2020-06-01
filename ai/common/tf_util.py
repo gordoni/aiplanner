@@ -15,12 +15,10 @@ from shutil import rmtree
 
 import numpy as np
 
-import tensorflow as tf
-
 class TFRunner:
 
     def __init__(self, *, train_dirs = ['aiplanner.tf'], allow_tensorflow = True, checkpoint_name = None, eval_model_params, couple_net = True,
-        redis_address = None, num_workers = 1, worker_seed = 0, num_environments = 1, num_cpu = None,
+        address = None, num_workers = 1, worker_seed = 0, num_environments = 1, num_cpu = None,
         evaluator = True, export_model = False):
 
         self.couple_net = couple_net
@@ -35,7 +33,7 @@ class TFRunner:
         tf_dir = train_dirs[0] + '/' + tf_name
         tensorflow = isdir(tf_dir)
         #rllib_checkpoints = glob(train_dirs[0] + '/*/checkpoint_*')
-        if not allow_tensorflow or not tensorflow:
+        if not allow_tensorflow or not tensorflow or export_model:
 
             # Rllib.
             import ray
@@ -46,7 +44,7 @@ class TFRunner:
             from train_rllib import RayFinEnv
 
             if not ray.is_initialized():
-                ray.init(redis_address = redis_address)
+                ray.init(address = address)
 
             weights = []
             first = True
@@ -73,18 +71,20 @@ class TFRunner:
                         'inter_op_parallelism_threads': num_cpu,
                     }
                     config['seed'] = worker_seed
-                    config['sample_mode'] = True # Rllib hack to return modal sample not a randomly perturbed one.
 
                 agent = cls(env = RayFinEnv, config = config)
                 agent.restore(checkpoint)
 
                 if export_model:
+
                     export_dir = train_dir + '/tensorflow'
                     assert '.tf/' in export_dir
                     try:
                         rmtree(export_dir)
                     except FileNotFoundError:
                         pass
+
+                    # export_policy_model() is a nop in Ray 0.8.5 for eager tf (TensorFlow 2).
                     agent.export_policy_model(export_dir)
 
                 if not evaluator:
@@ -95,56 +95,78 @@ class TFRunner:
 
                 first = False
 
-            class EnsemblePolicy(agent._policy):
+            framework = config.get('framework')
+            if not framework:
+                 framework = 'torch' if config['use_pytorch'] else ('tfe' if config['eager'] else 'tf')
+
+            if framework == 'tfe':
+                base_policy_class = agent._policy.as_eager()
+            else:
+                base_policy_class = agent._policy
+
+            class EnsemblePolicy(base_policy_class):
 
                 def __init__(self, observation_space, action_space, config, *args, **kwargs):
 
-                    super().__init__(observation_space, action_space, config, *args, **kwargs)
                     self.policies = []
                     for w in weights:
-                        graph = tf.Graph()
-                        with graph.as_default() as g:
-                            tf_config = tf.ConfigProto(
-                                inter_op_parallelism_threads = num_cpu,
-                                intra_op_parallelism_threads = num_cpu
-                            )
-                            with tf.Session(graph = graph, config = tf_config).as_default() as sess:
-                                policy = agent._policy(observation_space, action_space, config, *args, **kwargs)
-                                self.policies.append(policy)
+                        if framework == 'tfe':
+                            import tensorflow as tf # Must do after agent.restore() if not eager.
+                            graph = tf.Graph()
+                            with graph.as_default() as g:
+                                tf_config = tf.compat.v1.ConfigProto(
+                                    inter_op_parallelism_threads = num_cpu,
+                                    intra_op_parallelism_threads = num_cpu
+                                )
+                                with tf.compat.v1.Session(graph = graph, config = tf_config).as_default() as sess:
+                                    policy = base_policy_class(observation_space, action_space, config, *args, **kwargs)
+                        else:
+                            policy = base_policy_class(observation_space, action_space, config, *args, **kwargs)
+                        self.policies.append(policy)
+                    super().__init__(observation_space, action_space, config, *args, **kwargs)
 
                 def set_weights(self, weights):
 
                     for policy, w in zip(self.policies, weights):
                         policy.set_weights(w)
 
-                def compute_actions(self, *args, **kwargs):
+                def compute_actions(self, obs_batch, state_batches = [], prev_action_batch = [], prev_reward_batch = [], *args, **kwargs):
 
-                    actions_ca = [policy.compute_actions(*args, **kwargs) for policy in self.policies]
+                    actions_ca = [policy.compute_actions(obs_batch, state_batches, prev_action_batch, prev_reward_batch,
+                                                         *args, **dict(kwargs, explore = False)) for policy in self.policies]
                     actions = np.array([action[0] for action in actions_ca])
                     # Get slightly better CEs (retired, SPIAs, gamma=1.5) taking mean, than first dropping high/low.
                     #mean_action = (np.sum(actions, axis = 0) - np.amin(actions, axis = 0) - np.amax(actions, axis = 0)) / (actions.shape[0] - 2)
                     mean_action = np.mean(actions, axis = 0)
                     return [mean_action] + list(actions_ca[0][1:])
 
-                #def copy(self, existing_inputs):
-                #    return EnsemblePolicy(self.observation_space, self.action_space, self.config, existing_inputs = existing_inputs)
+            class EnsemblePolicy_eager(agent._policy):
 
-            policy = agent.workers.local_worker().get_policy()
+                def as_eager():
+
+                    return EnsemblePolicy
+
+            if framework == 'tfe':
+                policy_class = EnsemblePolicy_eager
+            else:
+                policy_class = EnsemblePolicy
 
             agent_weights = {'default_policy': weights}
 
             env_creator = lambda x: RayFinEnv(config['env_config'])
             # Delete workers and optimizer, they cause deserialization to fail.
             # Not precisely sure why, but this fixes the problem. They aren't needed for remote evaluation.
-            del agent.workers
-            del agent.optimizer
-            workers = WorkerSet(env_creator, EnsemblePolicy, agent.config, num_workers = num_workers)
+            #del agent.workers
+            #del agent.optimizer
+            workers = WorkerSet(env_creator, policy_class, agent.config, num_workers = num_workers)
             workers.foreach_worker(lambda w: w.set_weights(agent_weights))
             self.remote_evaluators = workers.remote_workers()
 
             self.policy = workers.local_worker().get_policy()
 
         else:
+
+            import tensorflow as tf
 
             tf_config = tf.ConfigProto(
                 inter_op_parallelism_threads = num_cpu,
