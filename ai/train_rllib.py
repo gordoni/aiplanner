@@ -25,7 +25,7 @@ from ai.common.tf_util import RayFinEnv
 from ai.common.utils import boolean_flag
 from ai.gym_fin.model_params import dump_params_file
 
-def train(training_model_params, *, address, train_num_workers, train_anneal_num_timesteps, train_seeds,
+def train(training_model_params, *, address, train_num_workers, train_anneal_num_timesteps, train_anneal_optimizer_factor, train_seeds,
     train_batch_size, train_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_entropy_coefficient,
     train_save_frequency, train_max_failures, train_resume,
     train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
@@ -59,16 +59,11 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
 
     algorithm = training_model_params['algorithm']
 
-    lr_schedule = [
+    lr_schedule = (
         (0, train_optimizer_step_size),
-        (max(0, train_num_timesteps - train_anneal_num_timesteps), train_optimizer_step_size),
-    ]
-    # Exponentially decaying anneal phase. Not usually needed; at least not when entropy_coeff provide regularization.
-    #     Consider estimating the non-representativeness of the batch brought about by it being a sample from a larger universe.
-    #     4 samples would have a stderr of 1/2 the non-representativeness.
-    #     Thus every 4 batches would cut down the non-representativeness remaining to be cut down by a factor of 2.
-    while lr_schedule[-1][0] < train_num_timesteps:
-        lr_schedule.append((lr_schedule[-1][0] + train_batch_size, lr_schedule[-1][1] / 2 ** (1/4)))
+        (train_num_timesteps - 1, train_optimizer_step_size),
+        (train_num_timesteps, train_anneal_optimizer_factor * train_optimizer_step_size),
+    )
     agent_config = {
 
         'A2C': {
@@ -293,7 +288,7 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
         }, **agent_config),
 
         stop = {
-            'timesteps_total': train_num_timesteps,
+            'timesteps_total': train_num_timesteps + train_anneal_num_timesteps,
         },
 
         local_dir = abspath(model_dir),
@@ -310,7 +305,8 @@ def main():
     parser.add_argument('--train-num-workers', type=int, default=8) # Number of rollout worker processes.
         # Default appropriate for a short elapsed time with train_optimizer_epochs 10.
         # Set to 0, or possibly 1, for deterministic training.
-    parser.add_argument('--train-anneal-num-timesteps', type=int, default=0)
+    parser.add_argument('--train-anneal-num-timesteps', type=int, default=0) # Additional annealing timesteps.
+    parser.add_argument('--train-anneal-optimizer-factor', type=float, default=0.1)
     parser.add_argument('--train-seeds', type=int, default=1) # Number of parallel seeds to train.
     parser.add_argument('--train-batch-size', type=int, default=500000)
     parser.add_argument('--train-minibatch-size', type=int, default=500)
