@@ -10,11 +10,12 @@
 
 FROM ubuntu:20.04
 RUN apt-get update \
+    && apt-get upgrade -y \
     && echo "postfix postfix/main_mailer_type select Internet Site" | debconf-set-selections \
     && echo "postfix postfix/mailname string aiplanner.com" | debconf-set-selections \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
         curl \
-        build-essential \
+        less \
         python3-pip \
         cron \
         logrotate \
@@ -24,14 +25,16 @@ RUN apt-get update \
         gnuplot-nox \
         python3-reportlab \
     && apt-get clean \
-    && apt-get install -y unzip cmake \
-    && curl -s -L -R -o install-bazel.sh https://github.com/bazelbuild/bazel/releases/download/1.1.0/bazel-1.1.0-installer-linux-x86_64.sh \
-    && bash ./install-bazel.sh \
+    && apt-get install -y cmake \
     && pip3 install \
         torch \
         'ray[rllib]==0.8.5' \
         psutil \
         pyyaml \
-        svglib
-    # RLlib currently depends on atari-py which requires cmake and bazel which requires uzip to install
+        svglib \
+    && rm -rf /root/.cache/pip
+    # RLlib depends on atari-py which requires cmake and used to require bazel which requires unzip to install
+    #&& apt-get install -y unzip \
+    #&& curl -s -L -R -o install-bazel.sh https://github.com/bazelbuild/bazel/releases/download/1.1.0/bazel-1.1.0-installer-linux-x86_64.sh \
+    #&& bash ./install-bazel.sh \
     # Bazel version based on: ray/ci/travis/install-bazel.sh
