@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2020 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -25,6 +25,7 @@ class Taxes(object):
         self.capital_gains = cg_init
         self.qualified_dividends = 0
         self.non_qualified_dividends = 0
+        self.charitable_contributions_carry = 0
 
         if self.params.tax_table_year == '2018':
 
@@ -178,6 +179,8 @@ class Taxes(object):
         self.niit_threshold_couple = 250000
         self.niit_rate = 0.038
 
+        self.charitable_deduction_limit = 0.5
+
     def buy_sell(self, ac, amount, new_value, ret, dividend_yield, qualified):
 
         if amount > 0:
@@ -218,7 +221,7 @@ class Taxes(object):
 
         return rate
 
-    def calculate_taxes(self, regular_income, social_security, capital_gains, nii, single):
+    def calculate_taxes(self, regular_income, social_security, capital_gains, nii, charitable_contributions, single):
 
         if not self.params.tax:
             return 0, 0
@@ -231,7 +234,10 @@ class Taxes(object):
                 self.marginal_rate(ss_table, relevant_income * self.cpi) * social_security)
             regular_income += social_security_taxable
 
-        taxable_regular_income = regular_income - (self.federal_standard_deduction_single if single else self.federal_standard_deduction_joint)
+        itemized_deduction = min(charitable_contributions, self.charitable_deduction_limit * (regular_income + capital_gains))
+        deduction = max(itemized_deduction, self.federal_standard_deduction_single if single else self.federal_standard_deduction_joint)
+        self.remaining_charitable_contributions = max(0, charitable_contributions - deduction) # Should limit carry forward to 5 years.
+        taxable_regular_income = regular_income - deduction
         taxable_capital_gains = capital_gains + min(taxable_regular_income, 0)
         taxable_regular_income = max(taxable_regular_income, 0)
         taxable_capital_gains = max(taxable_capital_gains, 0)
@@ -245,24 +251,35 @@ class Taxes(object):
             taxable_capital_gains, taxable_regular_income) \
             if taxable_capital_gains != 0 else 0
 
+        regular_tax += self.params.tax_fixed
         regular_tax += taxable_regular_income * self.params.tax_state
         capital_gains_tax += taxable_capital_gains * self.params.tax_state
 
         return regular_tax, capital_gains_tax
 
-    def tax(self, regular_income, social_security, single, inflation):
+    def tax(self, regular_income, social_security, charitable_contributions, single, inflation):
 
         assert regular_income >= social_security
 
-        regular_income += self.non_qualified_dividends
-        capital_gains = self.cg_carry + self.capital_gains + self.qualified_dividends
-        current_capital_gains = max(capital_gains, - min(self.federal_max_capital_loss / self.cpi, regular_income))
-        self.cg_carry = capital_gains - current_capital_gains
-        regular_income += min(current_capital_gains, 0)
-        capital_gains = max(current_capital_gains, 0)
-        nii = max(self.capital_gains + self.qualified_dividends + self.non_qualified_dividends, 0)
+        if self.params.tax:
 
-        regular_tax, capital_gains_tax = self.calculate_taxes(regular_income, social_security, capital_gains, nii, single)
+            regular_income += self.non_qualified_dividends
+            capital_gains = self.cg_carry + self.capital_gains + self.qualified_dividends
+            current_capital_gains = max(capital_gains, - min(self.federal_max_capital_loss / self.cpi, regular_income))
+            self.cg_carry = capital_gains - current_capital_gains
+            regular_income += min(current_capital_gains, 0)
+            capital_gains = max(current_capital_gains, 0)
+            nii = max(self.capital_gains + self.qualified_dividends + self.non_qualified_dividends, 0)
+            charitable_contributions += self.charitable_contributions_carry
+
+            regular_tax, capital_gains_tax = self.calculate_taxes(regular_income, social_security, capital_gains, nii, charitable_contributions, single)
+            self.charitable_contributions_carry = self.remaining_charitable_contributions
+
+            total_tax = regular_tax + capital_gains_tax
+
+        else:
+
+            total_tax = 0
 
         self.capital_gains = 0
         self.qualified_dividends = 0
@@ -275,7 +292,7 @@ class Taxes(object):
         if not self.params.tax_inflation_adjust_all:
             self.cpi *= inflation
 
-        return regular_tax + capital_gains_tax
+        return total_tax
 
     def observe(self):
 

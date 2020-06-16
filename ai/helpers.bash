@@ -526,7 +526,7 @@ timesteps () {
 
     case "$TRAINING" in
         specific*)
-            echo "--train-optimizer-step-size=5e-5 --train-num-timesteps=10000000 --train-batch-size=100000" # Timesteps may need tuning.
+            echo "--train-optimizer-step-size=5e-5 --train-num-timesteps=10000000 --train-batch-size=100000"
             return
             ;;
         *)

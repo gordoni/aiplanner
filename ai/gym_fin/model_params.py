@@ -51,6 +51,11 @@ class ModelParams(object):
 
         self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
 
+        self._param('consume-action-scale-back', 5) # Scale back of consume action if action space uunbounded.
+            # For a generic model lack of scale back will result in relative_ce_estimate frequently out of range and extreme reward observations.
+            # For a specific model scale back might need to be disabled (set to 1) if consume_charitable is set because the optimal consume amount
+            # might be far from the consume estimate.
+
         self._param('consume-policy', 'rl', tp = string_type,
             choices = ('rl', 'constant', 'percent_rule', 'guyton_rule2', 'guyton_klinger', 'target_percentage', 'extended_rmd', 'pmt'))
             # Consumption policy.
@@ -187,6 +192,12 @@ class ModelParams(object):
         self._param('time-period', 1) # Rebalancing time interval in years.
         self._param('gamma', (3, 3), 3) # Coefficient of relative risk aversion.
 
+        self._param('consume-charitable', float('inf')) # Charitable consumpton level.
+        self._param('consume-charitable-utility-factor', 0.1) # Reduction factor in marginal utility at consume_charitable.
+        self._param('consume-charitable-gamma', 0.8) # Charitable consumption coefficient of relative risk aversion.
+        self._param('consume-charitable-discount-rate', 0.0) # Charitable consumption annual discount rate to indicate preference for donating early.
+        self._param('consume-charitable-tax-deductability', 1.0) # Proportion of charitable consumption that is tax deductable.
+
         self._param('gi-fraction', (float('-inf'), float('inf'))) # Allowed values of guaranteed income as a fraction of total wealth.
         self._param('guaranteed-income', '[{"payout": [1e3, 1e5]}]', '[]', tp = string_type)
             # Guaranteed income and expenses represented as a JSON array of objects. Object fields:
@@ -258,6 +269,7 @@ class ModelParams(object):
             # Standard deduction for a couple: $25k - 2020.
             # Median property taxes: $3.3k - https://www.mortgagecalculator.org/helpful-advice/property-taxes.php
             # Households that own rather than rent: 63% - https://www.pewresearch.org/fact-tank/2017/07/19/more-u-s-households-are-renting-than-at-any-point-in-50-years/
+        self._param('tax-fixed', 0) # Property or any other fixed tax amounts not included in tax_state.
 
         self._boolean_flag('static-bonds', False)
             # Whether to model real bonds and inflation and thus nominal bonds and SPIAs as static (that is using a yield curve that does not vary over time).

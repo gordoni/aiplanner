@@ -475,6 +475,8 @@ class Fin:
 
         self.gamma = self.log_uniform(self.params.gamma_low, self.params.gamma_high)
 
+        self.consume_charitable = self.params.consume_charitable
+
         self.date_start = datetime.strptime(self.params.life_table_date, '%Y-%m-%d').date()
         self.date = self.date_start
         self.cpi = 1
@@ -590,7 +592,7 @@ class Fin:
 
                 assert not self.params.consume_preretirement or not self.params.consume_preretirement_income_ratio_high
                 income_preretirement = self.income_preretirement + self.income_preretirement2
-                income_preretirement -= sum(self.taxes.calculate_taxes(income_preretirement, 0, 0, 0, not self.couple))
+                income_preretirement -= sum(self.taxes.calculate_taxes(income_preretirement, 0, 0, 0, 0, not self.couple))
                 self.consume_preretirement = self.params.consume_preretirement + \
                     uniform(self.params.consume_preretirement_income_ratio_low, self.params.consume_preretirement_income_ratio_high) * income_preretirement
 
@@ -662,7 +664,11 @@ class Fin:
             self.warn('Using a consumption scale that is incompatible with the default consumption scale.')
             consumption_estimate = 1
         self.consume_scale = consumption_estimate
-        self.utility = Utility(self.gamma, 0.3 * consumption_estimate)
+        consume_charitable = self.params.consume_charitable
+        if self.couple:
+            consume_charitable /= 1 + self.params.consume_additional # Reward is computed per person with double weight for couple.
+        self.utility = Utility(self.gamma, 0.3 * consumption_estimate,
+            consume_charitable, self.params.consume_charitable_utility_factor, self.params.consume_charitable_gamma, self.params.consume_charitable_discount_rate)
         #_, self.reward_expect = self.raw_reward(consumption_estimate)
         #_, self.reward_zero_point = self.raw_reward(self.params.reward_zero_point_factor * consumption_estimate)
         self.reward_scale = 0.2
@@ -721,8 +727,7 @@ class Fin:
                 return copysign(10, x) # Change to 20 if using float64.
 
         if self.params.action_space_unbounded:
-            consume_action = tanh(consume_action / 5)
-                # Scaling back initial volatility of consume_action is observed to improve run to run mean and reduce standard deviation of certainty equivalent.
+            consume_action = tanh(consume_action / self.params.consume_action_scale_back)
             if self.spias_ever:
                 spias_action = tanh(spias_action / 2)
                     # Decreasing initial volatility of spias_action is observed to improve run to run mean certainty equivalent (gamma=6).
@@ -924,7 +929,7 @@ class Fin:
         else:
             reward_consume = consume_rate
             reward_weight = self.alive_single[self.episode_length] * self.params.time_period
-        reward_value = self.utility.utility(reward_consume)
+        reward_value = self.utility.utility(reward_consume, self.episode_length * self.params.time_period)
 
         return reward_weight, reward_consume, reward_value
 
@@ -1017,8 +1022,8 @@ class Fin:
             # Ensure leave enough taxable assets to cover any taxes due.
             max_capital_gains = self.taxes.unrealized_gains()
             if max_capital_gains > 0:
-                max_capital_gains_taxes = sum(self.taxes.calculate_taxes(regular_income, social_security, max_capital_gains, 0, not self.couple)) \
-                    - sum(self.taxes.calculate_taxes(regular_income, social_security, 0, 0, not self.couple))
+                max_capital_gains_taxes = sum(self.taxes.calculate_taxes(regular_income, social_security, max_capital_gains, 0, 0, not self.couple)) \
+                    - sum(self.taxes.calculate_taxes(regular_income, social_security, 0, 0, 0, not self.couple))
                 new_taxable_spias = min(taxable_spias, max(0, p_taxable - max_capital_gains_taxes))
                 real_taxable_spias *= new_taxable_spias / taxable_spias
                 nominal_taxable_spias *= new_taxable_spias / taxable_spias
@@ -1202,7 +1207,9 @@ class Fin:
         if p_negative < 0:
             self.p_taxable += p_negative * (1 + self.params.credit_rate) ** self.params.time_period
 
-        self.taxes_due += self.taxes.tax(regular_income, social_security, not self.couple, inflation) - self.taxes_paid
+        charitable_contributions = max(0, consume_rate - self.consume_charitable) * self.params.consume_charitable_tax_deductability
+
+        self.taxes_due += self.taxes.tax(regular_income, social_security, charitable_contributions, not self.couple, inflation) - self.taxes_paid
         # if self.age_retirement - self.params.time_period <= self.age < self.age_retirement:
         #     # Forgive taxes due that can't immediately be repaid upon retirement.
         #     # Otherwise when training if have no investment assets at retirement (consumption greater than income) we would be expected to pay the
@@ -1285,6 +1292,7 @@ class Fin:
         couple_became_single = self.couple and (self.alive_single[self.episode_length + steps] != None or force_to_single) and not keep_as_couple
         if couple_became_single:
 
+            self.consume_charitable /= 1 + self.params.consume_additional
             if self.only_alive2:
                 self.income_preretirement_years = 0
             else:
@@ -1492,9 +1500,10 @@ class Fin:
             # Taxable basis does not get adjusted for inflation.
         pv_nii = pv_capital_gains
         regular_tax, capital_gains_tax = \
-            self.taxes.calculate_taxes(pv_regular_income / total_years, pv_social_security / total_years, pv_capital_gains / total_years, pv_nii / total_years,
+            self.taxes.calculate_taxes(pv_regular_income / total_years, pv_social_security / total_years, pv_capital_gains / total_years, pv_nii / total_years, 0,
                 not self.couple)
                 # Assumes income smoothing.
+                # Ignores any charitable income tax deduction.
         pv_regular_tax = total_years * regular_tax
         pv_capital_gains_tax = total_years * capital_gains_tax
         self.pv_taxes = pv_regular_tax + pv_capital_gains_tax

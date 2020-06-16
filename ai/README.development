@@ -24,8 +24,8 @@ the cheapest region for performing this training work.
 
 For development an m5.large, or even a t3.small instance, can often be
 used, provided in the first case a Ray compute cluster is configured,
-or in the second case the SEEDS=1 environment variable is set and the
---train-seeds=1 flag is passed to api/server.py .
+or in the second case --train-seeds=1 --train-num-workers=0 is passed
+to train_rllib.py and --train-seeds=1 is passed to api/server.py .
 
 For deployment on the Internet the machine will need to have ports 80
 and 443 open (http and https), along with 20 (ssh) for administrative
@@ -378,6 +378,7 @@ Local TensorFlow model or checkpoint evaluation:
 
     # Saved tensorflow model takes precedence over Ray checkpoints
     ./eval_model.py --train-seeds=1 --eval-num-timesteps=10000 -c aiplanner-scenario.txt -c aiplanner-scenario-single-eval.txt
+    # Results saved in results/seed_0
 
 Fit the equity volatility model
 -------------------------------
