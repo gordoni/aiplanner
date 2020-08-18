@@ -66,7 +66,7 @@ def check():
     response = spia(request)
     page = response.content.decode('utf8')
     premium1, premium2, yield_curve_date, cost1, cost2 = match('^.*Actuarially fair premium:.*?(\d+),(\d+).*?Yield curve date: (\d\d\d\d-\d\d-\d\d).*?Cost to self insure: (\d+),(\d+).*$', page, DOTALL).groups()
-    assert(150000 < int(premium1 + premium2) < 300000)
+    assert(150000 < int(premium1 + premium2) < 350000)
     assert(200000 < int(cost1 + cost2) < 500000)
     quote = datetime.strptime(yield_curve_date, '%Y-%m-%d').date()
     assert(0 <= (today - quote).days <= 8)
@@ -76,7 +76,7 @@ def check():
     response = spia(request)
     page = response.content.decode('utf8')
     premium1, premium2, yield_curve_date = match('^.*Actuarially fair premium:.*?(\d+),(\d+).*?Yield curve date: (\d\d\d\d-\d\d-\d\d).*$', page, DOTALL).groups()
-    assert(100000 < int(premium1 + premium2) < 250000)
+    assert(100000 < int(premium1 + premium2) < 300000)
     quote = datetime.strptime(yield_curve_date, '%Y-%m-%d').date()
     assert(0 <= (today - quote).days <= 8)
 
@@ -85,7 +85,7 @@ def check():
     response = spia(request)
     page = response.content.decode('utf8')
     premium1, premium2, yield_curve_date = match('^.*Actuarially fair premium:.*?(\d+),(\d+).*?Yield curve date: (\d\d\d\d-\d\d).*$', page, DOTALL).groups()
-    assert(100000 < int(premium1 + premium2) < 200000)
+    assert(100000 < int(premium1 + premium2) < 250000)
     quote = datetime.strptime(yield_curve_date, '%Y-%m').date()
     assert(0 <= (today - quote).days <= 100)
 
