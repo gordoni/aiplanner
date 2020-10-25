@@ -55,9 +55,9 @@ Obtain the source
 Set up an EC2 instance, ssh in to it, and obtain the sources:
 
     cd ~
-    git clone git@git.assembla.com:oaa.git aiplanner
-        # Or perhaps someday:
-        #git clone https://github.com/gordoni/aiplanner.git
+    git clone https://github.com/gordoni/aiplanner.git
+        # Or currently for internal development:
+        #git clone git@git.assembla.com:oaa.git aiplanner
     cd aiplanner
     # For now AIPlanner is not on master, so:
     git checkout aiplanner

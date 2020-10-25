@@ -160,10 +160,10 @@ Notable features of the SPIA pricing calculator:
 
 ## Implementation
 
-  - Runs on Ubuntu 16.04 Linux and possibly other systems.
+  - Runs on Ubuntu 20.04 Linux and possibly other systems.
 
-  - AIPlanner is written in Python, on top of Ray RLlib and
-    Tensorflow, with calls out to GNUPLOT.
+  - AIPlanner is written in Python, on top of Ray RLlib and PyTorch,
+    with calls out to GNUPLOT.
 
   - The Opal backend is written in Java with call outs to R and
     GNUPLOT.
