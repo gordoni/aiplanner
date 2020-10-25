@@ -56,11 +56,11 @@ Set up an EC2 instance, ssh in to it, and obtain the sources:
 
     cd ~
     git clone https://github.com/gordoni/aiplanner.git
+    cd aiplanner
         # Or currently for internal development:
         #git clone git@git.assembla.com:oaa.git aiplanner
-    cd aiplanner
-    # For now AIPlanner is not on master, so:
-    git checkout aiplanner
+        #cd aiplanner
+        #git checkout aiplanner
     git config --global user.name "<FirstName> <LastName>"
     git config --global user.email "<user@email.com>"
 

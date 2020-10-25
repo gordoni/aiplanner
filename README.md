@@ -192,7 +192,7 @@ Notable features of the SPIA pricing calculator:
 
   - If might do development work:
 
-        cd aacalc
+        cd aiplanner
         git config --global user.name "<FirstName> <LastName>"
         git config --global user.email "<user@email.com>"
 
