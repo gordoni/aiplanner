@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019-2020 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -10,4 +10,4 @@
 
 # m h  dom mon dow   command
 0 23 * * * perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/web/cron.daily
-0 12 * * 1 perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/web/cron.weekly
+0 20 * * 1 perl -e '{sleep(rand(1000))}'; ~/aiplanner/ai/web/cron.weekly
