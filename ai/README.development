@@ -81,21 +81,22 @@ Installing additional required components on Ubuntu 20.04:
     pip3 install torch
     #pip3 install tensorflow # No longer used; use pytorch instead.
     apt install cmake # Needed for atari-py dependency of ray[rllib].
-    pip3 install 'ray[rllib,debug]==0.8.5'
+    pip3 install 'ray[rllib,debug]==1.1.0'
         # If run into problems with atari-py try the following:
-        # RLlib depends on atari-py which requires used to require bazel which requires uzip to install.
+        # RLlib depends on atari-py which used to require bazel which requires uzip to install.
         #apt install unzip
         #(cd aiplanner && ai/ray/ci/travis/install-bazel.sh) # Install bazel in /home/ubuntu/bin
-        #PATH=/home/ubuntu/bin:$PATH pip3 install 'ray[rllib,debug]==0.8.5'
+        #PATH=/home/ubuntu/bin:$PATH pip3 install 'ray[rllib,debug]==1.1.0'
     pip3 install pyyaml svglib
     exit
 
-The standard version of Ray (0.8.5) works unmodified, but if you need
-to use a locally modified version proceed as follows (the current
-local version of Ray has no changes from the official release):
+The standard version of Ray works unmodified, but if you need to use a
+locally modified version proceed as follows (the current local version
+of Ray is the official Ray 0.8.5 release and will also need to be
+updated):
 
     # Hack Ray to use our version of RLlib, not the default version:
-    RAY=`pip show ray | grep Location | awk '{print $2}'`/ray
+    RAY=`pip3 show ray | grep Location | awk '{print $2}'`/ray
     mv $RAY/rllib $RAY/rllib.old
     ln -s ~/aiplanner/ai/ray//rllib $RAY/rllib
     # Note, you may need to disable this link if upgrading Ray to
@@ -137,12 +138,12 @@ Create a cluster config file:
     cd ~/aiplanner/ai
     cp cluster-example.yaml cluster.yaml
     [edit] cluster.yaml
-        # Alter worker_nodes:InstanceType if desired.
-        # For maximum performance add --num-cpus=<num_cores> to
-        #     ray start in worker_start_ray_commands.
-        #     c5.24xlarge has 48 cores, but setting --num-cpus=91 is
-        #     probably better for playing around as typically train
-        #     10 models each with 8 workers and 1 driver in parallel.
+        # Alter available_node_types:default_node parameters
+        # node_config:InstanceType and resources:CPU if desired.
+        # For maximum speed specify CPU:<num_cores>.
+        #     c5.24xlarge has 48 cores, but setting CPU:91 is
+        #     probably better for traiing as typically train 10
+        #     models each with 8 workers and 1 driver in parallel.
         # Other changes as desired.
 
 Rather than have separate cluster head and worker nodes, we are going
@@ -317,7 +318,8 @@ If you don't want to use a Ray compute cluster during training:
 
     export RAY_AUTOSCALER=False
 
-Seperately, you may want to specify:
+If you are using a Ray compute cluster during training then you may
+want to specify:
 
     export RAY_AUTOSCALER_USE_HEAD=True
 
@@ -336,13 +338,11 @@ You might wish to test a few low level commands are working.
 
 Local model training:
 
-    ./train_rllib.py --train-seeds=1 --train-num-workers=0 --train-batch-size=10000 --train-num-timesteps=20000 -c aiplanner-scenario.txt -c aiplanner-scenario-train.txt
+     RAY_AUTOSCALER=False ./train_rllib.py --train-seeds=1 --train-num-workers=0 --train-batch-size=10000 --train-num-timesteps=20000 -c aiplanner-scenario.txt -c aiplanner-scenario-train.txt
     # Ray checkpoints saved in aiplanner.tf
 
 Cluster based training:
 
-    export RAY_AUTOSCALER=True
-    export RAY_AUTOSCALER_USE_HEAD=False
     start_ray_if_needed
     ./train_rllib.py --address=localhost:6379 --train-seeds=1 --train-num-workers=2 --train-batch-size=10000 --train-num-timesteps=20000 -c aiplanner-scenario.txt -c aiplanner-scenario-train.txt
     # Ray checkpoints saved in aiplanner.tf
@@ -351,8 +351,6 @@ Cluster based training:
 
 Cluster based checkpoint evaluation (optional):
 
-    export RAY_AUTOSCALER=True
-    export RAY_AUTOSCALER_USE_HEAD=False
     start_ray_if_needed
     ./eval_model.py --address=localhost:6379 --train-seeds=1 --eval-num-timesteps=10000 -c aiplanner-scenario.txt -c aiplanner-scenario-single-eval.txt
     # Results saved in results/seed_0
@@ -367,7 +365,7 @@ non-eager):
 
 But AIPlaner doesn't current work with TensorFlow non-eager.
 
-Ray 0.8.5 is unable to export TensorFlow eager and PyTorch based
+Ray 1.1.0 is unable to export TensorFlow eager and PyTorch based
 models, consequently all evaluation is currently based on checkpoint
 models. TensorFlow based checkpoint models take around 3 seconds of
 cpu time to load (per seed), and as a result the model server would
@@ -404,19 +402,18 @@ Training the generic neural network models
 Unless you plan on serving pre-trained neural network models you will
 need to train the neural network models.
 
-Training the neural network models (will take arond 20 hours on about 7
-InstanceType c5.24xlarge instances with Ray started with --num-cpus=91;
-edit cluster.yaml accordingly; many smallish instances may be preferable
-to a few very large instances as Amazon seems more likely to reclaim
-very large spot instances slowing the training process):
+Training the neural network models (will take arond 20 hours on about
+7 InstanceType c5.24xlarge instances with resources CPU: 91; edit
+cluster.yaml accordingly; many smallish instances may be preferable to
+a few very large instances as Amazon seems more likely to reclaim very
+large spot instances slowing the training process):
 
     cd ~/aiplanner/ai/api
     nohup ./train > /tmp/train.out &
 
 A presumed bug in Ray 0.7.3 meant that completion of training of the
 first training run kills all the other training workers. It is fixed
-in the current Ray 0.8.5, but if it recurs, it can be worked around by
-specifying:
+in Ray 0.8.5, but if it recurs, it can be worked around by specifying:
 
     nohup ./train --train-num-workers=0 --num-cpu=1 > /tmp/train.out &
 

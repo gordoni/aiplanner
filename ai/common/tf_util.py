@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -45,7 +45,6 @@ class TFRunner:
             # Rllib.
             import ray
             from ray.rllib.agents.registry import get_agent_class
-            from ray.rllib.evaluation import PolicyGraph
             from ray.rllib.evaluation.worker_set import WorkerSet
 
             if not ray.is_initialized():
@@ -101,13 +100,11 @@ class TFRunner:
                 first = False
 
             framework = config.get('framework')
-            if not framework:
-                 framework = 'torch' if config['use_pytorch'] else ('tfe' if config['eager'] else 'tf')
 
             if framework == 'tfe':
-                base_policy_class = agent._policy.as_eager()
+                base_policy_class = agent._policy_class.as_eager() # Change to agent.get_policy().__class__.as_eager()?
             else:
-                base_policy_class = agent._policy
+                base_policy_class = agent.get_policy().__class__
 
             class EnsemblePolicy(base_policy_class):
 
@@ -145,15 +142,18 @@ class TFRunner:
                     mean_action = np.mean(actions, axis = 0)
                     return [mean_action] + list(actions_ca[0][1:])
 
-            class EnsemblePolicy_eager(agent._policy):
-
-                def as_eager():
-
-                    return EnsemblePolicy
-
             if framework == 'tfe':
+
+                class EnsemblePolicy_eager(agent._policy_class): # Change to agent.get_policy().__class__?
+
+                    def as_eager():
+
+                        return EnsemblePolicy
+
                 policy_class = EnsemblePolicy_eager
+
             else:
+
                 policy_class = EnsemblePolicy
 
             agent_weights = {'default_policy': weights}
@@ -163,7 +163,7 @@ class TFRunner:
             # Not precisely sure why, but this fixes the problem. They aren't needed for remote evaluation.
             #del agent.workers
             #del agent.optimizer
-            workers = WorkerSet(env_creator, policy_class, agent.config, num_workers = num_workers)
+            workers = WorkerSet(env_creator = env_creator, policy_class = policy_class, trainer_config = agent.config, num_workers = num_workers)
             workers.foreach_worker(lambda w: w.set_weights(agent_weights))
             self.remote_evaluators = workers.remote_workers()
 

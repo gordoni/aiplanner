@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019-2020 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -131,7 +131,7 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
                 # so if we get something far from this we don't want to train too hard on it.
             'kl_coeff': 0.0, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
             'lr': train_optimizer_step_size,
-                # lr_schedule is ignored by Ray 0.7.1 through 0.7.6+ (Ray issue #6096), so need to ensure fallback learning rate is reasonable.
+                # lr_schedule is ignored by Ray 0.7.1 through 0.7.6 (Ray issue #6096), so need to ensure fallback learning rate is reasonable.
                 # A smaller lr requires more timesteps but produces a higher CE.
                 # Results for train_batch_size 500k, minibatch_size 500, num_sgd_iter 30, fcnet_hiddens 256x256.
                 # lr 1e-5: CE dist 81500 stderr 450
@@ -276,15 +276,11 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
             },
 
             # Use PyTorch to avoid the slowdown of TensorFlow eager.
-            'use_pytorch': True,
-                # For Ray after 0.8.5 need to replace with:
-                #'framework': 'torch',
+            'framework': 'torch',
             # TensorFlow non-eager mode is only available as a backwards compatibility in TensorFlow 2; using eager is therefor encouraged.
             # Unfortunately TensorFlow eager mode reduces performance by a factor of 2 compared to TensorFlow 1.x.
             # Additionally, attempting to use non-eager mode fails during evaluation with Ray error: No variables in the input matched those in the network.
-            'eager': True,
-                # For Ray after 0.8.5 need to replace with:
-                #'framework': 'tfe',
+            #'framework': 'tfe',
         }, **agent_config),
 
         stop = {

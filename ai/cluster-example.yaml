@@ -1,4 +1,4 @@
-# Modified from Ray: ray/python/ray/autoscaler/aws/example-full.yaml
+# Modified from Ray: ray/python/ray/autoscaler/aws/defaults.yaml
 
 # An unique identifier for the head node and workers of this cluster.
 cluster_name: default
@@ -11,41 +11,16 @@ min_workers: 0
 # node. This takes precedence over min_workers.
 max_workers: 15
 
-# The initial number of worker nodes to launch in addition to the head
-# node. When the cluster is first brought up (or when it is refreshed with a
-# subsequent `ray up`) this number of nodes will be started.
-initial_workers: 1
-
-# Whether or not to autoscale aggressively. If this is enabled, if at any point
-#   we would start more workers, we start at least enough to bring us to
-#   initial_workers.
-autoscaling_mode: default
+# The autoscaler will scale up the cluster faster with higher upscaling speed.
+# E.g., if the task requires adding more nodes then autoscaler will gradually
+# scale up the cluster in chunks of upscaling_speed*currently_running_nodes.
+# This number should be > 0.
+upscaling_speed: 0.001
 
 # This executes all commands on all nodes in the docker container,
 # and opens all the necessary ports to support the Ray cluster.
 # Empty string means disabled.
-docker:
-    image: "" # e.g., tensorflow/tensorflow:1.5.0-py3
-    container_name: "" # e.g. ray_docker
-    # If true, pulls latest version of image. Otherwise, `docker run` will only pull the image
-    # if no cached version is present.
-    pull_before_run: True
-    run_options: []  # Extra options to pass into "docker run"
-
-    # Example of running a GPU head with CPU workers
-    # head_image: "tensorflow/tensorflow:1.13.1-py3"
-    # head_run_options:
-    #     - --runtime=nvidia
-
-    # worker_image: "ubuntu:18.04"
-    # worker_run_options: []
-
-# The autoscaler will scale up the cluster to this target fraction of resource
-# usage. For example, if a cluster of 10 nodes is 100% busy and
-# target_utilization is 0.8, it would resize the cluster to 13. This fraction
-# can be decreased to increase the aggressiveness of upscaling.
-# This value must be less than 1.0 for scaling to happen.
-target_utilization_fraction: 0.999
+docker: {}
 
 # If a node is idle for this many minutes, it will be removed.
 idle_timeout_minutes: 5
@@ -58,6 +33,9 @@ provider:
     # Nodes are currently spread between zones by a round-robin approach,
     # however this implementation detail should not be relied upon.
     availability_zone: us-east-2b
+    # Whether to allow node reuse. If set to False, nodes will be terminated
+    # instead of stopped.
+    cache_stopped_nodes: False # If not present, the default is True.
     use_internal_ips: True
 
 # How Ray will authenticate with newly launched nodes.
@@ -74,11 +52,8 @@ auth:
 # For more documentation on available fields, see:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 head_node:
-    InstanceType: m5.large
-    ImageId: ami-0a47106e391391252 # Deep Learning AMI (Ubuntu) Version 21.2
-    # Version 21.2 (TensorFlow 1.12) has no memory leak after 60 minute warm up period.
-    # Version 22.0 and 23.1 (TensorFlow 1.13) workers leak slightly (10M/hr and 40M/hr). 23.0 status unknown.
-    # Version 24.0 (TensorFlow 1.14) workers leak significantly (5GB/hr).
+    KeyName: ray-autoscaler_us-east-2
+    ImageId: ami-0a2363a9cff180a64 # Deep Learning AMI (Ubuntu) Version 30
 
     # You can provision additional disk space with a conf as follows
     BlockDeviceMappings:
@@ -94,14 +69,16 @@ head_node:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 worker_nodes:
     KeyName: ray-autoscaler_us-east-2
-    InstanceType: c5.24xlarge
-    #ImageId: ami-0a47106e391391252 # Deep Learning AMI (Ubuntu) Version 21.2
+    #ImageId: ami-0a2363a9cff180a64 # Deep Learning AMI (Ubuntu) Version 30
+    # Version 21.2 (TensorFlow 1.12) has no memory leak after 60 minute warm up period.
+    # Version 22.0 and 23.1 (TensorFlow 1.13) workers leak slightly (10M/hr and 40M/hr). 23.0 status unknown.
+    # Version 24.0 (TensorFlow 1.14) workers leak significantly (5GB/hr).
     ImageId: ami-0e84e211558a022c0 # Ubuntu 20.04
 
     BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
-              VolumeSize: 15 # Default of 8G runs out of space installing ray.
+              VolumeSize: 15 # Default of 8G runs out of space installing tensorflow.
 
     # Run workers on spot by default. Comment this out to use on-demand.
     InstanceMarketOptions:
@@ -112,12 +89,46 @@ worker_nodes:
 
     # Additional options in the boto docs.
 
+# Have to use multi-node-type autoscaling as we don't create a separate head node.
+
+# A list of node types for multi-node-type autoscaling.
+available_node_types:
+    default_node:
+        node_config:
+            InstanceType: c5.24xlarge
+        resources:
+            CPU: 96
+            # With multi-threaded cpus use "CPU: <num_cores>" for maximum speed.
+            # We have to manually specify the resources becasue we don't generate a separate head node yaml file.
+        max_workers: 15
+
+head_node_type: default_node
+worker_default_node_type: default_node
+
 # Files or directories to copy to the head and worker nodes. The format is a
 # dictionary from REMOTE_PATH: LOCAL_PATH, e.g.
 file_mounts: {
     "~/.spia": "~/.spia",
     "~/aiplanner": "~/aiplanner",
 }
+
+# Files or directories to copy from the head node to the worker nodes. The format is a
+# list of paths. The same path on the head node will be copied to the worker node.
+# This behavior is a subset of the file_mounts behavior. In the vast majority of cases
+# you should just use file_mounts. Only use this if you know what you're doing!
+cluster_synced_files: []
+
+# Whether changes to directories in file_mounts or cluster_synced_files in the head node
+# should sync to the worker node continuously
+file_mounts_sync_continuously: False
+
+# Patterns for files to exclude when running rsync up or rsync down
+rsync_exclude: []
+
+# Pattern files to use for filtering out files when running rsync up or rsync down. The file is searched for
+# in the source directory and recursively through all subdirectories. For example, if .gitignore is provided
+# as a value, the behavior will match git's behavior for finding and using .gitignore files.
+rsync_filter: []
 
 # List of commands that will be run before `setup_commands`. If docker is
 # enabled, these commands will run outside the container and before docker
@@ -131,10 +142,8 @@ setup_commands: []
     # Note: if you're developing Ray, you probably want to create an AMI that
     # has your Ray repo pre-cloned. Then, you can replace the pip installs
     # below with a git checkout <your_sha> (and possibly a recompile).
-    # - echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
-    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.9.0.dev0-cp27-cp27mu-manylinux1_x86_64.whl
-    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.9.0.dev0-cp35-cp35m-manylinux1_x86_64.whl
-    # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.9.0.dev0-cp36-cp36m-manylinux1_x86_64.whl
+    #- echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
+    #- pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-1.2.0.dev0-cp36-cp36m-manylinux2014_x86_64.whl
     # Consider uncommenting these if you also want to run apt-get commands during setup
     # - sudo pkill -9 apt-get || true
     # - sudo pkill -9 dpkg || true
@@ -142,21 +151,21 @@ setup_commands: []
 
 # Custom commands that will be run on the head node after common setup.
 head_setup_commands:
-    - pip install boto3==1.4.8  # 1.4.8 adds InstanceMarketOptions
+    - pip install 'boto3>=1.4.8'  # 1.4.8 adds InstanceMarketOptions
 
 # Custom commands that will be run on worker nodes after common setup.
 worker_setup_commands: #[]
-    - sleep 5 # Brief delay, otherwise update sometimes doesn't seem to work properly, and apt-get install fails
+    - sleep 10 # Brief delay, otherwise update sometimes doesn't seem to work properly, and apt-get install fails
     - sudo apt-get update
     - sudo apt-get install -y python3-pip
-    - sudo apt-get install -y libsm6 libxrender1 cython3
+    - sudo apt-get install -y libsm6 libxrender1 libgl1-mesa-dev cython3
     - sudo apt-get install -y cmake # Needed for atari-py dependency of ray[rllib].
     # RLlib depends on atari-py which used to require bazel which requires unzip to install
     #- sudo apt-get install -y unzip
     # Bazel version based on: ray/ci/travis/install-bazel.sh
     #- curl -s -L -R -o install-bazel.sh https://github.com/bazelbuild/bazel/releases/download/1.1.0/bazel-1.1.0-installer-linux-x86_64.sh
     #- sudo bash install-bazel.sh
-    - sudo pip3 install torch 'ray[rllib,debug]==0.8.5'
+    - sudo pip3 install torch 'ray[rllib,debug]==1.1.0'
     - grep -q aiplanner/ai/setenv ~/.bashrc || echo '. ~/aiplanner/ai/setenv' >> ~/.bashrc
     # # Replace ray.rllib by locally modified version
     # - RAY=`pip show ray | grep Location | awk '{print $2}'`/ray; [ ! -e $RAY/rllib.old ] && mv $RAY/rllib $RAY/rllib.old && ln -s ~/aiplanner/ai/ray/python/ray/rllib $RAY/rllib
@@ -167,10 +176,9 @@ worker_setup_commands: #[]
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:
     - ray stop
-    - ulimit -n 65536; ray start --head --redis-port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml
+    - ulimit -n 65536; ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml
 
 # Command to start ray on worker nodes. You don't need to change this.
 worker_start_ray_commands:
     - ray stop
-    - ulimit -n 65536; ray start --redis-address=$RAY_HEAD_IP:6379 --object-manager-port=8076
-    # On multi-threaded cpus add --num-cpus=<num_cores> to ray start above for maximum performance.
+    - ulimit -n 65536; ray start --address=$RAY_HEAD_IP:6379 --object-manager-port=8076

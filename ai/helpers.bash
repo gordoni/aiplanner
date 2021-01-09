@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -57,7 +57,7 @@ start_ray_if_needed() {
 
         (
             ulimit -n 65536
-            nohup ray start --head --redis-port=$PORT $ARGS
+            nohup ray start --head --port=$PORT $ARGS
         ) > /tmp/ray.out 2>&1
 
     fi
