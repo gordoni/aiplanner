@@ -221,9 +221,10 @@ class Evaluator(object):
                             eweights[i] = 0
                             if i == 0 and self.eval_render:
                                 eval_env.render()
-                            obss[i] = eval_env.reset()
                             if s >= self.eval_num_timesteps:
                                 finished[i] = True
+                            else:
+                                obss[i] = eval_env.reset()
                         else:
                             obss[i] = obs
                 if all(finished):

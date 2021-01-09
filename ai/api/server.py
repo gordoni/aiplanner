@@ -744,7 +744,8 @@ def main():
     parser.add_argument('--eval-num-timesteps', type = int, default = 50000)
     parser.add_argument('--eval-num-timesteps-healthcheck', type = int, default = 1000)
     parser.add_argument('--eval-num-timesteps-max', type = int, default = 2000000)
-    parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for a single model evaluation. Speeds up tensorflow.
+    parser.add_argument('--num-environments', type = int, default = 200) # Number of parallel environments to use for a single model evaluation.
+        # Speeds up torch/tensorflow.
     parser.add_argument('--num-environments-healthcheck', type = int, default = 10)
     parser.add_argument('--num-trace-episodes', type = int, default = 5) # Default number of sample traces to generate.
     parser.add_argument('--num-trace-episodes-max', type = int, default = 10000)
