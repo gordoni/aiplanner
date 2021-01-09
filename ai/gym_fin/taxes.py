@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -113,7 +113,7 @@ class Taxes(object):
             self.contribution_limit_ira = 6000
             self.contribution_limit_ira_catchup = 7000
 
-        elif self.params.tax_table_year == '2020' or self.params.tax_table_year == None:
+        elif self.params.tax_table_year == '2020':
 
             self.federal_standard_deduction_single = 12400
             self.federal_standard_deduction_joint = 24800
@@ -148,6 +148,49 @@ class Taxes(object):
             self.federal_long_term_gains_joint = (
                 (80000, 0),
                 (496600, 0.15),
+                (float('inf'), 0.2),
+            )
+
+            self.contribution_limit_401k = 19500
+            self.contribution_limit_401k_catchup = 26000
+            self.contribution_limit_ira = 6000
+            self.contribution_limit_ira_catchup = 7000
+
+        elif self.params.tax_table_year == '2021' or self.params.tax_table_year == None:
+
+            self.federal_standard_deduction_single = 12550
+            self.federal_standard_deduction_joint = 25100
+            # Ignore small increase in standard deduction for age 65+.
+
+            self.federal_table_single = (
+                (9950, 0.1),
+                (40525, 0.12),
+                (86375, 0.22),
+                (164925, 0.24),
+                (209425, 0.32),
+                (523600, 0.35),
+                (float('inf'), 0.37),
+            )
+
+            self.federal_table_joint = (
+                (19900, 0.1),
+                (81050, 0.12),
+                (172750, 0.22),
+                (329850, 0.24),
+                (418850, 0.32),
+                (628300, 0.35),
+                (float('inf'), 0.37),
+            )
+
+            self.federal_long_term_gains_single = (
+                (40400, 0),
+                (445850, 0.15),
+                (float('inf'), 0.2),
+            )
+
+            self.federal_long_term_gains_joint = (
+                (80800, 0),
+                (501600, 0.15),
                 (float('inf'), 0.2),
             )
 

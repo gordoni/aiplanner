@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019-2020 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -13,6 +13,8 @@
 # Must be specified after aiplanner-scenario.txt and aiplanner-scenario-*-eval.txt.
 
 master_welfare = 0
+
+master_life_table_date = '2020-01-01' # Leave unchanged for validation purposes.
 
 master_life_table_interpolate_q = False # For Opal le_add compatability.
 

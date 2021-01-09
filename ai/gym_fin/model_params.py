@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -76,7 +76,7 @@ class ModelParams(object):
         self._param('consume-policy-life-expectancy', None) # Assumed life expectancy for particular consumption policies, or None to use actual life expectancy.
         self._param('consume-policy-return', 0) # Assumed annual return for particular consumption policies.
         self._param('consume-policy-fraction', 0.04) # Consume fraction for percent_rule.
-        self._param('consume-policy-extended-rmd-table', '2021', tp = string_type, choices = ('2003', '2021')) # RMD table to use for extended_rmd.
+        self._param('consume-policy-extended-rmd-table', '2022', tp = string_type, choices = ('2003', '2021-proposed', '2022')) # RMD table to use for extended_rmd.
         self._param('consume-policy-fraction-max', 1) # Maximum proportion of investent policy to consume; applies to all consumption policies including rl.
         self._param('annuitization-policy', 'rl', tp = string_type, choices = ('rl', 'age_real', 'age_nominal', 'none'))
             # Annuitization policy.
@@ -138,7 +138,7 @@ class ModelParams(object):
             # A couple trained model may be less accurate due to the large stochasticity associated with the random death of the first member of the couple.
 
         self._param('life-table', 'ssa-cohort', tp = string_type) # Life expectancy table to use. See spia module for possible values.
-        self._param('life-table-date', '2020-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
+        self._param('life-table-date', '2021-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
         self._param('life-expectancy-additional', (0, 0), 0) # Initial age adjustment for first individual.
             # Shift initial age so as to add this many years to the life expectancy of the first individual.
         self._param('life-expectancy-additional2', (0, 0), 0) # Initial age adjustment for second individual.
