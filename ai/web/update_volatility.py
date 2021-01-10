@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -18,6 +18,13 @@ from re import search
 from sys import stdin
 from urllib.request import urlopen
 
+# Estimate of current observed monthly annualized stock market volatility relative to long term average.
+# For 1900-2019 the annual volatility of the U.S. stock market was 17.4%.
+#
+# VIX is a measure of the expected volatility of the S&P 500 rather than the U.S. stock market,
+# and it reports the expected volatility over the next month rather than the current volatility, but hopefully this is close enough.
+mean_vix = 17.4
+
 def update(root_dir, read_stdin, write_stdout):
 
     page = stdin.read() if read_stdin else urlopen('https://docs.google.com/spreadsheets/d/1ZsyjisPp59vllL3JdHniK10t_2edj6Z-UxlpY8u_9yE/export?format=csv').read().decode('utf-8')
@@ -29,11 +36,7 @@ def update(root_dir, read_stdin, write_stdout):
     if write_stdout:
         print(date_str, vix)
 
-    # Estimate of current observed monthly annualized stock market volatility relative to long term average.
-    # For 1950-2108 the daily volatility of log returns of the S&P 500 was 14.0.
-    #
-    # VIX is a measure of the expected volatility of the S&P 500 over the next month rather than the current volatility, but hopefully this is close enough.
-    level = vix / 14.0
+    level = vix / mean_vix
 
     now = datetime.utcnow()
     assert now - timedelta(days = 7) < date <= now
