@@ -430,10 +430,15 @@ duplicated across all log files.
 
 The trained models will be placed in ~/aiplanner-data/models.new .
 
-By default the trained models will be served without any adjustments
-for model biases. If you know the model is biased it is possible to
-apply corrections when serving that attempt to overcome the model
-bias:
+To quickly generate dummy untrained models that can be used by the api
+server:
+
+    cd ~/aiplanner/ai/api
+    ./train --train-batch-size=1000 --train-num-timesteps=1000 --train-num-workers=0
+
+By default trained models will be served without any adjustments for
+model biases. If you know the model is biased it is possible to apply
+corrections when serving that attempt to overcome the model bias:
 
     [edit] ~/aiplanner-data/models.new/models-adjust.json
 
