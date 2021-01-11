@@ -105,6 +105,7 @@ def parse_api_scenario(api_scenario, *, permissive = False):
         'p_taxable_stocks_basis': number,
         'p_taxable_other_basis': number,
 
+        'observe_market_conditions': boolean,
         'stocks_price': number,
         'stocks_volatility': number,
         'nominal_short_rate': number,
@@ -165,6 +166,9 @@ def parse_api_scenario(api_scenario, *, permissive = False):
         except KeyError:
             assert permissive, 'No age2 specified.'
     assert ('age_retirement' in api_scenario) or permissive, 'No age_retirement.'
+    model_params['observe_stocks_price'] = api_scenario.get('observe_market_conditions', True)
+    model_params['observe_stocks_volatility'] = api_scenario.get('observe_market_conditions', True)
+    model_params['observe_interest_rate'] = api_scenario.get('observe_market_conditions', True)
     if 'stocks_volatility' in api_scenario:
         model_params['stocks_sigma_level_type'] = 'value'
         model_params['stocks_sigma_level_value'] = api_scenario['stocks_volatility']

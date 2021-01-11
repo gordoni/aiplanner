@@ -427,6 +427,20 @@ default: p_taxable_other if specified otherwise 0
 
 Tax cost basis of taxable other holdings (REITs, commodities etc.).
 
+Observe market conditions
+-------------------------
+
+observe_market_conditions: true or false
+default: true
+
+Whether the model is able to observe the stock price to fair price,
+stocks volatility, and real short interest rate in making investment
+decisions.
+
+If true, the model is considered to be performing tactical asset
+allocation and consumption planning. If false, the model is considered
+to be performing strategic asset allocation and consumption planing.
+
 Stock price to fair value
 -------------------------
 

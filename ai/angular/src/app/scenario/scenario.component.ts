@@ -26,6 +26,7 @@ export class ScenarioComponent implements OnInit {
   public step: number = 0;
   public doneMarket: boolean = false;
 
+  public observeMarketConditions: boolean = false;
   public stocksPricePct: string;
   public stocksVolatilityPct: string;
   public nominalShortRatePct: string;
@@ -93,8 +94,16 @@ export class ScenarioComponent implements OnInit {
       return "Poor";
   }
 
+  ageValid() {
+    return 10 <= this.age && this.age < 120 && ((this.sex2 == 'none') || 10 <= this.age && this.age2 < 120);
+  }
+
   healthValid() {
-    return this.lifeExpectancyAdditional < 10 && this.lifeExpectancyAdditional2 < 10;
+    return this.lifeExpectancyAdditional < 10 && ((this.sex2 == 'none') || this.lifeExpectancyAdditional2 < 10);
+  }
+
+  highConsume() {
+    return this.consumePreretirement > this.incomePreretirement + ((this.sex2 == 'none') ? 0 : this.incomePreretirement2);
   }
 
   dbTotal(definedItems) {
@@ -196,6 +205,7 @@ export class ScenarioComponent implements OnInit {
     this.addToDbs(dbs, this.definedLiabilities, false);
 
     var scenario = {
+        'observe_market_conditions': this.observeMarketConditions,
         'stocks_price': 1 + Number(this.stocksPricePct) / 100,
         'stocks_volatility': Number(this.stocksVolatilityPct) / 100,
         'real_short_rate': (1 + Number(this.nominalShortRatePct) / 100) / (1 + Number(this.inflationShortRatePct) / 100) - 1,

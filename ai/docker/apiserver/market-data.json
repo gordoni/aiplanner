@@ -1,7 +1,7 @@
 {
-    "real_short_rate": 0.0,
+    "real_short_rate": -0.01,
     "real_short_rate_date": "2000-01-01",
-    "nominal_short_rate": 0.02,
+    "nominal_short_rate": 0.01,
     "nominal_short_rate_date": "2000-01-01",
     "stocks_price": 1.0,
     "stocks_price_date": "2000-01-01",
