@@ -461,7 +461,8 @@ Generating required assets for the UI website (images)
 Both of the UI website sections can be skipped if you only wish to run
 the AIPlanner API server.
 
-Generate the images required for the UI website:
+Generate the images required for the UI website (takes around 15
+minutes):
 
     cd ~/aiplanner/ai/angular/src/assets.generate
     ./run

@@ -1,6 +1,20 @@
-#!/bin/sh
+#!/bin/bash
+
+AIPLANNER_DIR=${AIPLANNER_DIR:-../../../..}
+AIPLANNER_DATA=${AIPLANNER_DATA:-$HOME/aiplanner-data}
+
+AI_DIR=$AIPLANNER_DIR/ai
+
+source $AI_DIR/setenv
 
 ./risk_aversion_in_pictures.py
 ./risk_aversion_in_pictures.gnuplot
 
 cp risk_aversion_pdf.svg ../assets/
+
+$AI_DIR/eval_model.py --models-dir=$AIPLANNER_DATA/models -c $AI_DIR/aiplanner-scenario.txt -c $AI_DIR/aiplanner-scenario-couple-eval.txt --master-gamma=6 \
+    --master-age-start=60 --master-age-start2=60 --master-consume-preretirement=1e5 --master-p-weighted=1.3e6 --ensemble
+    # Values chosen to produce pretty graphs.
+
+RESULTS_DIR=results/seed_all
+cp $RESULTS_DIR/aiplanner-asset_allocation.svg $RESULTS_DIR/aiplanner-paths-consume.svg $RESULTS_DIR/aiplanner-consume-pdf.svg ../assets/
