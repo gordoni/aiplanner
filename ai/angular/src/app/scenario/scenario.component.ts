@@ -1,5 +1,5 @@
 /* AIPlanner - Deep Learning Financial Planner
- * Copyright (C) 2018-2020 Gordon Irlam
+ * Copyright (C) 2018-2021 Gordon Irlam
  *
  * All rights reserved. This program may not be used, copied, modified,
  * or redistributed without permission.
@@ -26,7 +26,7 @@ export class ScenarioComponent implements OnInit {
   public step: number = 0;
   public doneMarket: boolean = false;
 
-  public observeMarketConditions: boolean = false;
+  public observeMarketConditions: boolean = true;
   public stocksPricePct: string;
   public stocksVolatilityPct: string;
   public nominalShortRatePct: string;

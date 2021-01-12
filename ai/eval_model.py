@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -260,7 +260,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                 print('Evaluation certainty equivalent:', res['ce_individual'], '+/-', res['ce_stderr_individual'],
                     '(80% confidence interval:', res['consume10_individual'], '-', str(res['consume90_individual']) + ')', file = out, flush = True)
 
-                plot(prefix, res['paths'], res['consume_pdf'], res['estate_pdf'])
+                plot(prefix, res['paths'], res['consume_pdf'], res['estate_pdf'], res['alive'])
 
                 final_results = dict(results[scenario_num]['results'][sub_num], **{
                     'error': None,
@@ -276,6 +276,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                     'consume_pdf': res['consume_pdf'],
                     'estate_pdf': res['estate_pdf'],
                     'sample_paths': res['paths'],
+                    'alive': res['alive'],
                 })
 
             except Exception as e:
@@ -551,7 +552,7 @@ def gss(f, a, b):
 
     return found, f_found
 
-def plot(prefix, traces, consume_pdf, estate_pdf):
+def plot(prefix, traces, consume_pdf, estate_pdf, alive):
 
     with open(prefix + '-paths.csv', 'w') as f:
         csv_writer = writer(f)
@@ -580,6 +581,11 @@ def plot(prefix, traces, consume_pdf, estate_pdf):
     with open(prefix + '-estate-pdf.csv', 'w') as f:
         csv_writer = writer(f)
         csv_writer.writerows(pdf)
+
+    data = zip(alive['age'], alive['couple'], alive['single'])
+    with open(prefix + '-alive.csv', 'w') as f:
+        csv_writer = writer(f)
+        csv_writer.writerows(data)
 
     try:
         environ['AIPLANNER_FILE_PREFIX'] = prefix

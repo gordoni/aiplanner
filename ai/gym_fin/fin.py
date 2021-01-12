@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -158,9 +158,11 @@ class Fin:
         if not self.params.probabilistic_life_expectancy:
             alive_single = tuple(None if _alive_count == 2 else _alive_count for _alive_count in alive_count)
 
-        self.only_alive2, self.alive_single, self.alive_count, self.life_expectancy_both, self.life_expectancy_one, self.life_percentile, \
+        self.alive_both, self.alive_one, self.only_alive2, self.alive_single, self.alive_count, \
+            self.life_expectancy_both, self.life_expectancy_one, self.life_percentile, \
             self.retirement_expectancy_both, self.retirement_expectancy_one, self.retirement_expectancy_single = \
-            only_alive2, tuple(alive_single), tuple(alive_count), tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_percentile), \
+            tuple(alive_both), tuple(alive_one), only_alive2, tuple(alive_single), tuple(alive_count), \
+            tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_percentile), \
             tuple(retirement_expectancy_both), tuple(retirement_expectancy_one), tuple(retirement_expectancy_single)
 
     def sums_to_end(self, l, start, divl):

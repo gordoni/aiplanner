@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2020 Gordon Irlam
+# Copyright (C) 2020-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -93,6 +93,15 @@ def generate_report(api, result_dir, results, results_dir):
     date_str = date.strftime('%B %-d, %Y')
     s = '<para alignment="center">' + date_str + '</para>'
     contents.append(Paragraph(s, styleN))
+    if results:
+        result = results[0]
+        if not result['error']:
+            aid =result['aid']
+            contents.append(PageBreak())
+            s = '<para alignment="center">Life expectancy</para>'
+            contents.append(Paragraph(s, styleH))
+            contents.append(Spacer(1, 2 * inch))
+            contents.append(svg(aid, 'alive', width = 7.5 * inch))
     for result in sorted(results, key = lambda r: r.get('rra', 0), reverse = True):
         if not result['error']:
             aid = result['aid']
@@ -203,7 +212,7 @@ def generate_report(api, result_dir, results, results_dir):
         ])
         contents.append(t)
     contents.append(Spacer(1, 0.25 * inch))
-    s = '''<para size="7" leading="9">AIPlanner Copyright &copy; 2018-2020 Gordon Irlam. AIPlanner is
+    s = '''<para size="7" leading="9">AIPlanner Copyright &copy; 2018-2021 Gordon Irlam. AIPlanner is
 provided without any warranty; without even the implied warranty
 of merchantability or fitness for a particular purpose.</para>'''
     contents.append(TopPadder(Paragraph(s, styleN)))

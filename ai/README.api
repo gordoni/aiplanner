@@ -888,14 +888,14 @@ Sample paths
 ------------
 
 sample_paths: [{
-    "age":  [<number>, ... ],
-    "alive_count":  [<number>, ... ],
-    "asset_allocation":  [[<number>, ... ], ... ],
-    "consume":  [<number>, ... ],
-    "nominal_spias_purchase":  [<number> or null, ... ],
-    "real_spias_purchase":  [<number> or null, ... ],
-    "total_guaranteed_income":  [<number>, ... ],
-    "portfolio_wealth_pretax":  [<number>, ... ]
+    "age": [<number>, ... ],
+    "alive_count": [<number>, ... ],
+    "asset_allocation": [[<number>, ... ], ... ],
+    "consume": [<number>, ... ],
+    "nominal_spias_purchase": [<number> or null, ... ],
+    "real_spias_purchase": [<number> or null, ... ],
+    "total_guaranteed_income": [<number>, ... ],
+    "portfolio_wealth_pretax": [<number>, ... ]
 }]
 
 Sample paths provides a JSON array of sample path objects that
@@ -942,3 +942,17 @@ array of consecutive values describing the path. The keys are:
 
     The present value of the taxable, tax deferred, and tax free
     portfolios.
+
+Alive
+-----
+
+alive: {
+    "age":  [<number>, ... ],
+    "couple":  [<number>, ... ],
+    "single":  [<number>, ... ]
+}
+
+Alive provides mortality data. "age" is an increasing list of ages of
+self. "couple" lists the probability of two individuals being alive
+for each correspond age. "single" lists the probability of a single
+individual being alive for each corresponding age.

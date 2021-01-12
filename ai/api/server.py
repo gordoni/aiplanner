@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -492,24 +492,25 @@ class RequestHandler(BaseHTTPRequestHandler):
         old_date = old.date().isoformat()
         if not isinstance(api_data, list):
             return '{"error": "Method body must be a JSON array."}\n'.encode('utf-8')
+        epoch = '2000-01-01' # Allow non-updating market data with date 2000-01-01.
         for api_scenario in api_data:
             if not isinstance(api_scenario, dict):
                 return '{"error": "Method body must be an array of JSON objects."}\n'.encode('utf-8')
             if not 'stocks_price' in api_scenario:
-                if market['stocks_price_date'] <= old_date and not healthcheck:
+                if market['stocks_price_date'] <= old_date and market['stocks_price_date'] != epoch:
                     return '{"error": "Stock price data is not current."}\n'.encode('utf-8')
                 api_scenario['stocks_price'] = market['stocks_price']
             if not 'stocks_volatility' in api_scenario:
-                if market['stocks_volatility_date'] <= old_date and not healthcheck:
+                if market['stocks_volatility_date'] <= old_date and market['stocks_volatility_date'] != epoch:
                     return '{"error": "Stock volatility data is not current."}\n'.encode('utf-8')
                 api_scenario['stocks_volatility'] = market['stocks_volatility']
             if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:
                 if not 'real_short_rate' in api_scenario:
-                    if market['real_short_rate_date'] <= old_date and not healthcheck:
+                    if market['real_short_rate_date'] <= old_date and market['real_short_rate_date'] != epoch:
                         return '{"error": "Real interest rate data is not current."}\n'.encode('utf-8')
                     api_scenario['real_short_rate'] = market['real_short_rate']
                 if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:
-                    if market['nominal_short_rate_date'] <= old_date and not healthcheck:
+                    if market['nominal_short_rate_date'] <= old_date and market['nominal_short_rate_date'] != epoch:
                         return '{"error": "Nominal interest rate data is not current."}\n'.encode('utf-8')
                     api_scenario['nominal_short_rate'] = market['nominal_short_rate']
 

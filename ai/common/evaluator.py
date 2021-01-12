@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -383,6 +383,11 @@ class Evaluator(object):
             unit_consume_mean *= 1 + env.params.consume_additional
             unit_consume_stdev *= 1 + env.params.consume_additional
 
+        ages = []
+        for i in range(max(len(env.alive_both), len(env.alive_one))):
+            ages.append(env.age + i * env.params.time_period)
+        alive = {'age': ages, 'couple': env.alive_both, 'single': env.alive_one}
+
         warnings = sorted(msg for msg, data in self.warnings.items() if data['count'] > data['timestep_ok_fraction'] * self.eval_num_timesteps)
 
         return {
@@ -402,6 +407,7 @@ class Evaluator(object):
             'consume_pdf': consume_pdf,
             'estate_pdf': estate_pdf,
             'paths': self.trace,
+            'alive': alive,
             'warnings': warnings,
         }
 
