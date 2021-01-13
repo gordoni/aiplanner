@@ -11,7 +11,8 @@
   },
   "private": true,
   "dependencies": {
-    "@angular-devkit/schematics": "^10.2.1",
+    "@angular-devkit/core": "^11.0.6",
+    "@angular-devkit/schematics": "^11.0.6",
     "@angular/animations": "~10.2.4",
     "@angular/common": "~10.2.4",
     "@angular/compiler": "~10.2.4",
@@ -20,6 +21,7 @@
     "@angular/platform-browser": "~10.2.4",
     "@angular/platform-browser-dynamic": "~10.2.4",
     "@angular/router": "~10.2.4",
+    "@schematics/angular": "^11.0.6",
     "rxjs": "~6.5.4",
     "tslib": "^2.0.0",
     "zone.js": "~0.10.2"
