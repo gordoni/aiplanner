@@ -77,7 +77,8 @@ Installing additional required components on Ubuntu 20.04:
     pip3 install arch
         # Only needed if you wish to fit your own volatility model.
         # May require: --install-option='--no-binary'
-    apt install nodejs node-typescript npm
+    apt install nodejs npm
+    #apt install node-typescript # No longer needed.
     pip3 install torch
     #pip3 install tensorflow # No longer used; use pytorch instead.
     apt install cmake # Needed for atari-py dependency of ray[rllib].
@@ -475,7 +476,7 @@ Angular provides a single webpage app for interacting with the models.
 Install the Angular builder:
 
     cd ~/aiplanner/ai/angular
-    npm ci @angular-devkit/build-angular
+    npm ci
 
 Angular downloads 500MB of node modules in order to build the website.
 These files would slow down the process of synchronizing source trees
@@ -720,9 +721,18 @@ On the same machine in another shell window run the Angular server:
     cd ~/aiplanner/ai/angular
     ng serve --host 0.0.0.0 --public-host <thishost.thisdomain>
 
-Ignore the circular dependency warning.
-
 Connect to the front end using a browser (need to open port 4200 of
 development machine firewall unless doing development on localhost):
 
     http://<thishost.thisdomain>:4200/
+
+Currently at Angular version 11.  Should upgrade to the final release
+of the current major version before upgrading the to next major
+version, and upgrade one major version number at a time. To upgrade
+Angular:
+
+    cd ~/aiplaner/ai/angular
+    npm install @schematics/angular@<major_version> @angular-devkit/core@<major_version> @angular-devkit/schematics@<major_version>
+    git commit packagejson package-lock.json
+    ng update @angular/core@<major_version> @angular/cli@<major_version>
+    git commit -a
