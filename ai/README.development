@@ -736,3 +736,5 @@ Angular:
     git commit packagejson package-lock.json
     ng update @angular/core@<major_version> @angular/cli@<major_version>
     git commit -a
+    ng update @angular/material@<major_version>
+    git commit -a

@@ -27,6 +27,7 @@ import { ResultComponent } from './result/result.component';
 import { ResultPageComponent } from './result-page/result-page.component';
 */
 import { PageNotFoundComponent } from './page-not-found/page-not-found.component';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 /*
 const appRoutes: Routes = [
@@ -51,6 +52,7 @@ const appRoutes: Routes = [
     /* RouterModule.forRoot(appRoutes), */
     HttpClientModule,
     FormsModule,
+    BrowserAnimationsModule,
   ],
   providers: [
     ApiService,
