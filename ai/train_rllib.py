@@ -80,19 +80,24 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
 
         'PPO': {
             'model': {
-                # Changing the fully connected net size from 256x256 (the default) to 128x128 reduces CE values.
-                # At least for retired model with nominal_spias.
-                # Results for preretirement, nominal_spias, train_batch_size 500k, minibach_size 500, lr 2e-5, num_sgd_iter 30, entropy 1e-4:
-                # fcnet_hiddens 128x128: CE dist 81900 stderr 350
-                # fcnet_hiddens 256x256: CE dist 81700 stderr 350
-                # Results for retired, nominal_spias, train_batch_size 500k, minibach_size 500, lr 2e-5, num_sgd_iter 30, entropy 1e-4:
-                # fcnet_hiddens 128x128: CE dist 85700 stderr 200
-                # fcnet_hiddens 256x256: CE dist 86200 stderr 200
-                # Reducing size is unlikely to improve the run time performance as it is dominated by fixed overhead costs:
-                #     runner.run(obss, policy_graph = runner.local_policy_graph):
-                #         256x256 (r5.large): 1.1ms + 0.013ms x num_observations_in_batch
-                #         128x128 (r5.large): 1.1ms + 0.009ms x num_observations_in_batch
                 'fcnet_hiddens': (256, 256),
+                    # Changing the fully connected net size from 256x256 (the default) to 128x128 reduces CE values.
+                    # At least for retired model with nominal_spias.
+                    # Results for preretirement, nominal_spias, train_batch_size 500k, minibach_size 500, lr 2e-5, num_sgd_iter 30, entropy 1e-4:
+                    # fcnet_hiddens 128x128: CE dist 81900 stderr 350
+                    # fcnet_hiddens 256x256: CE dist 81700 stderr 350
+                    # Results for retired, nominal_spias, train_batch_size 500k, minibach_size 500, lr 2e-5, num_sgd_iter 30, entropy 1e-4:
+                    # fcnet_hiddens 128x128: CE dist 85700 stderr 200
+                    # fcnet_hiddens 256x256: CE dist 86200 stderr 200
+                    # Reducing size is unlikely to improve the run time performance as it is dominated by fixed overhead costs:
+                    #     Tensorflow runner.run(obss, policy_graph = runner.local_policy_graph):
+                    #         256x256 (r5.large): 1.1ms + 0.013ms x num_observations_in_batch
+                    #         128x128 (r5.large): 1.1ms + 0.009ms x num_observations_in_batch
+                'fcnet_activation': 'relu',
+                    # 'relu' outperforms 'tanh' (the RLlib default) and 'swish'.
+                    # At least for the iid retired model with gamma=6 without SPIAs.
+                #'free_log_std' = False,
+                    # Default outperforms free_log_std=True at least for the iid retired model with gamma=6 without SPIAs.
             },
             'train_batch_size': train_batch_size,
                 # Increasing the batch size might reduce aa variability due to training for the last batch seen.
@@ -149,7 +154,9 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
                 # Results for train_batch_size 500k, minibatch_size 500, num_sgd_iter 10, lr 2e-5, entropy_coeff 1e-4, fcnet_hiddens 256x256.
                 # clip_param 0.2: CE dist 82000 stderr 300 (asymptote at ckpt 260)
                 # clip_param 0.3: CE dist 82000 stderr 250 (asymptote at ckpt 220)
-            # i.e. the PPO default 0.3 seems reasonable.
+                # i.e. the PPO default 0.3 seems reasonable.
+            'vf_share_layers': False,
+                # PPO default outperforms vf_share_layers=True at least for the iid retired model with gamma=6 without SPIAs.
             'batch_mode': 'complete_episodes', # Unknown whether helps, but won't harm.
             #'shuffle_sequences': False,
         },
@@ -213,6 +220,7 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
             'lr_schedule': lr_schedule,
             'vf_loss_coeff': 0.5, # Default is 0.5.
             'entropy_coeff': 0.0, # Default is 0.01.
+            # Have not tried IMPALA with models.vf_share_layers=False (On the other hand PPO overrides vf_shares_layers to default it to False).
         }
 
     }[algorithm]
