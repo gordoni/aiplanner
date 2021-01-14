@@ -93,6 +93,7 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
                     #     Tensorflow runner.run(obss, policy_graph = runner.local_policy_graph):
                     #         256x256 (r5.large): 1.1ms + 0.013ms x num_observations_in_batch
                     #         128x128 (r5.large): 1.1ms + 0.009ms x num_observations_in_batch
+                    # Changing from 256x256 to 256x128x64x32 resulted in worse performance.
                 'fcnet_activation': 'relu',
                     # 'relu' outperforms 'tanh' (the RLlib default) and 'swish'.
                     # At least for the iid retired model with gamma=6 without SPIAs.

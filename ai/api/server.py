@@ -231,13 +231,16 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def send_result(self, result_bytes, mime_type, headers = []):
 
-        self.send_response(200)
-        self.send_header('Content-Type', mime_type)
-        self.send_header('Content-Length', len(result_bytes))
-        for k, v in headers:
-            self.send_header(k, v)
-        self.end_headers()
-        self.wfile.write(result_bytes)
+        try:
+            self.send_response(200)
+            self.send_header('Content-Type', mime_type)
+            self.send_header('Content-Length', len(result_bytes))
+            for k, v in headers:
+                self.send_header(k, v)
+            self.end_headers()
+            self.wfile.write(result_bytes)
+        except BrokenPipeError:
+            pass
 
     def do_POST(self):
 

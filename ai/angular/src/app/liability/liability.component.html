@@ -1,7 +1,7 @@
 <!--
 
 AIPlanner - Deep Learning Financial Planner
-Copyright (C) 2018-2019 Gordon Irlam
+Copyright (C) 2018-2021 Gordon Irlam
 
 All rights reserved. This program may not be used, copied, modified,
 or redistributed without permission.
@@ -40,7 +40,7 @@ PURPOSE.
     <ng-template #elseBlock>
 
       <div *ngIf="['Credit Card Debt'].includes(newData.type); else elseBlock">
-        Credit card debt should be paid off before saving for retirement.
+        <div class="error">Credit card debt should normally be paid off before saving for retirement.</div>
 
         <div>
           Balance: <input type="number" step="1000" class="numeric" required name="dbAmountPer" #dbAmountPer="ngModel" [(ngModel)]="newData.amountPer">
@@ -68,7 +68,13 @@ PURPOSE.
         </div>
 
         <div>
-          Payment: <input type="number" step="1000" class="numeric" required name="liabilityAmountPer" #liabilityAmountPer="ngModel" [(ngModel)]="newData.amountPer">
+          <span *ngIf="['Child/Dependent', 'College Expenses'].includes(newData.type); else elseBlock">
+            Expense:
+          </span>
+          <ng-template #elseBlock>
+            Payment:
+          </ng-template>
+          <input type="number" step="1000" class="numeric" required name="liabilityAmountPer" #liabilityAmountPer="ngModel" [(ngModel)]="newData.amountPer">
             <div class="error" *ngIf="liabilityAmountPer.invalid">
               Invalid numeric value.
             </div>

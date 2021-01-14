@@ -37,17 +37,20 @@ PURPOSE.
       {{errorMessage}}
     </div>
     <div class="center">
-      <img src="assets/aiplanner-asset_allocation.svg" width="40%"/>
-      <img src="assets/aiplanner-paths-consume.svg" width="60%"/>
+      <img src="assets/aiplanner-asset_allocation.svg" width="40%">
+      <img src="assets/aiplanner-paths-consume.svg" width="60%">
     </div>
     <br>
     <div class="center">
-      <img src="assets/aiplanner-consume-pdf.svg" width="60%"/>
+      <img src="assets/aiplanner-consume-pdf.svg" width="60%">
     </div>
   </div>
 
   <div *ngIf="step == 1">
     <h1 class="title">Longevity</h1>
+    <div class="center">
+      <app-info msg="This information is only used if you generate a printed report."></app-info>
+    </div>
     <table class="username">
       <tr>
         <td class="first"> Optional name: </td>
@@ -64,6 +67,11 @@ PURPOSE.
     </table>
     <br>
     <br>
+    <div class="center">
+      <app-info msg="Enter your true age and health. AIPlanner takes
+      into account the possibilities you will live longer or shorter
+      than expected for your age."></app-info>
+    </div>
     <table class="le">
       <tr>
         <td class="noborderleft noborderright nobordertop"> </td>
@@ -124,9 +132,7 @@ PURPOSE.
       <br>
       Additional life expectancy is too large: Enter only any
       additional years you expect you might live beyond the life
-      expectancy for your age. Do not include any padding. We will
-      take into consideration the possibilities you live longer or
-      shorter than expected.
+      expectancy for your age. Do not include any padding.
     </div>
     <div class="main-button float-left">
       <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !healthValid() || !ageValid()">Back</button>
@@ -213,7 +219,11 @@ PURPOSE.
               </div>
             </td>
             <td class="left">
-              Stocks cost basis:
+              Stocks cost basis:<app-info msg="The cost basis is the
+              amount you paid for the asset. If the asset's value
+              exceeds the cost basis you have an unrealized capital
+              gain. If it is less you have a unrealized capital
+              loss."></app-info>
             </td>
             <td>
               <input type="number" step="1000" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
@@ -240,7 +250,9 @@ PURPOSE.
             </td>
           </tr>
           <tr>
-            <td class="left"> Taxable cash: </td>
+            <td class="left"> Taxable cash:<app-info
+              msg="Will be reallocated stocks and bonds. If you wish to maintain a separate emergency fund do not enter it here."></app-info>
+            </td>
             <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableCash" #scenarioPTaxableCash="ngModel" [(ngModel)]="pTaxableCash">
               <div class="error" *ngIf="scenarioPTaxableCash.invalid">
                 Invalid numeric value.
@@ -254,7 +266,7 @@ PURPOSE.
             </td>
           </tr>
           <tr>
-            <td class="left"> Taxable other: </td>
+            <td class="left"> Taxable other:<app-info msg="Will be reallocated to stocks and bonds."></app-info> </td>
             <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableOther" #scenarioPTaxableOther="ngModel" [(ngModel)]="pTaxableOther">
               <div class="error" *ngIf="scenarioPTaxableOther.invalid">
                 Invalid numeric value.
@@ -353,8 +365,11 @@ PURPOSE.
       </div>
     <br>
     <br>
-    After tax pre-retirement annual personal consumption:
-      <input type="number" step="1000" class="numeric" required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
+    Pre-retirement annual consumption:<app-info msg="Amount is after
+    tax and excluding the payment of any previously entered
+    liabilities. Wages less consumption, liability payments, and taxes
+    equals retirement savings."></app-info>&nbsp;<input type="number" step="1000" class="numeric"
+      required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
       <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
         Invalid numeric value.
       </div>
@@ -362,7 +377,7 @@ PURPOSE.
       <table>
         <tr>
           <td class="nobordertop noborderleft"> </td>
-          <td> Before income tax pre-retirement annual wages </td>
+          <td> Pre-retirement annual wages <app-info msg="Amount is before tax."></app-info> </td>
           <td> Wages end at </td>
           <td> 401(k) plan available </td>
         </tr>
@@ -415,7 +430,13 @@ PURPOSE.
       </table>
     </div>
     <p>
-      Allow income annuity purchases in retirement: <input type="checkbox" name="spias" [(ngModel)]="spias">
+      Allow income annuity purchases in retirement:<input type="checkbox" name="spias" [(ngModel)]="spias">&nbsp;<app-info
+      msg="An income annuity such as a SPIA provides a
+      guaranteed income stream for life. An income annuity purchased
+      at an appropriate age increases lifetime consumption. Income
+      annuities may be inappropriate if you are in poor health, have a
+      strong bequest motive, or are uncomfortabe with the irreversible
+      nature of the income annuity purchase decision."></app-info>
     </p>
     <div class="error" *ngIf="highConsume()">
       Annual consumption is more than annual wages.
@@ -434,7 +455,12 @@ PURPOSE.
   <div *ngIf="step == 5">
     <h1 class="title">Market conditions</h1>
     <p class="center">
-      Engage in tactical asset allocation and consumption: <input type="checkbox" name="observeMarketConditions" [(ngModel)]="observeMarketConditions">
+      Engage in tactical asset allocation and consumption:<input type="checkbox" name="observeMarketConditions" [(ngModel)]="observeMarketConditions">&nbsp;<app-info
+      msg="Tactical planning takes into consideration the current
+      market conditions in deciding what to do. Non-tactical, or
+      strategic planning, ignores current market conditions. Tactical
+      planning slightly outperforms strategic planning, but requires
+      adjusting plans on a yearly, or more frequent basis."></app-info>
     </p>
     <p>
       It is often a judgment call as to whether the market is fairly
@@ -445,7 +471,11 @@ PURPOSE.
       <table>
         <tr>
           <td>
-            Current stock market price above fair price (negative if below):
+            Current stock market price above fair price (negative if below):<app-info
+            msg="The default value is based on an average of the
+            12-month forward and trailing S&P 500 P/E ratios. This
+            default value may be innacurate around
+            recessions."></app-info>
           </td>
           <td>
             <input type="number" class="small-numeric" required name="scenarioStocksPricePct" #scenarioStocksPricePct="ngModel" [(ngModel)]="stocksPricePct">%
@@ -518,9 +548,9 @@ PURPOSE.
           <div>
             <table>
               <tr>
-                <td class="first"> RRA coefficient <span class="small-font"> <br> &nbsp; </span> </td>
-                <td class="first"> Extra consumption <span class="small-font"> <br> based on mean consumption </span> </td>
-                <td class="first"> Consumption uncertainty <span class="small-font"> <br> standard deviation / mean </span> </td>
+                <td class="first"> RRA coefficient </td>
+                <td class="first"> Extra consumption <app-info msg="Based on mean consumption."></app-info> </td>
+                <td class="first"> Consumption uncertainty <app-info msg="Standard deviation / mean."></app-info> </td>
               </tr>
               <tr>
                 <td> &infin; </td>
@@ -549,7 +579,7 @@ PURPOSE.
       <tr>
         <td>
           <div class="center">
-            <a href="assets/risk_aversion_pdf.svg" target="_blank" rel="noopener"><img src="assets/risk_aversion_pdf.svg" width="100%"/></a>
+            <a href="assets/risk_aversion_pdf.svg" target="_blank" rel="noopener"><img src="assets/risk_aversion_pdf.svg" width="100%"></a>
           </div>
         </td>
       </tr>
@@ -600,9 +630,9 @@ PURPOSE.
   <div class="crra">
     <table>
       <tr>
-        <td class="first"> RRA coefficient <span class="small-font"> <br> &nbsp; </span> </td>
-        <td class="first"> Extra consumption in retirement <span class="small-font"> <br> based on mean consumption </span> </td>
-        <td class="first"> Consumption uncertainty <span class="small-font"> <br> standard deviation / mean </span> </td>
+        <td class="first"> RRA coefficient </td>
+        <td class="first"> Extra consumption in retirement <app-info msg="Based on mean consumption."></app-info> </td>
+        <td class="first"> Consumption uncertainty <app-info msg="Standard deviation / mean."></app-info> </td>
       </tr>
       <tr class="pointer {{(i == activeResultIndex) ? 'selected' : ''}}" (click)="gotoRisk(i)" *ngFor="let result of results; index as i">
         <td> {{result.rra}} </td>
@@ -625,7 +655,7 @@ PURPOSE.
     </div>
   </div>
   <div *ngFor="let result of results; index as i">
-  <app-result [result]="result" *ngIf="i == activeResultIndex"></app-result>
+  <app-result [result]="result" [scenario]="scenario" *ngIf="i == activeResultIndex"></app-result>
   </div>
 </div>
 
@@ -773,7 +803,7 @@ PURPOSE.
   </p>
   <p>
     Information on contacting us regarding this policy is provided
-    <a href="privacy_policy" (click)="gotoStep(200)">here</a>.
+    <a href="about" (click)="gotoStep(200)">here</a>.
   </p>
   <div class="main-button">
     <button type="button" class="button" (click)="gotoStep(0)">Home</button>

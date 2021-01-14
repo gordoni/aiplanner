@@ -1,5 +1,5 @@
 /* AIPlanner - Deep Learning Financial Planner
- * Copyright (C) 2018-2020 Gordon Irlam
+ * Copyright (C) 2018-2021 Gordon Irlam
  *
  * All rights reserved. This program may not be used, copied, modified,
  * or redistributed without permission.
@@ -21,6 +21,7 @@ import { Utils } from '../utils';
 export class ResultComponent implements OnInit {
 
   @Input() public result: object;
+  @Input() public scenario: object;
 
   public errorMessage = null;
   public results: object = null;

@@ -26,15 +26,35 @@ PURPOSE.
       WARNING: {{warning}}
     </div>
     <div class="padded">
-      <a href="{{results.data_dir}}/asset_allocation.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/asset_allocation.svg" width="30%"></a>
-      <img width="10%">
-      <a href="{{results.data_dir}}/wealth.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/wealth.svg" width="30%"></a>
+      <table width="100%">
+        <tr>
+          <td width="15%">
+          </td>
+          <td width="30%">
+            <a href="{{results.data_dir}}/asset_allocation.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/asset_allocation.svg"></a>
+          </td>
+          <td width="10%">
+          </td>
+          <td width="30%">
+            <div class="center">
+              <app-info msg="Planned present value of assets reduced by anticipated future taxes."></app-info>
+            </div>
+            <a href="{{results.data_dir}}/wealth.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/wealth.svg"></a>
+          </td>
+          <td width="15%">
+          </td>
+        </tr>
+      </table>
     </div>
     <div class="padded inline-block">
       <div class="left boxed">
-        Mean consumption in retirement: {{results.consume_mean}}
+        Mean annual consumption in retirement:<app-info msg="This is
+        not an amount you can expect to steadfastly consume. Instead
+        you should expect consumption to vary depending on the stock
+        market and interest rates."></app-info>
+        {{results.consume_mean}}
         <br>
-        Consumption uncertainty: {{results.consume_stdev}}
+        Consumption uncertainty:<app-info msg="Standard deviation."></app-info> {{results.consume_stdev}}
         <br>
         Probability retirement consumption below {{results.consume_preretirement}}: {{results.consume_preretirement_ppf}}%
         <br>
@@ -43,10 +63,27 @@ PURPOSE.
     </div>
     <div class="padded inline-block">
       <div class="left boxed">
+        <div *ngIf="scenario.age >= scenario.age_retirement">
+          Current recommended after tax
+          consumption:<app-info msg="This is the target amount you
+          should aim to consume this year. If you consume less you can
+          expect to have too much wealth later on. If you consume more
+          you won't have enough wealth later. The amount you should
+          consume will vary from one year to the next. So you should
+          rerun this program every year or two."></app-info>
+          {{results.consume}}
+        </div>
         <div>
-          Current recommended after tax consumption: {{results.consume}}
-          <br>
-          Recommended diversified {{results.asset_classes}} asset allocation: {{results.asset_allocation}}
+          Current recommended {{results.asset_classes}} asset
+          allocation:<app-info msg="Stocks should be highly
+          diversified. A broad based low cost stock index fund is a
+          good choice. Bonds can be held directly or a bond mutual
+          fund can be used. Asset allocation only has to be kept
+          accurate to 10-20%, and it doesn't make a huge amount of
+          difference which assets go in which tax preferenced
+          accounts. Asset allocation will vary over time. So you
+          should rrerun this program every year or two."></app-info>
+          {{results.asset_allocation}}
         </div>
         <div class="indent" *ngIf="results.asset_allocation_tax_free && (results.asset_allocation_tax_deferred || results.asset_allocation_taxable)">
           Tax free (Roth): {{results.asset_allocation_tax_free}}
@@ -58,44 +95,109 @@ PURPOSE.
           Taxable: {{results.asset_allocation_taxable}}
         </div>
         <div>
-          International diversification: optional
+          International diversification:<app-info msg="The returns of
+          domestic and international stocks are significantly
+          correlated, so the diversification benefits from
+          international are muted."></app-info> optional
         </div>
         <div *ngIf="results.real_bonds_duration != null">
-          Bonds duration: {{results.real_bonds_duration}} years ({{(results.real_bonds_duration <= 9) ? ((results.real_bonds_duration <= 2) ? "short" : "intermediate") : "long"}} term TIPS)
+          Bonds duration:<app-info msg="The precise duration used
+          won't make a lot of difference. This figure is to give you
+          an idea what sort of duration might offer the best
+          performance. Note that the nominal volatility of long
+          duration inflation-indexed bonds is very high, but they lock
+          in future real purchasing power."></app-info>
+          {{results.real_bonds_duration}} years
+          ({{(results.real_bonds_duration <= 9) ? ((results.real_bonds_duration <= 2) ? "short" : "intermediate") : "long"}} term TIPS)
         </div>
         <div *ngIf="results.nominal_bonds_duration != null">
-          Bonds duration: {{results.nominal_bonds_duration}} years ({{(results.nominal_bonds_duration <= 9) ? ((results.nominal_bonds_duration <= 2) ? "short" : "intermediate") : "long"}} term Treasuries)
+          Bonds duration:<app-info msg="The precise duration used
+          won't make a lot of difference. This figure is to give you
+          an idea what sort of duration might offer the best
+          performance. Note that the nominal volatility of long
+          duration bonds is very high, but they lock in future nominal
+          purchasing power, leaving behind only unexpected inflation
+          risk."></app-info> {{results.nominal_bonds_duration}} years
+          ({{(results.nominal_bonds_duration <= 9) ? ((results.nominal_bonds_duration <= 2) ? "short" : "intermediate") : "long"}} term Treasuries)
         </div>
         <div *ngIf="results.retirement_contribution != null">
           Recommended retirement plan contribution: {{results.retirement_contribution}}
         </div>
         <div *ngIf="results.nominal_spias_purchase != null">
-          Recommended SPIA purchase amount ({{results.nominal_spias_adjust}}% annual adjustment): {{results.nominal_spias_purchase}}
+          Recommended SPIA purchase amount
+          ({{results.nominal_spias_adjust}}% annual
+          adjustment):<app-info msg="A SPIA is a type of income
+          annuity. It provides guaranteed income for life. Additional
+          SPIA purchases may be recommended as you get older. Period
+          certain, and other death benefits, are not
+          recommended."></app-info> {{results.nominal_spias_purchase}}
         </div>
         <div *ngIf="results.real_spias_purchase != null">
-          Recommended inflation-indexed SPIA purchase amount: {{results.real_spias_purchase}}
+          Recommended inflation-indexed SPIA purchase
+          amount:<app-info msg="A SPIA is a type of income annuity. It
+          provides guaranteed income for life. Additional SPIA
+          purchases may be recommended as you get older. Period
+          certain, and other death benefits, are not
+          recommended."></app-info> {{results.real_spias_purchase}}
         </div>
       </div>
     </div>
     <div></div>
     <div class="padded inline-block">
       <div class="left boxed small-font">
-        RRA={{results.gamma}} certainty equivalent retirement consumption: {{results.ce}}.
-        Standard error of measurement: {{results.ce_stderr}}
+        RRA={{results.gamma}} certainty equivalent retirement
+        consumption:<app-info msg="This is the best number to use to
+        compare the effects of changes to the scenario, such as
+        enabling SPIAs. However this value can not be used when
+        comparing scenarios with different RRA
+        coefficients."></app-info> {{results.ce}}.
+        Standard error of measurement:<app-info msg="This number tells
+        how accurate the certainty equivalent value is as a result
+        of simulator imprecision."></app-info> {{results.ce_stderr}}
       </div>
     </div>
-    <a href="{{results.data_dir}}/alive.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/alive.svg" width="50%"/></a>
-    <div>
-      <a href="{{results.data_dir}}/consume-pdf.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/consume-pdf.svg" width="50%"/></a>
-      <a href="{{results.data_dir}}/paths-consume.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-consume.svg" width="50%"/></a>
-    </div>
-    <div>
-      <a href="{{results.data_dir}}/paths-gi.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-gi.svg" width="50%"/></a>
-      <a href="{{results.data_dir}}/paths-p.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-p.svg" width="50%"/></a>
-    </div>
-    <div>
-      <a href="{{results.data_dir}}/paths-stocks.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-stocks.svg" width="50%"/></a>
-      <a href="{{results.data_dir}}/estate-pdf.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/estate-pdf.svg" width="50%"/></a>
-    </div>
+    <br>
+    <br>
+    <table width="100%">
+      <tr>
+        <td colspan="2"> Life expectancy </td>
+      </tr>
+      <tr>
+        <td colspan="2"> <a href="{{results.data_dir}}/alive.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/alive.svg" width="50%"></a> </td>
+      </tr>
+      <tr>
+        <td> &nbsp; </td>
+      </tr>
+      <tr>
+        <td> Consumption distribution <app-info msg="Averaged over a lifetime and many possible futures."></app-info> </td>
+        <td> Example consumption paths </td>
+      </tr>
+      <tr>
+        <td width="50%"> <a href="{{results.data_dir}}/consume-pdf.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/consume-pdf.svg"></a> </td>
+        <td width="50%"> <a href="{{results.data_dir}}/paths-consume.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-consume.svg"></a> </td>
+      </tr>
+      <tr>
+        <td> &nbsp; </td>
+      </tr>
+      <tr>
+        <td> Example guaranteed income paths <app-info msg="Adjusted for inflation."></app-info> </td>
+        <td> Example investments paths </td>
+      </tr>
+      <tr>
+        <td width="50%"> <a href="{{results.data_dir}}/paths-gi.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-gi.svg"></a>
+        <td width="50%"> <a href="{{results.data_dir}}/paths-p.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-p.svg"></a>
+      </tr>
+      <tr>
+        <td> &nbsp; </td>
+      </tr>
+      <tr>
+        <td> Example asset allocation paths </td>
+        <td> Residual estate distribution </td>
+      </tr>
+      <tr>
+        <td width="50%"> <a href="{{results.data_dir}}/paths-stocks.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-stocks.svg"></a>
+        <td width="50%"> <a href="{{results.data_dir}}/estate-pdf.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/estate-pdf.svg"></a>
+      </tr>
+    </table>
   </div>
 </div>

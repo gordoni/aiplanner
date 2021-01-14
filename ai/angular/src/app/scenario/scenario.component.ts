@@ -69,6 +69,8 @@ export class ScenarioComponent implements OnInit {
   public have401k2: boolean = true;
   public spias: boolean = true;
 
+  public scenario: object;
+
   private report: string;
   private results: any[];
   private activeResultIndex: number = 0;
@@ -253,9 +255,10 @@ export class ScenarioComponent implements OnInit {
         delete scenario.income_preretirement_age_end2;
         delete scenario.have_401k2;
     }
+    this.scenario = scenario;
 
     this.errorMessage = null;
-    this.apiService.post('/webapi/evaluate', [scenario]).subscribe(
+    this.apiService.post('/webapi/evaluate', [this.scenario]).subscribe(
       results => this.doResults(results),
       error => this.handleError(error)
     );

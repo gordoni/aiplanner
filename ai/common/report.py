@@ -101,6 +101,7 @@ def generate_report(api, result_dir, results, results_dir):
             s = '<para alignment="center">Life expectancy</para>'
             contents.append(Paragraph(s, styleH))
             contents.append(Spacer(1, 2 * inch))
+            contents.append(Paragraph('<para alignment="center">Life expectancy</para>', styleN))
             contents.append(svg(aid, 'alive', width = 7.5 * inch))
     for result in sorted(results, key = lambda r: r.get('rra', 0), reverse = True):
         if not result['error']:
@@ -170,17 +171,23 @@ def generate_report(api, result_dir, results, results_dir):
                 ['RIGHTPADDING', (1, 0), (-1, -1), 0],
             ])
             contents.append(t)
-            contents.append(Spacer(1, 0.25 * inch))
-            contents.append(svg(aid, 'consume-pdf'))
-            contents.append(Spacer(1, 0.25 * inch))
+            contents.append(Spacer(1, 1 * inch))
+            contents.append(Paragraph('<para alignment="center">Consumption distribution</para>', styleN))
+            contents.append(svg(aid, 'consume-pdf', width = 7.5 * inch))
+            contents.append(PageBreak())
+            contents.append(Paragraph('<para alignment="center">Example consumption paths</para>', styleN))
             contents.append(svg(aid, 'paths-consume'))
             contents.append(Spacer(1, 0.25 * inch))
+            contents.append(Paragraph('<para alignment="center">Example guaranteed income paths</para>', styleN))
             contents.append(svg(aid, 'paths-gi'))
             contents.append(Spacer(1, 0.25 * inch))
+            contents.append(Paragraph('<para alignment="center">Example investment paths</para>', styleN))
             contents.append(svg(aid, 'paths-p'))
-            contents.append(Spacer(1, 0.25 * inch))
+            contents.append(PageBreak())
+            contents.append(Paragraph('<para alignment="center">Example asset allocation paths</para>', styleN))
             contents.append(svg(aid, 'paths-stocks'))
             contents.append(Spacer(1, 0.25 * inch))
+            contents.append(Paragraph('<para alignment="center">Residual estate distribution</para>', styleN))
             contents.append(svg(aid, 'estate-pdf'))
     contents.append(PageBreak())
     s = '<para alignment="center">Scenario parameters</para>'

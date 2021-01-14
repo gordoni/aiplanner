@@ -1,7 +1,7 @@
 <!--
 
 AIPlanner - Deep Learning Financial Planner
-Copyright (C) 2018-2019 Gordon Irlam
+Copyright (C) 2018-2021 Gordon Irlam
 
 All rights reserved. This program may not be used, copied, modified,
 or redistributed without permission.
@@ -36,7 +36,7 @@ PURPOSE.
       </div>
 
       <div>
-        Proceeds amount should be inflation adjusted.
+        Proceeds amount should be inflation adjusted to today's dollar value.
       </div>
 
     </div>
@@ -104,8 +104,12 @@ PURPOSE.
         </select>
 
         <div *ngIf="newData.sourceOfFunds == 'taxable'">
-          Taxble exclusion period:
-            <input type="number" class="small-numeric" required name="dbExclusionPeriod" #dbExclusionPeriod="ngModel" [(ngModel)]="newData.exclusionPeriod">
+          Taxble exclusion period:<app-info msg="Payout is fully taxed
+          at the end of the taxable exclusion period. Exclusion period
+          times annual exclusion amount should equal the original
+          income annuity purchase price.">
+            </app-info>&nbsp;<input type="number" class="small-numeric"
+              required name="dbExclusionPeriod" #dbExclusionPeriod="ngModel" [(ngModel)]="newData.exclusionPeriod">
             years from starting age
             <div class="error" *ngIf="dbExclusionPeriod.invalid">
               Invalid numeric value.

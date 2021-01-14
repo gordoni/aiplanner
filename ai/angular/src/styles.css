@@ -24,6 +24,7 @@ body {
 }
 
 .error {
+    font-size: smaller;
     color: red;
 }
 
