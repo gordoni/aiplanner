@@ -73,6 +73,7 @@ export class ScenarioComponent implements OnInit {
 
   private report: string;
   private results: any[];
+  private commonDir: string;
   private activeResultIndex: number = 0;
 
   public email: string = null
@@ -285,6 +286,8 @@ export class ScenarioComponent implements OnInit {
          this.step--;
          return
        }
+       this.commonDir = this.report.match(/^.*\//)[0];
+       this.commonDir = this.commonDir.substring(0, this.commonDir.length - 1);
        this.activeResultIndex = Math.min(this.activeResultIndex, this.results.length - 1);
        this.step++;
      }

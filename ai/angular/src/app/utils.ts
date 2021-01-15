@@ -1,5 +1,5 @@
 /* AIPlanner - Deep Learning Financial Planner
- * Copyright (C) 2019 Gordon Irlam
+ * Copyright (C) 2019-2021 Gordon Irlam
  *
  * All rights reserved. This program may not be used, copied, modified,
  * or redistributed without permission.
@@ -17,7 +17,10 @@ import {Injectable} from '@angular/core';
 export class Utils {
 
   public comma(x) {
-    return Math.round(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    if (x == null)
+      return'n/a';
+    else
+      return Math.round(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
 }

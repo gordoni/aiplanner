@@ -35,8 +35,9 @@ from psutil import cpu_count
 from setproctitle import setproctitle
 from yaml import safe_load
 
-from ai.common.scenario_space import allowed_gammas
+from ai.common.plot_common import plot_common
 from ai.common.report import generate_report
+from ai.common.scenario_space import allowed_gammas
 from ai.common.utils import boolean_flag
 from ai.gym_fin.model_params import load_params_file
 
@@ -603,6 +604,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             threads.append(thread)
         for thread in threads:
             thread.join()
+        plot_common(api_data[0], result_dir, results, self.server.args.results_dir)
         report = generate_report(api_data[0], result_dir, results, self.server.args.results_dir)
         return {
             'error': None,

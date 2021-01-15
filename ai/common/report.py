@@ -23,7 +23,7 @@ def generate_report(api, result_dir, results, results_dir):
 
     def svg(aid, name, width = 5.5 * inch, hAlign = 'CENTER'):
 
-        img = svg2rlg(results_dir + '/' + aid + '/seed_all/aiplanner-' + name + '.svg')
+        img = svg2rlg((results_dir + '/' + aid + '/seed_all/aiplanner-' if aid else result_dir + '/') + name + '.svg')
         scale = width / img.minWidth()
         img.width *= scale
         img.height *= scale
@@ -36,8 +36,8 @@ def generate_report(api, result_dir, results, results_dir):
 
         try:
             return '$' + sub(r'\B(?=(\d{3})+(?!\d))', ',', str(round(x)))
-        except ValueError:
-            return str(x) # NaN.
+        except (TypeError, ValueError):
+            return 'n/a' # None or NaN.
 
     def aa_str(aa):
 
@@ -93,16 +93,22 @@ def generate_report(api, result_dir, results, results_dir):
     date_str = date.strftime('%B %-d, %Y')
     s = '<para alignment="center">' + date_str + '</para>'
     contents.append(Paragraph(s, styleN))
-    if results:
-        result = results[0]
-        if not result['error']:
-            aid =result['aid']
-            contents.append(PageBreak())
-            s = '<para alignment="center">Life expectancy</para>'
-            contents.append(Paragraph(s, styleH))
-            contents.append(Spacer(1, 2 * inch))
-            contents.append(Paragraph('<para alignment="center">Life expectancy</para>', styleN))
-            contents.append(svg(aid, 'alive', width = 7.5 * inch))
+    valid_results = tuple(result for result in results if not result['error'])
+    if valid_results:
+        result = valid_results[0]
+        aid = result['aid']
+        contents.append(PageBreak())
+        s = '<para alignment="center">Life expectancy</para>'
+        contents.append(Paragraph(s, styleH))
+        contents.append(Spacer(1, 2 * inch))
+        contents.append(Paragraph('<para alignment="center">Life expectancy</para>', styleN))
+        contents.append(svg(aid, 'alive', width = 7.5 * inch))
+        contents.append(PageBreak())
+        s = '<para alignment="center">Consumption summary</para>'
+        contents.append(Paragraph(s, styleH))
+        contents.append(Spacer(1, 2 * inch))
+        contents.append(Paragraph('<para alignment="center">Retirement consumption distribution</para>', styleN))
+        contents.append(svg(None, 'consume-pdf', width = 7.5 * inch))
     for result in sorted(results, key = lambda r: r.get('rra', 0), reverse = True):
         if not result['error']:
             aid = result['aid']
@@ -172,7 +178,7 @@ def generate_report(api, result_dir, results, results_dir):
             ])
             contents.append(t)
             contents.append(Spacer(1, 1 * inch))
-            contents.append(Paragraph('<para alignment="center">Consumption distribution</para>', styleN))
+            contents.append(Paragraph('<para alignment="center">Retirement consumption distribution</para>', styleN))
             contents.append(svg(aid, 'consume-pdf', width = 7.5 * inch))
             contents.append(PageBreak())
             contents.append(Paragraph('<para alignment="center">Example consumption paths</para>', styleN))
