@@ -24,7 +24,7 @@ from ai.common.tf_util import RayFinEnv
 from ai.common.utils import boolean_flag
 from ai.gym_fin.model_params import dump_params_file
 
-def train(training_model_params, *, address, train_num_workers, train_anneal_num_timesteps, train_anneal_optimizer_factor, train_seeds,
+def train(training_model_params, *, address, num_workers, num_environments, train_anneal_num_timesteps, train_anneal_optimizer_factor, train_seeds,
     train_batch_size, train_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_entropy_coefficient,
     train_save_frequency, train_max_failures, train_resume,
     train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
@@ -228,10 +228,6 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
 
     trainable = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
     trial_name = lambda trial: 'seed_' + str(trial.config['seed'] // 1000)
-    if train_num_workers == None:
-        num_workers = agent_config.get('num_workers', 1 if algorithm in ('A3C', 'APPO', 'IMPALA') else 0)
-    else:
-        num_workers = train_num_workers
     if train_save_frequency == None:
         checkpoint_freq = 0
     elif trainable in ('PPO', ):
@@ -266,7 +262,7 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
             #'num_gpus': 0,
             #'num_cpus_for_driver': 1,
             'num_workers': num_workers,
-            #'num_envs_per_worker': 1,
+            'num_envs_per_worker': num_environments,
             #'num_cpus_per_worker': 1,
             #'num_gpus_per_worker': 0,
 
@@ -306,9 +302,10 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
 def main():
     parser = make_parser(lambda: arg_parser(evaluate=False))
     parser.add_argument('--address')
-    parser.add_argument('--train-num-workers', type=int, default=8) # Number of rollout worker processes.
-        # Default appropriate for a short elapsed time with train_optimizer_epochs 10.
+    parser.add_argument('--num-workers', type=int, default=4) # Number of rollout worker processes.
+        # Default appropriate for a short elapsed time.
         # Set to 0, or possibly 1, for deterministic training.
+    parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for per worker. Speeds up torch/tensorflow.
     parser.add_argument('--train-anneal-num-timesteps', type=int, default=0) # Additional annealing timesteps.
     parser.add_argument('--train-anneal-optimizer-factor', type=float, default=0.1)
     parser.add_argument('--train-seeds', type=int, default=1) # Number of parallel seeds to train.
