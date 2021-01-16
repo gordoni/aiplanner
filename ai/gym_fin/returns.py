@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -15,7 +15,7 @@ from statistics import mean, stdev
 import cython
 
 @cython.cclass
-class Returns():
+class Returns:
 
     def __init__(self, ret, vol, standard_error, time_period):
 

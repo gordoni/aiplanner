@@ -168,6 +168,7 @@ class Evaluator(object):
             et = 0
             e = 0
             s = 0
+            anticipated = sum(env.anticipated_episode_length for env in envs)
             erews = [0 for _ in eval_envs]
             eweights = [0 for _ in eval_envs]
             reward_initial = None
@@ -220,14 +221,17 @@ class Evaluator(object):
                             eweights[i] = 0
                             if i == 0 and self.eval_render:
                                 eval_env.render()
-                            if s >= self.eval_num_timesteps:
+                            if anticipated >= self.eval_num_timesteps:
                                 finished[i] = True
                             else:
                                 obss[i] = eval_env.reset()
+                                anticipated += env.anticipated_episode_length
                         else:
                             obss[i] = obs
                 if all(finished):
                     break
+
+            assert s == anticipated
 
             warnings = self.merge_warnings(tuple(env.warnings for env in envs))
 

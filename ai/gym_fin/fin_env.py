@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -15,7 +15,7 @@ from gym.spaces import Box
 
 from ai.gym_fin.fin import Fin
 
-class AttributeObject():
+class AttributeObject:
 
     def __init__(self, dict):
         self.__dict__.update(dict)

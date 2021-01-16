@@ -619,8 +619,8 @@ def main():
         # Search for the initial consumption that maximizes the certainty equivalent using the supplied value as a hint as to where to search.
     parser.add_argument('--result-dir', default = 'results')
     parser.add_argument('--aid') # AIPlanner id.
-    parser.add_argument('--num-workers', type = int, default = 1) # Number of remote processes for Ray evaluation. Zero for local evaluation.
-    parser.add_argument('--num-environments', type = int, default = 200) # Number of parallel environments to use for a single model. Speeds up torch/tensorflow.
+    parser.add_argument('--num-workers', type = int, default = 0) # Number of remote processes for Ray evaluation. Zero for local evaluation.
+    parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for a single model. Speeds up torch/tensorflow.
     parser.add_argument('--num-trace-episodes', type = int, default = 5) # Number of sample traces to generate.
     parser.add_argument('--pdf-buckets', type = int, default = 100) # Number of non de minus buckets to use in computing probability density distributions.
     parser.add_argument('--pdf-smoothing-window', type = float, default = 0.02) # Width of smoothing window to use in computing probability density distributions.

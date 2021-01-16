@@ -15,7 +15,6 @@ from os import getpriority, mkdir, PRIO_PROCESS, setpriority
 from os.path import abspath
 from shutil import rmtree
 
-
 import ray
 from ray.tune import grid_search, run
 from ray.tune.config_parser import make_parser

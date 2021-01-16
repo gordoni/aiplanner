@@ -165,6 +165,11 @@ class Fin:
             tuple(life_expectancy_both), tuple(life_expectancy_one), tuple(life_percentile), \
             tuple(retirement_expectancy_both), tuple(retirement_expectancy_one), tuple(retirement_expectancy_single)
 
+        # Number of steps that can be taken.
+        self.anticipated_episode_length = len(self.alive_single)
+        while self.alive_single[self.anticipated_episode_length - 1] == 0:
+            self.anticipated_episode_length -= 1
+
     def sums_to_end(self, l, start, divl):
 
         r = [0]
@@ -817,7 +822,33 @@ class Fin:
         if not self.params.nominal_spias or not self.spias:
             nominal_spias_fraction = None
 
-        # Softmax the asset alocations when guaranteed_income is zero.
+        # A number of different methods of computing the asset allocation were attempted.
+        # Reported results are for iid returns, no tax, no SPIAs, gi=20e3, gamma=6 based on the CE distribution of 10 trained models.
+        # Note that standard error values are much smaller for lower p values. Hence the performance for high p values is what counts.
+        #
+        # stocks_action, iid_bonds_action = softmax(stocks_action, iid_bonds_action)
+        # stocks_curvature_fraction = 0.5
+        #    Baseline case.
+        #
+        # stocks_action = (1 + tanh(stocks_action)) / 2
+        # stocks_curvature_fraction = 0.5
+        #    p=2e5: outperforms by 1 standard error
+        #    p=5e5: same
+        #    p=1e6: underperforms by 1 standard error
+        #    p=2e6: underperforms by 1 standard error
+        #    p=5e6: underperforms by 1 standard error
+        #    Weakly inferior and doesn't generalize to more than two asset classes.
+        #
+        # stocks_action, iid_bonds_action = softmax(stocks_action, iid_bonds_action)
+        # stocks_curvature_fraction = 0.0
+        #    p=2e5: underperforms by 10 standard error
+        #    p=5e5: underperforms by 1 standard error
+        #    p=1e6: outperforms by 0.5 standard error
+        #    p=2e6: same
+        #    p=5e6: underperforms by 0.5 standard error
+        #    Inferior at both extremes.
+
+        # Softmax the asset allocations when guaranteed_income is zero.
         maximum = max(
             stocks_action if self.params.stocks else float('-inf'),
             real_bonds_action if self.params.real_bonds else float('-inf'),

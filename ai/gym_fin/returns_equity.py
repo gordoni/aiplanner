@@ -15,10 +15,8 @@ from statistics import mean
 
 import cython
 
-from ai.gym_fin.returns import Returns # Needs to be cimport if using Cython.
-
 @cython.cclass
-class ReturnsEquity(Returns):
+class ReturnsEquity:
     params: object
     z_hist: cython.double[:]
     sigma_hist: cython.double[:]
