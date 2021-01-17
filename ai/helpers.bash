@@ -28,7 +28,7 @@ SEED_START=${SEED_START:-0}
 SEEDS=${SEEDS:-10}
 POLICY=${POLICY:-none}
 ALGORITHM=${ALGORITHM:-PPO}
-EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py --address=$RAY_ADDRESS}
+EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py --address=$RAY_ADDRESS --num-workers=1}
 BASE_SCENARIO=${BASE_SCENARIO:-$AI_DIR/aiplanner-scenario.txt}
 BASE_ARGS=${BASE_ARGS:--c $BASE_SCENARIO}
 TRAIN_ARGS=${TRAIN_ARGS:--c $AI_DIR/aiplanner-scenario-train.txt}
