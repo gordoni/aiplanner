@@ -1,4 +1,5 @@
 *.so
 income_annuity.c
 life_table.c
+test.c
 yield_curve.c

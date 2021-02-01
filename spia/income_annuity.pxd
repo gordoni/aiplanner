@@ -1,12 +1,29 @@
-# AIPlanner - Deep Learning Financial Planner
+# SPIA - Income annuity (SPIA and DIA) price calculator
 # Copyright (C) 2021 Gordon Irlam
 #
-# All rights reserved. This program may not be used, copied, modified,
-# or redistributed without permission.
+# This program may be licensed by you (at your option) under an Open
+# Source, Free for Non-Commercial Use, or Commercial Use License.
 #
-# This program is distributed WITHOUT ANY WARRANTY; without even the
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-# PURPOSE.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is free for non-commercial use: you can use and modify it
+# under the terms of the Creative Commons
+# Attribution-NonCommercial-ShareAlike 4.0 International Public License
+# (https://creativecommons.org/licenses/by-nc-sa/4.0/).
+#
+# A Commercial Use License is available in exchange for agreed
+# remuneration.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .life_table cimport LifeTable
 
@@ -16,7 +33,10 @@ cdef class IncomeAnnuity:
         # Don't change this to YieldCurve.
         # Want to be able to substitute in any object that provides the properties interest_rate, date, date_low, and discount_rate().
         # Such as ai/gym_fin/bonds.py.
+    cdef double age
+    cdef double age2
     cdef double payout_delay
+    cdef int payout_start
     cdef object payout_end
     cdef double tax
     cdef LifeTable life_table1
@@ -35,15 +55,16 @@ cdef class IncomeAnnuity:
     cdef bint delay_calcs
     cdef bint calculate
 
+    cdef bint alive
+    cdef bint alive2
+    cdef double current_age
+
     cdef bint recompute_vital_stats
     cdef bint cacheable_payout
     cdef list calcs
-    cdef double start_age1
 
     cdef IncomeAnnuity _vital_stats
 
-    cdef bint alive
-    cdef bint alive2
     cdef double start
     cdef list alive1_array
     cdef list alive2_array
@@ -63,3 +84,14 @@ cdef class IncomeAnnuity:
     cdef double _duration
     cdef double _annual_return
     cdef double _unit_price
+
+    # Worthwhile cdef'ing a few methods because they are called so frequently.
+    # Return object so that exceptions can propagate.
+
+    cdef object set_age(self, double age, bint alive = ?, bint alive2 = ?, bint delay_calcs = ?)
+
+    cdef object _compute_price(self, bint use_cache)
+
+    cdef object schedule_payout(self, object alive = ?, object alive2 = ?, int offset = ?)
+
+    cdef object premium(self, double payout = ?, double mwr = ?)

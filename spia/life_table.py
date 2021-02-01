@@ -42,7 +42,7 @@ except ImportError:
         def double():
             pass
 
-from .income_annuity import IncomeAnnuity
+from .factory import make_income_annuity
 from .yield_curve import YieldCurve
 
 iam2012_date = 2012
@@ -793,10 +793,23 @@ class UnableToAdjust(Exception):
 @cython.cclass
 class LifeTable:
 
+    '''Provide access to the years to add to an age before looking the age
+    up in mortality tables.'''
+
+    @property
+    def age_add(self):
+
+        return self._age_add
+
+    @age_add.setter
+    def age_add(self, y):
+
+        self._age_add = y
+
     _age_add_cache = {}
 
-    def __init__(self, table, sex, age, *, death_age = float('inf'), ae = 'aer2005_13-grouped',
-                 le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
+    def __init__(self, table, sex, age = None, *, death_age = float('inf'), ae = 'aer2005_13-grouped',
+                 le_set = None, le_add = 0, date_str = None, age_add = 0, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
         '''Initialize an object representing a life expectancy table for an
         individual.
 
@@ -846,7 +859,8 @@ class LifeTable:
 
         'sex' should be "male" or "female".
 
-        'age' should be expressed in years and may be fractional.
+        'age' should be expressed in years and may be fractional. It
+        is only relevant when 'le_set' or 'le_add' is specified.
 
         'death_age' can be set to force death to occur at the
         specified age.
@@ -864,6 +878,10 @@ class LifeTable:
         'le_set' or 'le_add' when using a cohort life table. Required
         with 'le_set' or 'le_add' when a cohort life table is used.
 
+        'age_add' is a fixed amount to add to all ages before looking
+        the ages up in mortality tables. Must not bbe specified if
+        'le_set' or 'le_add' is specified.
+
         If 'interpolate_q' is true q values will be interpolated
         (except when using "gomertz-makeham") for fractional ages,
         otherwise the nearest q value will be used.
@@ -876,7 +894,7 @@ class LifeTable:
         self.table = table
         assert(table in ('fixed', 'iam2012-basic', 'ssa-cohort', 'ssa-period', 'gompertz-makeham'))
         self.sex = sex
-        self.age = age
+        self.age = -1 if age is None else age
         self.death_age = death_age
         self.ae = ae
             # 'none' - AER increases MWR 20% at age 90, and 5% at age 80.
@@ -886,6 +904,7 @@ class LifeTable:
         self.le_set = le_set
         self.le_add = le_add
         self.date_str = date_str
+        self._age_add = age_add
         self.interpolate_q = interpolate_q  # Interpolation makes 0.5% difference for fractional ages. Set to false for compatibility with Opal.
         self.alpha = alpha
         self.m = m
@@ -913,33 +932,36 @@ class LifeTable:
             assert False
         self.projection_scale = projection_scale_g2[self.sex]
 
-        self.age_add = 0
         if le_set is None and le_add == 0:
             return
+
+        assert self._age_add == 0
+        assert age is not None
 
         key = (table, sex, age, death_age, ae, le_set, le_add, date_str, interpolate_q, alpha, m, b)
 
         try:
 
-            self.age_add = LifeTable._age_add_cache[key]
+            self._age_add = LifeTable._age_add_cache[key]
             return
 
         except KeyError:
 
             yield_curve = YieldCurve('le', date_str)
+            income_annuity: IncomeAnnuity
             if le_set is None:
-                income_annuity = IncomeAnnuity(yield_curve, self, frequency = 1)
+                income_annuity = make_income_annuity(yield_curve, self, frequency = 1)
                 le_set = income_annuity.premium(1)
             le = le_set + le_add
             if le > 0:
                 age_add_lo = age_add_lo_start = -50
                 age_add_hi = age_add_hi_start = 50
                 for _ in range(50):
-                    self.age_add = (age_add_lo + age_add_hi) / 2
-                    self.age_add = max(self.age_add, - self.age)
+                    self._age_add = (age_add_lo + age_add_hi) / 2
+                    self._age_add = max(self._age_add, - self.age)
                     if not self.interpolate_q:
-                        self.age_add = math.floor(self.age_add)
-                    income_annuity = IncomeAnnuity(yield_curve, self, frequency = 1)
+                        self._age_add = math.floor(self._age_add)
+                    income_annuity = make_income_annuity(yield_curve, self, frequency = 1)
                     compute_le = income_annuity.premium(1)
                     if self.interpolate_q:
                         done = abs(le / compute_le - 1) < 1e-4
@@ -947,12 +969,12 @@ class LifeTable:
                         done = age_add_hi - age_add_lo <= 1 and age_add_lo != age_add_lo_start and age_add_hi != age_add_hi_start
                     if done:
                         if len(LifeTable._age_add_cache) < 1000:
-                            LifeTable._age_add_cache[key] = self.age_add
+                            LifeTable._age_add_cache[key] = self._age_add
                         return
                     if compute_le >= le:
-                        age_add_lo = self.age_add
+                        age_add_lo = self._age_add
                     else:
-                        age_add_hi = self.age_add
+                        age_add_hi = self._age_add
             raise UnableToAdjust('Unable to adjust life expectancy.')
 
     @cython.locals(year = cython.double, age = cython.int, contract_age = cython.double)
@@ -1049,7 +1071,7 @@ class LifeTable:
         age_int: cython.int; q_int: cython.double; q: cython.double
         if age >= self.death_age:
             return 1
-        age += self.age_add
+        age += self._age_add
         if self.gompertz_makeham:
             return max(0, min(self.alpha + math.exp((age - self.m) / self.b) / self.b, 1));
         if self.interpolate_q:

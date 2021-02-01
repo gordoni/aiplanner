@@ -25,37 +25,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from spia.income_annuity cimport IncomeAnnuity
+from .income_annuity cimport IncomeAnnuity
 
-cdef class LifeTable:
+cdef class Test:
 
-    cdef str table
-    cdef str sex
-    cdef object age
-    cdef double death_age
-    cdef str ae
-    cdef object le_set
-    cdef double le_add
-    cdef str date_str
-    cdef double _age_add
-    cdef bint interpolate_q
-    cdef double alpha
-    cdef double m
-    cdef double b
-
-    cdef dict table_ssa_cohort
-    cdef tuple table_iam2012_basic
-    cdef bint gompertz_makeham
-    cdef bint fixed
-    cdef tuple aer_years
-    cdef dict table_ae
-    cdef tuple table_ae_summary
-    cdef dict table_ae_full
-    cdef tuple projection_scale
-
-    # Worthwhile cdef'ing a few methods because they are called so frequently.
-    # Return object so that exceptions can propagate.
-
-    cdef object _q_int(self, double year, int age, double contract_age)
-
-    cdef object q(self, double age, double year = ?, double contract_age = ?)
+    pass
