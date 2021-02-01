@@ -30,7 +30,6 @@ master_nominal_bonds = False
 master_iid_bonds = True
 master_iid_bonds_return = 0.003
 master_iid_bonds_volatility = 0.109
-master_bills = False
 
 master_returns_standard_error = False
 

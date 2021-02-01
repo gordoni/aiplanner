@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -114,7 +114,7 @@ def train(training_model_params, *, train_algorithm, train_num_hidden_layers, tr
         invocation += 1
         return res_env
 
-    couple = training_model_params['sex2'] != None
+    couple = training_model_params['sex2'] is not None
     couple_net = couple and train_couple_net
     std_actor_critic = {
         'ddpg': ddpg_ac,
@@ -135,7 +135,7 @@ def train(training_model_params, *, train_algorithm, train_num_hidden_layers, tr
     model_seed_dir = model_dir + '/seed_' + str(train_seed)
     mkdir(model_seed_dir)
     output_dir = model_seed_dir + '/tensorflow'
-    save_freq = epochs if train_epochs_per_model_save == None else train_epochs_per_model_save
+    save_freq = epochs if train_epochs_per_model_save is None else train_epochs_per_model_save
 
     common_args = {
         'actor_critic': actor_critic,

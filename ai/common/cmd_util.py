@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -18,8 +18,8 @@ import argparse
 import os
 
 from ai.common.utils import boolean_flag
-from ai.gym_fin import FinEnv, ModelParams
-from ai.gym_fin.model_params import dump_params
+from ai.gym_fin.fin_env import FinEnv
+from ai.gym_fin.model_params import dump_params, ModelParams
 
 def make_fin_env(training = False, allow_early_resets = None, **kwargs):
     env = FinEnv(**kwargs)

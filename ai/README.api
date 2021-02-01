@@ -536,7 +536,7 @@ Evaluation timesteps
 --------------------
 
 num_evaluate_timesteps: number
-default: 50000
+default: 100000
 
 The number of years to simulate when performing evaluation.
 

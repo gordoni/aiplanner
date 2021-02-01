@@ -90,7 +90,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                 content_type = self.headers.get('Content-Type')
                 content_length = self.headers.get('Content-Length')
-                if content_length == None:
+                if content_length is None:
                     self.send_error(411) # Length Required
                     return
                 content_length = int(content_length)
@@ -113,7 +113,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 if self.path == '/web/subscribe':
 
                     result = self.subscribe(request)
-                    if result != None:
+                    if result is not None:
                         data = (dumps(result, indent = 4, sort_keys = True) + '\n').encode('utf-8')
                     else:
                         data = None
@@ -123,7 +123,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     self.send_error(404) # Not Found
                     return
 
-                if data != None:
+                if data is not None:
                     if self.server.args.verbose:
                         stdout.buffer.write(data)
                         stdout.flush()
@@ -154,7 +154,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 data, filetype = data.encode('utf-8'), 'text/plain'
                 headers.append(('Cache-Control', 'no-cache'))
 
-            if data != None:
+            if data is not None:
 
                 self.send_result(data, filetype, headers = headers)
                 return

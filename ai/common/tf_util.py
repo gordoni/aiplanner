@@ -15,17 +15,12 @@ from shutil import rmtree
 
 import numpy as np
 
-from ai.gym_fin.fin_env import FinEnv
-
-class RayFinEnv(FinEnv):
-
-    def __init__(self, config):
-        super().__init__(**config)
+from ai.common.ray_util import RayFinEnv
 
 class TFRunner:
 
     def __init__(self, *, train_dirs = ['aiplanner.tf'], allow_tensorflow = True, checkpoint_name = None, eval_model_params, couple_net = True,
-        address = None, num_workers = 1, worker_seed = 0, num_environments = 1, num_cpu = None,
+        address = None, num_workers = 0, runner_seed = 0, num_environments = 1, num_cpu = None,
         evaluator = True, export_model = False):
 
         self.couple_net = couple_net
@@ -68,13 +63,13 @@ class TFRunner:
 
                     cls = get_agent_class(config['env_config']['algorithm'])
                     config['env_config'] = eval_model_params
-                    config['num_workers'] = 0
+                    #config['num_workers'] = 0
                     config['num_envs_per_worker'] = num_environments
                     config['local_tf_session_args'] = {
                         'intra_op_parallelism_threads': num_cpu,
                         'inter_op_parallelism_threads': num_cpu,
                     }
-                    config['seed'] = worker_seed
+                    config['seed'] = runner_seed * 1000 # Workers are assigned consecutive seeds.
 
                 agent = cls(env = RayFinEnv, config = config)
                 agent.restore(checkpoint)
@@ -257,25 +252,31 @@ class TFRunner:
 
     def run(self, obss):
 
-        single_obss = []
-        couple_obss = []
-        single_idx = []
-        couple_idx = []
-        for i, obs in enumerate(obss):
-            if self.is_couple(obs) and self.couple_net:
-                couple_obss.append(obs)
-                couple_idx.append(i)
-            else:
-                single_obss.append(obs)
-                single_idx.append(i)
-        action = [None] * len(obss)
-        if single_obss:
-            single_action = self._run_unit(False, single_obss)
-            for i, act in zip(single_idx, single_action):
-                action[i] = act
-        if couple_obss:
-            couple_action = self._run_unit(True, couple_obss)
-            for i, act in zip(couple_idx, couple_action):
-                action[i] = act
+        if self.couple_net:
+
+            single_obss = []
+            couple_obss = []
+            single_idx = []
+            couple_idx = []
+            for i, obs in enumerate(obss):
+                if self.is_couple(obs) and self.couple_net:
+                    couple_obss.append(obs)
+                    couple_idx.append(i)
+                else:
+                    single_obss.append(obs)
+                    single_idx.append(i)
+            action = [None] * len(obss)
+            if single_obss:
+                single_action = self._run_unit(False, single_obss)
+                for i, act in zip(single_idx, single_action):
+                    action[i] = act
+            if couple_obss:
+                couple_action = self._run_unit(True, couple_obss)
+                for i, act in zip(couple_idx, couple_action):
+                    action[i] = act
+
+        else:
+
+            action = self._run_unit(False, obss)
 
         return action

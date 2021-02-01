@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -113,10 +113,10 @@ def main():
     wealth_allocation = list(aa * (p - spias) for aa in asset_allocation)
     wealth_classes.append('retirement\nguaranteed\nincome')
     wealth_allocation.append(gi)
-    if real_spias != None or nominal_spias != None:
+    if real_spias is not None or nominal_spias is not None:
         wealth_classes.append('new\nincome\nannuities')
         wealth_allocation.append(spias)
-    if pv_preretirement != None:
+    if pv_preretirement is not None:
         wealth_classes.append('pre-\nretirement\nincome')
         wealth_allocation.append(pv_preretirement)
     wealth_classes.append('set aside\nfor future\ntaxes')

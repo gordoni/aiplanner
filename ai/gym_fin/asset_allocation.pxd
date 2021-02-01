@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019 Gordon Irlam
+# Copyright (C) 2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -8,13 +8,11 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-cdef class Returns:
-    cdef double ret
-    cdef double vol
-    cdef double standard_error
-    cdef double time_period
+cdef class AssetAllocation:
 
-    cdef double mu
-    cdef double sigma
-    cdef double period_mu
-    cdef double period_sigma
+    cdef list aa
+
+    # Worthwhile cdef'ing a few methods because they are called so frequently.
+    # Return object so that exceptions can propagate.
+
+    cdef object sum(self)

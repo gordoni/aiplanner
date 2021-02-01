@@ -687,7 +687,7 @@ class IncomeAnnuity:
             try:
                 self._duration = duration / price
             except ZeroDivisionError:
-                assert(duration == 0)
+                assert duration == 0
                 self._duration = 0
             try:
                 self._annual_return = annual_return / total_payout - 1

@@ -127,14 +127,19 @@ def parse_api_scenario(api_scenario, *, permissive = False):
     for name in [
         'sex',
 
-        'income_preretirement_age_end',
-        'income_preretirement_age_end2',
         'consume_preretirement',
 
         'guaranteed_income',
     ]:
         if name in api_scenario:
             model_params[name] = api_scenario[name]
+
+    for name in [
+        'income_preretirement_age_end',
+        'income_preretirement_age_end2',
+    ]:
+        if name in api_scenario:
+            model_params[name] = api_scenario[name] if api_sceario[name] is not None else -1
 
     for name in [
         'life_expectancy_additional',
@@ -159,7 +164,7 @@ def parse_api_scenario(api_scenario, *, permissive = False):
         model_params['age_start'] = api_scenario['age']
     except KeyError:
         assert permissive, 'No age specified.'
-    if api_scenario.get('sex2') != None:
+    if api_scenario.get('sex2') is not None:
         model_params['sex2'] = api_scenario['sex2']
         try:
             model_params['age_start2_low'] = model_params['age_start2_high'] = api_scenario['age2']
@@ -198,14 +203,14 @@ def parse_api_scenario(api_scenario, *, permissive = False):
     model_params['p_taxable_nominal_bonds_basis_fraction_low'] = model_params['p_taxable_nominal_bonds_basis_fraction_high'] = 0
     model_params['p_taxable_other_basis_fraction_low'] = model_params['p_taxable_other_basis_fraction_high'] = 0
 
-    model_params['couple_probability'] = int(api_scenario.get('sex2') != None)
+    model_params['couple_probability'] = int(api_scenario.get('sex2') is not None)
 
     control_params = {
         'cid': api_scenario.get('cid'),
         'spias': api_scenario.get('spias', True),
         'p_taxable_bonds': api_scenario.get('p_taxable_bonds', 0),
         'p_taxable_bonds_basis': api_scenario.get('p_taxable_bonds_basis', api_scenario.get('p_taxable_bonds', 0)),
-        'gammas': [int(gamma) if int(gamma) == gamma else gamma for gamma in api_scenario['rra']] if api_scenario.get('rra') != None else None,
+        'gammas': [int(gamma) if int(gamma) == gamma else gamma for gamma in api_scenario['rra']] if api_scenario.get('rra') is not None else None,
     }
 
     return model_params, control_params

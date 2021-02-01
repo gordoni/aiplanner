@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -13,3 +13,9 @@ def boolean_flag(parser, name, default = False):
     under_dest = name.replace('-', '_')
     parser.add_argument('--' + name, action = "store_true", default = default, dest = under_dest)
     parser.add_argument('--' + 'no-' + name, action = "store_false", dest = under_dest)
+
+class AttributeObject:
+
+    def __init__(self, d):
+
+        self.__dict__.update(d)

@@ -23,7 +23,7 @@ def scenario_space_update_params(model_params, control_params):
     elif bonds_type == 'nominal_bonds':
         assert model_params['nominal_bonds']
 
-    if control_params['gammas'] == None:
+    if control_params['gammas'] is None:
         control_params['gammas'] = allowed_gammas
 
 def force_preretirement_model(stage, spias, gamma):

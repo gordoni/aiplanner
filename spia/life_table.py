@@ -892,7 +892,7 @@ class LifeTable:
         '''
 
         self.table = table
-        assert(table in ('fixed', 'iam2012-basic', 'ssa-cohort', 'ssa-period', 'gompertz-makeham'))
+        assert table in ('fixed', 'iam2012-basic', 'ssa-cohort', 'ssa-period', 'gompertz-makeham')
         self.sex = sex
         self.age = -1 if age is None else age
         self.death_age = death_age
@@ -900,7 +900,7 @@ class LifeTable:
             # 'none' - AER increases MWR 20% at age 90, and 5% at age 80.
             # 'aer2005_08-summary' - Use this value for compatibility with Opal.
             # 'aer2005_08-full' - Alters values 5% at age 85.
-        assert(ae in ('none', 'aer2005_13-grouped', 'aer2005_13-summary', 'aer2005_08-summary', 'aer2005_08-full'))
+        assert ae in ('none', 'aer2005_13-grouped', 'aer2005_13-summary', 'aer2005_08-summary', 'aer2005_08-full')
         self.le_set = le_set
         self.le_add = le_add
         self.date_str = date_str

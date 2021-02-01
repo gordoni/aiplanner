@@ -18,14 +18,14 @@ For the web server which includes the api server in a docker
 container, with num_infer_jobs=0 set, a 2 core 4 thread 8G RAM
 c5.xlarge instance can be used.
 
-Training the neural network requires running about 3 c5.24xlarge spot
+Training the neural network requires running about 2 c5.18xlarge spot
 instances for around 20 hours. The us-east-2 region currently appears
 the cheapest region for performing this training work.
 
 For development an m5.large, or even a t3.small instance, can often be
 used, provided in the first case a Ray compute cluster is configured,
-or in the second case --train-seeds=1 --train-num-workers=0 is passed
-to train_rllib.py and --train-seeds=1 is passed to api/server.py .
+or in the second case --train-seeds=1 --num-workers=0 is passed to
+train_rllib.py and --train-seeds=1 is passed to api/server.py .
 
 For deployment on the Internet the machine will need to have ports 80
 and 443 open (http and https), along with 20 (ssh) for administrative
@@ -406,10 +406,10 @@ Unless you plan on serving pre-trained neural network models you will
 need to train the neural network models.
 
 Training the neural network models (will take arond 20 hours on about
-3 InstanceType c5.24xlarge instances with resources CPU: 120; edit
+2 InstanceType c5.18xlarge instances with resources CPU: 71; edit
 cluster.yaml accordingly; many smallish instances may be preferable to
-a few very large instances as Amazon seems more likely to reclaim very
-large spot instances slowing the training process):
+a few very large instances as Amazon sometimes seems more likely to
+reclaim very large spot instances slowing the training process):
 
     cd ~/aiplanner/ai/api
     nohup ./train > /tmp/train.out &

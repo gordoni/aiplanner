@@ -149,17 +149,17 @@ def generate_report(api, result_dir, results, results_dir):
             s += 'International diversification: optional'
             def duration(d):
                 return 'short' if d <= 2 else 'intermediate' if d <= 9 else 'long'
-            if result['real_bonds_duration'] != None:
+            if result['real_bonds_duration'] is not None:
                 s += '<br/>Bonds duration: ' + str(round(result['real_bonds_duration'])) + ' years (' + duration(result['real_bonds_duration']) + ' term TIPS)'
-            if result['nominal_bonds_duration'] != None:
+            if result['nominal_bonds_duration'] is not None:
                 s += '<br/>Bonds duration: ' + str(round(result['nominal_bonds_duration'])) + ' years (' + duration(result['nominal_bonds_duration']) + \
                     ' term Treasuries)'
-            if result['retirement_contribution'] != None:
+            if result['retirement_contribution'] is not None:
                 s += '<br/>Recommended retirement plan contribution: ' + dollar(result['retirement_contribution'])
-            if result['nominal_spias_purchase'] != None:
+            if result['nominal_spias_purchase'] is not None:
                 s += '<br/>Recommended SPIA purchase amount (' + str(round(result['nominal_spias_adjust'] * 1000) / 10) + '% annual adjustment): ' + \
                     dollar(result['nominal_spias_purchase'])
-            if result['real_spias_purchase'] != None:
+            if result['real_spias_purchase'] is not None:
                 s += '<br/>Recommended inflation-indexed SPIA purchase amount: ' + dollar(result['real_spias_purchase'])
             content.append(Paragraph(s, styleN))
             content.append(Spacer(1, 0.25 * inch))

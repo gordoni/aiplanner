@@ -20,7 +20,7 @@ from ray.tune import grid_search, run
 from ray.tune.config_parser import make_parser
 
 from ai.common.cmd_util import arg_parser, fin_arg_parse
-from ai.common.tf_util import RayFinEnv
+from ai.common.ray_util import RayFinEnv
 from ai.common.utils import boolean_flag
 from ai.gym_fin.model_params import dump_params_file
 
@@ -157,7 +157,7 @@ def train(training_model_params, *, address, num_workers, num_environments, trai
                 # i.e. the PPO default 0.3 seems reasonable.
             'vf_share_layers': False,
                 # PPO default outperforms vf_share_layers=True at least for the iid retired model with gamma=6 without SPIAs.
-            'batch_mode': 'complete_episodes', # Unknown whether helps, but won't harm.
+            'batch_mode': 'complete_episodes', # Unknown whether helps, but probably does.
             #'shuffle_sequences': False,
         },
 
@@ -228,7 +228,7 @@ def train(training_model_params, *, address, num_workers, num_environments, trai
 
     trainable = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
     trial_name = lambda trial: 'seed_' + str(trial.config['seed'] // 1000)
-    if train_save_frequency == None:
+    if train_save_frequency is None:
         checkpoint_freq = 0
     elif trainable in ('PPO', ):
         checkpoint_freq = max(1, train_save_frequency // agent_config['train_batch_size'])
@@ -263,6 +263,10 @@ def train(training_model_params, *, address, num_workers, num_environments, trai
             #'num_cpus_for_driver': 1,
             'num_workers': num_workers,
             'num_envs_per_worker': num_environments,
+            'rollout_fragment_length': 1, # Default is 200.
+                # Sample batches are of size rollout_fragment_length * num_envs_per_worker * num_workers.
+                # With the default of 200, and complete_episodes with 100 environments per worker and 4 workers,
+                # sample batches would be up to 80000 timesteps larger than specified.
             #'num_cpus_per_worker': 1,
             #'num_gpus_per_worker': 0,
 
@@ -296,13 +300,13 @@ def train(training_model_params, *, address, num_workers, num_environments, trai
         checkpoint_at_end = True,
         max_failures = train_max_failures,
         resume = train_resume,
-        queue_trials = address != None
+        queue_trials = address is not None
     )
 
 def main():
     parser = make_parser(lambda: arg_parser(evaluate=False))
     parser.add_argument('--address')
-    parser.add_argument('--num-workers', type=int, default=4) # Number of rollout worker processes.
+    parser.add_argument('--num-workers', type=int, default=1) # Number of rollout worker processes.
         # Default appropriate for a short elapsed time.
         # Set to 0, or possibly 1, for deterministic training.
     parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for per worker. Speeds up torch/tensorflow.

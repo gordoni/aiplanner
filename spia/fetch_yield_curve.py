@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # SPIA - Income annuity (SPIA and DIA) price calculator
-# Copyright (C) 2015-2018 Gordon Irlam
+# Copyright (C) 2015-2021 Gordon Irlam
 #
 # This program may be licensed by you (at your option) under an Open
 # Source, Free for Non-Commercial Use, or Commercial Use License.
@@ -90,7 +90,7 @@ class Fetcher:
 
 def fetch_yield_curve(bond_type, dir = None):
 
-    if dir == None:
+    if dir is None:
         dir = normpath(expanduser(datadir))
         try:
             mkdir(dir)
@@ -109,7 +109,7 @@ def fetch_yield_curve(bond_type, dir = None):
     elif bond_type == 'real':
         return RealFetcher(dir)
     else:
-        assert(False)
+        assert False
 
 class CorporateFetcher(Fetcher):
 
@@ -202,7 +202,7 @@ class TreasuryFetcher(Fetcher):
                     else:
                         year = maturity
                     rate = child.text
-                    if rate != None:
+                    if rate is not None:
                         years[year] = True
                         rates[date][year] = rate
 

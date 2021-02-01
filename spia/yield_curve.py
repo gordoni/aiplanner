@@ -103,7 +103,7 @@ class YieldCurve:
                 with open(join(self._datadir, self._interest_rate, self._interest_rate + '-' + year_str + '.csv')) as f:
 
                     r = csv.reader(f)
-                    assert(next(r)[0].startswith('#'))
+                    assert next(r)[0].startswith('#')
 
                     years = next(r)
                     years.pop(0)
@@ -124,7 +124,7 @@ class YieldCurve:
                             if not date_str_low:
                                 date = []
                                 rates = []
-                            assert(len(years) == len(rate))
+                            assert len(years) == len(rate)
                             if not all(r == '' for r in rate):
                                 date.append(d)
                                 rates.append(rate)
@@ -148,20 +148,20 @@ class YieldCurve:
         except ValueError:
             raise NoData('Requested interest rate data unavailable.')
 
-        assert(len(yield_curve_date) == len(yield_curve_years) == len(yield_curve_rates))
+        assert len(yield_curve_date) == len(yield_curve_years) == len(yield_curve_rates)
 
         return yield_curve_years, yield_curve_rates, yield_curve_date_str
 
     def _get_corporate(self, date_year, date_str, date_str_low):
 
-        assert(date_str_low == None) # Not yet implemented.
+        assert date_str_low is None # Not yet implemented.
 
         if date_year < 1984:
             raise NoData('Requested interest rate data unavailable.')
 
         date_yr = int(date_str.split('-')[0])
         date_month = int(date_str.split('-')[1])
-        assert(1 <= date_month <= 12)
+        assert 1 <= date_month <= 12
 
         year_step = 5
         file_year = 1984 + int((date_year - 1984) / year_step) * year_step
@@ -179,7 +179,7 @@ class YieldCurve:
                 if ''.join(line) == '':  # catdoc xls2csv ommits this line for reasons unknown.
                     line = next(r)
                 years = tuple(int(year) for year in line if year != '')
-                assert(years[file_year_offset] == date_year)
+                assert years[file_year_offset] == date_year
                 line = next(r)
                 line = next(r)
                 maturity = 0
@@ -199,11 +199,11 @@ class YieldCurve:
                         spot_month = (offset - 2) % 12 + 1
                         spot_date = '%d-%02d' % (spot_year, spot_month)
                     maturity += 0.5
-                    assert(float(line[0]) == maturity)
-                    assert(line[1] == '')
+                    assert float(line[0]) == maturity
+                    assert line[1] == ''
                     spot_years.append(maturity)
                     spot_rates.append(float(line[offset]) / 100.0)
-                assert(maturity == 100)
+                assert maturity == 100
 
         except IOError:
 
@@ -272,7 +272,7 @@ class YieldCurve:
         '''
 
         self._interest_rate = interest_rate
-        assert(interest_rate in ('real', 'nominal', 'corporate', 'fixed', 'le'))
+        assert interest_rate in ('real', 'nominal', 'corporate', 'fixed', 'le')
         self._date = date_str
         self._date_low = date_str_low
         self.adjust = adjust

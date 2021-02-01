@@ -17,29 +17,29 @@ from json import dumps, loads
 from math import ceil, exp, isnan, sqrt
 from os import chmod, devnull, environ, getpriority, mkdir, PRIO_PROCESS, setpriority
 from os.path import basename, exists, normpath
+from random import seed
 from shlex import split
 from subprocess import CalledProcessError, run
 from sys import argv, stderr, stdin, stdout
 from traceback import print_exc
 
-from setproctitle import setproctitle
+import numpy as np
 
-#from baselines.common.misc_util import set_global_seeds
+from setproctitle import setproctitle
 
 from ai.common.api import parse_api_scenario
 from ai.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from ai.common.evaluator import Evaluator
 from ai.common.scenario_space import allowed_gammas, enumerate_model_params_api, scenario_space_model_filename, scenario_space_update_params
 from ai.common.tf_util import TFRunner
-from ai.common.utils import boolean_flag
-from ai.gym_fin.asset_allocation import AssetAllocation
+from ai.common.utils import AttributeObject, boolean_flag
 from ai.gym_fin.model_params import dump_params, load_params_file
 
-def pi_merton(env, obs, continuous_time = False):
+def pi_merton(env, params, obs, continuous_time = False):
     observation = env.decode_observation(obs)
     assert observation['life_expectancy_both'] == 0
     life_expectancy = observation['life_expectancy_one']
-    gamma = env.params.gamma_low
+    gamma = params.gamma_low
     mu = env.stocks.mu
     sigma = env.stocks.sigma
     r = env.bills.mu
@@ -53,12 +53,12 @@ def pi_merton(env, obs, continuous_time = False):
         consume_fraction = nu / (1 - exp(- nu * life_expectancy))
     else:
         # Samuelson.
-        a = exp(nu * env.params.time_period)
-        t = ceil(life_expectancy / env.params.time_period) - 1
-        consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / env.params.time_period
+        a = exp(nu * params.time_period)
+        t = ceil(life_expectancy / params.time_period) - 1
+        consume_fraction = a ** t * (a - 1) / (a ** (t + 1) - 1) / params.time_period
     return consume_fraction, stocks_allocation
 
-def pi_opal(opal_data, env, obs):
+def pi_opal(opal_data, env, params, obs):
     # obs is currently ignored in favor of direct env lookups.
     age = env.age
     age_data = opal_data[age]
@@ -75,13 +75,13 @@ def pi_opal(opal_data, env, obs):
     stocks = ((p_hi - p) * age_data['stocks'][i - 1] + (p - p_lo) * age_data['stocks'][i]) / (p_hi - p_lo)
     consume_fraction = consume / env.p_plus_income()
     stocks = max(0, min(stocks, 1))
-    consume_fraction = max(0, min(consume_fraction, 1 / env.params.time_period))
+    consume_fraction = max(0, min(consume_fraction, 1 / params.time_period))
     return consume_fraction, stocks
 
 params_cache = {}
 
 def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, stdin,
-    merton, samuelson, annuitize, opal, models_dir, models_adjust, evaluate, warm_cache, gamma, train_seeds, ensemble, nice,
+    merton, samuelson, opal, models_dir, models_adjust, evaluate, warm_cache, gamma, train_seeds, ensemble, nice,
     train_seed, model_dir, result_dir, aid, num_environments, permissive_api = False, **kwargs):
 
     priority = getpriority(PRIO_PROCESS, 0)
@@ -90,10 +90,10 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
     assert not daemon or train_seeds == 1 or ensemble
 
-    assert models_dir == None or model_dir == 'aiplanner.tf'
+    assert models_dir is None or model_dir == 'aiplanner.tf'
 
-    assert sum((model_dir != 'aiplanner.tf', merton, samuelson, annuitize, opal)) <= 1
-    model = not (merton or samuelson or annuitize or opal)
+    assert sum((model_dir != 'aiplanner.tf', merton, samuelson, opal)) <= 1
+    model = not (merton or samuelson or opal)
 
     if not warm_cache:
         try:
@@ -162,7 +162,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                         assert g in gamma, 'Unsupported gamma value: ' + str(g)
                         model_params['gamma_low'] = model_params['gamma_high'] = g
 
-                    if models_dir == None:
+                    if models_dir is None:
                         model_filename = basename(normpath(model_dir))
                     else:
                         model_filename = scenario_space_model_filename(model_params)
@@ -203,7 +203,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                     train_dirs = [model_dir + '/seed_' + str(train_dir_seed + j) for j in range(train_seeds if ensemble else 1)]
 
                     object_ids, evaluator, initial_results = eval_model(model_params, daemon = daemon,
-                        merton = merton, samuelson = samuelson, annuitize = annuitize, opal = opal,
+                        merton = merton, samuelson = samuelson, opal = opal,
                         model = model, evaluate = evaluate, warm_cache = warm_cache, default_object_id = (i, scenario_num, sub_num),
                         train_dirs = train_dirs, out = out, aid = aid, num_environments = num_environments, **kwargs)
                     initial_results['cid'] = control_params['cid']
@@ -308,7 +308,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
             with open(result_seed_dir + '/api.json', 'w') as w:
                 w.write(api_str + '\n')
 
-        failures = [scenario for scenario, result in zip(api, results) if any((sub_result['error'] != None for sub_result in result['results']))]
+        failures = [scenario for scenario, result in zip(api, results) if any((sub_result['error'] is not None for sub_result in result['results']))]
         if failures:
             failures_str = dumps(failures, indent = 4, sort_keys = True)
             with open(result_seed_dir + '/failures.json', 'w') as w:
@@ -322,22 +322,25 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
 runner_cache = {}
 
-def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal, opal_file, address, allow_tensorflow, checkpoint_name,
+def eval_model(eval_model_params, *, daemon, merton, samuelson, opal, opal_file, address, allow_tensorflow, checkpoint_name,
     evaluate, warm_cache, eval_couple_net, eval_seed, eval_num_timesteps, eval_render,
     num_cpu, model, default_object_id, train_dirs, search_consume_initial_around, out,
                aid, num_workers, num_environments, num_trace_episodes, pdf_buckets, pdf_smoothing_window, pdf_constant_initial_consume):
 
-    eval_seed += 1000000 # Use a different seed than might have been used during training.
-    #set_global_seeds(eval_seed) # Not needed for Ray.
+    eval_seed += 1000 # Use a different seed than might have been used during training.
+    # The next two lines should only be needed if we are attempting to evaluate variable scenarios, so that we get the same initial_results each time.
+    seed(eval_seed)
+    np.random.seed(eval_seed)
 
     env = make_fin_env(**eval_model_params, direct_action = not model)
     env = env.fin
+    params = AttributeObject(env.params_dict)
 
-    eval_model_params['display_returns'] = False # Only have at most one env display returns.
+    eval_model_params['display_returns'] = False # Only have at most one env display returns, which will be computed on the local node.
 
-    skip_model = env.params.consume_policy != 'rl' and env.params.annuitization_policy != 'rl' and env.params.asset_allocation_policy != 'rl' and \
-        (not env.params.real_bonds or env.params.real_bonds_duration != None) and \
-        (not env.params.nominal_bonds or env.params.nominal_bonds_duration != None)
+    skip_model = params.consume_policy != 'rl' and params.annuitization_policy != 'rl' and params.asset_allocation_policy != 'rl' and \
+        (not params.real_bonds or params.real_bonds_duration is not None) and \
+        (not params.nominal_bonds or params.nominal_bonds_duration is not None)
 
     obs = env.reset()
 
@@ -345,16 +348,8 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
 
     if merton or samuelson:
 
-        consume_fraction, stocks_allocation = pi_merton(env, obs, continuous_time = merton)
-        asset_allocation = AssetAllocation(stocks = stocks_allocation, bills = 1 - stocks_allocation)
-        initial_results = env.interpret_spending(consume_fraction, asset_allocation)
-
-    elif annuitize:
-
-        consume_initial = env.gi_sum() + env.p_sum() / (env.params.time_period + env.real_spia.premium(1, mwr = env.params.real_spias_mwr))
-        consume_fraction_initial = consume_initial / env.p_plus_income()
-        asset_allocation = AssetAllocation(stocks = 1)
-        initial_results = env.interpret_spending(consume_fraction_initial, asset_allocation, real_spias_fraction = 1)
+        consume_fraction, stocks_allocation = pi_merton(env, params, obs, continuous_time = merton)
+        action = env.encode_direct_action(consume_fraction, stocks = stocks_allocation, bills = 1 - stocks_allocation)
 
     elif opal:
 
@@ -379,9 +374,8 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
             p, consume, stocks = zip(*sorted(data))
             opal_data[age] = {'p': p, 'consume': consume, 'stocks': stocks}
 
-        consume_fraction, stocks_allocation = pi_opal(opal_data, env, obs)
-        asset_allocation = AssetAllocation(stocks = stocks_allocation, iid_bonds = 1 - stocks_allocation)
-        initial_results = env.interpret_spending(consume_fraction, asset_allocation)
+        consume_fraction, stocks_allocation = pi_opal(opal_data, env, params, obs)
+        action = env.encode_direct_action(consume_fraction, stocks = stocks_allocation, iid_bonds = 1 - stocks_allocation)
 
     else:
 
@@ -389,7 +383,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
             runner = runner_cache[train_dirs[0]]
         except KeyError:
             runner = TFRunner(train_dirs = train_dirs, allow_tensorflow = allow_tensorflow, checkpoint_name = checkpoint_name, eval_model_params = eval_model_params, couple_net = eval_couple_net,
-                address = address, num_workers = num_workers, worker_seed = eval_seed, num_environments = num_environments, num_cpu = num_cpu).__enter__()
+                address = address, num_workers = num_workers, runner_seed = eval_seed, num_environments = num_environments, num_cpu = num_cpu).__enter__()
             if daemon and not runner.remote_evaluators:
                 # Don't cache runner if not daemon as it prevents termination of Ray workers.
                 # Don't cache runner if remote evaluators as remote evaluators would cache old eval_model_params.
@@ -397,22 +391,32 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
         remote_evaluators = runner.remote_evaluators
 
         action, = runner.run([obs])
-        initial_results = env.interpret_action(action)
 
-    initial_results = dict(initial_results, **{
+    env.tracing(True)
+    _, _, _, initial_results = env.step(action)
+
+    initial_results = {
         'error': None,
         'aid': aid,
-        'rra': env.params.gamma_low,
+        'rra': params.gamma_low,
+        'consume': initial_results['consume'],
         'asset_classes': initial_results['asset_allocation'].classes(),
         'asset_allocation': initial_results['asset_allocation'].as_list(),
         'asset_allocation_tax_free': initial_results['asset_allocation_tax_free'].as_list() if initial_results['asset_allocation_tax_free'] else None,
         'asset_allocation_tax_deferred': initial_results['asset_allocation_tax_deferred'].as_list() if initial_results['asset_allocation_tax_deferred'] else None,
         'asset_allocation_taxable': initial_results['asset_allocation_taxable'].as_list() if initial_results['asset_allocation_taxable'] else None,
+        'retirement_contribution': initial_results['retirement_contribution'],
+        'real_spias_purchase': initial_results['real_spias_purchase'],
+        'nominal_spias_purchase': initial_results['nominal_spias_purchase'],
+        'nominal_spias_adjust': initial_results['nominal_spias_adjust'],
+        'pv_spias_purchase': initial_results['pv_spias_purchase'],
+        'real_bonds_duration': initial_results['real_bonds_duration'],
+        'nominal_bonds_duration': initial_results['nominal_bonds_duration'],
         'pv_preretirement_income': env.preretirement_income_wealth if env.preretirement_years > 0 else None,
         'pv_retired_income': env.retired_income_wealth,
         'pv_future_taxes': env.pv_taxes,
         'portfolio_wealth': env.p_wealth,
-    })
+    }
 
     if not daemon:
 
@@ -455,18 +459,10 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
                     observation = env.decode_observation(obs)
                     assert observation['life_expectancy_both'] == 0
                     life_expectancy = observation['life_expectancy_one']
-                    t = ceil(life_expectancy / env.params.time_period) - 1
+                    t = ceil(life_expectancy / params.time_period) - 1
                     if t == 0:
-                        consume_fraction = min(consume_fraction, 1 / env.params.time_period) # Bound may be exceeded in continuous time case.
+                        consume_fraction = min(consume_fraction, 1 / params.time_period) # Bound may be exceeded in continuous time case.
                     results.append(env.encode_direct_action(consume_fraction, stocks = stocks_allocation, bills = 1 - stocks_allocation))
-                return results
-
-            elif annuitize:
-
-                results = []
-                for obs in obss:
-                    consume_fraction = consume_fraction_initial if env.episode_length == 0 else 1 / env.params.time_period
-                    results.append(env.encode_direct_action(consume_fraction, stocks = 1, real_spias_fraction = 1))
                 return results
 
             elif opal:
@@ -481,7 +477,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, annuitize, opal,
 
                 assert False
 
-        if search_consume_initial_around != None:
+        if search_consume_initial_around is not None:
 
             f_cache = {}
 
@@ -566,7 +562,7 @@ def plot(prefix, traces, consume_pdf, estate_pdf, alive):
                 try:
                     if alive_count == 2 and trace['alive_count'][i + 1] == 1:
                         single_plot = True
-                except KeyError:
+                except IndexError:
                     pass
                 csv_writer.writerow((age, int(couple_plot), int(single_plot), total_guaranteed_income, portfolio_wealth_pretax, consume,
                     real_spias_purchase, nominal_spias_purchase, *asset_allocation))
@@ -600,7 +596,6 @@ def main():
     boolean_flag(parser, 'stdin', default = False)
     boolean_flag(parser, 'merton', default = False)
     boolean_flag(parser, 'samuelson', default = False)
-    boolean_flag(parser, 'annuitize', default = False)
     boolean_flag(parser, 'opal', default = False)
     parser.add_argument('--opal-file', default = 'opal-linear.csv')
     parser.add_argument('--address')
@@ -614,13 +609,14 @@ def main():
     parser.add_argument('--checkpoint-name')
     boolean_flag(parser, 'evaluate', default = True) # Inference and simulation, otherwise inference only.
     boolean_flag(parser, 'warm-cache', default = True) # Pre-load tensorflow/Rllib models.
-    boolean_flag(parser, 'eval-couple-net', default = True)
+    boolean_flag(parser, 'eval-couple-net', default = False)
     parser.add_argument('--search-consume-initial-around', type = float)
         # Search for the initial consumption that maximizes the certainty equivalent using the supplied value as a hint as to where to search.
     parser.add_argument('--result-dir', default = 'results')
     parser.add_argument('--aid') # AIPlanner id.
     parser.add_argument('--num-workers', type = int, default = 0) # Number of remote processes for Ray evaluation. Zero for local evaluation.
-    parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for per worker. Speeds up torch/tensorflow.
+        # Evaluation results are deterministic for a given num_workers value.
+    parser.add_argument('--num-environments', type = int, default = 200) # Number of parallel environments to use for per worker. Speeds up torch/tensorflow.
     parser.add_argument('--num-trace-episodes', type = int, default = 5) # Number of sample traces to generate.
     parser.add_argument('--pdf-buckets', type = int, default = 100) # Number of non de minus buckets to use in computing probability density distributions.
     parser.add_argument('--pdf-smoothing-window', type = float, default = 0.02) # Width of smoothing window to use in computing probability density distributions.
@@ -630,7 +626,7 @@ def main():
     if args['stdin']:
         args['daemon'] = True
     if not args['daemon']:
-        assert args['api_content_length'] == None and not args['gamma']
+        assert args['api_content_length'] is None and not args['gamma']
         args['warm_cache'] = False
         dump_params(dict(eval_model_params, **args))
         eval_models(eval_model_params, **args)
@@ -645,7 +641,7 @@ def main():
             results_str = dumps(results, indent = 4, sort_keys = True)
             print(results_str)
         else:
-            if args['models_dir'] != None and args['warm_cache']:
+            if args['models_dir'] is not None and args['warm_cache']:
                 for model_params, api in enumerate_model_params_api(args['gamma']):
                     model_params = dict(eval_model_params, **model_params)
                     eval_args = dict(args, api = api, permissive_api = True, eval_num_timesteps = 1)
@@ -664,7 +660,7 @@ def main():
                     training_model_params, eval_model_params, args = fin_arg_parse(parser, training = False, dump = False, args = args)
                     args['warm_cache'] = False
                     api_content_length = args['api_content_length']
-                    assert api_content_length != None, 'No --api-content-length parameter.'
+                    assert api_content_length is not None, 'No --api-content-length parameter.'
                     api_json = stdin.read(api_content_length)
                     api = loads(api_json)
                     if args.get('aid'):

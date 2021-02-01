@@ -9,15 +9,17 @@
 # PURPOSE.
 
 import csv
-import os
-from itertools import chain
 from math import ceil, sqrt
-from random import getstate, seed, setstate
+from itertools import chain
+import os
+from random import getstate, seed
 from statistics import mean, stdev, StatisticsError
 
 import numpy as np
 
 from scipy.signal import savgol_filter
+
+from common.utils import AttributeObject
 
 def weighted_percentiles(value_weights, pctls):
     if len(value_weights[0]) == 0:
@@ -80,14 +82,14 @@ def weighted_ppf(value_weights, q):
 
 def pack_value_weights(value_weights):
 
-    if value_weights:
-        return tuple(np.array(x) for x in zip(*value_weights))
+    if len(value_weights) > 0:
+        return np.array(value_weights).T
     else:
-        return [np.array(())] * 2
+        return np.array([(), ()])
 
 def unpack_value_weights(value_weights):
 
-    return tuple(tuple(x) for x in zip(*value_weights))
+    return np.array(value_weights).T
 
 class Evaluator(object):
 
@@ -114,7 +116,7 @@ class Evaluator(object):
         self.trace = []
         self.episode = {}
 
-    def trace_step(self, i, env, action, done):
+    def trace_step(self, i, done, info = None):
 
         try:
             episode = self.episode[i]
@@ -122,27 +124,30 @@ class Evaluator(object):
             episode = {}
             self.episode[i] = episode
 
-        if not done:
-            decoded_action = env.interpret_action(action)
-            self.no_aa = [None] * len(decoded_action['asset_allocation'].as_list())
-        for item, value in (
-                    ('age', env.age),
-                    ('alive_count', env.alive_count[env.episode_length]),
-                    ('total_guaranteed_income', env.gi_sum() if not done else None),
-                    ('portfolio_wealth_pretax', env.p_wealth_pretax),
-                    ('consume', decoded_action['consume'] if not done else None),
-                    ('real_spias_purchase', decoded_action['real_spias_purchase'] if not done else None),
-                    ('nominal_spias_purchase', decoded_action['nominal_spias_purchase'] if not done else None),
-                    ('asset_allocation', decoded_action['asset_allocation'].as_list() if not done else self.no_aa),
-        ):
-            try:
-                episode[item].append(value)
-            except KeyError:
-                episode[item] = [value]
-
         if done:
+
             self.trace.append(episode)
             del self.episode[i]
+
+        else:
+
+            for item in (
+                'age',
+                'alive_count',
+                'total_guaranteed_income',
+                'portfolio_wealth_pretax',
+                'consume',
+                'real_spias_purchase',
+                'nominal_spias_purchase',
+                'asset_allocation',
+            ):
+                value = info[item]
+                if item == 'asset_allocation':
+                    value = value.as_list()
+                try:
+                    episode[item].append(value)
+                except KeyError:
+                    episode[item] = [value]
 
     def merge_warnings(self, warnings_list):
 
@@ -175,7 +180,10 @@ class Evaluator(object):
             weight_sum = 0
             consume_mean = 0
             consume_m2 = 0
-            tracing = [i < self.num_trace_episodes for i in range(len(eval_envs))]
+            tracing = [False] * len(eval_envs)
+            for i in range(min(self.num_trace_episodes, len(eval_envs))):
+                envs[i].tracing(True)
+                tracing[i] = True
             et = sum(tracing)
             finished = [self.eval_num_timesteps == 0 for _ in eval_envs]
             while True:
@@ -183,20 +191,18 @@ class Evaluator(object):
                 if self.eval_render:
                     eval_envs[0].render()
                 for i, (eval_env, env, action) in enumerate(zip(eval_envs, envs, actions)):
-                    if tracing[i]:
-                        self.trace_step(i, env, action, False)
                     if not finished[i]:
                         obs, r, done, info = eval_env.step(action)
+                        if tracing[i]:
+                            self.trace_step(i, False, info)
                         s += 1
-                        weight = env.reward_weight
-                        consume = env.reward_consume
-                        reward = env.reward_value
-                        estates.append((env.estate_value, env.estate_weight))
+                        weight, consume, reward, estate_weight, estate_value = env.get_rewards()
+                        estates.append((estate_value, estate_weight))
                         if weight != 0:
                             rewards.append((reward, weight))
                             erews[i] += reward * weight
                             eweights[i] += weight
-                            if reward_initial == None and s == 1:
+                            if reward_initial is None and s == 1:
                                 reward_initial = reward
                             # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
                             weight_sum += weight
@@ -206,10 +212,11 @@ class Evaluator(object):
                             consume_m2 += weight * delta * delta2
                         if done:
                             if tracing[i]:
-                                self.trace_step(i, env, None, done)
+                                self.trace_step(i, True)
                                 if et < self.num_trace_episodes:
                                     et += 1
                                 else:
+                                    env.tracing(False)
                                     tracing[i] = False
                             e += 1
                             try:
@@ -241,15 +248,13 @@ class Evaluator(object):
         self.object_ids = None
         self.exception = None
 
-        if self.eval_envs == None:
+        if self.eval_envs is None:
 
             return False
 
         elif self.remote_evaluators and self.eval_num_timesteps > 0:
 
-            # Have no control over the random seed used by each remote evaluator.
-            # If they are ever always the same, we would be restricted to a single remote evaluator.
-            # Currently the remote seed is random, and attempting to set it to something deterministic fails.
+            # New workers are assigned consecutive seeds, currently starting at the TFRunner runner_seed parameter value * 1000.
 
             def make_pi(policy_graph):
                 return lambda obss: policy_graph.compute_actions(obss)[0]
@@ -263,17 +268,14 @@ class Evaluator(object):
 
         else:
 
-            state = getstate()
-
             seed(self.eval_seed)
+            np.random.seed(self.eval_seed)
 
             try:
                 self.rewards, self.erewards, self.estates, self.reward_initial, self.weight_sum, self.consume_mean, self.consume_m2, self.trace, self.warnings = \
                     rollout(self.eval_envs, pi)
             except Exception as e:
                 self.exception = e # Only want to know about failures in one place; later in summarize().
-
-            setstate(state)
 
             return None
 
@@ -287,9 +289,9 @@ class Evaluator(object):
 
             rewards, erewards, estates, reward_initials, weight_sums, consume_means, consume_m2s, traces, warnings = zip(*chain(*rollouts))
             if len(rewards) > 1:
-                self.rewards = pack_value_weights(sorted(chain(*(unpack_value_weights(reward) for reward in rewards))))
-                self.erewards = pack_value_weights(sorted(chain(*(unpack_value_weights(ereward) for ereward in erewards))))
-                self.estates = pack_value_weights(sorted(chain(*(unpack_value_weights(estate) for estate in estates))))
+                self.rewards = pack_value_weights(np.sort(np.concatenate([unpack_value_weights(reward) for reward in rewards], axis = 0)))
+                self.erewards = pack_value_weights(np.sort(np.concatenate([unpack_value_weights(ereward) for ereward in erewards], axis = 0)))
+                self.estates = pack_value_weights(np.sort(np.concatenate([unpack_value_weights(estate) for estate in estates], axis = 0)))
             else:
                 self.rewards = rewards[0]
                 self.erewards = erewards[0]
@@ -330,6 +332,7 @@ class Evaluator(object):
         except ZeroDivisionError:
             stderr = float('nan')
         env = self.eval_envs[0].fin
+        params = AttributeObject(env.params_dict)
         env.reset()
         utility = env.utility
         unit_ce = indiv_ce = utility.inverse(rew)
@@ -344,12 +347,12 @@ class Evaluator(object):
         except (ValueError, ZeroDivisionError):
             unit_consume_stdev = indiv_consume_stdev = float('nan')
 
-        consume_preretirement = env.params.consume_preretirement
+        consume_preretirement = params.consume_preretirement
         consume_ppf = consume_preretirement
 
-        couple = env.sex2 != None
+        couple = env.sex2 is not None
         if couple:
-            consume_ppf /= 1 + env.params.consume_additional
+            consume_ppf /= 1 + params.consume_additional
 
         utility_preretirement = utility.utility(consume_ppf)
         preretirement_ppf = weighted_ppf(self.rewards, utility_preretirement) / 100
@@ -365,7 +368,7 @@ class Evaluator(object):
         if ce_max == 0:
             ce_max = 1
         ce_step = max((ce_max - ce_min) / self.pdf_raw_buckets, ce_max / 100000)
-        if not self.pdf_constant_initial_consume and self.reward_initial != None:
+        if not self.pdf_constant_initial_consume and self.reward_initial is not None:
             # Removing any constant initial reward gets rid of a spike in pdf at first consumption value for retirement scenarios.
             # Doing this is technically incorrect, but less confusing to niave users.
             # Additionally the spike doesn't smooth well. It typically produces a trough before and after, which may be captured in the plot depending on where the steps fall.
@@ -373,22 +376,22 @@ class Evaluator(object):
             assert all(self.rewards[0][i] == self.reward_initial for i in range(j, j + len(self.erewards[0])))
             self.rewards = tuple(np.delete(self.rewards[i], np.s_[j:j + len(self.erewards[0])]) for i in range(2))
                 # Should really only remove matching weights, but likelihood of non-initial reward matching exact floating point initial reward is minimal.
-        consume_pdf = self.pdf('consume', self.rewards, 0, ce_min, ce_max, ce_step, utility.utility, 1 + env.params.consume_additional if env.sex2 != None else 1)
+        consume_pdf = self.pdf('consume', self.rewards, 0, ce_min, ce_max, ce_step, utility.utility, 1 + params.consume_additional if couple else 1)
 
         del self.rewards # Conserve RAM.
         del self.erewards
 
         if couple:
-            unit_ce *= 1 + env.params.consume_additional
-            unit_ce_stderr *= 1 + env.params.consume_additional
-            unit_low *= 1 + env.params.consume_additional
-            unit_high *= 1 + env.params.consume_additional
-            unit_consume_mean *= 1 + env.params.consume_additional
-            unit_consume_stdev *= 1 + env.params.consume_additional
+            unit_ce *= 1 + params.consume_additional
+            unit_ce_stderr *= 1 + params.consume_additional
+            unit_low *= 1 + params.consume_additional
+            unit_high *= 1 + params.consume_additional
+            unit_consume_mean *= 1 + params.consume_additional
+            unit_consume_stdev *= 1 + params.consume_additional
 
         ages = []
         for i in range(max(len(env.alive_both), len(env.alive_one))):
-            ages.append(env.age + i * env.params.time_period)
+            ages.append(env.age + i * params.time_period)
         alive = {'age': ages, 'couple': env.alive_both, 'single': env.alive_one}
 
         warnings = sorted(msg for msg, data in self.warnings.items() if data['count'] > data['timestep_ok_fraction'] * self.eval_num_timesteps)

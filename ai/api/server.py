@@ -214,7 +214,7 @@ class ApiHTTPServer(ThreadingMixIn, HTTPServer):
                 [InferEvaluateDaemon(self.args, evaluate = True, gammas = [gamma], logger = self.logger) for _ in range(self.args.num_evaluate_jobs)],
                 timeout = self.args.max_evaluate_queue_wait
             )
-            if old_evaluate_daemon != None:
+            if old_evaluate_daemon is not None:
                 old_evaluate_daemon.stop()
                 sleep(self.args.evaluate_stop_time)
                     # Conserve RAM by waiting for one set of daemons to exit before starting up next set.
@@ -251,7 +251,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                 content_type = self.headers.get('Content-Type')
                 content_length = self.headers.get('Content-Length')
-                if content_length == None:
+                if content_length is None:
                     self.send_error(411) # Length Required
                     return
                 content_length = int(content_length)
@@ -291,7 +291,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     self.send_error(404) # Not Found
                     return
 
-                if data != None:
+                if data is not None:
                     if self.server.args.verbose:
                         stdout.buffer.write(data)
                         stdout.flush()
@@ -342,7 +342,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 data, filetype = (dumps(data, indent = 4, sort_keys = True) + '\n').encode('utf-8'), 'application/json'
                 headers.append(('Cache-Control', 'max-age=3600'))
 
-            if data != None:
+            if data is not None:
 
                 self.send_result(data, filetype, headers = headers)
                 return
@@ -370,7 +370,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             except IOError:
                 pass
 
-        if data == None:
+        if data is None:
             filetype = None
 
         return data, filetype
@@ -435,7 +435,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 data = self.run_models(api_data, evaluate = False, prefix = 'healthcheck-')
             except:
                 return False
-            if data == None:
+            if data is None:
                 return None
             result = loads(data.decode('utf-8'))
             if result['error'] or result['result'][0][0]['error']:
@@ -447,7 +447,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 data = self.run_models(api_data, evaluate = True, prefix = 'healthcheck-')
             except:
                 return False
-            if data == None:
+            if data is None:
                 return None
             result = loads(data.decode('utf-8'))
             if result['error'] or result['result'][0]['results'][0]['error']:
@@ -552,7 +552,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         elif len(api_data) > 1:
             return {'error': 'Multiple scenarios to evaluate.'}
         gammas = api_data[0].get('rra')
-        if gammas == None:
+        if gammas is None:
             gammas = self.server.args.gamma
         if not isinstance(gammas, list):
             return {'error': 'Expecting list of rra values.'}
@@ -747,10 +747,10 @@ def main():
     parser.add_argument('--gamma', action = 'append', type = float, default = []) # Supported gamma values.
     parser.add_argument('--train-seeds', type = int, default = 10)
     parser.add_argument('--models-dir', default = '~/aiplanner-data/models')
-    parser.add_argument('--eval-num-timesteps', type = int, default = 50000)
+    parser.add_argument('--eval-num-timesteps', type = int, default = 100000)
     parser.add_argument('--eval-num-timesteps-healthcheck', type = int, default = 1000)
     parser.add_argument('--eval-num-timesteps-max', type = int, default = 2000000)
-    parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use per worker. Speeds up torch/tensorflow.
+    parser.add_argument('--num-environments', type = int, default = 200) # Number of parallel environments to use per worker. Speeds up torch/tensorflow.
     parser.add_argument('--num-environments-healthcheck', type = int, default = 10)
     parser.add_argument('--num-trace-episodes', type = int, default = 5) # Default number of sample traces to generate.
     parser.add_argument('--num-trace-episodes-max', type = int, default = 10000)
@@ -778,9 +778,9 @@ def main():
     args.results_dir = args.root_dir + '/results'
     if not args.gamma:
         args.gamma = allowed_gammas
-    if args.num_infer_jobs == None:
+    if args.num_infer_jobs is None:
         args.num_infer_jobs = cpu_count(logical = False)
-    if args.num_evaluate_jobs == None:
+    if args.num_evaluate_jobs is None:
         args.num_evaluate_jobs = ceil(cpu_count(logical = False) / len(args.gamma))
 
     makedirs(args.results_dir, exist_ok = True)

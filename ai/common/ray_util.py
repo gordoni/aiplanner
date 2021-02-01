@@ -7,3 +7,10 @@
 # This program is distributed WITHOUT ANY WARRANTY; without even the
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
+
+from ai.gym_fin.fin_env import FinEnv
+
+class RayFinEnv(FinEnv):
+
+    def __init__(self, config):
+        super().__init__(**config)
