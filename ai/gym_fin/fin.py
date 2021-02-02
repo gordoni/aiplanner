@@ -1042,7 +1042,7 @@ class Fin:
         iid_bonds = max(0.0, min(iid_bonds_action + iid_bonds_curvature * wealth_ratio, alloc)) if self._params.iid_bonds else 0
         alloc -= iid_bonds
         if self._params.iid_bonds:
-            iid_bonds = alloc
+            iid_bonds += alloc
         elif self._params.nominal_bonds:
             nominal_bonds += alloc
         elif self._params.real_bonds:

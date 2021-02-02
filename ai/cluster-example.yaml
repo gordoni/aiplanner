@@ -95,9 +95,9 @@ worker_nodes:
 available_node_types:
     default_node:
         node_config:
-            InstanceType: c5.24xlarge
+            InstanceType: c5.18xlarge
         resources:
-            CPU: 96
+            CPU: 71
             # With multi-threaded cpus use "CPU: <num_cores>" for maximum speed.
             # We have to manually specify the resources becasue we don't generate a separate head node yaml file.
         max_workers: 15
