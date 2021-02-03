@@ -166,11 +166,15 @@ class Evaluator(object):
         def rollout(eval_envs, pi):
 
             envs = tuple(eval_env.fin for eval_env in eval_envs)
+            tracing = [False] * len(eval_envs)
+            for i in range(min(self.num_trace_episodes, len(eval_envs))):
+                envs[i].tracing(True)
+                tracing[i] = True
             rewards = []
             erewards = []
             estates = []
             obss = [eval_env.reset() for eval_env in eval_envs]
-            et = 0
+            et = sum(tracing)
             e = 0
             s = 0
             anticipated = sum(env.anticipated_episode_length for env in envs)
@@ -180,11 +184,6 @@ class Evaluator(object):
             weight_sum = 0
             consume_mean = 0
             consume_m2 = 0
-            tracing = [False] * len(eval_envs)
-            for i in range(min(self.num_trace_episodes, len(eval_envs))):
-                envs[i].tracing(True)
-                tracing[i] = True
-            et = sum(tracing)
             finished = [self.eval_num_timesteps == 0 for _ in eval_envs]
             while True:
                 actions = pi(obss)

@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019-2020 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -8,6 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+from json import dumps
 from math import log
 
 def parse_api_scenario(api_scenario, *, permissive = False):
@@ -128,8 +129,6 @@ def parse_api_scenario(api_scenario, *, permissive = False):
         'sex',
 
         'consume_preretirement',
-
-        'guaranteed_income',
     ]:
         if name in api_scenario:
             model_params[name] = api_scenario[name]
@@ -139,7 +138,10 @@ def parse_api_scenario(api_scenario, *, permissive = False):
         'income_preretirement_age_end2',
     ]:
         if name in api_scenario:
-            model_params[name] = api_scenario[name] if api_sceario[name] is not None else -1
+            model_params[name] = api_scenario[name] if api_scenario[name] is not None else -1
+
+    if 'guaranteed_income' in api_scenario:
+        model_params['guaranteed_income'] = dumps(api_scenario['guaranteed_income'])
 
     for name in [
         'life_expectancy_additional',

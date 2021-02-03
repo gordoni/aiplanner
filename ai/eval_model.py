@@ -342,6 +342,8 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, opal, opal_file,
         (not params.real_bonds or params.real_bonds_duration is not None) and \
         (not params.nominal_bonds or params.nominal_bonds_duration is not None)
 
+    env.tracing(True)
+
     obs = env.reset()
 
     remote_evaluators = None
@@ -392,7 +394,6 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, opal, opal_file,
 
         action, = runner.run([obs])
 
-    env.tracing(True)
     _, _, _, initial_results = env.step(action)
 
     initial_results = {

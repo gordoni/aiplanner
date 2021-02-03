@@ -359,6 +359,8 @@ class Fin:
         self._observation_space_extreme_range = observation_space_extreme_range.tolist()
         self._observation_space_range_exceeded = observation_space_range_exceeded.tolist()
 
+        self._tracing = False
+
         self._env_timesteps = 0
 
         self._init_done = False
@@ -372,8 +374,6 @@ class Fin:
         home_dir = environ.get('AIPLANNER_HOME', expanduser('~/aiplanner'))
 
         self._warnings = {}
-
-        self._tracing = False
 
         assert self._params.sex in ('male', 'female'), 'sex must be male or female.'
         assert self._params.sex2 in ('male', 'female'), 'sex2 must be male or female.'
@@ -530,11 +530,8 @@ class Fin:
 
     def _parse_defined_benefits(self):
 
-        def load(s):
-            return loads(s) if isinstance(s, str) else s
-
         self._defined_benefits = {}
-        for db in load(self._params.guaranteed_income) + load(self._params.guaranteed_income_additional):
+        for db in loads(self._params.guaranteed_income) + loads(self._params.guaranteed_income_additional):
             self._add_db(delay_calcs = True, **db)
 
         for db in self._defined_benefits.values():

@@ -580,7 +580,7 @@ The api server can be distributed as a docker container.
 Test it out:
 
     touch $HOME/aiplanner-data/subscribe.txt # Create an empty AIPlanner email address interest list that will exist outside the container.
-    sudo docker run --rm -ti -p 127.0.0.1:3000:3000 -v $PWD/aiplanner-docker-development.yaml:/aiplanner.yaml $HOME/aiplanner-data/subscribe.txt:/home/aiplanner/aiplanner-data/subscribe.txt aiplanner-apiserver
+    sudo docker run --rm -ti -p 127.0.0.1:3000:3000 -v $PWD/aiplanner-docker-development.yaml:/aiplanner.yaml -v $HOME/aiplanner-data/subscribe.txt:/home/aiplanner/aiplanner-data/subscribe.txt aiplanner-apiserver
 
 Test the image thoroughly. If everything looks good publish the image
 to a private repo:

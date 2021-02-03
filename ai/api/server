@@ -16,6 +16,9 @@ SERVER_RAY_ADDRESS=${SERVER_RAY_ADDRESS:-localhost:9736}
 
 . $AIPLANNER_HOME/ai/setenv
 
-ray start --num-cpus=1000 # CPU capacity controlled by aiplanner.yaml file, not by Ray.
+HOST=`echo $SERVER_RAY_ADDRESS | sed 's/:.*//'`
+PORT=`echo $SERVER_RAY_ADDRESS | sed 's/.*://'`
+
+ray start --head -port=$PORT --num-cpus=1000 # CPU capacity controlled by aiplanner.yaml file, not by Ray.
 
 $AIPLANNER_HOME/ai/api/server.py --address=$SERVER_RAY_ADDRESS "$@" &

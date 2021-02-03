@@ -1,4 +1,3 @@
-spia
 ai/README.api
 ai/README.docker
 ai/aiplanner-example.yaml
@@ -6,6 +5,7 @@ ai/aiplanner-scenario.txt
 ai/aiplanner-scenario-train.txt
 ai/api
 ai/common
+ai/cythonize.py
 ai/docker/apiserver/LICENSE
 ai/docker/apiserver/aiplanner.crontab
 ai/docker/apiserver/aiplanner.logrotate
@@ -22,3 +22,4 @@ ai/plot.gnuplot
 ai/plot.py
 ai/setenv
 data/public/standardized_residuals.csv
+spia

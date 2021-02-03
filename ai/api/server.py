@@ -319,7 +319,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         return data, filetype, headers
 
-    def post_api(self, request):
+    def post_web(self, request):
 
         data = None
         headers = []
@@ -732,18 +732,29 @@ class RequestHandler(BaseHTTPRequestHandler):
             '-f', 'root',
                email,
         ]
-        mta = Popen(cmd, stdin = PIPE, encoding = 'utf-8')
 
-        header = 'From: "' + self.server.args.notify_name + '" <' + self.server.args.notify_email + '''>
+        msg = 'From: "' + self.server.args.notify_name + '" <' + self.server.args.notify_email + '''>
 To: ''' + email + '''
 Subject: ''' + self.server.args.project_name + ': ' + subject + '''
 
-'''
+''' + body
 
-        mta.stdin.write(header + body)
-        mta.stdin.close()
+        try:
 
-        return mta.wait() == 0
+            mta = Popen(cmd, stdin = PIPE, encoding = 'utf-8')
+
+        except FileNotFoundError:
+
+            self.server.logger.log('-------- MTA not found --------\n' + msg + '-------------------------------')
+
+            return True
+
+        else:
+
+            mta.stdin.write(msg)
+            mta.stdin.close()
+
+            return mta.wait() == 0
 
 class PurgeQueueServer:
 
