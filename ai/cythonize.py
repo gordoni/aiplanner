@@ -31,9 +31,7 @@ args = parser.parse_args()
 
 build_temp = args.tempdir + '/cythonize.build'
 
-aiplanner_home = expanduser('~/aiplanner')
-chdir(aiplanner_home)
-
+chdir('..')
 for f in [
     'ai/gym_fin/asset_allocation.py',
     'ai/gym_fin/bonds.py',

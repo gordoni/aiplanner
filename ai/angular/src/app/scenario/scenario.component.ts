@@ -259,7 +259,7 @@ export class ScenarioComponent implements OnInit {
     this.scenario = scenario;
 
     this.errorMessage = null;
-    this.apiService.post('/webapi/evaluate', [this.scenario]).subscribe(
+    this.apiService.post('/api/evaluate', [this.scenario]).subscribe(
       results => this.doResults(results),
       error => this.handleError(error)
     );
@@ -327,7 +327,7 @@ export class ScenarioComponent implements OnInit {
   }
 
   market() {
-    this.apiService.get('/webapi/market', {}).subscribe(
+    this.apiService.get('/api/market', {}).subscribe(
       results => this.doMarket(results),
       error => this.handleError(error)
     );

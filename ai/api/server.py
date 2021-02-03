@@ -103,6 +103,8 @@ class InferEvaluateDaemon:
             '--pdf-buckets', str(self.args.pdf_buckets),
             '--pdf-smoothing-window', str(self.args.pdf_smoothing_window),
         ]
+        if self.args.address is not None:
+            cmd += ['--address', self.args.address]
         for gamma in self.gammas:
             cmd += ['--gamma', str(gamma)]
         self.proc = Popen(cmd, stdin = PIPE, stdout = PIPE, stderr = self.logger.logfile_binary)
@@ -247,100 +249,105 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         try:
 
-            if self.path.startswith('/api/'):
-
-                content_type = self.headers.get('Content-Type')
-                content_length = self.headers.get('Content-Length')
-                if content_length is None:
-                    self.send_error(411) # Length Required
-                    return
-                content_length = int(content_length)
-                if not 0 <= content_length <= 100e6:
-                    self.send_error(413) # Payload Too Large
-                    return
-
-                data = self.rfile.read(content_length)
-                if self.server.args.verbose:
-                    stdout.buffer.write(data + '\n'.encode('utf-8'))
-                    stdout.flush()
-                try:
-                    request = loads(data.decode('utf-8'))
-                except ValueError:
-                    self.send_error(400) # Bad Request
-                    return
-
-                data = None
-                headers = []
-                if self.path == '/api/infer':
-
-                    if self.server.args.num_infer_jobs:
-                        data = self.run_models(request, evaluate = False)
-                    else:
-                        self.send_error(403) # Forbidden
-                        return
-
-                elif self.path == '/api/evaluate':
-
-                    if self.server.args.num_evaluate_jobs:
-                        data = self.run_models(request, evaluate = True)
-                    else:
-                        self.send_error(403) # Forbidden
-
-                else:
-
-                    self.send_error(404) # Not Found
-                    return
-
-                if data is not None:
-                    if self.server.args.verbose:
-                        stdout.buffer.write(data)
-                        stdout.flush()
-                    self.send_result(data, 'application/json', headers = headers)
-
+            content_type = self.headers.get('Content-Type')
+            content_length = self.headers.get('Content-Length')
+            if content_length is None:
+                self.send_error(411) # Length Required
+                return
+            content_length = int(content_length)
+            if not 0 <= content_length <= 100e6:
+                self.send_error(413) # Payload Too Large
                 return
 
-            self.send_error(404) # Not Found
+            data = self.rfile.read(content_length)
+            if self.server.args.verbose:
+                stdout.buffer.write(data + '\n'.encode('utf-8'))
+                stdout.flush()
+            try:
+                request = loads(data.decode('utf-8'))
+            except ValueError:
+                self.send_error(400) # Bad Request
+                return
+
+            if self.path.startswith('/api/'):
+
+                data, filetype, headers = self.post_api(request)
+
+            elif self.path.startswith('/web/'):
+
+                data, filetype, headers = self.post_web(request)
+
+            else:
+
+                data = None
+                self.send_error(404) # Not Found
+
+            if data is not None:
+                if self.server.args.verbose:
+                    stdout.buffer.write(data)
+                    stdout.flush()
+                self.send_result(data, filetype, headers = headers)
 
         except Exception as e:
 
             self.server.logger.report_exception(e)
             self.send_error(500) # Internal Server Error
 
+    def post_api(self, request):
+
+        data = None
+        headers = []
+        filetype = 'application/json'
+
+        if self.path == '/api/infer':
+
+            if self.server.args.num_infer_jobs:
+                data = self.run_models(request, evaluate = False)
+            else:
+                self.send_error(403) # Forbidden
+
+        elif self.path == '/api/evaluate':
+
+            if self.server.args.num_evaluate_jobs:
+                data = self.run_models(request, evaluate = True)
+            else:
+                self.send_error(403) # Forbidden
+
+        else:
+
+            self.send_error(404) # Not Found
+
+        return data, filetype, headers
+
+    def post_api(self, request):
+
+        data = None
+        headers = []
+        filetype = 'application/json'
+
+        if self.path == '/web/subscribe':
+
+            result = self.subscribe(request)
+            if result is not None:
+                data = (dumps(result, indent = 4, sort_keys = True) + '\n').encode('utf-8')
+
+        else:
+
+            self.send_error(404) # Not Found
+
+        return data, filetype, headers
+
     def do_GET(self):
 
         try:
 
-            data = None
-            headers = []
-            if self.path == '/api/healthcheck':
+            if self.path.startswith('/api/'):
 
-                if self.healthcheck():
-                    data = 'OK\n'
-                else:
-                    data = 'FAIL\n'
+                data, filetype, headers = self.get_api()
 
-                data, filetype = data.encode('utf-8'), 'text/plain'
-                headers.append(('Cache-Control', 'no-cache'))
+            else:
 
-            elif self.path.startswith('/api/data/'):
-
-                m  = match('^/api/data/(.+/.+)/(.+)$', self.path)
-                if m:
-                    path = m[1] + '/seed_all/aiplanner-' + m[2]
-                else:
-                    m = match('^/api/data/(.+)$', self.path)
-                    if m:
-                        path = m[1]
-                    else:
-                        self.send_error(404) # Not Found
-                        return
-                data, filetype = self.get_file(path)
-
-            elif self.path == '/api/market':
-
-                data = self.market()
-                data, filetype = (dumps(data, indent = 4, sort_keys = True) + '\n').encode('utf-8'), 'application/json'
-                headers.append(('Cache-Control', 'max-age=3600'))
+                data, filetype, headers = self.get_webroot()
 
             if data is not None:
 
@@ -354,19 +361,74 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.server.logger.report_exception(e)
             self.send_error(500) # Internal Server Error
 
-    def get_file(self, path):
+    def get_api(self):
+
+        data = None
+        headers = []
+        if self.path == '/api/healthcheck':
+
+            if self.healthcheck():
+                data = 'OK\n'
+            else:
+                data = 'FAIL\n'
+
+            data, filetype = data.encode('utf-8'), 'text/plain'
+            headers.append(('Cache-Control', 'no-cache'))
+
+        elif self.path.startswith('/api/data/'):
+
+            m  = match('^/api/data/(.+/.+)/(.+)$', self.path)
+            if m:
+                path = m[1] + '/seed_all/aiplanner-' + m[2]
+            else:
+                m = match('^/api/data/(.+)$', self.path)
+                if m:
+                    path = m[1]
+                else:
+                    self.send_error(404) # Not Found
+                    return
+            data, filetype = self.get_file(self.server.args.results_dir, path)
+
+        elif self.path == '/api/market':
+
+            data = self.market()
+            data = (dumps(data, indent = 4, sort_keys = True) + '\n').encode('utf-8')
+            filetype = 'application/json'
+            headers.append(('Cache-Control', 'max-age=3600'))
+
+        return data, filetype, headers
+
+    def get_webroot(self):
+
+        headers = []
+        path = '/index.html' if self.path == '/' else self.path
+        data, filetype = self.get_file(self.server.args.webroot_dir, path)
+        if self.path == '/index.html':
+            headers.append(('Cache-Control', 'no-cache'))
+        else:
+            headers.append(('Cache-Control', 'max-age=86400'))
+
+        return data, filetype, headers
+
+    def get_file(self, root_dir, path):
 
         filetype = None
         if '..' not in path:
-            if path.endswith('.pdf'):
+            if path.endswith('.css'):
+                filetype = 'text/css'
+            elif path.endswith('.html'):
+                filetype = 'text/html'
+            elif path.endswith('.js'):
+                filetype = 'text/javascript'
+            elif path.endswith('.pdf'):
                 filetype = 'application/pdf'
             elif path.endswith('.svg'):
                 filetype = 'image/svg+xml'
 
         data = None
-        if filetype:
+        if filetype is  not None:
             try:
-                data = open(self.server.args.results_dir + '/' + path, 'rb').read()
+                data = open(root_dir + '/' + path, 'rb').read()
             except IOError:
                 pass
 
@@ -640,6 +702,28 @@ class RequestHandler(BaseHTTPRequestHandler):
         else:
             raise Overloaded('Try again later')
 
+    def subscribe(self, request):
+
+        email = request.get('email', '')
+        email = email.strip()
+        if not match('^\S+@\S+\.\S+$', email):
+            return {'error': 'Invalid email address.'}
+
+        try:
+            with open(self.server.args.root_dir + '/subscribe.txt', 'a') as f:
+                f.write(email + '\n')
+        except IOError:
+            raise
+
+        if not self.notify_admin('subscribe', email + ' has subscribed\n'):
+            self.send_error(500) # Internal Server Error
+            return
+
+        return {
+            'error': None,
+            'result': None,
+        }
+
     def notify_admin(self, subject, body):
 
         email = self.server.args.admin_email or 'root'
@@ -736,6 +820,7 @@ def main():
     boolean_flag(parser, 'verbose', default = False)
     parser.add_argument('--host', default = config.get('host', '0.0.0.0'))
     parser.add_argument('--port', type = int, default = config.get('port', 3000))
+    parser.add_argument('--address') # Ray address.
     boolean_flag(parser, 'warm-cache', default = True) # Pre-load tensorflow/Rllib models.
     parser.add_argument('--num-infer-jobs', type = int, default = config.get('num_infer_jobs')) # Each concurrent job may have multiple scenarios with multiple gamma values.
     parser.add_argument('--num-evaluate-jobs', type = int, default = config.get('num_evaluate_jobs')) # Each concurrent job is a single scenario with multiple gamma values.
@@ -775,6 +860,7 @@ def main():
     args = parser.parse_args()
     args.root_dir = expanduser(args.root_dir)
     args.models_dir = expanduser(args.models_dir)
+    args.webroot_dir = args.root_dir + '/webroot'
     args.results_dir = args.root_dir + '/results'
     if not args.gamma:
         args.gamma = allowed_gammas

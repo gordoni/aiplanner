@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -20,6 +20,8 @@ WORKDIR /home/aiplanner
 ADD dotspia.tar ./
 RUN mkdir -p aiplanner-data/models
 ADD models.tgz aiplanner-data/models
+RUN mkdir -p aiplanner-data/webroot
+ADD webroot.tgz aiplanner-data/webroot
 ADD --chown=aiplanner:aiplanner aiplanner aiplanner/
 ADD --chown=aiplanner:aiplanner git-rev git-rev
 

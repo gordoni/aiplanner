@@ -9,10 +9,8 @@ Server requirements
 
 The api server can be run out of the box as a docker container on an 2
 core 4 thread 16G RAM Amazon m5.xlarge instance. Any Linux
-distribution should be able to be used. Because of the vagaries of
-Tensorflow the image itself is currently based on Ubuntu 16.04, but
-this shouldn't matter. You should allocate at least 20GB of storage,
-of which at least 10GB should be free.
+distribution should be able to be used. You should allocate at least
+20GB of storage, of which at least 10GB should be free.
 
 /api/infer requests rapidly return a recommended strategy for a given
 financial scenario. /api/evaluate requests perform a 30-60 second long
@@ -76,10 +74,14 @@ running you will need to stop and restart the container.
 Running the container
 ---------------------
 
+Create an empty AIPlanner email address interest list if desired:
+
+    touch $HOME/aiplanner-data/subscribe.txt
+
 To run the api server at http://localhost:3000/ and print out the
 container id:
 
-    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v $PWD/aiplanner.yaml:/aiplanner.yaml gordoni/aiplanner-apiserver
+    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v $PWD/aiplanner.yaml:/aiplanner.yaml $HOME/aiplanner-data/subscribe.txt:/home/aiplanner/aiplanner-data/subscribe.txt gordoni/aiplanner-apiserver
 
 To confirm the container is running:
 

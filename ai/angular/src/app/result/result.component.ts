@@ -83,7 +83,7 @@ export class ResultComponent implements OnInit {
       'consume_preretirement': this.utils.comma(result.consume_preretirement),
       'consume_preretirement_ppf': Math.round(result.consume_preretirement_ppf * 100),
       'consume_low': this.utils.comma(result.consume10),
-      'data_dir': '/webapi/data/' + result.aid,
+      'data_dir': '/api/data/' + result.aid,
     }
   }
 

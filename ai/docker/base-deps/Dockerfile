@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019-2020 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -16,6 +16,7 @@ RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
         curl \
         less \
+        nano \
         python3-pip \
         cron \
         logrotate \
@@ -28,8 +29,7 @@ RUN apt-get update \
     && apt-get install -y cmake \
     && pip3 install \
         torch \
-        'ray[rllib]==0.8.5' \
-        psutil \
+        'ray[rllib]==1.1.0' \
         pyyaml \
         svglib \
     && rm -rf /root/.cache/pip
