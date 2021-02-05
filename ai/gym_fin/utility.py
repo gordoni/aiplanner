@@ -8,7 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
-from math import exp, log
+from math import exp, isnan, log
 
 import cython
 
@@ -78,6 +78,8 @@ class Utility:
 
         if u <= self.crra_utility_base:
             c = self.crra_inverse(self.gamma, u)
+        elif isnan(u):
+            c = float('nan')
         else:
             c = self.crra_inverse(self.consume_charitable_gamma, self.crra_utility_charitable + (u - self.crra_utility_base) / self.marginal_utility_factor)
 

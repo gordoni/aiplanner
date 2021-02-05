@@ -65,11 +65,11 @@ def extract_model(eval_model_params, *, train_seed, address, train_seeds, ensemb
                         else:
                             p_taxable_assets = None
                             p_taxable_stocks_basis_fraction = None
+                        env.set_info(strategy = True)
                         env.reset()
                         obs = env.goto(age = age, p_tax_free = p_tax_free, p_tax_deferred = p_tax_deferred, p_taxable_assets = p_taxable_assets,
                             p_taxable_stocks_basis_fraction = p_taxable_stocks_basis_fraction, force_family_unit = True, forced_family_unit_couple = bool(env.sex2))
                         action, = runner.run([obs])
-                        env.tracing(True)
                         _, _, _, act = env.step(action)
                         c.writerow((age, p, act['consume'], act['retirement_contribution'], act['real_spias_purchase'], act['nominal_spias_purchase'],
                             act['real_bonds_duration'], act['nominal_bonds_duration'], *act['asset_allocation'].as_list()))

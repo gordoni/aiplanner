@@ -57,8 +57,6 @@ cdef class Fin:
     cdef double e
     cdef int _env_timesteps
     cdef int _episode_length
-    cdef double _estate_value
-    cdef double _estate_weight
     cdef double _gamma
     cdef double _gi_regular
     cdef double _gi_social_security
@@ -71,6 +69,9 @@ cdef class Fin:
     cdef double _income_preretirement2
     cdef double _income_preretirement_years
     cdef double _income_preretirement_years2
+    cdef bint _info_rewards
+    cdef bint _info_rollouts
+    cdef bint _info_strategy
     cdef list _life_expectancy_both
     cdef list _life_expectancy_one
     cdef list _life_percentile
@@ -125,10 +126,7 @@ cdef class Fin:
     cdef list _retirement_expectancy_both
     cdef list _retirement_expectancy_one
     cdef list _retirement_expectancy_single
-    cdef double _reward_consume
     cdef double _reward_scale
-    cdef double _reward_value
-    cdef double _reward_weight
     cdef double _rough_ce_estimate_individual
     cdef str _sex2
     cdef bint _spias
@@ -143,7 +141,6 @@ cdef class Fin:
     cdef Taxes _taxes
     cdef double _taxes_due
     cdef double _taxes_paid
-    cdef bint _tracing
     cdef Utility _utility
     cdef dict _warnings
     cdef double _wealth_tax_deferred
@@ -159,9 +156,6 @@ cdef class Fin:
     cdef object _decode_action(self, object action_or_list, AssetAllocation spare_asset_allocation)
 
     cdef object _raw_reward(self, double consume_rate)
-
-    cpdef object get_rewards(self)
-        # cpdef as needs to be accessible to cPython.
 
     cdef object _spend(self, double consume_fraction, double real_spias_fraction, double nominal_spias_fraction)
 

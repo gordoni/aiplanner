@@ -63,7 +63,7 @@ class TFRunner:
 
                     cls = get_agent_class(config['env_config']['algorithm'])
                     config['env_config'] = eval_model_params
-                    #config['num_workers'] = 0
+                    config['num_workers'] = 0 # So don't run out of actors doing checkpoint restore.
                     config['num_envs_per_worker'] = num_environments
                     config['local_tf_session_args'] = {
                         'intra_op_parallelism_threads': num_cpu,

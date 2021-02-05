@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -15,4 +15,4 @@ AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
 AI_DIR=$AIPLANNER_HOME/ai
 
 $AI_DIR/plot.py || exit 1
-$AI_DIR/plot.gnuplot || exit 1
+gnuplot ${AIPLANNER_FILE_PREFIX}-params.gnuplot $AI_DIR/plot.gnuplot || exit 1

@@ -325,6 +325,7 @@ def main():
         # it is recommended first make a copy the model(s) directory, and then stop Ray and reinvoke training with --train-resume.
         # First time attempted this got redis connection error on 2 of 20 processes, which couldn't be corrected,
         # but having a copy of the model(s) directory allowed me to rollback and retry successfully.
+        # Train resume appears to work without any problems in Ray 1.1.0.
         #
         # To attempt to resume trials that have errored edit the latest <model_dir>/seed_0/experiment_state-<date>.json (Note: Use seed_0 for all experiments).
         # changing all of their statuses from "ERROR" to "RUNNING", and then invoke this script with --train-resume.

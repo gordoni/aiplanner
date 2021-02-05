@@ -152,8 +152,13 @@ class Fin:
     def warnings(self):
         return self._warnings
 
-    def tracing(self, trace = True):
-        self._tracing = trace
+    def set_info(self, rewards = None, rollouts = None, strategy = None):
+        if rewards is not None:
+            self._info_rewards = rewards
+        if rollouts is not None:
+            self._info_rollouts = rollouts
+        if strategy is not None:
+            self._info_strategy = strategy
 
     def _warn(self, *args, timestep_ok_fraction = 0):
 
@@ -173,10 +178,10 @@ class Fin:
 
     def _compute_vital_stats(self, age_start, age_start2, preretirement, key):
 
-        if self._sex2 or self._tracing or not self._params.probabilistic_life_expectancy:
+        if self._sex2 or self._info_rollouts or not self._params.probabilistic_life_expectancy:
             # Can't cache vital stats for couple as would loose random rollouts of couple expectancy.
             # Additionally would need to save _retirement_expectancy_one and _retirement_expectancy_both as they get clobbered below.
-            # Can't cache vital stats if tracing as _alive_count wouldn't get updated.
+            # Can't cache vital stats if info rollouts as _alive_count wouldn't get updated.
             key = None
 
         try:
@@ -359,7 +364,9 @@ class Fin:
         self._observation_space_extreme_range = observation_space_extreme_range.tolist()
         self._observation_space_range_exceeded = observation_space_range_exceeded.tolist()
 
-        self._tracing = False
+        self._info_rewards = False
+        self._info_rollouts = False
+        self._info_strategy = False
 
         self._env_timesteps = 0
 
@@ -1098,10 +1105,6 @@ class Fin:
 
         return reward_weight, reward_consume, reward_value
 
-    def get_rewards(self):
-
-        return self._reward_weight, self._reward_consume, self._reward_value, self._estate_weight, self._estate_value
-
     @cython.locals(consume_fraction = cython.double, real_spias_fraction = cython.double, nominal_spias_fraction = cython.double)
     def _spend(self, consume_fraction, real_spias_fraction, nominal_spias_fraction):
 
@@ -1123,7 +1126,7 @@ class Fin:
         if p < 0:
             p = min(p + welfare, 0)
             if p < 0:
-                self._warn('Portfolio is often negative.', timestep_ok_fraction = 1e-3)
+                self._warn('Portfolio is sometimes negative.', timestep_ok_fraction = 1e-3)
 
         p_taxable: cython.double; p_tax_deferred: cython.double; p_tax_free: cython.double
         p_taxable = self._p_taxable + (p - self._p_sum)
@@ -1310,6 +1313,7 @@ class Fin:
         regular_income: cython.double; social_security: cython.double; consume: cython.double; retirement_contribution: cython.double
         real_tax_free_spias: cython.double; real_tax_deferred_spias: cython.double; real_taxable_spias: cython.double
         nominal_tax_free_spias: cython.double; nominal_tax_deferred_spias: cython.double; nominal_taxable_spias: cython.double
+
         p_tax_free, p_tax_deferred, p_taxable, p_negative, regular_income, social_security, consume, retirement_contribution, \
             real_tax_free_spias, real_tax_deferred_spias, real_taxable_spias, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias = \
             self._spend(consume_fraction, real_spias_fraction, nominal_spias_fraction)
@@ -1325,40 +1329,14 @@ class Fin:
 
         self._allocate_aa(p_tax_free, p_tax_deferred, p_taxable, asset_allocation)
 
-        if self._tracing:
-
-            info = {
-                'consume': consume_rate,
-                'asset_allocation': asset_allocation.clone(),
-                'asset_allocation_tax_free': self._normalize_aa(self._tax_free_assets, p_tax_free),
-                'asset_allocation_tax_deferred': self._normalize_aa(self._tax_deferred_assets, p_tax_deferred),
-                'asset_allocation_taxable': self._normalize_aa(self._taxable_assets, p_taxable),
-                'retirement_contribution': retirement_contribution / self._params.time_period \
-                    if self._income_preretirement_years > 0 or self._income_preretirement_years2 > 0 else None,
-                'real_spias_purchase': real_spias_purchase if self._params.real_spias and self._spias else None,
-                'nominal_spias_purchase': nominal_spias_purchase if self._params.nominal_spias and self._spias else None,
-                'nominal_spias_adjust': self._params.nominal_spias_adjust if self._params.nominal_spias and self._spias else None,
-                'pv_spias_purchase': real_spias_purchase + nominal_spias_purchase - (real_tax_deferred_spias + nominal_tax_deferred_spias) * self._regular_tax_rate,
-                'real_bonds_duration': real_bonds_duration,
-                'nominal_bonds_duration': nominal_bonds_duration,
-
-                'age': self._age,
-                'alive_count': self._alive_count[self._episode_length],
-                'total_guaranteed_income': self._gi_total,
-                'portfolio_wealth_pretax': self._p_wealth_pretax,
-            }
-
-        else:
-
-            info = Fin.empty_info
-
         inflation: cython.double
         inflation = self._bonds.inflation.inflation()
         self._cpi *= inflation
 
-        p_tax_free = 0
-        p_tax_deferred = 0
-        p_taxable = 0
+        new_p_tax_free: cython.double; new_p_tax_deferred: cython.double; new_p_taxable: cython.double
+        new_p_tax_free = 0
+        new_p_tax_deferred = 0
+        new_p_taxable = 0
         ac: cython.int
         for ac, v in enumerate(asset_allocation.aa):
 
@@ -1387,31 +1365,20 @@ class Fin:
             asset_taxable = self._taxable_assets.aa[ac]
             asset_prev_taxable = self._prev_taxable_assets.aa[ac]
 
-            p_tax_free += asset_tax_free * ret
-            p_tax_deferred += asset_tax_deferred * ret
+            new_p_tax_free += asset_tax_free * ret
+            new_p_tax_deferred += asset_tax_deferred * ret
             new_taxable = asset_taxable * ret
-            p_taxable += new_taxable
+            new_p_taxable += new_taxable
             taxable_buy_sell = asset_taxable - asset_prev_taxable
             self._taxes.buy_sell(ac, taxable_buy_sell, new_taxable, ret, dividend_yield, qualified_dividends)
             self._taxable_assets.aa[ac] = new_taxable
 
         if p_negative < 0:
-            p_taxable += p_negative * (1 + self._params.credit_rate) ** self._params.time_period
+            new_p_taxable += p_negative * (1 + self._params.credit_rate) ** self._params.time_period
 
-        self._p_tax_free = p_tax_free
-        self._p_tax_deferred = p_tax_deferred
-        self._p_taxable = p_taxable
-
-        alive0: cython.double; alive1: cython.double
-        alive0 = self._alive_single[self._episode_length]
-        if alive0 == -1:
-            alive0 = 1
-        alive1 = self._alive_single[self._episode_length + 1]
-        if alive1 == -1:
-            alive1 = 1
-        self._estate_weight = alive0 - alive1
-        self._estate_value = max(0, p_tax_free + p_tax_deferred + p_taxable - self._taxes_due)
-            # Ignore future taxation of p_tax_deferred; depends upon heirs tax bracket.
+        self._p_tax_free = new_p_tax_free
+        self._p_tax_deferred = new_p_tax_deferred
+        self._p_taxable = new_p_taxable
 
         charitable_contributions = max(0, consume_rate - self._consume_charitable) * self._params.consume_charitable_tax_deductability
 
@@ -1426,14 +1393,26 @@ class Fin:
         #     ability_to_pay = self._p_sum
         #     self._taxes_due = min(self._taxes_due, ability_to_pay)
 
+        alive0: cython.double; alive1: cython.double
+        alive0 = self._alive_single[self._episode_length]
+        if alive0 == -1:
+            alive0 = 1
+        alive1 = self._alive_single[self._episode_length + 1]
+        if alive1 == -1:
+            alive1 = 1
+        estate_weight = alive0 - alive1
+        estate_value = max(0, new_p_tax_free + new_p_tax_deferred + new_p_taxable - self._taxes_due) # Assume death occurs at end of period.
+            # Ignore future taxation of new_p_tax_deferred; depends upon heirs tax bracket.
+
+        reward_weight: cython.double; reward_consume: cython.double; reward_value: cython.double
         if self._age < self._age_retirement:
-            self._reward_weight = 0
-            self._reward_consume = 0
-            self._reward_value = 0
+            reward_weight = 0
+            reward_consume = 0
+            reward_value = 0
             reward = 0.0
         else:
-            self._reward_weight, self._reward_consume, self._reward_value = self._raw_reward(consume_rate)
-            reward_unclipped = self._reward_weight * self._reward_scale * self._reward_value
+            reward_weight, reward_consume, reward_value = self._raw_reward(consume_rate)
+            reward_unclipped = reward_weight * self._reward_scale * reward_value
             if isinf(reward_unclipped):
                 self._warn('Infinite reward.')
             elif not - self._params.reward_warn <= reward_unclipped <= self._params.reward_warn:
@@ -1441,6 +1420,58 @@ class Fin:
             reward = min(max(reward_unclipped, - self._params.reward_clip), self._params.reward_clip)
             if reward != reward_unclipped:
                 self._warn('Reward clipped.', 'age, consume, reward:', self._age, consume_rate, reward_unclipped)
+
+        if  self._info_rewards:
+
+            info = {
+                'age': self._age,
+                'reward_weight': reward_weight,
+                'reward_consume': reward_consume,
+                'reward_value': reward_value,
+                'estate_weight': estate_weight,
+                'estate_value': estate_value,
+            }
+
+        elif self._info_rollouts or self._info_strategy:
+
+            info = {}
+
+        else:
+
+            # Avoid creating a dict, and confirm trainer isn't making use of the empty dict.
+            info = Fin.empty_info
+            assert not info
+
+        if self._info_rollouts:
+
+            info = dict(info, **{
+                'age': self._age,
+                'alive_count': self._alive_count[self._episode_length],
+                'total_guaranteed_income': self._gi_total,
+                'portfolio_wealth_pretax': self._p_wealth_pretax,
+                'consume': consume_rate,
+                'real_spias_purchase': real_spias_purchase if self._params.real_spias and self._spias else None,
+                'nominal_spias_purchase': nominal_spias_purchase if self._params.nominal_spias and self._spias else None,
+                'asset_allocation': asset_allocation.clone(),
+            })
+
+        if self._info_strategy:
+
+            info = dict(info, **{
+                'consume': consume_rate,
+                'asset_allocation': asset_allocation.clone(),
+                'asset_allocation_tax_free': self._normalize_aa(self._tax_free_assets, p_tax_free),
+                'asset_allocation_tax_deferred': self._normalize_aa(self._tax_deferred_assets, p_tax_deferred),
+                'asset_allocation_taxable': self._normalize_aa(self._taxable_assets, p_taxable),
+                'retirement_contribution': retirement_contribution / self._params.time_period \
+                    if self._income_preretirement_years > 0 or self._income_preretirement_years2 > 0 else None,
+                'real_spias_purchase': real_spias_purchase if self._params.real_spias and self._spias else None,
+                'nominal_spias_purchase': nominal_spias_purchase if self._params.nominal_spias and self._spias else None,
+                'nominal_spias_adjust': self._params.nominal_spias_adjust if self._params.nominal_spias and self._spias else None,
+                'pv_spias_purchase': real_spias_purchase + nominal_spias_purchase - (real_tax_deferred_spias + nominal_tax_deferred_spias) * self._regular_tax_rate,
+                'real_bonds_duration': real_bonds_duration,
+                'nominal_bonds_duration': nominal_bonds_duration,
+            })
 
         self._step()
         self._bonds_stepper.step()

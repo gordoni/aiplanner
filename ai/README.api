@@ -884,6 +884,24 @@ residual estate probability densities. The sum of all weights
 multiplied by the estate interval widths will normally be slightly
 less than 1.
 
+Consumption confidence regions
+------------------------------
+
+consume_cr: [
+    {
+        "confidence_level": <number>,
+        "age": [<number>, ... ],
+        "low": [<number>, ... ],
+        "high": [<number>, ... ]
+    }, ...
+]
+
+Consumption confidence regions. "confidence_level" is a probability,
+and "age", "low", and "high" define ages, and low and high consumption
+values for those ages such that the chance that consumption over
+multiple possible lifetimes occurs within the region is the specified
+confidence level.
+
 Sample paths
 ------------
 

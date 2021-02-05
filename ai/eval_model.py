@@ -260,7 +260,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                 print('Evaluation certainty equivalent:', res['ce_individual'], '+/-', res['ce_stderr_individual'],
                     '(80% confidence interval:', res['consume10_individual'], '-', str(res['consume90_individual']) + ')', file = out, flush = True)
 
-                plot(prefix, res['paths'], res['consume_pdf'], res['estate_pdf'], res['alive'])
+                plot(prefix, res['paths'], res['consume_pdf'], res['estate_pdf'], res['consume_cr'], res['alive'])
 
                 final_results = dict(results[scenario_num]['results'][sub_num], **{
                     'error': None,
@@ -275,6 +275,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                     'consume_preretirement_ppf': res['consume_preretirement_ppf'],
                     'consume_pdf': res['consume_pdf'],
                     'estate_pdf': res['estate_pdf'],
+                    'consume_cr': res['consume_cr'],
                     'sample_paths': res['paths'],
                     'alive': res['alive'],
                 })
@@ -342,7 +343,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, opal, opal_file,
         (not params.real_bonds or params.real_bonds_duration is not None) and \
         (not params.nominal_bonds or params.nominal_bonds_duration is not None)
 
-    env.tracing(True)
+    env.set_info(strategy = True)
 
     obs = env.reset()
 
@@ -549,7 +550,33 @@ def gss(f, a, b):
 
     return found, f_found
 
-def plot(prefix, traces, consume_pdf, estate_pdf, alive):
+def plot(prefix, traces, consume_pdf, estate_pdf, consume_cr, alive):
+
+    try:
+        couple_status = alive['couple'][0] > 0
+        age_low = alive['age'][0]
+    except IndexError:
+        couple_status = False
+        age_low = 0
+    age_high = age_low
+    for age, couple, single in zip(alive['age'], alive['couple'], alive['single']):
+        if couple + single < 0.01:
+            age_high = age
+            break
+    try:
+        consume_high_trace = max(max(trace['consume']) for trace in traces)
+    except ValueError:
+        consume_high_trace = 0
+    try:
+        consume_high_cr = max(max(region['high']) for region in consume_cr)
+    except ValueError:
+        consume_high_cr = 0
+    consume_high = max(consume_high_trace, consume_high_cr)
+    with open(prefix + '-params.gnuplot', 'w') as f:
+        print('couple =', int(couple_status), file = f)
+        print('age_low =', age_low, file = f)
+        print('age_high =', age_high, file = f)
+        print('consume_high =', consume_high, file = f)
 
     with open(prefix + '-paths.csv', 'w') as f:
         csv_writer = writer(f)
@@ -578,6 +605,12 @@ def plot(prefix, traces, consume_pdf, estate_pdf, alive):
     with open(prefix + '-estate-pdf.csv', 'w') as f:
         csv_writer = writer(f)
         csv_writer.writerows(pdf)
+
+    for region in consume_cr:
+        cr = zip(region['age'], region['low'], region['high'])
+        with open(prefix + '-consume-cr%4.2f.csv' % region['confidence_level'], 'w') as f:
+            csv_writer = writer(f)
+            csv_writer.writerows(cr)
 
     data = zip(alive['age'], alive['couple'], alive['single'])
     with open(prefix + '-alive.csv', 'w') as f:

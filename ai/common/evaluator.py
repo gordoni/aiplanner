@@ -29,6 +29,8 @@ def weighted_percentiles(value_weights, pctls):
     tot = sum(value_weights[1])
     weight = 0
     for v, w in zip(*value_weights):
+        v = float(v) # De-numpyify.
+        w = float(w)
         weight += w
         if weight >= pctls[0] / 100 * tot:
             results.append(v)
@@ -43,9 +45,11 @@ def weighted_percentiles(value_weights, pctls):
 def weighted_mean(value_weights):
     n = 0
     s = 0
-    for value, weight in zip(*value_weights):
-        n += weight
-        s += weight * value
+    for v, w in zip(*value_weights):
+        v = float(v)
+        w = float(w)
+        n += w
+        s += w * v
     try:
         return s / n
     except ZeroDivisionError:
@@ -56,12 +60,14 @@ def weighted_stdev(value_weights):
     n = 0
     s = 0
     ss = 0
-    for value, weight in zip(*value_weights):
-        if weight != 0:
+    for v, w in zip(*value_weights):
+        v = float(v)
+        w = float(w)
+        if w != 0:
             n0 += 1
-        n += weight
-        s += weight * value
-        ss += weight * value ** 2
+        n += w
+        s += w * v
+        ss += w * v ** 2
     try:
         return sqrt(n0 / (n0 - 1) * (n * ss - s ** 2) / (n ** 2))
     except ValueError:
@@ -74,18 +80,20 @@ def weighted_ppf(value_weights, q):
         return float('nan')
     n = 0
     ppf = 0
-    for value, weight in zip(*value_weights):
-        n += weight
-        if value <= q:
-            ppf += weight
+    for v, w in zip(*value_weights):
+        v = float(v)
+        w = float(w)
+        n += w
+        if v <= q:
+            ppf += w
     return ppf / n * 100
 
-def pack_value_weights(value_weights):
+def pack_value_weights(value_weights, length = 2):
 
     if len(value_weights) > 0:
         return np.array(value_weights).T
     else:
-        return np.array([(), ()])
+        return np.array([()] * length)
 
 def unpack_value_weights(value_weights):
 
@@ -95,7 +103,8 @@ class Evaluator(object):
 
     def __init__(self, eval_envs, eval_seed, eval_num_timesteps, *,
         remote_evaluators = None, render = False, eval_batch_monitor = False,
-        num_trace_episodes = 0, pdf_buckets = 100, pdf_raw_buckets = 10000, pdf_smoothing_window = 0.02, pdf_constant_initial_consume = False):
+        num_trace_episodes = 0, pdf_buckets = 100, pdf_raw_buckets = 10000, pdf_smoothing_window = 0.02, pdf_constant_initial_consume = False,
+        cr_cls = [0.80, 0.95]):
 
         self.eval_envs = eval_envs
         self.eval_seed = eval_seed
@@ -108,6 +117,7 @@ class Evaluator(object):
         self.pdf_raw_buckets = pdf_raw_buckets
         self.pdf_smoothing_window = pdf_smoothing_window
         self.pdf_constant_initial_consume = pdf_constant_initial_consume
+        self.cr_cls = cr_cls
 
         if self.remote_evaluators:
             self.eval_num_timesteps = ceil(self.eval_num_timesteps / len(self.remote_evaluators))
@@ -166,9 +176,11 @@ class Evaluator(object):
         def rollout(eval_envs, pi):
 
             envs = tuple(eval_env.fin for eval_env in eval_envs)
+            for env in envs:
+                env.set_info(rewards = True)
             tracing = [False] * len(eval_envs)
             for i in range(min(self.num_trace_episodes, len(eval_envs))):
-                envs[i].tracing(True)
+                envs[i].set_info(rollouts = True)
                 tracing[i] = True
             rewards = []
             erewards = []
@@ -177,14 +189,19 @@ class Evaluator(object):
             et = sum(tracing)
             e = 0
             s = 0
-            anticipated = sum(env.anticipated_episode_length for env in envs)
             erews = [0 for _ in eval_envs]
             eweights = [0 for _ in eval_envs]
             reward_initial = None
             weight_sum = 0
             consume_mean = 0
             consume_m2 = 0
-            finished = [self.eval_num_timesteps == 0 for _ in eval_envs]
+            finished = [False] * len(eval_envs)
+            anticipated = 0
+            for i, env in enumerate(envs):
+                if anticipated < self.eval_num_timesteps:
+                    anticipated += env.anticipated_episode_length
+                else:
+                    finished[i] = True
             while True:
                 actions = pi(obss)
                 if self.eval_render:
@@ -195,10 +212,15 @@ class Evaluator(object):
                         if tracing[i]:
                             self.trace_step(i, False, info)
                         s += 1
-                        weight, consume, reward, estate_weight, estate_value = env.get_rewards()
+                        age = info['age']
+                        weight = info['reward_weight']
+                        consume = info['reward_consume']
+                        reward = info['reward_value']
+                        estate_weight = info['estate_weight']
+                        estate_value = info['estate_value']
                         estates.append((estate_value, estate_weight))
                         if weight != 0:
-                            rewards.append((reward, weight))
+                            rewards.append((reward, weight, age))
                             erews[i] += reward * weight
                             eweights[i] += weight
                             if reward_initial is None and s == 1:
@@ -215,7 +237,7 @@ class Evaluator(object):
                                 if et < self.num_trace_episodes:
                                     et += 1
                                 else:
-                                    env.tracing(False)
+                                    env.set_info(rollouts = False)
                                     tracing[i] = False
                             e += 1
                             try:
@@ -241,7 +263,7 @@ class Evaluator(object):
 
             warnings = self.merge_warnings(tuple(env.warnings for env in envs))
 
-            return pack_value_weights(sorted(rewards)), pack_value_weights(sorted(erewards)), pack_value_weights(sorted(estates)), \
+            return pack_value_weights(sorted(rewards), length = 3), pack_value_weights(sorted(erewards)), pack_value_weights(sorted(estates)), \
                 reward_initial, weight_sum, consume_mean, consume_m2, self.trace, warnings
 
         self.object_ids = None
@@ -271,7 +293,7 @@ class Evaluator(object):
             np.random.seed(self.eval_seed)
 
             try:
-                self.rewards, self.erewards, self.estates, self.reward_initial, self.weight_sum, self.consume_mean, self.consume_m2, self.trace, self.warnings = \
+                self.reward_ages, self.erewards, self.estates, self.reward_initial, self.weight_sum, self.consume_mean, self.consume_m2, self.trace, self.warnings = \
                     rollout(self.eval_envs, pi)
             except Exception as e:
                 self.exception = e # Only want to know about failures in one place; later in summarize().
@@ -288,11 +310,11 @@ class Evaluator(object):
 
             rewards, erewards, estates, reward_initials, weight_sums, consume_means, consume_m2s, traces, warnings = zip(*chain(*rollouts))
             if len(rewards) > 1:
-                self.rewards = pack_value_weights(np.sort(np.concatenate([unpack_value_weights(reward) for reward in rewards], axis = 0)))
+                self.reward_ages = pack_value_weights(np.sort(np.concatenate([unpack_value_weights(reward) for reward in rewards], axis = 0)), length = 3)
                 self.erewards = pack_value_weights(np.sort(np.concatenate([unpack_value_weights(ereward) for ereward in erewards], axis = 0)))
                 self.estates = pack_value_weights(np.sort(np.concatenate([unpack_value_weights(estate) for estate in estates], axis = 0)))
             else:
-                self.rewards = rewards[0]
+                self.reward_ages = rewards[0]
                 self.erewards = erewards[0]
                 self.estates = estates[0]
 
@@ -317,6 +339,16 @@ class Evaluator(object):
 
             if self.exception:
                 raise self.exception
+
+        estate_max, = weighted_percentiles(self.estates, [98])
+        if estate_max == 0:
+            estate_max = 1
+        estate_step = estate_max / self.pdf_raw_buckets
+        estate_pdf = self.pdf('estate', self.estates, 0, 0, estate_max, estate_step)
+
+        del self.estates # Conserve RAM.
+
+        self.rewards = self.reward_ages[0:2]
 
         rew = weighted_mean(self.erewards)
         try:
@@ -356,14 +388,6 @@ class Evaluator(object):
         utility_preretirement = utility.utility(consume_ppf)
         preretirement_ppf = weighted_ppf(self.rewards, utility_preretirement) / 100
 
-        estate_max, = weighted_percentiles(self.estates, [98])
-        if estate_max == 0:
-            estate_max = 1
-        estate_step = estate_max / self.pdf_raw_buckets
-        estate_pdf = self.pdf('estate', self.estates, 0, 0, estate_max, estate_step)
-
-        del self.estates # Conserve RAM.
-
         if ce_max == 0:
             ce_max = 1
         ce_step = max((ce_max - ce_min) / self.pdf_raw_buckets, ce_max / 100000)
@@ -379,6 +403,10 @@ class Evaluator(object):
 
         del self.rewards # Conserve RAM.
         del self.erewards
+
+        age_rewards = np.vstack((self.reward_ages[2], self.reward_ages[0:2])) # Age row first.
+        del self.reward_ages # Conserve RAM.
+        consume_cr = self.age_cr('consume', age_rewards, self.cr_cls, utility.inverse, 1 + params.consume_additional if couple else 1)
 
         if couple:
             unit_ce *= 1 + params.consume_additional
@@ -411,6 +439,7 @@ class Evaluator(object):
             'consume_preretirement_ppf': preretirement_ppf,
             'consume_pdf': consume_pdf,
             'estate_pdf': estate_pdf,
+            'consume_cr': consume_cr,
             'paths': self.trace,
             'alive': alive,
             'warnings': warnings,
@@ -433,6 +462,8 @@ class Evaluator(object):
         u_ceil = f(c_ceil)
         u_floor = u_ceil
         for r, w in zip(*value_weights):
+            r = float(r)
+            w = float(w)
             while r >= u_ceil and len(bucket_weights) < buckets + half_window_size:
                 bucket_weights.append(0)
                 u_floor = u_ceil
@@ -455,3 +486,54 @@ class Evaluator(object):
             pdf['weight'].append(w_ratio)
 
         return pdf
+
+    def age_cr(self, what, age_value_weights, cls, f = lambda x: x, multiplier = 1):
+        '''Compute age-based confidence region.'''
+
+        consume_cr = []
+
+        if age_value_weights.shape[1] > 0:
+
+            age_value_weights = age_value_weights.T # Each row comprises an age value, and weight.
+            age_value_weights = age_value_weights[age_value_weights[:, 1].argsort(kind = 'stable')]
+            age_value_weights = age_value_weights[age_value_weights[:, 0].argsort(kind = 'stable')] # Sorted by age and value.
+            age_value_weights = np.split(age_value_weights, np.where(np.diff(age_value_weights[:, 0]))[0] + 1) # Split by age.
+            cweight_age_value_weights = []
+            for age_value_weight in age_value_weights:
+                low_sum = np.cumsum(age_value_weight[:, 2])
+                high_sum = np.flip(np.cumsum(np.flip(age_value_weight[:, 2])))
+                use_high = high_sum <= low_sum
+                i = np.where(use_high)[0][0]
+                bi_sum = np.concatenate((low_sum[:i], high_sum[i:]))
+                cweight_age_value_weight = np.c_[bi_sum, age_value_weight]
+                cweight_age_value_weights.append(cweight_age_value_weight)
+            del age_value_weights
+            cweight_age_value_weights = np.concatenate(cweight_age_value_weights) # Weights are now bidirectionally cumulative by age.
+            cweight_age_value_weights = cweight_age_value_weights[cweight_age_value_weights[:, 0].argsort(kind = 'stable')] # Sorted by cumulative weight.
+            tot_weight = np.sum(cweight_age_value_weights[:, 3])
+
+            for cl in cls:
+
+                cutoff = (1 - cl) * tot_weight
+                i = np.where(np.cumsum(cweight_age_value_weights[:, 3]) >= cutoff)[0][0]
+                age_values = cweight_age_value_weights[i:, 1:3] # Confidence region.
+                age_values = age_values[age_values[:, 1].argsort(kind = 'stable')]
+                age_values = age_values[age_values[:, 0].argsort(kind = 'stable')]
+                w = np.where(np.diff(age_values[:, 0]))[0]
+                cr_age = np.concatenate((age_values[w, 0], [age_values[-1, 0]]))
+                cr_low = np.concatenate(([age_values[0, 1]], age_values[w + 1, 1]))
+                cr_high = np.concatenate((age_values[w, 1], [age_values[-1, 1]]))
+                cr_low = np.vectorize(f)(cr_low) * multiplier
+                cr_high = np.vectorize(f)(cr_high) * multiplier
+                cr_age = cr_age.tolist() # De-numpyify.
+                cr_low = cr_low.tolist()
+                cr_high = cr_high.tolist()
+
+                consume_cr.append({
+                    'confidence_level': cl,
+                    'age': cr_age,
+                    'low': cr_low,
+                    'high': cr_high,
+                })
+
+        return consume_cr
