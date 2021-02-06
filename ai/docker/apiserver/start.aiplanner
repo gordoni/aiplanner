@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -13,10 +13,11 @@
 [ -e /opt/conda/bin/activate ] && source /opt/conda/bin/activate base
 
 AIPLANNER_HOME=${AIPLANNER_HOME:-$HOME/aiplanner}
+AIPLANNER_DATA_DOCKER=${AIPLANNER_DATA_DOCKER:-$HOME/aiplanner-data.docker}
 AI_DIR=$AIPLANNER_HOME/ai
 
 . $AI_DIR/setenv
 
 $AI_DIR/docker/apiserver/cron.daily
 
-$AI_DIR/api/server.py "$@"
+$AI_DIR/api/server.py --webroot-dir=$AIPLANNER_DATA_DOCKER/webroot --models-dir=$AIPLANNER_DATA_DOCKER/models "$@"

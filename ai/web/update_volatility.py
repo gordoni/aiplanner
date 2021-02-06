@@ -50,8 +50,9 @@ def update(root_dir, read_stdin, write_stdout):
             data = loads(f.read())
         except IOError:
             data = {}
-        data['stocks_volatility'] = level
-        data['stocks_volatility_date'] = date_str
+        if data.get('stocks_volatility_date', '2000-01-01') <= date_str:
+            data['stocks_volatility'] = level
+            data['stocks_volatility_date'] = date_str
         with open(root_dir + '/market-data.json', 'w') as f:
             print(dumps(data, indent = 4, sort_keys = True), file = f)
 

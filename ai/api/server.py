@@ -539,10 +539,10 @@ class RequestHandler(BaseHTTPRequestHandler):
             epoch = datetime(2000, 1, 1) # Allow non-updating market data with date 2000-01-01.
 
             try:
-                assert now - timedelta(days = 14) < real_short_rate_date <= now or real_short_rate_date == epoch
-                assert now - timedelta(days = 14) < nominal_short_rate_date <= now or nominal_short_rate_date == epoch
-                assert now - timedelta(days = 21) < stocks_price_date <= now or stocks_price_date == epoch
-                assert now - timedelta(days = 14) < stocks_volatility_date <= now or stocks_volatility_date == epoch
+                assert now - timedelta(days = 14) < real_short_rate_date or real_short_rate_date == epoch
+                assert now - timedelta(days = 14) < nominal_short_rate_date or nominal_short_rate_date == epoch
+                assert now - timedelta(days = 21) < stocks_price_date or stocks_price_date == epoch
+                assert now - timedelta(days = 14) < stocks_volatility_date or stocks_volatility_date == epoch
             except AssertionError as e:
                 self.server.logger.report_exception(e)
                 raise
@@ -831,6 +831,7 @@ def main():
     boolean_flag(parser, 'verbose', default = False)
     parser.add_argument('--host', default = config.get('host', '0.0.0.0'))
     parser.add_argument('--port', type = int, default = config.get('port', 3000))
+    parser.add_argument('--webroot-dir', default = root_dir + '/webroot')
     parser.add_argument('--address') # Ray address.
     boolean_flag(parser, 'warm-cache', default = True) # Pre-load tensorflow/Rllib models.
     parser.add_argument('--num-infer-jobs', type = int, default = config.get('num_infer_jobs')) # Each concurrent job may have multiple scenarios with multiple gamma values.
@@ -842,7 +843,7 @@ def main():
     parser.add_argument('--evaluate-stop-time', type = int, default = 120) # Time to wait for processes with a given gamma value to exit when get log rotate sighup.
     parser.add_argument('--gamma', action = 'append', type = float, default = []) # Supported gamma values.
     parser.add_argument('--train-seeds', type = int, default = 10)
-    parser.add_argument('--models-dir', default = '~/aiplanner-data/models')
+    parser.add_argument('--models-dir', default = root_dir + '/models')
     parser.add_argument('--eval-num-timesteps', type = int, default = 100000)
     parser.add_argument('--eval-num-timesteps-healthcheck', type = int, default = 1000)
     parser.add_argument('--eval-num-timesteps-max', type = int, default = 2000000)
@@ -871,7 +872,7 @@ def main():
     args = parser.parse_args()
     args.root_dir = expanduser(args.root_dir)
     args.models_dir = expanduser(args.models_dir)
-    args.webroot_dir = args.root_dir + '/webroot'
+    args.webroot_dir = expanduser(args.webroot_dir)
     args.results_dir = args.root_dir + '/results'
     if not args.gamma:
         args.gamma = allowed_gammas

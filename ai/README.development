@@ -571,7 +571,10 @@ The api server can be distributed as a docker container.
     git rev-parse HEAD > docker/apiserver/git-rev
     rm -rf docker/apiserver/aiplanner
     mkdir -p docker/apiserver/aiplanner
-    (cd ..; git archive `cat ai/docker/apiserver/git-rev`) | tar xf - -C docker/apiserver/aiplanner `cat docker/apiserver/MANIFEST.aiplanner`
+    # Production build (all code must be checked in):
+        (cd ..; git archive `cat ai/docker/apiserver/git-rev`) | tar xf - -C docker/apiserver/aiplanner `cat docker/apiserver/MANIFEST.aiplanner`
+    # Test build:
+        tar cf - -C .. `cat ai/docker/apiserver/MANIFEST.aiplanner` | tar xf - -C docker/apiserver/aiplanner
     (cd docker/apiserver/aiplanner/spia; ./cythonize.py)
     (cd docker/apiserver/aiplanner/ai; ./cythonize.py)
     sudo docker build -t aiplanner-apiserver docker/apiserver
@@ -579,8 +582,9 @@ The api server can be distributed as a docker container.
 
 Test it out:
 
-    touch $HOME/aiplanner-data/subscribe.txt # Create an empty AIPlanner email address interest list that will exist outside the container.
-    sudo docker run --rm -ti -p 127.0.0.1:3000:3000 -v $PWD/aiplanner-docker-development.yaml:/aiplanner.yaml -v $HOME/aiplanner-data/subscribe.txt:/home/aiplanner/aiplanner-data/subscribe.txt aiplanner-apiserver
+    cd ~/aiplanner/ai
+    cp aiplanner-docker-development.yaml ~/aiplanner-data/aiplanner.yaml
+    sudo docker run --rm -ti -p 127.0.0.1:3000:3000 -v ~/aiplanner-data:/home/aiplanner/aiplanner-data aiplanner-apiserver
 
 Test the image thoroughly. If everything looks good publish the image
 to a private repo:
@@ -611,30 +615,13 @@ Run the api server in production
     docker logout
     sudo docker ps
     sudo docker stop <containerid>
-    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data/aiplanner.yaml:/aiplanner.yaml <dockerhubid>/aiplanner-apiserver
-
-Setup the backend web server
-----------------------------
-
-The backend web server responds to requests for web related services
-from the website. Currently this only comprises handling email
-subscription requests.
-
-Set up the systemd config:
-
-    cd ~/aiplanner/ai
-    sudo cp aiplanner-webserver.service /etc/systemd/system/
-    sudo systemctl enable aiplanner-webserver
-
-Start the service up:
-
-    sudo systemctl start aiplanner-webserver
+    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data:/home/aiplanner/aiplanner-data <dockerhubid>/aiplanner-apiserver
 
 Setting up cron
 ---------------
 
-Install crontabs to perform a daily refresh of the interest rate yield
-curves, and a weekly refresh of the fair market price and volatility.
+Install crontabs to perform a wekly refresh of the interest rate yield
+curves, fair market price, and volatility.
 
     cd ~/aiplanner/ai
     cat web/aiplanner.crontab
@@ -649,6 +636,8 @@ MAILTO=<you@yourdomain>
 Seting up log rotation
 ----------------------
 
+This is not separately needed if using a docker container.
+
     sudo chmod g-w ~/aiplanner-data/ # Required by logrotate.
 
     cd ~/aiplanner/ai
@@ -656,6 +645,8 @@ Seting up log rotation
 
 Installing an outbound mailer
 -----------------------------
+
+This is not separately needed if using a docker container.
 
 A mail transfer agent is only required to provide system notification
 messages to the administrator. These consist of subscription

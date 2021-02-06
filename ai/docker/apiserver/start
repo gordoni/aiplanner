@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -11,7 +11,9 @@
 # PURPOSE.
 
 AIPLANNER_HOME=${AIPLANNER_HOME:-~aiplanner/aiplanner}
+AIPLANNER_DATA=${AIPLANNER_DATA:-~aiplanner/aiplanner-data}
 AI_DIR=$AIPLANNER_HOME/ai
+API_DIR=$AI_DIR/docker/apiserver
 
 ADMIN_EMAIL=`$AI_DIR/get_config admin_email`
 
@@ -42,8 +44,12 @@ newaliases
 # Need postfix running to relay message to console even if no admin.
 service postfix start >/dev/null 2>&1
 
+if [ ! -e $AIPLANER_DATA/market-data.json ]; then
+    cp $API_DIR/market-data.json $AIPLANNER_DATA
+fi
+
 cron
 
-su -l aiplanner -c "$AI_DIR/docker/apiserver/start.aiplanner $@"
+su -l aiplanner -c "$API_DIR/start.aiplanner $@"
 
 exit 1 # Inform docker of failure.

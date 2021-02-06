@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019-2020 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -93,8 +93,9 @@ def update(root_dir, read_stdin, write_stdout):
             data = loads(f.read())
         except IOError:
             data = {}
-        data['stocks_price'] = level
-        data['stocks_price_date'] = date_str
+        if data.get('stocks_price_date', '2000-01-01') <= date_str:
+            data['stocks_price'] = level
+            data['stocks_price_date'] = date_str
         with open(root_dir + '/market-data.json', 'w') as f:
             print(dumps(data, indent = 4, sort_keys = True), file = f)
 
