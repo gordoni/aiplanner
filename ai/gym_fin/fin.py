@@ -545,6 +545,7 @@ class Fin:
             db.force_calcs()
 
     def _age_uniform(self, low, high):
+        # Currently unused.
         if low == high:
             return low # Allow fractional ages.
         else:
@@ -566,23 +567,19 @@ class Fin:
 
         self._sex2 = self._params.sex2 if random() < self._params.couple_probability else None
 
+        # Favor continuous starting ages and age_add adjustments, as opposed to discrete integer values that would speed up the computation of life table q().
+        # For gamma=6 this improves no tax, no SPIA, IID certainty equivalent distribution by an average of 2 standard errors.
+
         self._age = self._age_start
-        self._age2 = self._age_uniform(self._params.age_start2_low, self._params.age_start2_high)
-        le_add = self._age_uniform(self._params.life_expectancy_additional_low, self._params.life_expectancy_additional_high)
-        le_add2 = self._age_uniform(self._params.life_expectancy_additional2_low, self._params.life_expectancy_additional2_high)
+        self._age2 = uniform(self._params.age_start2_low, self._params.age_start2_high)
+        le_add = uniform(self._params.life_expectancy_additional_low, self._params.life_expectancy_additional_high)
+        le_add2 = uniform(self._params.life_expectancy_additional2_low, self._params.life_expectancy_additional2_high)
         self._age_retirement = uniform(self._params.age_retirement_low, self._params.age_retirement_high)
 
         self._life_table = make_life_table(self._params.life_table, self._params.sex, self._age, death_age = self._death_age,
             le_add = le_add, date_str = self._params.life_table_date, interpolate_q = self._params.life_table_interpolate_q)
         self._life_table2 = make_life_table(self._params.life_table, self._sex2, self._age2, death_age = self._death_age,
             le_add = le_add2, date_str = self._params.life_table_date, interpolate_q = self._params.life_table_interpolate_q) if self._sex2 else None
-
-        # If we are training favor integral age adjustments to speed up the life table's computation of q().
-        if self._params.life_expectancy_additional_low != self._params.life_expectancy_additional_high:
-            self._life_table.age_add = floor(self._life_table.age_add)
-            if self._sex2 is not None:
-                self._life_table2.age_add = floor(self._life_table2.age_add)
-            self._life_table_le_hi.age_add = floor(self._life_table_le_hi.age_add)
 
         # Try and ensure each training episode starts with the same life expectancy (at least if single).
         # This helps ensure set_reward_level() normalizes as consistently as possible. May not be necessary.
