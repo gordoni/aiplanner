@@ -177,6 +177,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                         model_params['observation_space_ignores_range'] = train_model_params['observation_space_ignores_range']
                         model_params['observation_space_clip'] = train_model_params.get('observation_space_clip', False)
                     else:
+                        train_model_params = None
                         num_environments = 1
                         model_params['action_space_unbounded'] = True
                         model_params['observation_space_ignores_range'] = False
@@ -210,7 +211,14 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
                     for object_id in object_ids:
                         object_id_to_evaluator[object_id] = evaluator
-                    evaluator_to_info[evaluator] = {'scenario_num': scenario_num, 'sub_num': sub_num, 'out': out, 'prefix': prefix}
+                    evaluator_to_info[evaluator] = {
+                        'scenario_num': scenario_num,
+                        'sub_num': sub_num,
+                        'out': out,
+                        'prefix': prefix,
+                        'train_model_params': train_model_params,
+                        'eval_model_params': model_params,
+                    }
 
                 except Exception as e:
                     if daemon:
@@ -249,10 +257,18 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
             sub_num = info['sub_num']
             out = info['out']
             prefix = info['prefix']
+            train_model_params = info['train_model_params']
+            eval_model_params = info['eval_model_params']
 
             try:
 
                 res = evaluator.summarize()
+
+                warnings = [] if train_model_params is None else \
+                    compatibility_warnings(train_model_params, eval_model_params, results[scenario_num]['results'][sub_num])
+                warnings += res['warnings']
+                for warning in warnings:
+                    print('WARNING:', warning, file = out)
 
                 if res['couple']:
                     print('Couple certainty equivalent:', res['ce'], '+/-', res['ce_stderr'],
@@ -264,7 +280,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
 
                 final_results = dict(results[scenario_num]['results'][sub_num], **{
                     'error': None,
-                    'warnings': res['warnings'],
+                    'warnings': warnings,
                     'ce': res['ce'],
                     'ce_stderr': None if isnan(res['ce_stderr']) else res['ce_stderr'],
                     'consume10': res['consume10'],
@@ -396,6 +412,7 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, opal, opal_file,
         action, = runner.run([obs])
 
     _, _, _, initial_results = env.step(action)
+    env.reset() # So can peek at initial state to get present values.
 
     initial_results = {
         'error': None,
@@ -549,6 +566,101 @@ def gss(f, a, b):
         f_found = f_b
 
     return found, f_found
+
+def compatibility_warnings(train_params, eval_params, initial_results):
+
+    warnings = []
+
+    eval_couple = eval_params['couple_probability'] > 0
+    train_couple = train_params['couple_probability'] > 0
+    eval_retired = eval_params['age_start'] >= eval_params['age_retirement_high']
+    train_retired = train_params['age_start'] >= train_params['age_retirement_high']
+
+    def couple_val(params, what):
+
+        return params[what] if params['couple_probability'] > 0 else 0
+
+    def gi_payout(params, what):
+
+        payout = 0
+        for gi in loads(params['guaranteed_income']) + loads(params['guaranteed_income_additional']):
+            if gi.get('end', None) is None and gi.get('source_of_funds', 'tax_deferred') in what:
+                if gi.get('owner', 'self') == 'self' or params['couple_probability'] > 0:
+                    try:
+                        payout_low, payout_high = gi['payout']
+                    except TypeError:
+                        payout_high = gi['payout']
+                    payout += payout_high
+        return payout
+
+    def p(params):
+
+        return params['p_tax_free_high'] + params['p_tax_deferred_high'] + params['p_taxable_stocks_high'] + params['p_taxable_real_bonds_high'] + \
+            params['p_taxable_nominal_bonds_high'] + params['p_taxable_iid_bonds_high'] + params['p_taxable_other_high'] + params['p_weighted_high']
+
+    if eval_params['age_start'] < train_params['age_start'] or \
+        eval_params['age_start2_low'] < (train_params['age_start2_low'] if train_couple else train_params['age_start']):
+        warnings.append('Model was not trained for such a young starting age.')
+
+    if eval_params['life_expectancy_additional_low'] < train_params['life_expectancy_additional_low'] or \
+        eval_couple and eval_params['life_expectancy_additional2_low'] < train_params['life_expectancy_additional2_low']:
+        warnings.append('Model was not trained for such poor health.')
+
+    if eval_params['life_expectancy_additional_high'] > train_params['life_expectancy_additional_high'] or \
+        eval_couple and eval_params['life_expectancy_additional2_high'] > train_params['life_expectancy_additional2_high']:
+        warnings.append('Model was not trained for such exceptionally good health.')
+
+    if max(eval_params['age_retirement_low'], eval_params['age_start']) < max(train_params['age_retirement_low'], train_params['age_start']):
+        warnings.append('Model was not trained for such an early retirement age.')
+
+    if not train_retired and max(eval_params['age_retirement_high'], eval_params['age_start']) > max(train_params['age_retirement_high'], train_params['age_start']):
+        warnings.append('Model was not trained for such a late retirement age.')
+
+    if gi_payout(eval_params, ['tax_free']) > gi_payout(train_params, ['tax_free']):
+        warnings.append('Model was not trained for such a large tax free guaranteed income.')
+
+    if gi_payout(eval_params, ['tax_deferred']) > gi_payout(train_params, ['tax_deferred']):
+        warnings.append('Model was not trained for such a large tax deferred guaranteed income.')
+
+    if gi_payout(eval_params, ['taxable']) > gi_payout(train_params, ['taxable']):
+        warnings.append('Model was not trained for such a large taxable guaranteed income.')
+
+    if eval_retired:
+
+        gi_preretirement_eval = 0
+        gi_preretirement_train_high = 0
+
+    else:
+
+        gi_preretirement_eval = (eval_params['income_preretirement_high'] + couple_val(eval_params, 'income_preretirement2_high')) * \
+            (1 - eval_params['consume_preretirement_income_ratio_low']) - eval_params['consume_preretirement']
+        gi_preretirement_train_high = (train_params['income_preretirement_high'] + couple_val(train_params, 'income_preretirement2_high')) * \
+            (1 - train_params['consume_preretirement_income_ratio_low']) - train_params['consume_preretirement']
+
+        if gi_preretirement_eval > gi_preretirement_train_high:
+            warnings.append('Model was not trained for such a high pre-retirement net income.')
+
+    growth_rate = 1.05
+    preretirement_years_eval = max(0, eval_params['age_retirement_high'] - eval_params['age_start'])
+    preretirement_years_train = max(0, train_params['age_retirement_high'] - train_params['age_start'])
+    retirement_net_worth_eval = preretirement_years_eval * gi_preretirement_eval + growth_rate ** preretirement_years_eval * p(eval_params)
+    retirement_net_worth_train_high = preretirement_years_train * gi_preretirement_train_high + growth_rate ** preretirement_years_train * p(train_params)
+
+    if retirement_net_worth_eval > retirement_net_worth_train_high:
+        if eval_retired:
+            warnings.append('Model was not trained for such a large retirement investment portfolio.')
+        else:
+            warnings.append('Model was not trained for such a large expected retirement investment portfolio.')
+
+    pv_income_eval = (0 if eval_retired else initial_results['pv_preretirement_income']) + initial_results['pv_retired_income']
+    try:
+        gi_fraction = pv_income_eval / (pv_income_eval + initial_results['portfolio_wealth'])
+    except ZeroDivisionError:
+        gi_fraction = 0
+    if gi_fraction < train_params['gi_fraction_low']:
+        warnings.append('Model was not trained for such a low guaranteed income to investments ratio.')
+
+    return warnings
 
 def plot(prefix, traces, consume_pdf, estate_pdf, consume_cr, alive):
 
