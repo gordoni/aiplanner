@@ -109,6 +109,10 @@ class Fin:
         return self._life_table2_preretirement
 
     @property
+    def net_gi(self):
+        return self._net_gi
+
+    @property
     def p_wealth(self):
         return self._p_wealth
 
@@ -1596,7 +1600,7 @@ class Fin:
         else:
             assert p_taxable_basis is not None
             self._p_taxable = p_taxable_assets.sum()
-            self._taxes = Taxes(self._params, p_taxable_assets, p_taxable_basis, 0)
+            self._taxes.reset(p_taxable_assets, p_taxable_basis, 0)
         if taxes_due is not None:
             self._taxes_due = 0
 
@@ -1671,7 +1675,7 @@ class Fin:
         else:
             self._years_retired = self._retirement_expectancy_one[self._episode_length]
             self._couple_weight = 1
-        self._years_retired = max(self._years_retired, self._params.time_period) # Prevent divide by zeroes later.
+        self._years_retired = max(self._years_retired, self._params.time_period) # Prevent divide by zeros later.
 
         if growth_rate != 1:
             preretirement_growth = growth_rate ** self._preretirement_years
@@ -1857,7 +1861,7 @@ class Fin:
         reward_to_go_estimate = max(-1e30, reward_to_go_estimate) # Prevent observation of -inf reward estimate during training.
         relative_ce_estimate_individual = self._ce_estimate_individual / self._consume_scale
 
-        # Existence of welfare breaks scale invariance, so allow model to see scale.
+        # Existence of taxes and welfare breaks scale invariance, so allow model to see scale.
         log_ce_estimate_individual: cython.double
         log_ce_estimate_individual = log(max(1, self._ce_estimate_individual))
 
@@ -1868,8 +1872,6 @@ class Fin:
             stocks_price = 1
         if not self._params.observe_stocks_volatility:
             stocks_volatility = 1
-        #real_bonds: RealBonds
-        #real_bonds = self._bonds.real
         if self._params.observe_interest_rate:
             real_interest_rate = self._bonds.real.observe()
         else:

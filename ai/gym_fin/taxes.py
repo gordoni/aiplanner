@@ -235,6 +235,7 @@ class Taxes(object):
     @cython.locals(ac = cython.int, amount = cython.double, new_value = cython.double, ret = cython.double, dividend_yield = cython.double, qualified = cython.double)
     def buy_sell(self, ac, amount, new_value, ret, dividend_yield, qualified):
 
+        assert new_value >= 0
         basis: cython.double
         basis = self.basis.aa[ac]
         if amount > 0:
@@ -243,6 +244,7 @@ class Taxes(object):
             amount = - amount
             value: cython.double
             value = self.value.aa[ac]
+            assert amount <= value
             self.capital_gains += amount * (value - basis) / value
             basis *= (1 - amount / value)
         dividend = new_value * dividend_yield
