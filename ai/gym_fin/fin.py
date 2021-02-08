@@ -117,10 +117,6 @@ class Fin:
         return self._params_dict
 
     @property
-    def preretirement_income_wealth(self):
-        return self._preretirement_income_wealth
-
-    @property
     def preretirement_years(self):
         return self._preretirement_years
 
@@ -131,14 +127,6 @@ class Fin:
     @property
     def p_plus_income(self):
         return self._p_plus_income
-
-    @property
-    def pv_taxes(self):
-        return self._pv_taxes
-
-    @property
-    def retired_income_wealth(self):
-        return self._retired_income_wealth
 
     @property
     def sex2(self):
@@ -1468,6 +1456,10 @@ class Fin:
                 'pv_spias_purchase': real_spias_purchase + nominal_spias_purchase - (real_tax_deferred_spias + nominal_tax_deferred_spias) * self._regular_tax_rate,
                 'real_bonds_duration': real_bonds_duration,
                 'nominal_bonds_duration': nominal_bonds_duration,
+                'pv_preretirement_income': self._preretirement_income_wealth if self._preretirement_years > 0 else None,
+                'pv_retired_income': self._retired_income_wealth,
+                'pv_future_taxes': self._pv_taxes,
+                'portfolio_wealth': self._p_wealth,
             })
 
         self._step()

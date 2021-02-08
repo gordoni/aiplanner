@@ -412,7 +412,6 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, opal, opal_file,
         action, = runner.run([obs])
 
     _, _, _, initial_results = env.step(action)
-    env.reset() # So can peek at initial state to get present values.
 
     initial_results = {
         'error': None,
@@ -431,10 +430,10 @@ def eval_model(eval_model_params, *, daemon, merton, samuelson, opal, opal_file,
         'pv_spias_purchase': initial_results['pv_spias_purchase'],
         'real_bonds_duration': initial_results['real_bonds_duration'],
         'nominal_bonds_duration': initial_results['nominal_bonds_duration'],
-        'pv_preretirement_income': env.preretirement_income_wealth if env.preretirement_years > 0 else None,
-        'pv_retired_income': env.retired_income_wealth,
-        'pv_future_taxes': env.pv_taxes,
-        'portfolio_wealth': env.p_wealth,
+        'pv_preretirement_income': initial_results['pv_preretirement_income'],
+        'pv_retired_income': initial_results['pv_retired_income'],
+        'pv_future_taxes': initial_results['pv_future_taxes'],
+        'portfolio_wealth': initial_results['portfolio_wealth'],
     }
 
     if not daemon:
