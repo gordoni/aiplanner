@@ -11,6 +11,7 @@
 cdef class FinParams:
 
     cdef bint action_space_unbounded
+    cdef bint age_continuous
     cdef double age_end
     cdef double age_retirement_high
     cdef double age_retirement_low
@@ -206,6 +207,7 @@ cdef class FinParams:
     cdef double stocks_standard_error
     cdef double stocks_volatility
     cdef bint tax
+    cdef bint tax_class_aware_asset_allocation
     cdef double tax_fixed
     cdef double tax_inflation_adjust_all
     cdef double tax_state

@@ -537,9 +537,10 @@ class Fin:
             db.force_calcs()
 
     def _age_uniform(self, low, high):
-        # Currently unused.
         if low == high:
             return low # Allow fractional ages.
+        elif self._params.age_continuous:
+            return uniform(low, high)
         else:
             return randint(floor(low), ceil(high)) # SPIA module runs faster with non-fractional ages.
 
@@ -563,7 +564,7 @@ class Fin:
         # For gamma=6 this improves no tax, no SPIA, IID certainty equivalent distribution by an average of 2 standard errors.
 
         self._age = self._age_start
-        self._age2 = uniform(self._params.age_start2_low, self._params.age_start2_high)
+        self._age2 = self._age_uniform(self._params.age_start2_low, self._params.age_start2_high)
         le_add = uniform(self._params.life_expectancy_additional_low, self._params.life_expectancy_additional_high)
         le_add2 = uniform(self._params.life_expectancy_additional2_low, self._params.life_expectancy_additional2_high)
         self._age_retirement = uniform(self._params.age_retirement_low, self._params.age_retirement_high)
@@ -572,6 +573,12 @@ class Fin:
             le_add = le_add, date_str = self._params.life_table_date, interpolate_q = self._params.life_table_interpolate_q)
         self._life_table2 = make_life_table(self._params.life_table, self._sex2, self._age2, death_age = self._death_age,
             le_add = le_add2, date_str = self._params.life_table_date, interpolate_q = self._params.life_table_interpolate_q) if self._sex2 else None
+
+        if not self._params.age_continuous and self._params.life_expectancy_additional_low != self._params.life_expectancy_additional_high:
+           self._life_table.age_add = floor(self._life_table.age_add)
+           if self._sex2 is not None:
+               self._life_table2.age_add = floor(self._life_table2.age_add)
+           self._life_table_le_hi.age_add = floor(self._life_table_le_hi.age_add)
 
         # Try and ensure each training episode starts with the same life expectancy (at least if single).
         # This helps ensure set_reward_level() normalizes as consistently as possible. May not be necessary.
@@ -1234,13 +1241,18 @@ class Fin:
     tax_efficient_order = (STOCKS, IID_BONDS, NOMINAL_BONDS, REAL_BONDS)
     tax_inefficient_order = tuple(reversed(tax_efficient_order))
 
-    @cython.locals(p_tax_free = cython.double, p_tax_deferred = cython.double, p_taxable = cython.double)
-    def _allocate_aa(self, p_tax_free, p_tax_deferred, p_taxable, target_asset_allocation):
+    @cython.locals(p_tax_free = cython.double, p_tax_deferred = cython.double, p_taxable = cython.double,
+        tax_deferred_tax_rate = cython.double, taxable_tax_rate = cython.double)
+    def _allocate_aa(self, p_tax_free, p_tax_deferred, p_taxable, tax_deferred_tax_rate, taxable_tax_rate, target_asset_allocation):
 
         asset_allocation: AssetAllocation
         asset_allocation = target_asset_allocation
 
-        p = p_tax_free + p_tax_deferred + p_taxable
+        if not self._params.tax_class_aware_asset_allocation:
+            tax_deferred_tax_rate = 0
+            taxable_tax_rate = 0
+
+        p = p_tax_free + (1 - tax_deferred_tax_rate) * p_tax_deferred + (1 - taxable_tax_rate) * p_taxable
         tax_free_remaining = p_tax_free
         taxable_remaining = p_taxable
 
@@ -1255,7 +1267,7 @@ class Fin:
         for ac in Fin.tax_efficient_order:
             if asset_allocation.aa[ac] is not None:
                 aa = asset_allocation.aa[ac]
-                alloc = min(p * aa, taxable_remaining)
+                alloc = min(p * aa / (1 - taxable_tax_rate), taxable_remaining)
                 self._taxable_assets.aa[ac] = alloc
                 taxable_remaining = max(taxable_remaining - alloc, 0)
 
@@ -1265,7 +1277,7 @@ class Fin:
                 aa = asset_allocation.aa[ac]
                 tax_free = self._tax_free_assets.aa[ac]
                 taxable = self._taxable_assets.aa[ac]
-                self._tax_deferred_assets.aa[ac] = max(p * aa - tax_free - taxable, 0)
+                self._tax_deferred_assets.aa[ac] = max((p * aa - tax_free - (1 - taxable_tax_rate) * taxable) / (1 - tax_deferred_tax_rate), 0)
 
     def _normalize_aa(self, assets, p_value):
         aa: AssetAllocation
@@ -1316,7 +1328,7 @@ class Fin:
         if nominal_spias_purchase > 0:
             self._add_spias(self._params.nominal_spias_adjust, nominal_tax_free_spias, nominal_tax_deferred_spias, nominal_taxable_spias)
 
-        self._allocate_aa(p_tax_free, p_tax_deferred, p_taxable, asset_allocation)
+        self._allocate_aa(p_tax_free, p_tax_deferred, p_taxable, self._regular_tax_rate, self._capital_gains_tax_rate, asset_allocation)
 
         inflation: cython.double
         inflation = self._bonds.inflation.inflation()
@@ -1736,6 +1748,10 @@ class Fin:
             self._regular_tax_rate = pv_regular_tax / pv_regular_income
         except ZeroDivisionError:
             self._regular_tax_rate = 0
+        try:
+            self._capital_gains_tax_rate = pv_capital_gains_tax / pv_capital_gains
+        except ZeroDivisionError:
+            self._capital_gains_tax_rate = 0
         self._p_wealth = max(0, self._p_wealth_pretax - self._regular_tax_rate * self._wealth_tax_deferred - pv_capital_gains_tax - self._taxes_due)
         self._raw_preretirement_income_wealth -= self._regular_tax_rate * \
             (float(self._pv_preretirement_income[TAX_DEFERRED]) + float(self._pv_preretirement_income[TAXABLE]))

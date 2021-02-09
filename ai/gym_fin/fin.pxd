@@ -41,6 +41,7 @@ cdef class Fin:
     cdef YieldCurve _bonds_constant_inflation
     cdef Bonds _bonds_stepper
     cdef YieldCurve _bonds_zero
+    cdef double _capital_gains_tax_rate
     cdef double _ce_estimate_individual
     cdef double _consume_charitable
     cdef double _consume_fraction_estimate
@@ -159,7 +160,8 @@ cdef class Fin:
 
     cdef object _spend(self, double consume_fraction, double real_spias_fraction, double nominal_spias_fraction)
 
-    cdef object _allocate_aa(self, double p_tax_free, double p_tax_deferred, double p_taxable, AssetAllocation target_asset_allocation)
+    cdef object _allocate_aa(self, double p_tax_free, double p_tax_deferred, double p_taxable,
+       double tax_deferred_tax_rate, double taxable_tax_rate, AssetAllocation target_asset_allocation)
 
     cpdef object step(self, object action)
         # cpdef as needs to be accessible to cPython.

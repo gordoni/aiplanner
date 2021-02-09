@@ -151,6 +151,10 @@ class ModelParams(object):
         self._param('age-start2', (67, 67), 67) # Age of second individual.
         self._param('age-end', 151) # Model done when individuals reach this age.
             # Life table ends at 121. Specifying a larger value ensures no truncation of the life table occurs when life_expectancy_additional is specified.
+        self._boolean_flag('age-continuous', True) # Whether age ranges and adjustments are continuous or limited to discrete values.
+            # Discrete values would speed up the computation of life table q()'s and allow vital stats to be cached.
+            # Unfortunately discrete values may also reduce result performance.
+            # For gamma=6 discrete values reduced the no tax, no SPIA, IID certainty equivalent distribution by an average of 2 standard errors.
         self._param('age-retirement', (67, 67), 67) # Assess and optimize consumption from when first individual reaches this age.
         self._param('consume-additional', 0.6)
             # When a second individual is present we consume this fraction more than a single individual for the same per individual utility.
@@ -264,6 +268,8 @@ class ModelParams(object):
             # Median property taxes: $3.3k - https://www.mortgagecalculator.org/helpful-advice/property-taxes.php
             # Households that own rather than rent: 63% - https://www.pewresearch.org/fact-tank/2017/07/19/more-u-s-households-are-renting-than-at-any-point-in-50-years/
         self._param('tax-fixed', 0) # Property or any other fixed tax amounts not included in tax_state.
+        self._boolean_flag('tax-class-aware-asset-allocation', True)
+            # Whether to consider taxability of tax classes in deciding their individual asset allocations.
 
         self._boolean_flag('static-bonds', False)
             # Whether to model real bonds and inflation and thus nominal bonds and SPIAs as static (that is using a yield curve that does not vary over time).

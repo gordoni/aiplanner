@@ -26,6 +26,7 @@ class FinParams:
     def __init__(self, params):
 
         self.action_space_unbounded = params['action_space_unbounded']
+        self.age_continuous = params['age_continuous']
         self.age_end = params['age_end']
         self.age_retirement_high = params['age_retirement_high']
         self.age_retirement_low = params['age_retirement_low']
@@ -221,6 +222,7 @@ class FinParams:
         self.stocks_standard_error = params['stocks_standard_error']
         self.stocks_volatility = params['stocks_volatility']
         self.tax = params['tax']
+        self.tax_class_aware_asset_allocation = params['tax_class_aware_asset_allocation']
         self.tax_fixed = params['tax_fixed']
         self.tax_inflation_adjust_all = params['tax_inflation_adjust_all']
         self.tax_state = params['tax_state']
