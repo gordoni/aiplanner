@@ -151,10 +151,9 @@ class ModelParams(object):
         self._param('age-start2', (67, 67), 67) # Age of second individual.
         self._param('age-end', 151) # Model done when individuals reach this age.
             # Life table ends at 121. Specifying a larger value ensures no truncation of the life table occurs when life_expectancy_additional is specified.
-        self._boolean_flag('age-continuous', True) # Whether age ranges and adjustments are continuous or limited to discrete values.
-            # Discrete values would speed up the computation of life table q()'s and allow vital stats to be cached.
-            # Unfortunately discrete values may also reduce result performance.
-            # For gamma=6 discrete values reduced the no tax, no SPIA, IID certainty equivalent distribution by an average of 2 standard errors.
+        self._boolean_flag('age-continuous', False) # Whether the effective age after life expectancy adjustment is continuous or limited to discrete values.
+            # Discrete values speed up the computation of life table q()'s and allow vital stats to be cached.
+            # For gamma=6 discrete values also increase the no tax, no SPIA, IID certainty equivalent distribution by an average of 5 standard errors.
         self._param('age-retirement', (67, 67), 67) # Assess and optimize consumption from when first individual reaches this age.
         self._param('consume-additional', 0.6)
             # When a second individual is present we consume this fraction more than a single individual for the same per individual utility.
