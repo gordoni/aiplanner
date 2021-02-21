@@ -6,7 +6,6 @@ fin.c
 fin_params.c
 ou_process.c
 policies.c
-returns.c
 returns_equity.c
 taxes.c
 utility.c

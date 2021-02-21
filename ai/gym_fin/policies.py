@@ -345,7 +345,7 @@ class Policy:
                 },
             }
 
-            assert self.env.alive_single[self.env.episode_length] is not None or self.env.age == self.env.age2
+            assert self.env.alive_single[self.env.episode_length] != -1 or self.env.age == self.env.age2
             if self.env.age < self.env.age_retirement:
                 consume = 0
             else:

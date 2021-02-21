@@ -289,6 +289,8 @@ class Evaluator(object):
 
         else:
 
+            # Seed used here is not compatible with seed used when Ray workers are employed.
+
             seed(self.eval_seed)
             np.random.seed(self.eval_seed)
 

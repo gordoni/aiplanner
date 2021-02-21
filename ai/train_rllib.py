@@ -11,6 +11,7 @@
 # PURPOSE.
 
 from glob import glob
+from math import ceil
 from os import getpriority, mkdir, PRIO_PROCESS, setpriority
 from os.path import abspath
 from shutil import rmtree
@@ -157,8 +158,11 @@ def train(training_model_params, *, address, num_workers, num_environments, trai
                 # i.e. the PPO default 0.3 seems reasonable.
             'vf_share_layers': False,
                 # PPO default outperforms vf_share_layers=True at least for the iid retired model with gamma=6 without SPIAs.
-            'batch_mode': 'complete_episodes', # Unknown whether helps, but probably does.
-            #'shuffle_sequences': False,
+            'batch_mode': 'complete_episodes', # May improves results over the default 'truncate_episodes' for gamma=6 IID no SPIAs no tax.
+                # The off-policy data from num_environments of up to the episode length doesn't seem to harm.
+            'rollout_fragment_length': ceil(train_batch_size / ((1 if num_workers == 0 else num_workers) * num_environments)),
+                # If go with the default of 200 with 'complete_episodes', will aggregate batches of num_workers x num_environments x 200
+                # which might not be a multiple of train_batch_size, and so will get fewer batches in train_num_timesteps.
         },
 
         'PPO.baselines': { # Compatible with AIPlanner's OpenAI baselines ppo1 implementation.
@@ -308,7 +312,6 @@ def main():
     parser.add_argument('--address')
     parser.add_argument('--num-workers', type=int, default=1) # Number of rollout worker processes.
         # Default appropriate for a short elapsed time.
-        # Set to 0, or possibly 1, for deterministic training.
     parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for per worker. Speeds up torch/tensorflow.
     parser.add_argument('--train-anneal-num-timesteps', type=int, default=0) # Additional annealing timesteps.
     parser.add_argument('--train-anneal-optimizer-factor', type=float, default=0.1)

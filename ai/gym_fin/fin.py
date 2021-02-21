@@ -552,9 +552,6 @@ class Fin:
 
         self._sex2 = self._params.sex2 if random() < self._params.couple_probability else None
 
-        # Favor continuous starting ages and age_add adjustments, as opposed to discrete integer values that would speed up the computation of life table q().
-        # For gamma=6 this improves no tax, no SPIA, IID certainty equivalent distribution by an average of 2 standard errors.
-
         self._age = self._age_start
         self._age2 = uniform(self._params.age_start2_low, self._params.age_start2_high)
         le_add = uniform(self._params.life_expectancy_additional_low, self._params.life_expectancy_additional_high)
