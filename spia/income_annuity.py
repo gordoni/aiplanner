@@ -257,8 +257,8 @@ class IncomeAnnuity:
             if remaining <= 0:
                 q_y += 1
                 q1: cython.double; q2: cython.double
-                q1 = self.life_table1.q(age = current_age1 + q_y, year = start + q_y, contract_age = q_y) if self.life_table1 is not None else 1
-                q2 = self.life_table2.q(age = current_age2 + q_y, year = start + q_y, contract_age = q_y) if self.life_table2 is not None else 1
+                q1 = self.life_table1.q(current_age1 + q_y, year = start + q_y, contract_age = q_y) if self.life_table1 is not None else 1
+                q2 = self.life_table2.q(current_age2 + q_y, year = start + q_y, contract_age = q_y) if self.life_table2 is not None else 1
                 if q1 == q2 == 1:
                     break
                 remaining = self.frequency

@@ -536,6 +536,14 @@ class Fin:
         for db in self._defined_benefits.values():
             db.force_calcs()
 
+    def _age_uniform(self, low, high):
+        # This routine is here to work around an apparent Cython 0.29.14 bug.
+        # Without the call to randint, after several million timesteps the cPython and Cython checkpoints differ ever so slightly,
+        # and the final gamma=6, no tax, no SPIA, IID certainty equivalent distribution with a set of 10 seeds drops by an average of 5 standard errors.
+        randint(floor(low), ceil(high))
+        ret = uniform(low, high)
+        return ret
+
     def log_uniform(self, low, high):
         if low == high:
             return low # Handles low == high == 0.
@@ -553,7 +561,7 @@ class Fin:
         self._sex2 = self._params.sex2 if random() < self._params.couple_probability else None
 
         self._age = self._age_start
-        self._age2 = uniform(self._params.age_start2_low, self._params.age_start2_high)
+        self._age2 = self._age_uniform(self._params.age_start2_low, self._params.age_start2_high)
         le_add = uniform(self._params.life_expectancy_additional_low, self._params.life_expectancy_additional_high)
         le_add2 = uniform(self._params.life_expectancy_additional2_low, self._params.life_expectancy_additional2_high)
         self._age_retirement = uniform(self._params.age_retirement_low, self._params.age_retirement_high)
