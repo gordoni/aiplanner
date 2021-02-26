@@ -158,11 +158,12 @@ def train(training_model_params, *, address, num_workers, num_environments, trai
                 # i.e. the PPO default 0.3 seems reasonable.
             'vf_share_layers': False,
                 # PPO default outperforms vf_share_layers=True at least for the iid retired model with gamma=6 without SPIAs.
-            'batch_mode': 'complete_episodes', # May improves results over the default 'truncate_episodes' for gamma=6 IID no SPIAs no tax.
-                # The off-policy data from num_environments of up to the episode length doesn't seem to harm.
-            'rollout_fragment_length': ceil(train_batch_size / ((1 if num_workers == 0 else num_workers) * num_environments)),
+            'batch_mode': 'complete_episodes', # May slightly improve the results over the default 'truncate_episodes' for gamma=6 IID no SPIAs no tax.
+            'rollout_fragment_length': ceil(train_batch_size / ((1 if num_workers == 0 else num_workers) * num_environments * 20)),
                 # If go with the default of 200 with 'complete_episodes', will aggregate batches of num_workers x num_environments x 200
                 # which might not be a multiple of train_batch_size, and so will get fewer batches in train_num_timesteps.
+                # A large rollout_fragment_length may increase the amount of off-policy data collected for batch_mode complete_episodes.
+                # A rollout_fragment_length of 50 is about as small as can be before CPU performance is negatively impacted (measured with 100 environments).
         },
 
         'PPO.baselines': { # Compatible with AIPlanner's OpenAI baselines ppo1 implementation.
