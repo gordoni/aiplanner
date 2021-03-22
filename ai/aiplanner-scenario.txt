@@ -40,10 +40,11 @@ master_p_taxable_other = 0
 master_tax = True
 master_tax_table_year = '2021'
 
-master_bonds_date = '2019-12-31'
-master_bonds_date_start = '2005-01-01'
+master_bonds_date = '2020-12-31'
+master_bonds_date_start = '2018-01-01'
     # Date range for the typical yield curve, not the initial yield curve.
     # Initial yield curve is determined by the initial short rate, the typical yield curve, and the Hull-White parameters.
+    # Assumes we have entered a new era of lower rates.
 master_corporate_nominal_spread = 0.013 # Average of BofA Merrill Corporate A option adjusted spread ( https://fred.stlouisfed.org/series/BAMLC0A3CA ) 1997-2019.
     # Corporate bonds are used to price nominal SPIAs.
 

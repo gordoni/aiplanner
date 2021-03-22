@@ -337,7 +337,7 @@ class RealBonds(Bonds):
     def __init__(self, *, a = 0.14, sigma = 0.011, yield_curve, r0_type = 'current', r0 = -1, standard_error = 0, static_bonds = False, time_period = 1):
         '''Chosen value of sigma, 0.011, intended to produce a short term real
         yield volatility of 0.9-1.0%. The measured value over
-        2005-2019 was 0.99%. Obtained value is 0.99%.
+        2005-2019 was 0.99%. Obtained value is 1.01%.
 
         Chosen value of a, 0.14, intended to produce a long term (15
         year) real return standard deviation of about 6.5%. The observed
@@ -452,33 +452,29 @@ class YieldCurveSum:
 class Inflation(Bonds):
 
     @cython.locals(real_bonds = RealBonds)
-    def __init__(self, real_bonds, *, inflation_a = 0.14, inflation_sigma = 0.015, bond_a = 0.14, bond_sigma = 0.015, model_bond_volatility = True,
+    def __init__(self, real_bonds, *, inflation_a = 0.12, inflation_sigma = 0.013, bond_a = 0.12, bond_sigma = 0.013, model_bond_volatility = True,
         nominal_yield_curve, inflation_risk_premium = 0, real_liquidity_premium = 0, r0_type = 'current', r0 = -1, standard_error = 0, static_bonds = False,
         time_period = 1):
         '''Keeping inflation parameters the same as the bond parameters
         simplifies the model.
 
-        Chosen value for inflation_a, 0.14, the same as in the real case.
+        Chosen value of inflation_sigma, 0.013, produces a reasonable
+        estimate of the the short term inflation yield volatility (as
+        used to provide nominal bond volatility). Measured value over
+        2005-2019 was 1.23%, compared to a obtained value of 1.18%.
 
-        Chosen value of inflation_sigma, 0.015, produces a reasonable
+        Chosen value of inflation_a, 0.12, produces a reasonable
         estimate of the long term (15 year) standard deviation of the
-        inflation rate (as modeled to provide inflation
-        volatility). Measured value was 0.55%. Obtained value was
-        1.20%. This seems quite reasonable given inflation has
-        recently been constrained. Additionally. the measured short
-        term inflation yield volatility is 1.23%, compared to a
-        obtained value of 1.34%.
-
-        Chosen value of bond_a, 0.14, the same as in the real case.
-
-        Chosen value of bond_sigma, 0.015, intended to produce a long
-        term (15 year) nominal bond real return standard deviation of
-        about 11%. The measured value over 2005-2019 was 14.4% (when
-        rates were volatile). Obtained value is 11.0%. As in the real
-        case this is less than the observed value, and is inline with
-        the 10.9% standard deviation for long term government bonds
-        reported in the Credit Suisse Global Investment Returns
-        Yearbook 2019.
+        inflation rate. Measured value over 2005-2019 was
+        0.55%. Obtained value was 1.28%. This seems quite reasonable
+        given inflation has recently been constrained. Additionally,
+        chosen value intended to produce a long term (15 year) nominal
+        bond real return standard deviation of about 11%. The measured
+        value over 2005-2019 was 14.4% (when rates were
+        volatile). Obtained value is 10.7%. As in the real case this
+        is less than the observed value, and is inline with the 10.9%
+        standard deviation for long term government bonds reported in
+        the Credit Suisse Global Investment Returns Yearbook 2019.
 
         model_bond_volatility specifies whether the process should be
         such as to provide a reasonable model for the long term
@@ -514,16 +510,14 @@ class Inflation(Bonds):
 
         self._sir_cache = {}
 
+        if not self.model_bond_volatility:
+            # Inflation model OU Process tracks modeled nominal bond standard deviation OU Process.
+            self.inflation_oup = make_ou_process(time_period, self.inflation_a, self.inflation_sigma)
+
         super().__init__(a = a, sigma = sigma, yield_curve = deflated_yield_curve, r0_type = r0_type, r0 = r0, standard_error = standard_error,
             static_bonds = static_bonds, time_period = time_period)
 
         self.interest_rate = 'inflation'
-
-        if not self.model_bond_volatility:
-            # Inflation model OU Process tracks modeled nominal bond standard deviation OU Process.
-            self.inflation_oup = make_ou_process(self.time_period, self.inflation_a, self.inflation_sigma)
-        else:
-            self.inflation_oup = self.oup
 
         self.reset()
 
@@ -534,6 +528,8 @@ class Inflation(Bonds):
 
         if not self.model_bond_volatility:
             self.inflation_oup.reset(mu = self.sir_init, x = self.sir0, norm = self.oup.norm)
+        else:
+            self.inflation_oup = self.oup
 
     @cython.locals(t = cython.double, a = cython.double, sigma = cython.double)
     def _sir_no_adjust(self, t, a, sigma):
@@ -654,6 +650,7 @@ inflation_rate = {
     2017: 0.021,
     2018: 0.019,
     2019: 0.023,
+    2020: 0.014,
 }
 
 @cython.cclass
@@ -814,7 +811,7 @@ class BondsSet:
     def __init__(self, need_real = True, need_nominal = True, need_inflation = True, need_corporate = True,
         fixed_real_bonds_rate = -1, fixed_nominal_bonds_rate = -1,
         real_bonds_adjust = 0, inflation_adjust = 0, nominal_bonds_adjust = 0, corporate_nominal_spread = 0,
-        static_bonds = False, date_str = '2019-12-31', date_str_low = '2005-01-01',
+        static_bonds = False, date_str = '2020-12-31', date_str_low = '2018-01-01',
         real_r0_type = 'current', inflation_r0_type = 'current', real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
         '''Create a BondsSet.
 

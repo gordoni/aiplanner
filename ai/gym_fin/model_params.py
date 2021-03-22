@@ -280,8 +280,8 @@ class ModelParams(object):
         self._param('nominal-bonds-adjust', 0.0) # Rate adjustment to apply across the nominal bond yield curve.
         self._param('corporate-nominal-spread', 0.013) # Rate adjustment to apply across the nominal bond yield curve to generate corporate yields.
             # Average of BofA Merrill Corporate A option adjusted spread ( https://fred.stlouisfed.org/series/BAMLC0A3CA ) 1997-2019: 1.32%
-        self._param('bonds-date', '2019-12-31', tp = string_type) # Date to use for typical bond yield curve if not fixed.
-        self._param('bonds-date-start', '2005-01-01', tp = string_type)
+        self._param('bonds-date', '2020-12-31', tp = string_type) # Date to use for typical bond yield curve if not fixed.
+        self._param('bonds-date-start', '2018-01-01', tp = string_type)
              # None or optional date to use for start of date range for average typical bond yield curve if not fixed.
 
         self._boolean_flag('real-spias', False) # Enable purchase of real SPIAs.
