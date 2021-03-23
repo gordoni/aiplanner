@@ -1198,7 +1198,7 @@ class Fin:
 
         p_taxable -= real_taxable_spias + nominal_taxable_spias
         if p_taxable < 0:
-            assert p_taxable > -1e-15 * self._p_plus_income
+            assert p_taxable > -1e-12 * self.p_plus_income
             p_taxable = 0
 
         return p_tax_free, p_tax_deferred, p_taxable, p_negative, regular_income, social_security, consume, retirement_contribution, \
