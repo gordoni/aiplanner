@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019-2020 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -16,6 +16,7 @@ from json import dumps, loads
 from math import isnan
 from os import remove
 from os.path import expanduser
+from re import sub
 from sys import stdin
 from tempfile import NamedTemporaryFile
 from urllib.request import urlopen
@@ -58,9 +59,11 @@ def update(root_dir, read_stdin, write_stdout):
                 break
         elif seen_estimates:
             try:
-                q_date = datetime.strptime(row[0].split()[0], '%m/%d/%Y')
-            except AttributeError:
+                q_date = sub(r'^(\d+)[^\d]+(\d+)[^\d]+(\d+).*$', r'\1/\2/\3', row[0])
+            except TypeError:
                 q_date = row[0]
+            else:
+                q_date = datetime.strptime(q_date, '%m/%d/%Y')
             q_date_str = q_date.date().isoformat()
             q_dates.insert(0, q_date_str)
             q_earn.insert(0, row[3])
