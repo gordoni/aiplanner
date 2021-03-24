@@ -311,7 +311,7 @@ def train(training_model_params, *, address, num_workers, num_environments, trai
 def main():
     parser = make_parser(lambda: arg_parser(evaluate=False))
     parser.add_argument('--address')
-    parser.add_argument('--num-workers', type=int, default=1) # Number of rollout worker processes.
+    parser.add_argument('--num-workers', type=int, default=4) # Number of rollout worker processes.
         # Default appropriate for a short elapsed time.
     parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for per worker. Speeds up torch/tensorflow.
     parser.add_argument('--train-anneal-num-timesteps', type=int, default=0) # Additional annealing timesteps.

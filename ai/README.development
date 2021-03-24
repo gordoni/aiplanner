@@ -156,11 +156,11 @@ Create a cluster config file:
     [edit] cluster.yaml
         # Alter available_node_types:default_node parameters
         # node_config:InstanceType and resources:CPU if desired.
-        # For maximum speed specify CPU:<num_cores>.
-        #     c5.18xlarge has 36 cores, but setting CPU:71 is
+        # For maximum throughput specify CPU:<num_cores>.
+        #     c5.18xlarge has 36 cores, but setting CPU:176 is
         #     probably better for training as each core has 2 threads
         #     and typically use 2 instances to train 7 models with 10
-        #     seeds each and with 1 workers and 1 driver in parallel.
+        #     seeds each and with 4 workers and 1 driver in parallel.
         # Other changes as desired.
 
 Rather than have separate cluster head and worker nodes, we are going
@@ -420,7 +420,7 @@ Unless you plan on serving pre-trained neural network models you will
 need to train the neural network models.
 
 Training the neural network models (will take arond 20 hours on about
-2 InstanceType c5.18xlarge instances with resources CPU: 71; edit
+2 InstanceType c5.18xlarge instances with resources CPU: 176; edit
 cluster.yaml accordingly; many smallish instances may be preferable to
 a few very large instances as Amazon sometimes seems more likely to
 reclaim very large spot instances slowing the training process):
