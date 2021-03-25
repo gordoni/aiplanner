@@ -47,7 +47,7 @@ start_ray_if_needed() {
 
         local ARGS
         if [ $RAY_AUTOSCALER = True ]; then
-            ARGS="--autoscaling-config=$RAY_CLUSTER"
+            ARGS="--include-dashboard=False --autoscaling-config=$RAY_CLUSTER"
             if [ $RAY_AUTOSCALER_USE_HEAD != True ]; then
                 ARGS="$ARGS --num-cpus=0 --num-gpus=0"
             fi

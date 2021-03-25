@@ -18,8 +18,8 @@ For the web server which includes the api server in a docker
 container, with num_infer_jobs=0 set, a 2 core 4 thread 8G RAM
 c5.xlarge instance can be used.
 
-Training the neural network requires running about 2 c5.18xlarge spot
-instances for around 20 hours. The us-east-2 region currently appears
+Training the neural network requires running about 2 c5.24xlarge spot
+instances for around 24 hours. The us-east-2 region currently appears
 the cheapest region for performing this training work.
 
 For development an m5.large, or even a t3.small instance, can often be
@@ -157,10 +157,11 @@ Create a cluster config file:
         # Alter available_node_types:default_node parameters
         # node_config:InstanceType and resources:CPU if desired.
         # For maximum throughput specify CPU:<num_cores>.
-        #     c5.18xlarge has 36 cores, but setting CPU:176 is
+        #     c5.24xlarge has 48 cores, but setting CPU:71 is
         #     probably better for training as each core has 2 threads
         #     and typically use 2 instances to train 7 models with 10
-        #     seeds each and with 4 workers and 1 driver in parallel.
+        #     seeds each and with 4 workers using 1/4 of a CPU and 1
+        #     driver using 1 CPU in parallel.
         # Other changes as desired.
 
 Rather than have separate cluster head and worker nodes, we are going
@@ -419,12 +420,14 @@ Training the generic neural network models
 Unless you plan on serving pre-trained neural network models you will
 need to train the neural network models.
 
-Training the neural network models (will take arond 20 hours on about
-2 InstanceType c5.18xlarge instances with resources CPU: 176; edit
+Training the neural network models (will take arond 24 hours on
+2 InstanceType c5.24xlarge instances with resources CPU: 71; edit
 cluster.yaml accordingly; many smallish instances may be preferable to
 a few very large instances as Amazon sometimes seems more likely to
 reclaim very large spot instances slowing the training process):
 
+    # On a 16G RAM instance or greater e.g. r5.large
+    # Need 25G free disk space to store the trained models
     cd ~/aiplanner/ai/api
     nohup ./train > /tmp/train.out &
 

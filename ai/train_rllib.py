@@ -54,7 +54,7 @@ def train(training_model_params, *, address, num_workers, num_environments, trai
         pass
     dump_params_file(model_dir + '/params.txt', training_model_params)
 
-    ray.init(address=address)
+    ray.init(address=address, include_dashboard = False)
     #ray.init(object_store_memory=int(2e9))
 
     algorithm = training_model_params['algorithm']
@@ -159,11 +159,13 @@ def train(training_model_params, *, address, num_workers, num_environments, trai
             'vf_share_layers': False,
                 # PPO default outperforms vf_share_layers=True at least for the iid retired model with gamma=6 without SPIAs.
             'batch_mode': 'complete_episodes', # May slightly improve the results over the default 'truncate_episodes' for gamma=6 IID no SPIAs no tax.
-            'rollout_fragment_length': ceil(train_batch_size / ((1 if num_workers == 0 else num_workers) * num_environments * 20)),
+            'rollout_fragment_length': ceil(train_batch_size / ((1 if num_workers == 0 else num_workers) * num_environments * 10)),
                 # If go with the default of 200 with 'complete_episodes', will aggregate batches of num_workers x num_environments x 200
                 # which might not be a multiple of train_batch_size, and so will get fewer batches in train_num_timesteps.
                 # A large rollout_fragment_length may increase the amount of off-policy data collected for batch_mode complete_episodes.
                 # A rollout_fragment_length of 50 is about as small as can be before CPU performance is negatively impacted (measured with 100 environments).
+            'num_cpus_per_worker': 0.25,
+                # With Cython and num_workers defaulting to 4 each worker takes up about 1/4 of the CPU that the driver consumes.
         },
 
         'PPO.baselines': { # Compatible with AIPlanner's OpenAI baselines ppo1 implementation.
@@ -268,10 +270,6 @@ def train(training_model_params, *, address, num_workers, num_environments, trai
             #'num_cpus_for_driver': 1,
             'num_workers': num_workers,
             'num_envs_per_worker': num_environments,
-            'rollout_fragment_length': 1, # Default is 200.
-                # Sample batches are of size rollout_fragment_length * num_envs_per_worker * num_workers.
-                # With the default of 200, and complete_episodes with 100 environments per worker and 4 workers,
-                # sample batches would be up to 80000 timesteps larger than specified.
             #'num_cpus_per_worker': 1,
             #'num_gpus_per_worker': 0,
 

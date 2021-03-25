@@ -29,7 +29,7 @@ import csv
 from datetime import datetime
 from json import dumps, loads
 import math
-from os import makedirs
+from os import makedirs, replace
 from os.path import expanduser, isdir, join, normpath
 import statistics
 
@@ -350,9 +350,12 @@ class YieldCurve:
             cache_data = {'version': 1, 'yield_curve_date': self.yield_curve_date, 'years': interpolate_years, 'spots': interpolate_spots}
             json_str = dumps(cache_data)
             try:
-                open(cache_path, 'w').write(json_str)
+                with open(cache_path + '.tmp', 'w') as f:
+                    f.write(json_str)
             except IOError:
                 pass
+            else:
+                replace(cache_path + '.tmp', cache_path)
 
         # Construct a master interpolator.
         self.monotone_convex = MonotoneConvex(interpolate_years, interpolate_spots, min_long_term_forward = 15, force_forwards_non_negative = False)

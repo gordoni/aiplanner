@@ -43,7 +43,7 @@ class TFRunner:
             from ray.rllib.evaluation.worker_set import WorkerSet
 
             if not ray.is_initialized():
-                ray.init(address = address)
+                ray.init(address = address, include_dashboard = False)
 
             weights = []
             first = True

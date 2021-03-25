@@ -78,7 +78,7 @@ worker_nodes:
     BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
-              VolumeSize: 15 # Default of 8G runs out of space installing tensorflow.
+              VolumeSize: 25 # Need space to save checkpoints.
 
     # Run workers on spot by default. Comment this out to use on-demand.
     InstanceMarketOptions:
@@ -95,9 +95,9 @@ worker_nodes:
 available_node_types:
     default_node:
         node_config:
-            InstanceType: c5.18xlarge
+            InstanceType: c5.24xlarge
         resources:
-            CPU: 176
+            CPU: 71
             # With multi-threaded cpus use "CPU: <num_cores>" for maximum speed.
             # We have to manually specify the resources becasue we don't generate a separate head node yaml file.
         max_workers: 10
