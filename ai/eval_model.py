@@ -624,18 +624,17 @@ def compatibility_warnings(train_params, eval_params, initial_results):
     if gi_payout(eval_params, ['taxable']) > gi_payout(train_params, ['taxable']):
         warnings.append('Model was not trained for such a large taxable guaranteed income.')
 
+    gi_preretirement_train_high = (train_params['income_preretirement_high'] + couple_val(train_params, 'income_preretirement2_high')) * \
+        (1 - train_params['consume_preretirement_income_ratio_low']) - train_params['consume_preretirement']
+
     if eval_retired:
 
         gi_preretirement_eval = 0
-        gi_preretirement_train_high = 0
 
     else:
 
         gi_preretirement_eval = (eval_params['income_preretirement_high'] + couple_val(eval_params, 'income_preretirement2_high')) * \
             (1 - eval_params['consume_preretirement_income_ratio_low']) - eval_params['consume_preretirement']
-        gi_preretirement_train_high = (train_params['income_preretirement_high'] + couple_val(train_params, 'income_preretirement2_high')) * \
-            (1 - train_params['consume_preretirement_income_ratio_low']) - train_params['consume_preretirement']
-
         if gi_preretirement_eval > gi_preretirement_train_high:
             warnings.append('Model was not trained for such a high pre-retirement net income.')
 
