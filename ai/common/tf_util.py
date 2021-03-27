@@ -50,10 +50,12 @@ class TFRunner:
             for train_dir in train_dirs:
 
                 checkpoints = glob(train_dir + '**/checkpoint_*', recursive = True)
-                if not checkpoint_name:
+                if checkpoint_name:
+                    checkpoint_nm = checkpoint_name
+                else:
                     assert checkpoints, 'No Rllib checkpoints found: ' + train_dir
-                    checkpoint_name = 'checkpoint_' + str(max(int(checkpoint.split('_')[-1]) for checkpoint in checkpoints))
-                checkpoint_dir, = glob(train_dir + '**/' + checkpoint_name, recursive = True)
+                    checkpoint_nm = 'checkpoint_' + str(max(int(checkpoint.split('_')[-1]) for checkpoint in checkpoints))
+                checkpoint_dir, = glob(train_dir + '**/' + checkpoint_nm, recursive = True)
                 checkpoint, = glob(checkpoint_dir + '/checkpoint-*[0-9]')
 
                 if first:
