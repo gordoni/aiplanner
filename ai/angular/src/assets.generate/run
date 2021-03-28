@@ -13,7 +13,7 @@ source $AI_DIR/setenv
 cp risk_aversion_pdf.svg ../assets/
 
 $AI_DIR/eval_model.py --models-dir=$AIPLANNER_DATA/models -c $AI_DIR/aiplanner-scenario.txt -c $AI_DIR/aiplanner-scenario-couple-eval.txt --master-gamma=6 \
-    --master-age-start=60 --master-age-start2=60 --master-consume-preretirement=1e5 --master-p-weighted=1.3e6 --ensemble
+    --master-age-start=67 --master-age-start2=67 --master-p-weighted=2e6 --train-seeds=10 --ensemble
     # Values chosen to produce pretty graphs.
 
 RESULTS_DIR=results/seed_all

@@ -403,16 +403,14 @@ class Fin:
             real_bonds_adjust = self._params.real_bonds_adjust, inflation_adjust = self._params.inflation_adjust,
             nominal_bonds_adjust = self._params.nominal_bonds_adjust, corporate_nominal_spread = self._params.corporate_nominal_spread,
             static_bonds = self._params.static_bonds, date_str = self._params.bonds_date, date_str_low = self._params.bonds_date_start,
-            real_r0_type = self._params.real_short_rate_type, inflation_r0_type = self._params.inflation_short_rate_type)
-        self._bonds.update(
-            fixed_real_bonds_rate = self._params.fixed_real_bonds_rate, fixed_nominal_bonds_rate = self._params.fixed_nominal_bonds_rate,
+            real_r0_type = self._params.real_short_rate_type, inflation_r0_type = self._params.inflation_short_rate_type,
             real_short_rate = self._params.real_short_rate_value, inflation_short_rate = self._params.inflation_short_rate_value,
             real_standard_error = self._params.bonds_standard_error if self._params.returns_standard_error else 0,
             inflation_standard_error = self._params.inflation_standard_error if self._params.returns_standard_error else 0,
             time_period = self._params.time_period)
         self._bonds_stepper = self._bonds.nominal
         self._bonds_zero = make_yield_curve('fixed', self._params.life_table_date)
-        self._bonds_constant_inflation = make_yield_curve('fixed', self._params.life_table_date, adjust = self._bonds.inflation.discount_rate(100) - 1)
+        self._bonds_constant_inflation = make_yield_curve('fixed', self._params.life_table_date, adjust = self._bonds.inflation.inflation_long_run_expectation())
 
         if self._params.iid_bonds:
             if self._params.iid_bonds_type == 'real':

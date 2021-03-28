@@ -12,6 +12,8 @@ from math import exp, log, sqrt
 from random import normalvariate, seed
 from statistics import mean, stdev
 
+import numpy as np
+
 import cython
 
 from spia import YieldCurve
@@ -128,6 +130,7 @@ class Bonds(BondsBase):
         elif self.r0_type == 'sample':
             self.sir0 = normalvariate(self.sir_init, self.sigma / sqrt(2 * self.a))
         elif self.r0_type == 'value':
+            assert self.r0 != -1
             self.sir0 = self.r0
         else:
             assert False, 'Invalid short rate type.'
@@ -337,7 +340,7 @@ class RealBonds(Bonds):
     def __init__(self, *, a = 0.14, sigma = 0.011, yield_curve, r0_type = 'current', r0 = -1, standard_error = 0, static_bonds = False, time_period = 1):
         '''Chosen value of sigma, 0.011, intended to produce a short term real
         yield volatility of 0.9-1.0%. The measured value over
-        2005-2019 was 0.99%. Obtained value is 1.01%.
+        2005-2019 was 0.99%. Obtained value is 1.00%.
 
         Chosen value of a, 0.14, intended to produce a long term (15
         year) real return standard deviation of about 6.5%. The observed
@@ -345,14 +348,14 @@ class RealBonds(Bonds):
         real nominal bond observed standard deviation is 14.9% whereas
         according to the Credit Suisse Yearbook 10.9% is more typical,
         so by a simple scaling 6.5% seems a reasonable expectation for
-        real bonds. Obtained value is 6.7%.
+        real bonds. Obtained value is 6.6%.
 
         Chosen default yield curve intended to be indicative of the
         present era.
 
         '''
 
-        super().__init__(a = a, sigma = sigma, yield_curve = yield_curve, r0_type = r0_type, r0 = -1, standard_error = standard_error, static_bonds = static_bonds,
+        super().__init__(a = a, sigma = sigma, yield_curve = yield_curve, r0_type = r0_type, r0 = r0, standard_error = standard_error, static_bonds = static_bonds,
             time_period = time_period)
 
         self.interest_rate = 'real'
@@ -461,17 +464,17 @@ class Inflation(Bonds):
         Chosen value of inflation_sigma, 0.013, produces a reasonable
         estimate of the the short term inflation yield volatility (as
         used to provide nominal bond volatility). Measured value over
-        2005-2019 was 1.23%, compared to a obtained value of 1.18%.
+        2005-2019 was 1.23%, compared to a obtained value of 1.20%.
 
         Chosen value of inflation_a, 0.12, produces a reasonable
         estimate of the long term (15 year) standard deviation of the
         inflation rate. Measured value over 2005-2019 was
-        0.55%. Obtained value was 1.28%. This seems quite reasonable
+        0.55%. Obtained value was 1.24%. This seems quite reasonable
         given inflation has recently been constrained. Additionally,
         chosen value intended to produce a long term (15 year) nominal
         bond real return standard deviation of about 11%. The measured
         value over 2005-2019 was 14.4% (when rates were
-        volatile). Obtained value is 10.7%. As in the real case this
+        volatile). Obtained value is 10.8%. As in the real case this
         is less than the observed value, and is inline with the 10.9%
         standard deviation for long term government bonds reported in
         the Credit Suisse Global Investment Returns Yearbook 2019.
@@ -538,11 +541,12 @@ class Inflation(Bonds):
         try:
             sir = self._sir_cache[t]
         except KeyError:
-            # https://www.math.nyu.edu/~benartzi/Slides10.3.pdf page 11.
-            forward: cython.double; ex: cython.double
-            forward = self.yield_curve.forward(t)
-            ex = self.e ** (- a * t)
-            sir = forward + (sigma * (1 - ex) / a) ** 2 / 2
+            # # https://www.math.nyu.edu/~benartzi/Slides10.3.pdf page 11.
+            # forward: cython.double; ex: cython.double
+            # forward = self.yield_curve.forward(t)
+            # ex = self.e ** (- a * t)
+            # sir = forward + (sigma * (1 - ex) / a) ** 2 / 2
+            sir = self.yield_curve.forward(t)
             if len(self._sir_cache) < 1000:
                 self._sir_cache[t] = sir
 
@@ -604,6 +608,12 @@ class Inflation(Bonds):
         log_P += B * (self.sir_init - sir)
 
         return self.e ** - log_P
+
+    def inflation_long_run_expectation(self):
+
+        infl = self.yield_curve.forward(100)
+
+        return self.e ** infl
 
     def step(self):
 
@@ -812,7 +822,9 @@ class BondsSet:
         fixed_real_bonds_rate = -1, fixed_nominal_bonds_rate = -1,
         real_bonds_adjust = 0, inflation_adjust = 0, nominal_bonds_adjust = 0, corporate_nominal_spread = 0,
         static_bonds = False, date_str = '2020-12-31', date_str_low = '2018-01-01',
-        real_r0_type = 'current', inflation_r0_type = 'current', real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
+        real_r0_type = 'current', real_short_rate = -1, real_standard_error = 0,
+        inflation_r0_type = 'current', inflation_short_rate = -1, inflation_standard_error = 0,
+        time_period = 1):
         '''Create a BondsSet.
 
             fixed_real_bonds_rate and fixed_nominal_bonds_rate:
@@ -833,6 +845,13 @@ class BondsSet:
 
                 Last and first date to use in construcing the typical
                 yield curve to use.
+
+        real_r0_type, real_short_rate, real_standard_error,
+        inflation_r0_type, inflation_short_rate,
+        inflation_standard_error:
+
+               r0_type, r0, and standard_error parameters for real and
+               inflation Bonds objects.
 
         Returns a BondsSet object having attributes "real", "nominal",
         "corporate", and "inflation" representing a bond and inflation
@@ -875,18 +894,21 @@ class BondsSet:
         also be called separately.
 
         Inflation represents the nominal value of a bond that will
-        earn interest at the rate of inflation. inflation defines an
-        additional method:
+        earn interest at the rate of inflation. inflation defines two
+        additional methods:
 
             inflation()
 
                 Returns the inflation rate factor to be experienced
                 over the the next time period of length time_period.
 
+            inflation_long_run_expectation():
+
+                Returns the annualized long run inflation expectation
+                factor.
+
         '''
 
-        self.fixed_real_bonds_rate = fixed_real_bonds_rate
-        self.fixed_nominal_bonds_rate = fixed_nominal_bonds_rate
         self.time_period = time_period
 
         if need_corporate:
@@ -902,8 +924,8 @@ class BondsSet:
                 yield_curve = YieldCurve('fixed', '2017-12-31', adjust = adjust)
             else:
                 yield_curve = YieldCurve('real', date_str, date_str_low = date_str_low, adjust = real_bonds_adjust, permit_stale_days = 2)
-            self.real = RealBonds(yield_curve = yield_curve, static_bonds = static_bonds, r0_type = real_r0_type, standard_error = real_standard_error,
-                time_period = time_period)
+            self.real = RealBonds(yield_curve = yield_curve, static_bonds = static_bonds, r0_type = real_r0_type, r0 = real_short_rate,
+                standard_error = real_standard_error, time_period = time_period)
         else:
             self.real = None
 
@@ -914,7 +936,8 @@ class BondsSet:
             else:
                 nominal_yield_curve = YieldCurve('nominal', date_str, date_str_low = date_str_low, adjust = real_bonds_adjust, permit_stale_days = 2)
             inflation_risk_premium = - log(1 + inflation_adjust)
-            self.inflation = Inflation(self.real, nominal_yield_curve = nominal_yield_curve, inflation_risk_premium = inflation_risk_premium, r0_type = inflation_r0_type,
+            self.inflation = Inflation(self.real, nominal_yield_curve = nominal_yield_curve, inflation_risk_premium = inflation_risk_premium,
+                r0_type = inflation_r0_type, r0 = inflation_short_rate,
                 standard_error = inflation_standard_error, static_bonds = static_bonds, time_period = time_period)
         else:
             self.inflation = None
@@ -932,23 +955,10 @@ class BondsSet:
         else:
             self.corporate = None
 
-    def update(self, *, fixed_real_bonds_rate, fixed_nominal_bonds_rate, real_short_rate, inflation_short_rate,
-        real_standard_error, inflation_standard_error, time_period):
-        '''Change the indicated bond parameters.'''
-
-        assert fixed_real_bonds_rate == self.fixed_real_bonds_rate
-        assert fixed_nominal_bonds_rate == self.fixed_nominal_bonds_rate
-        if self.real:
-            self.real.standard_error = real_standard_error
-            self.real.r0 = real_short_rate
-        if self.inflation:
-            self.inflation.standard_error = inflation_standard_error
-            self.inflation.r0 = inflation_short_rate
-        assert time_period == self.time_period
-
 if __name__ == '__main__':
 
     seed(0)
+    np.random.seed(0)
 
     bonds = BondsSet()
     modeled_inflation = Inflation(bonds.real, nominal_yield_curve = bonds.nominal.yield_curve, model_bond_volatility = False)
