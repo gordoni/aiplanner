@@ -592,12 +592,27 @@ Test it out:
 Test the image thoroughly. If everything looks good publish the image
 to a private repo:
 
-    sudo docker image tag aiplanner-apiserver <dockerhubid>/aiplanner-apiserver:<version>
-    sudo docker image tag aiplanner-apiserver <dockerhubid>/aiplanner-apiserver:latest
-    docker login
-    sudo docker push <dockerhubid>/aiplanner-apiserver:<version>
-    sudo docker push <dockerhubid>/aiplanner-apiserver:latest
-    docker logout
+On desktop:
+    aws ecr get-login-password --region us-east-2
+
+On development instance:
+    sudo docker image tag aiplanner-apiserver <account_id>.dkr.ecr.us-east-2.amazonaws.com/aiplanner-apiserver:<version>
+    sudo docker image tag aiplanner-apiserver <account_id>.dkr.ecr.us-east-2.amazonaws.com/aiplanner-apiserver:latest
+    sudo docker login --username AWS --password-stdin <account_id>.dkr.ecr.us-east-2.amazonaws.com
+        # Paste in the password from get-login-password above ending with <enter> and <ctrl>-D.
+    sudo docker push <account_id>.dkr.ecr.us-east-2.amazonaws.com/aiplanner-apiserver:<version>
+    sudo docker push <account_id>.dkr.ecr.us-east-2.amazonaws.com/aiplanner-apiserver:latest
+    sudo docker logout <account_id>.dkr.ecr.us-east-2.amazonaws.com
+
+Granting third party access to a docker container
+-------------------------------------------------
+
+Login to the AWS ECR console, select repositories, click on the
+repository name, then on the left under Repositories select
+Permissions, Edit. Create a permission called AllowPull for the AWS
+Account ID you are granting permission to and add the actions:
+    ecr:BatchGetImage
+    ecr:GetDownloadUrlForLayer
 
 Set up the aiplanner system configuration file
 ----------------------------------------------
@@ -613,15 +628,19 @@ Set up the aiplanner system configuration file
 Run the api server in production
 --------------------------------
 
-    docker login
-    sudo docker pull <dockerhubid>/aiplanner-apiserver
-    docker logout
+    sudo docker login --username AWS --password-stdin <account_id>.dkr.ecr.us-east-2.amazonaws.com
+    sudo docker pull <account_id>.dkr.ecr.us-east-2.amazonaws.com/aiplanner-apiserver
+    sudo docker logout <account_id>.dkr.ecr.us-east-2.amazonaws.com
     sudo docker ps
     sudo docker stop <containerid>
-    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data:/home/aiplanner/aiplanner-data <dockerhubid>/aiplanner-apiserver
+    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data:/home/aiplanner/aiplanner-data <account_id>.dkr.ecr.us-east-2.amazonaws.com/aiplanner-apiserver
 
 Setting up cron
 ---------------
+
+This step is only needed if you wish to be independent of
+aiplanner.com for market data, and you have set up market_data_url in
+the aiplanner.yaml file accordingly.
 
 Install crontabs to perform a wekly refresh of the interest rate yield
 curves, fair market price, and volatility.
