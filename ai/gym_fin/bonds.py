@@ -904,7 +904,7 @@ class BondsSet:
 
             inflation_long_run_expectation():
 
-                Returns the annualized long run inflation expectation
+                Returns the long run annual inflation expectation
                 factor.
 
         '''

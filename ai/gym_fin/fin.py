@@ -410,7 +410,7 @@ class Fin:
             time_period = self._params.time_period)
         self._bonds_stepper = self._bonds.nominal
         self._bonds_zero = make_yield_curve('fixed', self._params.life_table_date)
-        self._bonds_constant_inflation = make_yield_curve('fixed', self._params.life_table_date, adjust = self._bonds.inflation.inflation_long_run_expectation())
+        self._bonds_constant_inflation = make_yield_curve('fixed', self._params.life_table_date, adjust = log(self._bonds.inflation.inflation_long_run_expectation()))
 
         if self._params.iid_bonds:
             if self._params.iid_bonds_type == 'real':
