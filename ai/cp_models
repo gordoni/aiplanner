@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Copy a Ray based models directory sans unneeded files.
+
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 <src_models_dir> <dst_models_dir>" >&1
+    exit 1
+fi
+
+if [ ! -d "$1" ]; then
+    echo "Not a directory: $1" >&1
+    exit 1
+fi
+
+if [ -e "$2" -a ! -d "$2" ]; then
+    echo "Not a directory: $2" >&1
+    exit 1
+fi
+
+mkdir -p "$2"
+
+(cd "$1"; tar cf - `ls | grep -v .tf` */params.txt */seed_*/params.pkl) | (cd "$2"; tar xf -)
+(cd "$1"; tar cf - `for d in *.tf/seed_*_*; do echo $d/checkpoint_$(ls $d | sed 's/checkpoint_//' | sort -n | tail -n 1); done`) | (cd "$2"; tar xf -)

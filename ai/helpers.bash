@@ -17,7 +17,7 @@ EXTRA_ARGS="$@"
 PARALLEL=${PARALLEL:-True}
     # "False": run seeds of a job sequentially rather than in parallel.
     # "True": run seeds of a job in parallel.
-# "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
+    # "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
 RAY_CLUSTER=${RAY_CLUSTER:-$AI_DIR/cluster.yaml}
 RAY_AUTOSCALER=${RAY_AUTOSCALER:-True} # Set to "False" to perform training without the Ray autoscaler enabled.
 RAY_AUTOSCALER_USE_HEAD=${RAY_AUTOSCALER_USE_HEAD:-False}
