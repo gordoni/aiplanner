@@ -1,7 +1,7 @@
 AIPlanner API documentation
 ***************************
 
-March, 16, 2021.
+April 3, 2021.
 
 This document describes the AIPlanner - Deep Reinforcement Learning
 Financial Planner web based application programming interface.
@@ -70,6 +70,60 @@ strategy and the simulated performance of the investment strategy.
 
 Evaluation is slow. Perhaps 30 seconds for a single evaluation.
 
+/api/data
+---------
+
+Takes no parameters.
+
+Returns various assets associated with an evaluation.
+
+The prefered method of displaying the results of an evaluation is by
+plotting or otherwise reporting the returned results, not by using
+these assets. If the assets are used it should be noted that the
+continued existence and look and feel of the assets isn't guaranteed
+in the future.
+
+The following assets are currently available:
+
+    /api/data/<aid>/aiplanner.pdf
+        - document describing all results
+
+    /api/data/<aid>/consume-pdf.svg
+        - plot of all consumption probability density functions
+
+    /api/data/<aid>/rra<rra>/asset_allocation.svg
+        - figure representing current recommended asset allocation
+
+    /api/data/<aid>/rra<rra>/wealth.svg
+        - figure representing current wealth
+
+    /api/data/<aid>/rra<rra>/alive.svg
+        - plot of life expectancy
+
+    /api/data/<aid>/rra<rra>/consume-pdf.svg
+        - plot of consumption density function
+
+    /api/data/<aid>/rra<rra>/consume-cr.svg
+        - plot of conumption confidence region
+
+    /api/data/<aid>/rra<rra>/paths-consume.svg
+        - plot of example consumption paths
+
+    /api/data/<aid>/rra<rra>/paths-gi.svg
+        - plot of example guaranteed income paths
+
+    /api/data/<aid>/rra<rra>/paths-p.svg
+        - plot of example investment portfolio paths
+
+    /api/data/<aid>/rra<rra>/paths-stocks.svg
+        - plot of example stock asset allocation paths
+
+    /api/data/<aid>/rra<rra>/estate-pdf.svg
+        - plot of residual estate probability density function
+
+where <aid> and <rra> are the returned AIPlanner id and relative risk
+aversion associated with the evaluation.
+
 /api/healthcheck
 ----------------
 
@@ -81,6 +135,8 @@ other value indicates an error.
 
 Parameters
 ==========
+
+Infer and evaluate take a list of scenarios as a parameter.
 
 A scenario is represented as a JSON object containing the keys listed
 below. Most keys are optional, taking on the specified default value,
