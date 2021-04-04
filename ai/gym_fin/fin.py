@@ -1158,14 +1158,30 @@ class Fin:
             p_taxable -= net_income_preretirement
             p_tax_free += net_income_preretirement
 
+        regular_income = self._gi_regular - retirement_contribution + delta_p_tax_deferred
+        if regular_income < 0:
+            if regular_income < -1e-12 * (self._gi_regular + self._p_tax_deferred):
+                self._warn('Negative regular income observed.', 'regular income:', regular_income, timestep_ok_fraction = 1e-3)
+                    # Possible if taxable real SPIA non-taxable amount exceeds payout due to deflation.
+            regular_income = 0
+        social_security = self._gi_social_security
+        social_security = min(regular_income, social_security)
+
         real_spias_fraction *= self._params.time_period
         nominal_spias_fraction *= self._params.time_period
         total = real_spias_fraction + nominal_spias_fraction
         if total > 1:
             real_spias_fraction /= total
             nominal_spias_fraction /= total
-        real_spias = real_spias_fraction * p
-        nominal_spias = nominal_spias_fraction * p
+        if total > 0:
+            # Ensure leave enough assets to cover any regular taxes due. May currently be in a higher tax regime than once annuitized.
+            regular_tax_est: cython.double
+            regular_tax_est, _, _ = self._taxes.calculate_taxes(regular_income, social_security, 0, 0, 0, not self._couple)
+            p_available = min(p, max(p - regular_tax_est, 0) / total)
+        else:
+            p_available = p
+        real_spias = real_spias_fraction * p_available
+        nominal_spias = nominal_spias_fraction * p_available
         real_tax_free_spias = min(real_spias, p_tax_free)
         p_tax_free -= real_tax_free_spias
         real_spias -= real_tax_free_spias
@@ -1179,22 +1195,14 @@ class Fin:
         p_tax_deferred -= nominal_tax_deferred_spias
         nominal_taxable_spias = nominal_spias - nominal_tax_deferred_spias
 
-        regular_income = self._gi_regular - retirement_contribution + delta_p_tax_deferred
-        if regular_income < 0:
-            if regular_income < -1e-12 * (self._gi_regular + self._p_tax_deferred):
-                self._warn('Negative regular income observed.', 'regular income:', regular_income, timestep_ok_fraction = 1e-3)
-                    # Possible if taxable real SPIA non-taxable amount exceeds payout due to deflation.
-            regular_income = 0
-        social_security = self._gi_social_security
-        social_security = min(regular_income, social_security)
-
         taxable_spias = real_taxable_spias + nominal_taxable_spias
         if taxable_spias > 0:
-            # Ensure leave enough taxable assets to cover any taxes due.
+            # Ensure leave enough taxable assets to cover any capital gains taxes due.
             max_capital_gains = self._taxes.unrealized_gains()
             if max_capital_gains > 0:
                 regular_tax: cython.double; capital_gains_tax: cython.double; regular_tax_no_cg: cython.double; capital_gains_tax_no_cg: cython.double
-                regular_tax, capital_gains_tax, _ = self._taxes.calculate_taxes(regular_income, social_security, max_capital_gains, 0, 0, not self._couple)
+                regular_tax, capital_gains_tax, _ = \
+                    self._taxes.calculate_taxes(regular_income, social_security, max_capital_gains, max_capital_gains, 0, not self._couple)
                 regular_tax_no_cg, capital_gains_tax_no_cg, _ = self._taxes.calculate_taxes(regular_income, social_security, 0, 0, 0, not self._couple)
                 assert capital_gains_tax_no_cg == 0
                 max_capital_gains_taxes = (regular_tax + capital_gains_tax) - (regular_tax_no_cg + capital_gains_tax_no_cg)
