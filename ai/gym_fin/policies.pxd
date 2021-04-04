@@ -17,6 +17,7 @@ cdef class Policy:
     cdef double consume_rate_initial
     cdef double p_initial
     cdef double consume_prev
+    cdef bint annuitized
 
     # Worthwhile cdef'ing a few methods because they are called so frequently.
     # Return object so that exceptions can propagate.

@@ -77,6 +77,10 @@ class Fin:
         return self._bonds_zero
 
     @property
+    def couple(self):
+        return self._couple
+
+    @property
     def cpi(self):
         return self._cpi
 
@@ -111,6 +115,10 @@ class Fin:
     @property
     def net_gi(self):
         return self._net_gi
+
+    @property
+    def only_alive2(self):
+        return self._only_alive2
 
     @property
     def p_wealth(self):
@@ -1784,7 +1792,12 @@ class Fin:
                 max_age = max(self._age, self._age2)
             else:
                 min_age = max_age = self._age2 if self._only_alive2 else self._age
-            age_permitted = min_age >= self._params.spias_permitted_from_age and max_age <= self._params.spias_permitted_to_age
+            if self._params.annuitization_policy == 'rl':
+                age_permitted = min_age >= self._params.spias_permitted_from_age and max_age <= self._params.spias_permitted_to_age
+            elif self._params.annuitization_policy == 'none':
+                age_permitted = False
+            else:
+                age_permitted = min_age >= self._params.annuitization_policy_age
             self._spias_required = age_permitted and max_age >= self._params.spias_from_age
             self._spias = age_permitted and (self._params.couple_spias or not self._couple) or self._spias_required
         else:

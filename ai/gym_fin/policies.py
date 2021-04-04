@@ -377,7 +377,7 @@ class Policy:
         elif self.params.annuitization_policy in ('age_real', 'age_nominal'):
 
             if self.env.episode_length == 0:
-                self.anuitized = False
+                self.annuitized = False
 
             if self.env.couple:
                 min_age = min(self.env.age, self.env.age2)
@@ -393,7 +393,7 @@ class Policy:
                 self.params.annuitization_policy_annuitization_fraction if spias and self.params.annuitization_policy == 'age_nominal' else 0
 
             if real_spias_fraction or nominal_spias_fraction:
-                self.anuitized = True
+                self.annuitized = True
 
         elif self.params.annuitization_policy == 'none':
 
@@ -434,7 +434,7 @@ class Policy:
             asset_allocation = loads(self.params.asset_allocation_policy)
             asset_allocation = AssetAllocation(**asset_allocation)
 
-        if self.params.asset_allocation_annuitized_policy != 'asset_allocation_policy' and self.anuitized:
+        if self.params.asset_allocation_annuitized_policy != 'asset_allocation_policy' and self.annuitized:
 
             asset_allocation = loads(self.params.asset_allocation_annuitized_policy)
             asset_allocation = AssetAllocation(**asset_allocation)
