@@ -57,8 +57,8 @@ Set up an EC2 instance, ssh in to it, and obtain the sources:
     cd ~
     git clone https://github.com/gordoni/aiplanner.git
     cd aiplanner
-        # Or currently for internal development:
-        #git clone git@git.assembla.com:oaa.git aiplanner
+        # Or for internal development if you have been granted access:
+        #git clone https://git-codecommit.us-east-2.amazonaws.com:/v1/repos/aiplanner
         #cd aiplanner
         #git checkout aiplanner
     git config --global user.name "<FirstName> <LastName>"
@@ -93,14 +93,13 @@ Installing additional required components on Ubuntu 20.04:
     exit
 
 The standard version of Ray works unmodified, but if you need to use a
-locally modified version proceed as follows (the current local version
-of Ray is the official Ray 0.8.5 release and will also need to be
-updated):
+locally modified version proceed as follows:
 
     # Hack Ray to use our version of RLlib, not the default version:
     RAY=`pip3 show ray | grep Location | awk '{print $2}'`/ray
     mv $RAY/rllib $RAY/rllib.old
-    ln -s ~/aiplanner/ai/ray//rllib $RAY/rllib
+    ln -s ~/aiplanner/ai/ray/rllib $RAY/rllib
+        # assuming locally modified Ray is in ~/aiplanner/ai/ray
     # Note, you may need to disable this link if upgrading Ray to
     # prevent pip clobbering the repository.
 
@@ -114,13 +113,9 @@ Cache the interest rate data
 
 Failing to perform this step will result in the full historical yield
 curves getting downloaded from the Fed every time a cluster node
-starts up.
+starts up. Also sets the fair market price and volatility levels.
 
     mkdir ~/aiplanner-data
-    ~/aiplanner/ai/web/cron.daily
-
-Also set the fair market price and volatility levels:
-
     ~/aiplanner/ai/web/cron.weekly
 
 Compile the code
@@ -263,6 +258,7 @@ use multiple security-group lines if have more than one region):
             "Sid": "AllowDescribe",
             "Effect": "Allow",
             "Action": [
+                "ec2:DescribeInstanceTypes",
                 "ec2:DescribeInstances",
                 "ec2:DescribeSecurityGroups",
                 "ec2:DescribeSubnets"
