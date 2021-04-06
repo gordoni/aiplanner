@@ -228,9 +228,9 @@ def generate_report(api, result_dir, results, results_dir):
         ])
         contents.append(t)
     contents.append(Spacer(1, 0.25 * inch))
-    s = '''<para size="7" leading="9">AIPlanner Copyright &copy; 2018-2021 Gordon Irlam. AIPlanner is
-provided without any warranty; without even the implied warranty
-of merchantability or fitness for a particular purpose.</para>'''
+    s = '''<para size="7" leading="9">This document is provided without any
+warranty; without even the implied warranty of merchantability or
+fitness for a particular purpose.</para>'''
     contents.append(TopPadder(Paragraph(s, styleN)))
     def footer(canvas, doc):
         canvas.saveState()
