@@ -15,7 +15,7 @@ least 20GB should be free.
 
 /api/infer requests rapidly return a recommended strategy for a given
 financial scenario. /api/evaluate requests perform a 30-60 second long
-Monte Carlo simulation of the recommended startegy and report its
+Monte Carlo simulation of the recommended strategy and report its
 performance.
 
 By default the system will run 1 concurrent infer job per core, and
@@ -51,8 +51,8 @@ Next obtain a 12 hour ECR password:
         export AWS_ACCESS_KEY_ID=<...>
         export AWS_SECRET_ACCESS_KEY=<...>
         # where AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY denote
-        # either the root user with programatic access, or an IAM user
-        # with programatic access with an attached policy that at a
+        # either the root user with programmatic access, or an IAM user
+        # with programmatic access with an attached policy that at a
         # minimum allows the following:
         #    Service: ECR
         #    Actions:

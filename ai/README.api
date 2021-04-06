@@ -77,7 +77,7 @@ Takes no parameters.
 
 Returns various assets associated with an evaluation.
 
-The prefered method of displaying the results of an evaluation is by
+The preferred method of displaying the results of an evaluation is by
 plotting or otherwise reporting the returned results, not by using
 these assets. If the assets are used it should be noted that the
 continued existence and look and feel of the assets isn't guaranteed
@@ -104,7 +104,7 @@ The following assets are currently available:
         - plot of consumption density function
 
     /api/data/<aid>/rra<rra>/consume-cr.svg
-        - plot of conumption confidence region
+        - plot of consumption confidence region
 
     /api/data/<aid>/rra<rra>/paths-consume.svg
         - plot of example consumption paths
@@ -389,7 +389,7 @@ such income or expense. The fields of each object are as follows:
     will be taxed.
 
     For expenses, regular expenses should be "tax_free". A tax
-    deductable expense can be either "tax_deferred" or "taxable".
+    deductible expense can be either "tax_deferred" or "taxable".
 
     exclusion_period: number
     default: 0
