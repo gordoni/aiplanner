@@ -1,3 +1,5 @@
+ai/LICENSE.baselines
+ai/LICENSE.ray
 ai/README.api
 ai/README.docker
 ai/aiplanner-example.yaml
