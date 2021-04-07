@@ -449,6 +449,35 @@ reclaim very large spot instances slowing the training process):
     cd ~/aiplanner/ai/api
     nohup ./train > /tmp/train.out &
 
+Training logs will be written to /tmp/train* . Progress can be
+monitored using a command similar to:
+
+    tail -f /tmp/train* | grep seed
+
+Especially early on in the training process there will be warnings in
+the logs about negative portfolios, negative regular income, and
+observations being out of range. These are normal rare events, but
+when training 7 models times 10 seeds times 150-200 million timesteps,
+there can still be quite a few of them, perhaps totaling around
+100,000. A negative portfolio is possible when assets are insufficient
+to cover the taxes due, and also possibly because of the way the
+exclusion period is simulated when purchasing a SPIA.
+
+Ray isn't yet of production quality, and a number of issues may need
+to be worked around.
+
+Ray 1.1.0 may fail producing the message: "assert agent_key not in
+self.agent_collectors" in an error.txt file. This happens perhaps once
+every few billion time steps. Ray then restarts successfully from the
+last checkpoint.
+
+Ray 1.1.0 may fail with the message: "ValueError: The parameter loc
+has invalid values" in an error.txt file. This occurs for 3 seeds
+after 170m+ timesteps for the preretirement, no spias, gamma=6
+model. Ray repeatedly restarts from the last checkpoint. The work
+around here is to stop training at this point once all the other seeds
+have completed (using "ray stop; ray down cluster.yaml").
+
 A presumed bug in Ray 0.7.3 meant that completion of training of the
 first training run kills all the other training workers. It is fixed
 in Ray 0.8.5, but if it recurs, it can be worked around by specifying:
@@ -458,32 +487,10 @@ in Ray 0.8.5, but if it recurs, it can be worked around by specifying:
 but it increases the elapsed training time (to around 100 hours on a
 single c5.24xlarge instance).
 
-Training logs will be written to /tmp/train* . Progress can be
-monitored using a command similar to:
-
-    tail -f /tmp/train* | grep seed
-
-Note that any AIPlanner warnings from a single model's training may
-get duplicated across all log files.
-
-Especially early on in the training process there will be warnings in
-the logs about negative portfolios and observations being out of
-range. These are rare events, but when training 7 models times 10
-seeds times 150-200 million timesteps, there can still be quite a few
-of them, perhaps totaling around 100,000. A negative portfolio is
-possible when assets are insufficient to cover the taxes due, and also
-possibly because of the way the exclusion period is simulated when
-purchasing for an inflation-indexed SPIA.
-
-Ray 1.1.0 may also fail producing the message: "assert agent_key not
-in self.agent_collectors" in an error.txt file. This happens perhaps
-once every few billion time steps. Ray then restarts from the last
-checkpoint.
-
 The trained models will be placed in ~/aiplanner-data/models.new .
 
-To quickly generate dummy untrained models that can be used by the api
-server:
+Instead of doing a full training run, you may wish to quickly generate
+dummy untrained models that can be used by the api server:
 
     cd ~/aiplanner/ai/api
     ./train --train-batch-size=1000 --train-num-timesteps=1000 --train-num-workers=0
