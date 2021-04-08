@@ -9,6 +9,7 @@
 # PURPOSE.
 
 FROM ubuntu:20.04
+# libgl1-mesa-dev required by Ray which does "import cv2" for opencv python bindings.
 RUN apt-get update \
     && apt-get upgrade -y \
     && echo "postfix postfix/main_mailer_type select Internet Site" | debconf-set-selections \
@@ -25,6 +26,7 @@ RUN apt-get update \
         python3-setproctitle \
         gnuplot-nox \
         python3-reportlab \
+        libgl1-mesa-dev \
     && apt-get clean \
     && apt-get install -y cmake \
     && pip3 install \
