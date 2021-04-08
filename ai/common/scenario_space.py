@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -11,17 +11,18 @@
 allowed_gammas = [1.5, 3, 6]
 
 spias_type = 'nominal_spias'
-bonds_type = 'real_bonds'
 
 def scenario_space_update_params(model_params, control_params):
 
     model_params[spias_type] = control_params['spias']
-    model_params['p_taxable_' + bonds_type + '_low'] = model_params['p_taxable_' + bonds_type + '_high'] = control_params['p_taxable_bonds']
-    model_params['p_taxable_' + bonds_type + '_basis'] = control_params['p_taxable_bonds_basis']
-    if bonds_type == 'real_bonds':
-        assert model_params['real_bonds']
-    elif bonds_type == 'nominal_bonds':
-        assert model_params['nominal_bonds']
+    if model_params['real_bonds']:
+        model_params['p_taxable_real_bonds_low'] = model_params['p_taxable_real_bonds_high'] = control_params['p_taxable_bonds']
+        model_params['p_taxable_real_bonds_basis'] = control_params['p_taxable_bonds_basis']
+    elif model_params['nominal_bonds']:
+        model_params['p_taxable_nominal_bonds_low'] = model_params['p_taxable_nominal_bonds_high'] = control_params['p_taxable_bonds']
+        model_params['p_taxable_nominal_bonds_basis'] = control_params['p_taxable_bonds_basis']
+    else:
+        assert False
 
     if control_params['gammas'] is None:
         control_params['gammas'] = allowed_gammas
