@@ -45,7 +45,7 @@ newaliases
 service postfix start >/dev/null 2>&1
 
 if [ ! -e $AIPLANER_DATA/market-data.json ]; then
-    cp $API_DIR/market-data.json $AIPLANNER_DATA
+    su -l aiplanner -c "cp $API_DIR/market-data.json $AIPLANNER_DATA"
 fi
 
 cron

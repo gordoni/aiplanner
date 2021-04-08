@@ -522,7 +522,7 @@ Both of the UI website sections can be skipped if you only wish to run
 the AIPlanner API server.
 
 Models must have been trained (see previous step). Then generate the
-images required for the UI website (takes around 15 minutes):
+images required for the UI website (takes around 5 minutes):
 
     cd ~/aiplanner/ai/angular/src/assets.generate
     ./run
