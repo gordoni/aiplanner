@@ -117,6 +117,8 @@ def parse_api_scenario(api_scenario, *, permissive = False):
 
         'rra': enumeration([None, array(number)]), # Must put None first as array() asserts if it doesn't match.
 
+        'rl_stocks_max': number,
+
         'num_evaluate_timesteps': number,
         'num_sample_paths': number,
     })
@@ -129,6 +131,8 @@ def parse_api_scenario(api_scenario, *, permissive = False):
         'sex',
 
         'consume_preretirement',
+
+        'rl_stocks_max',
     ]:
         if name in api_scenario:
             model_params[name] = api_scenario[name]

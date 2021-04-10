@@ -39,6 +39,8 @@ class ModelParams(object):
 
         self._boolean_flag('verbose', False) # Display relevant model information such as when stepping.
         self._boolean_flag('warn', True) # Display warning messages.
+        self._boolean_flag('warn_to_stderr', False, True) # Display warning messages on stderr or stdout.
+            # Stdout when training because Ray buffers both stdout and stderr, so that warning is concordant with any verbose output on stdout.
         self._boolean_flag('display-returns', False, True) # Display yield and return statistics.
 
         self._param('debug-dummy-float', 0.0) # Occasionally useful for debugging.
@@ -97,6 +99,7 @@ class ModelParams(object):
             # Asset allocation policy once annuitized for annuitization policies "age_real" and "age_nominal".
             # "asset_allocation_policy": use the same policy as asset_allocation_policy.
             # '{"<asset_class>":<allocation>, ...}': fixed allocation. Eg. '{"stocks":1.0, "nominal_bonds":0.0}'.
+        self._param('rl-stocks-max', 1.0) # Maximum allowed allocation  to stocks for the reinforcement learning asset allocation policy.
         self._param('rl-consume-bias', 0.0, 0.0) # Bias the reinforcement learning conumption policy consumption fraction by this amount.
             # Useful for reversing the effects of training algorithm bias when evaluating.
             # Training bias should always be zero.

@@ -163,8 +163,7 @@ class Fin:
     def _warn(self, *args, timestep_ok_fraction = 0):
 
         if self._params.warn:
-            stderr.write('AIPLANNER: ' + ' '.join(str(arg) for arg in args) + '\n')
-            stderr.flush()
+            print('AIPLANNER:', *args, file = stderr if self._params.warn_to_stderr else stdout, flush = True)
 
         try:
             self._warnings[args[0]]['count'] += 1
@@ -1036,7 +1035,8 @@ class Fin:
         stocks_curvature = real_bonds_curvature = nominal_bonds_curvature = iid_bonds_curvature = 0.5
         alloc: cython.double
         alloc = 1.0
-        stocks = max(0.0, min(stocks_action + stocks_curvature * wealth_ratio + self._params.rl_stocks_bias, alloc)) if self._params.stocks else 0
+        stocks = max(0.0, min(stocks_action + stocks_curvature * wealth_ratio + self._params.rl_stocks_bias, alloc, self._params.rl_stocks_max)) \
+            if self._params.stocks else 0
         alloc -= stocks
         real_bonds = max(0.0, min(real_bonds_action + real_bonds_curvature * wealth_ratio, alloc)) if self._params.real_bonds else 0
         alloc -= real_bonds

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -16,10 +16,10 @@ from scipy.stats import lognorm
 
 gammas = (1.5, 3, 6)
 
-# Credit Suisse Yearbook 2019.
-m = 1.065
+# Credit Suisse Yearbook 2020.
+m = 1.066
 vol = 0.174
-r = 1.008
+r = 1.0 - 0.016 # 2020-12-31 5 year TIPS.
 
 years = 20
 # Average investment period, so as to produce meaningful illustrative curves.

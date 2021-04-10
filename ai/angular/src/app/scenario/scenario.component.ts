@@ -69,6 +69,8 @@ export class ScenarioComponent implements OnInit {
   public have401k2: boolean = true;
   public spias: boolean = true;
 
+  public rlStocksMax = null;
+
   public scenario: object;
 
   private report: string;
@@ -248,6 +250,8 @@ export class ScenarioComponent implements OnInit {
         'spias': this.spias,
 
         'rra': null,
+
+        'rl_stocks_max': Number(this.rlStocksMax) / 100,
     };
     if (scenario.sex2 == null) {
         delete scenario.age2;

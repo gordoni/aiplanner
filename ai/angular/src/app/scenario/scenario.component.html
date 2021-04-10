@@ -590,6 +590,46 @@ PURPOSE.
       several different RRA coefficients will be simulated and you can
       choose the one you prefer.
     </p>
+    <p>
+      Risk tolerance typically refers to the psychological ability to
+      tolerate losses in investment portfolio value. This
+      psychological risk can be controlled by limiting the maximum
+      allocation to stocks. The actual allocation to stocks will then
+      be the lesser of the value determined by the RRA coefficient and
+      guaranteed income and the value specified
+      here. <app-info msg="Risk aversion addresses physical well being
+      in the future (not wanting to consume too little in old age) and
+      looks at your total portfolio including Social Secuity and other
+      forms of guaranteed income. Risk tolerance typically only
+      addresses psychological well being in the present (not wanting
+      to discover your investment portfolio lost value last year) and
+      only considers the value of your investment
+      portfolio."></app-info>
+    </p>
+    <table class="crra">
+      <tr>
+        <td>
+          <table>
+            <tr>
+              <td>
+              <td> Hard limit on allocation to stocks
+            </tr>
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="60" required [(ngModel)]="rlStocksMax">
+              <td> 60%
+            </tr>
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="80" required [(ngModel)]="rlStocksMax">
+              <td> 80%
+            </tr>
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="100" required [(ngModel)]="rlStocksMax">
+              <td> 100%
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
     <div>
       <div class="main-button float-left">
         <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>

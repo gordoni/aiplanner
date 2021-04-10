@@ -588,6 +588,18 @@ Each RRA value is associated with a differently trained neural
 network.  As a result, currently the only values that are supported
 are 1.5, 3, and 6.
 
+Reinforcement learning stocks maximum
+-------------------------------------
+
+rl_stocks_max: number
+default: 1.0
+
+The maximum allowed allocation to stocks.
+
+This is an indirect means for specifying risk tolerance.
+
+The default value may be inappropriate for some users.
+
 Evaluation timesteps
 --------------------
 

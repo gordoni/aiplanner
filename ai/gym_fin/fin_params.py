@@ -194,6 +194,7 @@ class FinParams:
         self.reward_warn = params['reward_warn']
         self.rl_consume_bias = params['rl_consume_bias']
         self.rl_stocks_bias = params['rl_stocks_bias']
+        self.rl_stocks_max = params['rl_stocks_max']
         self.sex = params['sex']
         self.sex2 = params['sex2']
         self.spias_from_age = params['spias_from_age']
@@ -230,4 +231,5 @@ class FinParams:
         self.time_period = params['time_period']
         self.verbose = params['verbose']
         self.warn = params['warn']
+        self.warn_to_stderr = params['warn_to_stderr']
         self.welfare = params['welfare']

@@ -179,6 +179,7 @@ cdef class FinParams:
     cdef double reward_warn
     cdef double rl_consume_bias
     cdef double rl_stocks_bias
+    cdef double rl_stocks_max
     cdef str sex
     cdef str sex2
     cdef double spias_from_age
@@ -215,4 +216,5 @@ cdef class FinParams:
     cdef double time_period
     cdef bint verbose
     cdef bint warn
+    cdef bint warn_to_stderr
     cdef double welfare
