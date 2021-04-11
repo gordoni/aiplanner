@@ -455,13 +455,11 @@ monitored using a command similar to:
     tail -f /tmp/train* | grep seed
 
 Especially early on in the training process there will be warnings in
-the logs about negative portfolios, negative regular income, and
-observations being out of range. These are normal rare events, but
-when training 7 models times 10 seeds times 150-200 million timesteps,
-there can still be quite a few of them, perhaps totaling around
-100,000. A negative portfolio is possible when assets are insufficient
-to cover the taxes due, and also possibly because of the way the
-exclusion period is simulated when purchasing a SPIA.
+the logs about negative portfolios and observations being out of
+range. These are normal rare events, but when training 7 models times
+10 seeds times 150-200 million timesteps, there can still be quite a
+few of them, perhaps totaling around 100,000. A negative portfolio is
+possible when assets are insufficient to cover the taxes due.
 
 Ray isn't yet of production quality, and a number of issues may need
 to be worked around.

@@ -1268,7 +1268,7 @@ class Fin:
             self._add_db(owner = owner, start = start, payout = tax_deferred_spias * unit_payout, inflation_adjustment = inflation_adjustment, joint = True, \
                 payout_fraction = payout_fraction, source_of_funds = 'tax_deferred')
         if taxable_spias > 0:
-            exclusion_period = ceil(self._life_expectancy_both[self._episode_length] + self._life_expectancy_one[self._episode_length])
+            exclusion_period = ceil(1 / unit_payout)
                 # Highly imperfect, but total exclusion amount will be correct.
             if inflation_adjustment in ('cpi', 0):
                 exclusion_amount = taxable_spias / exclusion_period
