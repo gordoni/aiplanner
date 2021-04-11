@@ -537,6 +537,7 @@ PURPOSE.
   <div *ngIf="step == 6">
     <h1 class="title">Well being</h1>
     <p>
+      Risk aversion.
       The coefficient of relative risk aversion determines how much
       risk to take. The lower the coefficient the higher the expected
       consumption, but also the higher the uncertainty in realized
@@ -591,20 +592,24 @@ PURPOSE.
       choose the one you prefer.
     </p>
     <p>
-      Risk tolerance typically refers to the psychological ability to
-      tolerate losses in investment portfolio value. This
-      psychological risk can be controlled by limiting the maximum
-      allocation to stocks. The actual allocation to stocks will then
-      be the lesser of the value determined by the RRA coefficient and
-      guaranteed income and the value specified
-      here. <app-info msg="Risk aversion addresses physical well being
-      in the future (not wanting to consume too little in old age) and
-      looks at your total portfolio including Social Secuity and other
-      forms of guaranteed income. Risk tolerance typically only
-      addresses psychological well being in the present (not wanting
-      to discover your investment portfolio lost value last year) and
-      only considers the value of your investment
-      portfolio."></app-info>
+      Risk tolerance. Risk tolerance differs from relative risk
+      aversion. Risk tolerance typically refers to the psychological
+      ability to tolerate losses in investment portfolio value. This
+      psychological risk can be managed by limiting the maximum
+      allocation to stocks. Specifying a value of 100% here doesn't
+      mean the allocation to stocks will be 100%. It may be less
+      depending on the RRA coefficient, how far you are from
+      retirement, and the amount of guaranteed
+      income. <app-info msg="Risk aversion addresses physical well
+      being in the future (not wanting to consume too little in
+      retirement) and looks at your total portfolio including Social
+      Security and other forms of guaranteed income. Risk tolerance is
+      typically a narrower measure that only addresses psychological
+      well being (not wanting to discover your investment portfolio
+      lost value last year) and only considers the value of your
+      investment portfolio. A low risk tolerance may trade off peace
+      of mind now for reduced expected consumption in
+      retirement."></app-info>
     </p>
     <table class="crra">
       <tr>
@@ -613,26 +618,71 @@ PURPOSE.
             <tr>
               <td>
               <td> Hard limit on allocation to stocks
+              <td> 5th percentile return
+              <td> 1st percentile return <app-info msg="Estimated
+              inflation-adjusted investment portfolio percentile
+              annual return for indicated asset allocation. Estimates
+              based on simulated stock and long duration
+              bonds."></app-info>
             </tr>
+            <!-- Estimated values produced using "eval_model.py -c
+            aiplanner-scenario.txt -c
+            aiplanner-scenario-single-eval.txt
+            --master-display-returns --eval-num-timesteps=0
+            --master-nominal-bonds --master-no-real-bonds". Don't use
+            risk_tolerance_in_pictures.py as it neglects fat
+            tails. -->
             <tr>
               <td> <input type="radio" name="rlStocksMax" value="60" required [(ngModel)]="rlStocksMax">
               <td> 60%
+              <td> -14%
+              <td> -26%
             </tr>
             <tr>
               <td> <input type="radio" name="rlStocksMax" value="80" required [(ngModel)]="rlStocksMax">
               <td> 80%
+              <td> -18%
+              <td> -34%
             </tr>
             <tr>
               <td> <input type="radio" name="rlStocksMax" value="100" required [(ngModel)]="rlStocksMax">
               <td> 100%
+              <td> -23%
+              <td> -42%
             </tr>
+            <!--
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="150" required [(ngModel)]="rlStocksMax">
+              <td> 150%
+              <td> -35%
+              <td> -65%
+            </tr>
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="200" required [(ngModel)]="rlStocksMax">
+              <td> 200%
+              <td> -49%
+              <td> -89%
+            </tr>
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="250" required [(ngModel)]="rlStocksMax">
+              <td> 250%
+              <td> -63%
+              <td> -113%
+            </tr>
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="300" required [(ngModel)]="rlStocksMax">
+              <td> 300%
+              <td> -78%
+              <td> -136%
+            </tr>
+            -->
           </table>
         </td>
       </tr>
     </table>
     <div>
       <div class="main-button float-left">
-        <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
+        <button type="button" class="button" (click)="prevStep()">Back</button>
       </div>
       <div class="main-button float-right">
         <button type="button" class="button" (click)="calculate()" [disabled]="!scenarioForm.valid || !dbValid()">Submit</button>

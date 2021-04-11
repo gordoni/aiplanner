@@ -248,3 +248,16 @@ def returns_report(name, sampler, *, stepper = None, resetter = None, time_perio
                 stepper.step()
 
     _report(name, rets)
+
+def percentiles_report(weight, sample, reset, time_period, sample_count = 5000, sample_skip = 100, sample_length = 100):
+
+    rets = []
+    for _ in range(sample_count):
+        reset()
+        for _ in range(sample_skip):
+            sample()
+        for _ in range(sample_length):
+            rets.append(sample() ** (1 / time_period))
+
+    rets.sort()
+    print('    {:4.0%} stocks 5th percentile {:6.2%} 1st percentile {:6.2%}'.format(weight, rets[int(0.05 * len(rets))] - 1, rets[int(0.01 * len(rets))] - 1))

@@ -24,7 +24,7 @@ import cython
 from ai.gym_fin.asset_classes import AssetClasses
 from ai.gym_fin.factory import make_asset_allocation, make_bonds_set, make_defined_benefit, make_fin_params, make_policy, make_taxes, make_utility
 from ai.gym_fin.factory_spia import make_income_annuity, make_life_table, make_yield_curve
-from ai.gym_fin.returns_equity import ReturnsEquity, ReturnsIID, returns_report, yields_report
+from ai.gym_fin.returns_equity import ReturnsEquity, ReturnsIID, percentiles_report, returns_report, yields_report
 from ai.gym_fin.returns_sample import ReturnsSample
 
 STOCKS = AssetClasses.STOCKS.value
@@ -480,6 +480,35 @@ class Fin:
 
             if self._params.nominal_bonds or self._params.nominal_spias:
                 returns_report('inflation', lambda: self._bonds.inflation.inflation(), stepper = self._bonds_stepper, time_period = self._params.time_period)
+
+            print()
+            print('Real investment portfolio percentiles:')
+
+            def sampler(weight):
+                def sample():
+                    s = 0
+                    if self._params.stocks:
+                        s += weight * self._stocks.sample()
+                    else:
+                        return float('nan')
+                    if self._params.real_bonds:
+                        s += (1 - weight) * self._bonds.real.sample(15)
+                    elif self._params.nominal_bonds:
+                        s += (1 - weight) * self._bonds.nominal.sample(15)
+                    elif self._params.iid_bonds:
+                        s += (1 - weight) * self._bonds.iid.sample()
+                    else:
+                        return float('nan')
+                    self._bonds_stepper.step()
+                    return s
+                return sample
+
+            def resetter():
+                self._stocks.reset()
+                self._bonds_stepper.reset()
+
+            for weight in (0.6, 0.8, 1.0):
+                percentiles_report(weight, sampler(weight), resetter, time_period = self._params.time_period)
 
         self._init_done = True
 

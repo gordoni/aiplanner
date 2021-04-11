@@ -69,7 +69,7 @@ export class ScenarioComponent implements OnInit {
   public have401k2: boolean = true;
   public spias: boolean = true;
 
-  public rlStocksMax = null;
+  public rlStocksMax: string = "100";
 
   public scenario: object;
 

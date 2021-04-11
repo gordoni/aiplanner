@@ -18,7 +18,6 @@ AI_DIR=$AIPLANNER_DIR/ai
 source $AI_DIR/setenv
 
 ./risk_aversion_in_pictures.py
-./risk_tolerance_in_pictures.py
 ./risk_aversion_in_pictures.gnuplot
 
 cp risk_aversion_pdf.svg ../assets/
