@@ -458,8 +458,10 @@ Especially early on in the training process there will be warnings in
 the logs about negative portfolios and observations being out of
 range. These are normal rare events, but when training 7 models times
 10 seeds times 150-200 million timesteps, there can still be quite a
-few of them, perhaps totaling around 100,000. A negative portfolio is
-possible when assets are insufficient to cover the taxes due.
+few of them, perhaps totaling around 10,000. A negative portfolio is
+possible when assets are insufficient to cover the taxes due. This can
+occur when annuitizing if the assets set aside to cover the associated
+taxes drop significantly in value before the taxes become due.
 
 Ray isn't yet of production quality, and a number of issues may need
 to be worked around.
