@@ -1794,7 +1794,7 @@ class Fin:
         except ZeroDivisionError:
             self._regular_tax_rate = 0
         try:
-            self._capital_gains_tax_rate = pv_capital_gains_tax / pv_capital_gains
+            self._capital_gains_tax_rate = pv_capital_gains_tax / self._wealth_taxable
         except ZeroDivisionError:
             self._capital_gains_tax_rate = 0
         self._p_wealth = max(0, self._p_wealth_pretax - self._regular_tax_rate * self._wealth_tax_deferred - pv_capital_gains_tax - self._taxes_due)
