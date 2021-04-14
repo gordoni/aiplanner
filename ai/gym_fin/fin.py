@@ -496,7 +496,7 @@ class Fin:
                     elif self._params.nominal_bonds:
                         s += (1 - weight) * self._bonds.nominal.sample(15)
                     elif self._params.iid_bonds:
-                        s += (1 - weight) * self._bonds.iid.sample()
+                        s += (1 - weight) * self._iid_bonds.sample()
                     else:
                         return float('nan')
                     self._bonds_stepper.step()
@@ -506,6 +506,7 @@ class Fin:
             def resetter():
                 self._stocks.reset()
                 self._bonds_stepper.reset()
+                self._iid_bonds.reset()
 
             for weight in (0.6, 0.8, 1.0):
                 percentiles_report(weight, sampler(weight), resetter, time_period = self._params.time_period)
