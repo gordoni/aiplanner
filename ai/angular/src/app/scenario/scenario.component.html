@@ -145,8 +145,68 @@ PURPOSE.
   </div>
 
   <div class="center" *ngIf="step == 2">
-    <h1 class="title">Assets</h1>
-    Existing defined benefits
+    <h1 class="title">Income</h1>
+    <div class="income" *ngIf="!editDefinedBenefit">
+      Wages <app-info msg="Irrelevant if retired."></app-info>
+      <div class="wages">
+        <table>
+          <tr>
+            <td class="nobordertop noborderleft"> </td>
+            <td> Pre-retirement annual wages <app-info msg="Amount is before tax."></app-info> </td>
+            <td> Wages end at </td>
+            <td> 401(k) plan available </td>
+          </tr>
+          <tr>
+            <td> Self </td>
+            <td>
+              <input type="number" step="1000" class="numeric" required name="scenarioIncomePreretirement" #scenarioIncomePreretirement="ngModel" [(ngModel)]="incomePreretirement">
+              <div class="error" *ngIf="scenarioIncomePreretirement.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
+            <td>
+              <select type="select" name="scenarioIncomePreretirementAgeEndType" [(ngModel)]="incomePreretirementAgeEndType">
+                <option value="retirement">my retirement</option>
+                <option value="age">my specific age</option>
+              </select>
+              <span *ngIf="incomePreretirementAgeEndType == 'age'">
+                <input type="number" class="small-numeric" required name="scenarioIncomePreretirementAgeEnd" #scenarioIncomePreretirementAgeEnd="ngModel" [(ngModel)]="incomePreretirementAgeEnd">
+                <span class="error" *ngIf="scenarioIncomePreretirementAgeEnd.invalid">
+                  <br>
+                  Invalid numeric value.
+                </span>
+              </span>
+            </td>
+            <td> <input type="checkbox" name="scenarioHave401k" [(ngModel)]="have401k"> </td>
+          </tr>
+          <tr *ngIf="sex2 != 'none'">
+            <td> Spouse </td>
+            <td>
+              <input type="number"step="1000"  class="numeric" required name="scenarioIncomePreretirement2" #scenarioIncomePreretirement2="ngModel" [(ngModel)]="incomePreretirement2">
+              <div class="error" *ngIf="scenarioIncomePreretirement2.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
+            <td>
+              <select type="select" name="scenarioIncomePreretirementAgeEnd2Type" [(ngModel)]="incomePreretirementAgeEnd2Type">
+                <option value="retirement">my retirement</option>
+                <option value="age">their specific age</option>
+              </select>
+              <span *ngIf="incomePreretirementAgeEnd2Type == 'age'">
+                <input type="number" class="small-numeric" required name="scenarioIncomePreretirementAgeEnd2" #scenarioIncomePreretirementAgeEnd2="ngModel" [(ngModel)]="incomePreretirementAgeEnd2">
+                <span class="error" *ngIf="scenarioIncomePreretirementAgeEnd2.invalid">
+                  <br>
+                  Invalid numeric value.
+                </span>
+              </span>
+            </td>
+            <td> <input type="checkbox" name="scenarioHave401k2" [(ngModel)]="have401k2"> </td>
+          </tr>
+        </table>
+      </div>
+      <br>
+    </div>
+    Defined benefits
     <br>
     <div class="defined-benefits">
       <table>
@@ -189,108 +249,6 @@ PURPOSE.
     <div *ngIf="editDefinedBenefit">
       <app-db [data]="editDefinedBenefit"></app-db>
     </div>
-    <br>
-    <br>
-    <div *ngIf="!editDefinedBenefit">
-      Existing defined contribution savings
-      <div class="defined-contributions">
-        <table>
-          <tr>
-            <td class="left"> Traditional IRA/401(k): </td>
-            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxDeferred" #scenarioPTaxDeferred="ngModel" [(ngModel)]="pTaxDeferred">
-              <div class="error" *ngIf="scenarioPTaxDeferred.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="left"> Roth IRA/401(k): </td>
-            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxFree" #scenarioPTaxFree="ngModel" [(ngModel)]="pTaxFree">
-              <div class="error" *ngIf="scenarioPTaxFree.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="left"> Taxable stocks: </td>
-            <td> <input type="number"step="1000" class="numeric" required name="scenarioPTaxableStocks" #scenarioPTaxableStocks="ngModel" [(ngModel)]="pTaxableStocks">
-              <div class="error" *ngIf="scenarioPTaxableStocks.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-            <td class="left">
-              Stocks cost basis:<app-info msg="The cost basis is the
-              amount you paid for the asset. If the asset's value
-              exceeds the cost basis you have an unrealized capital
-              gain. If it is less you have a unrealized capital
-              loss."></app-info>
-            </td>
-            <td>
-              <input type="number" step="1000" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
-              <div class="error" *ngIf="scenarioPTaxableStocksBasis.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="left"> Taxable bonds: </td>
-            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableBonds" #scenarioPTaxableBonds="ngModel" [(ngModel)]="pTaxableBonds">
-              <div class="error" *ngIf="scenarioPTaxableBonds.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-            <td class="left">
-              Bonds cost basis:
-            </td>
-            <td>
-              <input type="number" step="1000" class="numeric" required name="scenarioPTaxableBondsBasis" #scenarioPTaxableBondsBasis="ngModel" [(ngModel)]="pTaxableBondsBasis">
-              <div class="error" *ngIf="scenarioPTaxableBondsBasis.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="left"> Taxable cash:<app-info
-              msg="Will be reallocated stocks and bonds. If you wish to maintain a separate emergency fund do not enter it here."></app-info>
-            </td>
-            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableCash" #scenarioPTaxableCash="ngModel" [(ngModel)]="pTaxableCash">
-              <div class="error" *ngIf="scenarioPTaxableCash.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-            <td class="left">
-              Cash cost basis:
-            </td>
-            <td class="right">
-              {{pCash()}}
-            </td>
-          </tr>
-          <tr>
-            <td class="left"> Taxable other:<app-info msg="Will be reallocated to stocks and bonds."></app-info> </td>
-            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableOther" #scenarioPTaxableOther="ngModel" [(ngModel)]="pTaxableOther">
-              <div class="error" *ngIf="scenarioPTaxableOther.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-            <td class="left">
-              Other cost basis:
-            </td>
-            <td>
-              <input type="number" step="1000" class="numeric" required name="scenarioPTaxableOtherBasis" #scenarioPTaxableOtherBasis="ngModel" [(ngModel)]="pTaxableOtherBasis">
-              <div class="error" *ngIf="scenarioPTaxableOtherBasis.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="center"> Total </td>
-            <td class="right"> {{pTotal()}} </td>
-            <td> </td>
-            <td class="right"> {{basisTotal()}} </td>
-          </tr>
-        </table>
-      </div>
-    </div>
     <div *ngIf="!editDefinedBenefit">
       <div class="main-button float-left">
         <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
@@ -303,43 +261,169 @@ PURPOSE.
     </div>
   </div>
 
-  <div  *ngIf="step == 3">
-    <h1 class="title">Liabilities</h1>
-    <div class="defined-benefits">
-      <table>
-        <tr *ngIf="definedLiabilities.length > 0; else elseBlock">
-          <td class="nobordertop noborderleft"> </td>
-          <td> Years </td>
-          <td> Annual amount </td>
-          <td> </td>
-        </tr>
-        <ng-template #elseBlock>
-          <td> None </td>
-        </ng-template>
-        <tr class="db-container" *ngFor="let db of definedLiabilities; index as i">
-          <td> {{db.type}} </td>
-          <td class="right"> {{db.years}} </td>
-          <td class="right"> {{utils.comma(db.amount())}} </td>
-          <td>
-            <button type="button" (click)="doEdit(db)" [disabled]="editDefinedBenefit">Edit</button>
-            <button type="button" (click)="deleteDb(definedLiabilities, i)" [disabled]="editDefinedBenefit">Delete</button>
-          </td>
-        </tr>
-        <tr *ngIf="definedLiabilities.length > 0">
-          <td> Total </td>
-          <td class="right"> - </td>
-          <td class="right"> {{dbTotal(definedLiabilities)}} </td>
-          <td> </td>
-        </tr>
-      </table>
-      <div class="buttons">
-        <button type="button" (click)="addDb('Mortgage')" [disabled]="editDefinedBenefit">add Mortgage</button>
-        <button type="button" (click)="addDb('Student Loans')" [disabled]="editDefinedBenefit">add Student Loans</button>
-        <button type="button" (click)="addDb('Auto Loan')" [disabled]="editDefinedBenefit">add Auto Loan</button>
-        <button type="button" (click)="addDb('Credit Card Debt')" [disabled]="editDefinedBenefit">add Credit Card Debt</button>
-        <button type="button" (click)="addDb('Child/Dependent')" [disabled]="editDefinedBenefit">add Child/Dependent</button>
-        <button type="button" (click)="addDb('College Expenses')" [disabled]="editDefinedBenefit">add College Expenses</button>
-        <button type="button" (click)="addDb('Home Purchase')" [disabled]="editDefinedBenefit">add Home Purchase</button>
+  <div class="center" *ngIf="step == 3">
+    <h1 class="title">Assets &amp; Liabilities</h1>
+    <div *ngIf="!editDefinedBenefit">
+      <div align="center">
+        <table>
+          <tr>
+            <td class="left">
+              <input type="radio" name="assetDetail" value="" [(ngModel)]="assetDetail"> Quick entry
+            </td>
+          </tr>
+          <tr>
+            <td class="left">
+              <input type="radio" name="assetDetail" value="true" [(ngModel)]="assetDetail"> Detailed entry
+          </tr>
+        </table>
+        <br>
+      </div>
+      <div *ngIf="!assetDetail">
+        Net worth:<app-info msg="Net worth after future taxes and liabilities. Amount entered is treated as tax free.">
+        </app-info>&nbsp;<input type="number" step="1000" class="numeric" required name="scenarioNetWorth" #scenarioNetWorth="ngModel" [(ngModel)]="netWorth">
+        <div class="error" *ngIf="scenarioNetWorth.invalid">
+          Invalid numeric value.
+        </div>
+      </div>
+      <div *ngIf="assetDetail">
+        Existing defined contribution savings
+        <div class="defined-contributions">
+          <table>
+            <tr>
+              <td class="left"> Traditional IRA/401(k): </td>
+              <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxDeferred" #scenarioPTaxDeferred="ngModel" [(ngModel)]="pTaxDeferred">
+                <div class="error" *ngIf="scenarioPTaxDeferred.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="left"> Roth IRA/401(k): </td>
+              <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxFree" #scenarioPTaxFree="ngModel" [(ngModel)]="pTaxFree">
+                <div class="error" *ngIf="scenarioPTaxFree.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="left"> Taxable stocks: </td>
+              <td> <input type="number"step="1000" class="numeric" required name="scenarioPTaxableStocks" #scenarioPTaxableStocks="ngModel" [(ngModel)]="pTaxableStocks">
+                <div class="error" *ngIf="scenarioPTaxableStocks.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+              <td class="left">
+                Stocks cost basis:<app-info msg="The cost basis is the
+                amount you paid for the asset. If the asset's value
+                exceeds the cost basis you have an unrealized capital
+                gain. If it is less you have a unrealized capital
+                loss."></app-info>
+              </td>
+              <td>
+                <input type="number" step="1000" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
+                <div class="error" *ngIf="scenarioPTaxableStocksBasis.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="left"> Taxable bonds: </td>
+              <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableBonds" #scenarioPTaxableBonds="ngModel" [(ngModel)]="pTaxableBonds">
+                <div class="error" *ngIf="scenarioPTaxableBonds.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+              <td class="left">
+                Bonds cost basis:
+              </td>
+              <td>
+                <input type="number" step="1000" class="numeric" required name="scenarioPTaxableBondsBasis" #scenarioPTaxableBondsBasis="ngModel" [(ngModel)]="pTaxableBondsBasis">
+                <div class="error" *ngIf="scenarioPTaxableBondsBasis.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="left"> Taxable cash:<app-info
+                msg="Will be reallocated stocks and bonds. If you wish to maintain a separate emergency fund do not enter it here."></app-info>
+              </td>
+              <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableCash" #scenarioPTaxableCash="ngModel" [(ngModel)]="pTaxableCash">
+                <div class="error" *ngIf="scenarioPTaxableCash.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+              <td class="left">
+                Cash cost basis:
+              </td>
+              <td class="right">
+                {{pCash()}}
+              </td>
+            </tr>
+            <tr>
+              <td class="left"> Taxable other:<app-info msg="Will be reallocated to stocks and bonds."></app-info> </td>
+              <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableOther" #scenarioPTaxableOther="ngModel" [(ngModel)]="pTaxableOther">
+                <div class="error" *ngIf="scenarioPTaxableOther.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+              <td class="left">
+                Other cost basis:
+              </td>
+              <td>
+                <input type="number" step="1000" class="numeric" required name="scenarioPTaxableOtherBasis" #scenarioPTaxableOtherBasis="ngModel" [(ngModel)]="pTaxableOtherBasis">
+                <div class="error" *ngIf="scenarioPTaxableOtherBasis.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="center"> Total </td>
+              <td class="right"> {{pTotal()}} </td>
+              <td> </td>
+              <td class="right"> {{basisTotal()}} </td>
+            </tr>
+          </table>
+        </div>
+        <br>
+        <br>
+        Liabilities
+        <div class="defined-benefits">
+          <table>
+            <tr *ngIf="definedLiabilities.length > 0; else elseBlock">
+              <td class="nobordertop noborderleft"> </td>
+              <td> Years </td>
+              <td> Annual amount </td>
+              <td> </td>
+            </tr>
+            <ng-template #elseBlock>
+              <td> None </td>
+            </ng-template>
+            <tr class="db-container" *ngFor="let db of definedLiabilities; index as i">
+              <td> {{db.type}} </td>
+              <td class="right"> {{db.years}} </td>
+              <td class="right"> {{utils.comma(db.amount())}} </td>
+              <td>
+                <button type="button" (click)="doEdit(db)" [disabled]="editDefinedBenefit">Edit</button>
+                <button type="button" (click)="deleteDb(definedLiabilities, i)" [disabled]="editDefinedBenefit">Delete</button>
+              </td>
+            </tr>
+            <tr *ngIf="definedLiabilities.length > 0">
+              <td> Total </td>
+              <td class="right"> - </td>
+              <td class="right"> {{dbTotal(definedLiabilities)}} </td>
+              <td> </td>
+            </tr>
+          </table>
+          <div class="buttons">
+            <button type="button" (click)="addDb('Mortgage')" [disabled]="editDefinedBenefit">add Mortgage</button>
+            <button type="button" (click)="addDb('Student Loans')" [disabled]="editDefinedBenefit">add Student Loans</button>
+            <button type="button" (click)="addDb('Auto Loan')" [disabled]="editDefinedBenefit">add Auto Loan</button>
+            <button type="button" (click)="addDb('Credit Card Debt')" [disabled]="editDefinedBenefit">add Credit Card Debt</button>
+            <button type="button" (click)="addDb('Child/Dependent')" [disabled]="editDefinedBenefit">add Child/Dependent</button>
+            <button type="button" (click)="addDb('College Expenses')" [disabled]="editDefinedBenefit">add College Expenses</button>
+            <button type="button" (click)="addDb('Home Purchase')" [disabled]="editDefinedBenefit">add Home Purchase</button>
+          </div>
+        </div>
       </div>
     </div>
     <div *ngIf="editDefinedBenefit">
@@ -364,71 +448,6 @@ PURPOSE.
         Invalid numeric value.
       </div>
     <br>
-    <br>
-    Pre-retirement annual consumption:<app-info msg="Amount is after
-    tax and excluding the payment of any previously entered
-    liabilities. Wages less consumption, liability payments, and taxes
-    equals retirement savings."></app-info>&nbsp;<input type="number" step="1000" class="numeric"
-      required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
-      <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
-        Invalid numeric value.
-      </div>
-    <div class="income">
-      <table>
-        <tr>
-          <td class="nobordertop noborderleft"> </td>
-          <td> Pre-retirement annual wages <app-info msg="Amount is before tax."></app-info> </td>
-          <td> Wages end at </td>
-          <td> 401(k) plan available </td>
-        </tr>
-        <tr>
-          <td> Self </td>
-          <td>
-            <input type="number" step="1000" class="numeric" required name="scenarioIncomePreretirement" #scenarioIncomePreretirement="ngModel" [(ngModel)]="incomePreretirement">
-            <div class="error" *ngIf="scenarioIncomePreretirement.invalid">
-              Invalid numeric value.
-            </div>
-          </td>
-          <td>
-            <select type="select" name="scenarioIncomePreretirementAgeEndType" [(ngModel)]="incomePreretirementAgeEndType">
-              <option value="retirement">my retirement</option>
-              <option value="age">my specific age</option>
-            </select>
-            <span *ngIf="incomePreretirementAgeEndType == 'age'">
-              <input type="number" class="small-numeric" required name="scenarioIncomePreretirementAgeEnd" #scenarioIncomePreretirementAgeEnd="ngModel" [(ngModel)]="incomePreretirementAgeEnd">
-              <span class="error" *ngIf="scenarioIncomePreretirementAgeEnd.invalid">
-                <br>
-                Invalid numeric value.
-              </span>
-            </span>
-          </td>
-          <td> <input type="checkbox" name="scenarioHave401k" [(ngModel)]="have401k"> </td>
-        </tr>
-        <tr *ngIf="sex2 != 'none'">
-          <td> Spouse </td>
-          <td>
-            <input type="number"step="1000"  class="numeric" required name="scenarioIncomePreretirement2" #scenarioIncomePreretirement2="ngModel" [(ngModel)]="incomePreretirement2">
-            <div class="error" *ngIf="scenarioIncomePreretirement2.invalid">
-              Invalid numeric value.
-            </div>
-          </td>
-          <td>
-            <select type="select" name="scenarioIncomePreretirementAgeEnd2Type" [(ngModel)]="incomePreretirementAgeEnd2Type">
-              <option value="retirement">my retirement</option>
-              <option value="age">their specific age</option>
-            </select>
-            <span *ngIf="incomePreretirementAgeEnd2Type == 'age'">
-              <input type="number" class="small-numeric" required name="scenarioIncomePreretirementAgeEnd2" #scenarioIncomePreretirementAgeEnd2="ngModel" [(ngModel)]="incomePreretirementAgeEnd2">
-              <span class="error" *ngIf="scenarioIncomePreretirementAgeEnd2.invalid">
-                <br>
-                Invalid numeric value.
-              </span>
-            </span>
-          </td>
-          <td> <input type="checkbox" name="scenarioHave401k2" [(ngModel)]="have401k2"> </td>
-        </tr>
-      </table>
-    </div>
     <p>
       Allow income annuity purchases in retirement:<input type="checkbox" name="spias" [(ngModel)]="spias">&nbsp;<app-info
       msg="An income annuity such as a SPIA provides a
@@ -438,7 +457,18 @@ PURPOSE.
       strong bequest motive, or are uncomfortabe with the irreversible
       nature of the income annuity purchase decision."></app-info>
     </p>
+    <div *ngIf="age < ageRetirement">
+      Pre-retirement annual consumption:<app-info msg="Amount is after
+      tax and excluding the payment of any previously entered
+      liabilities. Wages less consumption, liability payments, and taxes
+      equals retirement savings."></app-info>&nbsp;<input type="number" step="1000" class="numeric"
+        required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
+        <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
+          Invalid numeric value.
+        </div>
+    </div>
     <div class="error" *ngIf="highConsume()">
+      <br>
       Annual consumption is more than annual wages.
       This is allowed, but may not be what you want.
     </div>
@@ -464,7 +494,7 @@ PURPOSE.
     </p>
     <p>
       It is often a judgment call as to whether the market is fairly
-      valued. You can enter your personal opinion here. The
+      valued. You can override our assessment here. The
       remainder of this section is normally correct.
     </p>
     <div class="market">
@@ -751,7 +781,7 @@ PURPOSE.
     </div>
   </div>
   <div *ngFor="let result of results; index as i">
-  <app-result [result]="result" [scenario]="scenario" *ngIf="i == activeResultIndex"></app-result>
+  <app-result [result]="result" [scenario]="this" *ngIf="i == activeResultIndex"></app-result>
   </div>
 </div>
 

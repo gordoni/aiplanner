@@ -65,7 +65,7 @@ PURPOSE.
       </div>
       <div class="padded inline-block">
         <div class="left boxed">
-          <div *ngIf="scenario.age >= scenario.age_retirement">
+          <div *ngIf="scenario.scenario.age >= scenario.scenario.age_retirement">
             Current recommended after tax
             consumption:<app-info msg="This is the target amount you
             should aim to consume this year. If you consume less you can
@@ -87,14 +87,16 @@ PURPOSE.
             should rrerun this program every year or two."></app-info>
             {{results.asset_allocation}}
           </div>
-          <div class="indent" *ngIf="results.asset_allocation_tax_free && (results.asset_allocation_tax_deferred || results.asset_allocation_taxable)">
-            Tax free (Roth): {{results.asset_allocation_tax_free}}
-          </div>
-          <div class="indent" *ngIf="results.asset_allocation_tax_deferred && (results.asset_allocation_tax_free || results.asset_allocation_taxable)">
-            Tax deferred (traditional): {{results.asset_allocation_tax_deferred}}
-          </div>
-          <div class="indent" *ngIf="results.asset_allocation_taxable && (results.asset_allocation_tax_free || results.asset_allocation_tax_deferred)">
-            Taxable: {{results.asset_allocation_taxable}}
+          <div *ngIf="scenario.assetDetail">
+            <div class="indent" *ngIf="results.asset_allocation_tax_free && (results.asset_allocation_tax_deferred || results.asset_allocation_taxable)">
+              Tax free (Roth): {{results.asset_allocation_tax_free}}
+            </div>
+            <div class="indent" *ngIf="results.asset_allocation_tax_deferred && (results.asset_allocation_tax_free || results.asset_allocation_taxable)">
+              Tax deferred (traditional): {{results.asset_allocation_tax_deferred}}
+            </div>
+            <div class="indent" *ngIf="results.asset_allocation_taxable && (results.asset_allocation_tax_free || results.asset_allocation_tax_deferred)">
+              Taxable: {{results.asset_allocation_taxable}}
+            </div>
           </div>
           <div>
             International diversification:<app-info msg="The returns of

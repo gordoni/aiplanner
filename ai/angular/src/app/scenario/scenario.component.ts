@@ -47,6 +47,9 @@ export class ScenarioComponent implements OnInit {
 
   public definedLiabilities: DefinedBenefit[] = [];
 
+  public assetDetail: string = "";
+  public netWorth: number = 0;
+
   public pTaxDeferred: number = 0;
   public pTaxFree: number = 0;
   public pTaxableStocks: number = 0;
@@ -108,7 +111,11 @@ export class ScenarioComponent implements OnInit {
   }
 
   highConsume() {
-    return this.consumePreretirement > this.incomePreretirement + ((this.sex2 == 'none') ? 0 : this.incomePreretirement2);
+    if (this.age < this.ageRetirement) {
+      return this.consumePreretirement > this.incomePreretirement + ((this.sex2 == 'none') ? 0 : this.incomePreretirement2);
+    } else {
+      return false;
+    }
   }
 
   dbTotal(definedItems) {
@@ -207,7 +214,9 @@ export class ScenarioComponent implements OnInit {
 
     var dbs = [];
     this.addToDbs(dbs, this.definedBenefits, true);
-    this.addToDbs(dbs, this.definedLiabilities, false);
+    if (this.assetDetail) {
+      this.addToDbs(dbs, this.definedLiabilities, false);
+    }
 
     var scenario = {
         'observe_market_conditions': this.observeMarketConditions,
@@ -228,15 +237,15 @@ export class ScenarioComponent implements OnInit {
 
         'guaranteed_income': dbs,
 
-        'p_tax_deferred': this.pTaxDeferred,
-        'p_tax_free': this.pTaxFree,
-        'p_taxable_stocks': this.pTaxableStocks,
-        'p_taxable_stocks_basis': this.pTaxableStocksBasis,
-        'p_taxable_bonds':  this.pTaxableBonds,
-        'p_taxable_bonds_basis': this.pTaxableBondsBasis,
-        'p_taxable_cash':  this.pTaxableCash,
-        'p_taxable_other':  this.pTaxableOther,
-        'p_taxable_other_basis': this.pTaxableOtherBasis,
+        'p_tax_deferred': (this.assetDetail) ? this.pTaxDeferred : 0,
+        'p_tax_free': (this.assetDetail) ? this.pTaxFree : this.netWorth,
+        'p_taxable_stocks': (this.assetDetail) ? this.pTaxableStocks : 0,
+        'p_taxable_stocks_basis': (this.assetDetail) ? this.pTaxableStocksBasis : 0,
+        'p_taxable_bonds': (this.assetDetail) ? this.pTaxableBonds : 0,
+        'p_taxable_bonds_basis': (this.assetDetail) ? this.pTaxableBondsBasis : 0,
+        'p_taxable_cash': (this.assetDetail) ? this.pTaxableCash : 0,
+        'p_taxable_other': (this.assetDetail) ? this.pTaxableOther : 0,
+        'p_taxable_other_basis': (this.assetDetail) ? this.pTaxableOtherBasis : 0,
 
         'age_retirement': this.ageRetirement,
         'income_preretirement': this.incomePreretirement,
