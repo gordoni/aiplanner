@@ -861,7 +861,8 @@ class Fin:
         except AttributeError:
             action = action_np
 
-        i: cython.int; consume_action: cython.double; spias_action: cython.double; real_spias_action: cython.double; stocks_action: cython.double
+        i: cython.int; consume_action: cython.double; spias_action: cython.double; real_spias_action: cython.double
+        stocks_action: cython.double; stocks_curvature_action: cython.double
         real_bonds_action: cython.double; real_bonds_duration_action: cython.double
         nominal_bonds_action: cython.double; nominal_bonds_duration_action: cython.double; iid_bonds_action: cython.double
         i = 0
@@ -872,6 +873,7 @@ class Fin:
                 real_spias_action = action[i]; i += 1
         if self._params.stocks:
             stocks_action = action[i]; i += 1
+            stocks_curvature_action = action[i]; i += 1
         if self._params.real_bonds:
             real_bonds_action = action[i]; i += 1
             if self._params.real_bonds_duration == -1 or self._params.real_bonds_duration_action_force:
@@ -907,12 +909,14 @@ class Fin:
                     # tanh(action/5)   128307    110570
                 if self._params.real_spias and self._params.nominal_spias:
                     real_spias_action = tanh(real_spias_action)
+            if self._params.stocks:
+                stocks_curvature_action = tanh(stocks_curvature_action)
             if self._params.real_bonds and self._params.real_bonds_duration == -1:
                 real_bonds_duration_action = tanh(real_bonds_duration_action)
             if self._params.nominal_bonds and self._params.nominal_bonds_duration == -1:
                 nominal_bonds_duration_action = tanh(nominal_bonds_duration_action)
         else:
-            if self._params_stocks:
+            if self._params.stocks:
                 stocks_action = safe_atanh(stocks_action)
             if self._params.real_bonds:
                 real_bonds_action = safe_atanh(real_bonds_action)
@@ -980,31 +984,8 @@ class Fin:
         if not (self._spias and self._params.nominal_spias):
             nominal_spias_fraction = 0
 
-        # A number of different methods of computing the asset allocation were attempted.
-        # Reported results are for iid returns, no tax, no SPIAs, gi=20e3, gamma=6 based on the CE distribution of 10 trained models.
-        # Note that standard error values are much smaller for lower p values. Hence the performance for high p values is what counts.
-        #
-        # stocks_action, iid_bonds_action = softmax(stocks_action, iid_bonds_action)
-        # stocks_curvature_fraction = 0.5
-        #    Baseline case.
-        #
-        # stocks_action = (1 + tanh(stocks_action)) / 2
-        # stocks_curvature_fraction = 0.5
-        #    p=2e5: outperforms by 1 standard error
-        #    p=5e5: same
-        #    p=1e6: underperforms by 1 standard error
-        #    p=2e6: underperforms by 1 standard error
-        #    p=5e6: underperforms by 1 standard error
-        #    Weakly inferior and doesn't generalize to more than two asset classes.
-        #
-        # stocks_action, iid_bonds_action = softmax(stocks_action, iid_bonds_action)
-        # stocks_curvature_fraction = 0.0
-        #    p=2e5: underperforms by 10 standard error
-        #    p=5e5: underperforms by 1 standard error
-        #    p=1e6: outperforms by 0.5 standard error
-        #    p=2e6: same
-        #    p=5e6: underperforms by 0.5 standard error
-        #    Inferior at both extremes.
+        # A number of different methods of computing the asset allocation have been attempted.
+        # Softmax gives the best results.
 
         # Softmax the asset allocations when guaranteed_income is zero.
         maximum = max(
@@ -1044,9 +1025,6 @@ class Fin:
         #     stocks_fraction = const1 + const2 * guaranteed_income_wealth / investment_wealth
         # might be helpful to determining the stock allocation.
         #
-        # Empirically for a single data value, stocks, we get better results training a single varaible, stocks_action,
-        # than trying to train two variables, stocks_action and stocks_curvature_action for one data value.
-        #
         # For stocks and iid bonds using Merton's portfolio solution and dynamic programming for 16e3 of guaranteed income, female age 65 SSA+3, we have:
         # stocks:
         #    p  gamma=3   gamma=6  wealth_ratio
@@ -1061,8 +1039,9 @@ class Fin:
         #   5e5     -       0.3
         #   1e6    0.6      0.4
         #   2e6    0.7      0.5
-        # We thus use a curvature coefficient of 0.5, and allow stocks to depend on the observation to fine tune things from there.
-        stocks_curvature = real_bonds_curvature = nominal_bonds_curvature = iid_bonds_curvature = 0.5
+        # We thus allow a stocks curvature coefficient in the range [0, 1].
+        stocks_curvature = real_bonds_curvature = nominal_bonds_curvature = iid_bonds_curvature = (1 + stocks_curvature_action) / 2
+            # Other curvatures won't matter if only one other asset class.
         alloc: cython.double
         alloc = 1.0
         stocks = max(0.0, min(stocks_action + stocks_curvature * wealth_ratio + self._params.rl_stocks_bias, alloc, self._params.rl_stocks_max)) \

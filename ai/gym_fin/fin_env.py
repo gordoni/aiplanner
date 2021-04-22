@@ -26,6 +26,7 @@ class FinEnv(Env):
                 actions += 1 # real_spias_action
         if params['stocks']:
             actions += 1 # stocks_action
+            actions += 1 # stocks_curvature_action
         if params['real_bonds']:
             actions += 1 # real_bonds_action
             if params['real_bonds_duration'] == -1 or params['real_bonds_duration_action_force']:
