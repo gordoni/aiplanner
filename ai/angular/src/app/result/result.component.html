@@ -50,7 +50,7 @@ PURPOSE.
       </div>
       <div class="padded inline-block">
         <div class="left boxed">
-          Mean annual consumption in retirement:<app-info msg="This is
+          Mean annual consumption<span *ngIf="scenario.scenario.consume_preretirement != null"> in retirement</span>:<app-info msg="This is
           not an amount you can expect to steadfastly consume. Instead
           you should expect consumption to vary depending on the stock
           market and interest rates."></app-info>
@@ -58,14 +58,12 @@ PURPOSE.
           <br>
           Consumption uncertainty:<app-info msg="Standard deviation."></app-info> {{results.consume_stdev}}
           <br>
-          Probability retirement consumption below {{results.consume_preretirement}}: {{results.consume_preretirement_ppf}}%
-          <br>
-          10% chance of retirement consumption below: {{results.consume_low}}
+          10% chance of <span *ngIf="scenario.scenario.consume_preretirement != null">retirement</span> consumption below: {{results.consume_low}}
         </div>
       </div>
       <div class="padded inline-block">
         <div class="left boxed">
-          <div *ngIf="scenario.scenario.age >= scenario.scenario.age_retirement">
+          <div *ngIf="scenario.scenario.consume_preretirement == null">
             Current recommended after tax
             consumption:<app-info msg="This is the target amount you
             should aim to consume this year. If you consume less you can
@@ -149,7 +147,7 @@ PURPOSE.
       <div></div>
       <div class="padded inline-block">
         <div class="left boxed small-font">
-          RRA={{results.gamma}} certainty equivalent retirement
+          RRA={{results.gamma}} certainty equivalent <span *ngIf="scenario.scenario.consume_preretirement != null">retirement</span>
           consumption:<app-info msg="This is the best number to use to
           compare the effects of changes to the scenario, such as
           enabling SPIAs. However this value can not be used when
@@ -165,7 +163,9 @@ PURPOSE.
       <table width="100%">
         <tr>
           <td> Life expectancy </td>
-          <td> Retirement consumption distribution <app-info msg="Averaged over a lifetime and many possible future scenarios."></app-info> </td>
+          <td> <span *ngIf="scenario.scenario.consume_preretirement != null; else elseBlock">Retirement consumption</span>
+            <ng-template #elseBlock>Consumption</ng-template>
+            distribution <app-info msg="Averaged over a lifetime and many possible future scenarios."></app-info> </td>
         </tr>
         <tr>
           <td width="50%"> <a href="{{results.data_dir}}/alive.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/alive.svg"></a> </td>
@@ -175,7 +175,7 @@ PURPOSE.
           <td> &nbsp; </td>
         </tr>
         <tr>
-          <td> Retirement consumption confidence region <app-info msg="Averaged over many possible future scenarios."></app-info> </td>
+          <td> Consumption confidence region <app-info msg="Averaged over many possible future scenarios."></app-info> </td>
           <td> Example consumption paths <app-info msg="Many possible future scenarios were generated to evaluate the plan. This is just a small sample."></app-info>
           </td>
         </tr>

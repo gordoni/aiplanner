@@ -272,7 +272,7 @@ train_args () {
                 preretirement)
                     ;;
                 retired)
-                    TARGS="$TARGS --master-age-start=50 --master-age-retirement=0 --master-p-weighted-low=1e4 --master-p-weighted-high=1e7"
+                    TARGS="$TARGS --master-age-start=50 --master-age-retirement=0 --master-gi-fraction-high=1.0 --master-p-weighted-low=1e4 --master-p-weighted-high=1e7"
                     ;;
                 *)
                     echo "Unknown stage: $STAGE" >&2
@@ -450,30 +450,30 @@ eval_scenarios () {
         evaluate $STAGE-gamma$GAMMA-le_additional-0.5_1.5 $UNIT-retired67-le_additional1-guaranteed_income20e3-tax_free2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-age-start2=67 --master-life-expectancy-additional=1 --master-life-expectancy-additional2=1 --master-p-tax-free=2e6"
         evaluate $STAGE-gamma$GAMMA-le_additional1.5_3.5 $UNIT-retired67-le_additional3-guaranteed_income20e3-tax_free2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-age-start2=67 --master-life-expectancy-additional=3 --master-life-expectancy-additional2=3 --master-p-tax-free=2e6"
         evaluate $STAGE-gamma$GAMMA-le_additional3.5_5.5 $UNIT-retired67-le_additional5-guaranteed_income20e3-tax_free2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-age-start2=67 --master-life-expectancy-additional=5 --master-life-expectancy-additional2=5 --master-p-tax-free=2e6"
-    elif [ $TRAINING = generic -a $STAGE = preretirement ]; then
-        case "$EVALUATE" in
-            tax_free)
-                evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2e5"
-                evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free5e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=5e5"
-                evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=1e6"
-                evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2e6"
-                ;;
-           tax_diverse)
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=2e5"
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse5e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=5e5"
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=1e6"
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=2e6"
-               ;;
-           p_none)
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age30-p_none$LABEL "$EVAL_ARGS $ARGS --master-age-start=30 --master-income-preretirement=80e3 --master-consume-preretirement=50e3"
-               ;;
-           p_none_complex)
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age30-p_none_complex$LABEL "$EVAL_ARGS $ARGS $COMPLEX_SCENARIO"
-               ;;
-        esac
     fi
     local MODEL_STAGE=${FORCE_STAGE:-$STAGE}
-    if [ $TRAINING = generic -a $STAGE = retired ]; then
+    if [ $TRAINING = generic -a $STAGE = preretirement ]; then
+        case "$EVALUATE" in
+            tax_free)
+                evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2e5"
+                evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free5e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=5e5"
+                evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=1e6"
+                evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2e6"
+                ;;
+           tax_diverse)
+               evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=2e5"
+               evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse5e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=5e5"
+               evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=1e6"
+               evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=2e6"
+               ;;
+           p_none)
+               evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age30-p_none$LABEL "$EVAL_ARGS $ARGS --master-age-start=30 --master-income-preretirement=80e3 --master-consume-preretirement=50e3"
+               ;;
+           p_none_complex)
+               evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age30-p_none_complex$LABEL "$EVAL_ARGS $ARGS $COMPLEX_SCENARIO"
+               ;;
+        esac
+    elif [ $TRAINING = generic -a $STAGE = retired ]; then
         case "$EVALUATE" in
             tax_free)
                 evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_free2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-age-start2=67 --master-p-tax-free=2e5"

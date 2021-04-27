@@ -45,24 +45,20 @@ class FinEnv(Env):
             # ppo1 and Rllib PPO implementation ignores size and very roughly initially assumes N(0, 1) actions, but potentially trainable to any value.
         self.observation_space_items = [
             'couple', 'num_401k', 'one_on_gamma',
-            'preretirement_years', 'years_retired',
+            'years_expected',
             'lifespan_percentile_years', 'spia_expectancy_years', 'final_spias_purchase',
             'reward_to_go_estimate', 'relative_ce_estimate_individual',
             'log_ce_estimate_individual',
-            'wealth_fraction', 'preretirement_income_wealth_fraction',
+            'wealth_fraction'
             'stocks_price', 'stocks_volatility', 'real_interest_rate']
-        self.observation_space_low  = [0, 0, 0,   0,   0,   0,   0, 0, -2e3,   0,  0, 0, 0, 0, 0, -0.15]
-        self.observation_space_high = [1, 2, 1, 100, 100, 100, 100, 1,   10, 100, 20, 1, 1, 4, 7,  0.15]
+        self.observation_space_low  = [0, 0, 0,   0,   0,   0, 0, -2e3,   0,  0, 0, 0, 0, -0.15]
+        self.observation_space_high = [1, 2, 1, 100, 100, 100, 1,   10, 200, 20, 1, 4, 7,  0.15]
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple()
             #    in common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
             #
             # Values listed above are intended as an indicative ranges, not the absolute range limits.
             # Values are not used by ppo1. It is only the length that matters.
-            #
-            # Models train poorly with extreme observation warnings, large negative mean rewards, and extreme rewards during training,
-            # and/or a CE 10-40% below expected if observations (or at least reward_to_go observation) frequently and significanty exceed observation space range.
-            # Most likely to occur for gamma=6, p=2e6, bucket.
             low = np.repeat(-1, len(self.observation_space_low)).astype(np.float32) if params['observation_space_ignores_range']
                 else np.array(self.observation_space_low, dtype = np.float32),
             high = np.repeat(1, len(self.observation_space_high)).astype(np.float32) if params['observation_space_ignores_range']

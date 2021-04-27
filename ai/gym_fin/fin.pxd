@@ -75,6 +75,7 @@ cdef class Fin:
     cdef bint _info_strategy
     cdef list _life_expectancy_both
     cdef list _life_expectancy_one
+    cdef list _life_expectancy_single
     cdef list _life_percentile
     cdef LifeTable _life_table
     cdef LifeTable _life_table2
@@ -105,7 +106,6 @@ cdef class Fin:
     cdef FinParams _params
     cdef dict _params_dict
     cdef Policy _policy
-    cdef double _preretirement_fraction
     cdef double _preretirement_income_wealth
     cdef double _preretirement_years
     cdef AssetAllocation _prev_asset_allocation
@@ -124,9 +124,6 @@ cdef class Fin:
     cdef double _regular_tax_rate
     cdef double _retired_income_wealth
     cdef double _retired_income_wealth_pretax
-    cdef list _retirement_expectancy_both
-    cdef list _retirement_expectancy_one
-    cdef list _retirement_expectancy_single
     cdef double _reward_scale
     cdef double _rough_ce_estimate_individual
     cdef str _sex2
@@ -147,7 +144,7 @@ cdef class Fin:
     cdef double _wealth_tax_deferred
     cdef double _wealth_tax_free
     cdef double _wealth_taxable
-    cdef double _years_retired
+    cdef double _years_expected
 
     # Worthwhile cdef'ing a few methods because they are called so frequently.
     # Return object so that exceptions can propagate.
@@ -168,7 +165,7 @@ cdef class Fin:
 
     cdef object _step(self, int steps = ?, bint force_family_unit = ?, bint forced_family_unit_couple = ?)
 
-    cdef object _pre_calculate_wealth(self, double growth_rate = ?)
+    cdef object _pre_calculate_wealth(self)
 
     cdef object _pre_calculate(self)
 

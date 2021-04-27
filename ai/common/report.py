@@ -68,6 +68,8 @@ def generate_report(api, result_dir, results, results_dir):
     if not customer_name and not scenario_name:
         customer_name = 'AIPlanner'
 
+    consume_specify = api['age'] < api['age_retirement'] and api.get('consume_preretirement') is not None
+
     if scenario_name:
         doc.title = customer_name + ' - ' + scenario_name
     else:
@@ -107,7 +109,7 @@ def generate_report(api, result_dir, results, results_dir):
         s = '<para alignment="center">Consumption summary</para>'
         contents.append(Paragraph(s, styleH))
         contents.append(Spacer(1, 2 * inch))
-        contents.append(Paragraph('<para alignment="center">Retirement consumption distribution</para>', styleN))
+        contents.append(Paragraph('<para alignment="center">' + ('Retirement consumption' if consume_specify else 'Consumption') + ' distribution</para>', styleN))
         contents.append(svg(None, 'consume-pdf', width = 7.5 * inch))
     for result in sorted(results, key = lambda r: r.get('rra', 0), reverse = True):
         if not result['error']:
@@ -119,11 +121,9 @@ def generate_report(api, result_dir, results, results_dir):
                 s = '<font color="red">WARNING: ' + warning + '</font>'
                 contents.append(Paragraph(s, styleN))
             content = []
-            s = 'Mean consumption in retirement: ' + dollar(result['consume_mean']) + '<br/>' + \
+            s = 'Mean consumption' + (' in retirement' if consume_specify else '') + ': ' + dollar(result['consume_mean']) + '<br/>' + \
                 'Consumption uncertainty: ' + dollar(result['consume_stdev']) + '<br/>' + \
-                'Probability retirement consumption below ' + dollar(result['consume_preretirement']) + ': ' + \
-                    str(round(result['consume_preretirement_ppf'] * 100)) + '%<br/>' + \
-                '10% chance of retirement consumption below: ' + dollar(result['consume10'])
+                '10% chance of' + (' retirement' if consume_specify else '') + ' consumption below: ' + dollar(result['consume10'])
             content.append(Paragraph(s, styleN))
             content.append(Spacer(1, 0.25 * inch))
             asset_classes = ''
@@ -163,7 +163,8 @@ def generate_report(api, result_dir, results, results_dir):
                 s += '<br/>Recommended inflation-indexed SPIA purchase amount: ' + dollar(result['real_spias_purchase'])
             content.append(Paragraph(s, styleN))
             content.append(Spacer(1, 0.25 * inch))
-            s = '<font size="8">RRA=' + str(result['rra']) + ' certainty equivalent retirement consuption: ' + dollar(result['ce']) + '<br/>' + \
+            s = '<font size="8">RRA=' + str(result['rra']) + ' certainty equivalent' + (' retirement' if consume_specify else '') + ' consuption: ' + \
+                dollar(result['ce']) + '<br/>' + \
                 'Standard error of measurement: ' + dollar(result['ce_stderr']) + '</font>'
             content.append(Paragraph(s, styleN))
             t = Table([
@@ -178,10 +179,11 @@ def generate_report(api, result_dir, results, results_dir):
             ])
             contents.append(t)
             contents.append(Spacer(1, 1 * inch))
-            contents.append(Paragraph('<para alignment="center">Retirement consumption distribution</para>', styleN))
+            contents.append(Paragraph('<para alignment="center">' + ('Retirement consumption' if consume_specify else 'Consumption') + ' distribution</para>',
+                styleN))
             contents.append(svg(aid, 'consume-pdf', width = 7.5 * inch))
             contents.append(PageBreak())
-            contents.append(Paragraph('<para alignment="center">Retirement consumption confidence region</para>', styleN))
+            contents.append(Paragraph('<para alignment="center">Consumption confidence region</para>', styleN))
             contents.append(svg(aid, 'consume-cr'))
             contents.append(Spacer(1, 0.25 * inch))
             contents.append(Paragraph('<para alignment="center">Example consumption paths</para>', styleN))

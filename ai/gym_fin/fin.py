@@ -175,11 +175,11 @@ class Fin:
 
     _vital_stats_cache = {}
 
-    def _compute_vital_stats(self, age_start, age_start2, preretirement, key):
+    def _compute_vital_stats(self, age_start, age_start2, key):
 
         if self._sex2 or self._info_rollouts or not self._params.probabilistic_life_expectancy:
             # Can't cache vital stats for couple as would loose random rollouts of couple expectancy.
-            # Additionally would need to save _retirement_expectancy_one and _retirement_expectancy_both as they get clobbered below.
+            # Additionally would need to save _life_expectancy_one and _life_expectancy_both as they get clobbered below.
             # Can't cache vital stats if info rollouts as _alive_count wouldn't get updated.
             key = None
 
@@ -269,6 +269,7 @@ class Fin:
 
             life_expectancy_both = self._sums_to_end(alive_both, 0, alive_both)
             life_expectancy_one = self._sums_to_end(alive_one, 0, alive_either)
+            life_expectancy_single = self._sums_to_end(alive_single, 0, alive_single)
 
             percentile = 0.8
             alive_weighted = list(alive_one[i] + alive_both[i] * (1 + self._params.consume_additional) for i in range(len(alive_one)))
@@ -285,11 +286,6 @@ class Fin:
                     partial = 0
                 life_percentile.insert(0, (j - i + 1 + partial) * self._params.time_period)
 
-            retired_index = ceil(preretirement / self._params.time_period)
-            retirement_expectancy_both = self._sums_to_end(alive_both, retired_index, alive_both)
-            retirement_expectancy_one = self._sums_to_end(alive_one, retired_index, alive_either)
-            retirement_expectancy_single = self._sums_to_end(alive_single, retired_index, alive_single)
-
             alive_single.append(0.0)
             alive_count.append(0)
 
@@ -297,8 +293,7 @@ class Fin:
                 alive_single = [-1 if _alive_count == 2 else _alive_count for _alive_count in alive_count]
 
             vs = alive_both, alive_one, only_alive2, alive_single, alive_count, \
-                life_expectancy_both, life_expectancy_one, life_percentile, \
-                retirement_expectancy_both, retirement_expectancy_one, retirement_expectancy_single
+                life_expectancy_both, life_expectancy_one, life_expectancy_single, life_percentile
 
             if key is not None and len(Fin._vital_stats_cache) < 1000:
                 Fin._vital_stats_cache[key] = vs
@@ -308,8 +303,7 @@ class Fin:
         # and calculations using numpy.float64 will propagate and are also slow.
         # This can be done by typing the variable the value is assigned to as a cython.double when runing under Cython, or using float() for cPython.
         self._alive_both, self._alive_one, self._only_alive2, self._alive_single, self._alive_count, \
-            self._life_expectancy_both, self._life_expectancy_one, self._life_percentile, \
-            self._retirement_expectancy_both, self._retirement_expectancy_one, self._retirement_expectancy_single = vs
+            self._life_expectancy_both, self._life_expectancy_one, self._life_expectancy_single, self._life_percentile = vs
 
     def _sums_to_end(self, l, start, divl):
 
@@ -621,8 +615,8 @@ class Fin:
 
         self._preretirement_years = ceil(max(0, self._age_retirement - self._age) / self._params.time_period) * self._params.time_period
 
-        key = (self._age, self.life_table.age_add, self._preretirement_years)
-        self._compute_vital_stats(self._age, self._age2, self._preretirement_years, key)
+        key = (self._age, self.life_table.age_add)
+        self._compute_vital_stats(self._age, self._age2, key)
 
         # Number of steps that can be taken.
         self._anticipated_episode_length = len(self._alive_single)
@@ -630,6 +624,8 @@ class Fin:
             self._anticipated_episode_length -= 1
 
         # Create separate pre-retirement and retired life tables so can compute present values separately.
+        # This is done primarily for historical reasons.
+        # All wealth is treated equally, although it may be reported to the user differently.
         self._life_table_preretirement = make_life_table(self._params.life_table, self._params.sex, death_age = self._age + self._preretirement_years,
             age_add = self._life_table.age_add, interpolate_q = self._params.life_table_interpolate_q)
             # Make age_add match regular life table.
@@ -750,17 +746,18 @@ class Fin:
                 cg_init = taxable_assets_aa_other - taxable_basis_aa_other
                 self._taxes.reset(taxable_assets, taxable_basis, cg_init)
 
-                assert not self._params.consume_preretirement or not self._params.consume_preretirement_income_ratio_high
                 income_preretirement = self._income_preretirement + self._income_preretirement2
                 regular_tax, capital_gains_tax, _ = self._taxes.calculate_taxes(income_preretirement, 0, 0, 0, 0, not self._couple)
                 income_preretirement -= regular_tax + capital_gains_tax
-                self._consume_preretirement = self._params.consume_preretirement + \
+                self._consume_preretirement = \
                     uniform(self._params.consume_preretirement_income_ratio_low, self._params.consume_preretirement_income_ratio_high) * income_preretirement
+                if self._params.consume_preretirement != -1:
+                    self._consume_preretirement += self._params.consume_preretirement
 
-                self._pre_calculate_wealth(growth_rate = 1.05) # Use a typical stock growth rate for determining expected consume range.
+                self._pre_calculate_wealth()
+
                 ce_estimate_ok = self._params.consume_floor <= self._rough_ce_estimate_individual <= self._params.consume_ceiling
 
-                self._pre_calculate_wealth(growth_rate = 1) # By convention use no growth for determining guaranteed income bucket.
                 preretirement_ok = self._raw_preretirement_income_wealth + self._p_wealth_pretax >= 0
                     # Very basic sanity check only. Ignores taxation.
 
@@ -1122,7 +1119,7 @@ class Fin:
 
         p: cython.double; consume: cython.double; welfare: cython.double
         p = self._p_plus_income
-        if self._age < self._age_retirement:
+        if self._params.consume_preretirement != -1 and self._age < self._age_retirement:
             consume = self._consume_preretirement * self._params.time_period
             welfare = 0
         else:
@@ -1431,7 +1428,7 @@ class Fin:
             # Ignore future taxation of new_p_tax_deferred; depends upon heirs tax bracket.
 
         reward_weight: cython.double; reward_consume: cython.double; reward_value: cython.double
-        if self._age < self._age_retirement:
+        if self._params.consume_preretirement != -1 and self._age < self._age_retirement:
             reward_weight = 0
             reward_consume = 0
             reward_value = 0
@@ -1571,8 +1568,8 @@ class Fin:
             else:
                 assert False
 
-            self._retirement_expectancy_both = [0.0] * len(self._retirement_expectancy_both)
-            self._retirement_expectancy_one = self._retirement_expectancy_single
+            self._life_expectancy_both = [0.0] * len(self._life_expectancy_both)
+            self._life_expectancy_one = self._life_expectancy_single
 
         # for _ in range(steps):
         #     income_fluctuation = lognormvariate(self._params.income_preretirement_mu * self._params.time_period,
@@ -1653,10 +1650,9 @@ class Fin:
 
         pv_income_preretirement = self._income_preretirement * self._income_preretirement_years
         pv_income_preretirement2 = self._income_preretirement2 * self._income_preretirement_years2
-        pv_consume_preretirement = self._consume_preretirement * self._preretirement_years
 
         print(self._age, self._p_tax_free, self._p_tax_deferred, self._p_taxable,
-            pv_income_preretirement, pv_income_preretirement2, pv_consume_preretirement, - self._taxes_due)
+            pv_income_preretirement, pv_income_preretirement2, - self._taxes_due)
 
         stdout.flush()
 
@@ -1664,11 +1660,7 @@ class Fin:
 
         return
 
-    @cython.locals(growth_rate = cython.double)
-    def _pre_calculate_wealth(self, growth_rate = 1.0):
-        # By default use a conservative growth rate for determining the present value of wealth.
-        # Also reflects the fact that we won't get to consume all wealth before we are expected to die.
-        # Leave it to the AI to map to actual value.
+    def _pre_calculate_wealth(self):
 
         self._pv_preretirement_income = [0.0] * len(TaxStatus)
         self._pv_retired_income = [0.0] * len(TaxStatus)
@@ -1698,7 +1690,7 @@ class Fin:
             income = self._income_preretirement * min(self._income_preretirement_years, self._preretirement_years) + \
                 self._income_preretirement2 * min(self._income_preretirement_years2, self._preretirement_years)
             self._pv_preretirement_income[source] += income
-            self._pv_preretirement_income[TAX_FREE] -= self._consume_preretirement * self._preretirement_years
+            #self._pv_preretirement_income[TAX_FREE] -= self._consume_preretirement * self._preretirement_years
             # Currently no need to reduce taxable and increase tax_deferred by 401(k)/IRA contributions as only ever consider pre-retirement taxable + tax_deferred.
         self._pv_retired_income[source] += self._income_preretirement * max(0, self._income_preretirement_years - self._preretirement_years)
         self._pv_retired_income[source] += self._income_preretirement2 * max(0, self._income_preretirement_years2 - self._preretirement_years)
@@ -1706,24 +1698,17 @@ class Fin:
         self._retired_income_wealth_pretax = sum(self._pv_retired_income)
 
         if self._couple:
-            self._years_retired = float(self._retirement_expectancy_both[self._episode_length]) + \
-                float(self._retirement_expectancy_one[self._episode_length]) / (1 + self._params.consume_additional)
+            self._years_expected = float(self._life_expectancy_both[self._episode_length]) + \
+                float(self._life_expectancy_one[self._episode_length]) / (1 + self._params.consume_additional)
             self._couple_weight = 2
         else:
-            self._years_retired = self._retirement_expectancy_one[self._episode_length]
+            self._years_expected = self._life_expectancy_one[self._episode_length]
             self._couple_weight = 1
-        self._years_retired = max(self._years_retired, self._params.time_period) # Prevent divide by zeros later.
+        self._years_expected = max(self._years_expected, self._params.time_period) # Prevent divide by zeros later.
 
-        if growth_rate != 1:
-            preretirement_growth = growth_rate ** self._preretirement_years
-            retirement_growth = 1 if growth_rate == 1 else self._years_retired * (1 - 1 / growth_rate) / (1 - 1 / growth_rate ** self._years_retired)
-            total_growth = preretirement_growth * retirement_growth
-        else:
-            total_growth = 1
-
-        self._wealth_tax_free = self._p_tax_free * total_growth
-        self._wealth_tax_deferred = self._p_tax_deferred * total_growth
-        self._wealth_taxable = self._p_taxable * total_growth
+        self._wealth_tax_free = self._p_tax_free
+        self._wealth_tax_deferred = self._p_tax_deferred
+        self._wealth_taxable = self._p_taxable
 
         if not self._params.tax and self._params.income_aggregate:
             # Aggregating wealth results in better training.
@@ -1737,7 +1722,7 @@ class Fin:
         self._raw_preretirement_income_wealth = sum(self._pv_preretirement_income) # Should factor in investment growth.
         self._net_wealth_pretax = self._p_wealth_pretax + self._retired_income_wealth_pretax + self._raw_preretirement_income_wealth
 
-        self._rough_ce_estimate_individual = max(self._params.welfare, self._net_wealth_pretax / self._years_retired / self._couple_weight)
+        self._rough_ce_estimate_individual = max(self._params.welfare, self._net_wealth_pretax / self._years_expected / self._couple_weight)
 
     def _pre_calculate(self):
 
@@ -1747,8 +1732,8 @@ class Fin:
         p_basis, cg_carry = self._taxes.observe()
         assert p_basis >= 0
 
-        average_asset_years = self._preretirement_years + self._years_retired / 2
-        total_years = self._preretirement_years + self._years_retired
+        average_asset_years = self._years_expected / 2 # (pretirement_years + years_expected) / 2 - pretirement_years / 2.
+        total_years = self._years_expected
 
         pv_regular_income = float(self._pv_preretirement_income[TAX_DEFERRED]) + float(self._pv_preretirement_income[TAXABLE]) + \
             float(self._pv_retired_income[TAX_DEFERRED]) + float(self._pv_retired_income[TAXABLE]) + self._wealth_tax_deferred
@@ -1784,20 +1769,18 @@ class Fin:
         self._net_wealth = max(0, self._net_wealth_pretax - self._pv_taxes - self._taxes_due)
         self._retired_income_wealth = max(0, self._net_wealth - self._p_wealth - self._preretirement_income_wealth)
 
-        income_estimate = self._net_wealth / self._years_retired
+        income_estimate = self._net_wealth / self._years_expected
         self._ce_estimate_individual = max(self._params.welfare, income_estimate / self._couple_weight)
 
         try:
-            self._consume_fraction_estimate = 1 / self._years_retired
+            self._consume_fraction_estimate = 1 / self._years_expected
         except ZeroDivisionError:
             self._consume_fraction_estimate = float('inf')
 
         try:
             self._p_fraction = min(self._p_wealth / self._net_wealth, 1)
-            self._preretirement_fraction = min(self._preretirement_income_wealth / self._net_wealth, 1)
         except ZeroDivisionError:
             self._p_fraction = 1
-            self._preretirement_fraction = 1
 
         self._gi_sum()
         self._p_sum = self._p_tax_free + self._p_tax_deferred + self._p_taxable
@@ -1899,8 +1882,8 @@ class Fin:
         alive_single = self._alive_single[self._episode_length]
         if alive_single == -1:
             alive_single = 1
-        reward_weight = (2 * float(self._retirement_expectancy_both[self._episode_length])
-            + alive_single * float(self._retirement_expectancy_one[self._episode_length])) \
+        reward_weight = (2 * float(self._life_expectancy_both[self._episode_length])
+            + alive_single * float(self._life_expectancy_one[self._episode_length])) \
             * self._params.time_period
         _, _, reward_value = self._raw_reward(self._ce_estimate_individual)
         reward_to_go_estimate = reward_weight * self._reward_scale * reward_value
@@ -1933,8 +1916,7 @@ class Fin:
         observe[i] = num_401k; i += 1
         observe[i] = one_on_gamma; i += 1
         # Nature of lifespan observations.
-        observe[i] = self._preretirement_years; i += 1
-        observe[i] = self._years_retired; i += 1
+        observe[i] = self._years_expected; i += 1
         # Annuitization related observations.
         observe[i] = lifespan_percentile_years; i += 1
         observe[i] = spia_expectancy_years; i += 1
@@ -1947,7 +1929,6 @@ class Fin:
         observe[i] = log_ce_estimate_individual; i += 1
         # Obseve fractionality to hopefully take advantage of iso-elasticity of utility.
         observe[i] = self._p_fraction; i += 1
-        observe[i] = self._preretirement_fraction; i += 1
         # Market condition obsevations.
         observe[i] = stocks_price; i += 1
         observe[i] = stocks_volatility; i += 1

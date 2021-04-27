@@ -1,7 +1,7 @@
 AIPlanner API documentation
 ***************************
 
-April 3, 2021.
+April 26, 2021.
 
 This document describes the AIPlanner - Deep Reinforcement Learning
 Financial Planner web based application programming interface.
@@ -26,7 +26,7 @@ which results in something like:
                  "cid": null,
                  "aid": "e_j3yewn",
                  "rra": 3,
-                 "consume": 0.0,
+                 "consume": 46910.47848372,
                  "retirement_contribution": 0.0,
                  "asset_classes": ["stocks", "real_bonds"],
                  "asset_allocation": [0.8695251175100378, 0.1304748824899622],
@@ -286,10 +286,11 @@ correspond to self reaching age retirement, or no spouse.
 Pre-retirement consumption
 --------------------------
 
-consume_preretirement: number
-default: 0
+consume_preretirement: number or null
+default: null
 
-Annual pre-retirement consumption.
+Fixed annual pre-retirement consumption, or null to optimize both pre
+and post retirement consumption.
 
 401(k) available
 ----------------
@@ -711,7 +712,8 @@ Current consumption target
 consume: number
 
 The current recommended retirement consumption amount, or
-consume_preretirement if not yet retired.
+consume_preretirement if consume_preretirement is not null and are not
+yet retired.
 
 Retirement plan contribution
 ----------------------------
@@ -856,8 +858,8 @@ Certainty equivalent consumption
 
 ce: number
 
-The certainty equivalent consumption in retirement of the strategy
-computed with the given RRA coefficient.
+The certainty equivalent consumption of the strategy computed with the
+given RRA coefficient.
 
 Like all consumption measures, the value is weighted according to the
 probability of being alive. It is also weighted depending if one or
@@ -868,6 +870,10 @@ with aggregate consumption of 50000 is equivalent to an individual with
 consumption of 50000 / 1.6, and if these consumption levels were
 experienced when both and one member was alive, the reported CE for
 the couple would be 50000.
+
+Additionally, like all consumption measures, no weight is placed on
+the pre-retirement consumption when the consume_preretirement input is
+not null.
 
 For a given RRA coefficient the CE should be the primary method of
 evaluating the goodness of a particular strategy.
@@ -888,58 +894,43 @@ computing the standard error we err on the high side.
 
 consume10: number
 
-The 10th percentile of consumption in retirement.
+The 10th percentile of consumption.
 
 90th percentile consumption
 ---------------------------
 
 consume90: number
 
-The 90th percentile of consumption in retirement.
+The 90th percentile of consumption.
 
 Mean consumption
 ----------------
 
 consume_mean: number
 
-The mean consumption in retirement.
+The mean consumption.
 
 Consumption standard deviation
 ------------------------------
 
 consume_stdev: number
 
-The standard deviation of consumption in retirement. This is not the
-standard deviation that might be realized over a single future, but
-the standard deviation of consumption over all possible futures.
-
-Pre-retirement consumption
---------------------------
-
-consume_preretirement: number
-
-The consume_preretirement input.
-
-Consumption probability
------------------------
-
-consume_preretirement_ppf: number
-
-The probability (expressed as a decimal fraction) of retirement
-consumption being consume_preretirement or less.
+The standard deviation of consumption. This is not the standard
+deviation that might be realized over a single future, but the
+standard deviation of consumption over all possible futures.
 
 Consumption histogram
 ---------------------
 
 consume_pdf: {"consume": [<number>, ... ], "weight": [<number>, ... ]}
 
-Retirement consumption probability density function. "consume" is a
-list of consumption values, and "weight" is a list of probability
-densities for those consumption values. The sum of all weights
-multiplied by the width of the consumption intervals would be 1,
-except consume is clipped at the 98th percentile, so the sum of the
-reported weights will be slightly less than 1. The results represent
-the aggregation of multiple possible futures.
+Consumption probability density function. "consume" is a list of
+consumption values, and "weight" is a list of probability densities
+for those consumption values. The sum of all weights multiplied by the
+width of the consumption intervals would be 1, except consume is
+clipped at the 98th percentile, so the sum of the reported weights
+will be slightly less than 1. The results represent the aggregation of
+multiple possible futures.
 
 Estate histogram
 ----------------

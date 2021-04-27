@@ -380,15 +380,7 @@ class Evaluator(object):
         except (ValueError, ZeroDivisionError):
             unit_consume_stdev = indiv_consume_stdev = float('nan')
 
-        consume_preretirement = params.consume_preretirement
-        consume_ppf = consume_preretirement
-
         couple = env.sex2 is not None
-        if couple:
-            consume_ppf /= 1 + params.consume_additional
-
-        utility_preretirement = utility.utility(consume_ppf)
-        preretirement_ppf = weighted_ppf(self.rewards, utility_preretirement) / 100
 
         if ce_max == 0:
             ce_max = 1
@@ -437,8 +429,6 @@ class Evaluator(object):
             'ce_stderr_individual': indiv_ce_stderr,
             'consume10_individual': indiv_low,
             'consume90_individual': indiv_high,
-            'consume_preretirement': consume_preretirement,
-            'consume_preretirement_ppf': preretirement_ppf,
             'consume_pdf': consume_pdf,
             'estate_pdf': estate_pdf,
             'consume_cr': consume_cr,

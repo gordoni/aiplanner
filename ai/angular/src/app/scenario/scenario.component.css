@@ -123,6 +123,15 @@
     text-align: center;
 }
 
+.consume table {
+    margin: auto;
+}
+
+.consume td {
+    padding: 0;
+    text-align: left;
+}
+
 .market table {
     margin: auto;
     border: 1px solid black;

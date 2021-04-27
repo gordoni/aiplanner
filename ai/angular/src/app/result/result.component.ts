@@ -80,8 +80,6 @@ export class ResultComponent implements OnInit {
       'ce_stderr': this.utils.comma(result.ce_stderr),
       'consume_mean': this.utils.comma(result.consume_mean),
       'consume_stdev': this.utils.comma(result.consume_stdev),
-      'consume_preretirement': this.utils.comma(result.consume_preretirement),
-      'consume_preretirement_ppf': Math.round(result.consume_preretirement_ppf * 100),
       'consume_low': this.utils.comma(result.consume10),
       'data_dir': '/api/data/' + result.aid,
     }

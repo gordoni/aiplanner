@@ -76,7 +76,7 @@ def parse_api_scenario(api_scenario, *, permissive = False):
         'income_preretirement2': number,
         'income_preretirement_age_end': enumeration([number, None]),
         'income_preretirement_age_end2': enumeration([number, None]),
-        'consume_preretirement': number,
+        'consume_preretirement': enumeration([number, None]),
         'have_401k': boolean,
         'have_401k2': boolean,
 
@@ -130,8 +130,6 @@ def parse_api_scenario(api_scenario, *, permissive = False):
     for name in [
         'sex',
 
-        'consume_preretirement',
-
         'rl_stocks_max',
     ]:
         if name in api_scenario:
@@ -140,6 +138,7 @@ def parse_api_scenario(api_scenario, *, permissive = False):
     for name in [
         'income_preretirement_age_end',
         'income_preretirement_age_end2',
+        'consume_preretirement',
     ]:
         if name in api_scenario:
             model_params[name] = api_scenario[name] if api_scenario[name] is not None else -1

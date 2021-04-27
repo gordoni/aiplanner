@@ -47,7 +47,7 @@ export class ScenarioComponent implements OnInit {
 
   public definedLiabilities: DefinedBenefit[] = [];
 
-  public assetDetail: string = "";
+  public assetDetail: string = '';
   public netWorth: number = 0;
 
   public pTaxDeferred: number = 0;
@@ -67,12 +67,13 @@ export class ScenarioComponent implements OnInit {
   public incomePreretirementAgeEnd: number = 67
   public incomePreretirementAgeEnd2Type: string = 'retirement'
   public incomePreretirementAgeEnd2: number = 67
+  public consumeSpecify: string = '';
   public consumePreretirement: number = 30000;
   public have401k: boolean = true;
   public have401k2: boolean = true;
   public spias: boolean = true;
 
-  public rlStocksMax: string = "100";
+  public rlStocksMax: string = '100';
 
   public scenario: object;
 
@@ -237,22 +238,22 @@ export class ScenarioComponent implements OnInit {
 
         'guaranteed_income': dbs,
 
-        'p_tax_deferred': (this.assetDetail) ? this.pTaxDeferred : 0,
-        'p_tax_free': (this.assetDetail) ? this.pTaxFree : this.netWorth,
-        'p_taxable_stocks': (this.assetDetail) ? this.pTaxableStocks : 0,
-        'p_taxable_stocks_basis': (this.assetDetail) ? this.pTaxableStocksBasis : 0,
-        'p_taxable_bonds': (this.assetDetail) ? this.pTaxableBonds : 0,
-        'p_taxable_bonds_basis': (this.assetDetail) ? this.pTaxableBondsBasis : 0,
-        'p_taxable_cash': (this.assetDetail) ? this.pTaxableCash : 0,
-        'p_taxable_other': (this.assetDetail) ? this.pTaxableOther : 0,
-        'p_taxable_other_basis': (this.assetDetail) ? this.pTaxableOtherBasis : 0,
+        'p_tax_deferred': this.assetDetail ? this.pTaxDeferred : 0,
+        'p_tax_free': this.assetDetail ? this.pTaxFree : this.netWorth,
+        'p_taxable_stocks': this.assetDetail ? this.pTaxableStocks : 0,
+        'p_taxable_stocks_basis': this.assetDetail ? this.pTaxableStocksBasis : 0,
+        'p_taxable_bonds': this.assetDetail ? this.pTaxableBonds : 0,
+        'p_taxable_bonds_basis': this.assetDetail ? this.pTaxableBondsBasis : 0,
+        'p_taxable_cash': this.assetDetail ? this.pTaxableCash : 0,
+        'p_taxable_other': this.assetDetail ? this.pTaxableOther : 0,
+        'p_taxable_other_basis': this.assetDetail ? this.pTaxableOtherBasis : 0,
 
         'age_retirement': this.ageRetirement,
         'income_preretirement': this.incomePreretirement,
         'income_preretirement2': this.incomePreretirement2,
         'income_preretirement_age_end': this.incomePreretirementAgeEndType == 'age' ? this.incomePreretirementAgeEnd : null,
         'income_preretirement_age_end2': this.incomePreretirementAgeEnd2Type == 'age' ? this.incomePreretirementAgeEnd2 : null,
-        'consume_preretirement': this.consumePreretirement,
+        'consume_preretirement': (this.age < this.ageRetirement && this.consumeSpecify) ? this.consumePreretirement : null,
         'have_401k': this.have401k,
         'have_401k2': this.have401k2,
 

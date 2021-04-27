@@ -264,20 +264,16 @@ PURPOSE.
   <div class="center" *ngIf="step == 3">
     <h1 class="title">Assets &amp; Liabilities</h1>
     <div *ngIf="!editDefinedBenefit">
-      <div align="center">
-        <table>
-          <tr>
-            <td class="left">
-              <input type="radio" name="assetDetail" value="" [(ngModel)]="assetDetail"> Quick entry
-            </td>
-          </tr>
-          <tr>
-            <td class="left">
-              <input type="radio" name="assetDetail" value="true" [(ngModel)]="assetDetail"> Detailed entry
-          </tr>
-        </table>
-        <br>
+      <div class="inline-block">
+        <div class="left">
+          <input type="radio" name="assetDetail" value="" [(ngModel)]="assetDetail"> Quick entry
+        </div>
+        <div class="left">
+          <input type="radio" name="assetDetail" value="true" [(ngModel)]="assetDetail"> Detailed entry
+        </div>
       </div>
+      <br>
+      <br>
       <div *ngIf="!assetDetail">
         Net worth:<app-info msg="Net worth after future taxes and liabilities. Amount entered is treated as tax free.">
         </app-info>&nbsp;<input type="number" step="1000" class="numeric" required name="scenarioNetWorth" #scenarioNetWorth="ngModel" [(ngModel)]="netWorth">
@@ -458,14 +454,40 @@ PURPOSE.
       nature of the income annuity purchase decision."></app-info>
     </p>
     <div *ngIf="age < ageRetirement">
-      Pre-retirement annual consumption:<app-info msg="Amount is after
-      tax and excluding the payment of any previously entered
-      liabilities. Wages less consumption, liability payments, and taxes
-      equals retirement savings."></app-info>&nbsp;<input type="number" step="1000" class="numeric"
-        required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
-        <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
-          Invalid numeric value.
-        </div>
+      <div class="consume">
+        <table>
+          <tr>
+            <td>
+              <input type="radio" name="consumeSpecify" value="" [(ngModel)]="consumeSpecify">
+            </td>
+            <td>
+              Determine amount to consume for a smooth retirement
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <input type="radio" name="consumeSpecify" value="true" [(ngModel)]="consumeSpecify">
+            </td>
+            <td>
+              Specify amount to consume pre-retirement
+            </td>
+          </tr>
+          <tr *ngIf="consumeSpecify">
+            <td>
+            </td>
+            <td>
+              Pre-retirement annual consumption:<app-info msg="Amount is after
+              tax and excluding the payment of any previously entered
+              liabilities. Wages less consumption, liability payments, and taxes
+              equals retirement savings."></app-info>&nbsp;<input type="number" step="1000" class="numeric"
+                required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
+                <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
+                  Invalid numeric value.
+                </div>
+            </td>
+          </tr>
+        </table>
+      </div>
     </div>
     <div class="error" *ngIf="highConsume()">
       <br>
@@ -664,13 +686,13 @@ PURPOSE.
             tails. -->
             <tr>
               <td> <input type="radio" name="rlStocksMax" value="60" required [(ngModel)]="rlStocksMax">
-              <td> 60%
+              <td> 60% <app-info msg="Results will be slightly sub-optimal as reinforcement learning model is trained assuming 100%"></app-info>
               <td> -14%
               <td> -26%
             </tr>
             <tr>
               <td> <input type="radio" name="rlStocksMax" value="80" required [(ngModel)]="rlStocksMax">
-              <td> 80%
+              <td> 80% <app-info msg="Results will be slightly sub-optimal as reinforcement learning model is trained assuming 100%"></app-info>
               <td> -18%
               <td> -34%
             </tr>
@@ -710,6 +732,9 @@ PURPOSE.
         </td>
       </tr>
     </table>
+    <div class="error" *ngIf="errorMessage">
+      {{errorMessage}}
+    </div>
     <div>
       <div class="main-button float-left">
         <button type="button" class="button" (click)="prevStep()">Back</button>
@@ -719,9 +744,6 @@ PURPOSE.
       </div>
       <div class="float-clear">
       </div>
-    </div>
-    <div class="error" *ngIf="errorMessage">
-      {{errorMessage}}
     </div>
   </div>
 
