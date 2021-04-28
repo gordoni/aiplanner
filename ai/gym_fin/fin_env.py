@@ -49,7 +49,7 @@ class FinEnv(Env):
             'lifespan_percentile_years', 'spia_expectancy_years', 'final_spias_purchase',
             'reward_to_go_estimate', 'relative_ce_estimate_individual',
             'log_ce_estimate_individual',
-            'wealth_fraction'
+            'wealth_fraction',
             'stocks_price', 'stocks_volatility', 'real_interest_rate']
         self.observation_space_low  = [0, 0, 0,   0,   0,   0, 0, -2e3,   0,  0, 0, 0, 0, -0.15]
         self.observation_space_high = [1, 2, 1, 100, 100, 100, 1,   10, 200, 20, 1, 4, 7,  0.15]

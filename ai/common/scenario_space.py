@@ -21,6 +21,9 @@ def scenario_space_update_params(model_params, control_params):
     elif model_params['nominal_bonds']:
         model_params['p_taxable_nominal_bonds_low'] = model_params['p_taxable_nominal_bonds_high'] = control_params['p_taxable_bonds']
         model_params['p_taxable_nominal_bonds_basis'] = control_params['p_taxable_bonds_basis']
+    elif model_params['iid_bonds']:
+        model_params['p_taxable_iid_bonds_low'] = model_params['p_taxable_iid_bonds_high'] = control_params['p_taxable_bonds']
+        model_params['p_taxable_iid_bonds_basis'] = control_params['p_taxable_bonds_basis']
     else:
         assert False
 

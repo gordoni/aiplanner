@@ -287,8 +287,6 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                     'consume90': res['consume90'],
                     'consume_mean': res['consume_mean'],
                     'consume_stdev': res['consume_stdev'],
-                    'consume_preretirement': res['consume_preretirement'],
-                    'consume_preretirement_ppf': res['consume_preretirement_ppf'],
                     'consume_pdf': res['consume_pdf'],
                     'estate_pdf': res['estate_pdf'],
                     'consume_cr': res['consume_cr'],
@@ -624,8 +622,7 @@ def compatibility_warnings(train_params, eval_params, initial_results):
     if gi_payout(eval_params, ['taxable']) > gi_payout(train_params, ['taxable']):
         warnings.append('Model was not trained for such a large taxable guaranteed income.')
 
-    gi_preretirement_train_high = (train_params['income_preretirement_high'] + couple_val(train_params, 'income_preretirement2_high')) * \
-        (1 - train_params['consume_preretirement_income_ratio_low']) - train_params['consume_preretirement']
+    gi_preretirement_train_high = train_params['income_preretirement_high'] + couple_val(train_params, 'income_preretirement2_high')
 
     if eval_retired:
 
@@ -633,16 +630,14 @@ def compatibility_warnings(train_params, eval_params, initial_results):
 
     else:
 
-        gi_preretirement_eval = (eval_params['income_preretirement_high'] + couple_val(eval_params, 'income_preretirement2_high')) * \
-            (1 - eval_params['consume_preretirement_income_ratio_low']) - eval_params['consume_preretirement']
+        gi_preretirement_eval = eval_params['income_preretirement_high'] + couple_val(eval_params, 'income_preretirement2_high')
         if gi_preretirement_eval > gi_preretirement_train_high:
-            warnings.append('Model was not trained for such a high pre-retirement net income.')
+            warnings.append('Model was not trained for such a high pre-retirement income.')
 
-    growth_rate = 1.05
     preretirement_years_eval = max(0, eval_params['age_retirement_high'] - eval_params['age_start'])
     preretirement_years_train = max(0, train_params['age_retirement_high'] - train_params['age_start'])
-    retirement_net_worth_eval = preretirement_years_eval * gi_preretirement_eval + growth_rate ** preretirement_years_eval * p(eval_params)
-    retirement_net_worth_train_high = preretirement_years_train * gi_preretirement_train_high + growth_rate ** preretirement_years_train * p(train_params)
+    retirement_net_worth_eval = preretirement_years_eval * gi_preretirement_eval + p(eval_params)
+    retirement_net_worth_train_high = preretirement_years_train * gi_preretirement_train_high + p(train_params)
 
     if retirement_net_worth_eval > retirement_net_worth_train_high:
         if eval_retired:

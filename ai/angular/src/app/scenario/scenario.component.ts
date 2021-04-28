@@ -130,6 +130,10 @@ export class ScenarioComponent implements OnInit {
     return this.utils.comma(tot)
   }
 
+  pNetWorth() {
+    return this.utils.comma(this.netWorth);
+  }
+
   pTotal() {
     return this.utils.comma(this.pTaxDeferred + this.pTaxFree + this.pTaxableStocks + this.pTaxableBonds + this.pTaxableCash + this.pTaxableOther);
   }

@@ -277,9 +277,14 @@ PURPOSE.
       <div *ngIf="!assetDetail">
         Net worth:<app-info msg="Net worth after future taxes and liabilities. Amount entered is treated as tax free.">
         </app-info>&nbsp;<input type="number" step="1000" class="numeric" required name="scenarioNetWorth" #scenarioNetWorth="ngModel" [(ngModel)]="netWorth">
-        <div class="error" *ngIf="scenarioNetWorth.invalid">
+        <div class="error" *ngIf="scenarioNetWorth.invalid; else elseBlock">
           Invalid numeric value.
         </div>
+        <ng-template #elseBlock>
+          <br>
+          <br>
+          {{pNetWorth()}}
+        </ng-template>
       </div>
       <div *ngIf="assetDetail">
         Existing defined contribution savings
@@ -770,7 +775,8 @@ PURPOSE.
     <a href="/api/data/{{report}}" target="_blank" rel="noopener">Download/print results (PDF)</a>
   </div>
   <br>
-  Retirement consumption distribution <app-info msg="Averaged over a lifetime and many possible futures."></app-info>
+  <span *ngIf="scenario.consume_preretirement != null; else elseBlock">Retirement consumption</span><ng-template #elseBlock>Consumption</ng-template>
+    distribution <app-info msg="Averaged over a lifetime and many possible futures."></app-info>
   <br>
   <a href="/api/data/{{commonDir}}/consume-pdf.svg" target="_blank" rel="noopener"><img src="/api/data/{{commonDir}}/consume-pdf.svg" width="50%"></a>
   <br>
@@ -779,7 +785,7 @@ PURPOSE.
     <table>
       <tr>
         <td class="first"> RRA coefficient </td>
-        <td class="first"> Extra consumption in retirement <app-info msg="Based on mean consumption."></app-info> </td>
+        <td class="first"> Extra consumption <app-info msg="Based on mean consumption."></app-info> </td>
         <td class="first"> Consumption uncertainty <app-info msg="Standard deviation / mean."></app-info> </td>
       </tr>
       <tr class="pointer {{(i == activeResultIndex) ? 'selected' : ''}}" (click)="gotoRisk(i)" *ngFor="let result of results; index as i">

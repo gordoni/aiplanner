@@ -32,7 +32,7 @@ def plot_common(api, result_dir, results, results_dir):
 set datafile separator ","
 set terminal svg dynamic size 800,400 name "AIPlanner"
 
-set xlabel "annual retirement consumption"
+set xlabel "annual consumption"
 set xrange [0:*]
 set format x "%.1s%c"
 set ylabel "probability"
