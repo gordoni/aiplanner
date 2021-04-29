@@ -342,7 +342,6 @@ class Fin:
         observation_space_shift = -1 - observation_space_low * observation_space_scale
         observation_space_extreme_range = self._params.observation_space_warn * observation_space_range
         observation_space_extreme_range[self._observation_space_items.index('reward_to_go_estimate')] *= 2
-        observation_space_extreme_range[self._observation_space_items.index('relative_ce_estimate_individual')] *= 3
         observation_space_extreme_range[self._observation_space_items.index('stocks_price')] *= 2
         observation_space_extreme_range[self._observation_space_items.index('stocks_volatility')] *= 2
         observation_space_extreme_range[self._observation_space_items.index('real_interest_rate')] = 0.30
@@ -1876,8 +1875,7 @@ class Fin:
             spia_expectancy_years = 0
             final_spias_purchase = 0
 
-        alive_single: cython.double; reward_weight: cython.double; reward_value: cython.double;
-        reward_to_go_estimate: cython.double; relative_ce_estimate_individual: cython.double
+        alive_single: cython.double; reward_weight: cython.double; reward_value: cython.double; reward_to_go_estimate: cython.double
 
         alive_single = self._alive_single[self._episode_length]
         if alive_single == -1:
@@ -1888,7 +1886,6 @@ class Fin:
         _, _, reward_value = self._raw_reward(self._ce_estimate_individual)
         reward_to_go_estimate = reward_weight * self._reward_scale * reward_value
         reward_to_go_estimate = max(-1e30, reward_to_go_estimate) # Prevent observation of -inf reward estimate during training.
-        relative_ce_estimate_individual = self._ce_estimate_individual / self._consume_scale
 
         # Existence of taxes and welfare breaks scale invariance, so allow model to see scale.
         log_ce_estimate_individual: cython.double
@@ -1922,9 +1919,7 @@ class Fin:
         observe[i] = spia_expectancy_years; i += 1
         observe[i] = final_spias_purchase; i += 1
         # Value function related observations.
-        # Best results (especially when gamma=6) if provide both a rewards to go estimate that can be fine tuned and a relative CE estimate.
         observe[i] = reward_to_go_estimate; i += 1
-        observe[i] = relative_ce_estimate_individual; i += 1
         # Nature of wealth/income observations.
         observe[i] = log_ce_estimate_individual; i += 1
         # Obseve fractionality to hopefully take advantage of iso-elasticity of utility.

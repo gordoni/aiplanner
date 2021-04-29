@@ -47,12 +47,12 @@ class FinEnv(Env):
             'couple', 'num_401k', 'one_on_gamma',
             'years_expected',
             'lifespan_percentile_years', 'spia_expectancy_years', 'final_spias_purchase',
-            'reward_to_go_estimate', 'relative_ce_estimate_individual',
+            'reward_to_go_estimate',
             'log_ce_estimate_individual',
             'wealth_fraction',
             'stocks_price', 'stocks_volatility', 'real_interest_rate']
-        self.observation_space_low  = [0, 0, 0,   0,   0,   0, 0, -2e3,   0,  0, 0, 0, 0, -0.15]
-        self.observation_space_high = [1, 2, 1, 100, 100, 100, 1,   10, 200, 20, 1, 4, 7,  0.15]
+        self.observation_space_low  = [0, 0, 0,   0,   0,   0, 0, -2e3,  0, 0, 0, 0, -0.15]
+        self.observation_space_high = [1, 2, 1, 100, 100, 100, 1,   10, 20, 1, 4, 7,  0.15]
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple()
             #    in common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.
