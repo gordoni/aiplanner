@@ -80,20 +80,16 @@ def train(training_model_params, *, address, num_workers, num_environments, trai
 
         'PPO': {
             'model': {
-                'fcnet_hiddens': (256, 256),
-                    # Changing the fully connected net size from 256x256 (the default) to 128x128 reduces CE values.
-                    # At least for retired model with nominal_spias.
-                    # Results for preretirement, nominal_spias, train_batch_size 500k, minibach_size 500, lr 2e-5, num_sgd_iter 30, entropy 1e-4:
-                    # fcnet_hiddens 128x128: CE dist 81900 stderr 350
-                    # fcnet_hiddens 256x256: CE dist 81700 stderr 350
-                    # Results for retired, nominal_spias, train_batch_size 500k, minibach_size 500, lr 2e-5, num_sgd_iter 30, entropy 1e-4:
-                    # fcnet_hiddens 128x128: CE dist 85700 stderr 200
-                    # fcnet_hiddens 256x256: CE dist 86200 stderr 200
-                    # Reducing size is unlikely to improve the run time performance as it is dominated by fixed overhead costs:
-                    #     Tensorflow runner.run(obss, policy_graph = runner.local_policy_graph):
+                'fcnet_hiddens': (192, 192),
+                    # Default is 256x256.
+                    # Observed ~1 standard error better CE dist for 192x192 over 256x256 and 128x128,
+                    # for preretirement and retired results on a preretirement model, gamma=6, nominal spias and no spias, tax diverse, non-IID.
+                    # Also reduced elapsed training time by 29%.
+                    # Reducing size doesn't improve the run time performance as it is dominated by fixed overhead costs:
+                    #     E.g. Tensorflow runner.run(obss, policy_graph = runner.local_policy_graph):
                     #         256x256 (r5.large): 1.1ms + 0.013ms x num_observations_in_batch
                     #         128x128 (r5.large): 1.1ms + 0.009ms x num_observations_in_batch
-                    # Changing from 256x256 to 256x128x64x32 resulted in worse performance.
+                    # Changing shape from 256x256 to 256x128x64x32 resulted in worse performance.
                 'fcnet_activation': 'relu',
                     # 'relu' outperforms 'tanh' (the RLlib default) and 'swish'.
                     # At least for the iid retired model with gamma=6 without SPIAs.

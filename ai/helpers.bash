@@ -574,6 +574,9 @@ skip_model () {
     local SPIAS=$4
     local GAMMA=$5
 
+    # Training a separate retired model for no SPIAs gamma=6 was observed to produce around 1 standard error improved results over use of the preretirement model,
+    # or a 3% higher CE for $5m tax diverse and $20k S.S. on a non-IID model (lesser improvement for smaller tax diverse).
+
     if [ $STAGE = retired -a \( $SPIAS != none -o `echo $GAMMA | awk '{print int($1)}'` -lt 6 \) ]; then
         return 0
     else
