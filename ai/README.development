@@ -458,7 +458,7 @@ Especially early on in the training process there will be warnings in
 the logs about negative portfolios and observations being out of
 range. These are normal rare events, but when training 7 models times
 10 seeds times 150-200 million timesteps, there can still be quite a
-few of them, perhaps totaling around 10,000. A negative portfolio is
+few of them, perhaps totaling around 50,000. A negative portfolio is
 possible when assets are insufficient to cover the taxes due. This can
 occur when annuitizing if the assets set aside to cover the associated
 taxes drop significantly in value before the taxes become due.
@@ -609,6 +609,7 @@ Building an api server docker container
 The api server can be distributed as a docker container.
 
     cd ~/aiplanner/ai
+    sudo docker pull ubuntu:20.04
     sudo docker build -t aiplanner-base-deps docker/base-deps
     tar cf docker/apiserver/dotspia.tar -C ~/ .spia
     tar zcf docker/apiserver/models.tgz -C ~/aiplanner-data/models .

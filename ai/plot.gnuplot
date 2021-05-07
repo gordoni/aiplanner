@@ -34,6 +34,7 @@ set ytics
 
 set xlabel "age self"
 set xrange [age_low:age_high]
+set format x "%.0f"
 
 set ylabel "annual consumption"
 set yrange [0:consume_high]

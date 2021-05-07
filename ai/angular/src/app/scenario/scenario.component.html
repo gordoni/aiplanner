@@ -550,7 +550,7 @@ PURPOSE.
             Current stock market volatility divided by long term average volatility:
           </td>
           <td>
-            <input type="number" step="0.1" class="small-numeric" required name="scenarioStocksVolatilityPct" #scenarioStocksVolatilityPct="ngModel" [(ngModel)]="stocksVolatilityPct">%
+            <input type="number" class="small-numeric" required name="scenarioStocksVolatilityPct" #scenarioStocksVolatilityPct="ngModel" [(ngModel)]="stocksVolatilityPct">%
             <div class="error" *ngIf="scenarioStocksVolatilityPct.invalid">
               Invalid numeric value.
             </div>
