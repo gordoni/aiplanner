@@ -355,7 +355,10 @@ class YieldCurve:
             except IOError:
                 pass
             else:
-                replace(cache_path + '.tmp', cache_path)
+                try:
+                    replace(cache_path + '.tmp', cache_path)
+                except FileNotFoundError:
+                    pass
 
         # Construct a master interpolator.
         self.monotone_convex = MonotoneConvex(interpolate_years, interpolate_spots, min_long_term_forward = 15, force_forwards_non_negative = False)

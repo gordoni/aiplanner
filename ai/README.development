@@ -679,6 +679,7 @@ Install crontabs to perform a wekly refresh of the interest rate yield
 curves, fair market price, and volatility.
 
     cd ~/aiplanner/ai
+    sudo apt install python3-scipy python3-pandas
     cat web/aiplanner.crontab
     crontab -e
 
@@ -701,7 +702,8 @@ This is not separately needed if using a docker container.
 Installing an outbound mailer
 -----------------------------
 
-This is not separately needed if using a docker container.
+This is not separately needed if using a docker container unless cron
+was set up.
 
 A mail transfer agent is only required to provide system notification
 messages to the administrator. These consist of subscription
