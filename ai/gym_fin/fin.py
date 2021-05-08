@@ -1749,9 +1749,10 @@ class Fin:
                 not self._couple)
                 # Assumes income smoothing.
                 # Ignores any charitable income tax deduction.
-        pv_regular_tax = total_years * regular_tax
+        pv_fixed_tax = total_years * self._params.tax_fixed
+        pv_regular_tax = total_years * regular_tax - pv_fixed_tax
         pv_capital_gains_tax = total_years * capital_gains_tax
-        self._pv_taxes = pv_regular_tax + pv_capital_gains_tax
+        self._pv_taxes = pv_fixed_tax + pv_regular_tax + pv_capital_gains_tax
 
         try:
             self._regular_tax_rate = pv_regular_tax / pv_regular_income
