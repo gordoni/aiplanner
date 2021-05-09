@@ -196,7 +196,7 @@ class ModelParams(object):
         self._param('gamma', (3, 3), 3) # Coefficient of relative risk aversion.
 
         self._param('consume-charitable', float('inf')) # Charitable consumpton level.
-        self._param('consume-charitable-utility-factor', 0.1) # Reduction factor in marginal utility at consume_charitable.
+        self._param('consume-charitable-utility-factor', 1.0) # Reduction factor in marginal utility at consume_charitable.
         self._param('consume-charitable-gamma', 0.8) # Charitable consumption coefficient of relative risk aversion.
         self._param('consume-charitable-discount-rate', 0.0) # Charitable consumption annual discount rate to indicate preference for donating early.
         self._param('consume-charitable-tax-deductability', 1.0) # Proportion of charitable consumption that is tax deductable.
