@@ -596,7 +596,7 @@ def compatibility_warnings(train_params, eval_params, initial_results):
             params['p_taxable_nominal_bonds_high'] + params['p_taxable_iid_bonds_high'] + params['p_taxable_other_high'] + params['p_weighted_high']
 
     if eval_params['age_start'] < train_params['age_start'] or \
-        eval_params['age_start2_low'] < (train_params['age_start2_low'] if train_couple else train_params['age_start']):
+        eval_couple and eval_params['age_start2_low'] < (train_params['age_start2_low'] if train_couple else train_params['age_start']):
         warnings.append('Model was not trained for such a young starting age.')
 
     if eval_params['life_expectancy_additional_low'] < train_params['life_expectancy_additional_low'] or \
