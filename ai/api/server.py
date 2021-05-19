@@ -108,6 +108,7 @@ class InferEvaluateDaemon:
         for gamma in self.gammas:
             cmd += ['--gamma', str(gamma)]
         self.proc = Popen(cmd, stdin = PIPE, stdout = PIPE, stderr = self.logger.logfile_binary)
+        self.count = 0
 
     def infer_evaluate(self, api_data, result_dir, *, options = [], prefix = ''):
 
@@ -163,6 +164,11 @@ class InferEvaluateDaemon:
                 rmdir(result_dir)
             except:
                 pass
+
+            self.count += 1
+            if self.count == self.args.restart_frequency:
+                self.stop()
+                self.restart()
 
     def stop(self):
 
@@ -839,6 +845,8 @@ def main():
     parser.add_argument('--max-infer-queue-wait', type = int, default = None) # Maximum time to wait for job to start or None to block.
     parser.add_argument('--max-evaluate-queue-wait', type = int, default = 60)
         # Development client resubmits request after 120 seconds, so keep timeout plus evaluation time below that.
+    parser.add_argument('--restart-frequency', type = int, default = 100)
+        # Restart infer/evaluate process after this many requests to work around any memory leaks. Zero for not to restart.
     parser.add_argument('--infer-stop-time', type = int, default = 10) # Time to wait for processes to exit when get log rotate sighup.
     parser.add_argument('--evaluate-stop-time', type = int, default = 120) # Time to wait for processes with a given gamma value to exit when get log rotate sighup.
     parser.add_argument('--gamma', action = 'append', type = float, default = []) # Supported gamma values.
