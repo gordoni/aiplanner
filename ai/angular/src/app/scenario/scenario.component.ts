@@ -26,7 +26,7 @@ export class ScenarioComponent implements OnInit {
   public step: number = 0;
   public doneMarket: boolean = false;
 
-  public observeMarketConditions: boolean = true;
+  public observeMarketConditions: boolean = false;
   public stocksPricePct: string;
   public stocksVolatilityPct: string;
   public nominalShortRatePct: string;
