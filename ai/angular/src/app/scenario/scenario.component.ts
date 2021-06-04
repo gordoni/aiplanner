@@ -112,7 +112,7 @@ export class ScenarioComponent implements OnInit {
   }
 
   highConsume() {
-    if (this.age < this.ageRetirement) {
+    if (this.age < this.ageRetirement && this.consumeSpecify) {
       return this.consumePreretirement > this.incomePreretirement + ((this.sex2 == 'none') ? 0 : this.incomePreretirement2);
     } else {
       return false;
