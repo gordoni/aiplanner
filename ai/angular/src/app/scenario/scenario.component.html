@@ -93,7 +93,7 @@ PURPOSE.
           </div>
         </td>
         <td class="noborderright"> {{health("self")}} </td>
-        <td class="noborderleft"> -&nbsp;extra life expectancy of
+        <td class="noborderleft"> -&nbsp;EXTRA life expectancy of
           <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional" #scenarioLifeExpectancyAdditional="ngModel" [(ngModel)]="lifeExpectancyAdditional"> years
           <div class="error" *ngIf="scenarioLifeExpectancyAdditional.invalid">
             Invalid numeric value.
@@ -119,7 +119,7 @@ PURPOSE.
         </td>
         <td class="noborderright"> <div *ngIf="sex2 != 'none'"> {{health("spouse")}} </div> </td>
         <td class="noborderleft">
-          <div *ngIf="sex2 != 'none'"> -&nbsp;extra life expectancy of
+          <div *ngIf="sex2 != 'none'"> -&nbsp;EXTRA life expectancy of
             <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional2" #scenarioLifeExpectancyAdditional2="ngModel" [(ngModel)]="lifeExpectancyAdditional2"> years
             <div class="error" *ngIf="scenarioLifeExpectancyAdditional2.invalid">
               Invalid numeric value.
@@ -775,20 +775,28 @@ PURPOSE.
     <a href="/api/data/{{report}}" target="_blank" rel="noopener">Download/print results (PDF)</a>
   </div>
   <br>
-  <span *ngIf="scenario.consume_preretirement != null; else elseBlock">Retirement consumption</span><ng-template #elseBlock>Consumption</ng-template>
-    distribution <app-info msg="Averaged over a lifetime and many possible futures."></app-info>
-  <br>
-  <a href="/api/data/{{commonDir}}/consume-pdf.svg" target="_blank" rel="noopener"><img src="/api/data/{{commonDir}}/consume-pdf.svg" width="50%"></a>
-  <br>
+  <table width="100%">
+    <tr>
+      <td> <span *ngIf="scenario.consume_preretirement != null; else elseBlock">Retirement consumption</span><ng-template #elseBlock>Consumption</ng-template>
+        distribution <app-info msg="Averaged over a lifetime and many possible futures."></app-info> </td>
+      <td> Cummulative consumption distribution <app-info msg="Probability of annual consumption for a random year being below the indicated value."></app-info> </td>
+    </tr>
+    <tr>
+      <td width="50%"> <a href="/api/data/{{commonDir}}/consume-pdf.svg" target="_blank" rel="noopener"><img src="/api/data/{{commonDir}}/consume-pdf.svg"></a> </td>
+      <td width="50%"> <a href="/api/data/{{commonDir}}/consume-cdf.svg" target="_blank" rel="noopener"><img src="/api/data/{{commonDir}}/consume-cdf.svg"></a> </td>
+    </tr>
+  </table>
   <br>
   <div class="crra">
     <table>
       <tr>
-        <td class="first"> RRA coefficient </td>
+        <td class="first"> Risk aversion </td>
+        <td class="first"> RRA <app-info msg="Relative risk aversion coefficient."></app-info> </td>
         <td class="first"> Extra consumption <app-info msg="Based on mean consumption."></app-info> </td>
         <td class="first"> Consumption uncertainty <app-info msg="Standard deviation / mean."></app-info> </td>
       </tr>
       <tr class="pointer {{(i == activeResultIndex) ? 'selected' : ''}}" (click)="gotoRisk(i)" *ngFor="let result of results; index as i">
+        <td> {{(result.rra < 4) ? ((result.rra < 2) ? "Low" : "Moderate") : "High"}} </td>
         <td> {{result.rra}} </td>
         <td> {{result.consume_extra}}</td>
         <td> {{result.consume_uncertainty}}</td>

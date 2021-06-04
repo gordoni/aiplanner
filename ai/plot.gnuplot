@@ -19,6 +19,7 @@ if (prefix eq "") prefix = "aiplanner"
 set xlabel "annual consumption"
 set xrange [0:*]
 set format x "%.1s%c"
+
 set ylabel "probability"
 set yrange [0:*]
 unset ytics
@@ -31,6 +32,17 @@ set output prefix . "-estate-pdf.svg"
 plot prefix . "-estate-pdf.csv" with lines notitle lt rgb "blue"
 
 set ytics
+
+set yrange [0:100]
+set format y "%g%%"
+
+set xlabel "annual consumption"
+set output prefix . "-consume-cdf.svg"
+plot prefix . "-consume-cdf.csv" using 1:($2 * 100) with lines notitle lt rgb "blue"
+
+set xlabel "residual estate"
+set output prefix . "-estate-cdf.svg"
+plot prefix . "-estate-cdf.csv" using 1:($2 * 100) with lines notitle lt rgb "blue"
 
 set xlabel "age self"
 set xrange [age_low:age_high]

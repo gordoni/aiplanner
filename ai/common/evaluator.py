@@ -103,7 +103,7 @@ class Evaluator(object):
 
     def __init__(self, eval_envs, eval_seed, eval_num_timesteps, *,
         remote_evaluators = None, render = False, eval_batch_monitor = False,
-        num_trace_episodes = 0, pdf_buckets = 100, pdf_raw_buckets = 10000, pdf_smoothing_window = 0.02, pdf_constant_initial_consume = False,
+        num_trace_episodes = 0, pdf_buckets = 100, cdf_buckets = 100, pdf_raw_buckets = 10000, pdf_smoothing_window = 0.02, pdf_constant_initial_consume = False,
         cr_cls = [0.80, 0.95]):
 
         self.eval_envs = eval_envs
@@ -114,6 +114,7 @@ class Evaluator(object):
         self.eval_batch_monitor = eval_batch_monitor # Unused.
         self.num_trace_episodes = num_trace_episodes
         self.pdf_buckets = pdf_buckets
+        self.cdf_buckets = cdf_buckets
         self.pdf_raw_buckets = pdf_raw_buckets
         self.pdf_smoothing_window = pdf_smoothing_window
         self.pdf_constant_initial_consume = pdf_constant_initial_consume
@@ -346,7 +347,7 @@ class Evaluator(object):
         if estate_max == 0:
             estate_max = 1
         estate_step = estate_max / self.pdf_raw_buckets
-        estate_pdf = self.pdf('estate', self.estates, 0, 0, estate_max, estate_step)
+        estate_pdf, estate_cdf = self.pdf_cdf('estate', self.estates, 0, 0, estate_max, estate_step)
 
         del self.estates # Conserve RAM.
 
@@ -393,7 +394,7 @@ class Evaluator(object):
             assert all(self.rewards[0][i] == self.reward_initial for i in range(j, j + len(self.erewards[0])))
             self.rewards = tuple(np.delete(self.rewards[i], np.s_[j:j + len(self.erewards[0])]) for i in range(2))
                 # Should really only remove matching weights, but likelihood of non-initial reward matching exact floating point initial reward is minimal.
-        consume_pdf = self.pdf('consume', self.rewards, 0, ce_min, ce_max, ce_step, utility.utility, 1 + params.consume_additional if couple else 1)
+        consume_pdf, consume_cdf = self.pdf_cdf('consume', self.rewards, 0, ce_min, ce_max, ce_step, utility.utility, 1 + params.consume_additional if couple else 1)
 
         del self.rewards # Conserve RAM.
         del self.erewards
@@ -430,26 +431,30 @@ class Evaluator(object):
             'consume10_individual': indiv_low,
             'consume90_individual': indiv_high,
             'consume_pdf': consume_pdf,
+            'consume_cdf': consume_cdf,
             'estate_pdf': estate_pdf,
+            'estate_cdf': estate_cdf,
             'consume_cr': consume_cr,
             'paths': self.trace,
             'alive': alive,
             'warnings': warnings,
         }
 
-    def pdf(self, what, value_weights, de_minus_low, low, high, step, f = lambda x: x, multiplier = 1):
+    def pdf_cdf(self, what, value_weights, de_minus_low, low, high, step, f = lambda x: x, multiplier = 1):
 
         pdf = {what: [], 'weight': []}
+        cdf = {what: [], 'probability': []}
         try:
             buckets = ceil((high - de_minus_low) / step)
         except ValueError:
             pdf[what].append(0)
             pdf['weight'].append(0)
-            return pdf
+            cdf[what].append(0)
+            cdf['probability'].append(0)
+            return pdf, cdf
         polyorder = 3
         half_window_size = max(2, self.pdf_smoothing_window * (high - low) / step // 2) # 2 * half_window_size + 1 must exceed polyorder.
         bucket_weights = []
-        w_tot = 0
         c_ceil = de_minus_low
         u_ceil = f(c_ceil)
         u_floor = u_ceil
@@ -465,9 +470,27 @@ class Evaluator(object):
                 bucket_weights[-1] += w
         while len(bucket_weights) < buckets + half_window_size:
             bucket_weights.append(0)
+        w_tot = sum(value_weights[1])
+
+        cdf_weights = [0.0]
+        cdf_weight = 0
+        bucket = 0
+        while bucket < buckets:
+            cdf_weight += bucket_weights[bucket]
+            bucket += 1
+            while len(cdf_weights) < bucket * self.cdf_buckets / buckets:
+                cdf_weights.append(cdf_weight)
+        for bucket in range(len(cdf_weights)):
+            unit_c = (de_minus_low + step * buckets / self.cdf_buckets * bucket) * multiplier
+            try:
+                prob = cdf_weights[bucket] / w_tot
+            except ZeroDivisionError:
+                prob = float('nan')
+            cdf[what].append(unit_c)
+            cdf['probability'].append(prob)
+
         bucket_weights = savgol_filter(bucket_weights, half_window_size * 2 + 1, polyorder, mode = 'constant')
         bucket_weights = tuple(max(0, bucket_weights[round(bucket / self.pdf_buckets * buckets)]) for bucket in range(self.pdf_buckets))
-        w_tot = sum(value_weights[1])
         for bucket in range(self.pdf_buckets):
             unit_c = (de_minus_low + step * buckets / self.pdf_buckets * (bucket + 0.5)) * multiplier
             try:
@@ -477,7 +500,7 @@ class Evaluator(object):
             pdf[what].append(unit_c)
             pdf['weight'].append(w_ratio)
 
-        return pdf
+        return pdf, cdf
 
     def age_cr(self, what, age_value_weights, cls, f = lambda x: x, multiplier = 1):
         '''Compute age-based confidence region.'''

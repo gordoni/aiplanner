@@ -164,48 +164,60 @@ PURPOSE.
       <table width="100%">
         <tr>
           <td> Life expectancy </td>
-          <td> <span *ngIf="scenario.scenario.consume_preretirement != null; else elseBlock">Retirement consumption</span>
-            <ng-template #elseBlock>Consumption</ng-template>
-            distribution <app-info msg="Averaged over a lifetime and many possible future scenarios."></app-info> </td>
+          <td> Consumption confidence region <app-info msg="Averaged over many possible future scenarios."></app-info> </td>
         </tr>
         <tr>
           <td width="50%"> <a href="{{results.data_dir}}/alive.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/alive.svg"></a> </td>
-          <td width="50%"> <a href="{{results.data_dir}}/consume-pdf.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/consume-pdf.svg"></a> </td>
+          <td width="50%"> <a href="{{results.data_dir}}/consume-cr.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/consume-cr.svg"></a> </td>
         </tr>
         <tr>
           <td> &nbsp; </td>
         </tr>
         <tr>
-          <td> Consumption confidence region <app-info msg="Averaged over many possible future scenarios."></app-info> </td>
+          <td> <span *ngIf="scenario.scenario.consume_preretirement != null; else elseBlock">Retirement consumption</span>
+            <ng-template #elseBlock>Consumption</ng-template>
+            distribution <app-info msg="Averaged over a lifetime and many possible future scenarios."></app-info>
+          </td>
+          <td> Cummulative consumption distribution <app-info msg="Probability of annual consumption for a random year being below the indicated value."></app-info>
+          </td>
+        </tr>
+        <tr>
+          <td width="50%"> <a href="{{results.data_dir}}/consume-pdf.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/consume-pdf.svg"></a> </td>
+          <td width="50%"> <a href="{{results.data_dir}}/consume-cdf.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/consume-cdf.svg"></a> </td>
+        </tr>
+        <tr>
+          <td> &nbsp; </td>
+        </tr>
+        <tr>
           <td> Example consumption paths <app-info msg="Many possible future scenarios were generated to evaluate the plan. This is just a small sample."></app-info>
           </td>
-        </tr>
-        <tr>
-          <td width="50%"> <a href="{{results.data_dir}}/consume-cr.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/consume-cr.svg"></a> </td>
-          <td width="50%"> <a href="{{results.data_dir}}/paths-consume.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-consume.svg"></a>
-          </td>
-        </tr>
-        <tr>
-          <td> &nbsp; </td>
-        </tr>
-        <tr>
           <td> Example guaranteed income paths <app-info msg="Adjusted for inflation."></app-info> </td>
-          <td> Example investments paths </td>
         </tr>
         <tr>
+          <td width="50%"> <a href="{{results.data_dir}}/paths-consume.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-consume.svg"></a>
           <td width="50%"> <a href="{{results.data_dir}}/paths-gi.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-gi.svg"></a>
-          <td width="50%"> <a href="{{results.data_dir}}/paths-p.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-p.svg"></a>
         </tr>
         <tr>
           <td> &nbsp; </td>
         </tr>
         <tr>
+          <td> Example investments paths </td>
           <td> Example asset allocation paths </td>
-          <td> Residual estate distribution </td>
         </tr>
         <tr>
+          <td width="50%"> <a href="{{results.data_dir}}/paths-p.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-p.svg"></a>
           <td width="50%"> <a href="{{results.data_dir}}/paths-stocks.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/paths-stocks.svg"></a>
+        </tr>
+        <tr>
+          <td> &nbsp; </td>
+        </tr>
+        <tr>
+          <td> Residual estate distribution </td>
+          <td> Cummulative estate distribution <app-info msg="Probability of residual estate being below the indicated value."></app-info> </td>
+        </tr>
+        <tr>
           <td width="50%"> <a href="{{results.data_dir}}/estate-pdf.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/estate-pdf.svg"></a>
+          <td width="50%"> <a href="{{results.data_dir}}/estate-cdf.svg" target="_blank" rel="noopener"><img src="{{results.data_dir}}/estate-cdf.svg"></a>
         </tr>
       </table>
     </div>

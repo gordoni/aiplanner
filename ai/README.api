@@ -1,7 +1,7 @@
 AIPlanner API documentation
 ***************************
 
-April 26, 2021.
+June 3, 2021.
 
 This document describes the AIPlanner - Deep Reinforcement Learning
 Financial Planner web based application programming interface.
@@ -91,6 +91,9 @@ The following assets are currently available:
     /api/data/<aid>/consume-pdf.svg
         - plot of all consumption probability density functions
 
+    /api/data/<aid>/consume-cdf.svg
+        - plot of all consumption cummulative distribution functions
+
     /api/data/<aid>/rra<rra>/asset_allocation.svg
         - figure representing current recommended asset allocation
 
@@ -101,7 +104,10 @@ The following assets are currently available:
         - plot of life expectancy
 
     /api/data/<aid>/rra<rra>/consume-pdf.svg
-        - plot of consumption density function
+        - plot of consumption probability density function
+
+    /api/data/<aid>/rra<rra>/consume-cdf.svg
+        - plot of consumption cummulative distribution function
 
     /api/data/<aid>/rra<rra>/consume-cr.svg
         - plot of consumption confidence region
@@ -120,6 +126,9 @@ The following assets are currently available:
 
     /api/data/<aid>/rra<rra>/estate-pdf.svg
         - plot of residual estate probability density function
+
+    /api/data/<aid>/rra<rra>/estate-cdf.svg
+        - plot of residual estate cummulative distribution function
 
 where <aid> and <rra> are the returned AIPlanner id and relative risk
 aversion associated with the evaluation.
@@ -932,6 +941,17 @@ clipped at the 98th percentile, so the sum of the reported weights
 will be slightly less than 1. The results represent the aggregation of
 multiple possible futures.
 
+Consumption cummulative distribution
+------------------------------------
+
+consume_cdf: {"consume": [<number>, ... ], "probability": [<number>, ... ]}
+
+Consumption cummulative distribution function. "consume" is a list of
+consumption values, and "probability" is a list of numbers in the
+interval [0, 1] giving the corresponding probabilities of annual
+consumption in some random future year being less than the associated
+values.
+
 Estate histogram
 ----------------
 
@@ -942,6 +962,16 @@ before tax estate values, and "weight" is a list of the corresponding
 residual estate probability densities. The sum of all weights
 multiplied by the estate interval widths will normally be slightly
 less than 1.
+
+Estate cummulative distribution
+-------------------------------
+
+estate_cdf: {"estate": [<number>, ... ], "probability": [<number>, ... ]}
+
+Residual estate cummulative distribution function. "estate" is a list
+of before tax estate values, and "probability" is a list of numbers in
+the interval [0, 1] giving the corresponding probabilities of the
+estate being less than the associated values.
 
 Consumption confidence regions
 ------------------------------

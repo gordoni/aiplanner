@@ -764,6 +764,10 @@ problem.
 Development
 -----------
 
+Code that is run once per simulated timestep is considered performance
+critical. Its efficiency showed be reviewed by checking the html
+output from "./cythonize.py --annotate".
+
 The api server has several functions:
     - respond to the Angular code proxying to it to handle HTTP /api
       and /web requests

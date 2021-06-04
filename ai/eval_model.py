@@ -276,7 +276,7 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                 print('Evaluation certainty equivalent:', res['ce_individual'], '+/-', res['ce_stderr_individual'],
                     '(80% confidence interval:', res['consume10_individual'], '-', str(res['consume90_individual']) + ')', file = out, flush = True)
 
-                plot(prefix, res['paths'], res['consume_pdf'], res['estate_pdf'], res['consume_cr'], res['alive'])
+                plot(prefix, res['paths'], res['consume_pdf'], res['consume_cdf'], res['estate_pdf'], res['estate_cdf'], res['consume_cr'], res['alive'])
 
                 final_results = dict(results[scenario_num]['results'][sub_num], **{
                     'error': None,
@@ -288,7 +288,9 @@ def eval_models(eval_model_params, *, api = [{}], daemon, api_content_length, st
                     'consume_mean': res['consume_mean'],
                     'consume_stdev': res['consume_stdev'],
                     'consume_pdf': res['consume_pdf'],
+                    'consume_cdf': res['consume_cdf'],
                     'estate_pdf': res['estate_pdf'],
+                    'estate_cdf': res['estate_cdf'],
                     'consume_cr': res['consume_cr'],
                     'sample_paths': res['paths'],
                     'alive': res['alive'],
@@ -655,7 +657,7 @@ def compatibility_warnings(train_params, eval_params, initial_results):
 
     return warnings
 
-def plot(prefix, traces, consume_pdf, estate_pdf, consume_cr, alive):
+def plot(prefix, traces, consume_pdf, consume_cdf, estate_pdf, estate_cdf, consume_cr, alive):
 
     try:
         couple_status = alive['couple'][0] > 0
@@ -706,10 +708,20 @@ def plot(prefix, traces, consume_pdf, estate_pdf, consume_cr, alive):
         csv_writer = writer(f)
         csv_writer.writerows(pdf)
 
+    cdf = zip(consume_cdf['consume'], consume_cdf['probability'])
+    with open(prefix + '-consume-cdf.csv', 'w') as f:
+        csv_writer = writer(f)
+        csv_writer.writerows(cdf)
+
     pdf = zip(estate_pdf['estate'], estate_pdf['weight'])
     with open(prefix + '-estate-pdf.csv', 'w') as f:
         csv_writer = writer(f)
         csv_writer.writerows(pdf)
+
+    cdf = zip(estate_cdf['estate'], estate_cdf['probability'])
+    with open(prefix + '-estate-cdf.csv', 'w') as f:
+        csv_writer = writer(f)
+        csv_writer.writerows(cdf)
 
     for region in consume_cr:
         cr = zip(region['age'], region['low'], region['high'])
