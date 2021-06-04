@@ -23,11 +23,14 @@ import { ModalComponent } from '../modal/modal.component';
 export class InfoComponent implements OnInit {
 
   @Input() public msg: string;
-  @Input() public type: 'tooltip' | 'modal' = 'tooltip';
+  @Input() public type: 'tooltip' | 'modal' = 'modal';
     /*
      * For both types the text is wrapped with no formatting possible.
      *
      * Tooltip normally works best for both touch and non-touch devices.
+     *
+     * Tooltip doesn't seem to work on touch based chromium derived browsers.
+     * You need to long press, which is non-intuitive, and long press then brings up the system menu.
      *
      * Modals work better for large amonts of text because the width of tooltips is limited.
      *
