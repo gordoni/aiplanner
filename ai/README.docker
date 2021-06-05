@@ -124,7 +124,7 @@ Create an empty AIPlanner email address interest list if desired:
 To run the api server at http://localhost:3000/ and print out the
 container id:
 
-    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data:/home/aiplanner/aiplanner-data gordoni/aiplanner-apiserver
+    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data:/home/aiplanner/aiplanner-data <aiplanner_account_id>.dkr.ecr.us-east-2.amazonaws.com/<repository_name>
 
 To confirm the container is running:
 
