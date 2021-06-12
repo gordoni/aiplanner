@@ -118,7 +118,8 @@ class CorporateFetcher(Fetcher):
     start_year = 1984
     year_step = 5
 
-    url_base = 'https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Documents/'
+    #url_base = 'https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Documents/'
+    url_base = 'https://home.treasury.gov/system/files/226/'
     url_file_part = 'hqm_%(start)02d_%(end)02d'
 
     def file_part(self, year):
