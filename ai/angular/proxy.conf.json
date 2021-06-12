@@ -1,13 +1,6 @@
 {
-  "/webapi/": {
+  "/api/": {
     "target": "http://localhost:3000",
-    "secure": false,
-    "pathRewrite": {
-      "^/webapi": "/api"
-    }
-  },
-  "/web/": {
-    "target": "http://localhost:3001",
     "secure": false
   }
 }

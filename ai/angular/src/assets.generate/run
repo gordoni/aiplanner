@@ -1,6 +1,31 @@
-#!/bin/sh
+#!/bin/bash
+
+# AIPlanner - Deep Learning Financial Planner
+# Copyright (C) 2021 Gordon Irlam
+#
+# All rights reserved. This program may not be used, copied, modified,
+# or redistributed without permission.
+#
+# This program is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.
+
+AIPLANNER_DIR=${AIPLANNER_DIR:-../../../..}
+AIPLANNER_DATA=${AIPLANNER_DATA:-$HOME/aiplanner-data}
+
+AI_DIR=$AIPLANNER_DIR/ai
+
+source $AI_DIR/setenv
 
 ./risk_aversion_in_pictures.py
 ./risk_aversion_in_pictures.gnuplot
 
 cp risk_aversion_pdf.svg ../assets/
+
+$AI_DIR/eval_model.py --models-dir=$AIPLANNER_DATA/models -c $AI_DIR/aiplanner-scenario.txt -c $AI_DIR/aiplanner-scenario-couple-eval.txt --master-gamma=6 \
+    --master-guaranteed-income='[{"owner":"self","start": null,"payout": 15e3,"source_of_funds":"taxable","type":"social_security"},{"owner":"spouse","start":null,"payout": 15e3,"source_of_funds":"taxable","type":"social_security"}]' \
+    --master-age-start=67 --master-age-start2=67 --master-p-weighted=2e6 --train-seeds=10 --ensemble
+    # Values chosen to produce pretty graphs.
+
+RESULTS_DIR=results/seed_all
+cp $RESULTS_DIR/aiplanner-asset_allocation.svg $RESULTS_DIR/aiplanner-paths-consume.svg $RESULTS_DIR/aiplanner-consume-pdf.svg ../assets/

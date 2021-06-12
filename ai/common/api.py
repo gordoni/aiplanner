@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019-2020 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -8,6 +8,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+from json import dumps
 from math import log
 
 def parse_api_scenario(api_scenario, *, permissive = False):
@@ -75,7 +76,7 @@ def parse_api_scenario(api_scenario, *, permissive = False):
         'income_preretirement2': number,
         'income_preretirement_age_end': enumeration([number, None]),
         'income_preretirement_age_end2': enumeration([number, None]),
-        'consume_preretirement': number,
+        'consume_preretirement': enumeration([number, None]),
         'have_401k': boolean,
         'have_401k2': boolean,
 
@@ -105,6 +106,7 @@ def parse_api_scenario(api_scenario, *, permissive = False):
         'p_taxable_stocks_basis': number,
         'p_taxable_other_basis': number,
 
+        'observe_market_conditions': boolean,
         'stocks_price': number,
         'stocks_volatility': number,
         'nominal_short_rate': number,
@@ -114,6 +116,8 @@ def parse_api_scenario(api_scenario, *, permissive = False):
         'spias': boolean,
 
         'rra': enumeration([None, array(number)]), # Must put None first as array() asserts if it doesn't match.
+
+        'rl_stocks_max': number,
 
         'num_evaluate_timesteps': number,
         'num_sample_paths': number,
@@ -126,14 +130,21 @@ def parse_api_scenario(api_scenario, *, permissive = False):
     for name in [
         'sex',
 
-        'income_preretirement_age_end',
-        'income_preretirement_age_end2',
-        'consume_preretirement',
-
-        'guaranteed_income',
+        'rl_stocks_max',
     ]:
         if name in api_scenario:
             model_params[name] = api_scenario[name]
+
+    for name in [
+        'income_preretirement_age_end',
+        'income_preretirement_age_end2',
+        'consume_preretirement',
+    ]:
+        if name in api_scenario:
+            model_params[name] = api_scenario[name] if api_scenario[name] is not None else -1
+
+    if 'guaranteed_income' in api_scenario:
+        model_params['guaranteed_income'] = dumps(api_scenario['guaranteed_income'])
 
     for name in [
         'life_expectancy_additional',
@@ -158,13 +169,16 @@ def parse_api_scenario(api_scenario, *, permissive = False):
         model_params['age_start'] = api_scenario['age']
     except KeyError:
         assert permissive, 'No age specified.'
-    if api_scenario.get('sex2') != None:
+    if api_scenario.get('sex2') is not None:
         model_params['sex2'] = api_scenario['sex2']
         try:
             model_params['age_start2_low'] = model_params['age_start2_high'] = api_scenario['age2']
         except KeyError:
             assert permissive, 'No age2 specified.'
     assert ('age_retirement' in api_scenario) or permissive, 'No age_retirement.'
+    model_params['observe_stocks_price'] = api_scenario.get('observe_market_conditions', True)
+    model_params['observe_stocks_volatility'] = api_scenario.get('observe_market_conditions', True)
+    model_params['observe_interest_rate'] = api_scenario.get('observe_market_conditions', True)
     if 'stocks_volatility' in api_scenario:
         model_params['stocks_sigma_level_type'] = 'value'
         model_params['stocks_sigma_level_value'] = api_scenario['stocks_volatility']
@@ -194,14 +208,14 @@ def parse_api_scenario(api_scenario, *, permissive = False):
     model_params['p_taxable_nominal_bonds_basis_fraction_low'] = model_params['p_taxable_nominal_bonds_basis_fraction_high'] = 0
     model_params['p_taxable_other_basis_fraction_low'] = model_params['p_taxable_other_basis_fraction_high'] = 0
 
-    model_params['couple_probability'] = int(api_scenario.get('sex2') != None)
+    model_params['couple_probability'] = int(api_scenario.get('sex2') is not None)
 
     control_params = {
         'cid': api_scenario.get('cid'),
         'spias': api_scenario.get('spias', True),
         'p_taxable_bonds': api_scenario.get('p_taxable_bonds', 0),
         'p_taxable_bonds_basis': api_scenario.get('p_taxable_bonds_basis', api_scenario.get('p_taxable_bonds', 0)),
-        'gammas': [int(gamma) if int(gamma) == gamma else gamma for gamma in api_scenario['rra']] if api_scenario.get('rra') != None else None,
+        'gammas': [int(gamma) if int(gamma) == gamma else gamma for gamma in api_scenario['rra']] if api_scenario.get('rra') is not None else None,
     }
 
     return model_params, control_params

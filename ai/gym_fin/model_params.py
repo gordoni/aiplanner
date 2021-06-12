@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -39,17 +39,17 @@ class ModelParams(object):
 
         self._boolean_flag('verbose', False) # Display relevant model information such as when stepping.
         self._boolean_flag('warn', True) # Display warning messages.
-        self._boolean_flag('display-returns', True) # Display yield and return statistics.
+        self._boolean_flag('warn_to_stderr', False, True) # Display warning messages on stderr or stdout.
+            # Stdout when training because Ray buffers both stdout and stderr, so that warning is concordant with any verbose output on stdout.
+        self._boolean_flag('display-returns', False, True) # Display yield and return statistics.
 
-        self._param('debug-dummy-float', None) # Occasionally useful for debugging.
+        self._param('debug-dummy-float', 0.0) # Occasionally useful for debugging.
 
         # This following four parameters are determined by the training algorithm, and can't be set by the user.
         self._boolean_flag('action-space-unbounded', None) # Whether the action space is unbounded, or bound to the range [-1, 1].
         self._boolean_flag('observation-space-ignores-range', None) # Whether observation space needs to roughly be in the range [-1, 1], or the range specified.
         self._boolean_flag('observation-space-clip', None) # Whether observation space should be clipped to stay in range, or can occasionally be out of range.
         self._param('algorithm', None, tp = string_type) # For RLlib only, the training algorithm being used.
-
-        self._param('reproduce-episode', None, tp = int) # If set, keep reproducing the same numbered episode returns. Useful for benchmarking.
 
         self._param('consume-action-scale-back', 5) # Scale back of consume action if action space uunbounded.
             # For a generic model lack of scale back will result in relative_ce_estimate frequently out of range and extreme reward observations.
@@ -73,10 +73,10 @@ class ModelParams(object):
             # "extended_rmd": consume according to IRS Required Minimum Distribution table extended to start from an earlier start age.
             # "pmt": payout with life expectancy consume_policy_life_expectancy and return amount consume_policy_return.
         self._param('consume-initial', 0) # Initial consumption amount for particular consumption policies.
-        self._param('consume-policy-life-expectancy', None) # Assumed life expectancy for particular consumption policies, or None to use actual life expectancy.
+        self._param('consume-policy-life-expectancy', -1) # Assumed life expectancy for particular consumption policies, or -1 to use actual life expectancy.
         self._param('consume-policy-return', 0) # Assumed annual return for particular consumption policies.
         self._param('consume-policy-fraction', 0.04) # Consume fraction for percent_rule.
-        self._param('consume-policy-extended-rmd-table', '2021', tp = string_type, choices = ('2003', '2021')) # RMD table to use for extended_rmd.
+        self._param('consume-policy-extended-rmd-table', '2022', tp = string_type, choices = ('2003', '2021-proposed', '2022')) # RMD table to use for extended_rmd.
         self._param('consume-policy-fraction-max', 1) # Maximum proportion of investent policy to consume; applies to all consumption policies including rl.
         self._param('annuitization-policy', 'rl', tp = string_type, choices = ('rl', 'age_real', 'age_nominal', 'none'))
             # Annuitization policy.
@@ -96,9 +96,10 @@ class ModelParams(object):
             # Glide path specified as a series of tuples: [age - age_retirement, stocks_fraction]. Remainder in bonds.
             # Interpolated with constant allocations outside range.
         self._param('asset-allocation-annuitized-policy', 'asset_allocation_policy', tp = string_type)
-            # Asset allocation policy once annuitized.
+            # Asset allocation policy once annuitized for annuitization policies "age_real" and "age_nominal".
             # "asset_allocation_policy": use the same policy as asset_allocation_policy.
             # '{"<asset_class>":<allocation>, ...}': fixed allocation. Eg. '{"stocks":1.0, "nominal_bonds":0.0}'.
+        self._param('rl-stocks-max', 1.0) # Maximum allowed allocation  to stocks for the reinforcement learning asset allocation policy.
         self._param('rl-consume-bias', 0.0, 0.0) # Bias the reinforcement learning conumption policy consumption fraction by this amount.
             # Useful for reversing the effects of training algorithm bias when evaluating.
             # Training bias should always be zero.
@@ -138,7 +139,7 @@ class ModelParams(object):
             # A couple trained model may be less accurate due to the large stochasticity associated with the random death of the first member of the couple.
 
         self._param('life-table', 'ssa-cohort', tp = string_type) # Life expectancy table to use. See spia module for possible values.
-        self._param('life-table-date', '2020-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
+        self._param('life-table-date', '2021-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
         self._param('life-expectancy-additional', (0, 0), 0) # Initial age adjustment for first individual.
             # Shift initial age so as to add this many years to the life expectancy of the first individual.
         self._param('life-expectancy-additional2', (0, 0), 0) # Initial age adjustment for second individual.
@@ -153,6 +154,8 @@ class ModelParams(object):
         self._param('age-start2', (67, 67), 67) # Age of second individual.
         self._param('age-end', 151) # Model done when individuals reach this age.
             # Life table ends at 121. Specifying a larger value ensures no truncation of the life table occurs when life_expectancy_additional is specified.
+        self._boolean_flag('age-continuous', False) # Whether the effective age after life expectancy adjustment is continuous or limited to discrete values.
+            # Discrete values speed up the computation of life table q()'s and allow vital stats to be cached without appreciably altering the quality of the results.
         self._param('age-retirement', (67, 67), 67) # Assess and optimize consumption from when first individual reaches this age.
         self._param('consume-additional', 0.6)
             # When a second individual is present we consume this fraction more than a single individual for the same per individual utility.
@@ -172,19 +175,19 @@ class ModelParams(object):
 
         self._param('income-preretirement', (0, 0), 0) # Annual pre-tax pre-retirement income for first individual.
         self._param('income-preretirement2', (0, 0), 0) # Annual pre-tax pre-retirement income for second individual.
-        self._param('income-preretirement-age-end', None)
-            # Age of first individual when pre-retirement income ends, or None to base on first individual reaching age_retirement.
-        self._param('income-preretirement-age-end2', None)
-            # Age of second individual when pre-retirement income ends, or None to base on first individual reaching age_retirement.
+        self._param('income-preretirement-age-end', -1)
+            # Age of first individual when pre-retirement income ends, or -1 to base on first individual reaching age_retirement.
+        self._param('income-preretirement-age-end2', -1)
+            # Age of second individual when pre-retirement income ends, or -1 to base on first individual reaching age_retirement.
         self._param('income-preretirement-mu', 0) # Pre-retirement income annual drift for first individual.
         self._param('income-preretirement-mu2', 0) # Pre-retirement income annual drift for second individual.
         self._param('income-preretirement-sigma', 0) # Pre-retirement income annual log volatility for first individual.
         self._param('income-preretirement-sigma2', 0) # Pre-retirement income annual log volatility for second individual.
         self._boolean_flag('income-preretirement-concordant', False) # Whether second member of couple's income follows the same fluctuations as the first.
         self._boolean_flag('income-preretirement-taxable', True) # Whether pre-tax pre-retirement income is taxable.
-        self._param('consume-preretirement', 0) # Annual pre-retirement consumption.
+        self._param('consume-preretirement', 0) # Annual pre-retirement consumption, or -1 to use consumption policy.
         self._param('consume-preretirement-income-ratio', (0, 0))
-            # Fraction of initial after tax before IRA/401(k) pre-retirement income to add to pre-retirement consumption.
+            # Fraction of initial after tax before IRA/401(k) pre-retirement income to add to pre-retirement consumption if pre-retirement consumption not -1.
 
         self._param('have-401k', (True, True), True, tp = bool) # 401(k) available to first individual.
         self._param('have-401k2', (True, True), True, tp = bool) # 401(k) available to second individual.
@@ -193,7 +196,7 @@ class ModelParams(object):
         self._param('gamma', (3, 3), 3) # Coefficient of relative risk aversion.
 
         self._param('consume-charitable', float('inf')) # Charitable consumpton level.
-        self._param('consume-charitable-utility-factor', 0.1) # Reduction factor in marginal utility at consume_charitable.
+        self._param('consume-charitable-utility-factor', 1.0) # Reduction factor in marginal utility at consume_charitable.
         self._param('consume-charitable-gamma', 0.8) # Charitable consumption coefficient of relative risk aversion.
         self._param('consume-charitable-discount-rate', 0.0) # Charitable consumption annual discount rate to indicate preference for donating early.
         self._param('consume-charitable-tax-deductability', 1.0) # Proportion of charitable consumption that is tax deductable.
@@ -230,21 +233,17 @@ class ModelParams(object):
         self._param('p-taxable-nominal-bonds-weight', (0, 100), 0) # Weight for p_weighted allocated to taxable nominal bonds.
         self._param('p-taxable-iid-bonds', (0, 0), 0) # Taxable additive portfolio iid bonds.
         self._param('p-taxable-iid-bonds-weight', (0, 100), 0) # Weight for p_weighted allocated to taxable iid bonds.
-        self._param('p-taxable-bills', (0, 0), 0) # Taxable additive portfolio bills.
-        self._param('p-taxable-bills-weight', (0, 100), 0) # Weight for p_weighted allocated to taxable bills.
         self._param('p-taxable-other', (0, 0), 0) # Taxable additive portfolio other.
         self._param('p-taxable-other-weight', (0, 0), 0) # Weight for p_weighted allocated to taxable other.
         self._param('p-taxable-stocks-basis', 0) # Taxable portfolio stocks cost basis.
         self._param('p-taxable-real-bonds-basis', 0) # Taxable portfolio real bonds cost basis.
         self._param('p-taxable-nominal-bonds-basis', 0) # Taxable portfolio nominal bonds cost basis.
         self._param('p-taxable-iid-bonds-basis', 0) # Taxable portfolio iid bonds cost basis.
-        self._param('p-taxable-bills-basis', 0) # Taxable portfolio bills cost basis.
         self._param('p-taxable-other-basis', 0) # Taxable portfolio other cost basis.
         self._param('p-taxable-stocks-basis-fraction', (0, 2), 1) # Taxable portfolio stocks cost basis as a fraction of stocks value.
         self._param('p-taxable-real-bonds-basis-fraction', (0.7, 1.1), 1) # Taxable portfolio real bonds cost basis as a fraction of real bonds value.
         self._param('p-taxable-nominal-bonds-basis-fraction', (0.7, 1.1), 1) # Taxable portfolio nominal bonds cost basis as a fraction of nominal bonds value.
         self._param('p-taxable-iid-bonds-basis-fraction', (0.7, 1.1), 1) # Taxable portfolio iid bonds cost basis as a fraction of iid bonds value.
-        self._param('p-taxable-bills-basis-fraction', (0.7, 1.1), 1) # Taxable portfolio bills cost basis as a fraction of bills value.
         self._param('p-taxable-other-basis-fraction', (0, 2), 1) # Taxable portfolio other cost basis as a fraction of other value.
         # Consumption order is assumed to be p_taxable, p_tax_deferred, p_notax.
 
@@ -257,9 +256,9 @@ class ModelParams(object):
             # hopefully making multi-scenario models easier to train.
             # Set to false to faithfully adhere to the current tax code.
         self._param('dividend-yield-stocks', 0.02) # Dividend yield for stocks.
-        self._param('dividend-yield-bonds', 0.04) # Dividend yield for bonds and bills.
+        self._param('dividend-yield-bonds', 0.04) # Dividend yield for bonds.
         self._param('qualified-dividends-stocks', 1) # Qualified dividends fraction for stocks. Qualified dividends are taxed at capital gains rates.
-        self._param('qualified-dividends-bonds', 0) # Qualified dividends fraction for bonds and bills.
+        self._param('qualified-dividends-bonds', 0) # Qualified dividends fraction for bonds.
         self._param('tax-state', 0.11) # Aggregate state, local, and property taxes as a percentage of income after standard deduction.
             # Average state income tax rate is around 6.4%, and average property tax is around 4.3% of income after standard deduction.
             # Ignores local income taxes, uses median rather than mean property taxes.
@@ -270,19 +269,22 @@ class ModelParams(object):
             # Median property taxes: $3.3k - https://www.mortgagecalculator.org/helpful-advice/property-taxes.php
             # Households that own rather than rent: 63% - https://www.pewresearch.org/fact-tank/2017/07/19/more-u-s-households-are-renting-than-at-any-point-in-50-years/
         self._param('tax-fixed', 0) # Property or any other fixed tax amounts not included in tax_state.
+        self._boolean_flag('tax-class-aware-asset-allocation', True)
+            # Whether to consider taxability of tax classes in deciding their individual asset allocations.
 
         self._boolean_flag('static-bonds', False)
             # Whether to model real bonds and inflation and thus nominal bonds and SPIAs as static (that is using a yield curve that does not vary over time).
             # Does not remove side-effects of potential for temporal variability in bond prices; simply does not step bonds over time.
-        self._param('fixed-real-bonds-rate', None) # Rate to model real bonds with a fixed mean yield curve (does not favor duration).
-        self._param('fixed-nominal-bonds-rate', None) # Rate to model nominal bonds in determining inflation with a fixed mean yield curve (does not favor duration).
+        self._param('fixed-real-bonds-rate', -1) # Rate to model real bonds with a fixed mean yield curve (does not favor duration) when not -1.
+        self._param('fixed-nominal-bonds-rate', -1)
+            # Rate to model nominal bonds in determining inflation with a fixed mean yield curve (does not favor duration) when not -1.
         self._param('real-bonds-adjust', 0.0) # Rate adjustment to apply across the real bond yield curve.
         self._param('inflation-adjust', 0.0) # Rate adjustment to apply across the inflation yield curve.
         self._param('nominal-bonds-adjust', 0.0) # Rate adjustment to apply across the nominal bond yield curve.
         self._param('corporate-nominal-spread', 0.013) # Rate adjustment to apply across the nominal bond yield curve to generate corporate yields.
             # Average of BofA Merrill Corporate A option adjusted spread ( https://fred.stlouisfed.org/series/BAMLC0A3CA ) 1997-2019: 1.32%
-        self._param('bonds-date', '2019-12-31', tp = string_type) # Date to use for typical bond yield curve if not fixed.
-        self._param('bonds-date-start', '2005-01-01', tp = string_type)
+        self._param('bonds-date', '2020-12-31', tp = string_type) # Date to use for typical bond yield curve if not fixed.
+        self._param('bonds-date-start', '2018-01-01', tp = string_type)
              # None or optional date to use for start of date range for average typical bond yield curve if not fixed.
 
         self._boolean_flag('real-spias', False) # Enable purchase of real SPIAs.
@@ -334,7 +336,7 @@ class ModelParams(object):
         self._param('stocks-sigma-level-type', 'sample', 'invalid', tp = string_type, choices = ('sample', 'average', 'value'))
             # Monthly GJR-GARCH volatility model current log volatility relative to long term average for normal_residuals/bootstrap stocks.
             # 'sample' chooses initial value at random, 'average' uses the average model value, 'value' uses a specific value.
-        self._param('stocks-sigma-level-value', None) # Monthly GJR-GARCH volatility model current log volatility relative to long term average for type 'value'.
+        self._param('stocks-sigma-level-value', -1) # Monthly GJR-GARCH volatility model current log volatility relative to long term average for type 'value'.
         self._param('stocks-mean-reversion-rate', 0.1) # Mean reversion rate for normal_residuals/bootstrap stocks, - d(return percentage)/d(overvalued percentage).
             # Set to non-zero for mean reverting stock returns.
             # Use a value like 0.1 to mimick findings from Shiller's data, that for every 10% overvalued stocks are,
@@ -344,18 +346,18 @@ class ModelParams(object):
            # Extent to which movement in stock price doesn't reflect movement in fair price.
            # Used to mimick implications from Shiller's data that stocks can be over/under-valued.
            # A value of 0.7 produces a value/fair value of 50-150% the vast majority of the time.
-        self._param('stocks-price', (0.5, 2.0), (None, None)) # Initial observed price of stocks relative to fair price for bootstrap stocks with mean reversion.
+        self._param('stocks-price', (0.5, 2.0), (-1, -1)) # Initial observed price of stocks relative to fair price for bootstrap stocks with mean reversion.
         self._param('stocks-price-noise-sigma', 0.15) # Sigma of lognormal noise inherent in observation of stocks price relative to fair price for bootstrap stocks.
             # Used in the case of mean reversion.
         self._param('stocks-return', 0.065) # Annual real return for iid stocks.
         self._param('stocks-volatility', 0.174) # Annual real volatility for iid stocks.
         self._param('stocks-standard-error', 0.016) # Standard error of log real return for stocks.
         self._boolean_flag('real-bonds', True) # Whether to model real bonds (with an interest rate model).
-        self._param('real-bonds-duration', None) # Duration in years to use for real bonds, or None to allow duration to vary.
+        self._param('real-bonds-duration', -1) # Duration in years to use for real bonds, or -1 to allow duration to vary.
         self._param('real-bonds-duration-max', 30) # Maximum allowed real duration to use when duration is allowed to vary.
         self._boolean_flag('real-bonds-duration-action-force', False) # Whether to employ a real bond model that has variable duration with a fixed duration.
         self._boolean_flag('nominal-bonds', True) # Whether to model nominal bonds (with an interest rate model).
-        self._param('nominal-bonds-duration', None) # Duration in years to use for nominal bonds, or None to allow duration to vary.
+        self._param('nominal-bonds-duration', -1) # Duration in years to use for nominal bonds, or -1 to allow duration to vary.
         self._param('nominal-bonds-duration-max', 30) # Maximum allowed nominal duration to use when duration is allowed to vary.
         self._boolean_flag('nominal-bonds-duration-action-force', False) # Whether to employ a nominal bond model that has variable duration with a fixed duration.
         self._boolean_flag('iid-bonds', False) # Whether to model independent identically distributed bonds (without any interest rate model).
@@ -369,16 +371,12 @@ class ModelParams(object):
         self._param('real-short-rate-type', 'sample', 'invalid', tp = string_type, choices = ('sample', 'current', 'value'))
             # Initial short real interest rate when using model.
             # 'sample' chooses initial value at random, 'current' uses the average model value, 'value' uses a specific value.
-        self._param('real-short-rate-value', None) # Initial continuously compounded annualized short real interest rate for type 'value'.
+        self._param('real-short-rate-value', -1) # Initial continuously compounded annualized short real interest rate for type 'value'.
         self._param('inflation-standard-error', 0.004) # Standard error of log inflation.
         self._param('inflation-short-rate-type', 'sample','invalid', tp = string_type, choices = ('sample', 'current', 'value'))
             # Initial inflation rate when using model.
             # 'sample' chooses initial value at random, 'current' uses the average model value, 'value' uses a specific value.
-        self._param('inflation-short-rate-value', None) # Initial continuously compounded annualized inflation rate for type 'value'.
-        self._boolean_flag('bills', True) # Whether to model stochastic bills (without any interest rate model).
-        self._param('bills-return', 0.009) # Annual real return for bill asset class.
-        self._param('bills-volatility', 0.046) # Annual real return for bill asset class.
-        self._param('bills-standard-error', 0.004) # Standard error of log real return for bills.
+        self._param('inflation-short-rate-value', -1) # Initial continuously compounded annualized inflation rate for type 'value'.
         self._param('credit-rate', 0.15) # Annual real interest rate for borrowing cash.
 
         self._boolean_flag('observe-stocks-price', True) # Whether to observe stocks price relative to fair price pus noise.
@@ -400,7 +398,7 @@ class ModelParams(object):
     def get_params(self, training = False):
 
         def get_param(name):
-            if self.params['master_' + name] != None:
+            if self.params['master_' + name] is not None:
                 return self.params['master_' + name]
             elif training:
                 return self.params['train_' + name]
@@ -413,7 +411,7 @@ class ModelParams(object):
                 params[name] = get_param(name)
             if name.endswith('_low'):
                 base = name[:-4]
-                if get_param(base) == None:
+                if get_param(base) is None:
                     low = get_param(base + '_low')
                     high = get_param(base + '_high')
                     assert low == high or low < high, 'Bad range: ' + base # Handles low == high == None.
@@ -469,7 +467,7 @@ class ModelParams(object):
             train_range = False
             eval_range = False
 
-        if train_range and not eval_range and eval_val != None:
+        if train_range and not eval_range and eval_val is not None:
             eval_val = (eval_val, eval_val)
         if eval_range and not train_range:
             train_val = (train_val, train_val)
@@ -479,7 +477,7 @@ class ModelParams(object):
             val = train_val
             prefix = '--train-'
         elif self.evaluate:
-            val = eval_val if eval_val != None else train_val
+            val = eval_val if eval_val is not None else train_val
             prefix = '--eval-'
         else:
             if rnge:
@@ -510,7 +508,7 @@ class ModelParams(object):
             val = train_val
             prefix = 'train-'
         elif self.evaluate:
-            val = eval_val if eval_val != None else train_val
+            val = eval_val if eval_val is not None else train_val
             prefix = 'eval-'
         else:
             val = None

@@ -4,7 +4,7 @@ life tables with interest rate yield curves. The lifetables are hard
 coded, while the interest rate data is obtained from the U.S. Treasury
 using the fetch_yield_curve script.
 
-The package comprises the following files:
+The package includes the following files:
 
     __init__.py - exported package definitions
     income_annuity.py - SPIAs and DIAs
@@ -12,14 +12,8 @@ The package comprises the following files:
     yield_curve.py - interest rate yield curve
     monotone_convex.py - yield curve interpolation
     fetch_yield_curve.py - yield curve data file retrieval
-    test.py
-    test.out
-    test
-    README
-    LICENSE
-    agpl-3.0.txt
 
-They should normally all be stored in the directory spia .
+They should normally be stored in the directory spia .
 
 The package depends on scipy for yield curve interpolation and the
 catdoc xls2csv program for the corporate interest rate.
@@ -52,6 +46,13 @@ annuities:
 
 This should print "OK", or show the differences between the expected
 results and the obtained results.
+
+Cython can be used to speed things up by compiling the code:
+
+    sudo apt-get install cython
+    ./cythonize.py
+
+Ignore the unused variable warnings.
 
 See test.py for some examples of the various options, or the
 documentation in the source code.

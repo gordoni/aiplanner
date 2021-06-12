@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -18,7 +18,7 @@ master_welfare = 10000
 # impact only.
 master_sex = 'female'
 master_sex2 = 'male'
-master_life_table_date = '2020-01-01'
+master_life_table_date = '2021-01-01'
 
 master_age_end = 151
 
@@ -35,16 +35,16 @@ master_p_taxable_stocks = 0
 master_p_taxable_real_bonds = 0
 master_p_taxable_nominal_bonds = 0
 master_p_taxable_iid_bonds = 0
-master_p_taxable_bills = 0
 master_p_taxable_other = 0
 
 master_tax = True
-master_tax_table_year = '2020'
+master_tax_table_year = '2021'
 
-master_bonds_date = '2019-12-31'
-master_bonds_date_start = '2005-01-01'
+master_bonds_date = '2020-12-31'
+master_bonds_date_start = '2018-01-01'
     # Date range for the typical yield curve, not the initial yield curve.
     # Initial yield curve is determined by the initial short rate, the typical yield curve, and the Hull-White parameters.
+    # Assumes we have entered a new era of lower rates.
 master_corporate_nominal_spread = 0.013 # Average of BofA Merrill Corporate A option adjusted spread ( https://fred.stlouisfed.org/series/BAMLC0A3CA ) 1997-2019.
     # Corporate bonds are used to price nominal SPIAs.
 
@@ -56,7 +56,7 @@ master_real_spias_mwr = 0.94 # Based on 2015 pricing.
 master_nominal_spias_mwr = 0.94 # Based on 2019 average pricing of 96.2% for ages 60-90 against Treasury +1.3% before 2.35% non-qualified CA tax.
 master_nominal_spias_adjust = 0.02
 master_spias_partial = True
-master_spias_min_purchase_fraction = 0.1
+master_spias_min_purchase_fraction = 0.2
 master_preretirement_spias = False
 master_couple_spias = True
     # Improves CE for couple age 65, gi=20e3, p=2e6 by 1%, 2% and 11% for gamma = 1.5, 3, and 6 relative to no_couple_spias.
@@ -84,19 +84,14 @@ master_stocks_price_exaggeration = 0.7 # Generates reasonable price to fair pric
 master_stocks_price_noise_sigma = 0.15 # Rough estimate of noise in stock price to fair price observations.
 master_stocks_standard_error = 0.016
 master_real_bonds = True
-master_real_bonds_duration = None
+master_real_bonds_duration = -1
 master_nominal_bonds = False
-master_nominal_bonds_duration = None # Variable duration gives slightly better than 15 year, but inconsistent results; 15 years is typical for a long term bond fund.
+master_nominal_bonds_duration = -1 # Variable duration gives slightly better than 15 year, but inconsistent results; 15 years is typical for a long term bond fund.
 master_iid_bonds = False
 master_iid_bonds_return = 0.003 # Use present era bond returns. This is the 15 year duration spot yield from the Treasury real yield curve on 2019-12-31.
 master_iid_bonds_volatility = 0.109
 master_bonds_standard_error = 0.010
 master_inflation_standard_error = 0.004
-master_bills = False
-master_bills_return = -0.006 # Use present era bills returns.
-    # This is the 1 month yield from the Treasury nominal yield curve on 2019-12-31 less the mean inflation rate of 2.1% for the prior 3 years from the BLS.
-master_bills_volatility = 0.000 # Treat bill returns as essentially known.
-master_bills_standard_error = 0.000
 master_credit_rate = 0.15
 
 eval_num_timesteps = 2000000 # Produces a 0.1-0.2% CE standard error.

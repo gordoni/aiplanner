@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -8,33 +8,55 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE.
 
+from enum import Enum
+
+import cython
+
+from ai.gym_fin.asset_classes import AssetClasses
+
+@cython.cclass
 class AssetAllocation:
 
-    ASSET_CLASSES = ('stocks', 'real_bonds', 'nominal_bonds', 'iid_bonds', 'bills')
+    def __init__(self, **kwargs):
 
-    def __init__(self, *, fractional = True, **kwargs):
+        self.aa = [None] * len(AssetClasses)
+        for ac, v in kwargs.items():
+            self.aa[AssetClasses[ac.upper()].value] = v
 
-        self.aa = {**kwargs}
+    def clone(self):
 
-        if fractional:
+        c = AssetAllocation()
+        c.aa = list(self.aa)
 
-            assert abs(sum(self.aa.values()) - 1) < 1e-15
+        return c
+
+    def sum(self):
+
+        s: cython.double
+        s = 0
+        for v in self.aa:
+            if v is not None:
+                val: cython.double
+                val = v
+                s += val
+
+        return s
 
     def classes(self):
 
         l = []
-        for ac in self.ASSET_CLASSES:
-            if ac in self.aa:
-                l.append(ac)
+        for ac in AssetClasses:
+            if self.aa[ac.value] is not None:
+                l.append(ac.name.lower())
 
         return l
 
     def as_list(self):
 
         l = []
-        for ac in self.ASSET_CLASSES:
-            if ac in self.aa:
-                l.append(self.aa[ac])
+        for ac in AssetClasses:
+            if self.aa[ac.value] is not None:
+                l.append(self.aa[ac.value])
 
         return l
 

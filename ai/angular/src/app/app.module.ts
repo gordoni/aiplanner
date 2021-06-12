@@ -1,5 +1,5 @@
 /* AIPlanner - Deep Learning Financial Planner
- * Copyright (C) 2018-2019 Gordon Irlam
+ * Copyright (C) 2018-2021 Gordon Irlam
  *
  * All rights reserved. This program may not be used, copied, modified,
  * or redistributed without permission.
@@ -17,6 +17,9 @@ import { RouterModule, Routes } from '@angular/router';
 import { HttpClientModule } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 
+import { MatDialogModule } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
+
 import { AppComponent } from './app.component';
 import { ScenarioComponent } from './scenario/scenario.component';
 import { DbComponent } from './db/db.component';
@@ -27,6 +30,9 @@ import { ResultComponent } from './result/result.component';
 import { ResultPageComponent } from './result-page/result-page.component';
 */
 import { PageNotFoundComponent } from './page-not-found/page-not-found.component';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { InfoComponent } from './info/info.component';
+import { ModalComponent } from './modal/modal.component';
 
 /*
 const appRoutes: Routes = [
@@ -44,6 +50,8 @@ const appRoutes: Routes = [
     LiabilityComponent,
     PageNotFoundComponent,
     ResultComponent,
+    InfoComponent,
+    ModalComponent,
     /* ResultPageComponent, */
   ],
   imports: [
@@ -51,6 +59,9 @@ const appRoutes: Routes = [
     /* RouterModule.forRoot(appRoutes), */
     HttpClientModule,
     FormsModule,
+    BrowserAnimationsModule,
+    MatDialogModule,
+    MatTooltipModule,
   ],
   providers: [
     ApiService,

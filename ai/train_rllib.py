@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019-2020 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -11,21 +11,21 @@
 # PURPOSE.
 
 from glob import glob
+from math import ceil
 from os import getpriority, mkdir, PRIO_PROCESS, setpriority
 from os.path import abspath
 from shutil import rmtree
-
 
 import ray
 from ray.tune import grid_search, run
 from ray.tune.config_parser import make_parser
 
 from ai.common.cmd_util import arg_parser, fin_arg_parse
-from ai.common.tf_util import RayFinEnv
+from ai.common.ray_util import RayFinEnv
 from ai.common.utils import boolean_flag
 from ai.gym_fin.model_params import dump_params_file
 
-def train(training_model_params, *, address, train_num_workers, train_anneal_num_timesteps, train_anneal_optimizer_factor, train_seeds,
+def train(training_model_params, *, address, num_workers, num_environments, train_anneal_num_timesteps, train_anneal_optimizer_factor, train_seeds,
     train_batch_size, train_minibatch_size, train_optimizer_epochs, train_optimizer_step_size, train_entropy_coefficient,
     train_save_frequency, train_max_failures, train_resume,
     train_num_timesteps, train_single_num_timesteps, train_couple_num_timesteps,
@@ -54,7 +54,7 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
         pass
     dump_params_file(model_dir + '/params.txt', training_model_params)
 
-    ray.init(address=address)
+    ray.init(address=address, include_dashboard = False)
     #ray.init(object_store_memory=int(2e9))
 
     algorithm = training_model_params['algorithm']
@@ -80,19 +80,21 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
 
         'PPO': {
             'model': {
-                # Changing the fully connected net size from 256x256 (the default) to 128x128 reduces CE values.
-                # At least for retired model with nominal_spias.
-                # Results for preretirement, nominal_spias, train_batch_size 500k, minibach_size 500, lr 2e-5, num_sgd_iter 30, entropy 1e-4:
-                # fcnet_hiddens 128x128: CE dist 81900 stderr 350
-                # fcnet_hiddens 256x256: CE dist 81700 stderr 350
-                # Results for retired, nominal_spias, train_batch_size 500k, minibach_size 500, lr 2e-5, num_sgd_iter 30, entropy 1e-4:
-                # fcnet_hiddens 128x128: CE dist 85700 stderr 200
-                # fcnet_hiddens 256x256: CE dist 86200 stderr 200
-                # Reducing size is unlikely to improve the run time performance as it is dominated by fixed overhead costs:
-                #     runner.run(obss, policy_graph = runner.local_policy_graph):
-                #         256x256 (r5.large): 1.1ms + 0.013ms x num_observations_in_batch
-                #         128x128 (r5.large): 1.1ms + 0.009ms x num_observations_in_batch
-                'fcnet_hiddens': (256, 256),
+                'fcnet_hiddens': (192, 192),
+                    # Default is 256x256.
+                    # Observed ~1 standard error better CE dist for 192x192 over 256x256 and 128x128,
+                    # for preretirement and retired results on a preretirement model, gamma=6, nominal spias and no spias, tax diverse, non-IID.
+                    # Also reduced elapsed training time by 29%.
+                    # Reducing size doesn't improve the run time performance as it is dominated by fixed overhead costs:
+                    #     E.g. Tensorflow runner.run(obss, policy_graph = runner.local_policy_graph):
+                    #         256x256 (r5.large): 1.1ms + 0.013ms x num_observations_in_batch
+                    #         128x128 (r5.large): 1.1ms + 0.009ms x num_observations_in_batch
+                    # Changing shape from 256x256 to 256x128x64x32 resulted in worse performance.
+                'fcnet_activation': 'relu',
+                    # 'relu' outperforms 'tanh' (the RLlib default) and 'swish'.
+                    # At least for the iid retired model with gamma=6 without SPIAs.
+                #'free_log_std' = False,
+                    # Default outperforms free_log_std=True at least for the iid retired model with gamma=6 without SPIAs.
             },
             'train_batch_size': train_batch_size,
                 # Increasing the batch size might reduce aa variability due to training for the last batch seen.
@@ -131,7 +133,7 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
                 # so if we get something far from this we don't want to train too hard on it.
             'kl_coeff': 0.0, # Disable PPO KL-Penalty, use PPO Clip only; gives better CE.
             'lr': train_optimizer_step_size,
-                # lr_schedule is ignored by Ray 0.7.1 through 0.7.6+ (Ray issue #6096), so need to ensure fallback learning rate is reasonable.
+                # lr_schedule is ignored by Ray 0.7.1 through 0.7.6 (Ray issue #6096), so need to ensure fallback learning rate is reasonable.
                 # A smaller lr requires more timesteps but produces a higher CE.
                 # Results for train_batch_size 500k, minibatch_size 500, num_sgd_iter 30, fcnet_hiddens 256x256.
                 # lr 1e-5: CE dist 81500 stderr 450
@@ -149,9 +151,17 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
                 # Results for train_batch_size 500k, minibatch_size 500, num_sgd_iter 10, lr 2e-5, entropy_coeff 1e-4, fcnet_hiddens 256x256.
                 # clip_param 0.2: CE dist 82000 stderr 300 (asymptote at ckpt 260)
                 # clip_param 0.3: CE dist 82000 stderr 250 (asymptote at ckpt 220)
-            # i.e. the PPO default 0.3 seems reasonable.
-            'batch_mode': 'complete_episodes', # Unknown whether helps, but won't harm.
-            #'shuffle_sequences': False,
+                # i.e. the PPO default 0.3 seems reasonable.
+            'vf_share_layers': False,
+                # PPO default outperforms vf_share_layers=True at least for the iid retired model with gamma=6 without SPIAs.
+            'batch_mode': 'complete_episodes', # May slightly improve the results over the default 'truncate_episodes' for gamma=6 IID no SPIAs no tax.
+            'rollout_fragment_length': ceil(train_batch_size / ((1 if num_workers == 0 else num_workers) * num_environments * 10)),
+                # If go with the default of 200 with 'complete_episodes', will aggregate batches of num_workers x num_environments x 200
+                # which might not be a multiple of train_batch_size, and so will get fewer batches in train_num_timesteps.
+                # A large rollout_fragment_length may increase the amount of off-policy data collected for batch_mode complete_episodes.
+                # A rollout_fragment_length of 50 is about as small as can be before CPU performance is negatively impacted (measured with 100 environments).
+            'num_cpus_per_worker': 0.25,
+                # With Cython and num_workers defaulting to 4 each worker takes up about 1/4 of the CPU that the driver consumes.
         },
 
         'PPO.baselines': { # Compatible with AIPlanner's OpenAI baselines ppo1 implementation.
@@ -213,6 +223,7 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
             'lr_schedule': lr_schedule,
             'vf_loss_coeff': 0.5, # Default is 0.5.
             'entropy_coeff': 0.0, # Default is 0.01.
+            # Have not tried IMPALA with models.vf_share_layers=False (On the other hand PPO overrides vf_shares_layers to default it to False).
         }
 
     }[algorithm]
@@ -220,11 +231,7 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
 
     trainable = algorithm[:-len('.baselines')] if algorithm.endswith('.baselines') else algorithm
     trial_name = lambda trial: 'seed_' + str(trial.config['seed'] // 1000)
-    if train_num_workers == None:
-        num_workers = agent_config.get('num_workers', 1 if algorithm in ('A3C', 'APPO', 'IMPALA') else 0)
-    else:
-        num_workers = train_num_workers
-    if train_save_frequency == None:
+    if train_save_frequency is None:
         checkpoint_freq = 0
     elif trainable in ('PPO', ):
         checkpoint_freq = max(1, train_save_frequency // agent_config['train_batch_size'])
@@ -258,7 +265,7 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
             #'num_gpus': 0,
             #'num_cpus_for_driver': 1,
             'num_workers': num_workers,
-            #'num_envs_per_worker': 1,
+            'num_envs_per_worker': num_environments,
             #'num_cpus_per_worker': 1,
             #'num_gpus_per_worker': 0,
 
@@ -276,15 +283,11 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
             },
 
             # Use PyTorch to avoid the slowdown of TensorFlow eager.
-            'use_pytorch': True,
-                # For Ray after 0.8.5 need to replace with:
-                #'framework': 'torch',
+            'framework': 'torch',
             # TensorFlow non-eager mode is only available as a backwards compatibility in TensorFlow 2; using eager is therefor encouraged.
             # Unfortunately TensorFlow eager mode reduces performance by a factor of 2 compared to TensorFlow 1.x.
             # Additionally, attempting to use non-eager mode fails during evaluation with Ray error: No variables in the input matched those in the network.
-            'eager': True,
-                # For Ray after 0.8.5 need to replace with:
-                #'framework': 'tfe',
+            #'framework': 'tfe',
         }, **agent_config),
 
         stop = {
@@ -296,15 +299,15 @@ def train(training_model_params, *, address, train_num_workers, train_anneal_num
         checkpoint_at_end = True,
         max_failures = train_max_failures,
         resume = train_resume,
-        queue_trials = address != None
+        queue_trials = address is not None
     )
 
 def main():
     parser = make_parser(lambda: arg_parser(evaluate=False))
     parser.add_argument('--address')
-    parser.add_argument('--train-num-workers', type=int, default=8) # Number of rollout worker processes.
-        # Default appropriate for a short elapsed time with train_optimizer_epochs 10.
-        # Set to 0, or possibly 1, for deterministic training.
+    parser.add_argument('--num-workers', type=int, default=4) # Number of rollout worker processes.
+        # Default appropriate for a short elapsed time.
+    parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for per worker. Speeds up torch/tensorflow.
     parser.add_argument('--train-anneal-num-timesteps', type=int, default=0) # Additional annealing timesteps.
     parser.add_argument('--train-anneal-optimizer-factor', type=float, default=0.1)
     parser.add_argument('--train-seeds', type=int, default=1) # Number of parallel seeds to train.
@@ -320,6 +323,7 @@ def main():
         # it is recommended first make a copy the model(s) directory, and then stop Ray and reinvoke training with --train-resume.
         # First time attempted this got redis connection error on 2 of 20 processes, which couldn't be corrected,
         # but having a copy of the model(s) directory allowed me to rollback and retry successfully.
+        # Train resume appears to work without any problems in Ray 1.1.0.
         #
         # To attempt to resume trials that have errored edit the latest <model_dir>/seed_0/experiment_state-<date>.json (Note: Use seed_0 for all experiments).
         # changing all of their statuses from "ERROR" to "RUNNING", and then invoke this script with --train-resume.

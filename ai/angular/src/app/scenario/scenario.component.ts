@@ -1,5 +1,5 @@
 /* AIPlanner - Deep Learning Financial Planner
- * Copyright (C) 2018-2020 Gordon Irlam
+ * Copyright (C) 2018-2021 Gordon Irlam
  *
  * All rights reserved. This program may not be used, copied, modified,
  * or redistributed without permission.
@@ -26,6 +26,7 @@ export class ScenarioComponent implements OnInit {
   public step: number = 0;
   public doneMarket: boolean = false;
 
+  public observeMarketConditions: boolean = false;
   public stocksPricePct: string;
   public stocksVolatilityPct: string;
   public nominalShortRatePct: string;
@@ -46,6 +47,9 @@ export class ScenarioComponent implements OnInit {
 
   public definedLiabilities: DefinedBenefit[] = [];
 
+  public assetDetail: string = '';
+  public netWorth: number = 0;
+
   public pTaxDeferred: number = 0;
   public pTaxFree: number = 0;
   public pTaxableStocks: number = 0;
@@ -63,13 +67,19 @@ export class ScenarioComponent implements OnInit {
   public incomePreretirementAgeEnd: number = 67
   public incomePreretirementAgeEnd2Type: string = 'retirement'
   public incomePreretirementAgeEnd2: number = 67
+  public consumeSpecify: string = '';
   public consumePreretirement: number = 30000;
   public have401k: boolean = true;
   public have401k2: boolean = true;
   public spias: boolean = true;
 
+  public rlStocksMax: string = '100';
+
+  public scenario: object;
+
   private report: string;
   private results: any[];
+  private commonDir: string;
   private activeResultIndex: number = 0;
 
   public email: string = null
@@ -93,8 +103,20 @@ export class ScenarioComponent implements OnInit {
       return "Poor";
   }
 
+  ageValid() {
+    return 10 <= this.age && this.age < 120 && ((this.sex2 == 'none') || 10 <= this.age && this.age2 < 120);
+  }
+
   healthValid() {
-    return this.lifeExpectancyAdditional < 10 && this.lifeExpectancyAdditional2 < 10;
+    return this.lifeExpectancyAdditional < 10 && ((this.sex2 == 'none') || this.lifeExpectancyAdditional2 < 10);
+  }
+
+  highConsume() {
+    if (this.age < this.ageRetirement && this.consumeSpecify) {
+      return this.consumePreretirement > this.incomePreretirement + ((this.sex2 == 'none') ? 0 : this.incomePreretirement2);
+    } else {
+      return false;
+    }
   }
 
   dbTotal(definedItems) {
@@ -106,6 +128,10 @@ export class ScenarioComponent implements OnInit {
     }
 
     return this.utils.comma(tot)
+  }
+
+  pNetWorth() {
+    return this.utils.comma(this.netWorth);
   }
 
   pTotal() {
@@ -193,9 +219,12 @@ export class ScenarioComponent implements OnInit {
 
     var dbs = [];
     this.addToDbs(dbs, this.definedBenefits, true);
-    this.addToDbs(dbs, this.definedLiabilities, false);
+    if (this.assetDetail) {
+      this.addToDbs(dbs, this.definedLiabilities, false);
+    }
 
     var scenario = {
+        'observe_market_conditions': this.observeMarketConditions,
         'stocks_price': 1 + Number(this.stocksPricePct) / 100,
         'stocks_volatility': Number(this.stocksVolatilityPct) / 100,
         'real_short_rate': (1 + Number(this.nominalShortRatePct) / 100) / (1 + Number(this.inflationShortRatePct) / 100) - 1,
@@ -213,28 +242,30 @@ export class ScenarioComponent implements OnInit {
 
         'guaranteed_income': dbs,
 
-        'p_tax_deferred': this.pTaxDeferred,
-        'p_tax_free': this.pTaxFree,
-        'p_taxable_stocks': this.pTaxableStocks,
-        'p_taxable_stocks_basis': this.pTaxableStocksBasis,
-        'p_taxable_bonds':  this.pTaxableBonds,
-        'p_taxable_bonds_basis': this.pTaxableBondsBasis,
-        'p_taxable_cash':  this.pTaxableCash,
-        'p_taxable_other':  this.pTaxableOther,
-        'p_taxable_other_basis': this.pTaxableOtherBasis,
+        'p_tax_deferred': this.assetDetail ? this.pTaxDeferred : 0,
+        'p_tax_free': this.assetDetail ? this.pTaxFree : this.netWorth,
+        'p_taxable_stocks': this.assetDetail ? this.pTaxableStocks : 0,
+        'p_taxable_stocks_basis': this.assetDetail ? this.pTaxableStocksBasis : 0,
+        'p_taxable_bonds': this.assetDetail ? this.pTaxableBonds : 0,
+        'p_taxable_bonds_basis': this.assetDetail ? this.pTaxableBondsBasis : 0,
+        'p_taxable_cash': this.assetDetail ? this.pTaxableCash : 0,
+        'p_taxable_other': this.assetDetail ? this.pTaxableOther : 0,
+        'p_taxable_other_basis': this.assetDetail ? this.pTaxableOtherBasis : 0,
 
         'age_retirement': this.ageRetirement,
         'income_preretirement': this.incomePreretirement,
         'income_preretirement2': this.incomePreretirement2,
         'income_preretirement_age_end': this.incomePreretirementAgeEndType == 'age' ? this.incomePreretirementAgeEnd : null,
         'income_preretirement_age_end2': this.incomePreretirementAgeEnd2Type == 'age' ? this.incomePreretirementAgeEnd2 : null,
-        'consume_preretirement': this.consumePreretirement,
+        'consume_preretirement': (this.age < this.ageRetirement && this.consumeSpecify) ? this.consumePreretirement : null,
         'have_401k': this.have401k,
         'have_401k2': this.have401k2,
 
         'spias': this.spias,
 
         'rra': null,
+
+        'rl_stocks_max': Number(this.rlStocksMax) / 100,
     };
     if (scenario.sex2 == null) {
         delete scenario.age2;
@@ -243,9 +274,10 @@ export class ScenarioComponent implements OnInit {
         delete scenario.income_preretirement_age_end2;
         delete scenario.have_401k2;
     }
+    this.scenario = scenario;
 
     this.errorMessage = null;
-    this.apiService.post('/webapi/evaluate', [scenario]).subscribe(
+    this.apiService.post('/api/evaluate', [this.scenario]).subscribe(
       results => this.doResults(results),
       error => this.handleError(error)
     );
@@ -272,6 +304,8 @@ export class ScenarioComponent implements OnInit {
          this.step--;
          return
        }
+       this.commonDir = this.report.match(/^.*\//)[0];
+       this.commonDir = this.commonDir.substring(0, this.commonDir.length - 1);
        this.activeResultIndex = Math.min(this.activeResultIndex, this.results.length - 1);
        this.step++;
      }
@@ -311,7 +345,7 @@ export class ScenarioComponent implements OnInit {
   }
 
   market() {
-    this.apiService.get('/webapi/market', {}).subscribe(
+    this.apiService.get('/api/market', {}).subscribe(
       results => this.doMarket(results),
       error => this.handleError(error)
     );

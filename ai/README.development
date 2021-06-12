@@ -7,6 +7,24 @@ website.
 See README.docker for information on configuring and running the
 AIPlanner api server.
 
+Architecture
+------------
+
+A Cython based financial model is trained using the Ray RLib
+reinforcement learning library.
+
+Pages for an Angular based website frontend are generated.
+
+Querying what to do in a single situation is termed inference.
+
+The financial model is capable of being evaluated to assess its
+performance by repeatedly querying the neural network model as the
+financial model evolves, producing statistics and graphs.
+
+The trained model, the inference and evaluation code, and the website
+pages are all served by what is termed the api server running inside a
+docker container.
+
 Server requirements
 -------------------
 
@@ -18,14 +36,12 @@ For the web server which includes the api server in a docker
 container, with num_infer_jobs=0 set, a 2 core 4 thread 8G RAM
 c5.xlarge instance can be used.
 
-Training the neural network requires running about 7 c5.24xlarge spot
-instances for around 20 hours. The us-east-2 region currently appears
+Training the neural network requires running about 2 c5.24xlarge spot
+instances for around 24 hours. The us-east-2 region currently appears
 the cheapest region for performing this training work.
 
-For development an m5.large, or even a t3.small instance, can often be
-used, provided in the first case a Ray compute cluster is configured,
-or in the second case --train-seeds=1 --train-num-workers=0 is passed
-to train_rllib.py and --train-seeds=1 is passed to api/server.py .
+For development an m5.large can often be used, provided a Ray compute
+cluster is configured.
 
 For deployment on the Internet the machine will need to have ports 80
 and 443 open (http and https), along with 20 (ssh) for administrative
@@ -55,12 +71,16 @@ Obtain the source
 Set up an EC2 instance, ssh in to it, and obtain the sources:
 
     cd ~
-    git clone https://github.com/gordoni/aiplanner.git
-    cd aiplanner
-        # Or currently for internal development:
-        #git clone git@git.assembla.com:oaa.git aiplanner
-        #cd aiplanner
-        #git checkout aiplanner
+    # Public:
+        git clone https://github.com/gordoni/aiplanner.git
+        cd aiplanner
+    # Third party licensee:
+        git clone https://git-codecommit.us-east-2.amazonaws.com:/v1/repos/aiplanner-<licensee> aiplanner
+        cd aiplanner
+    # Internal development if you have been granted access:
+        git clone ssh://<ssh_key_id>@git-codecommit.us-east-2.amazonaws.com/v1/repos/aiplanner
+        cd aiplanner
+        git checkout -t origin/aiplanner
     git config --global user.name "<FirstName> <LastName>"
     git config --global user.email "<user@email.com>"
 
@@ -69,35 +89,36 @@ Obtaining additional required components
 
 Installing additional required components on Ubuntu 20.04:
 
-    sudo
+    sudo bash
+    apt install cython3
     apt install catdoc python3-setproctitle gnuplot-nox python3-reportlab docker.io
-    apt install python3-xlrd # for web/update_price.py
-    apt install python3-pip python3-dev python3-boto3 # python3-dev might not be required.
+    apt install python3-openpyxl # for web/update_price.py
+    apt install python3-pip python3-boto3
     #apt install python3-mpi4py joblib # only needed if using OpenAI baselines
     pip3 install arch
-        # Only needed if you wish to fit your own volatility model.
-        # May require: --install-option='--no-binary'
-    apt install nodejs node-typescript npm
+        # Technically arch is only needed if you wish to fit your own volatility model.
+        # But pip3 installs numpy, scipy, and pandas which are required.
+        # If fails, try: --install-option='--no-binary'
+    apt install nodejs npm
     pip3 install torch
-    #pip3 install tensorflow # No longer used; use pytorch instead.
     apt install cmake # Needed for atari-py dependency of ray[rllib].
-    pip3 install 'ray[rllib,debug]==0.8.5'
+    pip3 install 'ray[rllib,debug]==1.1.0'
         # If run into problems with atari-py try the following:
-        # RLlib depends on atari-py which requires used to require bazel which requires uzip to install.
+        # RLlib depends on atari-py which used to require bazel which requires uzip to install.
         #apt install unzip
         #(cd aiplanner && ai/ray/ci/travis/install-bazel.sh) # Install bazel in /home/ubuntu/bin
-        #PATH=/home/ubuntu/bin:$PATH pip3 install 'ray[rllib,debug]==0.8.5'
+        #PATH=/home/ubuntu/bin:$PATH pip3 install 'ray[rllib,debug]==1.1.0'
     pip3 install pyyaml svglib
     exit
 
-The standard version of Ray (0.8.5) works unmodified, but if you need
-to use a locally modified version proceed as follows (the current
-local version of Ray has no changes from the official release):
+The standard version of Ray works unmodified, but if you need to use a
+locally modified version proceed as follows:
 
     # Hack Ray to use our version of RLlib, not the default version:
-    RAY=`pip show ray | grep Location | awk '{print $2}'`/ray
+    RAY=`pip3 show ray | grep Location | awk '{print $2}'`/ray
     mv $RAY/rllib $RAY/rllib.old
-    ln -s ~/aiplanner/ai/ray//rllib $RAY/rllib
+    ln -s ~/aiplanner/ai/ray/rllib $RAY/rllib
+        # assuming locally modified Ray is in ~/aiplanner/ai/ray
     # Note, you may need to disable this link if upgrading Ray to
     # prevent pip clobbering the repository.
 
@@ -111,14 +132,24 @@ Cache the interest rate data
 
 Failing to perform this step will result in the full historical yield
 curves getting downloaded from the Fed every time a cluster node
-starts up.
+starts up. Also sets the fair market price and volatility levels.
 
     mkdir ~/aiplanner-data
-    ~/aiplanner/ai/web/cron.daily
-
-Also set the fair market price and volatility levels:
-
     ~/aiplanner/ai/web/cron.weekly
+
+Compile the code
+----------------
+
+Much of the Python code can be compiled with Cython.
+
+Performing this step results in a financial model that runs roughly 5
+times faster.
+
+    cd ~/aiplanner/spia
+    ./cythonize
+
+    cd ~/aiplanner/ai
+    ./cythonize
 
 Setting up the Ray compute cluster
 ----------------------------------
@@ -128,21 +159,19 @@ This step is optional.
 A Ray compute cluster can be used to train the neural network models
 on cheaper spot instances rather than on demand instances.
 
-The cluster works most effectively if the head node and worker nodes
-are of similar instance families. Otherwise jobs will execute at
-uneven rates.
-
 Create a cluster config file:
 
     cd ~/aiplanner/ai
     cp cluster-example.yaml cluster.yaml
     [edit] cluster.yaml
-        # Alter worker_nodes:InstanceType if desired.
-        # For maximum performance add --num-cpus=<num_cores> to
-        #     ray start in worker_start_ray_commands.
-        #     c5.24xlarge has 48 cores, but setting --num-cpus=91 is
-        #     probably better for playing around as typically train
-        #     10 models each with 8 workers and 1 driver in parallel.
+        # Alter available_node_types:default_node parameters named
+        # node_config:InstanceType and resources:CPU if desired.
+        # For maximum throughput specify CPU:<num_cores>.
+        #     c5.24xlarge has 48 cores, but setting CPU:71 is
+        #     probably better for training as each core has 2 threads
+        #     and typically use 2 instances to train 7 models with 10
+        #     seeds each and with 4 workers using 1/4 of a CPU and 1
+        #     driver using 1 CPU in parallel.
         # Other changes as desired.
 
 Rather than have separate cluster head and worker nodes, we are going
@@ -157,7 +186,7 @@ AWS to untrusted code. This may be acceptable if you don't have any
 other AWS resources.
 
 If you wish to use the easy risky way, place your AWS credentials in
-~/.aws/credentials as described in the boto3 docs.
+~/.aws/credentials as described in the boto3 docs:
 
 -----
 [default]
@@ -244,6 +273,7 @@ use multiple security-group lines if have more than one region):
             "Sid": "AllowDescribe",
             "Effect": "Allow",
             "Action": [
+                "ec2:DescribeInstanceTypes",
                 "ec2:DescribeInstances",
                 "ec2:DescribeSecurityGroups",
                 "ec2:DescribeSubnets"
@@ -269,8 +299,8 @@ created. Additional work is required so that the AIPlanner host can
 act as the head node.
 
 From the EC2 console perform actions on this host setting the instance
-setting IAM role to ray-autoscaler-v1 and networking change security
-groups to add ray-autoscaler-default.
+setting IAM role to ray-autoscaler-v1 and change security groups to
+add ray-autoscaler-default.
 
 For syncing worker node result directories create a link:
 
@@ -288,10 +318,10 @@ To the "worker_nodes" section of cluster.yaml add:
 where the subnet is the subnet in which you wish to create worker
 nodes, and the security group identifies ray-autoscaler-default.
 
-If desired, the cluster can now be manually started using:
+If desired, as a test, the cluster can now be manually started using:
 
     cd ~/aiplanner/ai
-    ray start --head --redis-port=6379 --autoscaling-config=cluster.yaml
+    ray start --head --port=6379 --autoscaling-config=cluster.yaml
 
 Worker nodes are created when needed, and terminated if idle for a
 while.
@@ -304,8 +334,9 @@ The cluster can be torn down using:
     ray down cluster.yaml
         # Terminates any running worker nodes.
 
-A dedicated worker AMI image can be created to speed up the cluster
-start up process. To do this temporarily set min_workers to 1 in
+It isn't required, but if desired, a dedicated worker AMI image can be
+created to speed up the cluster start up process, which otherwise
+takes about 5 minutes. To do this temporarily set min_workers to 1 in
 cluster.yaml and then start up the head node as above. From the EC2
 console select the instance and perform action - image - create image.
 Update the worker_nodes ImageId with the newly create AMI id.
@@ -317,62 +348,63 @@ If you don't want to use a Ray compute cluster during training:
 
     export RAY_AUTOSCALER=False
 
-Seperately, you may want to specify:
+If you are using a Ray compute cluster during training then you may
+want to specify:
 
     export RAY_AUTOSCALER_USE_HEAD=True
 
-This will allow training on the head node. The reason you may not want
-to do this is the head node will likely be slower than the worker
-nodes because it is also running the Ray monitor process. This slows
-the training of multiple neural networks in parallel.
+This will allow training on the head node. The reason you may normally
+not want to do this is the head node will likely be slower than the
+worker nodes because it is also running the Ray monitor process. This
+slows the training of multiple neural networks in parallel.
 
 Testing a few things out
 ------------------------
 
-You might wish to test a few low level commands are working.
+You might wish to test a few low level commands are working. The
+train_batch_size and train_num_timesteps values used here are much
+smaller than needed to fully train the model.
 
     cd ~aiplanner/ai
     source helpers.bash # Setup routines and environment variables.
 
 Local model training:
 
-    ./train_rllib.py --train-seeds=1 --train-num-workers=0 --train-batch-size=10000 --train-num-timesteps=20000 -c aiplanner-scenario.txt -c aiplanner-scenario-train.txt
+    ./train_rllib.py --train-seeds=1 --num-workers=0 --train-batch-size=10000 --train-num-timesteps=20000 -c aiplanner-scenario.txt -c aiplanner-scenario-train.txt
     # Ray checkpoints saved in aiplanner.tf
 
 Cluster based training:
 
-    export RAY_AUTOSCALER=True
-    export RAY_AUTOSCALER_USE_HEAD=False
     start_ray_if_needed
-    ./train_rllib.py --address=localhost:6379 --train-seeds=1 --train-num-workers=2 --train-batch-size=10000 --train-num-timesteps=20000 -c aiplanner-scenario.txt -c aiplanner-scenario-train.txt
+    ./train_rllib.py --address=localhost:6379 --train-seeds=1 --num-workers=2 --train-batch-size=10000 --train-num-timesteps=20000 -c aiplanner-scenario.txt -c aiplanner-scenario-train.txt
     # Ray checkpoints saved in aiplanner.tf
     ray stop
     ray down cluster.yaml
 
-Cluster based checkpoint evaluation (optional):
+Cluster based checkpoint evaluation (optional; normally don't want to
+perform evaluation using the cluster nodes):
 
-    export RAY_AUTOSCALER=True
-    export RAY_AUTOSCALER_USE_HEAD=False
     start_ray_if_needed
-    ./eval_model.py --address=localhost:6379 --train-seeds=1 --eval-num-timesteps=10000 -c aiplanner-scenario.txt -c aiplanner-scenario-single-eval.txt
+    ./eval_model.py --address=localhost:6379 --train-seeds=1 --num-workers=1 --eval-num-timesteps=10000 -c aiplanner-scenario.txt -c aiplanner-scenario-single-eval.txt
     # Results saved in results/seed_0
     ray stop
     ray down cluster.yaml
 
-Convert Ray checkpoints to export format (only for TensorFlow
-non-eager):
+Convert Ray checkpoints to export format which offers a faster model
+load startup time (only needed for TensorFlow non-eager mode):
 
     ./export_model.py --train-seeds=1
     # Tensorflow model saved to aiplanner.tf
 
-But AIPlaner doesn't current work with TensorFlow non-eager.
+Note, AIPlaner doesn't current work with TensorFlow non-eager.
 
-Ray 0.8.5 is unable to export TensorFlow eager and PyTorch based
-models, consequently all evaluation is currently based on checkpoint
-models. TensorFlow based checkpoint models take around 3 seconds of
-cpu time to load (per seed), and as a result the model server would
-take several minutes to start up. Fortunately PyTorch based checkpoint
-models only take 0.2 seconds of cpu time to load.
+Ray 1.1.0 is unable to export TensorFlow eager and PyTorch based
+models to an export format, consequently all evaluation is currently
+based on checkpoint models. TensorFlow based checkpoint models take
+around 3 seconds of cpu time to load (per seed), and as a result the
+model server would take several minutes to start up. Fortunately
+PyTorch based checkpoint models only take 0.2 seconds of cpu time to
+load.
 
 Local TensorFlow model or checkpoint evaluation:
 
@@ -383,6 +415,8 @@ Local TensorFlow model or checkpoint evaluation:
 Fit the equity volatility model
 -------------------------------
 
+This step isn't usually necessary.
+
 A bootstrapped equity return model with GJR-GARCH volatility is
 typically used. The model has already been fitted, but if you wish to
 fit it yourself perform the following steps.
@@ -390,13 +424,13 @@ fit it yourself perform the following steps.
     cd ~/aiplanner
     mkdir -p data/private/ticker
     [download the max time period ticker data for ^SP500TR and ^GSPC
-     from https://finance.yahoo.com and store it in the just created
+     from https://finance.yahoo.com/ and store it in the just created
      directory as ^SP500TR.csv and ^GSPC.csv ]
     cd ~/aiplanner/ai/equity_model
     ./run
     cp standardized_residuals.csv ../../data/public
-    [and use the just determined equity_model.out --stocks-*
-     parameters when training and evaluating]
+    [and use the just determined equity_model.out parameters as
+     --stocks-* parameters when training and evaluating]
 
 Training the generic neural network models
 ------------------------------------------
@@ -404,39 +438,67 @@ Training the generic neural network models
 Unless you plan on serving pre-trained neural network models you will
 need to train the neural network models.
 
-Training the neural network models (will take arond 20 hours on about 7
-InstanceType c5.24xlarge instances with Ray started with --num-cpus=91;
-edit cluster.yaml accordingly; many smallish instances may be preferable
-to a few very large instances as Amazon seems more likely to reclaim
-very large spot instances slowing the training process):
+Training the neural network models (will take around 24 hours on
+2 InstanceType c5.24xlarge instances with resources CPU: 71; edit
+cluster.yaml accordingly; many smallish instances may be preferable to
+a few very large instances as Amazon sometimes seems more likely to
+reclaim very large spot instances slowing the training process):
 
+    # On a 16G RAM instance or greater e.g. r5.large
+    # Need 25G free disk space to store the trained models
     cd ~/aiplanner/ai/api
     nohup ./train > /tmp/train.out &
-
-A presumed bug in Ray 0.7.3 meant that completion of training of the
-first training run kills all the other training workers. It is fixed
-in the current Ray 0.8.5, but if it recurs, it can be worked around by
-specifying:
-
-    nohup ./train --train-num-workers=0 --num-cpu=1 > /tmp/train.out &
-
-but it increases the elapsed training time (to around 100 hours on a
-single c5.24xlarge instance).
 
 Training logs will be written to /tmp/train* . Progress can be
 monitored using a command similar to:
 
     tail -f /tmp/train* | grep seed
 
-Note that any AIPlanner warnings from a single model's training get
-duplicated across all log files.
+Especially early on in the training process there will be warnings in
+the logs about negative portfolios and observations being out of
+range. These are normal rare events, but when training 7 models times
+10 seeds times 150-200 million timesteps, there can still be quite a
+few of them, perhaps totaling around 50,000. A negative portfolio is
+possible when assets are insufficient to cover the taxes due. This can
+occur when annuitizing if the assets set aside to cover the associated
+taxes drop significantly in value before the taxes become due.
+
+Ray isn't yet of production quality, and a number of issues may need
+to be worked around.
+
+Ray 1.1.0 may fail producing the message: "assert agent_key not in
+self.agent_collectors" in an error.txt file. This happens perhaps once
+every few billion time steps. Ray then restarts successfully from the
+last checkpoint.
+
+Ray 1.1.0 may fail with the message: "ValueError: The parameter loc
+has invalid values" in an error.txt file. This occurs for 3 seeds
+after 170m+ timesteps for the preretirement, no spias, gamma=6
+model. Ray repeatedly restarts from the last checkpoint. The work
+around here is to stop training at this point once all the other seeds
+have completed (using "ray stop; ray down cluster.yaml").
+
+A presumed bug in Ray 0.7.3 meant that completion of training of the
+first training run kills all the other training workers. It is fixed
+in Ray 0.8.5, but if it recurs, it can be worked around by specifying:
+
+    nohup ./train --train-num-workers=0 --num-cpu=1 > /tmp/train.out &
+
+but it increases the elapsed training time (to around 100 hours on a
+single c5.24xlarge instance).
 
 The trained models will be placed in ~/aiplanner-data/models.new .
 
-By default the trained models will be served without any adjustments
-for model biases. If you know the model is biased it is possible to
-apply corrections when serving that attempt to overcome the model
-bias:
+Instead of doing a full training run, you may wish to quickly generate
+dummy untrained models that can be used by the api server:
+
+    cd ~/aiplanner/ai/api
+    ./train --train-batch-size=1000 --train-num-timesteps=1000 --train-num-workers=0
+
+By default trained models will be served without any adjustments for
+model biases. It isn't normally recommended, but if you know the model
+is biased it is possible to apply corrections when serving that
+attempt to overcome the model bias:
 
     [edit] ~/aiplanner-data/models.new/models-adjust.json
 
@@ -446,12 +508,12 @@ RRA=6. See ~/aiplanner/ai/models-adjust-example.json for an example of
 how to represent the bias adjustments. Note that the same bias
 adjustment is applied to all uses of a particular model.
 
-The models should then be installed:
+The trained models should be installed:
 
     cd ~/aiplanner-data
     rm -rf models.old # Delete prior model backups if required.
     mv models models.old # Save prior models if any as a backup.
-    mv models.new models
+    ~/aiplanner/ai/cp_models models.new models # Copy only necessary files.
 
 Generating required assets for the UI website (images)
 ------------------------------------------------------
@@ -459,7 +521,8 @@ Generating required assets for the UI website (images)
 Both of the UI website sections can be skipped if you only wish to run
 the AIPlanner API server.
 
-Generate the images required for the UI website:
+Models must have been trained (see previous step). Then generate the
+images required for the UI website (takes around 5 minutes):
 
     cd ~/aiplanner/ai/angular/src/assets.generate
     ./run
@@ -472,7 +535,7 @@ Angular provides a single webpage app for interacting with the models.
 Install the Angular builder:
 
     cd ~/aiplanner/ai/angular
-    npm ci @angular-devkit/build-angular
+    npm ci
 
 Angular downloads 500MB of node modules in order to build the website.
 These files would slow down the process of synchronizing source trees
@@ -494,17 +557,21 @@ Install the website:
     cd ~/aiplanner/ai/angular
     ./install
 
-Set up the web server
----------------------
+Set up a web server
+-------------------
 
-Even if only running the API server, you may wish to set up a
-webserver. In this case the webserver will be responsible for proxying
-/webapi TLS requests on port 443 to the API server. If you don't
-intend to use TLS internally for talking to the API server you can
-skip this section and have applications connect to the API server
+The webserver is responsible for proxying /api TLS requests on port
+443 to the API server (which can only handle HTTP requests). If you
+don't intend to use TLS internally for talking to the API server you
+can skip this section and have applications connect to the API server
 directly without encryption, either on the default port (3000), or the
-http port (80) by adding the argument "--port 80" when installing the
-aiplanner-apiserver.service file later.
+http port (80) by adding the argument "-p 80:3000" when running the
+api server docker container.
+
+It is beyond the scope of this document to fully document the steps
+involved in setting up and configuring a webserver, but some brief
+instructions might be helpful. The instruction given here assume the
+use of the Apache webserver.
 
     sudo apt install apache2
     sudo a2enmod ssl proxy proxy_http
@@ -542,31 +609,43 @@ Building an api server docker container
 The api server can be distributed as a docker container.
 
     cd ~/aiplanner/ai
+    sudo docker pull ubuntu:20.04
     sudo docker build -t aiplanner-base-deps docker/base-deps
     tar cf docker/apiserver/dotspia.tar -C ~/ .spia
-    (cd ~/aiplanner-data/models; find * -type f -print) | egrep -v 'checkpoint_|progress.csv|result.json|bias' > docker/apiserver/MANIFEST.models
-    (cd ~/aiplanner-data/models; for d in *.tf/seed_*_*; do echo $d/checkpoint_`ls $d | sed 's/checkpoint_//' | sort -n | tail -n 1`; done) >> docker/apiserver/MANIFEST.models
-    tar zcf docker/apiserver/models.tgz -C ~/aiplanner-data/models `cat docker/apiserver/MANIFEST.models`
+    tar zcf docker/apiserver/models.tgz -C ~/aiplanner-data/models .
+    tar zcf docker/apiserver/webroot.tgz -C ~/aiplanner-data/webroot .
     git rev-parse HEAD > docker/apiserver/git-rev
     rm -rf docker/apiserver/aiplanner
     mkdir -p docker/apiserver/aiplanner
-    (cd ..; git archive `cat ai/docker/apiserver/git-rev`) | tar xf - -C docker/apiserver/aiplanner `cat docker/apiserver/MANIFEST.aiplanner`
+    # Production build (all code must be checked in):
+        (cd ..; git archive `cat ai/docker/apiserver/git-rev`) | tar xf - -C docker/apiserver/aiplanner `cat docker/apiserver/MANIFEST.aiplanner`
+    # Test build:
+        tar cf - -C .. `cat ai/docker/apiserver/MANIFEST.aiplanner` | tar xf - -C docker/apiserver/aiplanner
+    (cd docker/apiserver/aiplanner/spia; ./cythonize.py)
+    (cd docker/apiserver/aiplanner/ai; ./cythonize.py)
     sudo docker build -t aiplanner-apiserver docker/apiserver
-    rm -r docker/apiserver/{dotspia.tar,MANIFEST.models,models.tgz,git-rev,aiplanner}
+    rm -r docker/apiserver/{dotspia.tar,models.tgz,webroot.tgz,git-rev,aiplanner}
 
 Test it out:
 
-    sudo docker run --rm -ti -p 127.0.0.1:3000:3000 -v $PWD/aiplanner-docker-development.yaml:/aiplanner.yaml aiplanner-apiserver
+    cd ~/aiplanner/ai
+    cp aiplanner-docker-development.yaml ~/aiplanner-data/aiplanner.yaml
+    sudo docker run --rm -ti -p 127.0.0.1:3000:3000 -v ~/aiplanner-data:/home/aiplanner/aiplanner-data aiplanner-apiserver
 
 Test the image thoroughly. If everything looks good publish the image
 to a private repo:
 
-    sudo docker image tag aiplanner-apiserver <dockerhubid>/aiplanner-apiserver:<version>
-    sudo docker image tag aiplanner-apiserver <dockerhubid>/aiplanner-apiserver:latest
-    docker login
-    sudo docker push <dockerhubid>/aiplanner-apiserver:<version>
-    sudo docker push <dockerhubid>/aiplanner-apiserver:latest
-    docker logout
+On desktop:
+    aws ecr get-login-password --region us-east-2
+
+On development instance:
+    sudo docker image tag aiplanner-apiserver <account_id>.dkr.ecr.us-east-2.amazonaws.com/aiplanner-apiserver:<version>
+    sudo docker image tag aiplanner-apiserver <account_id>.dkr.ecr.us-east-2.amazonaws.com/aiplanner-apiserver:latest
+    sudo docker login --username AWS --password-stdin <account_id>.dkr.ecr.us-east-2.amazonaws.com
+        # Paste in the password from get-login-password above ending with <enter> and <ctrl>-D.
+    sudo docker push <account_id>.dkr.ecr.us-east-2.amazonaws.com/aiplanner-apiserver:<version>
+    sudo docker push <account_id>.dkr.ecr.us-east-2.amazonaws.com/aiplanner-apiserver:latest
+    sudo docker logout <account_id>.dkr.ecr.us-east-2.amazonaws.com
 
 Set up the aiplanner system configuration file
 ----------------------------------------------
@@ -582,37 +661,25 @@ Set up the aiplanner system configuration file
 Run the api server in production
 --------------------------------
 
-    docker login
-    sudo docker pull <dockerhubid>/aiplanner-apiserver
-    docker logout
+    sudo docker login --username AWS --password-stdin <account_id>.dkr.ecr.us-east-2.amazonaws.com
+    sudo docker pull <account_id>.dkr.ecr.us-east-2.amazonaws.com/aiplanner-apiserver
+    sudo docker logout <account_id>.dkr.ecr.us-east-2.amazonaws.com
     sudo docker ps
     sudo docker stop <containerid>
-    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data/aiplanner.yaml:/aiplanner.yaml <dockerhubid>/aiplanner-apiserver
-
-Setup the backend web server
-----------------------------
-
-The backend web server responds to requests for web related services
-from the website. Currently this only comprises handling email
-subscription requests.
-
-Set up the systemd config:
-
-    cd ~/aiplanner/ai
-    sudo cp aiplanner-webserver.service /etc/systemd/system/
-    sudo systemctl enable aiplanner-webserver
-
-Start the service up:
-
-    sudo systemctl start aiplanner-webserver
+    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data:/home/aiplanner/aiplanner-data <account_id>.dkr.ecr.us-east-2.amazonaws.com/aiplanner-apiserver
 
 Setting up cron
 ---------------
 
-Install crontabs to perform a daily refresh of the interest rate yield
-curves, and a weekly refresh of the fair market price and volatility.
+This step is only needed if you wish to be independent of
+aiplanner.com for market data, and you have set up market_data_url in
+the aiplanner.yaml file accordingly.
+
+Install crontabs to perform a wekly refresh of the interest rate yield
+curves, fair market price, and volatility.
 
     cd ~/aiplanner/ai
+    sudo apt install python3-scipy python3-pandas
     cat web/aiplanner.crontab
     crontab -e
 
@@ -625,6 +692,8 @@ MAILTO=<you@yourdomain>
 Seting up log rotation
 ----------------------
 
+This is not separately needed if using a docker container.
+
     sudo chmod g-w ~/aiplanner-data/ # Required by logrotate.
 
     cd ~/aiplanner/ai
@@ -632,6 +701,9 @@ Seting up log rotation
 
 Installing an outbound mailer
 -----------------------------
+
+This is not separately needed if using a docker container unless cron
+was set up.
 
 A mail transfer agent is only required to provide system notification
 messages to the administrator. These consist of subscription
@@ -682,23 +754,27 @@ connections on port 25. Consult your service provider for details.
 Performing site health checks
 -----------------------------
 
-For a production website Uptime robot, or some other service should be
-used to perform periodic HTTPS GET /web/healthcheck and
-/webapi/healthcheck requests to port 443 of the production server.
-After about 1 second, the string "OK" should be returned as the body
-to indicate the system appears to be operating normally, any other
-result indicates a problem.
-
-For a production api server HTTP GET /api/healthcheck requests should
-be used.
+For a production website or api server Uptime robot, or some other
+service should be used to perform periodic HTTPS GET /api/healthcheck
+requests to port 443 of the production server.  After about 1 second,
+the string "OK" should be returned as the body to indicate the system
+appears to be operating normally, any other result indicates a
+problem.
 
 Development
 -----------
 
-The api server has three functions:
-    - respond to the Angular server proxying to it to handle HTTP /api requests
-    - purge old results from the directory ~/aiplanner-data/results
+Code that is run once per simulated timestep is considered performance
+critical. Its efficiency showed be reviewed by checking the html
+output from "./cythonize.py --annotate".
+
+The api server has several functions:
+    - respond to the Angular code proxying to it to handle HTTP /api
+      and /web requests
     - respond to HTTP /api/healthcheck requests
+    - serve web content from ~/aiplaner-data/webroot for any other
+      urls
+    - purge old results from the directory ~/aiplanner-data/results
 
 The api server can be run in development as follows:
 
@@ -717,9 +793,20 @@ On the same machine in another shell window run the Angular server:
     cd ~/aiplanner/ai/angular
     ng serve --host 0.0.0.0 --public-host <thishost.thisdomain>
 
-Ignore the circular dependency warning.
-
 Connect to the front end using a browser (need to open port 4200 of
 development machine firewall unless doing development on localhost):
 
     http://<thishost.thisdomain>:4200/
+
+Currently at Angular version 11.  Should upgrade to the final release
+of the current major version before upgrading the to next major
+version, and upgrade one major version number at a time. To upgrade
+Angular:
+
+    cd ~/aiplaner/ai/angular
+    npm install @schematics/angular@<major_version> @angular-devkit/core@<major_version> @angular-devkit/schematics@<major_version>
+    git commit packagejson package-lock.json
+    ng update @angular/core@<major_version> @angular/cli@<major_version>
+    git commit -a
+    ng update @angular/material@<major_version>
+    git commit -a

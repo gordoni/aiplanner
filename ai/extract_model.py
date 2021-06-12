@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -18,7 +18,7 @@ from sys import stdout
 
 from ai.common.cmd_util import arg_parser, fin_arg_parse, make_fin_env
 from ai.common.tf_util import TFRunner
-from ai.common.utils import boolean_flag
+from ai.common.utils import AttributeObject, boolean_flag
 from ai.gym_fin.asset_allocation import AssetAllocation
 from ai.gym_fin.model_params import load_params_file
 
@@ -44,31 +44,33 @@ def extract_model(eval_model_params, *, train_seed, address, train_seeds, ensemb
                         p_tax_deferred = p if p_type == 'tax_deferred' else None
                         if p_type.startswith('taxable_'):
                             assets = {}
-                            if env.params.stocks:
-                                assert env.params.p_taxable_stocks_low == env.params.p_taxable_stocks_high
-                                assets['stocks'] = p if p_type == 'taxable_stocks' else env.params.p_taxable_stocks_low
-                            if env.params.real_bonds:
-                                assert env.params.p_taxable_real_bonds_low == env.params.p_taxable_real_bonds_high
-                                assets['real_bonds'] = p if p_type == 'taxable_real_bonds' else env.params.p_taxable_real_bonds_low
-                            if env.params.nominal_bonds:
-                                assert env.params.p_taxable_nominal_bonds_low == env.params.p_taxable_nominal_bonds_high
-                                assets['nominal_bonds'] = p if p_type == 'taxable_nominal_bonds' else env.params.p_taxable_nominal_bonds_low
-                            if env.params.iid_bonds:
-                                assert env.params.p_taxable_iid_bonds_low == env.params.p_taxable_iid_bonds_high
-                                assets['iid_bonds'] = p if p_type == 'taxable_iid_bonds' else env.params.p_taxable_iid_bonds_low
-                            if env.params.bills:
-                                assert env.params.p_taxable_bills_low == env.params.p_taxable_bills_high
-                                assets['bills'] = p if p_type == 'taxable_bills' else env.params.p_taxable_bills_low
-                            p_taxable_assets = AssetAllocation(fractional = False, **assets)
-                            assert env.params.p_taxable_stocks_basis_fraction_low == env.params.p_taxable_stocks_basis_fraction_high
-                            p_taxable_stocks_basis_fraction = env.params.p_taxable_stocks_basis_fraction_low
+                            if params.stocks:
+                                assert params.p_taxable_stocks_low == params.p_taxable_stocks_high
+                                assets['stocks'] = p if p_type == 'taxable_stocks' else params.p_taxable_stocks_low
+                            if params.real_bonds:
+                                assert params.p_taxable_real_bonds_low == params.p_taxable_real_bonds_high
+                                assets['real_bonds'] = p if p_type == 'taxable_real_bonds' else params.p_taxable_real_bonds_low
+                            if params.nominal_bonds:
+                                assert params.p_taxable_nominal_bonds_low == params.p_taxable_nominal_bonds_high
+                                assets['nominal_bonds'] = p if p_type == 'taxable_nominal_bonds' else params.p_taxable_nominal_bonds_low
+                            if params.iid_bonds:
+                                assert params.p_taxable_iid_bonds_low == params.p_taxable_iid_bonds_high
+                                assets['iid_bonds'] = p if p_type == 'taxable_iid_bonds' else params.p_taxable_iid_bonds_low
+                            if params.bills:
+                                assert params.p_taxable_bills_low == params.p_taxable_bills_high
+                                assets['bills'] = p if p_type == 'taxable_bills' else params.p_taxable_bills_low
+                            p_taxable_assets = AssetAllocation(**assets)
+                            assert params.p_taxable_stocks_basis_fraction_low == params.p_taxable_stocks_basis_fraction_high
+                            p_taxable_stocks_basis_fraction = params.p_taxable_stocks_basis_fraction_low
                         else:
                             p_taxable_assets = None
                             p_taxable_stocks_basis_fraction = None
+                        env.set_info(strategy = True)
+                        env.reset()
                         obs = env.goto(age = age, p_tax_free = p_tax_free, p_tax_deferred = p_tax_deferred, p_taxable_assets = p_taxable_assets,
                             p_taxable_stocks_basis_fraction = p_taxable_stocks_basis_fraction, force_family_unit = True, forced_family_unit_couple = bool(env.sex2))
                         action, = runner.run([obs])
-                        act = env.interpret_action(action)
+                        _, _, _, act = env.step(action)
                         c.writerow((age, p, act['consume'], act['retirement_contribution'], act['real_spias_purchase'], act['nominal_spias_purchase'],
                             act['real_bonds_duration'], act['nominal_bonds_duration'], *act['asset_allocation'].as_list()))
                     c.writerow(())
@@ -83,10 +85,10 @@ def extract_model(eval_model_params, *, train_seed, address, train_seeds, ensemb
     eval_model_params['display_returns'] = False
     env = make_fin_env(**eval_model_params)
     env = env.unwrapped
-    env.reset()
+    params = AttributeObject(env.params_dict)
 
     train_dirs = [model_dir + '/seed_' + str(train_seed + i) for i in range(train_seeds)]
-    if result_dir == None:
+    if result_dir is None:
         result_dir = model_dir
     if checkpoint_name:
         checkpoint_names = [checkpoint_name]

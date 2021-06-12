@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -15,17 +15,12 @@ from shutil import rmtree
 
 import numpy as np
 
-from ai.gym_fin.fin_env import FinEnv
-
-class RayFinEnv(FinEnv):
-
-    def __init__(self, config):
-        super().__init__(**config)
+from ai.common.ray_util import RayFinEnv
 
 class TFRunner:
 
     def __init__(self, *, train_dirs = ['aiplanner.tf'], allow_tensorflow = True, checkpoint_name = None, eval_model_params, couple_net = True,
-        address = None, num_workers = 1, worker_seed = 0, num_environments = 1, num_cpu = None,
+        address = None, num_workers = 0, runner_seed = 0, num_environments = 1, num_cpu = None,
         evaluator = True, export_model = False):
 
         self.couple_net = couple_net
@@ -45,21 +40,22 @@ class TFRunner:
             # Rllib.
             import ray
             from ray.rllib.agents.registry import get_agent_class
-            from ray.rllib.evaluation import PolicyGraph
             from ray.rllib.evaluation.worker_set import WorkerSet
 
             if not ray.is_initialized():
-                ray.init(address = address)
+                ray.init(address = address, include_dashboard = False)
 
             weights = []
             first = True
             for train_dir in train_dirs:
 
                 checkpoints = glob(train_dir + '**/checkpoint_*', recursive = True)
-                if not checkpoint_name:
+                if checkpoint_name:
+                    checkpoint_nm = checkpoint_name
+                else:
                     assert checkpoints, 'No Rllib checkpoints found: ' + train_dir
-                    checkpoint_name = 'checkpoint_' + str(max(int(checkpoint.split('_')[-1]) for checkpoint in checkpoints))
-                checkpoint_dir, = glob(train_dir + '**/' + checkpoint_name, recursive = True)
+                    checkpoint_nm = 'checkpoint_' + str(max(int(checkpoint.split('_')[-1]) for checkpoint in checkpoints))
+                checkpoint_dir, = glob(train_dir + '**/' + checkpoint_nm, recursive = True)
                 checkpoint, = glob(checkpoint_dir + '/checkpoint-*[0-9]')
 
                 if first:
@@ -69,13 +65,13 @@ class TFRunner:
 
                     cls = get_agent_class(config['env_config']['algorithm'])
                     config['env_config'] = eval_model_params
-                    config['num_workers'] = 0
+                    config['num_workers'] = 0 # So don't run out of actors doing checkpoint restore.
                     config['num_envs_per_worker'] = num_environments
                     config['local_tf_session_args'] = {
                         'intra_op_parallelism_threads': num_cpu,
                         'inter_op_parallelism_threads': num_cpu,
                     }
-                    config['seed'] = worker_seed
+                    config['seed'] = runner_seed * 1000 # Workers are assigned consecutive seeds.
 
                 agent = cls(env = RayFinEnv, config = config)
                 agent.restore(checkpoint)
@@ -101,13 +97,11 @@ class TFRunner:
                 first = False
 
             framework = config.get('framework')
-            if not framework:
-                 framework = 'torch' if config['use_pytorch'] else ('tfe' if config['eager'] else 'tf')
 
             if framework == 'tfe':
-                base_policy_class = agent._policy.as_eager()
+                base_policy_class = agent._policy_class.as_eager() # Change to agent.get_policy().__class__.as_eager()?
             else:
-                base_policy_class = agent._policy
+                base_policy_class = agent.get_policy().__class__
 
             class EnsemblePolicy(base_policy_class):
 
@@ -145,15 +139,18 @@ class TFRunner:
                     mean_action = np.mean(actions, axis = 0)
                     return [mean_action] + list(actions_ca[0][1:])
 
-            class EnsemblePolicy_eager(agent._policy):
-
-                def as_eager():
-
-                    return EnsemblePolicy
-
             if framework == 'tfe':
+
+                class EnsemblePolicy_eager(agent._policy_class): # Change to agent.get_policy().__class__?
+
+                    def as_eager():
+
+                        return EnsemblePolicy
+
                 policy_class = EnsemblePolicy_eager
+
             else:
+
                 policy_class = EnsemblePolicy
 
             agent_weights = {'default_policy': weights}
@@ -163,7 +160,7 @@ class TFRunner:
             # Not precisely sure why, but this fixes the problem. They aren't needed for remote evaluation.
             #del agent.workers
             #del agent.optimizer
-            workers = WorkerSet(env_creator, policy_class, agent.config, num_workers = num_workers)
+            workers = WorkerSet(env_creator = env_creator, policy_class = policy_class, trainer_config = agent.config, num_workers = num_workers)
             workers.foreach_worker(lambda w: w.set_weights(agent_weights))
             self.remote_evaluators = workers.remote_workers()
 
@@ -257,25 +254,31 @@ class TFRunner:
 
     def run(self, obss):
 
-        single_obss = []
-        couple_obss = []
-        single_idx = []
-        couple_idx = []
-        for i, obs in enumerate(obss):
-            if self.is_couple(obs) and self.couple_net:
-                couple_obss.append(obs)
-                couple_idx.append(i)
-            else:
-                single_obss.append(obs)
-                single_idx.append(i)
-        action = [None] * len(obss)
-        if single_obss:
-            single_action = self._run_unit(False, single_obss)
-            for i, act in zip(single_idx, single_action):
-                action[i] = act
-        if couple_obss:
-            couple_action = self._run_unit(True, couple_obss)
-            for i, act in zip(couple_idx, couple_action):
-                action[i] = act
+        if self.couple_net:
+
+            single_obss = []
+            couple_obss = []
+            single_idx = []
+            couple_idx = []
+            for i, obs in enumerate(obss):
+                if self.is_couple(obs) and self.couple_net:
+                    couple_obss.append(obs)
+                    couple_idx.append(i)
+                else:
+                    single_obss.append(obs)
+                    single_idx.append(i)
+            action = [None] * len(obss)
+            if single_obss:
+                single_action = self._run_unit(False, single_obss)
+                for i, act in zip(single_idx, single_action):
+                    action[i] = act
+            if couple_obss:
+                couple_action = self._run_unit(True, couple_obss)
+                for i, act in zip(couple_idx, couple_action):
+                    action[i] = act
+
+        else:
+
+            action = self._run_unit(False, obss)
 
         return action

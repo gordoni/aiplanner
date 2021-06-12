@@ -30,13 +30,13 @@ master_age_retirement_high = 80
 
 master_couple_death_preretirement_consume = 'pro_rata' # Prevent over consumption in event of death of high wage earning member of couple.
 
-master_income_preretirement_low = 2e4
-master_income_preretirement_high = 2e5
-master_income_preretirement2_low = 2e4
-master_income_preretirement2_high = 2e5
-master_consume_preretirement = 0
-master_consume_preretirement_income_ratio_low = 0.9 # Produces desired retirement portfolio size distribution.
-master_consume_preretirement_income_ratio_high = 1.0 # Doesn't consume entire portfolio as tax savings from IRA/401(k) contributions are not considered.
+master_income_preretirement_low = 5e2
+master_income_preretirement_high = 5e5
+master_income_preretirement2_low = 5e2
+master_income_preretirement2_high = 5e5
+master_consume_preretirement = -1
+master_consume_preretirement_income_ratio_low = 0.6 # Produces desired retirement portfolio size distribution.
+master_consume_preretirement_income_ratio_high = 0.98 # Avoid consuming entire income.
 
 master_have_401k_low = False
 master_have_401k_high = True
@@ -44,7 +44,7 @@ master_have_401k2_low = False
 master_have_401k2_high = True
 
 master_gi_fraction_low = 0.03 # Avoid possibility of very large negative rewards at advanced ages; may provide around 0.2% CE improvement for gamma=6.
-master_gi_fraction_high = 1
+master_gi_fraction_high = 0.5 # Avoid possibility of very large negative rewards at early ages.
 
 master_guaranteed_income = '''[
     {"owner": "self",   "start": null, "probability": 0.2, "payout": [5e3, 1e5], "source_of_funds": "tax_free"},

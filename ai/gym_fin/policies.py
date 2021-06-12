@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -10,13 +10,17 @@
 
 from json import loads
 
+import cython
+
 from ai.gym_fin.asset_allocation import AssetAllocation
 
+@cython.cclass
 class Policy:
 
-    def __init__(self, env):
+    def __init__(self, env, params):
 
         self.env = env
+        self.params = params
 
     def _pmt(self, rate, nper, pv):
 
@@ -27,43 +31,47 @@ class Policy:
 
     def _bonds_type(self):
 
-        assert int(self.env.params.real_bonds) + int(self.env.params.nominal_bonds) + int(self.env.params.iid_bonds) + int(self.env.params.bills) == 1
+        assert int(self.params.real_bonds) + int(self.params.nominal_bonds) + int(self.params.iid_bonds) == 1
 
-        if self.env.params.real_bonds:
+        if self.params.real_bonds:
             return 'real_bonds'
-        elif self.env.params.nominal_bonds:
+        elif self.params.nominal_bonds:
             return 'nominal_bonds'
-        elif self.env.params.iid_bonds:
+        elif self.params.iid_bonds:
             return 'iid_bonds'
-        elif self.env.params.bills:
-            return 'bills'
         else:
             assert False
 
+    @cython.locals(action = tuple)
     def policy(self, action):
 
+        consume_fraction: cython.double
         if action is not None:
             consume_fraction, real_spias_fraction, nominal_spias_fraction, asset_allocation, real_bonds_duration, nominal_bonds_duration = action
 
-        if self.env.params.consume_policy == 'constant':
+        if self.params.consume_policy == 'rl':
 
-            consume_fraction = self.env.params.consume_initial / self.env.p_plus_income
+            pass
 
-        elif self.env.params.consume_policy == 'percent_rule':
+        elif self.params.consume_policy == 'constant':
+
+            consume_fraction = self.params.consume_initial / self.env.p_plus_income
+
+        elif self.params.consume_policy == 'percent_rule':
 
             if self.env.age < self.env.age_retirement:
                 consume_fraction = 0
             else:
-                if self.env.age < self.env.age_retirement + self.env.params.time_period:
-                    self.consume_rate_initial = self.env.params.consume_policy_fraction * self.env.p_wealth
+                if self.env.age < self.env.age_retirement + self.params.time_period:
+                    self.consume_rate_initial = self.params.consume_policy_fraction * self.env.p_wealth
                 consume_fraction = (self.env.net_gi + self.consume_rate_initial) / self.env.p_plus_income
 
-        elif self.env.params.consume_policy == 'guyton_rule2':
+        elif self.params.consume_policy == 'guyton_rule2':
 
             assert self.env.age >= self.env.age_retirement
 
             if self.env.episode_length == 0:
-                consume = self.env.params.consume_initial - self.env.net_gi
+                consume = self.params.consume_initial - self.env.net_gi
             elif self.env.prev_ret * self.env.prev_inflation >= 1:
                 consume = self.consume_prev
             else:
@@ -72,16 +80,16 @@ class Policy:
             consume += self.env.net_gi
             consume_fraction = consume / self.env.p_plus_income
 
-        elif self.env.params.consume_policy == 'guyton_klinger':
+        elif self.params.consume_policy == 'guyton_klinger':
 
             assert self.env.age >= self.env.age_retirement
 
-            if self.env.params.consume_policy_life_expectancy == None:
+            if self.params.consume_policy_life_expectancy == -1:
                 life_expectancy = self.env.life_expectancy_both[self.env.episode_length] + self.env.life_expectancy_one[self.env.episode_length]
             else:
-                life_expectancy = self.env.params.consume_policy_life_expectancy - self.env.episode_length * self.env.params.time_period
+                life_expectancy = self.params.consume_policy_life_expectancy - self.env.episode_length * self.params.time_period
             if self.env.episode_length == 0:
-                consume = self.env.params.consume_initial - self.env.net_gi
+                consume = self.params.consume_initial - self.env.net_gi
                 self.consume_rate_initial = consume / self.env.p_wealth
             else:
                 consume = self.consume_prev
@@ -95,20 +103,20 @@ class Policy:
             consume += self.env.net_gi
             consume_fraction = consume / self.env.p_plus_income
 
-        elif self.env.params.consume_policy == 'target_percentage':
+        elif self.params.consume_policy == 'target_percentage':
 
             assert self.env.age >= self.env.age_retirement
 
-            if self.env.params.consume_policy_life_expectancy == None:
+            if self.params.consume_policy_life_expectancy == -1:
                 life_expectancy = self.env.life_expectancy_both[self.env.episode_length] + self.env.life_expectancy_one[self.env.episode_length]
             else:
-                life_expectancy = max(1, self.env.params.consume_policy_life_expectancy - self.env.episode_length * self.env.params.time_period)
+                life_expectancy = max(1, self.params.consume_policy_life_expectancy - self.env.episode_length * self.params.time_period)
             if self.env.episode_length == 0:
                 self.life_expectancy_initial = life_expectancy
                 self.p_initial = self.env.p_wealth
-                consume = self.env.params.consume_initial - self.env.net_gi
-            elif self._pmt(self.env.params.consume_policy_return, life_expectancy, self.env.p_wealth) >= \
-                self._pmt(self.env.params.consume_policy_return, self.life_expectancy_initial, self.p_initial):
+                consume = self.params.consume_initial - self.env.net_gi
+            elif self._pmt(self.params.consume_policy_return, life_expectancy, self.env.p_wealth) >= \
+                self._pmt(self.params.consume_policy_return, self.life_expectancy_initial, self.p_initial):
                 consume = self.consume_prev
             else:
                 consume = self.consume_prev / self.env.prev_inflation
@@ -116,7 +124,7 @@ class Policy:
             consume += self.env.net_gi
             consume_fraction = consume / self.env.p_plus_income
 
-        elif self.env.params.consume_policy == 'extended_rmd':
+        elif self.params.consume_policy == 'extended_rmd':
 
             extended_rmd_tables = {
                 '2003': {
@@ -187,7 +195,7 @@ class Policy:
                     114: 2.1,
                     115: 1.9,
                 },
-                '2021': {
+                '2021-proposed': {
                     # From 2019 proposed regulations REG-132210-18 - https://www.irs.gov/retirement-plans/treasury-regulations
                     50: 48.4, # Table 3 - off diagonal.
                     51: 47.5,
@@ -261,33 +269,115 @@ class Policy:
                     119: 2.3,
                     120: 2.0,
                 },
+                '2022': {
+                    # From 2020 final regulations 85 FR 72472 - https://federalregister.gov/d/2020-24723
+                    50: 48.5, # Table 3 - off by 10 diagonal.
+                    51: 47.5,
+                    52: 46.5,
+                    53: 45.6,
+                    54: 44.6,
+                    55: 43.6,
+                    56: 42.6,
+                    57: 41.6,
+                    58: 40.7,
+                    59: 39.7,
+                    60: 38.7,
+                    61: 37.7,
+                    62: 36.8,
+                    63: 35.8,
+                    64: 34.9,
+                    65: 33.9,
+                    66: 33.0,
+                    67: 32.0,
+                    68: 31.1,
+                    69: 30.1,
+                    70: 29.2,
+                    71: 28.3,
+                    72: 27.4, # Table 2.
+                    73: 26.5,
+                    74: 25.5,
+                    75: 24.6,
+                    76: 23.7,
+                    77: 22.9,
+                    78: 22.0,
+                    79: 21.1,
+                    80: 20.2,
+                    81: 19.4,
+                    82: 18.5,
+                    83: 17.7,
+                    84: 16.8,
+                    85: 16.0,
+                    86: 15.2,
+                    87: 14.4,
+                    88: 13.7,
+                    89: 12.9,
+                    90: 12.2,
+                    91: 11.5,
+                    92: 10.8,
+                    93: 10.1,
+                    94: 9.5,
+                    95: 8.9,
+                    96: 8.4,
+                    97: 7.8,
+                    98: 7.3,
+                    99: 6.8,
+                    100: 6.4,
+                    101: 6.0,
+                    102: 5.6,
+                    103: 5.2,
+                    104: 4.9,
+                    105: 4.6,
+                    106: 4.3,
+                    107: 4.1,
+                    108: 3.9,
+                    109: 3.7,
+                    110: 3.5,
+                    111: 3.4,
+                    112: 3.3,
+                    113: 3.1,
+                    114: 3.0,
+                    115: 2.9,
+                    116: 2.8,
+                    117: 2.7,
+                    118: 2.5,
+                    119: 2.3,
+                    120: 2.0,
+                },
             }
 
-            assert self.env.alive_single[self.env.episode_length] != None or self.env.age == self.env.age2
+            assert self.env.alive_single[self.env.episode_length] != -1 or self.env.age == self.env.age2
             if self.env.age < self.env.age_retirement:
                 consume = 0
             else:
-                extended_rmd_table = extended_rmd_tables[self.env.params.consume_policy_extended_rmd_table]
+                extended_rmd_table = extended_rmd_tables[self.params.consume_policy_extended_rmd_table]
                 rmd_period = extended_rmd_table[min(int(self.env.age), max(extended_rmd_table.keys()))]
-                consume = self.env.net_gi + self.env.p_wealth / rmd_period * self.env.params.time_period
+                consume = self.env.net_gi + self.env.p_wealth / rmd_period * self.params.time_period
             consume_fraction = consume / self.env.p_plus_income
 
-        elif self.env.params.consume_policy == 'pmt':
+        elif self.params.consume_policy == 'pmt':
 
-            if self.env.params.consume_policy_life_expectancy == None:
+            if self.params.consume_policy_life_expectancy == -1:
                 life_expectancy = self.env.life_expectancy_both[self.env.episode_length] + self.env.life_expectancy_one[self.env.episode_length]
             else:
-                life_expectancy = self.env.params.consume_policy_life_expectancy - self.env.episode_length * self.env.params.time_period
+                life_expectancy = self.params.consume_policy_life_expectancy - self.env.episode_length * self.params.time_period
             life_expectancy = max(1, life_expectancy)
-            consume = self.env.net_gi + self._pmt(self.env.params.consume_policy_return, life_expectancy, self.env.p_wealth)
+            consume = self.env.net_gi + self._pmt(self.params.consume_policy_return, life_expectancy, self.env.p_wealth)
             consume_fraction = consume / self.env.p_plus_income
 
-        consume_fraction = max(1e-6, min(consume_fraction, self.env.params.consume_policy_fraction_max / self.env.params.time_period))
+        else:
 
-        if self.env.params.annuitization_policy in ('age_real', 'age_nominal'):
+            assert False
+
+        consume_fraction = max(1e-6, min(consume_fraction, self.params.consume_policy_fraction_max / self.params.time_period))
+
+        if self.params.annuitization_policy == 'rl':
+
+            pass
+
+        elif self.params.annuitization_policy in ('age_real', 'age_nominal'):
 
             if self.env.episode_length == 0:
-                self.anuitized = False
+                self.annuitized = False
 
             if self.env.couple:
                 min_age = min(self.env.age, self.env.age2)
@@ -295,30 +385,38 @@ class Policy:
             else:
                 min_age = max_age = self.env.age2 if self.env.only_alive2 else self.env.age
 
-            spias_allowed = (self.env.params.couple_spias or not self.env.couple) and \
-                min_age >= self.env.params.spias_permitted_from_age and max_age <= self.env.params.spias_permitted_to_age
-            spias = spias_allowed and min_age >= self.env.params.annuitization_policy_age
-            real_spias_fraction = self.env.params.annuitization_policy_annuitization_fraction if spias and self.env.params.annuitization_policy == 'age_real' else 0
+            spias_allowed = (self.params.couple_spias or not self.env.couple) and \
+                min_age >= self.params.spias_permitted_from_age and max_age <= self.params.spias_permitted_to_age
+            spias = spias_allowed and min_age >= self.params.annuitization_policy_age
+            real_spias_fraction = self.params.annuitization_policy_annuitization_fraction if spias and self.params.annuitization_policy == 'age_real' else 0
             nominal_spias_fraction = \
-                self.env.params.annuitization_policy_annuitization_fraction if spias and self.env.params.annuitization_policy == 'age_nominal' else 0
+                self.params.annuitization_policy_annuitization_fraction if spias and self.params.annuitization_policy == 'age_nominal' else 0
 
             if real_spias_fraction or nominal_spias_fraction:
-                self.anuitized = True
+                self.annuitized = True
 
-        elif self.env.params.annuitization_policy == 'none':
+        elif self.params.annuitization_policy == 'none':
 
             real_spias_fraction = 0
             nominal_spias_fraction = 0
 
-        if self.env.params.asset_allocation_policy == 'age-in-bonds':
+        else:
+
+            assert False
+
+        if self.params.asset_allocation_policy == 'rl':
+
+            pass
+
+        elif self.params.asset_allocation_policy == 'age-in-bonds':
 
             bonds = max(self.env.age / 100, 1)
             asset_allocation = AssetAllocation(**{'stocks': 1 - bonds, self._bonds_type(): bonds})
 
-        elif self.env.params.asset_allocation_policy == 'glide-path':
+        elif self.params.asset_allocation_policy == 'glide-path':
 
             t = self.env.age - self.env.age_retirement
-            glide_path = loads(self.env.params.asset_allocation_glide_path)
+            glide_path = loads(self.params.asset_allocation_glide_path)
             t0, stocks0 = glide_path[0]
             for t1, stocks1 in glide_path:
                 if t < t1:
@@ -331,25 +429,25 @@ class Policy:
                 stocks = (stocks0 * (t1 - t) + stocks1 * (t - t0)) / (t1 - t0)
             asset_allocation = AssetAllocation(**{'stocks': stocks, self._bonds_type(): 1 - stocks})
 
-        elif self.env.params.asset_allocation_policy != 'rl':
+        else:
 
-            asset_allocation = loads(self.env.params.asset_allocation_policy)
+            asset_allocation = loads(self.params.asset_allocation_policy)
             asset_allocation = AssetAllocation(**asset_allocation)
 
-        if self.env.params.asset_allocation_annuitized_policy != 'asset_allocation_policy' and self.anuitized:
+        if self.params.asset_allocation_annuitized_policy != 'asset_allocation_policy' and self.annuitized:
 
-            asset_allocation = loads(self.env.params.asset_allocation_annuitized_policy)
+            asset_allocation = loads(self.params.asset_allocation_annuitized_policy)
             asset_allocation = AssetAllocation(**asset_allocation)
 
-        if self.env.params.real_bonds:
-            if self.env.params.real_bonds_duration != None:
-                real_bonds_duration = self.env.params.real_bonds_duration
+        if self.params.real_bonds:
+            if self.params.real_bonds_duration != -1:
+                real_bonds_duration = self.params.real_bonds_duration
         else:
             real_bonds_duration = None
 
-        if self.env.params.nominal_bonds:
-            if self.env.params.nominal_bonds_duration != None:
-                nominal_bonds_duration = self.env.params.nominal_bonds_duration
+        if self.params.nominal_bonds:
+            if self.params.nominal_bonds_duration != -1:
+                nominal_bonds_duration = self.params.nominal_bonds_duration
         else:
             nominal_bonds_duration = None
 

@@ -1,7 +1,7 @@
 <!--
 
 AIPlanner - Deep Learning Financial Planner
-Copyright (C) 2018-2020 Gordon Irlam
+Copyright (C) 2018-2021 Gordon Irlam
 
 All rights reserved. This program may not be used, copied, modified,
 or redistributed without permission.
@@ -22,9 +22,10 @@ PURPOSE.
       [<a href="sign_up" (click)="gotoStep(100)">Sign Up</a>]
     </div>
     <p>
-      AIPlanner uses deep reinforcement learning to compute a near
-      optimal spending and investment strategy to maximize lifetime
-      well-being.  AIPlanner is optimized for the U.S. tax code.
+      AIPlanner is the world's first Monte Carlo optimizer. It uses
+      reinforcement learning to compute a near optimal spending and
+      investment strategy to maximize lifetime well-being. AIPlanner
+      is optimized for the U.S. tax code.
     </p>
     <div class="center small-font" *ngIf="!doneMarket">
       [Loading market data]
@@ -35,14 +36,25 @@ PURPOSE.
     <div class="error" *ngIf="errorMessage">
       {{errorMessage}}
     </div>
+    <div class="center">
+      <img src="assets/aiplanner-asset_allocation.svg" width="40%">
+      <img src="assets/aiplanner-paths-consume.svg" width="60%">
+    </div>
+    <br>
+    <div class="center">
+      <img src="assets/aiplanner-consume-pdf.svg" width="60%">
+    </div>
   </div>
 
   <div *ngIf="step == 1">
     <h1 class="title">Longevity</h1>
+    <div class="center">
+      <app-info msg="This information is only used if you generate a printed report."></app-info>
+    </div>
     <table class="username">
       <tr>
         <td class="first"> Optional name: </td>
-        <td class="last"> <input type="text" class="text" name="scenarioCustomerName" [(ngModel)]="customerName"> </td>
+        <td class="last"> <input type="text" class="text" placeholder="John and Mary Smith" name="scenarioCustomerName" [(ngModel)]="customerName"> </td>
       </tr>
       <tr>
         <td class="center"> &amp; </td>
@@ -50,11 +62,16 @@ PURPOSE.
       </tr>
       <tr>
         <td class="first"> Scenario name: </td>
-        <td class="last"> <input type="text" class="text" name="scenarioScenarioName" [(ngModel)]="scenarioName"> </td>
+        <td class="last"> <input type="text" class="text" placeholder="Early retirement plan" name="scenarioScenarioName" [(ngModel)]="scenarioName"> </td>
       </tr>
     </table>
     <br>
     <br>
+    <div class="center">
+      <app-info msg="Enter your true age and health. AIPlanner takes
+      into account the possibilities you will live longer or shorter
+      than expected for your age."></app-info>
+    </div>
     <table class="le">
       <tr>
         <td class="noborderleft noborderright nobordertop"> </td>
@@ -76,7 +93,7 @@ PURPOSE.
           </div>
         </td>
         <td class="noborderright"> {{health("self")}} </td>
-        <td class="noborderleft"> -&nbsp;extra life expectancy of
+        <td class="noborderleft"> -&nbsp;EXTRA life expectancy of
           <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional" #scenarioLifeExpectancyAdditional="ngModel" [(ngModel)]="lifeExpectancyAdditional"> years
           <div class="error" *ngIf="scenarioLifeExpectancyAdditional.invalid">
             Invalid numeric value.
@@ -102,7 +119,7 @@ PURPOSE.
         </td>
         <td class="noborderright"> <div *ngIf="sex2 != 'none'"> {{health("spouse")}} </div> </td>
         <td class="noborderleft">
-          <div *ngIf="sex2 != 'none'"> -&nbsp;extra life expectancy of
+          <div *ngIf="sex2 != 'none'"> -&nbsp;EXTRA life expectancy of
             <input type="number" class="small-numeric" required name="scenarioLifeExpectancyAdditional2" #scenarioLifeExpectancyAdditional2="ngModel" [(ngModel)]="lifeExpectancyAdditional2"> years
             <div class="error" *ngIf="scenarioLifeExpectancyAdditional2.invalid">
               Invalid numeric value.
@@ -115,23 +132,81 @@ PURPOSE.
       <br>
       Additional life expectancy is too large: Enter only any
       additional years you expect you might live beyond the life
-      expectancy for your age. Do not include any padding. We will
-      take into consideration the possibilities you live longer or
-      shorter than expected.
+      expectancy for your age. Do not include any padding.
     </div>
     <div class="main-button float-left">
-      <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !healthValid()">Back</button>
+      <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !healthValid() || !ageValid()">Back</button>
     </div>
     <div class="main-button float-right">
-      <button type="button" class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !healthValid()">Next</button>
+      <button type="button" class="button" (click)="nextStep()" [disabled]="!scenarioForm.valid || !healthValid() || !ageValid()">Next</button>
     </div>
     <div class="float-clear">
     </div>
   </div>
 
   <div class="center" *ngIf="step == 2">
-    <h1 class="title">Assets</h1>
-    Existing defined benefits
+    <h1 class="title">Income</h1>
+    <div class="income" *ngIf="!editDefinedBenefit">
+      Wages <app-info msg="Irrelevant if retired."></app-info>
+      <div class="wages">
+        <table>
+          <tr>
+            <td class="nobordertop noborderleft"> </td>
+            <td> Pre-retirement annual wages <app-info msg="Amount is before tax."></app-info> </td>
+            <td> Wages end at </td>
+            <td> 401(k) plan available </td>
+          </tr>
+          <tr>
+            <td> Self </td>
+            <td>
+              <input type="number" step="1000" class="numeric" required name="scenarioIncomePreretirement" #scenarioIncomePreretirement="ngModel" [(ngModel)]="incomePreretirement">
+              <div class="error" *ngIf="scenarioIncomePreretirement.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
+            <td>
+              <select type="select" name="scenarioIncomePreretirementAgeEndType" [(ngModel)]="incomePreretirementAgeEndType">
+                <option value="retirement">my retirement</option>
+                <option value="age">my specific age</option>
+              </select>
+              <span *ngIf="incomePreretirementAgeEndType == 'age'">
+                <input type="number" class="small-numeric" required name="scenarioIncomePreretirementAgeEnd" #scenarioIncomePreretirementAgeEnd="ngModel" [(ngModel)]="incomePreretirementAgeEnd">
+                <span class="error" *ngIf="scenarioIncomePreretirementAgeEnd.invalid">
+                  <br>
+                  Invalid numeric value.
+                </span>
+              </span>
+            </td>
+            <td> <input type="checkbox" name="scenarioHave401k" [(ngModel)]="have401k"> </td>
+          </tr>
+          <tr *ngIf="sex2 != 'none'">
+            <td> Spouse </td>
+            <td>
+              <input type="number"step="1000"  class="numeric" required name="scenarioIncomePreretirement2" #scenarioIncomePreretirement2="ngModel" [(ngModel)]="incomePreretirement2">
+              <div class="error" *ngIf="scenarioIncomePreretirement2.invalid">
+                Invalid numeric value.
+              </div>
+            </td>
+            <td>
+              <select type="select" name="scenarioIncomePreretirementAgeEnd2Type" [(ngModel)]="incomePreretirementAgeEnd2Type">
+                <option value="retirement">my retirement</option>
+                <option value="age">their specific age</option>
+              </select>
+              <span *ngIf="incomePreretirementAgeEnd2Type == 'age'">
+                <input type="number" class="small-numeric" required name="scenarioIncomePreretirementAgeEnd2" #scenarioIncomePreretirementAgeEnd2="ngModel" [(ngModel)]="incomePreretirementAgeEnd2">
+                <span class="error" *ngIf="scenarioIncomePreretirementAgeEnd2.invalid">
+                  <br>
+                  Invalid numeric value.
+                </span>
+              </span>
+            </td>
+            <td> <input type="checkbox" name="scenarioHave401k2" [(ngModel)]="have401k2"> </td>
+          </tr>
+        </table>
+      </div>
+      <br>
+    </div>
+    Defined benefits
     <br>
     <div class="defined-benefits">
       <table>
@@ -174,102 +249,6 @@ PURPOSE.
     <div *ngIf="editDefinedBenefit">
       <app-db [data]="editDefinedBenefit"></app-db>
     </div>
-    <br>
-    <br>
-    <div *ngIf="!editDefinedBenefit">
-      Existing defined contribution savings
-      <div class="defined-contributions">
-        <table>
-          <tr>
-            <td class="left"> Traditional IRA/401(k): </td>
-            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxDeferred" #scenarioPTaxDeferred="ngModel" [(ngModel)]="pTaxDeferred">
-              <div class="error" *ngIf="scenarioPTaxDeferred.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="left"> Roth IRA/401(k): </td>
-            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxFree" #scenarioPTaxFree="ngModel" [(ngModel)]="pTaxFree">
-              <div class="error" *ngIf="scenarioPTaxFree.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="left"> Taxable stocks: </td>
-            <td> <input type="number"step="1000" class="numeric" required name="scenarioPTaxableStocks" #scenarioPTaxableStocks="ngModel" [(ngModel)]="pTaxableStocks">
-              <div class="error" *ngIf="scenarioPTaxableStocks.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-            <td class="left">
-              Stocks cost basis:
-            </td>
-            <td>
-              <input type="number" step="1000" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
-              <div class="error" *ngIf="scenarioPTaxableStocksBasis.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="left"> Taxable bonds: </td>
-            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableBonds" #scenarioPTaxableBonds="ngModel" [(ngModel)]="pTaxableBonds">
-              <div class="error" *ngIf="scenarioPTaxableBonds.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-            <td class="left">
-              Bonds cost basis:
-            </td>
-            <td>
-              <input type="number" step="1000" class="numeric" required name="scenarioPTaxableBondsBasis" #scenarioPTaxableBondsBasis="ngModel" [(ngModel)]="pTaxableBondsBasis">
-              <div class="error" *ngIf="scenarioPTaxableBondsBasis.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="left"> Taxable cash: </td>
-            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableCash" #scenarioPTaxableCash="ngModel" [(ngModel)]="pTaxableCash">
-              <div class="error" *ngIf="scenarioPTaxableCash.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-            <td class="left">
-              Cash cost basis:
-            </td>
-            <td class="right">
-              {{pCash()}}
-            </td>
-          </tr>
-          <tr>
-            <td class="left"> Taxable other: </td>
-            <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableOther" #scenarioPTaxableOther="ngModel" [(ngModel)]="pTaxableOther">
-              <div class="error" *ngIf="scenarioPTaxableOther.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-            <td class="left">
-              Other cost basis:
-            </td>
-            <td>
-              <input type="number" step="1000" class="numeric" required name="scenarioPTaxableOtherBasis" #scenarioPTaxableOtherBasis="ngModel" [(ngModel)]="pTaxableOtherBasis">
-              <div class="error" *ngIf="scenarioPTaxableOtherBasis.invalid">
-                Invalid numeric value.
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td class="center"> Total </td>
-            <td class="right"> {{pTotal()}} </td>
-            <td> </td>
-            <td class="right"> {{basisTotal()}} </td>
-          </tr>
-        </table>
-      </div>
-    </div>
     <div *ngIf="!editDefinedBenefit">
       <div class="main-button float-left">
         <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
@@ -282,43 +261,170 @@ PURPOSE.
     </div>
   </div>
 
-  <div  *ngIf="step == 3">
-    <h1 class="title">Liabilities</h1>
-    <div class="defined-benefits">
-      <table>
-        <tr *ngIf="definedLiabilities.length > 0; else elseBlock">
-          <td class="nobordertop noborderleft"> </td>
-          <td> Years </td>
-          <td> Annual amount </td>
-          <td> </td>
-        </tr>
+  <div class="center" *ngIf="step == 3">
+    <h1 class="title">Assets &amp; Liabilities</h1>
+    <div *ngIf="!editDefinedBenefit">
+      <div class="inline-block">
+        <div class="left">
+          <input type="radio" name="assetDetail" value="" [(ngModel)]="assetDetail"> Quick entry
+        </div>
+        <div class="left">
+          <input type="radio" name="assetDetail" value="true" [(ngModel)]="assetDetail"> Detailed entry
+        </div>
+      </div>
+      <br>
+      <br>
+      <div *ngIf="!assetDetail">
+        Net worth:<app-info msg="Net worth after future taxes and liabilities. Amount entered is treated as tax free.">
+        </app-info>&nbsp;<input type="number" step="1000" class="numeric" required name="scenarioNetWorth" #scenarioNetWorth="ngModel" [(ngModel)]="netWorth">
+        <div class="error" *ngIf="scenarioNetWorth.invalid; else elseBlock">
+          Invalid numeric value.
+        </div>
         <ng-template #elseBlock>
-          <td> None </td>
+          <br>
+          <br>
+          {{pNetWorth()}}
         </ng-template>
-        <tr class="db-container" *ngFor="let db of definedLiabilities; index as i">
-          <td> {{db.type}} </td>
-          <td class="right"> {{db.years}} </td>
-          <td class="right"> {{utils.comma(db.amount())}} </td>
-          <td>
-            <button type="button" (click)="doEdit(db)" [disabled]="editDefinedBenefit">Edit</button>
-            <button type="button" (click)="deleteDb(definedLiabilities, i)" [disabled]="editDefinedBenefit">Delete</button>
-          </td>
-        </tr>
-        <tr *ngIf="definedLiabilities.length > 0">
-          <td> Total </td>
-          <td class="right"> - </td>
-          <td class="right"> {{dbTotal(definedLiabilities)}} </td>
-          <td> </td>
-        </tr>
-      </table>
-      <div class="buttons">
-        <button type="button" (click)="addDb('Mortgage')" [disabled]="editDefinedBenefit">add Mortgage</button>
-        <button type="button" (click)="addDb('Student Loans')" [disabled]="editDefinedBenefit">add Student Loans</button>
-        <button type="button" (click)="addDb('Auto Loan')" [disabled]="editDefinedBenefit">add Auto Loan</button>
-        <button type="button" (click)="addDb('Credit Card Debt')" [disabled]="editDefinedBenefit">add Credit Card Debt</button>
-        <button type="button" (click)="addDb('Child/Dependent')" [disabled]="editDefinedBenefit">add Child/Dependent</button>
-        <button type="button" (click)="addDb('College Expenses')" [disabled]="editDefinedBenefit">add College Expenses</button>
-        <button type="button" (click)="addDb('Home Purchase')" [disabled]="editDefinedBenefit">add Home Purchase</button>
+      </div>
+      <div *ngIf="assetDetail">
+        Existing defined contribution savings
+        <div class="defined-contributions">
+          <table>
+            <tr>
+              <td class="left"> Traditional IRA/401(k): </td>
+              <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxDeferred" #scenarioPTaxDeferred="ngModel" [(ngModel)]="pTaxDeferred">
+                <div class="error" *ngIf="scenarioPTaxDeferred.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="left"> Roth IRA/401(k): </td>
+              <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxFree" #scenarioPTaxFree="ngModel" [(ngModel)]="pTaxFree">
+                <div class="error" *ngIf="scenarioPTaxFree.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="left"> Taxable stocks: </td>
+              <td> <input type="number"step="1000" class="numeric" required name="scenarioPTaxableStocks" #scenarioPTaxableStocks="ngModel" [(ngModel)]="pTaxableStocks">
+                <div class="error" *ngIf="scenarioPTaxableStocks.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+              <td class="left">
+                Stocks cost basis:<app-info msg="The cost basis is the
+                amount you paid for the asset. If the asset's value
+                exceeds the cost basis you have an unrealized capital
+                gain. If it is less you have a unrealized capital
+                loss."></app-info>
+              </td>
+              <td>
+                <input type="number" step="1000" class="numeric" required name="scenarioPTaxableStocksBasis" #scenarioPTaxableStocksBasis="ngModel" [(ngModel)]="pTaxableStocksBasis">
+                <div class="error" *ngIf="scenarioPTaxableStocksBasis.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="left"> Taxable bonds: </td>
+              <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableBonds" #scenarioPTaxableBonds="ngModel" [(ngModel)]="pTaxableBonds">
+                <div class="error" *ngIf="scenarioPTaxableBonds.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+              <td class="left">
+                Bonds cost basis:
+              </td>
+              <td>
+                <input type="number" step="1000" class="numeric" required name="scenarioPTaxableBondsBasis" #scenarioPTaxableBondsBasis="ngModel" [(ngModel)]="pTaxableBondsBasis">
+                <div class="error" *ngIf="scenarioPTaxableBondsBasis.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="left"> Taxable cash:<app-info
+                msg="Will be reallocated stocks and bonds. If you wish to maintain a separate emergency fund do not enter it here."></app-info>
+              </td>
+              <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableCash" #scenarioPTaxableCash="ngModel" [(ngModel)]="pTaxableCash">
+                <div class="error" *ngIf="scenarioPTaxableCash.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+              <td class="left">
+                Cash cost basis:
+              </td>
+              <td class="right">
+                {{pCash()}}
+              </td>
+            </tr>
+            <tr>
+              <td class="left"> Taxable other:<app-info msg="Will be reallocated to stocks and bonds."></app-info> </td>
+              <td> <input type="number" step="1000" class="numeric" required name="scenarioPTaxableOther" #scenarioPTaxableOther="ngModel" [(ngModel)]="pTaxableOther">
+                <div class="error" *ngIf="scenarioPTaxableOther.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+              <td class="left">
+                Other cost basis:
+              </td>
+              <td>
+                <input type="number" step="1000" class="numeric" required name="scenarioPTaxableOtherBasis" #scenarioPTaxableOtherBasis="ngModel" [(ngModel)]="pTaxableOtherBasis">
+                <div class="error" *ngIf="scenarioPTaxableOtherBasis.invalid">
+                  Invalid numeric value.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="center"> Total </td>
+              <td class="right"> {{pTotal()}} </td>
+              <td> </td>
+              <td class="right"> {{basisTotal()}} </td>
+            </tr>
+          </table>
+        </div>
+        <br>
+        <br>
+        Liabilities
+        <div class="defined-benefits">
+          <table>
+            <tr *ngIf="definedLiabilities.length > 0; else elseBlock">
+              <td class="nobordertop noborderleft"> </td>
+              <td> Years </td>
+              <td> Annual amount </td>
+              <td> </td>
+            </tr>
+            <ng-template #elseBlock>
+              <td> None </td>
+            </ng-template>
+            <tr class="db-container" *ngFor="let db of definedLiabilities; index as i">
+              <td> {{db.type}} </td>
+              <td class="right"> {{db.years}} </td>
+              <td class="right"> {{utils.comma(db.amount())}} </td>
+              <td>
+                <button type="button" (click)="doEdit(db)" [disabled]="editDefinedBenefit">Edit</button>
+                <button type="button" (click)="deleteDb(definedLiabilities, i)" [disabled]="editDefinedBenefit">Delete</button>
+              </td>
+            </tr>
+            <tr *ngIf="definedLiabilities.length > 0">
+              <td> Total </td>
+              <td class="right"> - </td>
+              <td class="right"> {{dbTotal(definedLiabilities)}} </td>
+              <td> </td>
+            </tr>
+          </table>
+          <div class="buttons">
+            <button type="button" (click)="addDb('Mortgage')" [disabled]="editDefinedBenefit">add Mortgage</button>
+            <button type="button" (click)="addDb('Student Loans')" [disabled]="editDefinedBenefit">add Student Loans</button>
+            <button type="button" (click)="addDb('Auto Loan')" [disabled]="editDefinedBenefit">add Auto Loan</button>
+            <button type="button" (click)="addDb('Credit Card Debt')" [disabled]="editDefinedBenefit">add Credit Card Debt</button>
+            <button type="button" (click)="addDb('Child/Dependent')" [disabled]="editDefinedBenefit">add Child/Dependent</button>
+            <button type="button" (click)="addDb('College Expenses')" [disabled]="editDefinedBenefit">add College Expenses</button>
+            <button type="button" (click)="addDb('Home Purchase')" [disabled]="editDefinedBenefit">add Home Purchase</button>
+          </div>
+        </div>
       </div>
     </div>
     <div *ngIf="editDefinedBenefit">
@@ -343,70 +449,56 @@ PURPOSE.
         Invalid numeric value.
       </div>
     <br>
-    <br>
-    After tax pre-retirement annual personal consumption:
-      <input type="number" step="1000" class="numeric" required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
-      <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
-        Invalid numeric value.
+    <p>
+      Allow income annuity purchases in retirement:<input type="checkbox" name="spias" [(ngModel)]="spias">&nbsp;<app-info
+      msg="An income annuity such as a SPIA provides a
+      guaranteed income stream for life. An income annuity purchased
+      at an appropriate age increases lifetime consumption. Income
+      annuities may be inappropriate if you are in poor health, have a
+      strong bequest motive, or are uncomfortabe with the irreversible
+      nature of the income annuity purchase decision."></app-info>
+    </p>
+    <div *ngIf="age < ageRetirement">
+      <div class="consume">
+        <table>
+          <tr>
+            <td>
+              <input type="radio" name="consumeSpecify" value="" [(ngModel)]="consumeSpecify">
+            </td>
+            <td>
+              Determine amount to consume for a smooth retirement
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <input type="radio" name="consumeSpecify" value="true" [(ngModel)]="consumeSpecify">
+            </td>
+            <td>
+              Specify amount to consume pre-retirement
+            </td>
+          </tr>
+          <tr *ngIf="consumeSpecify">
+            <td>
+            </td>
+            <td>
+              Pre-retirement annual consumption:<app-info msg="Amount is after
+              tax and excluding the payment of any previously entered
+              liabilities. Wages less consumption, liability payments, and taxes
+              equals retirement savings."></app-info>&nbsp;<input type="number" step="1000" class="numeric"
+                required name="scenarioConsumePreretirement" #scenarioConsumePreretirement="ngModel" [(ngModel)]="consumePreretirement">
+                <div class="error" *ngIf="scenarioConsumePreretirement.invalid">
+                  Invalid numeric value.
+                </div>
+            </td>
+          </tr>
+        </table>
       </div>
-    <div class="income">
-      <table>
-        <tr>
-          <td class="nobordertop noborderleft"> </td>
-          <td> Before income tax pre-retirement annual wages </td>
-          <td> Wages end at </td>
-          <td> 401(k) plan available </td>
-        </tr>
-        <tr>
-          <td> Self </td>
-          <td>
-            <input type="number" step="1000" class="numeric" required name="scenarioIncomePreretirement" #scenarioIncomePreretirement="ngModel" [(ngModel)]="incomePreretirement">
-            <div class="error" *ngIf="scenarioIncomePreretirement.invalid">
-              Invalid numeric value.
-            </div>
-          </td>
-          <td>
-            <select type="select" name="scenarioIncomePreretirementAgeEndType" [(ngModel)]="incomePreretirementAgeEndType">
-              <option value="retirement">my retirement</option>
-              <option value="age">my specific age</option>
-            </select>
-            <span *ngIf="incomePreretirementAgeEndType == 'age'">
-              <input type="number" class="small-numeric" required name="scenarioIncomePreretirementAgeEnd" #scenarioIncomePreretirementAgeEnd="ngModel" [(ngModel)]="incomePreretirementAgeEnd">
-              <span class="error" *ngIf="scenarioIncomePreretirementAgeEnd.invalid">
-                <br>
-                Invalid numeric value.
-              </span>
-            </span>
-          </td>
-          <td> <input type="checkbox" name="scenarioHave401k" [(ngModel)]="have401k"> </td>
-        </tr>
-        <tr *ngIf="sex2 != 'none'">
-          <td> Spouse </td>
-          <td>
-            <input type="number"step="1000"  class="numeric" required name="scenarioIncomePreretirement2" #scenarioIncomePreretirement2="ngModel" [(ngModel)]="incomePreretirement2">
-            <div class="error" *ngIf="scenarioIncomePreretirement2.invalid">
-              Invalid numeric value.
-            </div>
-          </td>
-          <td>
-            <select type="select" name="scenarioIncomePreretirementAgeEnd2Type" [(ngModel)]="incomePreretirementAgeEnd2Type">
-              <option value="retirement">my retirement</option>
-              <option value="age">their specific age</option>
-            </select>
-            <span *ngIf="incomePreretirementAgeEnd2Type == 'age'">
-              <input type="number" class="small-numeric" required name="scenarioIncomePreretirementAgeEnd2" #scenarioIncomePreretirementAgeEnd2="ngModel" [(ngModel)]="incomePreretirementAgeEnd2">
-              <span class="error" *ngIf="scenarioIncomePreretirementAgeEnd2.invalid">
-                <br>
-                Invalid numeric value.
-              </span>
-            </span>
-          </td>
-          <td> <input type="checkbox" name="scenarioHave401k2" [(ngModel)]="have401k2"> </td>
-        </tr>
-      </table>
     </div>
-    <br>
-    Allow income annuity purchases in retirement: <input type="checkbox" name="spias" [(ngModel)]="spias">
+    <div class="error" *ngIf="highConsume()">
+      <br>
+      Annual consumption is more than annual wages.
+      This is allowed, but may not be what you want.
+    </div>
     <div class="main-button float-left">
       <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid">Back</button>
     </div>
@@ -419,16 +511,28 @@ PURPOSE.
 
   <div *ngIf="step == 5">
     <h1 class="title">Market conditions</h1>
+    <p class="center">
+      Engage in tactical asset allocation and consumption:<input type="checkbox" name="observeMarketConditions" [(ngModel)]="observeMarketConditions">&nbsp;<app-info
+      msg="Tactical planning takes into consideration the current
+      market conditions in deciding what to do. Non-tactical, or
+      strategic planning, ignores current market conditions. Tactical
+      planning slightly outperforms strategic planning, but requires
+      adjusting plans on a yearly, or more frequent basis."></app-info>
+    </p>
     <p>
       It is often a judgment call as to whether the market is fairly
-      valued. You can enter your personal opinion here. The rest of
-      this section should normally be left alone.
+      valued. You can override our assessment here. The
+      remainder of this section is normally correct.
     </p>
     <div class="market">
       <table>
         <tr>
           <td>
-            Current stock market price above fair price (negative if below):
+            Current stock market price above fair price (negative if below):<app-info
+            msg="The default value is based on an average of the
+            12-month forward and trailing S&P 500 P/E ratios. This
+            default value may be innacurate around
+            recessions."></app-info>
           </td>
           <td>
             <input type="number" class="small-numeric" required name="scenarioStocksPricePct" #scenarioStocksPricePct="ngModel" [(ngModel)]="stocksPricePct">%
@@ -446,7 +550,7 @@ PURPOSE.
             Current stock market volatility divided by long term average volatility:
           </td>
           <td>
-            <input type="number" step="0.1" class="small-numeric" required name="scenarioStocksVolatilityPct" #scenarioStocksVolatilityPct="ngModel" [(ngModel)]="stocksVolatilityPct">%
+            <input type="number" class="small-numeric" required name="scenarioStocksVolatilityPct" #scenarioStocksVolatilityPct="ngModel" [(ngModel)]="stocksVolatilityPct">%
             <div class="error" *ngIf="scenarioStocksVolatilityPct.invalid">
               Invalid numeric value.
             </div>
@@ -484,11 +588,13 @@ PURPOSE.
     </div>
     <div class="float-clear">
     </div>
+    <img src="assets/risk_aversion_pdf.svg" width="0"> <!-- Pre-cache to get height of image so layout of next stage doesn't flicker. -->
   </div>
 
   <div *ngIf="step == 6">
     <h1 class="title">Well being</h1>
     <p>
+      Risk aversion.
       The coefficient of relative risk aversion determines how much
       risk to take. The lower the coefficient the higher the expected
       consumption, but also the higher the uncertainty in realized
@@ -501,9 +607,9 @@ PURPOSE.
           <div>
             <table>
               <tr>
-                <td class="first"> RRA coefficient <span class="small-font"> <br> &nbsp; </span> </td>
-                <td class="first"> Extra consumption <span class="small-font"> <br> based on mean consumption </span> </td>
-                <td class="first"> Consumption uncertainty <span class="small-font"> <br> standard deviation / mean </span> </td>
+                <td class="first"> RRA coefficient </td>
+                <td class="first"> Extra consumption <app-info msg="Based on mean consumption."></app-info> </td>
+                <td class="first"> Consumption uncertainty <app-info msg="Standard deviation / mean."></app-info> </td>
               </tr>
               <tr>
                 <td> &infin; </td>
@@ -532,7 +638,7 @@ PURPOSE.
       <tr>
         <td>
           <div class="center">
-            <a href="assets/risk_aversion_pdf.svg" target="_blank" rel="noopener"><img src="assets/risk_aversion_pdf.svg" width="100%"/></a>
+            <a href="assets/risk_aversion_pdf.svg" target="_blank" rel="noopener"><img src="assets/risk_aversion_pdf.svg" width="100%"></a>
           </div>
         </td>
       </tr>
@@ -542,18 +648,107 @@ PURPOSE.
       several different RRA coefficients will be simulated and you can
       choose the one you prefer.
     </p>
+    <p>
+      Risk tolerance. Risk tolerance differs from relative risk
+      aversion. Risk tolerance typically refers to the psychological
+      ability to tolerate losses in investment portfolio value. This
+      psychological risk can be managed by limiting the maximum
+      allocation to stocks. Specifying a value of 100% here doesn't
+      mean the allocation to stocks will be 100%. It may be less
+      depending on the RRA coefficient, how far you are from
+      retirement, and the amount of guaranteed
+      income. <app-info msg="Risk aversion addresses physical well
+      being in the future (not wanting to consume too little in
+      retirement) and looks at your total portfolio including Social
+      Security and other forms of guaranteed income. Risk tolerance is
+      typically a narrower measure that only addresses psychological
+      well being (not wanting to discover your investment portfolio
+      lost value last year) and only considers the value of your
+      investment portfolio. A low risk tolerance may trade off peace
+      of mind now for reduced expected consumption in
+      retirement."></app-info>
+    </p>
+    <table class="crra">
+      <tr>
+        <td>
+          <table>
+            <tr>
+              <td>
+              <td> Hard limit on allocation to stocks
+              <td> 5th percentile return
+              <td> 1st percentile return <app-info msg="Estimated
+              inflation-adjusted investment portfolio percentile
+              annual return for indicated asset allocation. Estimates
+              based on simulated stock and long duration
+              bonds."></app-info>
+            </tr>
+            <!-- Estimated values produced using "eval_model.py -c
+            aiplanner-scenario.txt -c
+            aiplanner-scenario-single-eval.txt
+            --master-display-returns --eval-num-timesteps=0
+            --master-nominal-bonds --master-no-real-bonds". Don't use
+            risk_tolerance_in_pictures.py as it neglects fat
+            tails. -->
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="60" required [(ngModel)]="rlStocksMax">
+              <td> 60% <app-info msg="Results will be slightly sub-optimal as reinforcement learning model is trained assuming 100%"></app-info>
+              <td> -14%
+              <td> -26%
+            </tr>
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="80" required [(ngModel)]="rlStocksMax">
+              <td> 80% <app-info msg="Results will be slightly sub-optimal as reinforcement learning model is trained assuming 100%"></app-info>
+              <td> -18%
+              <td> -34%
+            </tr>
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="100" required [(ngModel)]="rlStocksMax">
+              <td> 100%
+              <td> -23%
+              <td> -42%
+            </tr>
+            <!--
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="150" required [(ngModel)]="rlStocksMax">
+              <td> 150%
+              <td> -35%
+              <td> -65%
+            </tr>
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="200" required [(ngModel)]="rlStocksMax">
+              <td> 200%
+              <td> -49%
+              <td> -89%
+            </tr>
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="250" required [(ngModel)]="rlStocksMax">
+              <td> 250%
+              <td> -63%
+              <td> -113%
+            </tr>
+            <tr>
+              <td> <input type="radio" name="rlStocksMax" value="300" required [(ngModel)]="rlStocksMax">
+              <td> 300%
+              <td> -78%
+              <td> -136%
+            </tr>
+            -->
+          </table>
+        </td>
+      </tr>
+    </table>
+    <div class="error" *ngIf="errorMessage">
+      {{errorMessage}}
+    </div>
     <div>
       <div class="main-button float-left">
-        <button type="button" class="button" (click)="prevStep()" [disabled]="!scenarioForm.valid || !dbValid()">Back</button>
+        <button type="button" class="button" (click)="prevStep()">Back</button>
       </div>
       <div class="main-button float-right">
         <button type="button" class="button" (click)="calculate()" [disabled]="!scenarioForm.valid || !dbValid()">Submit</button>
       </div>
       <div class="float-clear">
       </div>
-    </div>
-    <div class="error" *ngIf="errorMessage">
-      {{errorMessage}}
     </div>
   </div>
 
@@ -577,17 +772,31 @@ PURPOSE.
   </div>
   <br>
   <div class="small-font">
-    <a href="/webapi/data/{{report}}" target="_blank">Download/print results (PDF)</a>
+    <a href="/api/data/{{report}}" target="_blank" rel="noopener">Download/print results (PDF)</a>
   </div>
+  <br>
+  <table width="100%">
+    <tr>
+      <td> <span *ngIf="scenario.consume_preretirement != null; else elseBlock">Retirement consumption</span><ng-template #elseBlock>Consumption</ng-template>
+        distribution <app-info msg="Averaged over a lifetime and many possible futures."></app-info> </td>
+      <td> Cummulative consumption distribution <app-info msg="Probability of annual consumption for a random year being below the indicated value."></app-info> </td>
+    </tr>
+    <tr>
+      <td width="50%"> <a href="/api/data/{{commonDir}}/consume-pdf.svg" target="_blank" rel="noopener"><img src="/api/data/{{commonDir}}/consume-pdf.svg"></a> </td>
+      <td width="50%"> <a href="/api/data/{{commonDir}}/consume-cdf.svg" target="_blank" rel="noopener"><img src="/api/data/{{commonDir}}/consume-cdf.svg"></a> </td>
+    </tr>
+  </table>
   <br>
   <div class="crra">
     <table>
       <tr>
-        <td class="first"> RRA coefficient <span class="small-font"> <br> &nbsp; </span> </td>
-        <td class="first"> Extra consumption in retirement <span class="small-font"> <br> based on mean consumption </span> </td>
-        <td class="first"> Consumption uncertainty <span class="small-font"> <br> standard deviation / mean </span> </td>
+        <td class="first"> Risk aversion </td>
+        <td class="first"> RRA <app-info msg="Relative risk aversion coefficient."></app-info> </td>
+        <td class="first"> Extra consumption <app-info msg="Based on mean consumption."></app-info> </td>
+        <td class="first"> Consumption uncertainty <app-info msg="Standard deviation / mean."></app-info> </td>
       </tr>
       <tr class="pointer {{(i == activeResultIndex) ? 'selected' : ''}}" (click)="gotoRisk(i)" *ngFor="let result of results; index as i">
+        <td> {{(result.rra < 4) ? ((result.rra < 2) ? "Low" : "Moderate") : "High"}} </td>
         <td> {{result.rra}} </td>
         <td> {{result.consume_extra}}</td>
         <td> {{result.consume_uncertainty}}</td>
@@ -608,7 +817,7 @@ PURPOSE.
     </div>
   </div>
   <div *ngFor="let result of results; index as i">
-  <app-result [result]="result" *ngIf="i == activeResultIndex"></app-result>
+  <app-result [result]="result" [scenario]="this" *ngIf="i == activeResultIndex"></app-result>
   </div>
 </div>
 
@@ -664,34 +873,33 @@ PURPOSE.
     AIPlanner was developed by <a href="https://www.gordoni.com/" target="_blank" rel="noopener">Gordon Irlam</a>.
   </p>
   <p>
+    Source code:
+  </p>
+  <p class="indent">
+    <a href="https://github.com/gordoni/aiplanner" target="_blank" rel="noopener">https://github.com/gordoni/aiplanner</a>
+  </p>
+  <p>
     AIPlanner is described in:
   </p>
   <ul>
-    <li> <a href="http://ssrn.com/abstract=3201703" target="_blank" rel="noopener">Financial Planning via Deep Reinforcement Learning AI</a> </li>
-    <li> <a href="http://ssrn.com/abstract=3516480" target="_blank" rel="noopener">Multi Scenario Financial Planning via Deep Reinforcement Learning AI</a> </li>
+    <li> 2020 - <a href="https://jor.pm-research.com/content/8/1/32" target="_blank" rel="noopener">Machine Learning for Retirement Planning</a> (paywalled) </li>
+    <li> 2020 - <a href="https://www.gordoni.com/lifetime_portfolio_selection_using_machine_learning.pdf" target="_blank" rel="noopener">Lifetime Portfolio Selection:
+      Using Machine Learning</a> </li>
+    <li> 2020 - <a href="http://ssrn.com/abstract=3516480" target="_blank" rel="noopener">Multi Scenario Financial Planning via Deep Reinforcement Learning AI</a>
+    </li>
+    <li> 2018 - <a href="http://ssrn.com/abstract=3201703" target="_blank" rel="noopener">Financial Planning via Deep Reinforcement Learning AI</a> </li>
   </ul>
   <p>
     Please contact me to find out more about reinforcement learning
-    based financial planning solutions.
+    based financial planning solutions:
   </p>
-  <p>
-    I may be contacted as follows:
   <p class="indent">
     <a href="mailto:gordoni@gordoni.com">gordoni@gordoni.com</a>
   </p>
-  <p class="indent">
-    Gordon Irlam
-    <br>
-    23 Coronado Ave
-    <br>
-    Los Altos, CA 94022
-    <br>
-    United States
-  </p>
   <p>
-    AIPlanner Copyright &copy; 2018-2020 Gordon Irlam. AIPlanner is
-    provided without any warranty; without even the implied warranty
-    of merchantability or fitness for a particular purpose.
+    AIPlanner is provided without any warranty; without even the
+    implied warranty of merchantability or fitness for a particular
+    purpose.
   </p>
   <div class="main-button">
     <button type="button" class="button" (click)="gotoStep(0)">Home</button>
@@ -757,7 +965,7 @@ PURPOSE.
   </p>
   <p>
     Information on contacting us regarding this policy is provided
-    <a href="privacy_policy" (click)="gotoStep(200)">here</a>.
+    <a href="about" (click)="gotoStep(200)">here</a>.
   </p>
   <div class="main-button">
     <button type="button" class="button" (click)="gotoStep(0)">Home</button>

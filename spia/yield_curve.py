@@ -1,5 +1,5 @@
 # SPIA - Income annuity (SPIA and DIA) price calculator
-# Copyright (C) 2014-2018 Gordon Irlam
+# Copyright (C) 2014-2021 Gordon Irlam
 #
 # This program may be licensed by you (at your option) under an Open
 # Source, Free for Non-Commercial Use, or Commercial Use License.
@@ -29,23 +29,52 @@ import csv
 from datetime import datetime
 from json import dumps, loads
 import math
-from os import makedirs
+from os import makedirs, replace
 from os.path import expanduser, isdir, join, normpath
 import statistics
 
 import scipy.interpolate
+
+try:
+    import cython
+except ImportError:
+    class cython:
+        def cclass(x):
+            return x
+        def locals(**kwargs):
+            return lambda x: x
+        def bint():
+            pass
+        def int():
+            pass
+        def double():
+            pass
 
 from .fetch_yield_curve import datadir, fetch_yield_curve
 from .monotone_convex import MonotoneConvex
 
 cachedir = '~/.cache/spia'
 
-class YieldCurve(object):
+class NoData(Exception):
+    pass
 
-    class NoData(Exception):
-        pass
+@cython.cclass
+class YieldCurve:
 
-    datadir = None
+    @property
+    def date(self):
+
+        return self._date
+
+    @property
+    def date_low(self):
+
+        return self._date_low
+
+    @property
+    def interest_rate(self):
+
+        return self._interest_rate
 
     def _get_treasury(self, date_str, date_str_low):
 
@@ -71,10 +100,10 @@ class YieldCurve(object):
 
             try:
 
-                with open(join(self.datadir, self.interest_rate, self.interest_rate + '-' + year_str + '.csv')) as f:
+                with open(join(self._datadir, self._interest_rate, self._interest_rate + '-' + year_str + '.csv')) as f:
 
                     r = csv.reader(f)
-                    assert(next(r)[0].startswith('#'))
+                    assert next(r)[0].startswith('#')
 
                     years = next(r)
                     years.pop(0)
@@ -95,7 +124,7 @@ class YieldCurve(object):
                             if not date_str_low:
                                 date = []
                                 rates = []
-                            assert(len(years) == len(rate))
+                            assert len(years) == len(rate)
                             if not all(r == '' for r in rate):
                                 date.append(d)
                                 rates.append(rate)
@@ -117,22 +146,22 @@ class YieldCurve(object):
         try:
             yield_curve_date_str = max(yield_curve_date)
         except ValueError:
-            raise self.NoData('Requested interest rate data unavailable.')
+            raise NoData('Requested interest rate data unavailable.')
 
-        assert(len(yield_curve_date) == len(yield_curve_years) == len(yield_curve_rates))
+        assert len(yield_curve_date) == len(yield_curve_years) == len(yield_curve_rates)
 
         return yield_curve_years, yield_curve_rates, yield_curve_date_str
 
     def _get_corporate(self, date_year, date_str, date_str_low):
 
-        assert(date_str_low == None) # Not yet implemented.
+        assert date_str_low is None # Not yet implemented.
 
         if date_year < 1984:
-            raise self.NoData('Requested interest rate data unavailable.')
+            raise NoData('Requested interest rate data unavailable.')
 
         date_yr = int(date_str.split('-')[0])
         date_month = int(date_str.split('-')[1])
-        assert(1 <= date_month <= 12)
+        assert 1 <= date_month <= 12
 
         year_step = 5
         file_year = 1984 + int((date_year - 1984) / year_step) * year_step
@@ -141,7 +170,7 @@ class YieldCurve(object):
 
         try:
 
-            with open(join(self.datadir, self.interest_rate, file_name + '.csv')) as f:
+            with open(join(self._datadir, self._interest_rate, file_name + '.csv')) as f:
 
                 r = csv.reader(f)
                 line = next(r)
@@ -150,7 +179,7 @@ class YieldCurve(object):
                 if ''.join(line) == '':  # catdoc xls2csv ommits this line for reasons unknown.
                     line = next(r)
                 years = tuple(int(year) for year in line if year != '')
-                assert(years[file_year_offset] == date_year)
+                assert years[file_year_offset] == date_year
                 line = next(r)
                 line = next(r)
                 maturity = 0
@@ -164,21 +193,21 @@ class YieldCurve(object):
                             line.pop()
                         year_offset = file_year_offset + (date_yr - date_year)
                         offset = min(len(line) - 1, 2 + year_offset * 12 + date_month - 1)
-                        spot_year = file_year + (offset - 2) / 12
+                        spot_year = file_year + (offset - 2) // 12
                         if spot_year < file_year:
-                            raise self.NoData('Requested interest rate data unavailable.')
+                            raise NoData('Requested interest rate data unavailable.')
                         spot_month = (offset - 2) % 12 + 1
                         spot_date = '%d-%02d' % (spot_year, spot_month)
                     maturity += 0.5
-                    assert(float(line[0]) == maturity)
-                    assert(line[1] == '')
+                    assert float(line[0]) == maturity
+                    assert line[1] == ''
                     spot_years.append(maturity)
                     spot_rates.append(float(line[offset]) / 100.0)
-                assert(maturity == 100)
+                assert maturity == 100
 
         except IOError:
 
-            raise self.NoData('Requested interest rate data unavailable.')
+            raise NoData('Requested interest rate data unavailable.')
 
         return [spot_years], [spot_rates], spot_date
 
@@ -237,35 +266,38 @@ class YieldCurve(object):
         curve data date. The cache should be manually cleared if this
         package is changed.
 
-        Raises YieldCurve.NoData if not interest rate data can be
-        found for the requested date or dates.
+        Raises NoData if not interest rate data can be found for the
+        requested date or dates.
 
         '''
 
-        self.interest_rate = interest_rate
-        assert(interest_rate in ('real', 'nominal', 'corporate', 'fixed', 'le'))
-        self.date = date_str
-        self.date_low = date_str_low
+        self._interest_rate = interest_rate
+        assert interest_rate in ('real', 'nominal', 'corporate', 'fixed', 'le')
+        self._date = date_str
+        self._date_low = date_str_low
         self.adjust = adjust
         self.permit_stale_days = permit_stale_days
         self.cache = cache and interest_rate not in ('fixed', 'le')
 
+        self._interest_rate_fixed = self._interest_rate == 'fixed'
+        self._interest_rate_le = self._interest_rate == 'le'
+        self._log_1_plus_adjust = math.log(1 + self.adjust)
         self._spot_cache = {}
 
-        if self.interest_rate in ('fixed', 'le'):
+        if self._interest_rate_fixed or self._interest_rate_le:
             self.yield_curve_date = 'none'
             return
 
-        self.datadir = normpath(expanduser(datadir))
+        self._datadir = normpath(expanduser(datadir))
 
         yield_curve_date = None
         cached = False
 
-        if self.cache and self.date_low:
+        if self.cache and self._date_low:
 
             cache_dir = normpath(expanduser(cachedir))
             makedirs(cache_dir, exist_ok = True)
-            cache_path = join(cache_dir, 'spia-' + self.interest_rate + '-' + self.date + '-' + self.date_low + '-' + str(self.adjust))
+            cache_path = join(cache_dir, 'spia-' + self._interest_rate + '-' + self._date + '-' + self._date_low + '-' + str(self.adjust))
 
             try:
                 json_str = open(cache_path).read()
@@ -287,15 +319,15 @@ class YieldCurve(object):
                 if not cached:
                     interpolate_years, interpolate_spots = self._load_yield_curve()
                     yield_curve_date = self.yield_curve_date
-            except self.NoData:
+            except NoData:
                 stale_days = float('inf')
             else:
-                if self.date.startswith('special-'):
+                if self._date.startswith('special-'):
                     stale_days = 0
                 else:
-                    wanted_date = min(datetime.utcnow().date(), datetime.strptime(self.date, '%Y-%m-%d').date())
+                    wanted_date = min(datetime.utcnow().date(), datetime.strptime(self._date, '%Y-%m-%d').date())
                     have_date = yield_curve_date
-                    if self.interest_rate == 'corporate':
+                    if self._interest_rate == 'corporate':
                         have_date += '-28'
                     have_date = datetime.strptime(have_date, '%Y-%m-%d').date()
                     stale_days = (wanted_date - have_date).days
@@ -303,33 +335,39 @@ class YieldCurve(object):
             if stale_days <= self.permit_stale_days:
                 break
 
-            fetch_yield_curve(self.interest_rate)
+            fetch_yield_curve(self._interest_rate)
             interpolate_years, interpolate_spots = self._load_yield_curve()
             if self.yield_curve_date != yield_curve_date:
                 cached = False
 
         if stale_days == float('inf'):
-            raise self.NoData('Requested interest rate data unavailable.')
+            raise NoData('Requested interest rate data unavailable.')
         if stale_days > self.permit_stale_days:
-            raise self.NoData('Interest rate data is stale.')
+            raise NoData('Interest rate data is stale.')
 
-        if not cached and self.cache and self.date_low:
+        if not cached and self.cache and self._date_low:
 
             cache_data = {'version': 1, 'yield_curve_date': self.yield_curve_date, 'years': interpolate_years, 'spots': interpolate_spots}
             json_str = dumps(cache_data)
             try:
-                open(cache_path, 'w').write(json_str)
+                with open(cache_path + '.tmp', 'w') as f:
+                    f.write(json_str)
             except IOError:
                 pass
+            else:
+                try:
+                    replace(cache_path + '.tmp', cache_path)
+                except FileNotFoundError:
+                    pass
 
         # Construct a master interpolator.
         self.monotone_convex = MonotoneConvex(interpolate_years, interpolate_spots, min_long_term_forward = 15, force_forwards_non_negative = False)
 
     def _load_yield_curve(self):
 
-        if self.interest_rate in ('real', 'nominal'):
+        if self._interest_rate in ('real', 'nominal'):
 
-            yield_curve_years, yield_curve_rates, self.yield_curve_date = self._get_treasury(self.date, self.date_low)
+            yield_curve_years, yield_curve_rates, self.yield_curve_date = self._get_treasury(self._date, self._date_low)
 
             # Convert par rates to spot rates.
             spot_rates = []
@@ -360,14 +398,14 @@ class YieldCurve(object):
                     # For some applications it may be necessary to interpolate the spot rates, but this would slow things down.
                 spot_rates.append(spot_rate)
 
-        elif self.interest_rate == 'corporate':
+        elif self._interest_rate == 'corporate':
 
-            date_year = int(self.date.split('-')[0])
+            date_year = int(self._date.split('-')[0])
 
             try:
-                yield_curve_years, spot_rates, self.yield_curve_date = self._get_corporate(date_year, self.date, self.date_low)
-            except self.NoData:
-                yield_curve_years, spot_rates, self.yield_curve_date = self._get_corporate(date_year - 1, self.date, self.date_low)
+                yield_curve_years, spot_rates, self.yield_curve_date = self._get_corporate(date_year, self._date, self._date_low)
+            except NoData:
+                yield_curve_years, spot_rates, self.yield_curve_date = self._get_corporate(date_year - 1, self._date, self._date_low)
 
         else:
 
@@ -449,31 +487,32 @@ class YieldCurve(object):
     def spot(self, y):
         '''Return the continuously compounded annual spot rate.'''
 
-        try:
-            spt = self._spot_cache[y]
-        except KeyError:
-            if self.interest_rate == 'fixed':
-                spt = math.log(1 + self.adjust)
-            elif self.interest_rate == 'le':
-                spt = 0
-            else:
-                # Spot rates do not match spot rates at
-                # https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/TNC-YC.aspx
-                # because the PchipInterpolator is not being used here and
-                # the input par rates of the daily quotes used here differ
-                # from the end of month quotes reported there.
-                spt = self.monotone_convex.spot(y)
-            if len(self._spot_cache) < 1000:
-                self._spot_cache[y] = spt
+        if self._interest_rate_fixed:
+            spt = self._log_1_plus_adjust
+        else:
+            try:
+                spt = self._spot_cache[y]
+            except KeyError:
+                if self._interest_rate_le:
+                    spt = 0
+                else:
+                    # Spot rates do not match spot rates at
+                    # https://www.treasury.gov/resource-center/economic-policy/corp-bond-yield/Pages/TNC-YC.aspx
+                    # because the PchipInterpolator is not being used here and
+                    # the input par rates of the daily quotes used here differ
+                    # from the end of month quotes reported there.
+                    spt = self.monotone_convex.spot(y)
+                if len(self._spot_cache) < 1000:
+                    self._spot_cache[y] = spt
 
         return spt
 
     def forward(self, y):
         '''Return the continuously compounded annual forward rate.'''
 
-        if self.interest_rate == 'fixed':
-            return math.log(1 + self.adjust)
-        elif self.interest_rate == 'le':
+        if self._interest_rate_fixed:
+            return self._log_1_plus_adjust
+        elif self._interest_rate_le:
             return 0
         else:
             return self.monotone_convex.forward(y)
@@ -485,9 +524,9 @@ class YieldCurve(object):
 
         '''
 
-        if self.interest_rate == 'fixed':
+        if self._interest_rate_fixed:
             return 1 + self.adjust
-        elif self.interest_rate == 'le':
+        elif self._interest_rate_le:
             return 1
         else:
             return math.exp(self.monotone_convex.spot(y))

@@ -1,1 +1,0 @@
-returns_equity.py

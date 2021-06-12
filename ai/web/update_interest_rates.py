@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -46,10 +46,12 @@ def update(root_dir, write_stdout):
             data = loads(f.read())
         except IOError:
             data = {}
-        data['real_short_rate'] = real_short_rate
-        data['real_short_rate_date'] = real_yield_curve.yield_curve_date
-        data['nominal_short_rate'] = nominal_short_rate
-        data['nominal_short_rate_date'] = nominal_yield_curve.yield_curve_date
+        if data.get('real_short_rate_date', '2000-01-01') <= real_yield_curve.yield_curve_date:
+            data['real_short_rate'] = real_short_rate
+            data['real_short_rate_date'] = real_yield_curve.yield_curve_date
+        if data.get('nominal_short_rate_date', '2000-01-01') <= nominal_yield_curve.yield_curve_date:
+            data['nominal_short_rate'] = nominal_short_rate
+            data['nominal_short_rate_date'] = nominal_yield_curve.yield_curve_date
         with open(root_dir + '/market-data.json', 'w') as f:
             print(dumps(data, indent = 4, sort_keys = True), file = f)
 

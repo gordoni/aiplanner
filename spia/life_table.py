@@ -27,7 +27,22 @@
 
 import math
 
-from .income_annuity import IncomeAnnuity
+try:
+    import cython
+except ImportError:
+    class cython:
+        def cclass(x):
+            return x
+        def locals(**kwargs):
+            return lambda x: x
+        def bint():
+            pass
+        def int():
+            pass
+        def double():
+            pass
+
+from .factory import make_income_annuity
 from .yield_curve import YieldCurve
 
 iam2012_date = 2012
@@ -772,15 +787,29 @@ ssa2010_q = {
     ),
 }
 
+class UnableToAdjust(Exception):
+    pass
+
+@cython.cclass
 class LifeTable:
 
-    class UnableToAdjust(Exception):
-        pass
+    '''Provide access to the years to add to an age before looking the age
+    up in mortality tables.'''
+
+    @property
+    def age_add(self):
+
+        return self._age_add
+
+    @age_add.setter
+    def age_add(self, y):
+
+        self._age_add = y
 
     _age_add_cache = {}
 
-    def __init__(self, table, sex, age, *, death_age = float('inf'), ae = 'aer2005_13-grouped',
-                 le_set = None, le_add = 0, date_str = None, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
+    def __init__(self, table, sex, age = None, *, death_age = float('inf'), ae = 'aer2005_13-grouped',
+                 le_set = None, le_add = 0, date_str = None, age_add = 0, interpolate_q = True, alpha = 0, m = 82.3, b = 11.4):
         '''Initialize an object representing a life expectancy table for an
         individual.
 
@@ -830,7 +859,8 @@ class LifeTable:
 
         'sex' should be "male" or "female".
 
-        'age' should be expressed in years and may be fractional.
+        'age' should be expressed in years and may be fractional. It
+        is only relevant when 'le_set' or 'le_add' is specified.
 
         'death_age' can be set to force death to occur at the
         specified age.
@@ -848,61 +878,90 @@ class LifeTable:
         'le_set' or 'le_add' when using a cohort life table. Required
         with 'le_set' or 'le_add' when a cohort life table is used.
 
+        'age_add' is a fixed amount to add to all ages before looking
+        the ages up in mortality tables. Must not bbe specified if
+        'le_set' or 'le_add' is specified.
+
         If 'interpolate_q' is true q values will be interpolated
         (except when using "gomertz-makeham") for fractional ages,
         otherwise the nearest q value will be used.
 
-        Raises LifeTable.UnableToAdjust if it is not possible to
-        adjust the life table in accordance with 'le_set' and
-        'le_add'.
+        Raises UnableToAdjust if it is not possible to adjust the life
+        table in accordance with 'le_set' and 'le_add'.
 
         '''
 
         self.table = table
-        assert(table in ('fixed', 'iam2012-basic', 'ssa-cohort', 'ssa-period', 'gompertz-makeham'))
+        assert table in ('fixed', 'iam2012-basic', 'ssa-cohort', 'ssa-period', 'gompertz-makeham')
         self.sex = sex
-        self.age = age
+        self.age = -1 if age is None else age
         self.death_age = death_age
         self.ae = ae
             # 'none' - AER increases MWR 20% at age 90, and 5% at age 80.
             # 'aer2005_08-summary' - Use this value for compatibility with Opal.
             # 'aer2005_08-full' - Alters values 5% at age 85.
-        assert(ae in ('none', 'aer2005_13-grouped', 'aer2005_13-summary', 'aer2005_08-summary', 'aer2005_08-full'))
+        assert ae in ('none', 'aer2005_13-grouped', 'aer2005_13-summary', 'aer2005_08-summary', 'aer2005_08-full')
         self.le_set = le_set
         self.le_add = le_add
         self.date_str = date_str
+        self._age_add = age_add
         self.interpolate_q = interpolate_q  # Interpolation makes 0.5% difference for fractional ages. Set to false for compatibility with Opal.
         self.alpha = alpha
         self.m = m
         self.b = b
 
-        self.age_add = 0
-        if le_set == None and le_add == 0:
+        self.table_ssa_cohort = ssa_as120_q[self.sex] if self.table == 'ssa-cohort' else None
+        self.table_iam2012_basic = iam2012_basic_1000_q[self.sex] if self.table == 'iam2012-basic' else None
+        self.gompertz_makeham = self.table == 'gompertz-makeham'
+        self.fixed = self.table == 'fixed'
+        self.aer_years = aer2005_13_years if self.ae.startswith('aer2015_13') else aer2014_years
+        self.table_ae = None
+        self.table_ae_summary = None
+        self.table_ae_full = None
+        if self.ae == 'none':
+            pass
+        elif self.ae == 'aer2005_13-grouped':
+            self.table_ae = aer2005_13_actual_expected[self.sex]
+        elif self.ae == 'aer2005_13-summary':
+            self.table_ae_summary = aer2005_13_actual_expected[self.sex]['all']
+        elif self.ae == 'aer2005_08-summary':
+            self.table_ae_summary = aer2014_actual_expected[self.sex]['all']
+        elif self.ae == 'aer2005_08-full':
+            self.table_ae_full = aer2014_actual_expected[self.sex]
+        else:
+            assert False
+        self.projection_scale = projection_scale_g2[self.sex]
+
+        if le_set is None and le_add == 0:
             return
+
+        assert self._age_add == 0
+        assert age is not None
 
         key = (table, sex, age, death_age, ae, le_set, le_add, date_str, interpolate_q, alpha, m, b)
 
         try:
 
-            self.age_add = LifeTable._age_add_cache[key]
+            self._age_add = LifeTable._age_add_cache[key]
             return
 
         except KeyError:
 
             yield_curve = YieldCurve('le', date_str)
-            if le_set == None:
-                income_annuity = IncomeAnnuity(yield_curve, self, frequency = 1)
+            income_annuity: IncomeAnnuity
+            if le_set is None:
+                income_annuity = make_income_annuity(yield_curve, self, frequency = 1)
                 le_set = income_annuity.premium(1)
             le = le_set + le_add
             if le > 0:
                 age_add_lo = age_add_lo_start = -50
                 age_add_hi = age_add_hi_start = 50
                 for _ in range(50):
-                    self.age_add = (age_add_lo + age_add_hi) / 2
-                    self.age_add = max(self.age_add, - self.age)
+                    self._age_add = (age_add_lo + age_add_hi) / 2
+                    self._age_add = max(self._age_add, - self.age)
                     if not self.interpolate_q:
-                        self.age_add = math.floor(self.age_add)
-                    income_annuity = IncomeAnnuity(yield_curve, self, frequency = 1)
+                        self._age_add = math.floor(self._age_add)
+                    income_annuity = make_income_annuity(yield_curve, self, frequency = 1)
                     compute_le = income_annuity.premium(1)
                     if self.interpolate_q:
                         done = abs(le / compute_le - 1) < 1e-4
@@ -910,72 +969,82 @@ class LifeTable:
                         done = age_add_hi - age_add_lo <= 1 and age_add_lo != age_add_lo_start and age_add_hi != age_add_hi_start
                     if done:
                         if len(LifeTable._age_add_cache) < 1000:
-                            LifeTable._age_add_cache[key] = self.age_add
+                            LifeTable._age_add_cache[key] = self._age_add
                         return
                     if compute_le >= le:
-                        age_add_lo = self.age_add
+                        age_add_lo = self._age_add
                     else:
-                        age_add_hi = self.age_add
-            raise self.UnableToAdjust('Unable to adjust life expectancy.')
+                        age_add_hi = self._age_add
+            raise UnableToAdjust('Unable to adjust life expectancy.')
 
+    @cython.locals(year = cython.double, age = cython.int, contract_age = cython.double)
     def _q_int(self, year, age, contract_age):
-        if self.table == 'iam2012-basic':
+        q: cython.double; g2: cython.double
+        if self.table_iam2012_basic is not None:
             year = int(year)
             try:
-                q = iam2012_basic_1000_q[self.sex][age] / 1000.0
-                g2 = projection_scale_g2[self.sex][age]
+                q = self.table_iam2012_basic[age]
+                q /= 1000.0
+                g2 = self.projection_scale[age]
             except IndexError:
                 q = 1
             else:
+                contract_year: cython.double
                 contract_year = contract_age + 1  # AER starts at year 1.
-                if self.ae != 'none':
+                if (self.table_ae is not None) or (self.table_ae_summary is not None) or (self.table_ae_full is not None):
+                    c: cython.int; cy: cython.double
                     c = 0
-                    if self.ae == 'aer2005_13-summary':
-                        aer_years = aer2005_13_years
-                    else:
-                        aer_years = aer2014_years
-                    for cy in aer_years:
+                    for cy in self.aer_years:
                         if cy > contract_year:
                             break
                         c += 1
                     c -= 1
-                    if self.ae == 'aer2005_13-grouped':
+                    if self.table_ae is not None:
                         if age < 70:
                             aa = 0
                         elif age < 80:
                             aa = 70
                         else:
                             aa = 80
-                        ae = aer2005_13_actual_expected[self.sex][aa][c]
-                    elif self.ae == 'aer2005_13-summary':
-                        ae = aer2005_13_actual_expected[self.sex]['all'][c]
-                    elif self.ae == 'aer2005_08-summary':
-                        ae = aer2014_actual_expected[self.sex]['all'][c]
+                        ae = self.table_ae[aa][c]
+                    elif self.table_ae_summary is not None:
+                        ae = self.table_ae_summary[c]
                     else:
-                        age_5 = int(age / 5) * 5
-                        ascending_ae = (aer2014_actual_expected[self.sex].get(a, (None, ) * 4)[c] for a in range(age_5, 121, 5))
-                        try:
-                            ae = next(ratio for ratio in ascending_ae if ratio is not None)
-                        except StopIteration:
-                            descending_ae = (aer2014_actual_expected[self.sex].get(a, (None, ) * 4)[c] for a in range(age_5, -1, -5))
-                            ae = next(ratio for ratio in descending_ae if ratio is not None)
+                        age_5: cython.int
+                        age_5 = int(age / 5)
+                        age_5 *= 5
+                        ae = None
+                        for a in range(age_5, 121, 5):
+                            ae = self.table_ae_full.get(a, (None, ) * 4)[c]
+                            if ae is not None:
+                                break
+                        if ae is None:
+                            for a in range(age_5, -1, -5):
+                                ae = self.table_ae_full.get(a, (None, ) * 4)[c]
+                                if ae is not None:
+                                    break
+                        assert ae is not None
                 else:
                     ae = 1
                 q *= (1 - g2) ** (year - iam2012_date) * ae
-        elif self.table == 'ssa-cohort':
+        elif self.table_ssa_cohort is not None:
+            cohort: cython.double; cohort_int: cython.int
             cohort = year - age
             cohort -= 0.5  # Cohort is people born in a given year.
             cohort /= 10
             cohort_fract = cohort % 1
-            cohort_year = int(cohort) * 10
-            table = ssa_as120_q[self.sex]
-            table1 = table[cohort_year]
-            table2 = table[cohort_year + 10]
+            cohort_int = int(cohort)
+            cohort_year = cohort_int * 10
+            table1 = self.table_ssa_cohort[cohort_year]
+            table2 = self.table_ssa_cohort[cohort_year + 10]
             try:
-                q = (1 - cohort_fract) * table1[age] + cohort_fract * table2[age]
+                q1: cython.double; q2: cython.double
+                q1 = table1[age]
+                q2 = table2[age]
+                q = (1 - cohort_fract) * q1 + cohort_fract * q2
             except IndexError:
                 q = 1
-        elif self.table == 'fixed':
+        elif self.fixed:
             q = 0
         else:
             try:
@@ -984,7 +1053,8 @@ class LifeTable:
                 q = 1
         return min(q, 1)
 
-    def q(self, age, *, year = None, contract_age = None):
+    @cython.locals(age = cython.double, year = cython.double, contract_age = cython.double)
+    def q(self, age, *, year = -1, contract_age = -1):
         '''Return the probability of dying in the next year at possibly
         fractional age, 'age'.
 
@@ -998,19 +1068,23 @@ class LifeTable:
 
         '''
 
+        age_int: cython.int; q_int: cython.double; q: cython.double
         if age >= self.death_age:
             return 1
-        age += self.age_add
-        if self.table == 'gompertz-makeham':
+        age += self._age_add
+        if self.gompertz_makeham:
             return max(0, min(self.alpha + math.exp((age - self.m) / self.b) / self.b, 1));
         if self.interpolate_q:
             fract = age % 1
-            age = int(age)
-            q = (1 - fract) * self._q_int(year, age, contract_age)
+            age_int = int(age)
+            q_int = self._q_int(year, age_int, contract_age)
+            q = (1 - fract) * q_int
             if fract != 0:
-                q += fract * self._q_int(year, age + 1, contract_age)
+                age_int += 1
+                q_int = self._q_int(year, age_int, contract_age)
+                q += fract * q_int
             return q
         else:
             age += 0.5
-            age = int(age)
-            return self._q_int(year, age, contract_age)
+            age_int = int(age)
+            return self._q_int(year, age_int, contract_age)

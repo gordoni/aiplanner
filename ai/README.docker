@@ -9,14 +9,13 @@ Server requirements
 
 The api server can be run out of the box as a docker container on an 2
 core 4 thread 16G RAM Amazon m5.xlarge instance. Any Linux
-distribution should be able to be used. Because of the vagaries of
-Tensorflow the image itself is currently based on Ubuntu 16.04, but
-this shouldn't matter. You should allocate at least 20GB of storage,
-of which at least 10GB should be free.
+distribution can probably be used, but these instruction assume
+Ubuntu. You should allocate at least 30GB of storage, of which at
+least 20GB should be free.
 
 /api/infer requests rapidly return a recommended strategy for a given
 financial scenario. /api/evaluate requests perform a 30-60 second long
-Monte Carlo simulation of the recommended startegy and report its
+Monte Carlo simulation of the recommended strategy and report its
 performance.
 
 By default the system will run 1 concurrent infer job per core, and
@@ -38,37 +37,79 @@ c5.2xlarge instance or larger.
 Obtaining access to the api server docker image
 -----------------------------------------------
 
-You need to have a docker account ( http://hub.docker.com/ ) and be
-granted access to the private gordoni/aiplanner-apiserver repository.
+First, you will need to have an AWS EC2 account, be told the AIPlanner
+Account ID number, be told the repository name (frequently
+aiplanner-apiserver), and provide your AWS Account ID number in order
+to be granted access to the private
+<aiplanner_account_id>.dkr.ecr.us-east-2.amazonaws.com/<repository_name>
+repository.
+
+Next obtain a 12 hour ECR password:
+
+    # May first need to do:
+        sudo apt install awscli
+        export AWS_ACCESS_KEY_ID=<...>
+        export AWS_SECRET_ACCESS_KEY=<...>
+        # where AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY denote
+        # either the root user with programmatic access, or an IAM user
+        # with programmatic access with an attached policy that at a
+        # minimum allows the following:
+        #    Service: ECR
+        #    Actions:
+        #        ecr:BatchGetImage
+        #        ecr:GetDownloadUrlForLayer
+        #        ecr:GetAuthorizationToken
+        #    Resources:
+        #         arn:aws:ecr:us-east-2:<aiplanner_account_id>:repository/*
+    aws ecr get-login-password --region us-east-2
+        # The password will appear as a long string on the standard output.
 
 Then on the system where you wish to run the api server:
 
-    docker login
-    sudo docker pull gordoni/aiplanner-apiserver
-    docker logout
+    # May first need to do:
+        sudo apt install docker.io
+    sudo docker login --username AWS --password-stdin <aiplanner_account_id>.dkr.ecr.us-east-2.amazonaws.com
+        # Paste in the password from get-login-password above ending with <enter> and <ctrl>-D.
+    sudo docker pull <aiplanner_account_id>.dkr.ecr.us-east-2.amazonaws.com/<repository_name>
+    sudo docker logout <aiplanner_account_id>.dkr.ecr.us-east-2.amazonaws.com
 
 Obtaining the example configuration file and documentation
 ----------------------------------------------------------
 
 An example configuration file can be obtained using:
 
-    sudo docker run --rm gordoni/aiplanner-apiserver cat aiplanner/ai/aiplanner-example.yaml > aiplanner-example.yaml
+    sudo docker run --rm <aiplanner_account_id>.dkr.ecr.us-east-2.amazonaws.com/<repository_name> cat aiplanner/ai/aiplanner-example.yaml > aiplanner-example.yaml
 
 API user documentation can be obtained using:
 
-    sudo docker run --rm gordoni/aiplanner-apiserver cat aiplanner/ai/README.api > README.api
+    sudo docker run --rm <aiplanner_account_id>.dkr.ecr.us-east-2.amazonaws.com/<repository_name> cat aiplanner/ai/README.api > README.api
 
 Or to obtain the current version of this file:
 
-    sudo docker run --rm gordoni/aiplanner-apiserver cat aiplanner/ai/README.docker > README.docker
+    sudo docker run --rm <aiplanner_account_id>.dkr.ecr.us-east-2.amazonaws.com/<repository_name> cat aiplanner/ai/README.docker > README.docker
+
+Creating the shared directory
+-----------------------------
+
+The container accesses the ~/aiplanner-data directory of the host for
+its configuration file, the current market data file, stable storage
+of the email interest list, and for easy debugging the results
+directory.
+
+    mkdir ~/aiplaner-data
+
+Access to this directory is performed using uid:gid 1000:1000, so if
+it isn't already owned by this uid and gid, it needs to be.
+
+    sudo chown 1000:1000 ~/aiplanner-data
 
 Configuring the container
 -------------------------
 
 The container is configured using a file called aiplanner.yaml .
 
-    cp aiplanner-example.yaml aiplanner.yaml
-    [edit] aiplanner.yaml
+    cp aiplanner-example.yaml ~/aiplanner-data/aiplanner.yaml
+    [edit] ~/aiplanner-data/aiplanner.yaml
 
 If you make changes to the configuration file while the container is
 running you will need to stop and restart the container.
@@ -76,10 +117,14 @@ running you will need to stop and restart the container.
 Running the container
 ---------------------
 
+Create an empty AIPlanner email address interest list if desired:
+
+    touch $HOME/aiplanner-data/subscribe.txt
+
 To run the api server at http://localhost:3000/ and print out the
 container id:
 
-    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v $PWD/aiplanner.yaml:/aiplanner.yaml gordoni/aiplanner-apiserver
+    sudo docker run -d -t --restart=unless-stopped -p 127.0.0.1:3000:3000 -v ~/aiplanner-data:/home/aiplanner/aiplanner-data <aiplanner_account_id>.dkr.ecr.us-east-2.amazonaws.com/<repository_name>
 
 To confirm the container is running:
 
@@ -102,6 +147,15 @@ supporting proxy by using an Apache configuration file directive like:
 
     ProxyPass /api http://localhost:3000/api
 
+If the API server has been bundled with the Angular based web frontend
+access to the web frontend as well can be opened up by instead using:
+
+    ProxyPass / http://localhost:3000/
+    FallbackResource index.html
+
+See ai/web/sites-examples/ in the sources for some complete example
+Apache website configuration files.
+
 Terminating the container
 -------------------------
 
@@ -116,4 +170,4 @@ Remove it if you like:
 And if you wish to remove the image:
 
     sudo docker images
-    sudo docker rmi <image_id>
+    sudo docker image rm <image_id>

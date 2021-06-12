@@ -93,6 +93,10 @@
     padding: 5px;
 }
 
+.wages {
+    padding: 5px 0;
+}
+
 .buttons {
     text-align: center;
     padding: 5px 0px;
@@ -117,6 +121,15 @@
     border: 1px solid black;
     padding: 5px;
     text-align: center;
+}
+
+.consume table {
+    margin: auto;
+}
+
+.consume td {
+    padding: 0;
+    text-align: left;
 }
 
 .market table {

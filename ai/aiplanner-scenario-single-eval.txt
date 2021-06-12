@@ -47,10 +47,10 @@ master_stocks_price = 1
 master_stocks_sigma_level_type = 'value'
 master_stocks_sigma_level_value = 1
 master_real_short_rate_type = 'value'
-master_real_short_rate_value = 0.010
-    # 2018-12-31 5 year rate - https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=realyield
+master_real_short_rate_value = -0.016
+    # 2020-12-31 5 year rate - https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=realyield
 master_inflation_short_rate_type = 'value'
-master_inflation_short_rate_value = 0.016
-    # 2018-12-31 1 year nominal less real short rate above - https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=yield
+master_inflation_short_rate_value = 0.017
+    # 2020-12-31 1 year nominal less real short rate above - https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=yield
 
 master_gamma = 3.0

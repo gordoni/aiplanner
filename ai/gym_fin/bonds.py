@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -12,11 +12,57 @@ from math import exp, log, sqrt
 from random import normalvariate, seed
 from statistics import mean, stdev
 
+import numpy as np
+
+import cython
+
 from spia import YieldCurve
 
-from ai.gym_fin.ou_process import OUProcess
+from ai.gym_fin.factory_ou_process import make_ou_process
 
-class Bonds:
+@cython.cclass
+class BondsBase:
+
+    # Cython - Make interest_rate into a property so it can be accessed by the spias module as a surrogate YieldCurve.
+
+    @property
+    def interest_rate(self):
+
+        return self._interest_rate
+
+    @interest_rate.setter
+    def interest_rate(self, interest_rate):
+
+        self._interest_rate = interest_rate
+
+    def __init__(self):
+
+        self.e = exp(1) # Cython - self.e ** x which uses the C pow function is faster than calling the Python exp(x).
+
+    def reset(self):
+
+        assert False
+
+    def step(self):
+
+        assert False
+
+    @cython.locals(t = cython.double)
+    def discount_rate(self, t):
+
+        assert False
+
+    @cython.locals(duration = cython.double)
+    def sample(self, duration):
+
+        assert False
+
+    def observe(self):
+
+        assert False
+
+@cython.cclass
+class Bonds(BondsBase):
     '''Short rate models - https://en.wikipedia.org/wiki/Short-rate_model .
 
     Hull-White one-factor model - https://en.wikipedia.org/wiki/Hull%E2%80%93White_model .
@@ -62,7 +108,14 @@ class Bonds:
         self.static_bonds = static_bonds
         self.time_period = time_period
 
-        self.mean_short_interest_rate = self.yield_curve.spot(0)
+        super().__init__()
+
+        self.interest_rate = None
+
+        self.mean_short_interest_rate = log(self.yield_curve.discount_rate(0))
+
+        self.oup = make_ou_process(self.time_period, self.a, self.sigma)
+            # Underlying random movement in short interest rates.
 
         self._sr_cache = {}
 
@@ -77,33 +130,25 @@ class Bonds:
         elif self.r0_type == 'sample':
             self.sir0 = normalvariate(self.sir_init, self.sigma / sqrt(2 * self.a))
         elif self.r0_type == 'value':
+            assert self.r0 != -1
             self.sir0 = self.r0
         else:
             assert False, 'Invalid short rate type.'
 
         self.t = 0
-        self.oup = OUProcess(self.time_period, self.a, self.sigma, mu = self.sir_init, x = self.sir0, norm = 0 if self.static_bonds else None)
-            # Underlying random movement in short interest rates.
+        self.oup.reset(mu = self.sir_init, x = self.sir0, norm = 0 if self.static_bonds else None)
 
-        self._lpv_cache = None
-        self._spot_cache = {}
+        self._lpv_cache_valid = False
+        self._lpv_cache = -1
+        self._discount_cache = {}
 
-    def _log_p(self, t):
-        '''Return the log present value of a zero coupon bound paying 1 at
-        time t according to the typical yield curve.
+    @cython.locals(next = cython.bint)
+    def _short_interest_rate(self, next = False):
 
-        '''
+        assert False
 
-        try:
-            sr = self._sr_cache[t]
-        except KeyError:
-            sr = self.yield_curve.spot(t)
-            if len(self._sr_cache) < 1000:
-                self._sr_cache[t] = sr
-
-        return - t * (sr + self.adjust)
-
-    def _log_present_value(self, t, *, next = False):
+    @cython.locals(t = cython.double, next = cython.bint)
+    def _log_present_value(self, t, next = False):
         '''Return the present value of a zero coupon bond paying 1 at time t
         into the future when the short term interest rates are given
         by the underlying OU process current or next value depending
@@ -111,34 +156,53 @@ class Bonds:
 
         '''
 
+        sir: cython.double
         if next:
-            sir = self._short_interest_rate(next = True)
-        elif self._lpv_cache != None:
+            sir = self._short_interest_rate(True)
+        elif self._lpv_cache_valid:
             sir = self._lpv_cache
         else:
             sir = self._short_interest_rate()
+            self._lpv_cache_valid = True
             self._lpv_cache = sir
 
         #  https://en.wikipedia.org/wiki/Hull%E2%80%93White_model P(0, T).
-        B = (1 - exp(- self.a * t)) / self.a
-        log_P = self._log_p(t) + B * (self.sir_init - sir)
+        sr: cython.double; log_P: cython.double; ex: cython.double; B: cython.double
+        try:
+            sr = self._sr_cache[t]
+        except KeyError:
+            sr = self.yield_curve.spot(t)
+            if len(self._sr_cache) < 1000:
+                self._sr_cache[t] = sr
+        log_P = - t * (sr + self.adjust)
+        ex = self.e ** (- self.a * t)
+        B = (1 - ex) / self.a
+        log_P += B * (self.sir_init - sir)
 
         return log_P
 
-    def spot(self, t):
-        '''Return the current continuously compounded spot rate of a zero
-        coupon bond paying 1 at timet t.
+    @cython.locals(t = cython.double)
+    def discount_rate(self, t):
+        '''Return 1 + the annual spot discount rate of a zero coupon bond
+        paying 1 at timet t.
 
         '''
 
+        dr: cython.double
         try:
-            spt = self._spot_cache[t]
+            dr = self._discount_cache[t]
         except KeyError:
-            spt = - self._log_present_value(t) / t if t > 0 else self._short_interest_rate()
-            if len(self._spot_cache) < 1000:
-                self._spot_cache[t] = spt
+            lpv: cython.double
+            if t > 0:
+                lpv = self._log_present_value(t)
+                lpv = - lpv / t
+            else:
+                lpv = self._short_interest_rate()
+            dr = self.e ** lpv
+            if len(self._discount_cache) < 1000:
+                self._discount_cache[t] = dr
 
-        return spt
+        return dr
 
     def _yield(self, t):
         '''Return the current continuously compounded yield of a zero coupon
@@ -148,7 +212,8 @@ class Bonds:
 
         return - self._log_present_value(t) / t if t > 0 else self._short_interest_rate()
 
-    def sample(self, duration = 7):
+    @cython.locals(duration = cython.double)
+    def sample(self, duration):
         '''Current real return for a zero coupon bond with duration
         duration.
 
@@ -156,7 +221,11 @@ class Bonds:
 
         assert duration >= self.time_period
 
-        return exp(self._log_present_value(duration - self.time_period, next = True) - self._log_present_value(duration))
+        nxt: cython.double; cur: cython.double
+        nxt = self._log_present_value(duration - self.time_period, True)
+        cur = self._log_present_value(duration)
+
+        return self.e ** (nxt - cur)
 
     def step(self):
 
@@ -164,8 +233,8 @@ class Bonds:
             return
 
         self.t += self.time_period
-        self._lpv_cache = None
-        self._spot_cache = {}
+        self._lpv_cache_valid = False
+        self._discount_cache = {}
         self.oup.step()
 
     def _report(self):
@@ -222,7 +291,7 @@ class Bonds:
                     for _ in range(10000):
                         r = self._yield(duration)
                         self.step()
-                        if r_old != None:
+                        if r_old is not None:
                             dr.append(r - r_old)
                         r_old = r
                     dr_expect = []
@@ -230,7 +299,7 @@ class Bonds:
                     for year in range(year_low - 1, year_high + 1):
                         yield_curve = self._deflate(YieldCurve(self.yield_curve.interest_rate, '{}-12-31'.format(year)))
                         r_expect = log(yield_curve.discount_rate(duration)) / self._inflation_adjust_annual(year)
-                        if r_expect_old != None:
+                        if r_expect_old is not None:
                             dr_expect.append(r_expect - r_expect_old)
                         r_expect_old = r_expect
                     print(duration, stdev(dr_expect), stdev(dr))
@@ -249,7 +318,7 @@ class Bonds:
                     for year in range(year_low - 1, year_high + 1):
                         yield_curve = self._deflate(YieldCurve(self.yield_curve.interest_rate, '{}-12-31'.format(year)))
                         r_expect = yield_curve.discount_rate(duration - 1)
-                        if r_expect_old != None:
+                        if r_expect_old is not None:
                             ret_expect.append(r_expect ** (1 - duration) / r_expect_old ** - duration / self._inflation_adjust_annual(year))
                         r_expect_old = yield_curve.discount_rate(duration)
                     print(duration, mean(ret_expect), mean(ret), stdev(ret_expect), stdev(ret))
@@ -260,17 +329,18 @@ class Bonds:
         print('sample returns')
         print('short_interest_rate 20_year_real_return 20_year_yield')
         for _ in range(50):
-            print(self._short_interest_rate(next = True), self.sample(20), self._yield(20))
+            print(self._short_interest_rate(True), self.sample(20), self._yield(20))
             self.step()
 
         self.reset()
 
+@cython.cclass
 class RealBonds(Bonds):
 
-    def __init__(self, *, a = 0.14, sigma = 0.011, yield_curve, r0_type = 'current', r0 = None, standard_error = 0, static_bonds = False, time_period = 1):
+    def __init__(self, *, a = 0.14, sigma = 0.011, yield_curve, r0_type = 'current', r0 = -1, standard_error = 0, static_bonds = False, time_period = 1):
         '''Chosen value of sigma, 0.011, intended to produce a short term real
         yield volatility of 0.9-1.0%. The measured value over
-        2005-2019 was 0.99%. Obtained value is 0.99%.
+        2005-2019 was 0.99%. Obtained value is 1.00%.
 
         Chosen value of a, 0.14, intended to produce a long term (15
         year) real return standard deviation of about 6.5%. The observed
@@ -278,19 +348,20 @@ class RealBonds(Bonds):
         real nominal bond observed standard deviation is 14.9% whereas
         according to the Credit Suisse Yearbook 10.9% is more typical,
         so by a simple scaling 6.5% seems a reasonable expectation for
-        real bonds. Obtained value is 6.7%.
+        real bonds. Obtained value is 6.6%.
 
         Chosen default yield curve intended to be indicative of the
         present era.
 
         '''
 
-        self.interest_rate = 'real'
-
         super().__init__(a = a, sigma = sigma, yield_curve = yield_curve, r0_type = r0_type, r0 = r0, standard_error = standard_error, static_bonds = static_bonds,
             time_period = time_period)
 
-    def _short_interest_rate(self, *, next = False):
+        self.interest_rate = 'real'
+
+    @cython.locals(next = cython.bint)
+    def _short_interest_rate(self, next = False):
         '''Return the annualized continuously compounded current short
         interest rate given the underlying OU process.
 
@@ -307,7 +378,7 @@ class RealBonds(Bonds):
 
     def observe(self):
 
-        return (self._short_interest_rate(), )
+        return self._short_interest_rate()
 
     def _deflate(self, yield_curve):
 
@@ -321,60 +392,92 @@ class RealBonds(Bonds):
 
         return 1
 
+@cython.cclass
 class YieldCurveSum:
+#class YieldCurveSum(YieldCurve):
+    # Would have liked this to inherit fromYieldCurve, but that would have required the Cython pxd file cimporting YieldCurve, preventing us from importing it above.
+
+    @property
+    def date(self):
+
+        return self._date
+
+    @property
+    def date_low(self):
+
+        return self._date_low
+
+    @property
+    def interest_rate(self):
+
+        return self._interest_rate
 
     def __init__(self, yield_curve1, yield_curve2, *, weight = 1, offset = 0):
 
         self.yield_curve1 = yield_curve1
         self.yield_curve2 = yield_curve2
         self.weight = weight
+        assert weight in (-1, 0, 1)
         self.offset = offset
 
-        self.interest_rate = self.yield_curve1.interest_rate
-        self.date = yield_curve1.date
-        self.date_low = yield_curve1.date_low
+        self._interest_rate = self.yield_curve1.interest_rate
+        self._date = yield_curve1.date
+        self._date_low = yield_curve1.date_low
+        self.exp_offset = exp(self.offset)
 
     def spot(self, y):
 
-        return self.yield_curve1.spot(y) + self.weight * self.yield_curve2.spot(y) + self.offset
+        spot1: cython.double; spot2: cython.double
+        spot1 = self.yield_curve1.spot(y)
+        spot2 = self.yield_curve2.spot(y)
+        return spot1 + self.weight * spot2 + self.offset
 
     def forward(self, y):
 
-        return self.yield_curve1.forward(y) + self.weight * self.yield_curve2.forward(y) + self.offset
+        forward1: cython.double; forward2: cython.double
+        forward1 = self.yield_curve1.forward(y)
+        forward2 = self.yield_curve2.forward(y)
+        return forward1 + self.weight * forward2 + self.offset
 
     def discount_rate(self, y):
 
-        return self.yield_curve1.discount_rate(y) * self.yield_curve2.discount_rate(y) ** self.weight * exp(self.offset)
+        discount1: cython.double; discount2: cython.double
+        discount1 = self.yield_curve1.discount_rate(y)
+        discount2 = self.yield_curve2.discount_rate(y)
+        if self.weight == -1:
+            return discount1 / discount2 * self.exp_offset
+        elif self.weight == 0:
+            return discount1 * self.exp_offset
+        else:
+            return discount1 * discount2 * self.exp_offset
 
+@cython.cclass
 class Inflation(Bonds):
 
-    def __init__(self, real_bonds, *, inflation_a = 0.14, inflation_sigma = 0.015, bond_a = 0.14, bond_sigma = 0.015, model_bond_volatility = True,
-        nominal_yield_curve, inflation_risk_premium = 0, real_liquidity_premium = 0, r0_type = 'current', r0 = None, standard_error = 0, static_bonds = False,
+    @cython.locals(real_bonds = RealBonds)
+    def __init__(self, real_bonds, *, inflation_a = 0.12, inflation_sigma = 0.013, bond_a = 0.12, bond_sigma = 0.013, model_bond_volatility = True,
+        nominal_yield_curve, inflation_risk_premium = 0, real_liquidity_premium = 0, r0_type = 'current', r0 = -1, standard_error = 0, static_bonds = False,
         time_period = 1):
         '''Keeping inflation parameters the same as the bond parameters
         simplifies the model.
 
-        Chosen value for inflation_a, 0.14, the same as in the real case.
+        Chosen value of inflation_sigma, 0.013, produces a reasonable
+        estimate of the the short term inflation yield volatility (as
+        used to provide nominal bond volatility). Measured value over
+        2005-2019 was 1.23%, compared to a obtained value of 1.20%.
 
-        Chosen value of inflation_sigma, 0.015, produces a reasonable
+        Chosen value of inflation_a, 0.12, produces a reasonable
         estimate of the long term (15 year) standard deviation of the
-        inflation rate (as modeled to provide inflation
-        volatility). Measured value was 0.55%. Obtained value was
-        1.20%. This seems quite reasonable given inflation has
-        recently been constrained. Additionally. the measured short
-        term inflation yield volatility is 1.23%, compared to a
-        obtained value of 1.34%.
-
-        Chosen value of bond_a, 0.14, the same as in the real case.
-
-        Chosen value of bond_sigma, 0.015, intended to produce a long
-        term (15 year) nominal bond real return standard deviation of
-        about 11%. The measured value over 2005-2019 was 14.4% (when
-        rates were volatile). Obtained value is 11.0%. As in the real
-        case this is less than the observed value, and is inline with
-        the 10.9% standard deviation for long term government bonds
-        reported in the Credit Suisse Global Investment Returns
-        Yearbook 2019.
+        inflation rate. Measured value over 2005-2019 was
+        0.55%. Obtained value was 1.24%. This seems quite reasonable
+        given inflation has recently been constrained. Additionally,
+        chosen value intended to produce a long term (15 year) nominal
+        bond real return standard deviation of about 11%. The measured
+        value over 2005-2019 was 14.4% (when rates were
+        volatile). Obtained value is 10.8%. As in the real case this
+        is less than the observed value, and is inline with the 10.9%
+        standard deviation for long term government bonds reported in
+        the Credit Suisse Global Investment Returns Yearbook 2019.
 
         model_bond_volatility specifies whether the process should be
         such as to provide a reasonable model for the long term
@@ -396,8 +499,9 @@ class Inflation(Bonds):
         self.nominal_yield_curve = nominal_yield_curve
         self.inflation_risk_premium = inflation_risk_premium
         self.real_liquidity_premium = real_liquidity_premium
+        self.model_bond_volatility = model_bond_volatility
 
-        if model_bond_volatility:
+        if self.model_bond_volatility:
             a = bond_a
             sigma = bond_sigma
         else:
@@ -407,26 +511,49 @@ class Inflation(Bonds):
         self.nominal_premium = self.inflation_risk_premium - self.real_liquidity_premium
         deflated_yield_curve = YieldCurveSum(nominal_yield_curve, real_bonds.yield_curve, weight = -1, offset = - self.nominal_premium)
 
-        self.interest_rate = 'inflation'
+        self._sir_cache = {}
+
+        if not self.model_bond_volatility:
+            # Inflation model OU Process tracks modeled nominal bond standard deviation OU Process.
+            self.inflation_oup = make_ou_process(time_period, self.inflation_a, self.inflation_sigma)
 
         super().__init__(a = a, sigma = sigma, yield_curve = deflated_yield_curve, r0_type = r0_type, r0 = r0, standard_error = standard_error,
             static_bonds = static_bonds, time_period = time_period)
+
+        self.interest_rate = 'inflation'
 
         self.reset()
 
     def reset(self):
 
+        #super(Inflation, self).reset() # Cython needed super() args because reset() was cpdefed.
         super().reset()
 
-        # Inflation model OU Process tracks modeled nominal bond standard deviation OU Process.
-        self.inflation_oup = OUProcess(self.time_period, self.inflation_a, self.inflation_sigma, mu = self.sir_init, x = self.sir0, norm = self.oup.norm)
+        if not self.model_bond_volatility:
+            self.inflation_oup.reset(mu = self.sir_init, x = self.sir0, norm = self.oup.norm)
+        else:
+            self.inflation_oup = self.oup
 
-    def _sir(self, t, a, sigma):
+    @cython.locals(t = cython.double, a = cython.double, sigma = cython.double)
+    def _sir_no_adjust(self, t, a, sigma):
 
-        # https://www.math.nyu.edu/~benartzi/Slides10.3.pdf page 11.
-        return self.adjust + self.yield_curve.forward(t) + (sigma * (1 - exp(- a * t)) / a) ** 2 / 2
+        sir: cython.double
+        try:
+            sir = self._sir_cache[t]
+        except KeyError:
+            # # https://www.math.nyu.edu/~benartzi/Slides10.3.pdf page 11.
+            # forward: cython.double; ex: cython.double
+            # forward = self.yield_curve.forward(t)
+            # ex = self.e ** (- a * t)
+            # sir = forward + (sigma * (1 - ex) / a) ** 2 / 2
+            sir = self.yield_curve.forward(t)
+            if len(self._sir_cache) < 1000:
+                self._sir_cache[t] = sir
 
-    def _short_interest_rate(self, *, next = False):
+        return sir
+
+    @cython.locals(next = cython.bint)
+    def _short_interest_rate(self, next = False):
         '''Return the annualized continuously compounded current short
         interest rate given the underlying OU process.
 
@@ -435,6 +562,7 @@ class Inflation(Bonds):
 
         '''
 
+        t: cython.double; x: cython.double
         if next and not self.static_bonds:
             t = self.t + self.time_period
             x = self.oup.next_x
@@ -442,7 +570,10 @@ class Inflation(Bonds):
             t = self.t
             x = self.oup.x
 
-        return self._sir(t, self.a, self.sigma) + x - self.sir_init
+        sir: cython.double
+        sir = self._sir_no_adjust(t, self.a, self.sigma)
+
+        return self.adjust + sir + x - self.sir_init
 
     def _model_short_interest_rate(self):
         '''Current short interest rate based on fitting the inflation model,
@@ -450,33 +581,52 @@ class Inflation(Bonds):
 
         '''
 
-        return self._sir(self.t, self.inflation_a, self.inflation_sigma) + self.inflation_oup.x - self.sir_init
-
-    def _present_value(self, t):
-
-        sir = self._model_short_interest_rate()
-
-        #  https://en.wikipedia.org/wiki/Hull%E2%80%93White_model P(0, T).
-        B = (1 - exp(- self.inflation_a * t)) / self.inflation_a
-        P = exp(self._log_p(t) + B * (self.sir_init - sir))
-
-        return P
+        sir: cython.double; x: cython.double
+        sir = self._sir_no_adjust(self.t, self.inflation_a, self.inflation_sigma)
+        x = self.inflation_oup.x
+        return self.adjust + sir + x - self.sir_init
 
     def inflation(self):
 
-        return 1 / self._present_value(self.time_period)
+        sir: cython.double
+        sir = self._model_short_interest_rate()
+
+        t: cython.double
+        t = self.time_period
+
+        #  https://en.wikipedia.org/wiki/Hull%E2%80%93White_model P(0, T).
+        sr: cython.double; log_P: cython.double; ex: cython.double; B: cython.double
+        try:
+            sr = self._sr_cache[t]
+        except KeyError:
+            sr = self.yield_curve.spot(t)
+            if len(self._sr_cache) < 1000:
+                self._sr_cache[t] = sr
+        log_P = - t * (sr + self.adjust)
+        ex = self.e ** (- self.inflation_a * t)
+        B = (1 - ex) / self.inflation_a
+        log_P += B * (self.sir_init - sir)
+
+        return self.e ** - log_P
+
+    def inflation_long_run_expectation(self):
+
+        infl = self.yield_curve.forward(100)
+
+        return self.e ** infl
 
     def step(self):
 
         if self.static_bonds:
             return
 
-        super().step()
-        self.inflation_oup.step(norm = self.oup.norm)
+        super(Inflation, self).step()
+        if not self.model_bond_volatility:
+            self.inflation_oup.step(norm = self.oup.norm)
 
     def observe(self):
 
-        return (self._model_short_interest_rate(), )
+        return self._model_short_interest_rate()
 
     def _deflate(self, yield_curve):
 
@@ -510,10 +660,13 @@ inflation_rate = {
     2017: 0.021,
     2018: 0.019,
     2019: 0.023,
+    2020: 0.014,
 }
 
+@cython.cclass
 class NominalBonds(Bonds):
 
+    @cython.locals(inflation = Inflation)
     def __init__(self, real_bonds, inflation, *, real_bonds_adjust = 0, nominal_bonds_adjust = 0, time_period = 1):
 
         self.real_bonds = real_bonds
@@ -521,6 +674,8 @@ class NominalBonds(Bonds):
         self.real_bonds_adjust = real_bonds_adjust
         self.nominal_bonds_adjust = nominal_bonds_adjust
         self.time_period = time_period
+
+        super(Bonds, self).__init__()
 
         self.interest_rate = 'nominal'
 
@@ -533,15 +688,22 @@ class NominalBonds(Bonds):
         self.real_bonds.reset()
         self.inflation.reset()
 
-        self._spot_cache = {}
+        self._discount_cache = {}
 
-    def _short_interest_rate(self, *, next = False):
+    def _short_interest_rate(self, next = False):
 
-        return self.real_bonds._short_interest_rate(next = next) - self.real_bonds_adjust + self.inflation._short_interest_rate(next = next) + self.inflation.nominal_premium + self.nominal_bonds_adjust
+        real_sir: cython.double; inflation_sir: cython.double
+        real_sir = self.real_bonds._short_interest_rate(next)
+        inflation_sir = self.inflation._short_interest_rate(next)
+        return real_sir - self.real_bonds_adjust + inflation_sir + self.inflation.nominal_premium + self.nominal_bonds_adjust
 
-    def _log_present_value(self, t, *, next = False):
+    @cython.locals(t = cython.double)
+    def _log_present_value(self, t, next = False):
 
-        return self.real_bonds._log_present_value(t, next = next) + self.inflation._log_present_value(t, next = next) - (self.inflation.nominal_premium + self.nominal_bonds_adjust) * t
+        real_pv: cython.double; inflation_pv: cython.double
+        real_pv = self.real_bonds._log_present_value(t, next)
+        inflation_pv = self.inflation._log_present_value(t, next)
+        return real_pv + inflation_pv - (self.inflation.nominal_premium + self.nominal_bonds_adjust) * t
 
     def _yield(self, t):
 
@@ -549,23 +711,28 @@ class NominalBonds(Bonds):
 
         return _yield - self.inflation._yield(t) - self.real_bonds_adjust
 
-    def sample(self, duration = 7):
+    @cython.locals(duration = cython.double)
+    def sample(self, duration):
 
-        sample = self.real_bonds.sample(duration) * self.inflation.sample(duration)
-        period_inflation_reduction = exp(self.inflation._log_present_value(self.time_period) + (self.inflation.nominal_premium + self.nominal_bonds_adjust - self.real_bonds_adjust) * self.time_period)
+        real_sample: cython.double; inflation_sample: cython.double; inflation_log_pv: cython.double; period_inflation_reduction: cython.double
+        real_sample = self.real_bonds.sample(duration)
+        inflation_sample = self.inflation.sample(duration)
+        inflation_log_pv = self.inflation._log_present_value(self.time_period)
+        period_inflation_reduction = self.e ** \
+            (inflation_log_pv + (self.inflation.nominal_premium + self.nominal_bonds_adjust - self.real_bonds_adjust) * self.time_period)
 
-        return sample * period_inflation_reduction
+        return real_sample * inflation_sample * period_inflation_reduction
 
     def step(self):
 
         self.real_bonds.step()
         self.inflation.step()
 
-        self._spot_cache = {}
+        self._discount_cache = {}
 
     def observe(self):
 
-        return ()
+        return 0.0
 
     def _deflate(self, yield_curve):
 
@@ -579,18 +746,25 @@ class NominalBonds(Bonds):
 
         return 1 + inflation_rate[year]
 
-class CorporateBonds:
+@cython.cclass
+class CorporateBonds(BondsBase):
 
     def __init__(self, nominal_bonds, corporate_nominal_spread):
 
         self.nominal_bonds = nominal_bonds
         self.corporate_nominal_spread = corporate_nominal_spread
 
+        super().__init__()
+
+        self.exp_spread = exp(self.corporate_nominal_spread)
+
         self.interest_rate = 'corporate'
 
-    def spot(self, t):
+    def discount_rate(self, t):
 
-        return self.nominal_bonds.spot(t) * (1 + self.corporate_nominal_spread)
+        nominal_discount: cython.double
+        nominal_discount = self.nominal_bonds.discount_rate(t)
+        return nominal_discount * self.exp_spread
 
 class BondsMeasuredInNominalTerms(Bonds):
 
@@ -600,6 +774,8 @@ class BondsMeasuredInNominalTerms(Bonds):
         self.inflation = inflation
         self.time_period = self.bonds.time_period
 
+        super(Bonds, self).__init__()
+
         self.yield_curve = YieldCurveSum(bonds.yield_curve, inflation.yield_curve)
 
     def reset(self):
@@ -607,15 +783,15 @@ class BondsMeasuredInNominalTerms(Bonds):
         self.bonds.reset()
         self.inflation.reset()
 
-    def _short_interest_rate(self, *, next = False):
+    def _short_interest_rate(self, next = False):
 
-        return self.bonds._short_interest_rate(next = next) + self.inflation._short_interest_rate(next = next)
+        return self.bonds._short_interest_rate(next) + self.inflation._short_interest_rate(next)
 
     def _yield(self, t):
 
         return self.bonds._yield(t) + self.inflation._yield(t)
 
-    def sample(self, duration = 7):
+    def sample(self, duration):
 
         sample = self.bonds.sample(duration)
         period_inflation = exp(self.inflation._log_present_value(self.time_period))
@@ -639,18 +815,21 @@ class BondsMeasuredInNominalTerms(Bonds):
 
         return self.bonds._inflation_adjust_annual(year)
 
+@cython.cclass
 class BondsSet:
 
     def __init__(self, need_real = True, need_nominal = True, need_inflation = True, need_corporate = True,
-        fixed_real_bonds_rate = None, fixed_nominal_bonds_rate = None,
+        fixed_real_bonds_rate = -1, fixed_nominal_bonds_rate = -1,
         real_bonds_adjust = 0, inflation_adjust = 0, nominal_bonds_adjust = 0, corporate_nominal_spread = 0,
-        static_bonds = False, date_str = '2019-12-31', date_str_low = '2005-01-01',
-        real_r0_type = 'current', inflation_r0_type = 'current', real_standard_error = 0, inflation_standard_error = 0, time_period = 1):
+        static_bonds = False, date_str = '2020-12-31', date_str_low = '2018-01-01',
+        real_r0_type = 'current', real_short_rate = -1, real_standard_error = 0,
+        inflation_r0_type = 'current', inflation_short_rate = -1, inflation_standard_error = 0,
+        time_period = 1):
         '''Create a BondsSet.
 
             fixed_real_bonds_rate and fixed_nominal_bonds_rate:
 
-                If not None use for a constant yield curve. Does not
+                If not -1 use for a constant yield curve. Does not
                 supress random Hull-White temporal variability.
 
             real_bonds_adjust, inflation_adjust, and
@@ -667,11 +846,18 @@ class BondsSet:
                 Last and first date to use in construcing the typical
                 yield curve to use.
 
+        real_r0_type, real_short_rate, real_standard_error,
+        inflation_r0_type, inflation_short_rate,
+        inflation_standard_error:
+
+               r0_type, r0, and standard_error parameters for real and
+               inflation Bonds objects.
+
         Returns a BondsSet object having attributes "real", "nominal",
         "corporate", and "inflation" representing a bond and inflation
         model. They are each either None if they are not needed and
         have not been computed or provide the following methods
-        (except for "corporate" which only provides spot()):
+        (except for "corporate" which only provides discount_rate()):
 
             reset()
 
@@ -681,13 +867,12 @@ class BondsSet:
 
                 Advance by time time_period.
 
-            spot(t)
+            discount_rate(t)
 
-                Return the continuously compounded annualized spot
-                rate over term t years for bonds of the appropriate
-                type.
+                Return the 1 + the annualized spot rate over term t
+                years for bonds of the appropriate type.
 
-            sample(duration = 7)
+            sample(duration)
 
                 Returns the time_period multipicative real return
                 (change in value) for zero coupon bonds of the
@@ -698,9 +883,9 @@ class BondsSet:
 
             observe()
 
-                Returns a tuple. Current short real interest rate or
-                short inflation rate as appropriate. For nominal bonds
-                the tuple is empty.
+                Returns current short real interest rate or short
+                inflation rate as appropriate. For nominal bonds zero
+                is returned.
 
         The nominal_bonds model need to be kept in sync with the real
         bonds and inflation models. Calling reset() or step() on
@@ -709,18 +894,21 @@ class BondsSet:
         also be called separately.
 
         Inflation represents the nominal value of a bond that will
-        earn interest at the rate of inflation. inflation defines an
-        additional method:
+        earn interest at the rate of inflation. inflation defines two
+        additional methods:
 
             inflation()
 
                 Returns the inflation rate factor to be experienced
                 over the the next time period of length time_period.
 
+            inflation_long_run_expectation():
+
+                Returns the long run annual inflation expectation
+                factor.
+
         '''
 
-        self.fixed_real_bonds_rate = fixed_real_bonds_rate
-        self.fixed_nominal_bonds_rate = fixed_nominal_bonds_rate
         self.time_period = time_period
 
         if need_corporate:
@@ -731,24 +919,25 @@ class BondsSet:
             need_real = True
 
         if need_real:
-            if fixed_real_bonds_rate != None:
+            if fixed_real_bonds_rate != -1:
                 adjust = (1 + fixed_real_bonds_rate) * (1 + real_bonds_adjust) - 1
                 yield_curve = YieldCurve('fixed', '2017-12-31', adjust = adjust)
             else:
                 yield_curve = YieldCurve('real', date_str, date_str_low = date_str_low, adjust = real_bonds_adjust, permit_stale_days = 2)
-            self.real = RealBonds(yield_curve = yield_curve, static_bonds = static_bonds, r0_type = real_r0_type, standard_error = real_standard_error,
-                time_period = time_period)
+            self.real = RealBonds(yield_curve = yield_curve, static_bonds = static_bonds, r0_type = real_r0_type, r0 = real_short_rate,
+                standard_error = real_standard_error, time_period = time_period)
         else:
             self.real = None
 
         if need_inflation:
-            if fixed_nominal_bonds_rate != None:
+            if fixed_nominal_bonds_rate != -1:
                 adjust = (1 + fixed_nominal_bonds_rate) * (1 + real_bonds_adjust) - 1
                 nominal_yield_curve = YieldCurve('fixed', '2017-12-31', adjust = adjust)
             else:
                 nominal_yield_curve = YieldCurve('nominal', date_str, date_str_low = date_str_low, adjust = real_bonds_adjust, permit_stale_days = 2)
             inflation_risk_premium = - log(1 + inflation_adjust)
-            self.inflation = Inflation(self.real, nominal_yield_curve = nominal_yield_curve, inflation_risk_premium = inflation_risk_premium, r0_type = inflation_r0_type,
+            self.inflation = Inflation(self.real, nominal_yield_curve = nominal_yield_curve, inflation_risk_premium = inflation_risk_premium,
+                r0_type = inflation_r0_type, r0 = inflation_short_rate,
                 standard_error = inflation_standard_error, static_bonds = static_bonds, time_period = time_period)
         else:
             self.inflation = None
@@ -766,23 +955,10 @@ class BondsSet:
         else:
             self.corporate = None
 
-    def update(self, *, fixed_real_bonds_rate, fixed_nominal_bonds_rate, real_short_rate, inflation_short_rate,
-        real_standard_error, inflation_standard_error, time_period):
-        '''Change the indicated bond parameters.'''
-
-        assert fixed_real_bonds_rate == self.fixed_real_bonds_rate
-        assert fixed_nominal_bonds_rate == self.fixed_nominal_bonds_rate
-        if self.real:
-            self.real.standard_error = real_standard_error
-            self.real.r0 = real_short_rate
-        if self.inflation:
-            self.inflation.standard_error = inflation_standard_error
-            self.inflation.r0 = inflation_short_rate
-        assert time_period == self.time_period
-
 if __name__ == '__main__':
 
     seed(0)
+    np.random.seed(0)
 
     bonds = BondsSet()
     modeled_inflation = Inflation(bonds.real, nominal_yield_curve = bonds.nominal.yield_curve, model_bond_volatility = False)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -35,8 +35,9 @@ from psutil import cpu_count
 from setproctitle import setproctitle
 from yaml import safe_load
 
-from ai.common.scenario_space import allowed_gammas
+from ai.common.plot_common import plot_common
 from ai.common.report import generate_report
+from ai.common.scenario_space import allowed_gammas
 from ai.common.utils import boolean_flag
 from ai.gym_fin.model_params import load_params_file
 
@@ -102,9 +103,12 @@ class InferEvaluateDaemon:
             '--pdf-buckets', str(self.args.pdf_buckets),
             '--pdf-smoothing-window', str(self.args.pdf_smoothing_window),
         ]
+        if self.args.address is not None:
+            cmd += ['--address', self.args.address]
         for gamma in self.gammas:
             cmd += ['--gamma', str(gamma)]
         self.proc = Popen(cmd, stdin = PIPE, stdout = PIPE, stderr = self.logger.logfile_binary)
+        self.count = 0
 
     def infer_evaluate(self, api_data, result_dir, *, options = [], prefix = ''):
 
@@ -161,6 +165,11 @@ class InferEvaluateDaemon:
             except:
                 pass
 
+            self.count += 1
+            if self.count == self.args.restart_frequency:
+                self.stop()
+                self.restart()
+
     def stop(self):
 
         self.proc.stdin.close()
@@ -213,7 +222,7 @@ class ApiHTTPServer(ThreadingMixIn, HTTPServer):
                 [InferEvaluateDaemon(self.args, evaluate = True, gammas = [gamma], logger = self.logger) for _ in range(self.args.num_evaluate_jobs)],
                 timeout = self.args.max_evaluate_queue_wait
             )
-            if old_evaluate_daemon != None:
+            if old_evaluate_daemon is not None:
                 old_evaluate_daemon.stop()
                 sleep(self.args.evaluate_stop_time)
                     # Conserve RAM by waiting for one set of daemons to exit before starting up next set.
@@ -231,114 +240,122 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def send_result(self, result_bytes, mime_type, headers = []):
 
-        self.send_response(200)
-        self.send_header('Content-Type', mime_type)
-        self.send_header('Content-Length', len(result_bytes))
-        for k, v in headers:
-            self.send_header(k, v)
-        self.end_headers()
-        self.wfile.write(result_bytes)
+        try:
+            self.send_response(200)
+            self.send_header('Content-Type', mime_type)
+            self.send_header('Content-Length', len(result_bytes))
+            for k, v in headers:
+                self.send_header(k, v)
+            self.end_headers()
+            self.wfile.write(result_bytes)
+        except BrokenPipeError:
+            pass
 
     def do_POST(self):
 
         try:
 
-            if self.path.startswith('/api/'):
-
-                content_type = self.headers.get('Content-Type')
-                content_length = self.headers.get('Content-Length')
-                if content_length == None:
-                    self.send_error(411) # Length Required
-                    return
-                content_length = int(content_length)
-                if not 0 <= content_length <= 100e6:
-                    self.send_error(413) # Payload Too Large
-                    return
-
-                data = self.rfile.read(content_length)
-                if self.server.args.verbose:
-                    stdout.buffer.write(data + '\n'.encode('utf-8'))
-                    stdout.flush()
-                try:
-                    request = loads(data.decode('utf-8'))
-                except ValueError:
-                    self.send_error(400) # Bad Request
-                    return
-
-                data = None
-                headers = []
-                if self.path == '/api/infer':
-
-                    if self.server.args.num_infer_jobs:
-                        data = self.run_models(request, evaluate = False)
-                    else:
-                        self.send_error(403) # Forbidden
-                        return
-
-                elif self.path == '/api/evaluate':
-
-                    if self.server.args.num_evaluate_jobs:
-                        data = self.run_models(request, evaluate = True)
-                    else:
-                        self.send_error(403) # Forbidden
-
-                else:
-
-                    self.send_error(404) # Not Found
-                    return
-
-                if data != None:
-                    if self.server.args.verbose:
-                        stdout.buffer.write(data)
-                        stdout.flush()
-                    self.send_result(data, 'application/json', headers = headers)
-
+            content_type = self.headers.get('Content-Type')
+            content_length = self.headers.get('Content-Length')
+            if content_length is None:
+                self.send_error(411) # Length Required
+                return
+            content_length = int(content_length)
+            if not 0 <= content_length <= 100e6:
+                self.send_error(413) # Payload Too Large
                 return
 
-            self.send_error(404) # Not Found
+            data = self.rfile.read(content_length)
+            if self.server.args.verbose:
+                stdout.buffer.write(data + '\n'.encode('utf-8'))
+                stdout.flush()
+            try:
+                request = loads(data.decode('utf-8'))
+            except ValueError:
+                self.send_error(400) # Bad Request
+                return
+
+            if self.path.startswith('/api/'):
+
+                data, filetype, headers = self.post_api(request)
+
+            elif self.path.startswith('/web/'):
+
+                data, filetype, headers = self.post_web(request)
+
+            else:
+
+                data = None
+                self.send_error(404) # Not Found
+
+            if data is not None:
+                if self.server.args.verbose:
+                    stdout.buffer.write(data)
+                    stdout.flush()
+                self.send_result(data, filetype, headers = headers)
 
         except Exception as e:
 
             self.server.logger.report_exception(e)
             self.send_error(500) # Internal Server Error
 
+    def post_api(self, request):
+
+        data = None
+        headers = []
+        filetype = 'application/json'
+
+        if self.path == '/api/infer':
+
+            if self.server.args.num_infer_jobs:
+                data = self.run_models(request, evaluate = False)
+            else:
+                self.send_error(403) # Forbidden
+
+        elif self.path == '/api/evaluate':
+
+            if self.server.args.num_evaluate_jobs:
+                data = self.run_models(request, evaluate = True)
+            else:
+                self.send_error(403) # Forbidden
+
+        else:
+
+            self.send_error(404) # Not Found
+
+        return data, filetype, headers
+
+    def post_web(self, request):
+
+        data = None
+        headers = []
+        filetype = 'application/json'
+
+        if self.path == '/web/subscribe':
+
+            result = self.subscribe(request)
+            if result is not None:
+                data = (dumps(result, indent = 4, sort_keys = True) + '\n').encode('utf-8')
+
+        else:
+
+            self.send_error(404) # Not Found
+
+        return data, filetype, headers
+
     def do_GET(self):
 
         try:
 
-            data = None
-            headers = []
-            if self.path == '/api/healthcheck':
+            if self.path.startswith('/api/'):
 
-                if self.healthcheck():
-                    data = 'OK\n'
-                else:
-                    data = 'FAIL\n'
+                data, filetype, headers = self.get_api()
 
-                data, filetype = data.encode('utf-8'), 'text/plain'
-                headers.append(('Cache-Control', 'no-cache'))
+            else:
 
-            elif self.path.startswith('/api/data/'):
+                data, filetype, headers = self.get_webroot()
 
-                m  = match('^/api/data/(.+/.+)/(.+)$', self.path)
-                if m:
-                    path = m[1] + '/seed_all/aiplanner-' + m[2]
-                else:
-                    m = match('^/api/data/(.+)$', self.path)
-                    if m:
-                        path = m[1]
-                    else:
-                        self.send_error(404) # Not Found
-                        return
-                data, filetype = self.get_file(path)
-
-            elif self.path == '/api/market':
-
-                data = self.market()
-                data, filetype = (dumps(data, indent = 4, sort_keys = True) + '\n').encode('utf-8'), 'application/json'
-                headers.append(('Cache-Control', 'max-age=3600'))
-
-            if data != None:
+            if data is not None:
 
                 self.send_result(data, filetype, headers = headers)
                 return
@@ -350,23 +367,78 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.server.logger.report_exception(e)
             self.send_error(500) # Internal Server Error
 
-    def get_file(self, path):
+    def get_api(self):
+
+        data = None
+        headers = []
+        if self.path == '/api/healthcheck':
+
+            if self.healthcheck():
+                data = 'OK\n'
+            else:
+                data = 'FAIL\n'
+
+            data, filetype = data.encode('utf-8'), 'text/plain'
+            headers.append(('Cache-Control', 'no-cache'))
+
+        elif self.path.startswith('/api/data/'):
+
+            m  = match('^/api/data/(.+/.+)/(.+)$', self.path)
+            if m:
+                path = m[1] + '/seed_all/aiplanner-' + m[2]
+            else:
+                m = match('^/api/data/(.+)$', self.path)
+                if m:
+                    path = m[1]
+                else:
+                    self.send_error(404) # Not Found
+                    return
+            data, filetype = self.get_file(self.server.args.results_dir, path)
+
+        elif self.path == '/api/market':
+
+            data = self.market()
+            data = (dumps(data, indent = 4, sort_keys = True) + '\n').encode('utf-8')
+            filetype = 'application/json'
+            headers.append(('Cache-Control', 'max-age=3600'))
+
+        return data, filetype, headers
+
+    def get_webroot(self):
+
+        headers = []
+        path = '/index.html' if self.path == '/' else self.path
+        data, filetype = self.get_file(self.server.args.webroot_dir, path)
+        if self.path == '/index.html':
+            headers.append(('Cache-Control', 'no-cache'))
+        else:
+            headers.append(('Cache-Control', 'max-age=86400'))
+
+        return data, filetype, headers
+
+    def get_file(self, root_dir, path):
 
         filetype = None
         if '..' not in path:
-            if path.endswith('.pdf'):
+            if path.endswith('.css'):
+                filetype = 'text/css'
+            elif path.endswith('.html'):
+                filetype = 'text/html'
+            elif path.endswith('.js'):
+                filetype = 'text/javascript'
+            elif path.endswith('.pdf'):
                 filetype = 'application/pdf'
             elif path.endswith('.svg'):
                 filetype = 'image/svg+xml'
 
         data = None
-        if filetype:
+        if filetype is  not None:
             try:
-                data = open(self.server.args.results_dir + '/' + path, 'rb').read()
+                data = open(root_dir + '/' + path, 'rb').read()
             except IOError:
                 pass
 
-        if data == None:
+        if data is None:
             filetype = None
 
         return data, filetype
@@ -431,7 +503,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 data = self.run_models(api_data, evaluate = False, prefix = 'healthcheck-')
             except:
                 return False
-            if data == None:
+            if data is None:
                 return None
             result = loads(data.decode('utf-8'))
             if result['error'] or result['result'][0][0]['error']:
@@ -443,7 +515,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 data = self.run_models(api_data, evaluate = True, prefix = 'healthcheck-')
             except:
                 return False
-            if data == None:
+            if data is None:
                 return None
             result = loads(data.decode('utf-8'))
             if result['error'] or result['result'][0]['results'][0]['error']:
@@ -473,10 +545,10 @@ class RequestHandler(BaseHTTPRequestHandler):
             epoch = datetime(2000, 1, 1) # Allow non-updating market data with date 2000-01-01.
 
             try:
-                assert now - timedelta(days = 14) < real_short_rate_date <= now or real_short_rate_date == epoch
-                assert now - timedelta(days = 14) < nominal_short_rate_date <= now or nominal_short_rate_date == epoch
-                assert now - timedelta(days = 21) < stocks_price_date <= now or stocks_price_date == epoch
-                assert now - timedelta(days = 14) < stocks_volatility_date <= now or stocks_volatility_date == epoch
+                assert now - timedelta(days = 14) < real_short_rate_date or real_short_rate_date == epoch
+                assert now - timedelta(days = 14) < nominal_short_rate_date or nominal_short_rate_date == epoch
+                assert now - timedelta(days = 21) < stocks_price_date or stocks_price_date == epoch
+                assert now - timedelta(days = 14) < stocks_volatility_date or stocks_volatility_date == epoch
             except AssertionError as e:
                 self.server.logger.report_exception(e)
                 raise
@@ -492,24 +564,25 @@ class RequestHandler(BaseHTTPRequestHandler):
         old_date = old.date().isoformat()
         if not isinstance(api_data, list):
             return '{"error": "Method body must be a JSON array."}\n'.encode('utf-8')
+        epoch = '2000-01-01' # Allow non-updating market data with date 2000-01-01.
         for api_scenario in api_data:
             if not isinstance(api_scenario, dict):
                 return '{"error": "Method body must be an array of JSON objects."}\n'.encode('utf-8')
             if not 'stocks_price' in api_scenario:
-                if market['stocks_price_date'] <= old_date and not healthcheck:
+                if market['stocks_price_date'] <= old_date and market['stocks_price_date'] != epoch:
                     return '{"error": "Stock price data is not current."}\n'.encode('utf-8')
                 api_scenario['stocks_price'] = market['stocks_price']
             if not 'stocks_volatility' in api_scenario:
-                if market['stocks_volatility_date'] <= old_date and not healthcheck:
+                if market['stocks_volatility_date'] <= old_date and market['stocks_volatility_date'] != epoch:
                     return '{"error": "Stock volatility data is not current."}\n'.encode('utf-8')
                 api_scenario['stocks_volatility'] = market['stocks_volatility']
             if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:
                 if not 'real_short_rate' in api_scenario:
-                    if market['real_short_rate_date'] <= old_date and not healthcheck:
+                    if market['real_short_rate_date'] <= old_date and market['real_short_rate_date'] != epoch:
                         return '{"error": "Real interest rate data is not current."}\n'.encode('utf-8')
                     api_scenario['real_short_rate'] = market['real_short_rate']
                 if sum(x in api_scenario for x in ['real_short_rate', 'nominal_short_rate', 'inflation_short_rate']) < 2:
-                    if market['nominal_short_rate_date'] <= old_date and not healthcheck:
+                    if market['nominal_short_rate_date'] <= old_date and market['nominal_short_rate_date'] != epoch:
                         return '{"error": "Nominal interest rate data is not current."}\n'.encode('utf-8')
                     api_scenario['nominal_short_rate'] = market['nominal_short_rate']
 
@@ -547,7 +620,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         elif len(api_data) > 1:
             return {'error': 'Multiple scenarios to evaluate.'}
         gammas = api_data[0].get('rra')
-        if gammas == None:
+        if gammas is None:
             gammas = self.server.args.gamma
         if not isinstance(gammas, list):
             return {'error': 'Expecting list of rra values.'}
@@ -599,6 +672,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             threads.append(thread)
         for thread in threads:
             thread.join()
+        plot_common(api_data[0], result_dir, results, self.server.args.results_dir)
         report = generate_report(api_data[0], result_dir, results, self.server.args.results_dir)
         return {
             'error': None,
@@ -634,6 +708,28 @@ class RequestHandler(BaseHTTPRequestHandler):
         else:
             raise Overloaded('Try again later')
 
+    def subscribe(self, request):
+
+        email = request.get('email', '')
+        email = email.strip()
+        if not match('^\S+@\S+\.\S+$', email):
+            return {'error': 'Invalid email address.'}
+
+        try:
+            with open(self.server.args.root_dir + '/subscribe.txt', 'a') as f:
+                f.write(email + '\n')
+        except IOError:
+            raise
+
+        if not self.notify_admin('subscribe', email + ' has subscribed\n'):
+            self.send_error(500) # Internal Server Error
+            return
+
+        return {
+            'error': None,
+            'result': None,
+        }
+
     def notify_admin(self, subject, body):
 
         email = self.server.args.admin_email or 'root'
@@ -642,18 +738,29 @@ class RequestHandler(BaseHTTPRequestHandler):
             '-f', 'root',
                email,
         ]
-        mta = Popen(cmd, stdin = PIPE, encoding = 'utf-8')
 
-        header = 'From: "' + self.server.args.notify_name + '" <' + self.server.args.notify_email + '''>
+        msg = 'From: "' + self.server.args.notify_name + '" <' + self.server.args.notify_email + '''>
 To: ''' + email + '''
 Subject: ''' + self.server.args.project_name + ': ' + subject + '''
 
-'''
+''' + body
 
-        mta.stdin.write(header + body)
-        mta.stdin.close()
+        try:
 
-        return mta.wait() == 0
+            mta = Popen(cmd, stdin = PIPE, encoding = 'utf-8')
+
+        except FileNotFoundError:
+
+            self.server.logger.log('-------- MTA not found --------\n' + msg + '-------------------------------')
+
+            return True
+
+        else:
+
+            mta.stdin.write(msg)
+            mta.stdin.close()
+
+            return mta.wait() == 0
 
 class PurgeQueueServer:
 
@@ -730,21 +837,25 @@ def main():
     boolean_flag(parser, 'verbose', default = False)
     parser.add_argument('--host', default = config.get('host', '0.0.0.0'))
     parser.add_argument('--port', type = int, default = config.get('port', 3000))
+    parser.add_argument('--webroot-dir', default = root_dir + '/webroot')
+    parser.add_argument('--address') # Ray address.
     boolean_flag(parser, 'warm-cache', default = True) # Pre-load tensorflow/Rllib models.
     parser.add_argument('--num-infer-jobs', type = int, default = config.get('num_infer_jobs')) # Each concurrent job may have multiple scenarios with multiple gamma values.
     parser.add_argument('--num-evaluate-jobs', type = int, default = config.get('num_evaluate_jobs')) # Each concurrent job is a single scenario with multiple gamma values.
     parser.add_argument('--max-infer-queue-wait', type = int, default = None) # Maximum time to wait for job to start or None to block.
     parser.add_argument('--max-evaluate-queue-wait', type = int, default = 60)
         # Development client resubmits request after 120 seconds, so keep timeout plus evaluation time below that.
+    parser.add_argument('--restart-frequency', type = int, default = 100)
+        # Restart infer/evaluate process after this many requests to work around any memory leaks. Zero for not to restart.
     parser.add_argument('--infer-stop-time', type = int, default = 10) # Time to wait for processes to exit when get log rotate sighup.
     parser.add_argument('--evaluate-stop-time', type = int, default = 120) # Time to wait for processes with a given gamma value to exit when get log rotate sighup.
     parser.add_argument('--gamma', action = 'append', type = float, default = []) # Supported gamma values.
     parser.add_argument('--train-seeds', type = int, default = 10)
-    parser.add_argument('--models-dir', default = '~/aiplanner-data/models')
-    parser.add_argument('--eval-num-timesteps', type = int, default = 50000)
+    parser.add_argument('--models-dir', default = root_dir + '/models')
+    parser.add_argument('--eval-num-timesteps', type = int, default = 100000)
     parser.add_argument('--eval-num-timesteps-healthcheck', type = int, default = 1000)
     parser.add_argument('--eval-num-timesteps-max', type = int, default = 2000000)
-    parser.add_argument('--num-environments', type = int, default = 100) # Number of parallel environments to use for a single model evaluation. Speeds up tensorflow.
+    parser.add_argument('--num-environments', type = int, default = 200) # Number of parallel environments to use per worker. Speeds up torch/tensorflow.
     parser.add_argument('--num-environments-healthcheck', type = int, default = 10)
     parser.add_argument('--num-trace-episodes', type = int, default = 5) # Default number of sample traces to generate.
     parser.add_argument('--num-trace-episodes-max', type = int, default = 10000)
@@ -769,12 +880,13 @@ def main():
     args = parser.parse_args()
     args.root_dir = expanduser(args.root_dir)
     args.models_dir = expanduser(args.models_dir)
+    args.webroot_dir = expanduser(args.webroot_dir)
     args.results_dir = args.root_dir + '/results'
     if not args.gamma:
         args.gamma = allowed_gammas
-    if args.num_infer_jobs == None:
+    if args.num_infer_jobs is None:
         args.num_infer_jobs = cpu_count(logical = False)
-    if args.num_evaluate_jobs == None:
+    if args.num_evaluate_jobs is None:
         args.num_evaluate_jobs = ceil(cpu_count(logical = False) / len(args.gamma))
 
     makedirs(args.results_dir, exist_ok = True)

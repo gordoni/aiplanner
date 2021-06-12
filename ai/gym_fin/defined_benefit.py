@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2019 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -10,58 +10,82 @@
 
 from math import floor
 
-from spia import IncomeAnnuity, LifeTable
+import cython
 
+from ai.gym_fin.factory_spia import make_income_annuity
+
+@cython.cclass
 class DefinedBenefit:
 
-    def __init__(self, env, type = 'Income Annuity', real = True, type_of_funds = 'tax_deferred'):
+    def __init__(self, env, params, *, real = True, type_of_funds = 'tax_deferred'):
 
         self.env = env
-        self.type = type
+        self.params = params
         self.real = real
         self.type_of_funds = type_of_funds
 
-        # Separate pre-retirement and retired SPIAs so can compute present values separately.
-        life_table = self.env.life_table_preretirement
-        life_table2 = self.env.life_table2_preretirement if self.env.sex2 else None
-        self.spia_preretirement = self.create(life_table, life_table2 = life_table2)
-        life_table = self.env.life_table
-        life_table2 = self.env.life_table2 if self.env.sex2 else None
-        self.spia_retired = self.create(life_table, life_table2 = life_table2)
+        self.spia_preretirement = None
+        self.spia_retired = None
 
-    def create(self, life_table, life_table2 = None):
+    def _create(self, *, preretirement):
 
         bonds = self.env.bonds_zero if self.real else self.env.bonds_constant_inflation
 
+        vital_stats = None
+        db: DefinedBenefit
+        for db in self.env.defined_benefits.values():
+            if preretirement:
+                if db.spia_preretirement is not None:
+                    vital_stats = db.spia_preretirement.vital_stats
+                    break
+            else:
+                if db.spia_retired is not None:
+                    vital_stats = db.spia_retired.vital_stats
+                    break
+
+        if vital_stats is not None:
+            life_table = None
+            life_table2 = None
+            age = None
+            age2 = None
+            date_str = None
+        else:
+            if preretirement:
+                life_table = self.env.life_table_preretirement
+                life_table2 = self.env.life_table2_preretirement
+            else:
+                life_table = self.env.life_table
+                life_table2 = self.env.life_table2
+            age = self.env.age
+            age2 = self.env.age2
+            date_str = self.env.date
+            vital_stats = None
+
         payout_delay = 0
-        spia = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, frequency = round(1 / self.env.params.time_period),
-            price_adjust = 'all', date_str = self.env.date.isoformat(), schedule = 0, delay_calcs = True)
+        payout_start = 0 if preretirement else round(self.env.preretirement_years / self.params.time_period)
+        spia = make_income_annuity(bonds, life_table, life_table2 = life_table2, vital_stats = vital_stats, age = age, age2 = age2,
+            payout_delay = 12 * payout_delay, payout_start = payout_start,
+            frequency = round(1 / self.params.time_period), price_adjust = 'all', date_str = date_str, schedule = 0, delay_calcs = True)
 
         return spia
 
-    def add(self, owner = 'self', start = None, end = None, premium = None, payout = None, adjustment = 0,
+    def add(self, type = 'income_annuity', owner = 'self', start = None, end = None, payout = None, adjustment = 0,
             joint = False, payout_fraction = 0, exclusion_period = 0, exclusion_amount = 0, delay_calcs = False):
 
-        assert (premium == None) != (payout == None)
-        if end == None:
+        if end is None:
             end = float('inf')
 
         owner_age = self.env.age if owner == 'self' else self.env.age2
-        if start == None:
+        if start is None:
             start = self.env.preretirement_years
         else:
             start = start - owner_age
-        if premium != None:
-            mwr = self.env.params.real_spias_mwr if self.real else self.env.params.nominal_spias_mwr
-            start = max(start, self.env.preretirement_years)
-            payout = self._spia_payout(start, adjustment, payout_fraction, premium, mwr)
+        try:
+            payout_low, payout_high = payout
+        except TypeError:
+            pass
         else:
-            try:
-                payout_low, payout_high = payout
-            except TypeError:
-                pass
-            else:
-                payout = self.env.log_uniform(payout_low, payout_high)
+            payout = self.env.log_uniform(payout_low, payout_high)
         end -= owner_age
 
         original_payout = payout
@@ -73,91 +97,91 @@ class DefinedBenefit:
         if self.type_of_funds == 'taxable' and exclusion_period > 0:
 
             # Shift nominal exclusion amount from taxable to tax free income.
-            if premium != None:
-                while exclusion_amount > original_payout:
-                    exclusion_period += 1
-                    if adjustment == 0:
-                        exclusion_amount = premium / exclusion_period
-                    else:
-                        exclusion_amount = premium * adjustment / ((1 + adjustment) ** exclusion_period - 1)
             exclusion_amount *= self.env.cpi
             end = start + exclusion_period
-            db = self.env.get_db(self.type, False, 'taxable')
+            db = self.env.get_db(type, False, 'taxable')
             db._add_sched(owner, start, end, - exclusion_amount, joint, payout_fraction, adjustment, delay_calcs)
-            db = self.env.get_db(self.type, False, 'tax_free')
+            db = self.env.get_db(type, False, 'tax_free')
             db._add_sched(owner, start, end, exclusion_amount, joint, payout_fraction, adjustment, delay_calcs)
 
     def force_calcs(self):
 
-        self.spia_preretirement.add_schedule()
-        self.spia_retired.add_schedule()
-
-    def _spia_payout(self, payout_delay, adjustment, payout_fraction, premium, mwr):
-
-        bonds = self.env.bonds.real if self.real else self.env.bonds.corporate
-        life_table, life_table2 = self.env.spia_life_tables(self.env.age, self.env.age2)
-
-        spia = IncomeAnnuity(bonds, life_table, life_table2 = life_table2, payout_delay = 12 * payout_delay, joint = True,
-            payout_fraction = payout_fraction, adjust = adjustment, frequency = 1 / self.env.params.time_period, price_adjust = 'all',
-            date_str = self.env.date.isoformat())
-
-        payout = spia.payout(premium, mwr = mwr) / self.env.params.time_period
-
-        return payout
+        if self.spia_preretirement is not None:
+            self.spia_preretirement.add_schedule(schedule = 0)
+        if self.spia_retired is not None:
+            self.spia_retired.add_schedule(schedule = 0)
 
     def _add_sched(self, owner, start, end, payout, joint, payout_fraction, adjustment, delay_calcs):
 
         #print('_add_sched:', self.type_of_funds, 'real' if self.real else 'nominal', owner, start, end, payout, joint, payout_fraction, adjustment, delay_calcs)
 
-        start = max(floor(start / self.env.params.time_period + 0.5), 0)
-        end = floor(end / self.env.params.time_period + 0.5) - 1 if end != float('inf') else int(1e10)
-        payout /= self.env.params.time_period
+        start = max(floor(start / self.params.time_period + 0.5), 0)
+        end = floor(end / self.params.time_period + 0.5) - 1 if end != float('inf') else int(1e9)
+        payout *= self.params.time_period
 
         contingent2 = owner == 'spouse'
-        retirement = round(self.env.preretirement_years / self.env.params.time_period)
+        retirement = round(self.env.preretirement_years / self.params.time_period)
 
-        self.spia_preretirement.add_schedule(start = start, end = min(end, retirement - 1), schedule = payout,
-            payout_fraction = payout_fraction, joint = joint, contingent2 = contingent2, adjust = adjustment, price_adjust = 'all', delay_calcs = delay_calcs)
+        # Separate pre-retirement and retired SPIAs so can compute present values separately.
 
-        payout *= (1 + adjustment) ** (max(retirement - start, 0) * self.env.params.time_period)
-        self.spia_retired.add_schedule(start = max(start, retirement), end = end, schedule = payout,
-            payout_fraction = payout_fraction, joint = joint, contingent2 = contingent2, adjust = adjustment, price_adjust = 'all', delay_calcs = delay_calcs)
+        end_preretirement = min(end, retirement - 1)
+        if start <= end_preretirement:
+            if self.spia_preretirement is None:
+                self.spia_preretirement = self._create(preretirement = True)
+            self.spia_preretirement.add_schedule(start = start, end = end_preretirement, schedule = payout,
+                payout_fraction = payout_fraction, joint = joint, contingent2 = contingent2, adjust = adjustment, price_adjust = 'all', delay_calcs = delay_calcs)
 
-    def payout(self):
+        start_retired = max(start, retirement)
+        if start_retired <= end:
+            if self.spia_retired is None:
+                self.spia_retired = self._create(preretirement = False)
+            payout *= (1 + adjustment) ** (max(retirement - start, 0) * self.params.time_period)
+            self.spia_retired.add_schedule(start = start_retired, end = end, schedule = payout,
+                payout_fraction = payout_fraction, joint = joint, contingent2 = contingent2, adjust = adjustment, price_adjust = 'all', delay_calcs = delay_calcs)
 
-        if self.env.preretirement_years > 0:
+    @cython.locals(cpi = cython.double)
+    def payout(self, cpi):
+
+        payout: cython.double
+        if self.spia_preretirement is not None:
             payout = self.spia_preretirement.schedule_payout()
-        else:
+        elif self.spia_retired is not None:
             payout = self.spia_retired.schedule_payout()
+        else:
+            payout = 0
         if not self.real:
-            payout /= self.env.cpi
+            payout /= cpi
 
         return payout
 
-    def step(self, steps):
+    @cython.locals(age = cython.double, retired = cython.bint, alive = cython.bint, alive2 = cython.bint)
+    def step(self, age, retired, alive, alive2):
 
-        age = self.env.age
-        alive = self.env.couple or not self.env.only_alive2
-        alive2 = self.env.couple or self.env.only_alive2
-        if self.env.preretirement_years > 0:
-            self.spia_preretirement.set_age(age, alive, alive2)
-        self.spia_retired.set_age(age, alive, alive2)
+        if self.spia_preretirement is not None:
+            if retired:
+                self.spia_preretirement = None
+            else:
+                self.spia_preretirement.set_age(age, alive, alive2)
+        if self.spia_retired is not None:
+            self.spia_retired.set_age(age, alive, alive2)
 
-    def render(self):
+    def render(self, cpi):
 
-        payout = self.payout()
-        pv = self.pv()
+        payout = self.payout(cpi)
+        pv = self.pv(cpi, preretirement = True, retired = True)
 
         print('    ', self.type_of_funds, payout, 'real' if self.real else 'nominal', pv)
 
-    def pv(self, preretirement = True, retired = True):
+    @cython.locals(cpi = cython.double, preretirement = cython.bint, retired = cython.bint)
+    def pv(self, cpi, preretirement = False, retired = False):
 
+        pv: cython.double
         pv = 0
-        if preretirement and self.env.preretirement_years > 0:
-            pv += self.spia_preretirement.premium()
-        if retired:
-            pv += self.spia_retired.premium()
+        if preretirement and (self.spia_preretirement is not None):
+            pv += float(self.spia_preretirement.premium())
+        if retired and (self.spia_retired is not None):
+            pv += float(self.spia_retired.premium())
         if not self.real:
-            pv /= self.env.cpi
+            pv /= cpi
 
         return pv

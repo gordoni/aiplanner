@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019-2020 Gordon Irlam
+# Copyright (C) 2019-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -9,6 +9,7 @@
 # PURPOSE.
 
 FROM ubuntu:20.04
+# libgl1-mesa-dev required by Ray which does "import cv2" for opencv python bindings.
 RUN apt-get update \
     && apt-get upgrade -y \
     && echo "postfix postfix/main_mailer_type select Internet Site" | debconf-set-selections \
@@ -16,6 +17,7 @@ RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
         curl \
         less \
+        nano \
         python3-pip \
         cron \
         logrotate \
@@ -24,12 +26,12 @@ RUN apt-get update \
         python3-setproctitle \
         gnuplot-nox \
         python3-reportlab \
+        libgl1-mesa-dev \
     && apt-get clean \
     && apt-get install -y cmake \
     && pip3 install \
         torch \
-        'ray[rllib]==0.8.5' \
-        psutil \
+        'ray[rllib]==1.1.0' \
         pyyaml \
         svglib \
     && rm -rf /root/.cache/pip

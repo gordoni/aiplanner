@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2020 Gordon Irlam
+# Copyright (C) 2018-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -17,7 +17,7 @@ EXTRA_ARGS="$@"
 PARALLEL=${PARALLEL:-True}
     # "False": run seeds of a job sequentially rather than in parallel.
     # "True": run seeds of a job in parallel.
-# "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
+    # "Jobs": run seeds and jobs in parallel; need to then wait; train.log is not saved.
 RAY_CLUSTER=${RAY_CLUSTER:-$AI_DIR/cluster.yaml}
 RAY_AUTOSCALER=${RAY_AUTOSCALER:-True} # Set to "False" to perform training without the Ray autoscaler enabled.
 RAY_AUTOSCALER_USE_HEAD=${RAY_AUTOSCALER_USE_HEAD:-False}
@@ -28,7 +28,7 @@ SEED_START=${SEED_START:-0}
 SEEDS=${SEEDS:-10}
 POLICY=${POLICY:-none}
 ALGORITHM=${ALGORITHM:-PPO}
-EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py --address=$RAY_ADDRESS}
+EVALUATOR=${EVALUATOR:-$AI_DIR/eval_model.py --address=$RAY_ADDRESS --num-workers=1}
 BASE_SCENARIO=${BASE_SCENARIO:-$AI_DIR/aiplanner-scenario.txt}
 BASE_ARGS=${BASE_ARGS:--c $BASE_SCENARIO}
 TRAIN_ARGS=${TRAIN_ARGS:--c $AI_DIR/aiplanner-scenario-train.txt}
@@ -47,7 +47,7 @@ start_ray_if_needed() {
 
         local ARGS
         if [ $RAY_AUTOSCALER = True ]; then
-            ARGS="--autoscaling-config=$RAY_CLUSTER"
+            ARGS="--include-dashboard=False --autoscaling-config=$RAY_CLUSTER"
             if [ $RAY_AUTOSCALER_USE_HEAD != True ]; then
                 ARGS="$ARGS --num-cpus=0 --num-gpus=0"
             fi
@@ -57,7 +57,7 @@ start_ray_if_needed() {
 
         (
             ulimit -n 65536
-            nohup ray start --head --redis-port=$PORT $ARGS
+            nohup ray start --head --port=$PORT $ARGS
         ) > /tmp/ray.out 2>&1
 
     fi
@@ -91,13 +91,13 @@ train () {
 
         local TEMPFILE=`tempfile -p train`
         if [ $PARALLEL = True -o $PARALLEL = Jobs ]; then
-            $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seeds=$SEEDS $EXTRA_ARGS > $TEMPFILE 2>&1 &
+            $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED_START --train-seeds=$SEEDS $EXTRA_ARGS > $TEMPFILE 2>&1 &
             if [ $PARALLEL = True ]; then
                 wait
                 mv $TEMPFILE $MODEL_DIR/train.log
             fi
         else
-            $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seeds=$SEEDS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
+            $TRAINER $BASE_ARGS $TRAIN_ARGS --model-dir=$MODEL_DIR $ARGS --train-seed=$SEED_START --train-seeds=$SEEDS $EXTRA_ARGS 2>&1 | tee -a $TEMPFILE || exit 1
             mv $TEMPFILE $MODEL_DIR/train.log
         fi
 
@@ -272,7 +272,7 @@ train_args () {
                 preretirement)
                     ;;
                 retired)
-                    TARGS="$TARGS --master-age-start=50 --master-age-retirement=0 --master-p-weighted-low=1e4 --master-p-weighted-high=1e7"
+                    TARGS="$TARGS --master-age-start=50 --master-age-retirement=0 --master-gi-fraction-high=1.0 --master-p-weighted-low=1e4 --master-p-weighted-high=1e7"
                     ;;
                 *)
                     echo "Unknown stage: $STAGE" >&2
@@ -450,30 +450,30 @@ eval_scenarios () {
         evaluate $STAGE-gamma$GAMMA-le_additional-0.5_1.5 $UNIT-retired67-le_additional1-guaranteed_income20e3-tax_free2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-age-start2=67 --master-life-expectancy-additional=1 --master-life-expectancy-additional2=1 --master-p-tax-free=2e6"
         evaluate $STAGE-gamma$GAMMA-le_additional1.5_3.5 $UNIT-retired67-le_additional3-guaranteed_income20e3-tax_free2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-age-start2=67 --master-life-expectancy-additional=3 --master-life-expectancy-additional2=3 --master-p-tax-free=2e6"
         evaluate $STAGE-gamma$GAMMA-le_additional3.5_5.5 $UNIT-retired67-le_additional5-guaranteed_income20e3-tax_free2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-age-start2=67 --master-life-expectancy-additional=5 --master-life-expectancy-additional2=5 --master-p-tax-free=2e6"
-    elif [ $TRAINING = generic -a $STAGE = preretirement ]; then
-        case "$EVALUATE" in
-            tax_free)
-                evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2e5"
-                evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free5e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=5e5"
-                evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=1e6"
-                evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2e6"
-                ;;
-           tax_diverse)
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=2e5"
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse5e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=5e5"
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=1e6"
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=2e6"
-               ;;
-           p_none)
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age30-p_none$LABEL "$EVAL_ARGS $ARGS --master-age-start=30 --master-income-preretirement=80e3 --master-consume-preretirement=50e3"
-               ;;
-           p_none_complex)
-               evaluate $STAGE-$SPIAS-gamma$GAMMA $UNIT-age30-p_none_complex$LABEL "$EVAL_ARGS $ARGS $COMPLEX_SCENARIO"
-               ;;
-        esac
     fi
     local MODEL_STAGE=${FORCE_STAGE:-$STAGE}
-    if [ $TRAINING = generic -a $STAGE = retired ]; then
+    if [ $TRAINING = generic -a $STAGE = preretirement ]; then
+        case "$EVALUATE" in
+            tax_free)
+                evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2e5"
+                evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free5e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=5e5"
+                evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=1e6"
+                evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_free2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-tax-free=2e6"
+                ;;
+           tax_diverse)
+               evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=2e5"
+               evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse5e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=5e5"
+               evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse1e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=1e6"
+               evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age50-tax_diverse2e6$LABEL "$EVAL_ARGS $ARGS --master-age-start=50 --master-age-start2=50 --master-p-weighted=2e6"
+               ;;
+           p_none)
+               evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age30-p_none$LABEL "$EVAL_ARGS $ARGS --master-age-start=30 --master-income-preretirement=80e3 --master-consume-preretirement=50e3"
+               ;;
+           p_none_complex)
+               evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-age30-p_none_complex$LABEL "$EVAL_ARGS $ARGS $COMPLEX_SCENARIO"
+               ;;
+        esac
+    elif [ $TRAINING = generic -a $STAGE = retired ]; then
         case "$EVALUATE" in
             tax_free)
                 evaluate $MODEL_STAGE-$SPIAS-gamma$GAMMA $UNIT-retired67-guaranteed_income20e3-tax_free2e5$LABEL "$EVAL_ARGS $ARGS --master-age-start=67 --master-age-start2=67 --master-p-tax-free=2e5"
@@ -573,6 +573,9 @@ skip_model () {
     local STAGE=$3
     local SPIAS=$4
     local GAMMA=$5
+
+    # Training a separate retired model for no SPIAs gamma=6 was observed to produce around 1 standard error improved results over use of the preretirement model,
+    # or a 3% higher CE for $5m tax diverse and $20k S.S. on a non-IID model (lesser improvement for smaller tax diverse).
 
     if [ $STAGE = retired -a \( $SPIAS != none -o `echo $GAMMA | awk '{print int($1)}'` -lt 6 \) ]; then
         return 0

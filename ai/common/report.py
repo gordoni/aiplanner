@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2020 Gordon Irlam
+# Copyright (C) 2020-2021 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -23,7 +23,7 @@ def generate_report(api, result_dir, results, results_dir):
 
     def svg(aid, name, width = 5.5 * inch, hAlign = 'CENTER'):
 
-        img = svg2rlg(results_dir + '/' + aid + '/seed_all/aiplanner-' + name + '.svg')
+        img = svg2rlg((results_dir + '/' + aid + '/seed_all/aiplanner-' if aid else result_dir + '/') + name + '.svg')
         scale = width / img.minWidth()
         img.width *= scale
         img.height *= scale
@@ -36,8 +36,8 @@ def generate_report(api, result_dir, results, results_dir):
 
         try:
             return '$' + sub(r'\B(?=(\d{3})+(?!\d))', ',', str(round(x)))
-        except ValueError:
-            return str(x) # NaN.
+        except (TypeError, ValueError):
+            return 'n/a' # None or NaN.
 
     def aa_str(aa):
 
@@ -68,6 +68,8 @@ def generate_report(api, result_dir, results, results_dir):
     if not customer_name and not scenario_name:
         customer_name = 'AIPlanner'
 
+    consume_specify = api['age'] < api['age_retirement'] and api.get('consume_preretirement') is not None
+
     if scenario_name:
         doc.title = customer_name + ' - ' + scenario_name
     else:
@@ -93,6 +95,25 @@ def generate_report(api, result_dir, results, results_dir):
     date_str = date.strftime('%B %-d, %Y')
     s = '<para alignment="center">' + date_str + '</para>'
     contents.append(Paragraph(s, styleN))
+    valid_results = tuple(result for result in results if not result['error'])
+    if valid_results:
+        result = valid_results[0]
+        aid = result['aid']
+        contents.append(PageBreak())
+        s = '<para alignment="center">Life expectancy</para>'
+        contents.append(Paragraph(s, styleH))
+        contents.append(Spacer(1, 2 * inch))
+        contents.append(Paragraph('<para alignment="center">Life expectancy</para>', styleN))
+        contents.append(svg(aid, 'alive', width = 7.5 * inch))
+        contents.append(PageBreak())
+        s = '<para alignment="center">Consumption summary</para>'
+        contents.append(Paragraph(s, styleH))
+        contents.append(Spacer(1, 0.5 * inch))
+        contents.append(Paragraph('<para alignment="center">' + ('Retirement consumption' if consume_specify else 'Consumption') + ' distribution</para>', styleN))
+        contents.append(svg(None, 'consume-pdf', width = 7.5 * inch))
+        contents.append(Spacer(1, 0.5 * inch))
+        contents.append(Paragraph('<para alignment="center">Cummulative consumption distribution</para>', styleN))
+        contents.append(svg(None, 'consume-cdf', width = 7.5 * inch))
     for result in sorted(results, key = lambda r: r.get('rra', 0), reverse = True):
         if not result['error']:
             aid = result['aid']
@@ -103,11 +124,9 @@ def generate_report(api, result_dir, results, results_dir):
                 s = '<font color="red">WARNING: ' + warning + '</font>'
                 contents.append(Paragraph(s, styleN))
             content = []
-            s = 'Mean consumption in retirement: ' + dollar(result['consume_mean']) + '<br/>' + \
+            s = 'Mean consumption' + (' in retirement' if consume_specify else '') + ': ' + dollar(result['consume_mean']) + '<br/>' + \
                 'Consumption uncertainty: ' + dollar(result['consume_stdev']) + '<br/>' + \
-                'Probability retirement consumption below ' + dollar(result['consume_preretirement']) + ': ' + \
-                    str(round(result['consume_preretirement_ppf'] * 100)) + '%<br/>' + \
-                '10% chance of retirement consumption below: ' + dollar(result['consume10'])
+                '10% chance of' + (' retirement' if consume_specify else '') + ' consumption below: ' + dollar(result['consume10'])
             content.append(Paragraph(s, styleN))
             content.append(Spacer(1, 0.25 * inch))
             asset_classes = ''
@@ -133,21 +152,22 @@ def generate_report(api, result_dir, results, results_dir):
             s += 'International diversification: optional'
             def duration(d):
                 return 'short' if d <= 2 else 'intermediate' if d <= 9 else 'long'
-            if result['real_bonds_duration'] != None:
+            if result['real_bonds_duration'] is not None:
                 s += '<br/>Bonds duration: ' + str(round(result['real_bonds_duration'])) + ' years (' + duration(result['real_bonds_duration']) + ' term TIPS)'
-            if result['nominal_bonds_duration'] != None:
+            if result['nominal_bonds_duration'] is not None:
                 s += '<br/>Bonds duration: ' + str(round(result['nominal_bonds_duration'])) + ' years (' + duration(result['nominal_bonds_duration']) + \
                     ' term Treasuries)'
-            if result['retirement_contribution'] != None:
+            if result['retirement_contribution'] is not None:
                 s += '<br/>Recommended retirement plan contribution: ' + dollar(result['retirement_contribution'])
-            if result['nominal_spias_purchase'] != None:
+            if result['nominal_spias_purchase'] is not None:
                 s += '<br/>Recommended SPIA purchase amount (' + str(round(result['nominal_spias_adjust'] * 1000) / 10) + '% annual adjustment): ' + \
                     dollar(result['nominal_spias_purchase'])
-            if result['real_spias_purchase'] != None:
+            if result['real_spias_purchase'] is not None:
                 s += '<br/>Recommended inflation-indexed SPIA purchase amount: ' + dollar(result['real_spias_purchase'])
             content.append(Paragraph(s, styleN))
             content.append(Spacer(1, 0.25 * inch))
-            s = '<font size="8">RRA=' + str(result['rra']) + ' certainty equivalent retirement consuption: ' + dollar(result['ce']) + '<br/>' + \
+            s = '<font size="8">RRA=' + str(result['rra']) + ' certainty equivalent' + (' retirement' if consume_specify else '') + ' consuption: ' + \
+                dollar(result['ce']) + '<br/>' + \
                 'Standard error of measurement: ' + dollar(result['ce_stderr']) + '</font>'
             content.append(Paragraph(s, styleN))
             t = Table([
@@ -161,18 +181,34 @@ def generate_report(api, result_dir, results, results_dir):
                 ['RIGHTPADDING', (1, 0), (-1, -1), 0],
             ])
             contents.append(t)
-            contents.append(Spacer(1, 0.25 * inch))
+            contents.append(Spacer(1, 1 * inch))
+            contents.append(Paragraph('<para alignment="center">Consumption confidence region</para>', styleN))
+            contents.append(svg(aid, 'consume-cr', width = 7.5 * inch))
+            contents.append(PageBreak())
+            contents.append(Paragraph('<para alignment="center">' + ('Retirement consumption' if consume_specify else 'Consumption') + ' distribution</para>',
+                styleN))
             contents.append(svg(aid, 'consume-pdf'))
             contents.append(Spacer(1, 0.25 * inch))
-            contents.append(svg(aid, 'paths-consume'))
+            contents.append(Paragraph('<para alignment="center">Cummulative consumption distribution</para>', styleN))
+            contents.append(svg(aid, 'consume-cdf'))
             contents.append(Spacer(1, 0.25 * inch))
+            contents.append(Paragraph('<para alignment="center">Example consumption paths</para>', styleN))
+            contents.append(svg(aid, 'paths-consume'))
+            contents.append(PageBreak())
+            contents.append(Paragraph('<para alignment="center">Example guaranteed income paths</para>', styleN))
             contents.append(svg(aid, 'paths-gi'))
             contents.append(Spacer(1, 0.25 * inch))
+            contents.append(Paragraph('<para alignment="center">Example investment paths</para>', styleN))
             contents.append(svg(aid, 'paths-p'))
             contents.append(Spacer(1, 0.25 * inch))
+            contents.append(Paragraph('<para alignment="center">Example asset allocation paths</para>', styleN))
             contents.append(svg(aid, 'paths-stocks'))
-            contents.append(Spacer(1, 0.25 * inch))
+            contents.append(PageBreak())
+            contents.append(Paragraph('<para alignment="center">Residual estate distribution</para>', styleN))
             contents.append(svg(aid, 'estate-pdf'))
+            contents.append(Spacer(1, 0.25 * inch))
+            contents.append(Paragraph('<para alignment="center">Cummulative estate distribution</para>', styleN))
+            contents.append(svg(aid, 'estate-cdf'))
     contents.append(PageBreak())
     s = '<para alignment="center">Scenario parameters</para>'
     contents.append(Paragraph(s, styleH))
@@ -203,9 +239,9 @@ def generate_report(api, result_dir, results, results_dir):
         ])
         contents.append(t)
     contents.append(Spacer(1, 0.25 * inch))
-    s = '''<para size="7" leading="9">AIPlanner Copyright &copy; 2018-2020 Gordon Irlam. AIPlanner is
-provided without any warranty; without even the implied warranty
-of merchantability or fitness for a particular purpose.</para>'''
+    s = '''<para size="7" leading="9">This document is provided without any
+warranty; without even the implied warranty of merchantability or
+fitness for a particular purpose.</para>'''
     contents.append(TopPadder(Paragraph(s, styleN)))
     def footer(canvas, doc):
         canvas.saveState()
