@@ -22,5 +22,5 @@ $SPIA_DIR/fetch_yield_curve.py -t real
 mkdir -p ~/aiplanner-data/webroot/apiserver
 
 $AI_DIR/web/update_interest_rates.py
-$AI_DIR/web/update_price.py
+curl -s -S https://www.spglobal.com/spdji/en/documents/additional-material/sp-500-eps-est.xlsx | $AI_DIR/web/update_price.py --stdin
 $AI_DIR/web/update_volatility.py
