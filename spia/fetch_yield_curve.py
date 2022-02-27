@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # SPIA - Income annuity (SPIA and DIA) price calculator
-# Copyright (C) 2015-2021 Gordon Irlam
+# Copyright (C) 2015-2022 Gordon Irlam
 #
 # This program may be licensed by you (at your option) under an Open
 # Source, Free for Non-Commercial Use, or Commercial Use License.
@@ -163,10 +163,12 @@ class TreasuryFetcher(Fetcher):
 
     year_step = 1
 
-    url_args = 'year(NEW_DATE) eq %(year)d'
+    #url_args = 'year(NEW_DATE) eq %(year)d'
+    url_args = 'field_tdr_date_value=%(year)d'
 
     def url(self, year):
-        return self.url_base + quote(self.url_args % {'year' : year})
+        #return self.url_base + quote(self.url_args % {'year' : year})
+        return self.url_base + (self.url_args % {'year' : year})
 
     def csv_file(self, year):
         return self.dir + '/' + self.bond_type + '-' + str(year) + '.csv'
@@ -233,7 +235,8 @@ class NominalFetcher(TreasuryFetcher):
 
     start_year = 1990
 
-    url_base = 'https://data.treasury.gov/feed.svc/DailyTreasuryYieldCurveRateData?$filter='
+    #url_base = 'https://data.treasury.gov/feed.svc/DailyTreasuryYieldCurveRateData?$filter='
+    url_base = 'https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&'
 
 class RealFetcher(TreasuryFetcher):
 
@@ -241,7 +244,8 @@ class RealFetcher(TreasuryFetcher):
 
     start_year = 2003
 
-    url_base = 'https://data.treasury.gov/feed.svc/DailyTreasuryRealYieldCurveRateData?$filter='
+    #url_base = 'https://data.treasury.gov/feed.svc/DailyTreasuryRealYieldCurveRateData?$filter='
+    url_base = 'https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&'
 
 if __name__ == '__main__':
 
