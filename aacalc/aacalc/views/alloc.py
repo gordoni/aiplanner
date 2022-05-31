@@ -30,7 +30,7 @@ from os.path import expanduser, isdir, join, normpath
 from scipy.stats import lognorm, norm
 from subprocess import check_call
 
-from spia import LifeTable, Scenario, YieldCurve
+from spia import LifeTable, NoData, Scenario, UnableToAdjust, YieldCurve
 
 from aacalc.forms import AllocAaForm, AllocNumberForm, AllocRetireForm
 from settings import ROOT, STATIC_ROOT, STATIC_URL
@@ -1458,12 +1458,12 @@ bonds,%(aa_bonds)f
                     dirname = self.plot(mode, results['calc'][0], healthcheck)
                     results['dirurl'] = dirname.replace(STATIC_ROOT, STATIC_URL)
 
-                except LifeTable.UnableToAdjust:
+                except UnableToAdjust:
 
                     alloc_form.add_error('le_set2', 'Unable to adjust life table.')
                     errors_present = True
 
-                except YieldCurve.NoData:
+                except NoData:
 
                     alloc_form.add_error('date', 'No interest rate data available for the specified date.')
                     errors_present = True

@@ -25,8 +25,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .life_table import LifeTable
+from .life_table import LifeTable, UnableToAdjust
 from .income_annuity import IncomeAnnuity
-from .yield_curve import YieldCurve
+from .yield_curve import YieldCurve, NoData
 
 from .income_annuity import Scenario # Depreciated. Use IncomeAnnuity,

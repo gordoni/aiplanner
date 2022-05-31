@@ -22,7 +22,7 @@ from math import isnan
 from django.forms.utils import ErrorList
 from django.shortcuts import render
 
-from spia import LifeTable, Scenario, YieldCurve
+from spia import LifeTable, NoData, Scenario, UnableToAdjust, YieldCurve
 
 from aacalc.forms import SpiaForm
 
@@ -212,13 +212,13 @@ def spia(request):
                 results['spia_calcs'], results['spia_fair'], results['spia_actual'] = format_calcs(scenario.calcs, premium, payout, mwr)
                 results['bond_calcs'], results['bond_fair'], _ = format_calcs(self_insure_scenario.calcs, payout * self_insure_price, payout, 1)
 
-            except YieldCurve.NoData:
+            except NoData:
 
                 spia_form.add_error('date', 'No interest rate data available for the specified date.')
 
                 errors_present = True
 
-            except LifeTable.UnableToAdjust:
+            except UnableToAdjust:
 
                 spia_form.add_error('le_set', 'Unable to adjust life table to match additional life expectancy.')
 
