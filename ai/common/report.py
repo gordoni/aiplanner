@@ -148,7 +148,7 @@ def generate_report(api, result_dir, results, results_dir):
             if asset_allocation_tax_deferred and (asset_allocation_tax_free or asset_allocation_taxable):
                 s += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tax deferred (traditional): ' + asset_allocation_tax_deferred + '<br/>'
             if asset_allocation_taxable and (asset_allocation_tax_free or asset_allocation_tax_deferred):
-                s += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tax free (Roth): ' + asset_allocation_taxable + '<br/>'
+                s += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Taxable: ' + asset_allocation_taxable + '<br/>'
             s += 'International diversification: optional'
             def duration(d):
                 return 'short' if d <= 2 else 'intermediate' if d <= 9 else 'long'
