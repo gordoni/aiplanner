@@ -313,9 +313,10 @@ class Evaluator(object):
 
             rewards, erewards, estates, reward_initials, weight_sums, consume_means, consume_m2s, traces, warnings = zip(*chain(*rollouts))
             if len(rewards) > 1:
-                self.reward_ages = pack_value_weights(np.sort(np.concatenate([unpack_value_weights(reward) for reward in rewards], axis = 0)), length = 3)
-                self.erewards = pack_value_weights(np.sort(np.concatenate([unpack_value_weights(ereward) for ereward in erewards], axis = 0)))
-                self.estates = pack_value_weights(np.sort(np.concatenate([unpack_value_weights(estate) for estate in estates], axis = 0)))
+                unpacked_sort = lambda x : x[x[:, 0].argsort()]
+                self.reward_ages = pack_value_weights(unpacked_sort(np.concatenate([unpack_value_weights(reward) for reward in rewards])), length = 3)
+                self.erewards = pack_value_weights(unpacked_sort(np.concatenate([unpack_value_weights(ereward) for ereward in erewards])))
+                self.estates = pack_value_weights(unpacked_sort(np.concatenate([unpack_value_weights(estate) for estate in estates])))
             else:
                 self.reward_ages = rewards[0]
                 self.erewards = erewards[0]
