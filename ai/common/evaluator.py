@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2021 Gordon Irlam
+# Copyright (C) 2018-2023 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -203,6 +203,8 @@ class Evaluator(object):
                     anticipated += env.anticipated_episode_length
                 else:
                     finished[i] = True
+            obs0 = obss[0]
+            assert all(obs[j] == obs0[j] for j in range(len(obs0)) for obs in obss), 'Unstable beginning scenario'
             while True:
                 actions = pi(obss)
                 if self.eval_render:
@@ -232,6 +234,8 @@ class Evaluator(object):
                             consume_mean += (weight / weight_sum) * delta
                             delta2 = consume - consume_mean
                             consume_m2 += weight * delta * delta2
+                        if reward_initial is not None and env.episode_length == 1:
+                            assert reward == reward_initial, 'Unstable initial consumption'
                         if done:
                             if tracing[i]:
                                 self.trace_step(i, True)
@@ -254,6 +258,7 @@ class Evaluator(object):
                                 finished[i] = True
                             else:
                                 obss[i] = eval_env.reset()
+                                assert all(obss[i][j] == obs0[j] for j in range(len(obs0))), 'Unstable scenario'
                                 anticipated += env.anticipated_episode_length
                         else:
                             obss[i] = obs
