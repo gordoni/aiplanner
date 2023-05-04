@@ -100,6 +100,8 @@ Installing additional required components on Ubuntu 20.04:
         # But pip3 installs numpy, scipy, and pandas which are required.
         # If fails, try: --install-option='--no-binary'
     apt install nodejs npm
+    pip3 install 'protobuf<4'
+        # If don't specify protobuf, protobuf version >= 4 is used, which currently crashes the apiserver invocation of eval_model.py.
     pip3 install torch
     apt install cmake # Needed for atari-py dependency of ray[rllib].
     pip3 install 'ray[rllib,debug]==1.1.0'
