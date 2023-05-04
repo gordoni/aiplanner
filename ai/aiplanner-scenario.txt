@@ -18,7 +18,7 @@ master_welfare = 10000
 # impact only.
 master_sex = 'female'
 master_sex2 = 'male'
-master_life_table_date = '2021-01-01'
+master_life_table_date = '2023-01-01'
 
 master_age_end = 151
 

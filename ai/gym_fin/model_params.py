@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2021 Gordon Irlam
+# Copyright (C) 2018-2023 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -139,7 +139,7 @@ class ModelParams(object):
             # A couple trained model may be less accurate due to the large stochasticity associated with the random death of the first member of the couple.
 
         self._param('life-table', 'ssa-cohort', tp = string_type) # Life expectancy table to use. See spia module for possible values.
-        self._param('life-table-date', '2021-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
+        self._param('life-table-date', '2023-01-01', tp = string_type) # Used to determine birth cohort for cohort based life expectancy tables.
         self._param('life-expectancy-additional', (0, 0), 0) # Initial age adjustment for first individual.
             # Shift initial age so as to add this many years to the life expectancy of the first individual.
         self._param('life-expectancy-additional2', (0, 0), 0) # Initial age adjustment for second individual.
