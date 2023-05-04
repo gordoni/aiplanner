@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2021 Gordon Irlam
+# Copyright (C) 2018-2023 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -38,7 +38,7 @@ master_p_taxable_iid_bonds = 0
 master_p_taxable_other = 0
 
 master_tax = True
-master_tax_table_year = '2021'
+master_tax_table_year = '2023'
 
 master_bonds_date = '2020-12-31'
 master_bonds_date_start = '2018-01-01'

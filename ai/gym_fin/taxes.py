@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2021 Gordon Irlam
+# Copyright (C) 2018-2023 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -153,7 +153,7 @@ class Taxes(object):
             self.contribution_limit_ira = 6000
             self.contribution_limit_ira_catchup = 7000
 
-        elif self.params.tax_table_year == '2021' or self.params.tax_table_year is None:
+        elif self.params.tax_table_year == '2021':
 
             self.federal_standard_deduction_single = 12550
             self.federal_standard_deduction_joint = 25100
@@ -195,6 +195,49 @@ class Taxes(object):
             self.contribution_limit_401k_catchup = 26000
             self.contribution_limit_ira = 6000
             self.contribution_limit_ira_catchup = 7000
+
+        elif self.params.tax_table_year == '2023' or self.params.tax_table_year is None:
+
+            self.federal_standard_deduction_single = 13850
+            self.federal_standard_deduction_joint = 27700
+            # Ignore small increase in standard deduction for age 65+.
+
+            self.federal_table_single = (
+                (11000, 0.1),
+                (44725, 0.12),
+                (95375, 0.22),
+                (182100, 0.24),
+                (231250, 0.32),
+                (578125, 0.35),
+                (float('inf'), 0.37),
+            )
+
+            self.federal_table_joint = (
+                (22000, 0.1),
+                (89450, 0.12),
+                (190750, 0.22),
+                (364200, 0.24),
+                (462500, 0.32),
+                (693750, 0.35),
+                (float('inf'), 0.37),
+            )
+
+            self.federal_long_term_gains_single = (
+                (41675, 0),
+                (459750, 0.15),
+                (float('inf'), 0.2),
+            )
+
+            self.federal_long_term_gains_joint = (
+                (83350, 0),
+                (517200, 0.15),
+                (float('inf'), 0.2),
+            )
+
+            self.contribution_limit_401k = 22500
+            self.contribution_limit_401k_catchup = 30000
+            self.contribution_limit_ira = 6500
+            self.contribution_limit_ira_catchup = 7500
 
         else:
             assert False, 'No tax table for: ' + self.params.tax_table_year
