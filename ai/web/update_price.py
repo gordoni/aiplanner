@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2019-2021 Gordon Irlam
+# Copyright (C) 2019-2023 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -85,7 +85,7 @@ def update(root_dir, read_stdin, write_stdout):
     level = (1 / ((1 / trailing + 1 / forward) / 2)) / 14.99
 
     now = datetime.utcnow()
-    assert now - timedelta(days = 14) < date <= now
+    assert now - timedelta(days = 21) < date <= now
     assert 0.4 < level < 4.0
 
     if write_stdout:
