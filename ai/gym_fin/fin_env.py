@@ -53,6 +53,7 @@ class FinEnv(Env):
             'stocks_price', 'stocks_volatility', 'real_interest_rate']
         self.observation_space_low  = [0, 0, 0,   0,   0,   0, 0, -2e3,  0, 0, 0, 0, -0.15]
         self.observation_space_high = [1, 2, 1, 100, 100, 100, 1,  100, 20, 1, 4, 7,  0.15]
+            # Want to increase real interest rate above to [-0.20, 0.20] and delete extreme range in fin.py, but would need to retrain.
         self.observation_space = Box(
             # Note: Couple status must be observation[0], or else change is_couple()
             #    in common/tf_util.py and baselines/baselines/ppo1/pposgd_dual.py.

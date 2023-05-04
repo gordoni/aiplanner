@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2021 Gordon Irlam
+# Copyright (C) 2018-2023 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -337,18 +337,15 @@ class Bonds(BondsBase):
 @cython.cclass
 class RealBonds(Bonds):
 
-    def __init__(self, *, a = 0.14, sigma = 0.011, yield_curve, r0_type = 'current', r0 = -1, standard_error = 0, static_bonds = False, time_period = 1):
-        '''Chosen value of sigma, 0.011, intended to produce a short term real
-        yield volatility of 0.9-1.0%. The measured value over
-        2005-2019 was 0.99%. Obtained value is 1.00%.
+    def __init__(self, *, a = 0.08, sigma = 0.014, yield_curve, r0_type = 'current', r0 = -1, standard_error = 0, static_bonds = False, time_period = 1):
+        '''Chosen value of sigma, 0.014, intended to produce a short term real
+        yield volatility of 1.3-1.4%. The measured value over
+        2005-2022 was 1.35%. Obtained value is 1.33%.
 
-        Chosen value of a, 0.14, intended to produce a long term (15
-        year) real return standard deviation of about 6.5%. The observed
-        value over 2005-2019 was 8.9% (when rates were volatile). The
-        real nominal bond observed standard deviation is 14.9% whereas
-        according to the Credit Suisse Yearbook 10.9% is more typical,
-        so by a simple scaling 6.5% seems a reasonable expectation for
-        real bonds. Obtained value is 6.6%.
+        Chosen value of a, 0.08, intended to produce a long term (15
+        year) real return standard deviation of about 12%. The
+        measured value over 2005-2022 was 11.8%. Obtained value is
+        12.1%.
 
         Chosen default yield curve intended to be indicative of the
         present era.
@@ -455,7 +452,7 @@ class YieldCurveSum:
 class Inflation(Bonds):
 
     @cython.locals(real_bonds = RealBonds)
-    def __init__(self, real_bonds, *, inflation_a = 0.12, inflation_sigma = 0.013, bond_a = 0.12, bond_sigma = 0.013, model_bond_volatility = True,
+    def __init__(self, real_bonds, *, inflation_a = 0.20, inflation_sigma = 0.013, bond_a = 0.20, bond_sigma = 0.013, model_bond_volatility = True,
         nominal_yield_curve, inflation_risk_premium = 0, real_liquidity_premium = 0, r0_type = 'current', r0 = -1, standard_error = 0, static_bonds = False,
         time_period = 1):
         '''Keeping inflation parameters the same as the bond parameters
@@ -464,20 +461,15 @@ class Inflation(Bonds):
         Chosen value of inflation_sigma, 0.013, produces a reasonable
         estimate of the the short term inflation yield volatility (as
         used to provide nominal bond volatility). Measured value over
-        2005-2019 was 1.23%, compared to a obtained value of 1.20%.
+        2005-2022 was 1.13%, compared to a obtained value of 1.13%.
 
-        Chosen value of inflation_a, 0.12, produces a reasonable
+        Chosen value of inflation_a, 0.20, produces a reasonable
         estimate of the long term (15 year) standard deviation of the
-        inflation rate. Measured value over 2005-2019 was
-        0.55%. Obtained value was 1.24%. This seems quite reasonable
-        given inflation has recently been constrained. Additionally,
-        chosen value intended to produce a long term (15 year) nominal
-        bond real return standard deviation of about 11%. The measured
-        value over 2005-2019 was 14.4% (when rates were
-        volatile). Obtained value is 10.8%. As in the real case this
-        is less than the observed value, and is inline with the 10.9%
-        standard deviation for long term government bonds reported in
-        the Credit Suisse Global Investment Returns Yearbook 2019.
+        inflation rate. Measured value over 2005-2022 was
+        0.52%. Obtained value was 0.66%. Additionally, chosen value
+        intended to produce a long term (15 year) nominal bond real
+        return standard deviation of about 11%. The measured value
+        over 2005-2022 was 16.1%. Obtained value is 13.4%.
 
         model_bond_volatility specifies whether the process should be
         such as to provide a reasonable model for the long term
@@ -661,6 +653,8 @@ inflation_rate = {
     2018: 0.019,
     2019: 0.023,
     2020: 0.014,
+    2021: 0.070,
+    2022: 0.065,
 }
 
 @cython.cclass
@@ -821,7 +815,7 @@ class BondsSet:
     def __init__(self, need_real = True, need_nominal = True, need_inflation = True, need_corporate = True,
         fixed_real_bonds_rate = -1, fixed_nominal_bonds_rate = -1,
         real_bonds_adjust = 0, inflation_adjust = 0, nominal_bonds_adjust = 0, corporate_nominal_spread = 0,
-        static_bonds = False, date_str = '2020-12-31', date_str_low = '2018-01-01',
+        static_bonds = False, date_str = '2022-12-31', date_str_low = '2005-01-01',
         real_r0_type = 'current', real_short_rate = -1, real_standard_error = 0,
         inflation_r0_type = 'current', inflation_short_rate = -1, inflation_standard_error = 0,
         time_period = 1):
@@ -955,7 +949,7 @@ class BondsSet:
         else:
             self.corporate = None
 
-if __name__ == '__main__':
+def main():
 
     seed(0)
     np.random.seed(0)
@@ -1014,3 +1008,7 @@ if __name__ == '__main__':
     print('Nominal bonds (in nominal terms):')
     print()
     nominal_nominal_bonds._report()
+
+if __name__ == '__main__':
+
+    main()

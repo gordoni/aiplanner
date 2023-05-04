@@ -1,5 +1,5 @@
 # AIPlanner - Deep Learning Financial Planner
-# Copyright (C) 2018-2021 Gordon Irlam
+# Copyright (C) 2018-2023 Gordon Irlam
 #
 # All rights reserved. This program may not be used, copied, modified,
 # or redistributed without permission.
@@ -344,7 +344,7 @@ class Fin:
         observation_space_extreme_range[self._observation_space_items.index('reward_to_go_estimate')] *= 2
         observation_space_extreme_range[self._observation_space_items.index('stocks_price')] *= 2
         observation_space_extreme_range[self._observation_space_items.index('stocks_volatility')] *= 2
-        observation_space_extreme_range[self._observation_space_items.index('real_interest_rate')] = 0.30
+        observation_space_extreme_range[self._observation_space_items.index('real_interest_rate')] = 0.35
         observation_space_range_exceeded = np.zeros(observation_space_extreme_range.shape, dtype = 'int')
 
         self._observation_space_low_np = observation_space_low
