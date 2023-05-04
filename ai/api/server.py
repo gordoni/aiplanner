@@ -377,9 +377,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                 try:
                     self.market(check_current = True)
                 except AssertionError:
-                    data = 'STALE\n'
+                    data = 'OK STALE\n'
                 else:
-                    data = 'OK\n'
+                    data = 'OK CURRENT\n'
             else:
                 data = 'FAIL\n'
 

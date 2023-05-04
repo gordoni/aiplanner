@@ -139,9 +139,9 @@ aversion associated with the evaluation.
 Takes no parameters.
 
 Creates a random scenario and performs inference and/or a short
-running evaluation on it. Returns the string "OK" if everything is
-OK. Returns "STALE" if everything is OK appart from the market data
-which is stale. Any other value indicates an error.
+running evaluation on it. Returns the string "OK CURRENT" if
+everything is OK. Returns "OK STALE" if everything is OK appart from
+the market data which is stale. Any other value indicates an error.
 
 Parameters
 ==========
