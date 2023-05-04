@@ -30,11 +30,13 @@ RUN apt-get update \
     && apt-get clean \
     && apt-get install -y cmake \
     && pip3 install \
+        'protobuf<4' \
         torch \
         'ray[rllib]==1.1.0' \
         pyyaml \
         svglib \
     && rm -rf /root/.cache/pip
+    # If don't specify protobuf, protobuf version >= 4 is used, which currently crashes the apiserver invocation of eval_model.py.
     # RLlib depends on atari-py which requires cmake and used to require bazel which requires unzip to install
     #&& apt-get install -y unzip \
     #&& curl -s -L -R -o install-bazel.sh https://github.com/bazelbuild/bazel/releases/download/1.1.0/bazel-1.1.0-installer-linux-x86_64.sh \
