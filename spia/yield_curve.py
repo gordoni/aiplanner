@@ -373,7 +373,7 @@ class YieldCurve:
             spot_rates = []
             for yield_curve_year, yield_curve_rate in zip(yield_curve_years, yield_curve_rates):
 
-                # First interpolate the spot returns.
+                # First interpolate the coupon returns.
                 coupon_yield_curve = []
                 yield_curve = scipy.interpolate.PchipInterpolator(yield_curve_year, yield_curve_rate)
 
@@ -433,7 +433,7 @@ class YieldCurve:
 
         return interpolate_years, interpolate_spots
 
-    def par_to_spot(self, rates):
+    def par_to_spot(self, rates, periods = 2):
         '''Convert semi-annual par rates to semi-annual spot rates.'''
         # See: https://en.wikipedia.org/wiki/Bootstrapping_%28finance%29
         spots = []
@@ -441,47 +441,47 @@ class YieldCurve:
         count = 0
         for rate in rates:
             count += 1
-            coupon_yield = rate / 2.0
+            coupon_yield = rate / periods
             discount_rate = (1 - coupon_yield * discount_rate_sum) / (1 + coupon_yield)
             spot_yield = discount_rate ** (- 1.0 / count) - 1
-            spots.append(spot_yield * 2)
+            spots.append(spot_yield * periods)
             discount_rate_sum += discount_rate
         return spots
 
-    def spot_to_par(self, rates):
+    def spot_to_par(self, rates, periods = 2):
         '''Convert semi-annual spot rates to semi-annual par rates.'''
         pars = []
         count = 0
         coupons = 0
-        for spot, forward in zip(rates, self.spot_to_forward(rates)):
+        for spot, forward in zip(rates, self.spot_to_forward(rates, periods = periods)):
             count += 1
-            coupons = 1 + coupons * (1 + forward / 2)
-            pars.append(((1 + spot / 2) ** count - 1) / coupons * 2)
+            coupons = 1 + coupons * (1 + forward / periods)
+            pars.append(((1 + spot / periods) ** count - 1) / coupons * periods)
         return pars
 
-    def spot_to_forward(self, rates):
+    def spot_to_forward(self, rates, periods = 2):
         '''Convert semi-annual spot rates to semi-annual forward rates.'''
         forwards = []
         count = 0
         old_spot_rate = 0
         for rate in rates:
             count += 1
-            new_spot_rate = rate / 2
+            new_spot_rate = rate / periods
             forward_rate = (1 + new_spot_rate) ** count / (1 + old_spot_rate) ** (count - 1)
-            forwards.append((forward_rate - 1) * 2)
+            forwards.append((forward_rate - 1) * periods)
             old_spot_rate = new_spot_rate
         return forwards
 
-    def forward_to_spot(self, rates):
+    def forward_to_spot(self, rates, periods = 2):
         '''Convert semi-annual forward rates to semi-annual spot rates.'''
         spots = []
         count = 0
         spot_rate = 1
         for rate in rates:
             count += 1
-            forward_rate = 1 + rate / 2
+            forward_rate = 1 + rate / periods
             spot_rate = (forward_rate * spot_rate ** (count - 1)) ** (1.0 / count)
-            spots.append((spot_rate - 1) * 2)
+            spots.append((spot_rate - 1) * periods)
         return spots
 
     def spot(self, y):
