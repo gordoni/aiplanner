@@ -60,6 +60,7 @@ def check():
     request_factory = RequestFactory()
     params = default_spia_params()
 
+    params['bond_type'] = 'real'
     params['adjust'] = 0
     params['payout'] = 1000
     request = request_factory.post('/calculators/spia', params)
