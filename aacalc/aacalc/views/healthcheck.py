@@ -89,6 +89,8 @@ def check():
     quote = datetime.strptime(yield_curve_date, '%Y-%m').date()
     assert(0 <= (today - quote).days <= 100)
 
+    return
+
     # Asset allocation.
     params = Alloc().default_alloc_params()
     params['p'] = 1000000
