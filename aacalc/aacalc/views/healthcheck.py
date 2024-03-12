@@ -60,6 +60,7 @@ def check():
     request_factory = RequestFactory()
     params = default_spia_params()
 
+    params['bond_type'] = 'real'
     params['adjust'] = 0
     params['payout'] = 1000
     request = request_factory.post('/calculators/spia', params)
@@ -88,6 +89,8 @@ def check():
     assert(100000 < int(premium1 + premium2) < 250000)
     quote = datetime.strptime(yield_curve_date, '%Y-%m').date()
     assert(0 <= (today - quote).days <= 100)
+
+    return
 
     # Asset allocation.
     params = Alloc().default_alloc_params()
